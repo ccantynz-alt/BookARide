@@ -11,7 +11,7 @@ export const services = [
   {
     id: 2,
     title: "Hamilton Airport Shuttle",
-    description: "Convenient shuttle transfers to and from Hamilton Airport for all your travel needs.",
+    description: "Hamilton to Auckland return private shuttle transfers",
     icon: "plane",
     features: ["Scheduled pickups", "Comfortable vehicles", "Reliable service"]
   },
