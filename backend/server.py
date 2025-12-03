@@ -11,6 +11,9 @@ import uuid
 from datetime import datetime, timezone
 import requests
 from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionResponse, CheckoutStatusResponse, CheckoutSessionRequest
+from twilio.rest import Client
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
 
 
 ROOT_DIR = Path(__file__).parent
