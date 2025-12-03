@@ -928,6 +928,9 @@ async def stripe_webhook(request: Request):
                         
                         # Send SMS confirmation
                         send_booking_confirmation_sms(booking)
+                        
+                        # Create Google Calendar event
+                        await create_calendar_event(booking)
         
         return {"status": "success", "event_type": webhook_response.event_type}
     
