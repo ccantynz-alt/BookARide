@@ -3,31 +3,31 @@
 export const services = [
   {
     id: 1,
-    title: "Airport Transfers",
-    description: "Reliable and comfortable airport pickup and drop-off services. Track your flight in real-time.",
+    title: "Auckland Airport Shuttle",
+    description: "Reliable shuttle service to and from Auckland Airport. Comfortable rides with professional drivers.",
     icon: "plane",
-    features: ["Flight tracking", "Meet & greet service", "24/7 availability"]
+    features: ["Door-to-door service", "Flight monitoring", "Affordable rates"]
   },
   {
     id: 2,
-    title: "Corporate Travel",
-    description: "Professional transportation solutions for business meetings, events, and corporate travel.",
-    icon: "briefcase",
-    features: ["Flexible scheduling", "Invoice billing", "Premium vehicles"]
+    title: "Hamilton Airport Shuttle",
+    description: "Convenient shuttle transfers to and from Hamilton Airport for all your travel needs.",
+    icon: "plane",
+    features: ["Scheduled pickups", "Comfortable vehicles", "Reliable service"]
   },
   {
     id: 3,
-    title: "City Rides",
-    description: "Quick and convenient rides around town for daily commutes, shopping, or leisure.",
-    icon: "map-pin",
-    features: ["Instant booking", "Real-time tracking", "Affordable rates"]
+    title: "Whangarei Airport Shuttle",
+    description: "Safe and comfortable shuttle service connecting you to Whangarei Airport.",
+    icon: "plane",
+    features: ["Direct transfers", "On-time service", "Easy booking"]
   },
   {
     id: 4,
-    title: "Special Events",
-    description: "Make your special occasions memorable with our premium transportation services.",
-    icon: "calendar",
-    features: ["Weddings & parties", "Group bookings", "Customized packages"]
+    title: "Private Auckland Transfers",
+    description: "Private shuttle transfers around Auckland for any occasion - business, events, or personal travel.",
+    icon: "map-pin",
+    features: ["Private vehicles", "Flexible scheduling", "Local expertise"]
   }
 ];
 
