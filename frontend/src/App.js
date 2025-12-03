@@ -7,6 +7,7 @@ import Home from './pages/Home';
 import Services from './pages/Services';
 import About from './pages/About';
 import Contact from './pages/Contact';
+import BookNow from './pages/BookNow';
 import { Toaster } from './components/ui/sonner';
 
 function App() {
