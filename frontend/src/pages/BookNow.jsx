@@ -221,7 +221,7 @@ export const BookNow = () => {
                         <div className="space-y-2">
                           <Label htmlFor="date" className="flex items-center space-x-2">
                             <Calendar className="w-4 h-4 text-gold" />
-                            <span>Date *</span>
+                            <span>Pickup Date *</span>
                           </Label>
                           <Input
                             id="date"
@@ -236,7 +236,7 @@ export const BookNow = () => {
                         <div className="space-y-2">
                           <Label htmlFor="time" className="flex items-center space-x-2">
                             <Clock className="w-4 h-4 text-gold" />
-                            <span>Time *</span>
+                            <span>Pickup Time *</span>
                           </Label>
                           <Input
                             id="time"
@@ -247,6 +247,57 @@ export const BookNow = () => {
                             required
                             className="transition-all duration-200 focus:ring-2 focus:ring-gold"
                           />
+                        </div>
+                      </div>
+
+                      {/* Flight Information */}
+                      <div className="bg-gray-50 p-6 rounded-lg mb-6">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4">Flight Information (Optional)</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div className="space-y-2">
+                            <Label htmlFor="departureFlightNumber">Departure Flight Number</Label>
+                            <Input
+                              id="departureFlightNumber"
+                              name="departureFlightNumber"
+                              value={formData.departureFlightNumber}
+                              onChange={handleChange}
+                              placeholder="e.g., NZ123"
+                              className="transition-all duration-200 focus:ring-2 focus:ring-gold"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="departureTime">Departure Time</Label>
+                            <Input
+                              id="departureTime"
+                              name="departureTime"
+                              type="time"
+                              value={formData.departureTime}
+                              onChange={handleChange}
+                              className="transition-all duration-200 focus:ring-2 focus:ring-gold"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="arrivalFlightNumber">Arrival Flight Number</Label>
+                            <Input
+                              id="arrivalFlightNumber"
+                              name="arrivalFlightNumber"
+                              value={formData.arrivalFlightNumber}
+                              onChange={handleChange}
+                              placeholder="e.g., NZ456"
+                              className="transition-all duration-200 focus:ring-2 focus:ring-gold"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="arrivalTime">Arrival Time</Label>
+                            <Input
+                              id="arrivalTime"
+                              name="arrivalTime"
+                              type="time"
+                              value={formData.arrivalTime}
+                              onChange={handleChange}
+                              className="transition-all duration-200 focus:ring-2 focus:ring-gold"
+                            />
+                          </div>
                         </div>
                       </div>
 
