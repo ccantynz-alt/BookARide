@@ -94,6 +94,7 @@ export const AdminDashboard = () => {
 
   const handleLogout = () => {
     localStorage.removeItem('adminAuth');
+    localStorage.removeItem('adminToken');
     navigate('/admin/login');
     toast.success('Logged out successfully');
   };
@@ -113,10 +114,15 @@ export const AdminDashboard = () => {
 
   const handleStatusUpdate = async (bookingId, newStatus) => {
     try {
-      await axios.patch(`${API}/bookings/${bookingId}`, { status: newStatus });
+      await axios.patch(`${API}/bookings/${bookingId}`, { status: newStatus }, getAuthHeaders());
       toast.success('Status updated successfully');
       fetchBookings();
     } catch (error) {
+      if (error.response?.status === 401) {
+        toast.error('Session expired. Please login again.');
+        handleLogout();
+        return;
+      }
       console.error('Error updating status:', error);
       toast.error('Failed to update status');
     }
