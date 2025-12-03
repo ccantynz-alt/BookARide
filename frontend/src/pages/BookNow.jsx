@@ -387,7 +387,7 @@ export const BookNow = () => {
                               VIP Airport Pickup Service - $15
                             </Label>
                             <p className="text-xs text-gray-600 mt-1">
-                              Premium airport pickup service with priority assistance and luggage handling
+                              VIP parking close to door eleven
                             </p>
                           </div>
                         </div>
