@@ -147,6 +147,21 @@ frontend:
           agent: "testing"
           comment: "✅ RETURN TRIP BOOKING FUNCTIONALITY TEST PASSED - All functionality working correctly: 1) Return trip checkbox toggles properly, 2) Return trip section appears when checkbox is checked with Return Date and Return Time fields visible, 3) Return Flight Information section visible (optional fields), 4) Return trip message displays correctly: 'Return trip will be from Hamilton back to Auckland Airport', 5) Price calculation works perfectly - price doubles from $87.50 to $175.00 when return trip is enabled (2x multiplier confirmed), 6) Return trip date and time fields accept input correctly, 7) All form validation working as expected. The return trip functionality is fully functional and meets all requirements."
 
+  - task: "Stripe Payment Integration"
+    implemented: true
+    working: false
+    file: "/app/frontend/src/pages/BookNow.jsx"
+    stuck_count: 1
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+          agent: "testing"
+          comment: "Starting test of Stripe payment integration - testing complete booking flow from form submission to Stripe checkout redirect"
+        - working: false
+          agent: "testing"
+          comment: "❌ STRIPE PAYMENT INTEGRATION TEST FAILED - Critical Issue: Service Type dropdown (Radix UI Select component) is not functioning properly in automated testing. The dropdown cannot be opened/selected programmatically, preventing form submission. All other form fields work correctly (addresses with Google Places autocomplete, date/time, contact info), but the required Service Type field blocks the booking process. The Book Now button is enabled but form validation prevents submission without service type selection. Backend Stripe integration appears properly implemented with test API key (sk_test_emergent) configured. Issue is specifically with the frontend Service Type UI component interaction."
+
 metadata:
   created_by: "testing_agent"
   version: "1.0"
