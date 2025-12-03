@@ -18,12 +18,12 @@ export const Home = () => {
       {/* Hero Section */}
       <section className="relative pt-32 pb-24 md:pt-40 md:pb-32 overflow-hidden bg-gradient-to-br from-gray-900 via-black to-gray-900">
         {/* Background Vehicle Image - Subtle */}
-        <div className="absolute inset-0 opacity-5">
+        <div className="absolute inset-0 opacity-15">
           <img 
             src="/shuttle-van.jpg" 
             alt="" 
-            className="w-full h-full object-cover object-center"
-            style={{ filter: 'brightness(0.3) blur(2px)' }}
+            className="w-full h-full object-cover object-right"
+            style={{ filter: 'brightness(0.4) blur(1px)' }}
           />
         </div>
         
