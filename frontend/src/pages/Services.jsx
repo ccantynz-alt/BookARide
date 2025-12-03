@@ -17,6 +17,16 @@ export const Services = () => {
     <div className="min-h-screen pt-20 bg-white">
       {/* Hero Section */}
       <section className="py-24 bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
+        {/* Background Vehicle Image */}
+        <div className="absolute inset-0 opacity-15">
+          <img 
+            src="/shuttle-van.jpg" 
+            alt="" 
+            className="w-full h-full object-cover object-left"
+            style={{ filter: 'brightness(0.4) blur(1px)' }}
+          />
+        </div>
+        
         <div className="absolute inset-0 opacity-10">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(212,175,55,0.15),transparent_50%)]" />
         </div>
