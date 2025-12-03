@@ -106,12 +106,13 @@ export const fleet = [
 ];
 
 export const companyInfo = {
-  name: "BookaRide",
-  tagline: "Your Trusted Transportation Partner in New Zealand",
+  name: "Book A Ride NZ",
+  tagline: "Airport Shuttles & Private Transfers Across New Zealand",
   phone: "+64 9 123 4567",
   email: "info@bookaride.co.nz",
-  address: "123 Queen Street, Auckland, New Zealand",
+  address: "Auckland, New Zealand",
   operatingHours: "24/7",
+  serviceAreas: ["Auckland", "Hamilton", "Whangarei"],
   socialMedia: {
     facebook: "https://facebook.com/bookaride",
     twitter: "https://twitter.com/bookaride",
