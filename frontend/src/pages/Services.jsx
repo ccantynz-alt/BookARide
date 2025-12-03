@@ -67,6 +67,110 @@ export const Services = () => {
         </div>
       </section>
 
+      {/* Special: Hobbiton Transfers */}
+      <section className="py-20 bg-gradient-to-br from-gray-900 via-black to-gray-900">
+        <div className="container mx-auto px-4">
+          <div className="max-w-6xl mx-auto">
+            <div className="text-center mb-12">
+              <span className="inline-block bg-gold text-black text-xs font-bold px-4 py-2 rounded-full uppercase tracking-wide mb-4">
+                Special Destination
+              </span>
+              <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
+                Hobbiton Movie Set Transfers
+              </h2>
+              <p className="text-xl text-gray-300 max-w-3xl mx-auto">
+                Journey to Middle-earth with our premium Auckland to Hobbiton transfer service
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Main Info Card */}
+              <Card className="lg:col-span-2 border-2 border-gold/30 bg-gray-900/50 backdrop-blur">
+                <CardContent className="p-10">
+                  <div className="flex items-center mb-6">
+                    <div className="text-6xl mr-6">🧙‍♂️</div>
+                    <div>
+                      <h3 className="text-2xl font-bold text-white mb-2">Experience the Shire</h3>
+                      <p className="text-gray-300">175km scenic journey through Waikato countryside</p>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <div className="space-y-3">
+                      <div className="flex items-center text-gray-200">
+                        <Check className="w-5 h-5 text-gold mr-3 flex-shrink-0" />
+                        <span>Direct door-to-door service</span>
+                      </div>
+                      <div className="flex items-center text-gray-200">
+                        <Check className="w-5 h-5 text-gold mr-3 flex-shrink-0" />
+                        <span>Flexible pickup times</span>
+                      </div>
+                      <div className="flex items-center text-gray-200">
+                        <Check className="w-5 h-5 text-gold mr-3 flex-shrink-0" />
+                        <span>Professional drivers</span>
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex items-center text-gray-200">
+                        <Check className="w-5 h-5 text-gold mr-3 flex-shrink-0" />
+                        <span>Up to 11 passengers</span>
+                      </div>
+                      <div className="flex items-center text-gray-200">
+                        <Check className="w-5 h-5 text-gold mr-3 flex-shrink-0" />
+                        <span>Return trips available</span>
+                      </div>
+                      <div className="flex items-center text-gray-200">
+                        <Check className="w-5 h-5 text-gold mr-3 flex-shrink-0" />
+                        <span>Premium comfort</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Link to="/hobbiton-transfers">
+                    <Button className="bg-gold hover:bg-gold/90 text-black font-semibold px-8 py-4 w-full sm:w-auto">
+                      View Full Details
+                      <ArrowRight className="ml-2 w-5 h-5" />
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+
+              {/* Pricing Card */}
+              <Card className="border-2 border-gold/30 bg-gradient-to-br from-gold/20 to-gold/5 backdrop-blur">
+                <CardContent className="p-10 text-center">
+                  <div className="mb-6">
+                    <p className="text-gray-300 text-sm mb-2">Estimated Price</p>
+                    <p className="text-5xl font-bold text-gold mb-2">$612.50</p>
+                    <p className="text-gray-400 text-sm">Base one-way fare</p>
+                  </div>
+                  
+                  <div className="space-y-3 mb-8 text-left">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-300">Distance:</span>
+                      <span className="text-white font-semibold">175km</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-300">Travel Time:</span>
+                      <span className="text-white font-semibold">~2.5 hours</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-300">Rate:</span>
+                      <span className="text-white font-semibold">$3.50/km</span>
+                    </div>
+                  </div>
+
+                  <Link to="/book-now">
+                    <Button variant="outline" className="border-gold text-gold hover:bg-gold hover:text-black w-full py-4">
+                      Book Now
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Fleet Section */}
       <section className="py-24 bg-gray-50">
         <div className="container mx-auto px-4">
