@@ -175,19 +175,6 @@ export const BookNow = () => {
       toast.error('Failed to submit booking. Please try again.');
     }
   };
-      setPricing({
-        distance: 0,
-        basePrice: 0,
-        airportFee: 0,
-        passengerFee: 0,
-        totalPrice: 0,
-        calculating: false
-      });
-    } catch (error) {
-      console.error('Error submitting booking:', error);
-      toast.error('Failed to submit booking. Please try again.');
-    }
-  };
 
   return (
     <div className="min-h-screen pt-20 bg-white">
