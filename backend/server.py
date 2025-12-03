@@ -188,6 +188,50 @@ async def get_bookings():
         logger.error(f"Error fetching bookings: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error fetching bookings: {str(e)}")
 
+# Update Booking Endpoint (for admin)
+@api_router.patch("/bookings/{booking_id}")
+async def update_booking(booking_id: str, update_data: dict):
+    try:
+        result = await db.bookings.update_one(
+            {"id": booking_id},
+            {"$set": update_data}
+        )
+        if result.modified_count == 0:
+            raise HTTPException(status_code=404, detail="Booking not found")
+        logger.info(f"Booking updated: {booking_id}")
+        return {"message": "Booking updated successfully"}
+    except Exception as e:
+        logger.error(f"Error updating booking: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error updating booking: {str(e)}")
+
+# Send Email Endpoint (for admin)
+@api_router.post("/send-booking-email")
+async def send_booking_email(email_data: dict):
+    try:
+        # In production, you would integrate with an email service like SendGrid, Mailgun, etc.
+        # For now, we'll just log it and return success
+        logger.info(f"Email would be sent to: {email_data.get('email')}")
+        logger.info(f"Subject: {email_data.get('subject')}")
+        logger.info(f"Message: {email_data.get('message')}")
+        
+        # TODO: Integrate with actual email service
+        # Example with SendGrid:
+        # import sendgrid
+        # from sendgrid.helpers.mail import Mail
+        # message = Mail(
+        #     from_email='noreply@bookaride.co.nz',
+        #     to_emails=email_data.get('email'),
+        #     subject=email_data.get('subject'),
+        #     plain_text_content=email_data.get('message')
+        # )
+        # sg = sendgrid.SendGridAPIClient(api_key=os.environ.get('SENDGRID_API_KEY'))
+        # response = sg.send(message)
+        
+        return {"message": "Email sent successfully (currently logged only - integrate email service)"}
+    except Exception as e:
+        logger.error(f"Error sending email: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error sending email: {str(e)}")
+
 # Include the router in the main app
 app.include_router(api_router)
 
