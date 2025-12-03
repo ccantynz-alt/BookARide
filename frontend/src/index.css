@@ -2,11 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=Montserrat:wght@200;300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 body {
     margin: 0;
-    font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
         "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans",
         "Helvetica Neue", sans-serif;
     -webkit-font-smoothing: antialiased;
@@ -16,10 +16,6 @@ body {
 code {
     font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
         monospace;
-}
-
-h1, h2, h3, h4, h5, h6 {
-    font-family: 'Cormorant Garamond', serif;
 }
 
 @layer base {
@@ -49,7 +45,6 @@ h1, h2, h3, h4, h5, h6 {
         --chart-4: 43 74% 66%;
         --chart-5: 27 87% 67%;
         --radius: 0.5rem;
-        --gold: 43 74% 66%;
     }
   .dark {
         --background: 0 0% 3.9%;
@@ -89,22 +84,22 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 @layer utilities {
-  .text-gold {
-    color: #D4AF37;
+  .text-brand-blue {
+    color: #2563EB;
   }
-  .bg-gold {
-    background-color: #D4AF37;
+  .bg-brand-blue {
+    background-color: #2563EB;
   }
-  .border-gold {
-    border-color: #D4AF37;
+  .border-brand-blue {
+    border-color: #2563EB;
   }
-  .hover\:text-gold:hover {
-    color: #D4AF37;
+  .hover\:text-brand-blue:hover {
+    color: #2563EB;
   }
-  .hover\:bg-gold:hover {
-    background-color: #D4AF37;
+  .hover\:bg-brand-blue:hover {
+    background-color: #2563EB;
   }
-  .hover\:border-gold:hover {
-    border-color: #D4AF37;
+  .hover\:border-brand-blue:hover {
+    border-color: #2563EB;
   }
 }
