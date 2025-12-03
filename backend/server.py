@@ -862,6 +862,9 @@ async def get_payment_status(session_id: str):
                     
                     # Send SMS confirmation
                     send_booking_confirmation_sms(booking)
+                    
+                    # Create Google Calendar event
+                    await create_calendar_event(booking)
         
         return checkout_status
     
