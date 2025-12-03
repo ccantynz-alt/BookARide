@@ -6,13 +6,16 @@ export const About = () => {
   return (
     <div className="min-h-screen pt-20 bg-white">
       {/* Hero Section */}
-      <section className="py-24 bg-gradient-to-br from-blue-600 via-blue-500 to-blue-700">
-        <div className="container mx-auto px-4">
+      <section className="py-24 bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(212,175,55,0.15),transparent_50%)]" />
+        </div>
+        <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-3xl mx-auto text-center">
             <h1 className="text-5xl md:text-6xl font-bold text-white mb-6">
               About Us
             </h1>
-            <p className="text-xl text-white/90">
+            <p className="text-xl text-white/80">
               Your trusted transportation partner, committed to providing safe, reliable, and comfortable rides across New Zealand.
             </p>
           </div>
@@ -84,10 +87,10 @@ export const About = () => {
             ].map((value, index) => {
               const Icon = value.icon;
               return (
-                <Card key={index} className="border-2 border-gray-200 hover:border-blue-500 hover:shadow-xl transition-all duration-300 group">
+                <Card key={index} className="border-2 border-gray-200 hover:border-gold hover:shadow-xl transition-all duration-300 group">
                   <CardContent className="p-8">
-                    <div className="w-16 h-16 bg-blue-100 group-hover:bg-blue-600 rounded-xl flex items-center justify-center mb-6 transition-colors duration-300">
-                      <Icon className="w-8 h-8 text-blue-600 group-hover:text-white transition-colors duration-300" />
+                    <div className="w-16 h-16 bg-gray-900 group-hover:bg-gold rounded-xl flex items-center justify-center mb-6 transition-colors duration-300">
+                      <Icon className="w-8 h-8 text-gold group-hover:text-black transition-colors duration-300" />
                     </div>
                     <h3 className="text-xl font-semibold text-gray-900 mb-4">{value.title}</h3>
                     <p className="text-gray-600 text-sm leading-relaxed">{value.description}</p>
@@ -120,8 +123,8 @@ export const About = () => {
               { value: '99%', label: 'On-Time Rate' },
               { value: '100%', label: 'Satisfaction Goal' }
             ].map((stat, index) => (
-              <div key={index} className="text-center p-8 bg-blue-50 rounded-xl hover:shadow-md transition-shadow duration-200">
-                <div className="text-4xl font-bold text-blue-600 mb-2">{stat.value}</div>
+              <div key={index} className="text-center p-8 bg-gray-50 rounded-xl border border-gray-200 hover:border-gold hover:shadow-md transition-all duration-200">
+                <div className="text-4xl font-bold text-gold mb-2">{stat.value}</div>
                 <div className="text-sm text-gray-700 font-medium">{stat.label}</div>
               </div>
             ))}
@@ -130,21 +133,24 @@ export const About = () => {
       </section>
 
       {/* Mission & Vision */}
-      <section className="py-24 bg-gray-50">
-        <div className="container mx-auto px-4">
+      <section className="py-24 bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(212,175,55,0.2),transparent_70%)]" />
+        </div>
+        <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12">
-            <Card className="border-2 border-gray-200">
+            <Card className="border-2 border-gold/30 bg-white/5 backdrop-blur-sm">
               <CardContent className="p-10">
-                <h3 className="text-3xl font-bold text-gray-900 mb-6">Our Mission</h3>
-                <p className="text-gray-600 leading-relaxed">
+                <h3 className="text-3xl font-bold text-gold mb-6">Our Mission</h3>
+                <p className="text-white/80 leading-relaxed">
                   To provide safe, reliable, and comfortable transportation services that exceed customer expectations, while maintaining high standards of professionalism and continuous improvement.
                 </p>
               </CardContent>
             </Card>
-            <Card className="border-2 border-gray-200">
+            <Card className="border-2 border-gold/30 bg-white/5 backdrop-blur-sm">
               <CardContent className="p-10">
-                <h3 className="text-3xl font-bold text-gray-900 mb-6">Our Vision</h3>
-                <p className="text-gray-600 leading-relaxed">
+                <h3 className="text-3xl font-bold text-gold mb-6">Our Vision</h3>
+                <p className="text-white/80 leading-relaxed">
                   To be New Zealand's most trusted and reliable transportation service, known for our commitment to customer satisfaction, safety, and quality service in every journey.
                 </p>
               </CardContent>

@@ -16,13 +16,16 @@ export const Services = () => {
   return (
     <div className="min-h-screen pt-20 bg-white">
       {/* Hero Section */}
-      <section className="py-24 bg-gradient-to-br from-blue-600 via-blue-500 to-blue-700">
-        <div className="container mx-auto px-4">
+      <section className="py-24 bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(212,175,55,0.15),transparent_50%)]" />
+        </div>
+        <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-3xl mx-auto text-center">
             <h1 className="text-5xl md:text-6xl font-bold text-white mb-6">
               Our Services
             </h1>
-            <p className="text-xl text-white/90">
+            <p className="text-xl text-white/80">
               Comprehensive transportation solutions for all your needs
             </p>
           </div>
@@ -36,11 +39,11 @@ export const Services = () => {
             {services.map((service, index) => {
               const Icon = iconMap[service.icon];
               return (
-                <Card key={service.id} className="border-2 border-gray-200 hover:border-blue-500 hover:shadow-xl transition-all duration-300">
+                <Card key={service.id} className="border-2 border-gray-200 hover:border-gold hover:shadow-xl transition-all duration-300">
                   <CardContent className="p-10">
                     <div className="flex items-start space-x-6">
-                      <div className="w-20 h-20 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                        <Icon className="w-10 h-10 text-blue-600" />
+                      <div className="w-20 h-20 bg-gray-900 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <Icon className="w-10 h-10 text-gold" />
                       </div>
                       <div className="flex-1">
                         <h3 className="text-3xl font-bold text-gray-900 mb-4">{service.title}</h3>
@@ -49,7 +52,7 @@ export const Services = () => {
                           <h4 className="font-semibold text-gray-900">Features:</h4>
                           {service.features.map((feature, idx) => (
                             <div key={idx} className="flex items-center space-x-3">
-                              <Check className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                              <Check className="w-5 h-5 text-gold flex-shrink-0" />
                               <span className="text-gray-700">{feature}</span>
                             </div>
                           ))}
@@ -76,11 +79,11 @@ export const Services = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
             {fleet.map((vehicle) => (
-              <Card key={vehicle.id} className="border-2 border-gray-200 hover:border-blue-500 hover:shadow-xl transition-all duration-300 group">
+              <Card key={vehicle.id} className="border-2 border-gray-200 hover:border-gold hover:shadow-xl transition-all duration-300 group">
                 <CardContent className="p-8">
                   <div className="mb-6">
-                    <div className="w-16 h-16 bg-blue-100 group-hover:bg-blue-600 rounded-xl flex items-center justify-center mb-4 transition-colors duration-300">
-                      <Car className="w-8 h-8 text-blue-600 group-hover:text-white transition-colors duration-300" />
+                    <div className="w-16 h-16 bg-gray-900 group-hover:bg-gold rounded-xl flex items-center justify-center mb-4 transition-colors duration-300">
+                      <Car className="w-8 h-8 text-gold group-hover:text-black transition-colors duration-300" />
                     </div>
                     <h3 className="text-2xl font-bold text-gray-900">{vehicle.name}</h3>
                   </div>
@@ -120,8 +123,8 @@ export const Services = () => {
                 const Icon = item.icon;
                 return (
                   <div key={index} className="flex flex-col items-center text-center group">
-                    <div className="w-20 h-20 bg-blue-100 rounded-xl flex items-center justify-center mb-6 group-hover:bg-blue-600 transition-colors duration-300">
-                      <Icon className="w-10 h-10 text-blue-600 group-hover:text-white transition-colors duration-300" />
+                    <div className="w-20 h-20 bg-gray-900 group-hover:bg-gold rounded-xl flex items-center justify-center mb-6 transition-colors duration-300">
+                      <Icon className="w-10 h-10 text-gold group-hover:text-black transition-colors duration-300" />
                     </div>
                     <h3 className="text-xl font-semibold text-gray-900 mb-3">{item.title}</h3>
                     <p className="text-gray-600 text-sm leading-relaxed">{item.description}</p>
@@ -134,16 +137,19 @@ export const Services = () => {
       </section>
 
       {/* CTA */}
-      <section className="py-24 bg-gradient-to-r from-blue-600 to-blue-700">
-        <div className="container mx-auto px-4 text-center">
+      <section className="py-24 bg-gradient-to-r from-gray-900 via-black to-gray-900 relative overflow-hidden">
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(212,175,55,0.2),transparent_70%)]" />
+        </div>
+        <div className="container mx-auto px-4 text-center relative z-10">
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
             Ready to Book?
           </h2>
-          <p className="text-xl text-white/90 mb-12 max-w-2xl mx-auto">
+          <p className="text-xl text-white/80 mb-12 max-w-2xl mx-auto">
             Get in touch today for a quote or to make a booking.
           </p>
           <Link to="/contact">
-            <Button size="lg" className="bg-white hover:bg-gray-100 text-blue-600 font-semibold px-10 py-6 text-base transition-all duration-200 shadow-lg">
+            <Button size="lg" className="bg-gold hover:bg-gold/90 text-black font-semibold px-10 py-6 text-base transition-all duration-200 shadow-lg">
               Book Now
               <ArrowRight className="ml-2 w-5 h-5" />
             </Button>
