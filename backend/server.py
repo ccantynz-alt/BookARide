@@ -470,7 +470,7 @@ async def get_payment_status(session_id: str):
             {"$set": update_data}
         )
         
-        # If payment is successful, update booking status
+        # If payment is successful, update booking status and send confirmations
         if checkout_status.payment_status == "paid" and result.modified_count > 0:
             booking_id = checkout_status.metadata.get('booking_id')
             if booking_id:
@@ -479,6 +479,15 @@ async def get_payment_status(session_id: str):
                     {"$set": {"payment_status": "paid", "status": "confirmed"}}
                 )
                 logger.info(f"Booking {booking_id} confirmed after successful payment")
+                
+                # Get booking details for notifications
+                booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+                if booking:
+                    # Send email confirmation
+                    send_booking_confirmation_email(booking)
+                    
+                    # Send SMS confirmation
+                    send_booking_confirmation_sms(booking)
         
         return checkout_status
     
