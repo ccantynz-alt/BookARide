@@ -30,8 +30,8 @@ export const AdminDashboard = () => {
 
   useEffect(() => {
     // Check authentication
-    const isAuth = localStorage.getItem('adminAuth');
-    if (!isAuth) {
+    const token = localStorage.getItem('adminToken');
+    if (!token) {
       navigate('/admin/login');
       return;
     }
@@ -42,12 +42,28 @@ export const AdminDashboard = () => {
     filterBookings();
   }, [bookings, searchTerm, statusFilter]);
 
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('adminToken');
+    return {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    };
+  };
+
   const fetchBookings = async () => {
     try {
-      const response = await axios.get(`${API}/bookings`);
+      const response = await axios.get(`${API}/bookings`, getAuthHeaders());
       setBookings(response.data);
       setLoading(false);
     } catch (error) {
+      if (error.response?.status === 401) {
+        toast.error('Session expired. Please login again.');
+        localStorage.removeItem('adminToken');
+        localStorage.removeItem('adminAuth');
+        navigate('/admin/login');
+        return;
+      }
       console.error('Error fetching bookings:', error);
       toast.error('Failed to load bookings');
       setLoading(false);
