@@ -50,7 +50,7 @@ export const Header = () => {
               <Phone className="w-4 h-4" />
               <span className="text-sm font-medium">+64 9 123 4567</span>
             </a>
-            <Link to="/contact">
+            <Link to="/book-now">
               <Button className="bg-gold hover:bg-gold/90 text-black font-semibold transition-colors duration-200">
                 Book a Ride
               </Button>
