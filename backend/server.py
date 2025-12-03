@@ -367,7 +367,7 @@ async def update_booking(booking_id: str, update_data: dict, current_admin: dict
 
 # Send Email Endpoint (for admin)
 @api_router.post("/send-booking-email")
-async def send_booking_email(email_data: dict):
+async def send_booking_email(email_data: dict, current_admin: dict = Depends(get_current_admin)):
     try:
         # In production, you would integrate with an email service like SendGrid, Mailgun, etc.
         # For now, we'll just log it and return success
