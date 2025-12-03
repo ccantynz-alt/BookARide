@@ -159,7 +159,7 @@ async def calculate_price(request: PriceCalculationRequest):
 async def create_booking(booking: BookingCreate):
     try:
         booking_obj = Booking(**booking.dict())
-        result = await db.bookings.insert_one(booking_obj.dict())
+        await db.bookings.insert_one(booking_obj.dict())
         logger.info(f"Booking created: {booking_obj.id}")
         return booking_obj
     except Exception as e:
