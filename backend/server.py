@@ -109,7 +109,7 @@ async def calculate_price(request: PriceCalculationRequest):
         
         if google_api_key:
             # Call Google Maps Distance Matrix API
-            url = f"https://maps.googleapis.com/maps/api/distancematrix/json"
+            url = "https://maps.googleapis.com/maps/api/distancematrix/json"
             params = {
                 'origins': request.pickupAddress,
                 'destinations': request.dropoffAddress,
