@@ -25,7 +25,8 @@ export const Header = () => {
             <img 
               src="/logo.png" 
               alt="Book A Ride NZ" 
-              className="h-12 w-auto transform group-hover:scale-105 transition-transform duration-200"
+              className="h-12 w-auto transform group-hover:scale-105 transition-transform duration-200 drop-shadow-lg"
+              style={{ filter: 'brightness(1.1) contrast(1.1)' }}
             />
           </Link>
 
