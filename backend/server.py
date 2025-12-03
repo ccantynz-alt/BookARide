@@ -173,7 +173,11 @@ async def calculate_price(request: PriceCalculationRequest):
 async def create_booking(booking: BookingCreate):
     try:
         booking_obj = Booking(**booking.dict())
-        await db.bookings.insert_one(booking_obj.dict())
+        booking_dict = booking_obj.dict()
+        # Extract totalPrice from pricing for payment processing
+        booking_dict['totalPrice'] = booking.pricing.get('totalPrice', 0)
+        booking_dict['payment_status'] = 'unpaid'
+        await db.bookings.insert_one(booking_dict)
         logger.info(f"Booking created: {booking_obj.id}")
         return booking_obj
     except Exception as e:
