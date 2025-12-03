@@ -18,7 +18,7 @@ export const services = [
   {
     id: 3,
     title: "Whangarei Airport Shuttle",
-    description: "Safe and comfortable shuttle service connecting you to Whangarei Airport.",
+    description: "Whangarei to Auckland return private shuttle transfers",
     icon: "plane",
     features: ["Direct transfers", "On-time service", "Easy booking"]
   },
