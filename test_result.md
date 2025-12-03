@@ -134,15 +134,18 @@ frontend:
 
   - task: "Return Trip Booking Functionality"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/frontend/src/pages/BookNow.jsx"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: "NA"
           agent: "testing"
           comment: "Starting test of return trip booking functionality - testing checkbox toggle, return trip fields visibility, price doubling calculation, and form validation"
+        - working: true
+          agent: "testing"
+          comment: "✅ RETURN TRIP BOOKING FUNCTIONALITY TEST PASSED - All functionality working correctly: 1) Return trip checkbox toggles properly, 2) Return trip section appears when checkbox is checked with Return Date and Return Time fields visible, 3) Return Flight Information section visible (optional fields), 4) Return trip message displays correctly: 'Return trip will be from Hamilton back to Auckland Airport', 5) Price calculation works perfectly - price doubles from $87.50 to $175.00 when return trip is enabled (2x multiplier confirmed), 6) Return trip date and time fields accept input correctly, 7) All form validation working as expected. The return trip functionality is fully functional and meets all requirements."
 
 metadata:
   created_by: "testing_agent"
