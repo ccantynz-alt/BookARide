@@ -153,6 +153,84 @@ class BookingCreate(BaseModel):
 class Booking(BookingCreate):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
 
+# Authentication Endpoints
+
+@api_router.post("/admin/register", response_model=Token)
+async def register_admin(admin: AdminCreate):
+    """Register a new admin user"""
+    try:
+        # Check if username already exists
+        existing_admin = await db.admin_users.find_one({"username": admin.username}, {"_id": 0})
+        if existing_admin:
+            raise HTTPException(status_code=400, detail="Username already registered")
+        
+        # Check if email already exists
+        existing_email = await db.admin_users.find_one({"email": admin.email}, {"_id": 0})
+        if existing_email:
+            raise HTTPException(status_code=400, detail="Email already registered")
+        
+        # Create new admin user
+        hashed_password = get_password_hash(admin.password)
+        admin_user = AdminUser(
+            username=admin.username,
+            email=admin.email,
+            hashed_password=hashed_password
+        )
+        
+        await db.admin_users.insert_one(admin_user.dict())
+        logger.info(f"Admin user created: {admin.username}")
+        
+        # Create access token
+        access_token = create_access_token(data={"sub": admin.username})
+        return {"access_token": access_token, "token_type": "bearer"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error registering admin: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error registering admin: {str(e)}")
+
+
+@api_router.post("/admin/login", response_model=Token)
+async def login_admin(login_data: AdminLogin):
+    """Login admin user"""
+    try:
+        # Find admin user
+        admin = await db.admin_users.find_one({"username": login_data.username}, {"_id": 0})
+        if not admin:
+            raise HTTPException(status_code=401, detail="Incorrect username or password")
+        
+        # Verify password
+        if not verify_password(login_data.password, admin["hashed_password"]):
+            raise HTTPException(status_code=401, detail="Incorrect username or password")
+        
+        # Check if admin is active
+        if not admin.get("is_active", True):
+            raise HTTPException(status_code=401, detail="Admin account is disabled")
+        
+        # Create access token
+        access_token = create_access_token(data={"sub": admin["username"]})
+        logger.info(f"Admin logged in: {admin['username']}")
+        
+        return {"access_token": access_token, "token_type": "bearer"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error logging in admin: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error logging in: {str(e)}")
+
+
+@api_router.get("/admin/me")
+async def get_current_admin_info(current_admin: dict = Depends(get_current_admin)):
+    """Get current admin user info"""
+    return {
+        "username": current_admin["username"],
+        "email": current_admin["email"],
+        "created_at": current_admin["created_at"]
+    }
+
+
 # Add your routes to the router instead of directly to app
 @api_router.get("/")
 async def root():
