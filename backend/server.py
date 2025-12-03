@@ -300,10 +300,12 @@ async def calculate_price(request: PriceCalculationRequest):
             logger.warning("Google Maps API key not found. Using default distance estimate.")
         
         # Calculate pricing with tiered rates
-        if distance_km >= 75 and distance_km <= 100:
+        if distance_km >= 100 and distance_km <= 300:
+            base_price = distance_km * 3.50  # $3.50 per km for 100-300km
+        elif distance_km >= 75 and distance_km < 100:
             base_price = distance_km * 2.70  # $2.70 per km for 75-100km
         else:
-            base_price = distance_km * 2.50  # $2.50 per km for other distances
+            base_price = distance_km * 2.50  # $2.50 per km for other distances (0-75km and 300+km)
         
         # VIP Airport Pickup fee: Optional $15 extra service
         airport_fee = 15.0 if request.vipAirportPickup else 0.0
