@@ -454,15 +454,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-
-# Stripe Payment Integration
-
-# Payment Models
-class PaymentCheckoutRequest(BaseModel):
-    booking_id: str
-    origin_url: str
-
-@api_router.post("/payment/create-checkout", response_model=CheckoutSessionResponse)
+@app.on_event("shutdown")
 async def create_payment_checkout(request: PaymentCheckoutRequest, http_request: Request):
     try:
         # Get booking from database
