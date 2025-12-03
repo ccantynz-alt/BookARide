@@ -142,7 +142,7 @@ export const AdminDashboard = () => {
           totalPrice: newPrice,
           overridden: true
         }
-      });
+      }, getAuthHeaders());
       toast.success('Price updated successfully');
       setShowDetailsModal(false);
       fetchBookings();
