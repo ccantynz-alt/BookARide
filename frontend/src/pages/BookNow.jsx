@@ -55,6 +55,33 @@ export const BookNow = () => {
     { value: 'private-transfer', label: 'Private Shuttle Transfer' }
   ];
 
+  // Initialize Google Places Autocomplete
+  useEffect(() => {
+    if (!isLoaded) return;
+
+    const pickupAutocomplete = new window.google.maps.places.Autocomplete(pickupRef.current, {
+      componentRestrictions: { country: 'nz' }
+    });
+
+    const dropoffAutocomplete = new window.google.maps.places.Autocomplete(dropoffRef.current, {
+      componentRestrictions: { country: 'nz' }
+    });
+
+    pickupAutocomplete.addListener('place_changed', () => {
+      const place = pickupAutocomplete.getPlace();
+      if (place.formatted_address) {
+        setFormData(prev => ({ ...prev, pickupAddress: place.formatted_address }));
+      }
+    });
+
+    dropoffAutocomplete.addListener('place_changed', () => {
+      const place = dropoffAutocomplete.getPlace();
+      if (place.formatted_address) {
+        setFormData(prev => ({ ...prev, dropoffAddress: place.formatted_address }));
+      }
+    });
+  }, [isLoaded]);
+
   // Calculate price when addresses or passengers change
   useEffect(() => {
     if (formData.pickupAddress && formData.dropoffAddress && formData.serviceType) {
