@@ -38,6 +38,38 @@ class StatusCheck(BaseModel):
 class StatusCheckCreate(BaseModel):
     client_name: str
 
+# Booking Models
+class PriceCalculationRequest(BaseModel):
+    serviceType: str
+    pickupAddress: str
+    dropoffAddress: str
+    passengers: int
+
+class PricingBreakdown(BaseModel):
+    distance: float
+    basePrice: float
+    airportFee: float
+    passengerFee: float
+    totalPrice: float
+
+class BookingCreate(BaseModel):
+    serviceType: str
+    pickupAddress: str
+    dropoffAddress: str
+    date: str
+    time: str
+    passengers: str
+    name: str
+    email: str
+    phone: str
+    notes: Optional[str] = ""
+    pricing: dict
+    status: str = "pending"
+    createdAt: datetime = Field(default_factory=datetime.utcnow)
+
+class Booking(BookingCreate):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+
 # Add your routes to the router instead of directly to app
 @api_router.get("/")
 async def root():
