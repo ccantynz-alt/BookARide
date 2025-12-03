@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 body {
     margin: 0;
@@ -84,22 +84,28 @@ code {
 }
 
 @layer utilities {
-  .text-brand-blue {
-    color: #2563EB;
+  .text-gold {
+    color: #D4AF37;
   }
-  .bg-brand-blue {
-    background-color: #2563EB;
+  .bg-gold {
+    background-color: #D4AF37;
   }
-  .border-brand-blue {
-    border-color: #2563EB;
+  .border-gold {
+    border-color: #D4AF37;
   }
-  .hover\:text-brand-blue:hover {
-    color: #2563EB;
+  .hover\:text-gold:hover {
+    color: #D4AF37;
   }
-  .hover\:bg-brand-blue:hover {
-    background-color: #2563EB;
+  .hover\:bg-gold:hover {
+    background-color: #D4AF37;
   }
-  .hover\:border-brand-blue:hover {
-    border-color: #2563EB;
+  .hover\:border-gold:hover {
+    border-color: #D4AF37;
+  }
+  .bg-gold\/90 {
+    background-color: rgba(212, 175, 55, 0.9);
+  }
+  .hover\:bg-gold\/90:hover {
+    background-color: rgba(212, 175, 55, 0.9);
   }
 }
