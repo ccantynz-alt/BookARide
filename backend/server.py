@@ -511,6 +511,117 @@ Thank you for booking with us!"""
         return False
 
 
+# Google Calendar Integration
+
+async def get_calendar_credentials():
+    """Get Google Calendar credentials for the business account"""
+    try:
+        # Get stored tokens from database
+        calendar_auth = await db.calendar_auth.find_one({"email": "info@bookaride.co.nz"}, {"_id": 0})
+        
+        if not calendar_auth or 'google_tokens' not in calendar_auth:
+            logger.warning("Google Calendar not authenticated. Please authenticate at /api/auth/google/login")
+            return None
+        
+        tokens = calendar_auth['google_tokens']
+        
+        creds = Credentials(
+            token=tokens.get('access_token'),
+            refresh_token=tokens.get('refresh_token'),
+            token_uri='https://oauth2.googleapis.com/token',
+            client_id=os.environ.get('GOOGLE_CLIENT_ID'),
+            client_secret=os.environ.get('GOOGLE_CLIENT_SECRET'),
+            scopes=['https://www.googleapis.com/auth/calendar']
+        )
+        
+        # Refresh token if expired
+        if creds.expired and creds.refresh_token:
+            creds.refresh(GoogleRequest())
+            # Update tokens in database
+            await db.calendar_auth.update_one(
+                {"email": "info@bookaride.co.nz"},
+                {"$set": {"google_tokens.access_token": creds.token}}
+            )
+            logger.info("Google Calendar token refreshed")
+        
+        return creds
+        
+    except Exception as e:
+        logger.error(f"Error getting calendar credentials: {str(e)}")
+        return None
+
+
+async def create_calendar_event(booking: dict):
+    """Create a Google Calendar event for the booking"""
+    try:
+        creds = await get_calendar_credentials()
+        if not creds:
+            logger.warning("Cannot create calendar event: No credentials")
+            return False
+        
+        service = build('calendar', 'v3', credentials=creds)
+        
+        # Parse booking date and time
+        booking_datetime = f"{booking.get('date')}T{booking.get('time')}:00"
+        
+        # Create event
+        event = {
+            'summary': f"Booking: {booking.get('name')} - {booking.get('serviceType', 'Shuttle').replace('-', ' ').title()}",
+            'location': booking.get('pickupAddress', ''),
+            'description': f"""
+Booking Reference: {booking.get('id', '')[:8].upper()}
+
+Customer: {booking.get('name')}
+Phone: {booking.get('phone')}
+Email: {booking.get('email')}
+
+Service: {booking.get('serviceType', '').replace('-', ' ').title()}
+Pickup: {booking.get('pickupAddress')}
+Drop-off: {booking.get('dropoffAddress')}
+Passengers: {booking.get('passengers')}
+
+Total Price: ${booking.get('totalPrice', 0):.2f} NZD
+Payment Status: {booking.get('payment_status', 'pending')}
+
+Flight Info:
+Departure: {booking.get('departureFlightNumber', 'N/A')} at {booking.get('departureTime', 'N/A')}
+Arrival: {booking.get('arrivalFlightNumber', 'N/A')} at {booking.get('arrivalTime', 'N/A')}
+
+Notes: {booking.get('notes', 'None')}
+            """.strip(),
+            'start': {
+                'dateTime': booking_datetime,
+                'timeZone': 'Pacific/Auckland',
+            },
+            'end': {
+                'dateTime': booking_datetime,  # Can adjust duration if needed
+                'timeZone': 'Pacific/Auckland',
+            },
+            'reminders': {
+                'useDefault': False,
+                'overrides': [
+                    {'method': 'email', 'minutes': 24 * 60},  # 1 day before
+                    {'method': 'popup', 'minutes': 60},  # 1 hour before
+                ],
+            },
+        }
+        
+        created_event = service.events().insert(calendarId='primary', body=event).execute()
+        
+        # Store event ID in booking
+        await db.bookings.update_one(
+            {"id": booking.get('id')},
+            {"$set": {"calendar_event_id": created_event.get('id')}}
+        )
+        
+        logger.info(f"Calendar event created for booking {booking.get('id')}: {created_event.get('htmlLink')}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error creating calendar event: {str(e)}")
+        return False
+
+
 # Stripe Payment Integration
 
 # Payment Models
