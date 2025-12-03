@@ -533,7 +533,7 @@ async def stripe_webhook(request: Request):
                 }
             )
             
-            # If payment successful, update booking
+            # If payment successful, update booking and send confirmations
             if webhook_response.payment_status == "paid":
                 booking_id = webhook_response.metadata.get('booking_id')
                 if booking_id:
@@ -542,6 +542,15 @@ async def stripe_webhook(request: Request):
                         {"$set": {"payment_status": "paid", "status": "confirmed"}}
                     )
                     logger.info(f"Booking {booking_id} confirmed via webhook")
+                    
+                    # Get booking details for notifications
+                    booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+                    if booking:
+                        # Send email confirmation
+                        send_booking_confirmation_email(booking)
+                        
+                        # Send SMS confirmation
+                        send_booking_confirmation_sms(booking)
         
         return {"status": "success", "event_type": webhook_response.event_type}
     
