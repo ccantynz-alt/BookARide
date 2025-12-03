@@ -44,6 +44,7 @@ class PriceCalculationRequest(BaseModel):
     pickupAddress: str
     dropoffAddress: str
     passengers: int
+    vipAirportPickup: bool = False
 
 class PricingBreakdown(BaseModel):
     distance: float
