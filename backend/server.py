@@ -118,12 +118,20 @@ async def calculate_price(request: PriceCalculationRequest):
             response = requests.get(url, params=params)
             data = response.json()
             
-            if data['status'] == 'OK' and data['rows'][0]['elements'][0]['status'] == 'OK':
-                # Distance in meters, convert to km
-                distance_meters = data['rows'][0]['elements'][0]['distance']['value']
-                distance_km = round(distance_meters / 1000, 2)
+            logger.info(f"Google Maps API response: {data}")
+            
+            if data['status'] == 'OK' and len(data['rows']) > 0 and len(data['rows'][0]['elements']) > 0:
+                element = data['rows'][0]['elements'][0]
+                if element['status'] == 'OK':
+                    # Distance in meters, convert to km
+                    distance_meters = element['distance']['value']
+                    distance_km = round(distance_meters / 1000, 2)
+                else:
+                    logger.warning(f"Google Maps element status: {element.get('status')}")
+                    distance_km = 25.0  # Fallback
             else:
-                raise HTTPException(status_code=400, detail="Unable to calculate distance. Please check addresses.")
+                logger.warning(f"Google Maps API error: {data.get('error_message', data.get('status'))}")
+                distance_km = 25.0  # Fallback
         else:
             # Fallback: estimate based on string similarity (for demo purposes)
             # In production, you MUST use Google Maps API
