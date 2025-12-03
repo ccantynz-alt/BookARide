@@ -317,6 +317,10 @@ async def calculate_price(request: PriceCalculationRequest):
         # Total price
         total_price = base_price + airport_fee + passenger_fee
         
+        # Apply minimum fee of $100
+        if total_price < 100.0:
+            total_price = 100.0
+        
         return PricingBreakdown(
             distance=distance_km,
             basePrice=round(base_price, 2),
