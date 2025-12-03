@@ -152,37 +152,29 @@ export const BookNow = () => {
         createdAt: new Date()
       };
 
-      await axios.post(`${API}/bookings`, bookingData);
+      const bookingResponse = await axios.post(`${API}/bookings`, bookingData);
+      const booking = bookingResponse.data;
 
-      toast.success('Booking Request Submitted!', {
-        description: `Estimated cost: $${pricing.totalPrice.toFixed(2)}. We'll contact you shortly to confirm.`
-      });
+      // Create Stripe checkout session
+      const paymentData = {
+        booking_id: booking.id,
+        origin_url: window.location.origin
+      };
 
-      // Reset form
-      setFormData({
-        serviceType: '',
-        pickupAddress: '',
-        dropoffAddress: '',
-        date: '',
-        time: '',
-        passengers: '1',
-        vipAirportPickup: false,
-        departureFlightNumber: '',
-        departureTime: '',
-        arrivalFlightNumber: '',
-        arrivalTime: '',
-        bookReturn: false,
-        returnDate: '',
-        returnTime: '',
-        returnDepartureFlightNumber: '',
-        returnDepartureTime: '',
-        returnArrivalFlightNumber: '',
-        returnArrivalTime: '',
-        name: '',
-        email: '',
-        phone: '',
-        notes: ''
-      });
+      const checkoutResponse = await axios.post(`${API}/payment/create-checkout`, paymentData);
+
+      // Redirect to Stripe Checkout
+      if (checkoutResponse.data.url) {
+        window.location.href = checkoutResponse.data.url;
+      } else {
+        toast.error('Unable to redirect to payment page');
+      }
+
+    } catch (error) {
+      console.error('Error submitting booking:', error);
+      toast.error('Failed to submit booking. Please try again.');
+    }
+  };
       setPricing({
         distance: 0,
         basePrice: 0,
