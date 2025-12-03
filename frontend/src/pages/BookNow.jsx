@@ -13,7 +13,17 @@ import axios from 'axios';
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
+const libraries = ['places'];
+
 export const BookNow = () => {
+  const { isLoaded } = useLoadScript({
+    googleMapsApiKey: 'AIzaSyCnRP08Gpt8IlssCQZWaiMeD-JfANRtB28',
+    libraries: libraries
+  });
+
+  const pickupRef = useRef(null);
+  const dropoffRef = useRef(null);
+
   const [formData, setFormData] = useState({
     serviceType: '',
     pickupAddress: '',
