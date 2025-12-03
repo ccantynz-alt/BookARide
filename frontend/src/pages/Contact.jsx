@@ -36,8 +36,8 @@ export const Contact = () => {
     e.preventDefault();
     // Mock submission - will be connected to backend later
     console.log('Booking submitted:', formData);
-    toast.success("Reservation Request Received!", {
-      description: "Our concierge team will contact you shortly to confirm your booking.",
+    toast.success("Booking Request Received!", {
+      description: "We'll contact you shortly to confirm your booking.",
     });
     // Reset form
     setFormData({
@@ -57,20 +57,14 @@ export const Contact = () => {
   return (
     <div className="min-h-screen pt-20 bg-white">
       {/* Hero Section */}
-      <section className="py-24 bg-gradient-to-br from-black via-gray-900 to-black relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(212,175,55,0.1),transparent_50%)]" />
-        </div>
-        <div className="container mx-auto px-4 relative z-10">
+      <section className="py-24 bg-gradient-to-br from-blue-600 via-blue-500 to-blue-700">
+        <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto text-center">
-            <span className="text-gold font-light tracking-[0.3em] uppercase text-sm border border-gold/30 px-6 py-2 rounded-full inline-block mb-6">
-              Reservations
-            </span>
-            <h1 className="text-5xl md:text-6xl font-light text-white mb-6 tracking-tight">
-              Reserve Your Experience
+            <h1 className="text-5xl md:text-6xl font-bold text-white mb-6">
+              Book Your Ride
             </h1>
-            <p className="text-xl text-white/70 font-light leading-relaxed">
-              Complete the form below and our concierge team will confirm your luxury reservation promptly.
+            <p className="text-xl text-white/90">
+              Fill out the form below and we'll get back to you shortly to confirm your booking.
             </p>
           </div>
         </div>
@@ -84,58 +78,58 @@ export const Contact = () => {
             <div className="lg:col-span-1 space-y-6">
               <Card className="border-2 border-gray-200">
                 <CardContent className="p-8">
-                  <h3 className="text-2xl font-light text-gray-900 mb-8 tracking-wide">Contact Information</h3>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-8">Contact Information</h3>
                   <div className="space-y-6">
                     <div className="flex items-start space-x-4">
-                      <div className="w-12 h-12 bg-black rounded-lg flex items-center justify-center flex-shrink-0">
-                        <Phone className="w-6 h-6 text-gold" />
+                      <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <Phone className="w-6 h-6 text-blue-600" />
                       </div>
                       <div>
-                        <div className="text-sm font-normal text-gray-900 mb-2">Phone</div>
-                        <a href={`tel:${companyInfo.phone}`} className="text-sm text-gray-600 hover:text-gold transition-colors duration-300 font-light">
+                        <div className="text-sm font-semibold text-gray-900 mb-2">Phone</div>
+                        <a href={`tel:${companyInfo.phone}`} className="text-sm text-gray-600 hover:text-blue-600 transition-colors duration-200">
                           {companyInfo.phone}
                         </a>
                       </div>
                     </div>
                     <div className="flex items-start space-x-4">
-                      <div className="w-12 h-12 bg-black rounded-lg flex items-center justify-center flex-shrink-0">
-                        <Mail className="w-6 h-6 text-gold" />
+                      <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <Mail className="w-6 h-6 text-blue-600" />
                       </div>
                       <div>
-                        <div className="text-sm font-normal text-gray-900 mb-2">Email</div>
-                        <a href={`mailto:${companyInfo.email}`} className="text-sm text-gray-600 hover:text-gold transition-colors duration-300 font-light">
+                        <div className="text-sm font-semibold text-gray-900 mb-2">Email</div>
+                        <a href={`mailto:${companyInfo.email}`} className="text-sm text-gray-600 hover:text-blue-600 transition-colors duration-200">
                           {companyInfo.email}
                         </a>
                       </div>
                     </div>
                     <div className="flex items-start space-x-4">
-                      <div className="w-12 h-12 bg-black rounded-lg flex items-center justify-center flex-shrink-0">
-                        <MapPin className="w-6 h-6 text-gold" />
+                      <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <MapPin className="w-6 h-6 text-blue-600" />
                       </div>
                       <div>
-                        <div className="text-sm font-normal text-gray-900 mb-2">Address</div>
-                        <p className="text-sm text-gray-600 font-light">{companyInfo.address}</p>
+                        <div className="text-sm font-semibold text-gray-900 mb-2">Address</div>
+                        <p className="text-sm text-gray-600">{companyInfo.address}</p>
                       </div>
                     </div>
                     <div className="flex items-start space-x-4">
-                      <div className="w-12 h-12 bg-black rounded-lg flex items-center justify-center flex-shrink-0">
-                        <Clock className="w-6 h-6 text-gold" />
+                      <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <Clock className="w-6 h-6 text-blue-600" />
                       </div>
                       <div>
-                        <div className="text-sm font-normal text-gray-900 mb-2">Hours</div>
-                        <p className="text-sm text-gray-600 font-light">24/7 Concierge Service</p>
+                        <div className="text-sm font-semibold text-gray-900 mb-2">Hours</div>
+                        <p className="text-sm text-gray-600">24/7 Service Available</p>
                       </div>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="border-2 border-gold/30 bg-gradient-to-br from-gray-50 to-white">
+              <Card className="border-2 border-blue-200 bg-blue-50">
                 <CardContent className="p-8">
-                  <h4 className="font-normal text-gray-900 mb-3 tracking-wide">Immediate Assistance?</h4>
-                  <p className="text-sm text-gray-600 mb-6 font-light leading-relaxed">Call our concierge team for instant booking and personalized support.</p>
+                  <h4 className="font-semibold text-gray-900 mb-3">Need Help Right Away?</h4>
+                  <p className="text-sm text-gray-600 mb-6">Call us now for instant booking and support.</p>
                   <a href={`tel:${companyInfo.phone}`}>
-                    <Button className="w-full bg-gold hover:bg-gold/90 text-black font-light tracking-wider uppercase transition-all duration-300">
+                    <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white transition-colors duration-200">
                       Call Now
                     </Button>
                   </a>
@@ -147,11 +141,11 @@ export const Contact = () => {
             <div className="lg:col-span-2">
               <Card className="border-2 border-gray-200">
                 <CardContent className="p-10">
-                  <h3 className="text-3xl font-light text-gray-900 mb-8 tracking-wide">Reservation Form</h3>
+                  <h3 className="text-3xl font-bold text-gray-900 mb-8">Booking Form</h3>
                   <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
-                        <Label htmlFor="name" className="font-light tracking-wide">Full Name *</Label>
+                        <Label htmlFor="name">Full Name *</Label>
                         <Input
                           id="name"
                           name="name"
@@ -159,11 +153,11 @@ export const Contact = () => {
                           onChange={handleChange}
                           placeholder="John Doe"
                           required
-                          className="transition-all duration-200 focus:ring-2 focus:ring-gold border-gray-300"
+                          className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="email" className="font-light tracking-wide">Email *</Label>
+                        <Label htmlFor="email">Email *</Label>
                         <Input
                           id="email"
                           name="email"
@@ -172,14 +166,14 @@ export const Contact = () => {
                           onChange={handleChange}
                           placeholder="john@example.com"
                           required
-                          className="transition-all duration-200 focus:ring-2 focus:ring-gold border-gray-300"
+                          className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
-                        <Label htmlFor="phone" className="font-light tracking-wide">Phone Number *</Label>
+                        <Label htmlFor="phone">Phone Number *</Label>
                         <Input
                           id="phone"
                           name="phone"
@@ -188,13 +182,13 @@ export const Contact = () => {
                           onChange={handleChange}
                           placeholder="+64 21 123 4567"
                           required
-                          className="transition-all duration-200 focus:ring-2 focus:ring-gold border-gray-300"
+                          className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="serviceType" className="font-light tracking-wide">Service Type *</Label>
+                        <Label htmlFor="serviceType">Service Type *</Label>
                         <Select onValueChange={(value) => handleSelectChange('serviceType', value)} required>
-                          <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-gold border-gray-300">
+                          <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-blue-500">
                             <SelectValue placeholder="Select service" />
                           </SelectTrigger>
                           <SelectContent>
@@ -209,7 +203,7 @@ export const Contact = () => {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
-                        <Label htmlFor="pickupLocation" className="font-light tracking-wide">Pickup Location *</Label>
+                        <Label htmlFor="pickupLocation">Pickup Location *</Label>
                         <Input
                           id="pickupLocation"
                           name="pickupLocation"
@@ -217,11 +211,11 @@ export const Contact = () => {
                           onChange={handleChange}
                           placeholder="123 Main Street, Auckland"
                           required
-                          className="transition-all duration-200 focus:ring-2 focus:ring-gold border-gray-300"
+                          className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="dropoffLocation" className="font-light tracking-wide">Drop-off Location *</Label>
+                        <Label htmlFor="dropoffLocation">Drop-off Location *</Label>
                         <Input
                           id="dropoffLocation"
                           name="dropoffLocation"
@@ -229,14 +223,14 @@ export const Contact = () => {
                           onChange={handleChange}
                           placeholder="Auckland Airport"
                           required
-                          className="transition-all duration-200 focus:ring-2 focus:ring-gold border-gray-300"
+                          className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                       <div className="space-y-2">
-                        <Label htmlFor="date" className="font-light tracking-wide">Date *</Label>
+                        <Label htmlFor="date">Date *</Label>
                         <Input
                           id="date"
                           name="date"
@@ -244,11 +238,11 @@ export const Contact = () => {
                           value={formData.date}
                           onChange={handleChange}
                           required
-                          className="transition-all duration-200 focus:ring-2 focus:ring-gold border-gray-300"
+                          className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="time" className="font-light tracking-wide">Time *</Label>
+                        <Label htmlFor="time">Time *</Label>
                         <Input
                           id="time"
                           name="time"
@@ -256,13 +250,13 @@ export const Contact = () => {
                           value={formData.time}
                           onChange={handleChange}
                           required
-                          className="transition-all duration-200 focus:ring-2 focus:ring-gold border-gray-300"
+                          className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="passengers" className="font-light tracking-wide">Passengers *</Label>
+                        <Label htmlFor="passengers">Passengers *</Label>
                         <Select onValueChange={(value) => handleSelectChange('passengers', value)} required>
-                          <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-gold border-gray-300">
+                          <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-blue-500">
                             <SelectValue placeholder="Number" />
                           </SelectTrigger>
                           <SelectContent>
@@ -277,20 +271,20 @@ export const Contact = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="message" className="font-light tracking-wide">Additional Information</Label>
+                      <Label htmlFor="message">Additional Information</Label>
                       <Textarea
                         id="message"
                         name="message"
                         value={formData.message}
                         onChange={handleChange}
-                        placeholder="Any special requirements or preferences..."
+                        placeholder="Any special requirements or notes..."
                         rows={4}
-                        className="transition-all duration-200 focus:ring-2 focus:ring-gold border-gray-300"
+                        className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
 
-                    <Button type="submit" className="w-full bg-gold hover:bg-gold/90 text-black font-light tracking-wider uppercase text-lg py-7 transition-all duration-300">
-                      Submit Reservation
+                    <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white text-lg py-7 transition-colors duration-200">
+                      Submit Booking Request
                     </Button>
                   </form>
                 </CardContent>
