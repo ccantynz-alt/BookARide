@@ -10,6 +10,7 @@ import Contact from './pages/Contact';
 import BookNow from './pages/BookNow';
 import PaymentSuccess from './pages/PaymentSuccess';
 import HobbitonTransfers from './pages/HobbitonTransfers';
+import CruiseTransfers from './pages/CruiseTransfers';
 import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
 import { Toaster } from './components/ui/sonner';
