@@ -229,14 +229,16 @@ export const BookNow = () => {
                           <span>Pickup Address *</span>
                         </Label>
                         <Input
+                          ref={pickupRef}
                           id="pickupAddress"
                           name="pickupAddress"
                           value={formData.pickupAddress}
                           onChange={handleChange}
-                          placeholder="Enter full pickup address"
+                          placeholder="Start typing address..."
                           required
                           className="transition-all duration-200 focus:ring-2 focus:ring-gold"
                         />
+                        <p className="text-xs text-gray-500">Google will suggest addresses as you type</p>
                       </div>
 
                       {/* Dropoff Address */}
@@ -246,14 +248,16 @@ export const BookNow = () => {
                           <span>Drop-off Address *</span>
                         </Label>
                         <Input
+                          ref={dropoffRef}
                           id="dropoffAddress"
                           name="dropoffAddress"
                           value={formData.dropoffAddress}
                           onChange={handleChange}
-                          placeholder="Enter full drop-off address"
+                          placeholder="Start typing address..."
                           required
                           className="transition-all duration-200 focus:ring-2 focus:ring-gold"
                         />
+                        <p className="text-xs text-gray-500">Google will suggest addresses as you type</p>
                       </div>
 
                       {/* Date and Time */}
