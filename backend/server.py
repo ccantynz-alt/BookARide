@@ -99,6 +99,83 @@ async def get_status_checks():
     
     return status_checks
 
+# Price Calculation Endpoint
+@api_router.post("/calculate-price", response_model=PricingBreakdown)
+async def calculate_price(request: PriceCalculationRequest):
+    try:
+        # Use Google Maps Distance Matrix API to calculate distance
+        # For now, using a simple estimation (you'll need to add Google Maps API key)
+        google_api_key = os.environ.get('GOOGLE_MAPS_API_KEY', '')
+        
+        if google_api_key:
+            # Call Google Maps Distance Matrix API
+            url = f"https://maps.googleapis.com/maps/api/distancematrix/json"
+            params = {
+                'origins': request.pickupAddress,
+                'destinations': request.dropoffAddress,
+                'key': google_api_key
+            }
+            response = requests.get(url, params=params)
+            data = response.json()
+            
+            if data['status'] == 'OK' and data['rows'][0]['elements'][0]['status'] == 'OK':
+                # Distance in meters, convert to km
+                distance_meters = data['rows'][0]['elements'][0]['distance']['value']
+                distance_km = round(distance_meters / 1000, 2)
+            else:
+                raise HTTPException(status_code=400, detail="Unable to calculate distance. Please check addresses.")
+        else:
+            # Fallback: estimate based on string similarity (for demo purposes)
+            # In production, you MUST use Google Maps API
+            distance_km = 25.0  # Default estimate
+            logger.warning("Google Maps API key not found. Using default distance estimate.")
+        
+        # Calculate pricing
+        base_price = distance_km * 2.50  # $2.50 per km
+        
+        # Airport fee: $25 for Auckland International Airport only
+        airport_fee = 25.0 if request.serviceType == 'auckland-airport' else 0.0
+        
+        # Passenger fee: 1st passenger included, $5 per additional
+        extra_passengers = max(0, request.passengers - 1)
+        passenger_fee = extra_passengers * 5.0
+        
+        # Total price
+        total_price = base_price + airport_fee + passenger_fee
+        
+        return PricingBreakdown(
+            distance=distance_km,
+            basePrice=round(base_price, 2),
+            airportFee=round(airport_fee, 2),
+            passengerFee=round(passenger_fee, 2),
+            totalPrice=round(total_price, 2)
+        )
+    except Exception as e:
+        logger.error(f"Error calculating price: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error calculating price: {str(e)}")
+
+# Create Booking Endpoint
+@api_router.post("/bookings", response_model=Booking)
+async def create_booking(booking: BookingCreate):
+    try:
+        booking_obj = Booking(**booking.dict())
+        result = await db.bookings.insert_one(booking_obj.dict())
+        logger.info(f"Booking created: {booking_obj.id}")
+        return booking_obj
+    except Exception as e:
+        logger.error(f"Error creating booking: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error creating booking: {str(e)}")
+
+# Get All Bookings Endpoint (for admin)
+@api_router.get("/bookings", response_model=List[Booking])
+async def get_bookings():
+    try:
+        bookings = await db.bookings.find().sort("createdAt", -1).to_list(1000)
+        return [Booking(**booking) for booking in bookings]
+    except Exception as e:
+        logger.error(f"Error fetching bookings: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error fetching bookings: {str(e)}")
+
 # Include the router in the main app
 app.include_router(api_router)
 
