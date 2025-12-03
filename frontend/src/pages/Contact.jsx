@@ -195,10 +195,10 @@ export const Contact = () => {
                             <SelectValue placeholder="Select service" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="airport">Airport Transfer</SelectItem>
-                            <SelectItem value="corporate">Corporate Travel</SelectItem>
-                            <SelectItem value="city">City Ride</SelectItem>
-                            <SelectItem value="event">Special Event</SelectItem>
+                            <SelectItem value="auckland-airport">Auckland Airport Shuttle</SelectItem>
+                            <SelectItem value="hamilton-airport">Hamilton Airport Shuttle</SelectItem>
+                            <SelectItem value="whangarei-airport">Whangarei Airport Shuttle</SelectItem>
+                            <SelectItem value="private-auckland">Private Auckland Transfer</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
