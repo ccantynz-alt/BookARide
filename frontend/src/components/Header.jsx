@@ -17,7 +17,7 @@ export const Header = () => {
   const isActive = (path) => location.pathname === path;
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-gray-900 backdrop-blur-sm border-b border-gold/30 shadow-lg">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-gray-900 border-b-2 border-gold/40 shadow-xl" style={{ backgroundColor: 'rgba(17, 24, 39, 0.98)' }}>
       <nav className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           {/* Logo */}
