@@ -1,0 +1,140 @@
+import React, { useState, useEffect } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { Check, Loader2 } from 'lucide-react';
+import { Card, CardContent } from '../components/ui/card';
+import axios from 'axios';
+
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const API = `${BACKEND_URL}/api`;
+
+export const PaymentSuccess = () => {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const [paymentStatus, setPaymentStatus] = useState('checking');
+  const [paymentDetails, setPaymentDetails] = useState(null);
+  const sessionId = searchParams.get('session_id');
+
+  useEffect(() => {
+    if (!sessionId) {
+      navigate('/book-now');
+      return;
+    }
+
+    pollPaymentStatus();
+  }, [sessionId]);
+
+  const pollPaymentStatus = async (attempts = 0) => {
+    const maxAttempts = 5;
+    const pollInterval = 2000; // 2 seconds
+
+    if (attempts >= maxAttempts) {
+      setPaymentStatus('timeout');
+      return;
+    }
+
+    try {
+      const response = await axios.get(`${API}/payment/status/${sessionId}`);
+      const data = response.data;
+
+      if (data.payment_status === 'paid') {
+        setPaymentStatus('success');
+        setPaymentDetails(data);
+        return;
+      } else if (data.status === 'expired') {
+        setPaymentStatus('expired');
+        return;
+      }
+
+      // If payment is still pending, continue polling
+      setPaymentStatus('processing');
+      setTimeout(() => pollPaymentStatus(attempts + 1), pollInterval);
+    } catch (error) {
+      console.error('Error checking payment status:', error);
+      setPaymentStatus('error');
+    }
+  };
+
+  return (
+    <div className="min-h-screen pt-20 bg-gray-50">
+      <div className="container mx-auto px-4 py-16">
+        <div className="max-w-2xl mx-auto">
+          <Card className="border-2">
+            <CardContent className="p-12 text-center">
+              {paymentStatus === 'checking' || paymentStatus === 'processing' ? (
+                <>
+                  <Loader2 className="w-16 h-16 mx-auto mb-6 text-gold animate-spin" />
+                  <h1 className="text-3xl font-bold text-gray-900 mb-4">
+                    Processing Your Payment
+                  </h1>
+                  <p className="text-gray-600">
+                    Please wait while we confirm your payment...
+                  </p>
+                </>
+              ) : paymentStatus === 'success' ? (
+                <>
+                  <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-green-100 flex items-center justify-center">
+                    <Check className="w-12 h-12 text-green-600" />
+                  </div>
+                  <h1 className="text-3xl font-bold text-gray-900 mb-4">
+                    Payment Successful!
+                  </h1>
+                  <p className="text-gray-600 mb-8">
+                    Thank you for your booking. Your ride has been confirmed and you will receive a confirmation email shortly.
+                  </p>
+                  {paymentDetails && (
+                    <div className="bg-gray-50 p-6 rounded-lg mb-8">
+                      <div className="text-left space-y-3">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Amount Paid:</span>
+                          <span className="font-semibold text-gray-900">
+                            ${(paymentDetails.amount_total / 100).toFixed(2)} {paymentDetails.currency.toUpperCase()}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Status:</span>
+                          <span className="font-semibold text-green-600">Confirmed</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  <button
+                    onClick={() => navigate('/')}
+                    className="bg-gold hover:bg-gold/90 text-black font-semibold px-8 py-3 rounded-lg transition-colors"
+                  >
+                    Return to Home
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-red-100 flex items-center justify-center">
+                    <span className="text-4xl text-red-600">✕</span>
+                  </div>
+                  <h1 className="text-3xl font-bold text-gray-900 mb-4">
+                    {paymentStatus === 'expired' ? 'Payment Session Expired' : 
+                     paymentStatus === 'timeout' ? 'Payment Check Timeout' : 
+                     'Payment Error'}
+                  </h1>
+                  <p className="text-gray-600 mb-8">
+                    {paymentStatus === 'expired' 
+                      ? 'Your payment session has expired. Please try booking again.'
+                      : paymentStatus === 'timeout'
+                      ? 'We could not verify your payment in time. Please check your email for confirmation.'
+                      : 'There was an error processing your payment. Please contact us for assistance.'}
+                  </p>
+                  <button
+                    onClick={() => navigate('/book-now')}
+                    className="bg-gray-900 hover:bg-gray-800 text-white font-semibold px-8 py-3 rounded-lg transition-colors"
+                  >
+                    Try Again
+                  </button>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default PaymentSuccess;
