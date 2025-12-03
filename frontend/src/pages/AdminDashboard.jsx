@@ -159,10 +159,15 @@ export const AdminDashboard = () => {
         email: selectedBooking.email,
         subject: emailSubject,
         message: emailMessage
-      });
+      }, getAuthHeaders());
       toast.success('Email sent successfully!');
       setShowEmailModal(false);
     } catch (error) {
+      if (error.response?.status === 401) {
+        toast.error('Session expired. Please login again.');
+        handleLogout();
+        return;
+      }
       console.error('Error sending email:', error);
       toast.error('Failed to send email');
     }
