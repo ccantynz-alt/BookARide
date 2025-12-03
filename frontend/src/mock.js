@@ -83,29 +83,25 @@ export const fleet = [
     id: 1,
     name: "Standard Sedan",
     capacity: "Up to 3 passengers",
-    luggage: "2 large bags",
-    price: "From $45"
+    luggage: "2 large bags"
   },
   {
     id: 2,
     name: "Premium Sedan",
     capacity: "Up to 3 passengers",
-    luggage: "2 large bags",
-    price: "From $65"
+    luggage: "2 large bags"
   },
   {
     id: 3,
     name: "SUV",
     capacity: "Up to 6 passengers",
-    luggage: "4 large bags",
-    price: "From $85"
+    luggage: "4 large bags"
   },
   {
     id: 4,
     name: "Van",
     capacity: "Up to 11 passengers",
-    luggage: "8 large bags",
-    price: "From $120"
+    luggage: "8 large bags"
   }
 ];
 
