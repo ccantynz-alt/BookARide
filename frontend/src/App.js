@@ -9,6 +9,7 @@ import About from './pages/About';
 import Contact from './pages/Contact';
 import BookNow from './pages/BookNow';
 import PaymentSuccess from './pages/PaymentSuccess';
+import HobbitonTransfers from './pages/HobbitonTransfers';
 import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
 import { Toaster } from './components/ui/sonner';
