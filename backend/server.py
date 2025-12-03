@@ -59,6 +59,10 @@ class BookingCreate(BaseModel):
     date: str
     time: str
     passengers: str
+    departureFlightNumber: Optional[str] = ""
+    departureTime: Optional[str] = ""
+    arrivalFlightNumber: Optional[str] = ""
+    arrivalTime: Optional[str] = ""
     name: str
     email: str
     phone: str
