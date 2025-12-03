@@ -168,8 +168,10 @@ metadata:
   test_sequence: 2
 
 test_plan:
-  current_focus: []
-  stuck_tasks: []
+  current_focus:
+    - "Stripe Payment Integration"
+  stuck_tasks:
+    - "Stripe Payment Integration"
   test_all: false
   test_priority: "high_first"
 
