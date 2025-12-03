@@ -29,13 +29,13 @@ export const About = () => {
             <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-8 text-center">Our Story</h2>
             <div className="space-y-6">
               <p className="text-gray-600 text-lg leading-relaxed">
-                Book A Ride NZ was founded with a simple goal: to provide reliable, safe, and comfortable transportation services across New Zealand. Since our establishment, we've been dedicated to making every journey a positive experience for our customers.
+                Book A Ride NZ specializes in airport shuttle services connecting Auckland, Hamilton, and Whangarei airports, as well as private shuttle transfers throughout Auckland. We've built our reputation on reliable, safe, and comfortable transportation for travelers and locals alike.
               </p>
               <p className="text-gray-600 text-lg leading-relaxed">
-                Over the years, we've had the privilege of serving thousands of customers, from business travelers and tourists to local residents needing daily transportation. Our commitment to excellent service has remained unchanged - we treat every ride with the utmost care and professionalism.
+                Over the years, we've had the privilege of serving thousands of customers - from business travelers catching early flights to families heading on vacation, and locals needing reliable transportation around Auckland. Our commitment to excellent service has remained unchanged - we treat every ride with the utmost care and professionalism.
               </p>
               <p className="text-gray-600 text-lg leading-relaxed">
-                Today, we operate 24/7 with a fleet of well-maintained vehicles and a team of experienced, professional drivers who share our passion for great service. We continue to grow and improve, ensuring that every ride with us is safe, comfortable, and reliable.
+                Today, we operate 24/7 with a fleet of well-maintained shuttle vehicles and a team of experienced, professional drivers who know these routes inside out. Whether you're heading to the airport or need private transport around Auckland, we're here to help.
               </p>
             </div>
           </div>
