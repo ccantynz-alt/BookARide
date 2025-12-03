@@ -341,9 +341,9 @@ async def create_booking(booking: BookingCreate):
 
 # Get All Bookings Endpoint (for admin)
 @api_router.get("/bookings", response_model=List[Booking])
-async def get_bookings():
+async def get_bookings(current_admin: dict = Depends(get_current_admin)):
     try:
-        bookings = await db.bookings.find().sort("createdAt", -1).to_list(1000)
+        bookings = await db.bookings.find({}, {"_id": 0}).sort("createdAt", -1).to_list(1000)
         return [Booking(**booking) for booking in bookings]
     except Exception as e:
         logger.error(f"Error fetching bookings: {str(e)}")
@@ -351,7 +351,7 @@ async def get_bookings():
 
 # Update Booking Endpoint (for admin)
 @api_router.patch("/bookings/{booking_id}")
-async def update_booking(booking_id: str, update_data: dict):
+async def update_booking(booking_id: str, update_data: dict, current_admin: dict = Depends(get_current_admin)):
     try:
         result = await db.bookings.update_one(
             {"id": booking_id},
