@@ -17,7 +17,7 @@ const libraries = ['places'];
 
 export const BookNow = () => {
   const { isLoaded } = useLoadScript({
-    googleMapsApiKey: 'AIzaSyCnRP08Gpt8IlssCQZWaiMeD-JfANRtB28',
+    googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY,
     libraries: libraries
   });
 
