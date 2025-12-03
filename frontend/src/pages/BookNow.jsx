@@ -391,6 +391,28 @@ export const BookNow = () => {
                         <p className="text-xs text-gray-500 mt-1">1st passenger included, $5 per additional passenger</p>
                       </div>
 
+                      {/* VIP Airport Pickup Service */}
+                      <div className="mb-6 bg-gold/5 p-4 rounded-lg border border-gold/20">
+                        <div className="flex items-start space-x-3">
+                          <input
+                            type="checkbox"
+                            id="vipAirportPickup"
+                            name="vipAirportPickup"
+                            checked={formData.vipAirportPickup}
+                            onChange={(e) => setFormData(prev => ({ ...prev, vipAirportPickup: e.target.checked }))}
+                            className="w-4 h-4 text-gold border-gray-300 rounded focus:ring-gold mt-1"
+                          />
+                          <div className="flex-1">
+                            <Label htmlFor="vipAirportPickup" className="cursor-pointer font-semibold text-gray-900">
+                              VIP Airport Pickup Service - $15
+                            </Label>
+                            <p className="text-xs text-gray-600 mt-1">
+                              Premium airport pickup service with priority assistance and luggage handling
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
                       {/* Return Trip Option */}
                       <div className="mb-6">
                         <div className="flex items-center space-x-2">
