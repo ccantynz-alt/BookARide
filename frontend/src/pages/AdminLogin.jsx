@@ -1,25 +1,47 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Lock } from 'lucide-react';
+import { Lock, Loader2 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Card, CardContent } from '../components/ui/card';
 import { toast } from 'sonner';
+import axios from 'axios';
+
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const API = `${BACKEND_URL}/api`;
 
 export const AdminLogin = () => {
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    // Simple password check - in production, use proper authentication
-    if (password === 'bookaride2024') {
+    setLoading(true);
+
+    try {
+      const response = await axios.post(`${API}/admin/login`, {
+        username: username,
+        password: password
+      });
+
+      // Store the token
+      localStorage.setItem('adminToken', response.data.access_token);
       localStorage.setItem('adminAuth', 'true');
+      
       toast.success('Login successful!');
       navigate('/admin/dashboard');
-    } else {
-      toast.error('Incorrect password');
+    } catch (error) {
+      console.error('Login error:', error);
+      if (error.response?.status === 401) {
+        toast.error('Incorrect username or password');
+      } else {
+        toast.error('Login failed. Please try again.');
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
