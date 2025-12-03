@@ -11,6 +11,7 @@ export const Header = () => {
     { path: '/', label: 'Home' },
     { path: '/services', label: 'Services' },
     { path: '/hobbiton-transfers', label: 'Hobbiton' },
+    { path: '/cruise-transfers', label: 'Cruise' },
     { path: '/about', label: 'About' },
     { path: '/book-now', label: 'Book Now' }
   ];
