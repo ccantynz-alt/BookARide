@@ -24,11 +24,11 @@ export const Home = () => {
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-5xl mx-auto text-center">
             <h1 className="text-5xl md:text-7xl font-bold text-white mb-8 leading-tight">
-              Reliable Rides
-              <span className="block mt-2 text-gold">Across New Zealand</span>
+              Airport Shuttles &
+              <span className="block mt-2 text-gold">Private Transfers</span>
             </h1>
             <p className="text-xl md:text-2xl text-white/80 mb-12 max-w-3xl mx-auto leading-relaxed">
-              Safe, comfortable, and affordable transportation whenever you need it. Available 24/7 for all your travel needs.
+              Serving Auckland, Hamilton, and Whangarei airports, plus private shuttle transfers throughout Auckland. Safe, comfortable, and reliable.
             </p>
             <div className="flex flex-col sm:flex-row gap-6 justify-center">
               <Link to="/contact">
