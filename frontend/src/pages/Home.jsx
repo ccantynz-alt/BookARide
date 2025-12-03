@@ -17,6 +17,16 @@ export const Home = () => {
     <div className="min-h-screen bg-white">
       {/* Hero Section */}
       <section className="relative pt-32 pb-24 md:pt-40 md:pb-32 overflow-hidden bg-gradient-to-br from-gray-900 via-black to-gray-900">
+        {/* Background Vehicle Image - Subtle */}
+        <div className="absolute inset-0 opacity-5">
+          <img 
+            src="/shuttle-van.jpg" 
+            alt="" 
+            className="w-full h-full object-cover object-center"
+            style={{ filter: 'brightness(0.3) blur(2px)' }}
+          />
+        </div>
+        
         <div className="absolute inset-0 opacity-10">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(212,175,55,0.15),transparent_50%)]" />
         </div>
