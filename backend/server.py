@@ -622,6 +622,104 @@ Notes: {booking.get('notes', 'None')}
         return False
 
 
+# Google Calendar OAuth Endpoints
+
+@api_router.get("/auth/google/login")
+async def google_calendar_login(http_request: Request):
+    """Initiate Google Calendar OAuth flow"""
+    try:
+        client_id = os.environ.get('GOOGLE_CLIENT_ID')
+        client_secret = os.environ.get('GOOGLE_CLIENT_SECRET')
+        
+        if not client_id or not client_secret:
+            raise HTTPException(status_code=500, detail="Google OAuth credentials not configured")
+        
+        host_url = str(http_request.base_url).rstrip('/')
+        redirect_uri = f"{host_url}/api/auth/google/callback"
+        
+        flow = Flow.from_client_config(
+            {
+                "web": {
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                    "token_uri": "https://oauth2.googleapis.com/token",
+                    "redirect_uris": [redirect_uri]
+                }
+            },
+            scopes=['https://www.googleapis.com/auth/calendar'],
+            redirect_uri=redirect_uri
+        )
+        
+        authorization_url, state = flow.authorization_url(
+            access_type='offline',
+            prompt='consent',
+            include_granted_scopes='true'
+        )
+        
+        logger.info(f"Google Calendar OAuth initiated. Redirect URI: {redirect_uri}")
+        return {"authorization_url": authorization_url, "state": state}
+        
+    except Exception as e:
+        logger.error(f"Error initiating Google OAuth: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error initiating Google OAuth: {str(e)}")
+
+
+@api_router.get("/auth/google/callback")
+async def google_calendar_callback(code: str, http_request: Request):
+    """Handle Google Calendar OAuth callback"""
+    try:
+        client_id = os.environ.get('GOOGLE_CLIENT_ID')
+        client_secret = os.environ.get('GOOGLE_CLIENT_SECRET')
+        
+        host_url = str(http_request.base_url).rstrip('/')
+        redirect_uri = f"{host_url}/api/auth/google/callback"
+        
+        # Exchange code for tokens
+        token_response = requests.post('https://oauth2.googleapis.com/token', data={
+            'code': code,
+            'client_id': client_id,
+            'client_secret': client_secret,
+            'redirect_uri': redirect_uri,
+            'grant_type': 'authorization_code'
+        }).json()
+        
+        if 'error' in token_response:
+            raise HTTPException(status_code=400, detail=f"OAuth error: {token_response.get('error_description')}")
+        
+        # Get user info
+        user_info = requests.get(
+            'https://www.googleapis.com/oauth2/v2/userinfo',
+            headers={'Authorization': f'Bearer {token_response["access_token"]}'}
+        ).json()
+        
+        # Store tokens for info@bookaride.co.nz
+        await db.calendar_auth.update_one(
+            {"email": "info@bookaride.co.nz"},
+            {"$set": {
+                "email": "info@bookaride.co.nz",
+                "google_email": user_info.get('email'),
+                "google_tokens": token_response,
+                "authenticated_at": datetime.now(timezone.utc)
+            }},
+            upsert=True
+        )
+        
+        logger.info(f"Google Calendar authenticated for info@bookaride.co.nz (Google account: {user_info.get('email')})")
+        
+        return {
+            "success": True,
+            "message": "Google Calendar successfully connected!",
+            "google_account": user_info.get('email')
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in Google OAuth callback: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error completing OAuth: {str(e)}")
+
+
 # Stripe Payment Integration
 
 # Payment Models
