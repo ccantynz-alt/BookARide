@@ -90,12 +90,12 @@ export const BookNow = () => {
     });
   }, [isLoaded]);
 
-  // Calculate price when addresses, passengers, or return trip changes
+  // Calculate price when addresses, passengers, VIP service, or return trip changes
   useEffect(() => {
     if (formData.pickupAddress && formData.dropoffAddress && formData.serviceType) {
       calculatePrice();
     }
-  }, [formData.pickupAddress, formData.dropoffAddress, formData.passengers, formData.serviceType, formData.bookReturn]);
+  }, [formData.pickupAddress, formData.dropoffAddress, formData.passengers, formData.serviceType, formData.bookReturn, formData.vipAirportPickup]);
 
   const calculatePrice = async () => {
     setPricing(prev => ({ ...prev, calculating: true }));
@@ -105,7 +105,8 @@ export const BookNow = () => {
         serviceType: formData.serviceType,
         pickupAddress: formData.pickupAddress,
         dropoffAddress: formData.dropoffAddress,
-        passengers: parseInt(formData.passengers)
+        passengers: parseInt(formData.passengers),
+        vipAirportPickup: formData.vipAirportPickup
       });
 
       // If return trip is booked, double the price (round trip)
