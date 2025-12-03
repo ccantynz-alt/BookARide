@@ -26,7 +26,7 @@ export const Services = () => {
               Our Services
             </h1>
             <p className="text-xl text-white/80">
-              Comprehensive transportation solutions for all your needs
+              Airport shuttles for Auckland, Hamilton & Whangarei, plus private transfers in Auckland
             </p>
           </div>
         </div>
