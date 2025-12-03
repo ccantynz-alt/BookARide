@@ -40,10 +40,8 @@ export const BookNow = () => {
   });
 
   const serviceOptions = [
-    { value: 'auckland-airport', label: 'Auckland International Airport' },
-    { value: 'hamilton-airport', label: 'Hamilton Airport' },
-    { value: 'whangarei-airport', label: 'Whangarei Airport' },
-    { value: 'private-auckland', label: 'Private Auckland Transfer' }
+    { value: 'airport-shuttle', label: 'Airport Shuttle' },
+    { value: 'private-transfer', label: 'Private Shuttle Transfer' }
   ];
 
   // Calculate price when addresses or passengers change
