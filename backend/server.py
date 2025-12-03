@@ -242,6 +242,110 @@ async def send_booking_email(email_data: dict):
         raise HTTPException(status_code=500, detail=f"Error sending email: {str(e)}")
 
 
+# Email and SMS Notification Services
+
+def send_booking_confirmation_email(booking: dict):
+    """Send booking confirmation email via SendGrid"""
+    try:
+        sendgrid_api_key = os.environ.get('SENDGRID_API_KEY')
+        sender_email = os.environ.get('SENDER_EMAIL')
+        
+        if not sendgrid_api_key or not sender_email:
+            logger.warning("SendGrid credentials not configured")
+            return False
+        
+        # Create email content
+        subject = f"Booking Confirmation - {booking.get('id', '')[:8]}"
+        
+        html_content = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <div style="background-color: #1a1a1a; color: #D4AF37; padding: 20px; text-align: center;">
+                    <h1>Book A Ride NZ</h1>
+                </div>
+                <div style="padding: 20px; background-color: #f5f5f5;">
+                    <h2 style="color: #1a1a1a;">Booking Confirmed!</h2>
+                    <p>Dear {booking.get('name', 'Customer')},</p>
+                    <p>Your ride has been confirmed. Here are your booking details:</p>
+                    
+                    <div style="background-color: white; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                        <p><strong>Booking Reference:</strong> {booking.get('id', '')[:8].upper()}</p>
+                        <p><strong>Service Type:</strong> {booking.get('serviceType', 'N/A').replace('-', ' ').title()}</p>
+                        <p><strong>Pickup:</strong> {booking.get('pickupAddress', 'N/A')}</p>
+                        <p><strong>Drop-off:</strong> {booking.get('dropoffAddress', 'N/A')}</p>
+                        <p><strong>Date:</strong> {booking.get('date', 'N/A')}</p>
+                        <p><strong>Time:</strong> {booking.get('time', 'N/A')}</p>
+                        <p><strong>Passengers:</strong> {booking.get('passengers', 'N/A')}</p>
+                        <p><strong>Total Paid:</strong> ${booking.get('totalPrice', 0):.2f} NZD</p>
+                    </div>
+                    
+                    <p>We'll be in touch closer to your pickup time to confirm all details.</p>
+                    <p>If you have any questions, please contact us.</p>
+                    
+                    <p style="margin-top: 30px;">Thank you for choosing Book A Ride NZ!</p>
+                </div>
+                <div style="background-color: #1a1a1a; color: #D4AF37; padding: 15px; text-align: center; font-size: 12px;">
+                    <p>Book A Ride NZ | bookaride.co.nz</p>
+                </div>
+            </body>
+        </html>
+        """
+        
+        message = Mail(
+            from_email=sender_email,
+            to_emails=booking.get('email'),
+            subject=subject,
+            html_content=html_content
+        )
+        
+        sg = SendGridAPIClient(sendgrid_api_key)
+        response = sg.send(message)
+        
+        logger.info(f"Confirmation email sent to {booking.get('email')} - Status: {response.status_code}")
+        return response.status_code == 202
+        
+    except Exception as e:
+        logger.error(f"Error sending confirmation email: {str(e)}")
+        return False
+
+
+def send_booking_confirmation_sms(booking: dict):
+    """Send booking confirmation SMS via Twilio"""
+    try:
+        account_sid = os.environ.get('TWILIO_ACCOUNT_SID')
+        auth_token = os.environ.get('TWILIO_AUTH_TOKEN')
+        twilio_phone = os.environ.get('TWILIO_PHONE_NUMBER')
+        
+        if not account_sid or not auth_token or not twilio_phone:
+            logger.warning("Twilio credentials not configured")
+            return False
+        
+        client = Client(account_sid, auth_token)
+        
+        # Create SMS message
+        message_body = f"""Book A Ride NZ - Booking Confirmed!
+
+Ref: {booking.get('id', '')[:8].upper()}
+Pickup: {booking.get('pickupAddress', 'N/A')}
+Date: {booking.get('date', 'N/A')} at {booking.get('time', 'N/A')}
+Total: ${booking.get('totalPrice', 0):.2f} NZD
+
+Thank you for booking with us!"""
+        
+        message = client.messages.create(
+            body=message_body,
+            from_=twilio_phone,
+            to=booking.get('phone')
+        )
+        
+        logger.info(f"Confirmation SMS sent to {booking.get('phone')} - SID: {message.sid}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error sending confirmation SMS: {str(e)}")
+        return False
+
+
 # Stripe Payment Integration
 
 # Payment Models
