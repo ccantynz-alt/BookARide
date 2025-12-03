@@ -59,6 +59,20 @@ export const AdminLogin = () => {
 
           <form onSubmit={handleLogin} className="space-y-6">
             <div className="space-y-2">
+              <Label htmlFor="username">Username</Label>
+              <Input
+                id="username"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="Enter admin username"
+                required
+                disabled={loading}
+                className="transition-all duration-200 focus:ring-2 focus:ring-gold"
+              />
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
@@ -67,17 +81,29 @@ export const AdminLogin = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter admin password"
                 required
+                disabled={loading}
                 className="transition-all duration-200 focus:ring-2 focus:ring-gold"
               />
             </div>
 
-            <Button type="submit" className="w-full bg-gold hover:bg-gold/90 text-black font-semibold py-6">
-              Login
+            <Button 
+              type="submit" 
+              disabled={loading}
+              className="w-full bg-gold hover:bg-gold/90 text-black font-semibold py-6 disabled:opacity-50"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Logging in...
+                </>
+              ) : (
+                'Login'
+              )}
             </Button>
           </form>
 
           <p className="text-xs text-gray-500 text-center mt-6">
-            Default password: bookaride2024
+            Secure admin authentication
           </p>
         </CardContent>
       </Card>
