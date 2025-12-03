@@ -62,10 +62,10 @@ export const Footer = () => {
           <div>
             <h3 className="text-gold font-semibold mb-4">Our Services</h3>
             <ul className="space-y-2">
-              <li className="text-sm">Airport Transfers</li>
-              <li className="text-sm">Corporate Travel</li>
-              <li className="text-sm">City Rides</li>
-              <li className="text-sm">Special Events</li>
+              <li className="text-sm">Auckland Airport Shuttle</li>
+              <li className="text-sm">Hamilton Airport Shuttle</li>
+              <li className="text-sm">Whangarei Airport Shuttle</li>
+              <li className="text-sm">Private Auckland Transfers</li>
             </ul>
           </div>
 
