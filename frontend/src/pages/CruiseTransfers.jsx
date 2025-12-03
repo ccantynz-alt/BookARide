@@ -110,6 +110,50 @@ export const CruiseTransfers = () => {
         </div>
       </section>
 
+      {/* Photo Gallery Section */}
+      <section className="py-16 bg-gray-50">
+        <div className="container mx-auto px-4">
+          <h2 className="text-3xl font-bold text-center text-gray-900 mb-4">
+            Your Cruise Transfer Experience
+          </h2>
+          <p className="text-center text-gray-600 mb-12 max-w-2xl mx-auto">
+            See our professional shuttle service in action at Auckland's cruise terminal
+          </p>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-6xl mx-auto">
+            {/* Image 1 - Van with Cruise Ship */}
+            <Card className="border-2 border-gold/30 overflow-hidden hover:border-gold transition-colors duration-200">
+              <div className="relative h-80 overflow-hidden">
+                <img 
+                  src="/cruise-van-ship.jpg" 
+                  alt="Book A Ride shuttle van at Auckland cruise terminal with cruise ship in background" 
+                  className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                />
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-6">
+                  <h3 className="text-white font-bold text-xl mb-1">Our Fleet at Your Service</h3>
+                  <p className="text-gray-200 text-sm">Professional shuttle service ready at the cruise terminal</p>
+                </div>
+              </div>
+            </Card>
+
+            {/* Image 2 - Pacific Aria Cruise Ship */}
+            <Card className="border-2 border-gold/30 overflow-hidden hover:border-gold transition-colors duration-200">
+              <div className="relative h-80 overflow-hidden">
+                <img 
+                  src="/cruise-ship-pacific-aria.jpg" 
+                  alt="Pacific Aria cruise ship docked at Auckland port" 
+                  className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                />
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-6">
+                  <h3 className="text-white font-bold text-xl mb-1">Auckland Cruise Terminal</h3>
+                  <p className="text-gray-200 text-sm">Serving major cruise lines including P&O, Royal Caribbean, and more</p>
+                </div>
+              </div>
+            </Card>
+          </div>
+        </div>
+      </section>
+
       {/* Pickup Locations */}
       <section id="locations" className="py-16 bg-white">
         <div className="container mx-auto px-4">
