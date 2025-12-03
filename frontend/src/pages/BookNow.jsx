@@ -628,7 +628,7 @@ export const BookNow = () => {
                           </div>
                           {pricing.airportFee > 0 && (
                             <div className="flex justify-between pb-3 border-b border-gray-200">
-                              <span className="text-gray-600">Airport Pickup Fee</span>
+                              <span className="text-gray-600">VIP Airport Pickup</span>
                               <span className="font-semibold text-gray-900">${pricing.airportFee.toFixed(2)}</span>
                             </div>
                           )}
