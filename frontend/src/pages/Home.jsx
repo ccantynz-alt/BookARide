@@ -105,6 +105,71 @@ export const Home = () => {
         </div>
       </section>
 
+      {/* Featured: Hobbiton Transfers */}
+      <section className="py-20 bg-gradient-to-br from-gray-900 via-black to-gray-900">
+        <div className="container mx-auto px-4">
+          <div className="max-w-5xl mx-auto">
+            <Card className="border-2 border-gold/30 bg-gray-900/50 backdrop-blur overflow-hidden">
+              <CardContent className="p-0">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
+                  {/* Text Content */}
+                  <div className="p-10 lg:p-12 flex flex-col justify-center">
+                    <div className="inline-block mb-4">
+                      <span className="bg-gold text-black text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide">
+                        Popular Destination
+                      </span>
+                    </div>
+                    <h3 className="text-3xl lg:text-4xl font-bold text-white mb-4">
+                      Hobbiton Movie Set Transfers
+                    </h3>
+                    <p className="text-gray-300 mb-6 text-lg leading-relaxed">
+                      Experience the magic of Middle-earth with our premium transfer service from Auckland to Hobbiton Movie Set in Matamata. 
+                      Comfortable, direct, and hassle-free.
+                    </p>
+                    <ul className="space-y-3 mb-8">
+                      <li className="flex items-center text-gray-200">
+                        <Check className="w-5 h-5 text-gold mr-3 flex-shrink-0" />
+                        175km scenic journey through Waikato
+                      </li>
+                      <li className="flex items-center text-gray-200">
+                        <Check className="w-5 h-5 text-gold mr-3 flex-shrink-0" />
+                        Perfect timing for your Hobbiton tour
+                      </li>
+                      <li className="flex items-center text-gray-200">
+                        <Check className="w-5 h-5 text-gold mr-3 flex-shrink-0" />
+                        Return trips available
+                      </li>
+                    </ul>
+                    <div className="flex flex-col sm:flex-row gap-4">
+                      <Link to="/hobbiton-transfers">
+                        <Button className="bg-gold hover:bg-gold/90 text-black font-semibold px-8 py-6 w-full sm:w-auto">
+                          Learn More
+                          <ArrowRight className="ml-2 w-5 h-5" />
+                        </Button>
+                      </Link>
+                      <Link to="/book-now">
+                        <Button variant="outline" className="border-gold text-gold hover:bg-gold hover:text-black px-8 py-6 w-full sm:w-auto">
+                          Book Now
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                  
+                  {/* Image/Visual */}
+                  <div className="bg-gradient-to-br from-gold/20 to-gold/5 p-10 lg:p-12 flex items-center justify-center">
+                    <div className="text-center">
+                      <div className="text-8xl mb-6">🧙‍♂️</div>
+                      <p className="text-gold font-bold text-2xl mb-2">From $612.50</p>
+                      <p className="text-gray-400 text-sm">Based on distance</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
+
       {/* How It Works */}
       <section className="py-24 bg-gray-50">
         <div className="container mx-auto px-4">
