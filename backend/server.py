@@ -146,8 +146,8 @@ async def calculate_price(request: PriceCalculationRequest):
         # Calculate pricing
         base_price = distance_km * 2.50  # $2.50 per km
         
-        # Airport fee: $25 for Airport Shuttle service only
-        airport_fee = 25.0 if request.serviceType == 'airport-shuttle' else 0.0
+        # VIP Airport Pickup fee: Optional $15 extra service
+        airport_fee = 15.0 if request.vipAirportPickup else 0.0
         
         # Passenger fee: 1st passenger included, $5 per additional
         extra_passengers = max(0, request.passengers - 1)
