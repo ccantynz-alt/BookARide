@@ -374,6 +374,119 @@ export const BookNow = () => {
                         </Select>
                         <p className="text-xs text-gray-500 mt-1">1st passenger included, $5 per additional passenger</p>
                       </div>
+
+                      {/* Return Trip Option */}
+                      <div className="mb-6">
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            id="bookReturn"
+                            name="bookReturn"
+                            checked={formData.bookReturn}
+                            onChange={(e) => setFormData(prev => ({ ...prev, bookReturn: e.target.checked }))}
+                            className="w-4 h-4 text-gold border-gray-300 rounded focus:ring-gold"
+                          />
+                          <Label htmlFor="bookReturn" className="cursor-pointer">
+                            Book a return trip
+                          </Label>
+                        </div>
+                      </div>
+
+                      {/* Return Trip Details - Conditional */}
+                      {formData.bookReturn && (
+                        <div className="bg-gold/10 p-6 rounded-lg mb-6 border-2 border-gold/30">
+                          <h3 className="text-lg font-semibold text-gray-900 mb-4">Return Trip Details</h3>
+                          
+                          {/* Return Date and Time */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            <div className="space-y-2">
+                              <Label htmlFor="returnDate" className="flex items-center space-x-2">
+                                <Calendar className="w-4 h-4 text-gold" />
+                                <span>Return Date *</span>
+                              </Label>
+                              <Input
+                                id="returnDate"
+                                name="returnDate"
+                                type="date"
+                                value={formData.returnDate}
+                                onChange={handleChange}
+                                required={formData.bookReturn}
+                                className="transition-all duration-200 focus:ring-2 focus:ring-gold"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="returnTime" className="flex items-center space-x-2">
+                                <Clock className="w-4 h-4 text-gold" />
+                                <span>Return Time *</span>
+                              </Label>
+                              <Input
+                                id="returnTime"
+                                name="returnTime"
+                                type="time"
+                                value={formData.returnTime}
+                                onChange={handleChange}
+                                required={formData.bookReturn}
+                                className="transition-all duration-200 focus:ring-2 focus:ring-gold"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Return Flight Information */}
+                          <div className="bg-white p-4 rounded-lg">
+                            <h4 className="text-md font-semibold text-gray-900 mb-3">Return Flight Information (Optional)</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label htmlFor="returnDepartureFlightNumber">Departure Flight Number</Label>
+                                <Input
+                                  id="returnDepartureFlightNumber"
+                                  name="returnDepartureFlightNumber"
+                                  value={formData.returnDepartureFlightNumber}
+                                  onChange={handleChange}
+                                  placeholder="e.g., NZ123"
+                                  className="transition-all duration-200 focus:ring-2 focus:ring-gold"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="returnDepartureTime">Departure Time</Label>
+                                <Input
+                                  id="returnDepartureTime"
+                                  name="returnDepartureTime"
+                                  type="time"
+                                  value={formData.returnDepartureTime}
+                                  onChange={handleChange}
+                                  className="transition-all duration-200 focus:ring-2 focus:ring-gold"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="returnArrivalFlightNumber">Arrival Flight Number</Label>
+                                <Input
+                                  id="returnArrivalFlightNumber"
+                                  name="returnArrivalFlightNumber"
+                                  value={formData.returnArrivalFlightNumber}
+                                  onChange={handleChange}
+                                  placeholder="e.g., NZ456"
+                                  className="transition-all duration-200 focus:ring-2 focus:ring-gold"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="returnArrivalTime">Arrival Time</Label>
+                                <Input
+                                  id="returnArrivalTime"
+                                  name="returnArrivalTime"
+                                  type="time"
+                                  value={formData.returnArrivalTime}
+                                  onChange={handleChange}
+                                  className="transition-all duration-200 focus:ring-2 focus:ring-gold"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <p className="text-xs text-gray-600 mt-4">
+                            Return trip will be from <strong>{formData.dropoffAddress || 'drop-off location'}</strong> back to <strong>{formData.pickupAddress || 'pickup location'}</strong>
+                          </p>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
 
