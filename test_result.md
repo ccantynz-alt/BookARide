@@ -102,7 +102,7 @@
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
 
-user_problem_statement: "Test the Google Places Autocomplete functionality on the booking form at /book-now page"
+user_problem_statement: "Test the return trip booking functionality on the booking form at /book-now page"
 
 frontend:
   - task: "Google Places Autocomplete Integration"
@@ -131,6 +131,18 @@ frontend:
         - working: true
           agent: "testing"
           comment: "✅ End-to-end booking flow tested successfully: Frontend form → Google Maps autocomplete → Backend price calculation → Database storage → Success confirmation. All components integrated properly."
+
+  - task: "Return Trip Booking Functionality"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/BookNow.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+          agent: "testing"
+          comment: "Starting test of return trip booking functionality - testing checkbox toggle, return trip fields visibility, price doubling calculation, and form validation"
 
 metadata:
   created_by: "testing_agent"
