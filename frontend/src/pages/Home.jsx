@@ -18,9 +18,9 @@ export const Home = () => {
   return (
     <div className="min-h-screen bg-white">
       <SEO 
-        title="Airport Shuttle Service Auckland, Hamilton & Whangarei"
-        description="Professional airport shuttle service in New Zealand. Reliable airport transfers for Auckland, Hamilton, and Whangarei airports. Private shuttle service, cruise transfers, and Hobbiton tours. Book your airport shuttle today - 24/7 available, safe & insured."
-        keywords="airport, airport shuttle, airport shuttle service, shuttle service, Auckland shuttles, Auckland airport shuttle, Hamilton airport shuttle, Whangarei airport transfer, airport transfer, airport transportation, private shuttle, shuttle service Auckland, New Zealand shuttle, airport pickup, airport drop off, reliable shuttle"
+        title="Affordable Airport Shuttle Auckland - Best Value Transfers"
+        description="Affordable airport shuttle service in Auckland. Best value airport transfers for Auckland, Hamilton, and Whangarei airports. Reliable, safe, and budget-friendly shuttle service available 24/7. Book online now!"
+        keywords="airport, airport shuttle, cheap airport shuttle, affordable airport transfer, budget shuttle, Auckland shuttles, Auckland airport shuttle, Hamilton airport shuttle, Whangarei airport transfer, airport transfer, airport transportation, shuttle service Auckland, best value shuttle, reliable shuttle"
         canonical="/"
       />
       <StructuredData />
