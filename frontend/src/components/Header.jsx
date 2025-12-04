@@ -86,9 +86,9 @@ export const Header = () => {
                 {link.label}
               </Link>
             ))}
-            <a href="tel:+6491234567" className="flex items-center space-x-2 text-white/80 hover:text-gold transition-colors duration-200">
+            <a href="tel:+6421743321" className="flex items-center space-x-2 text-white/80 hover:text-gold transition-colors duration-200">
               <Phone className="w-4 h-4" />
-              <span className="text-sm font-medium">+64 9 123 4567</span>
+              <span className="text-sm font-medium">+64 21 743 321</span>
             </a>
           </div>
         )}
