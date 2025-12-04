@@ -5,6 +5,7 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { services, testimonials, howItWorksSteps } from '../mock';
 import SEO from '../components/SEO';
+import StructuredData from '../components/StructuredData';
 
 const iconMap = {
   plane: Plane,
