@@ -57,6 +57,12 @@ export const Contact = () => {
 
   return (
     <div className="min-h-screen pt-20 bg-white">
+      <SEO 
+        title="Contact Us - Book Your Airport Shuttle Today"
+        description="Contact Book A Ride NZ for airport shuttle bookings and inquiries. Available 24/7 for Auckland, Hamilton, and Whangarei airport transfers. Quick online booking, instant quotes, professional service."
+        keywords="book airport shuttle, contact airport shuttle, airport shuttle booking, airport shuttle Auckland contact, shuttle service booking, airport transfer contact, book shuttle online"
+        canonical="/contact"
+      />
       {/* Hero Section */}
       <section className="py-24 bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
         <div className="absolute inset-0 opacity-10">
