@@ -42,6 +42,12 @@ export const HobbitonTransfers = () => {
 
   return (
     <div className="min-h-screen pt-20">
+      <SEO 
+        title="Hobbiton Transfers - Auckland to Hobbiton Movie Set Shuttle Service"
+        description="Professional Hobbiton Movie Set transfers from Auckland. Direct shuttle service to Matamata Hobbiton tours. Comfortable, scenic journey through Waikato. Book your Hobbiton transfer today - perfect for Lord of the Rings fans!"
+        keywords="Hobbiton transfers, Auckland to Hobbiton shuttle, Hobbiton Movie Set transfer, Matamata shuttle, Lord of the Rings tour transport, Hobbiton tour transfer, shuttle to Hobbiton, Auckland Hobbiton transport"
+        canonical="/hobbiton-transfers"
+      />
       {/* Hero Section */}
       <section className="relative bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white py-20 overflow-hidden">
         {/* Background Vehicle Image */}
