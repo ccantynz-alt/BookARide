@@ -109,7 +109,8 @@ export const BookNow = () => {
         pickupAddress: formData.pickupAddress,
         dropoffAddress: formData.dropoffAddress,
         passengers: parseInt(formData.passengers),
-        vipAirportPickup: formData.vipAirportPickup
+        vipAirportPickup: formData.vipAirportPickup,
+        oversizedLuggage: formData.oversizedLuggage
       });
 
       // If return trip is booked, double the price (round trip)
@@ -119,6 +120,7 @@ export const BookNow = () => {
         distance: response.data.distance * multiplier,
         basePrice: response.data.basePrice * multiplier,
         airportFee: response.data.airportFee * multiplier,
+        oversizedLuggageFee: response.data.oversizedLuggageFee * multiplier,
         passengerFee: response.data.passengerFee * multiplier,
         totalPrice: response.data.totalPrice * multiplier,
         calculating: false
