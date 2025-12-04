@@ -461,7 +461,19 @@ async def send_booking_email(email_data: dict, current_admin: dict = Depends(get
 # Email and SMS Notification Services
 
 def send_booking_confirmation_email(booking: dict):
-    """Send booking confirmation email via Mailgun"""
+    """Send booking confirmation email via Mailgun or SMTP fallback"""
+    # Try Mailgun first
+    mailgun_success = send_via_mailgun(booking)
+    if mailgun_success:
+        return True
+    
+    # Fallback to SMTP if Mailgun fails
+    logger.warning("Mailgun failed, trying SMTP fallback...")
+    return send_via_smtp(booking)
+
+
+def send_via_mailgun(booking: dict):
+    """Try sending via Mailgun"""
     try:
         mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
         mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
