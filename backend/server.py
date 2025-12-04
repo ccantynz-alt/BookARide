@@ -545,7 +545,7 @@ async def get_calendar_credentials():
             creds.refresh(GoogleRequest())
             # Update tokens in database
             await db.calendar_auth.update_one(
-                {"email": "info@bookaride.co.nz"},
+                {"email": "info@airportshuttleservice.co.nz"},
                 {"$set": {"google_tokens.access_token": creds.token}}
             )
             logger.info("Google Calendar token refreshed")
