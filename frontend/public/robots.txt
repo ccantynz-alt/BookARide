@@ -1,0 +1,10 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+
+# Sitemap location
+Sitemap: https://bookaride.co.nz/sitemap.xml
+
+# Disallow admin areas
+User-agent: *
+Disallow: /admin/
