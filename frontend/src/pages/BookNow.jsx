@@ -55,6 +55,7 @@ export const BookNow = () => {
     distance: 0,
     basePrice: 0,
     airportFee: 0,
+    oversizedLuggageFee: 0,
     passengerFee: 0,
     totalPrice: 0,
     calculating: false
