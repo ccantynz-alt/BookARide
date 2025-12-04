@@ -4,6 +4,7 @@ import { ArrowRight, Plane, Briefcase, MapPin, Calendar, Star, Check, Shield, Cl
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { services, testimonials, howItWorksSteps } from '../mock';
+import SEO from '../components/SEO';
 
 const iconMap = {
   plane: Plane,
