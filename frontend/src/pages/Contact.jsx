@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Card, CardContent } from '../components/ui/card';
 import { toast } from 'sonner';
 import { companyInfo } from '../mock';
+import SEO from '../components/SEO';
 
 export const Contact = () => {
   const [formData, setFormData] = useState({
