@@ -33,6 +33,7 @@ export const BookNow = () => {
     time: '',
     passengers: '1',
     vipAirportPickup: false,
+    oversizedLuggage: false,
     departureFlightNumber: '',
     departureTime: '',
     arrivalFlightNumber: '',
