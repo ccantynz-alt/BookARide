@@ -124,6 +124,123 @@ export const Home = () => {
         </div>
       </section>
 
+      {/* Why Choose Us - Competitive Advantages */}
+      <section className="py-20 bg-gradient-to-br from-gray-50 to-white">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">Why Choose BookaRide?</h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Experience the difference with our modern, technology-driven service
+            </p>
+          </div>
+
+          <div className="max-w-6xl mx-auto">
+            <Card className="border-2 border-gold/30 bg-white shadow-xl">
+              <CardContent className="p-10">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {/* Left Column - Features */}
+                  <div className="space-y-6">
+                    <div className="flex items-start space-x-4">
+                      <div className="w-12 h-12 bg-gold/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <Check className="w-6 h-6 text-gold" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Instant Online Booking</h3>
+                        <p className="text-gray-600 text-sm">Book in 60 seconds with live price calculator. No phone calls or email quotes needed.</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start space-x-4">
+                      <div className="w-12 h-12 bg-gold/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <Check className="w-6 h-6 text-gold" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Triple Auto-Confirmations</h3>
+                        <p className="text-gray-600 text-sm">Receive instant email, SMS, and automatic Google Calendar entry for your booking.</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start space-x-4">
+                      <div className="w-12 h-12 bg-gold/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <Check className="w-6 h-6 text-gold" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">VIP Airport Service</h3>
+                        <p className="text-gray-600 text-sm">Premium airport pickup with VIP parking close to terminal doors.</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start space-x-4">
+                      <div className="w-12 h-12 bg-gold/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <Check className="w-6 h-6 text-gold" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Secure Online Payments</h3>
+                        <p className="text-gray-600 text-sm">Fast, secure checkout with Stripe. No cash or bank transfer hassles.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right Column - More Features */}
+                  <div className="space-y-6">
+                    <div className="flex items-start space-x-4">
+                      <div className="w-12 h-12 bg-gold/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <Check className="w-6 h-6 text-gold" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">One-Click Return Trips</h3>
+                        <p className="text-gray-600 text-sm">Book your return journey in a single booking. No need for separate reservations.</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start space-x-4">
+                      <div className="w-12 h-12 bg-gold/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <Check className="w-6 h-6 text-gold" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Specialist Services</h3>
+                        <p className="text-gray-600 text-sm">Dedicated Hobbiton tours and cruise ship transfers. We know these routes inside out.</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start space-x-4">
+                      <div className="w-12 h-12 bg-gold/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <Check className="w-6 h-6 text-gold" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Oversized Luggage Welcome</h3>
+                        <p className="text-gray-600 text-sm">Skis, bikes, surfboards, golf clubs - we handle all your oversized gear.</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start space-x-4">
+                      <div className="w-12 h-12 bg-gold/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <Check className="w-6 h-6 text-gold" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Fixed Transparent Pricing</h3>
+                        <p className="text-gray-600 text-sm">See your exact price before booking. No surge pricing, no hidden fees.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* CTA Button */}
+                <div className="mt-10 text-center pt-8 border-t border-gray-200">
+                  <p className="text-gray-700 mb-4 font-medium">Ready to experience the difference?</p>
+                  <Link to="/book-now">
+                    <Button className="bg-gold hover:bg-gold/90 text-black font-semibold px-10 py-6 text-lg">
+                      Book Your Ride Now
+                      <ArrowRight className="ml-2 w-5 h-5" />
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
+
       {/* Featured: Hobbiton Transfers */}
       <section className="py-20 bg-gradient-to-br from-gray-900 via-black to-gray-900">
         <div className="container mx-auto px-4">
