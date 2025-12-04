@@ -66,6 +66,12 @@ export const CruiseTransfers = () => {
 
   return (
     <div className="min-h-screen pt-20">
+      <SEO 
+        title="Cruise Ship Transfers Auckland - Port & Airport Shuttle Service"
+        description="Professional cruise ship transfer service in Auckland. Shuttle between cruise terminals, airport, and hotels. Reliable transport for cruise passengers. Luggage assistance, on-time guarantee. Book your cruise transfer today!"
+        keywords="cruise ship transfers Auckland, cruise terminal shuttle, port transfer Auckland, cruise ship airport shuttle, Auckland cruise transfer, ferry terminal shuttle, cruise passenger transport, ship to airport shuttle"
+        canonical="/cruise-transfers"
+      />
       {/* Hero Section */}
       <section className="relative bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white py-20 overflow-hidden">
         {/* Background Vehicle Image */}
