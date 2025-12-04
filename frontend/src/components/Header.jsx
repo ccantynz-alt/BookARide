@@ -23,12 +23,15 @@ export const Header = () => {
       <nav className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-3 group">
+          <Link to="/" className="flex items-center space-x-3 group relative">
+            <div className="absolute -inset-2 bg-gold/20 rounded-lg blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
             <img 
               src="/logo.png" 
               alt="Book A Ride NZ" 
-              className="h-12 w-auto transform group-hover:scale-105 transition-transform duration-200 drop-shadow-lg"
-              style={{ filter: 'brightness(1.1) contrast(1.1)' }}
+              className="h-16 w-auto transform group-hover:scale-110 transition-all duration-300 relative z-10"
+              style={{ 
+                filter: 'brightness(1.2) contrast(1.15) drop-shadow(0 0 8px rgba(212, 175, 55, 0.4))',
+              }}
             />
           </Link>
 
