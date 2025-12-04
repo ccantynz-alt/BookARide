@@ -43,11 +43,11 @@ export const Home = () => {
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-5xl mx-auto text-center">
             <h1 className="text-5xl md:text-7xl font-bold text-white mb-8 leading-tight">
-              Premium Airport Shuttles
-              <span className="block mt-2 text-gold">With Instant Online Booking</span>
+              Affordable Airport Shuttles
+              <span className="block mt-2 text-gold">Best Value in Auckland</span>
             </h1>
             <p className="text-xl md:text-2xl text-white/80 mb-12 max-w-3xl mx-auto leading-relaxed">
-              Auckland's most modern airport shuttle service. Live pricing, secure checkout, and automatic confirmations - all in 60 seconds.
+              Reliable airport transfers at unbeatable prices. Instant online booking, transparent pricing, and professional service - all in 60 seconds.
             </p>
             <div className="flex flex-col sm:flex-row gap-6 justify-center">
               <Link to="/contact">
