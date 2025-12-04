@@ -179,6 +179,12 @@ export const BookNow = () => {
 
   return (
     <div className="min-h-screen pt-20 bg-white">
+      <SEO 
+        title="Book Your Airport Shuttle Now - Instant Quote & Online Booking"
+        description="Book your airport shuttle online with instant live pricing. Auckland, Hamilton, Whangarei airport transfers. Easy online booking, secure payment, live price calculator. Book your shuttle service now!"
+        keywords="book airport shuttle, book airport transfer, online shuttle booking, airport shuttle booking online, instant quote shuttle, book shuttle Auckland, airport transfer booking, shuttle service booking"
+        canonical="/book-now"
+      />
       {/* Hero Section */}
       <section className="py-16 bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
         <div className="absolute inset-0 opacity-10">
