@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { MapPin, Clock, Users, Ship, CheckCircle, ArrowRight, Plane, Navigation } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
+import SEO from '../components/SEO';
 
 export const CruiseTransfers = () => {
   const pickupLocations = [
