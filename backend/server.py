@@ -236,6 +236,49 @@ async def get_current_admin_info(current_admin: dict = Depends(get_current_admin
     }
 
 
+@api_router.post("/auth/change-password")
+async def change_password(
+    current_password: str = Body(...),
+    new_password: str = Body(...),
+    current_admin: dict = Depends(get_current_admin)
+):
+    """Change admin password"""
+    try:
+        # Get admin from database
+        admin = await db.admin_users.find_one({"username": current_admin["username"]}, {"_id": 0})
+        if not admin:
+            raise HTTPException(status_code=404, detail="Admin user not found")
+        
+        # Verify current password
+        if not verify_password(current_password, admin["hashed_password"]):
+            raise HTTPException(status_code=401, detail="Current password is incorrect")
+        
+        # Validate new password
+        if len(new_password) < 8:
+            raise HTTPException(status_code=400, detail="New password must be at least 8 characters")
+        
+        # Hash new password
+        hashed_new_password = get_password_hash(new_password)
+        
+        # Update password in database
+        await db.admin_users.update_one(
+            {"username": current_admin["username"]},
+            {"$set": {
+                "hashed_password": hashed_new_password,
+                "updated_at": datetime.now(timezone.utc)
+            }}
+        )
+        
+        logger.info(f"Password changed for admin: {current_admin['username']}")
+        return {"message": "Password changed successfully"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error changing password: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error changing password: {str(e)}")
+
+
 # Add your routes to the router instead of directly to app
 @api_router.get("/")
 async def root():
