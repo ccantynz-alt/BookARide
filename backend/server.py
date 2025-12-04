@@ -699,11 +699,11 @@ async def google_calendar_callback(code: str, http_request: Request):
             headers={'Authorization': f'Bearer {token_response["access_token"]}'}
         ).json()
         
-        # Store tokens for info@bookaride.co.nz
+        # Store tokens for info@airportshuttleservice.co.nz
         await db.calendar_auth.update_one(
-            {"email": "info@bookaride.co.nz"},
+            {"email": "info@airportshuttleservice.co.nz"},
             {"$set": {
-                "email": "info@bookaride.co.nz",
+                "email": "info@airportshuttleservice.co.nz",
                 "google_email": user_info.get('email'),
                 "google_tokens": token_response,
                 "authenticated_at": datetime.now(timezone.utc)
@@ -711,7 +711,7 @@ async def google_calendar_callback(code: str, http_request: Request):
             upsert=True
         )
         
-        logger.info(f"Google Calendar authenticated for info@bookaride.co.nz (Google account: {user_info.get('email')})")
+        logger.info(f"Google Calendar authenticated for info@airportshuttleservice.co.nz (Google account: {user_info.get('email')})")
         
         return {
             "success": True,
