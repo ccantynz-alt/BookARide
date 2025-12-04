@@ -13,7 +13,9 @@ from datetime import datetime, timezone, timedelta
 import requests
 from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionResponse, CheckoutStatusResponse, CheckoutSessionRequest
 from twilio.rest import Client
-import smtplib
+from googleapiclient.discovery import build
+from google.oauth2 import service_account
+import base64
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from passlib.context import CryptContext
