@@ -75,7 +75,7 @@ export const Footer = () => {
             <ul className="space-y-3">
               <li className="flex items-start space-x-3">
                 <Phone className="w-5 h-5 text-gold flex-shrink-0 mt-0.5" />
-                <a href="tel:+6491234567" className="text-sm hover:text-gold transition-colors duration-200">
+                <a href="tel:+6421743321" className="text-sm hover:text-gold transition-colors duration-200">
                   {companyInfo.phone}
                 </a>
               </li>
