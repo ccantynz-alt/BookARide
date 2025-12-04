@@ -6,6 +6,12 @@ import SEO from '../components/SEO';
 export const About = () => {
   return (
     <div className="min-h-screen pt-20 bg-white">
+      <SEO 
+        title="About Us - Professional Airport Shuttle Service in New Zealand"
+        description="Learn about Book A Ride NZ - your trusted airport shuttle service provider. Serving Auckland, Hamilton, and Whangarei airports with safe, reliable, and professional transportation. Over 10,000 happy customers, 24/7 available."
+        keywords="airport shuttle company, shuttle service New Zealand, Auckland airport transfer company, professional shuttle service, reliable airport shuttle, NZ transportation service, safe shuttle service"
+        canonical="/about"
+      />
       {/* Hero Section */}
       <section className="py-24 bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
         {/* Background Vehicle Image */}
