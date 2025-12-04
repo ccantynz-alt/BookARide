@@ -177,6 +177,46 @@ export const AdminDashboard = () => {
     }
   };
 
+  const handleChangePassword = async () => {
+    try {
+      // Validation
+      if (!currentPassword || !newPassword || !confirmPassword) {
+        toast.error('Please fill in all fields');
+        return;
+      }
+      
+      if (newPassword !== confirmPassword) {
+        toast.error('New passwords do not match');
+        return;
+      }
+      
+      if (newPassword.length < 8) {
+        toast.error('New password must be at least 8 characters');
+        return;
+      }
+      
+      // Call backend API to change password
+      await axios.post(`${API}/auth/change-password`, {
+        current_password: currentPassword,
+        new_password: newPassword
+      }, getAuthHeaders());
+      
+      toast.success('Password changed successfully!');
+      setShowPasswordModal(false);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      
+    } catch (error) {
+      if (error.response?.status === 401) {
+        toast.error('Current password is incorrect');
+        return;
+      }
+      console.error('Error changing password:', error);
+      toast.error(error.response?.data?.detail || 'Failed to change password');
+    }
+  };
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'confirmed': return 'text-green-600 bg-green-100';
