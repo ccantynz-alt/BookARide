@@ -523,7 +523,7 @@ async def get_calendar_credentials():
     """Get Google Calendar credentials for the business account"""
     try:
         # Get stored tokens from database
-        calendar_auth = await db.calendar_auth.find_one({"email": "info@bookaride.co.nz"}, {"_id": 0})
+        calendar_auth = await db.calendar_auth.find_one({"email": "info@airportshuttleservice.co.nz"}, {"_id": 0})
         
         if not calendar_auth or 'google_tokens' not in calendar_auth:
             logger.warning("Google Calendar not authenticated. Please authenticate at /api/auth/google/login")
