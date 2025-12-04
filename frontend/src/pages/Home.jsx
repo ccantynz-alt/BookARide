@@ -69,10 +69,10 @@ export const Home = () => {
         <div className="container mx-auto px-4 mt-20 relative z-10">
           <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8">
             {[
-              { icon: Users, value: '10,000+', label: 'Happy Customers' },
-              { icon: Clock, value: '24/7', label: 'Available' },
+              { icon: Users, value: '1,000+', label: 'Happy Customers' },
+              { icon: Clock, value: '60s', label: 'Book in Seconds' },
               { icon: Shield, value: '100%', label: 'Safe & Insured' },
-              { icon: Award, value: '4.9', label: 'Customer Rating' }
+              { icon: Award, value: '4.9★', label: 'Customer Rating' }
             ].map((stat, index) => {
               const Icon = stat.icon;
               return (
