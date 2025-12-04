@@ -91,6 +91,11 @@ export const Home = () => {
       <section className="py-24 bg-white">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
+            <div className="inline-block mb-4">
+              <span className="bg-gold text-black text-xs font-bold px-4 py-2 rounded-full uppercase tracking-wide">
+                ⚡ Instant Online Booking Available
+              </span>
+            </div>
             <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">Our Services</h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
               Whatever your transportation needs, we've got you covered
