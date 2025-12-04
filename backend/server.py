@@ -417,23 +417,27 @@ async def send_booking_email(email_data: dict, current_admin: dict = Depends(get
 # Email and SMS Notification Services
 
 def send_booking_confirmation_email(booking: dict):
-    """Send booking confirmation email via SendGrid"""
+    """Send booking confirmation email via Google Workspace SMTP"""
     try:
-        sendgrid_api_key = os.environ.get('SENDGRID_API_KEY')
+        smtp_server = os.environ.get('SMTP_SERVER', 'smtp.gmail.com')
+        smtp_port = int(os.environ.get('SMTP_PORT', '587'))
+        smtp_username = os.environ.get('SMTP_USERNAME')
+        smtp_password = os.environ.get('SMTP_PASSWORD')
         sender_email = os.environ.get('SENDER_EMAIL')
         
-        if not sendgrid_api_key or not sender_email:
-            logger.warning("SendGrid credentials not configured")
+        if not smtp_username or not smtp_password or not sender_email:
+            logger.warning("SMTP credentials not configured")
             return False
         
         # Create email content
         subject = f"Booking Confirmation - {booking.get('id', '')[:8]}"
+        recipient_email = booking.get('email')
         
         html_content = f"""
         <html>
             <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                 <div style="background-color: #1a1a1a; color: #D4AF37; padding: 20px; text-align: center;">
-                    <h1>Book A Ride NZ</h1>
+                    <h1>Airport Shuttle Service NZ</h1>
                 </div>
                 <div style="padding: 20px; background-color: #f5f5f5;">
                     <h2 style="color: #1a1a1a;">Booking Confirmed!</h2>
@@ -452,29 +456,35 @@ def send_booking_confirmation_email(booking: dict):
                     </div>
                     
                     <p>We'll be in touch closer to your pickup time to confirm all details.</p>
-                    <p>If you have any questions, please contact us.</p>
+                    <p>If you have any questions, please contact us at {sender_email} or call +64 21 743 321.</p>
                     
-                    <p style="margin-top: 30px;">Thank you for choosing Book A Ride NZ!</p>
+                    <p style="margin-top: 30px;">Thank you for choosing Airport Shuttle Service NZ!</p>
                 </div>
                 <div style="background-color: #1a1a1a; color: #D4AF37; padding: 15px; text-align: center; font-size: 12px;">
-                    <p>Book A Ride NZ | bookaride.co.nz</p>
+                    <p>Airport Shuttle Service NZ | airportshuttleservice.co.nz</p>
                 </div>
             </body>
         </html>
         """
         
-        message = Mail(
-            from_email=sender_email,
-            to_emails=booking.get('email'),
-            subject=subject,
-            html_content=html_content
-        )
+        # Create message
+        message = MIMEMultipart('alternative')
+        message['Subject'] = subject
+        message['From'] = sender_email
+        message['To'] = recipient_email
         
-        sg = SendGridAPIClient(sendgrid_api_key)
-        response = sg.send(message)
+        # Attach HTML content
+        html_part = MIMEText(html_content, 'html')
+        message.attach(html_part)
         
-        logger.info(f"Confirmation email sent to {booking.get('email')} - Status: {response.status_code}")
-        return response.status_code == 202
+        # Send email via SMTP
+        with smtplib.SMTP(smtp_server, smtp_port) as server:
+            server.starttls()
+            server.login(smtp_username, smtp_password)
+            server.send_message(message)
+        
+        logger.info(f"Confirmation email sent to {recipient_email} via Google Workspace")
+        return True
         
     except Exception as e:
         logger.error(f"Error sending confirmation email: {str(e)}")
