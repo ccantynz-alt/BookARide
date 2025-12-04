@@ -644,6 +644,12 @@ export const BookNow = () => {
                               <span className="font-semibold text-gray-900">${pricing.airportFee.toFixed(2)}</span>
                             </div>
                           )}
+                          {pricing.oversizedLuggageFee > 0 && (
+                            <div className="flex justify-between pb-3 border-b border-gray-200">
+                              <span className="text-gray-600">Oversized Luggage</span>
+                              <span className="font-semibold text-gray-900">${pricing.oversizedLuggageFee.toFixed(2)}</span>
+                            </div>
+                          )}
                           {pricing.passengerFee > 0 && (
                             <div className="flex justify-between pb-3 border-b border-gray-200">
                               <span className="text-gray-600">Extra Passengers</span>
