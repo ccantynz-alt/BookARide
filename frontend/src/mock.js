@@ -108,7 +108,7 @@ export const fleet = [
 export const companyInfo = {
   name: "Book A Ride NZ",
   tagline: "Airport Shuttles & Private Transfers Across New Zealand",
-  phone: "+64 9 123 4567",
+  phone: "+64 21 743 321",
   email: "info@bookaride.co.nz",
   address: "Auckland, New Zealand",
   operatingHours: "24/7",
