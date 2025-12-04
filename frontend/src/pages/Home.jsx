@@ -16,6 +16,12 @@ const iconMap = {
 export const Home = () => {
   return (
     <div className="min-h-screen bg-white">
+      <SEO 
+        title="Airport Shuttle Service Auckland, Hamilton & Whangarei"
+        description="Professional airport shuttle service in New Zealand. Reliable airport transfers for Auckland, Hamilton, and Whangarei airports. Private shuttle service, cruise transfers, and Hobbiton tours. Book your airport shuttle today - 24/7 available, safe & insured."
+        keywords="airport, airport shuttle, airport shuttle service, shuttle service, Auckland shuttles, Auckland airport shuttle, Hamilton airport shuttle, Whangarei airport transfer, airport transfer, airport transportation, private shuttle, shuttle service Auckland, New Zealand shuttle, airport pickup, airport drop off, reliable shuttle"
+        canonical="/"
+      />
       {/* Hero Section */}
       <section className="relative pt-32 pb-24 md:pt-40 md:pb-32 overflow-hidden bg-gradient-to-br from-gray-900 via-black to-gray-900">
         {/* Background Vehicle Image - Subtle */}
