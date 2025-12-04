@@ -400,6 +400,28 @@ export const BookNow = () => {
                         </div>
                       </div>
 
+                      {/* Oversized Luggage Service */}
+                      <div className="mb-6 bg-blue-50 p-4 rounded-lg border border-blue-200">
+                        <div className="flex items-start space-x-3">
+                          <input
+                            type="checkbox"
+                            id="oversizedLuggage"
+                            name="oversizedLuggage"
+                            checked={formData.oversizedLuggage}
+                            onChange={(e) => setFormData(prev => ({ ...prev, oversizedLuggage: e.target.checked }))}
+                            className="w-4 h-4 text-gold border-gray-300 rounded focus:ring-gold mt-1"
+                          />
+                          <div className="flex-1">
+                            <Label htmlFor="oversizedLuggage" className="cursor-pointer font-semibold text-gray-900">
+                              Oversized Luggage Service - $25
+                            </Label>
+                            <p className="text-xs text-gray-600 mt-1">
+                              For skis, snowboards, surfboards, golf clubs, bikes, or extra-large suitcases
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
                       {/* Return Trip Option */}
                       <div className="mb-6">
                         <div className="flex items-center space-x-2">
