@@ -92,12 +92,12 @@ export const BookNow = () => {
     });
   }, [isLoaded]);
 
-  // Calculate price when addresses, passengers, VIP service, or return trip changes
+  // Calculate price when addresses, passengers, VIP service, oversized luggage, or return trip changes
   useEffect(() => {
     if (formData.pickupAddress && formData.dropoffAddress && formData.serviceType) {
       calculatePrice();
     }
-  }, [formData.pickupAddress, formData.dropoffAddress, formData.passengers, formData.serviceType, formData.bookReturn, formData.vipAirportPickup]);
+  }, [formData.pickupAddress, formData.dropoffAddress, formData.passengers, formData.serviceType, formData.bookReturn, formData.vipAirportPickup, formData.oversizedLuggage]);
 
   const calculatePrice = async () => {
     setPricing(prev => ({ ...prev, calculating: true }));
