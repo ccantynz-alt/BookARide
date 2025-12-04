@@ -1,6 +1,7 @@
 import React from 'react';
 import { Shield, Users, Clock, Award, Target, Heart } from 'lucide-react';
 import { Card, CardContent } from '../components/ui/card';
+import SEO from '../components/SEO';
 
 export const About = () => {
   return (
