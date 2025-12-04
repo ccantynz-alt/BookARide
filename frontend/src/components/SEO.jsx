@@ -10,8 +10,8 @@ export const SEO = ({
   ogType = 'website'
 }) => {
   const siteName = "Book A Ride NZ";
-  const defaultDescription = "Professional shuttle and transfer services in Auckland, Hamilton & Whangarei. Airport transfers, cruise ship pickups, Hobbiton tours. Book your ride today!";
-  const defaultKeywords = "Auckland airport shuttle, Hamilton shuttle service, cruise transfer Auckland, Hobbiton transfers, airport pickup Auckland, private shuttle NZ, Book A Ride";
+  const defaultDescription = "Professional airport shuttle service in New Zealand. Reliable airport transfers for Auckland, Hamilton, and Whangarei airports. Book your private shuttle, cruise transfers, and Hobbiton tours today. 24/7 available, safe & insured.";
+  const defaultKeywords = "airport, airport shuttle, airport shuttle service, shuttle service, Auckland shuttles, Auckland airport shuttle, Hamilton airport shuttle, Whangarei airport transfer, airport transfer, airport transportation, private shuttle, shuttle service Auckland, New Zealand shuttle, NZ airport shuttle, Hobbiton transfers, cruise transfers, cruise ship shuttle, bookaride, book a ride, airport pickup, airport drop off, reliable shuttle, professional shuttle service";
   const siteUrl = "https://bookaride.co.nz";
   const defaultImage = `${siteUrl}/logo.png`;
 
