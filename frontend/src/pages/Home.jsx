@@ -23,6 +23,7 @@ export const Home = () => {
         keywords="airport, airport shuttle, airport shuttle service, shuttle service, Auckland shuttles, Auckland airport shuttle, Hamilton airport shuttle, Whangarei airport transfer, airport transfer, airport transportation, private shuttle, shuttle service Auckland, New Zealand shuttle, airport pickup, airport drop off, reliable shuttle"
         canonical="/"
       />
+      <StructuredData />
       {/* Hero Section */}
       <section className="relative pt-32 pb-24 md:pt-40 md:pb-32 overflow-hidden bg-gradient-to-br from-gray-900 via-black to-gray-900">
         {/* Background Vehicle Image - Subtle */}
