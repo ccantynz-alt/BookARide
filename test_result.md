@@ -184,7 +184,7 @@ metadata:
 
 test_plan:
   current_focus: []
-  stuck_tasks: []
+  stuck_tasks: ["SEO Implementation Testing"]
   test_all: false
   test_priority: "high_first"
 
