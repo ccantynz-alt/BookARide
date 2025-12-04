@@ -127,11 +127,13 @@ class PriceCalculationRequest(BaseModel):
     dropoffAddress: str
     passengers: int
     vipAirportPickup: bool = False
+    oversizedLuggage: bool = False
 
 class PricingBreakdown(BaseModel):
     distance: float
     basePrice: float
     airportFee: float
+    oversizedLuggageFee: float
     passengerFee: float
     totalPrice: float
 
