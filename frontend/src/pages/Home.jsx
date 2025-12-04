@@ -133,9 +133,9 @@ export const Home = () => {
       <section className="py-20 bg-gradient-to-br from-gray-50 to-white">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">Why Choose BookaRide?</h2>
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">Why Choose Us?</h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Experience the difference with our modern, technology-driven service
+              Best value airport shuttles with modern convenience
             </p>
           </div>
 
