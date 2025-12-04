@@ -541,7 +541,80 @@ def send_via_mailgun(booking: dict):
             return False
         
     except Exception as e:
-        logger.error(f"Error sending confirmation email: {str(e)}")
+        logger.error(f"Mailgun error: {str(e)}")
+        return False
+
+
+def send_via_smtp(booking: dict):
+    """Fallback: Send via Gmail SMTP"""
+    try:
+        smtp_user = os.environ.get('SMTP_USER')
+        smtp_pass = os.environ.get('SMTP_PASS')
+        sender_email = os.environ.get('SENDER_EMAIL', 'noreply@bookaride.co.nz')
+        
+        if not smtp_user or not smtp_pass:
+            logger.warning("SMTP credentials not configured")
+            return False
+        
+        # Create email content
+        subject = f"Booking Confirmation - {booking.get('id', '')[:8]}"
+        recipient_email = booking.get('email')
+        
+        html_content = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <div style="background-color: #1a1a1a; color: #D4AF37; padding: 20px; text-align: center;">
+                    <h1>BookaRide.co.nz</h1>
+                </div>
+                <div style="padding: 20px; background-color: #f5f5f5;">
+                    <h2 style="color: #1a1a1a;">Booking Confirmed!</h2>
+                    <p>Dear {booking.get('name', 'Customer')},</p>
+                    <p>Your ride has been confirmed. Here are your booking details:</p>
+                    
+                    <div style="background-color: white; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                        <p><strong>Booking Reference:</strong> {booking.get('id', '')[:8].upper()}</p>
+                        <p><strong>Service Type:</strong> {booking.get('serviceType', 'N/A').replace('-', ' ').title()}</p>
+                        <p><strong>Pickup:</strong> {booking.get('pickupAddress', 'N/A')}</p>
+                        <p><strong>Drop-off:</strong> {booking.get('dropoffAddress', 'N/A')}</p>
+                        <p><strong>Date:</strong> {booking.get('date', 'N/A')}</p>
+                        <p><strong>Time:</strong> {booking.get('time', 'N/A')}</p>
+                        <p><strong>Passengers:</strong> {booking.get('passengers', 'N/A')}</p>
+                        <p><strong>Total Paid:</strong> ${booking.get('totalPrice', 0):.2f} NZD</p>
+                    </div>
+                    
+                    <p>We'll be in touch closer to your pickup time to confirm all details.</p>
+                    <p>If you have any questions, please contact us at {sender_email} or call +64 21 743 321.</p>
+                    
+                    <p style="margin-top: 30px;">Thank you for choosing BookaRide!</p>
+                </div>
+                <div style="background-color: #1a1a1a; color: #D4AF37; padding: 15px; text-align: center; font-size: 12px;">
+                    <p>BookaRide NZ | bookaride.co.nz | +64 21 743 321</p>
+                </div>
+            </body>
+        </html>
+        """
+        
+        # Create message
+        message = MIMEMultipart('alternative')
+        message['Subject'] = subject
+        message['From'] = sender_email
+        message['To'] = recipient_email
+        
+        # Attach HTML
+        html_part = MIMEText(html_content, 'html')
+        message.attach(html_part)
+        
+        # Send via SMTP
+        with smtplib.SMTP('smtp.gmail.com', 587) as server:
+            server.starttls()
+            server.login(smtp_user, smtp_pass)
+            server.send_message(message)
+        
+        logger.info(f"Confirmation email sent to {recipient_email} via SMTP")
+        return True
+        
+    except Exception as e:
+        logger.error(f"SMTP error: {str(e)}")
         import traceback
         logger.error(traceback.format_exc())
         return False
