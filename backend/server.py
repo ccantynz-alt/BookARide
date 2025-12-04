@@ -13,11 +13,7 @@ from datetime import datetime, timezone, timedelta
 import requests
 from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionResponse, CheckoutStatusResponse, CheckoutSessionRequest
 from twilio.rest import Client
-from googleapiclient.discovery import build
-from google.oauth2 import service_account
-import base64
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import requests
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 from google.oauth2.credentials import Credentials
