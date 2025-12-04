@@ -5,11 +5,11 @@ const StructuredData = () => {
   const organizationSchema = {
     "@context": "https://schema.org",
     "@type": "LocalBusiness",
-    "name": "Book A Ride NZ",
-    "image": "https://bookaride.co.nz/logo.png",
-    "url": "https://bookaride.co.nz",
-    "telephone": "+64-21-123-4567",
-    "email": "info@bookaride.co.nz",
+    "name": "Airport Shuttle Service NZ",
+    "image": "https://airportshuttleservice.co.nz/logo.png",
+    "url": "https://airportshuttleservice.co.nz",
+    "telephone": "+64-21-743-321",
+    "email": "info@airportshuttleservice.co.nz",
     "address": {
       "@type": "PostalAddress",
       "streetAddress": "Auckland",
