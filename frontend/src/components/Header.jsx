@@ -23,24 +23,15 @@ export const Header = () => {
       <nav className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-3 group relative">
-            <div className="absolute -inset-2 bg-gold/20 rounded-lg blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+          <Link to="/" className="flex items-center space-x-3 group">
             <img 
               src="/logo.png" 
               alt="Book A Ride NZ" 
-              className="h-16 w-auto transform group-hover:scale-110 transition-all duration-300 relative z-10"
+              className="h-16 w-auto transform group-hover:scale-105 transition-transform duration-200"
               style={{ 
-                filter: 'brightness(1.2) contrast(1.15) drop-shadow(0 0 8px rgba(212, 175, 55, 0.4))',
+                filter: 'brightness(1.3) contrast(1.15) drop-shadow(0 2px 8px rgba(212, 175, 55, 0.3))',
               }}
             />
-            <div className="hidden lg:block relative z-10">
-              <div className="text-xl font-bold text-white group-hover:text-gold transition-colors duration-300" style={{ textShadow: '0 0 10px rgba(212, 175, 55, 0.3)' }}>
-                BookaRide
-              </div>
-              <div className="text-xs text-gold/80 font-medium tracking-wide">
-                Premium Airport Shuttles
-              </div>
-            </div>
           </Link>
 
           {/* Desktop Navigation */}
