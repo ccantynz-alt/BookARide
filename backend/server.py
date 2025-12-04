@@ -415,25 +415,15 @@ async def send_booking_email(email_data: dict, current_admin: dict = Depends(get
 # Email and SMS Notification Services
 
 def send_booking_confirmation_email(booking: dict):
-    """Send booking confirmation email via Gmail API"""
+    """Send booking confirmation email via Mailgun"""
     try:
-        service_account_file = os.environ.get('GOOGLE_SERVICE_ACCOUNT_FILE')
+        mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
+        mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
         sender_email = os.environ.get('SENDER_EMAIL', 'noreply@bookaride.co.nz')
         
-        if not service_account_file:
-            logger.warning("Google service account credentials not configured")
+        if not mailgun_api_key or not mailgun_domain:
+            logger.warning("Mailgun credentials not configured")
             return False
-        
-        # Create credentials with domain-wide delegation
-        SCOPES = ['https://www.googleapis.com/auth/gmail.send']
-        credentials = service_account.Credentials.from_service_account_file(
-            service_account_file,
-            scopes=SCOPES,
-            subject=sender_email  # Impersonate this email address
-        )
-        
-        # Build Gmail API service
-        service = build('gmail', 'v1', credentials=credentials)
         
         # Create email content
         subject = f"Booking Confirmation - {booking.get('id', '')[:8]}"
@@ -473,27 +463,24 @@ def send_booking_confirmation_email(booking: dict):
         </html>
         """
         
-        # Create message
-        message = MIMEMultipart('alternative')
-        message['Subject'] = subject
-        message['From'] = sender_email
-        message['To'] = recipient_email
+        # Send email via Mailgun API
+        response = requests.post(
+            f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
+            auth=("api", mailgun_api_key),
+            data={
+                "from": f"BookaRide <{sender_email}>",
+                "to": recipient_email,
+                "subject": subject,
+                "html": html_content
+            }
+        )
         
-        # Attach HTML content
-        html_part = MIMEText(html_content, 'html')
-        message.attach(html_part)
-        
-        # Encode message
-        raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode('utf-8')
-        
-        # Send email via Gmail API
-        send_message = service.users().messages().send(
-            userId='me',
-            body={'raw': raw_message}
-        ).execute()
-        
-        logger.info(f"Confirmation email sent to {recipient_email} via Gmail API - Message ID: {send_message['id']}")
-        return True
+        if response.status_code == 200:
+            logger.info(f"Confirmation email sent to {recipient_email} via Mailgun")
+            return True
+        else:
+            logger.error(f"Mailgun error: {response.status_code} - {response.text}")
+            return False
         
     except Exception as e:
         logger.error(f"Error sending confirmation email: {str(e)}")
