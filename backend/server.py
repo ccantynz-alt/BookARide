@@ -419,17 +419,25 @@ async def send_booking_email(email_data: dict, current_admin: dict = Depends(get
 # Email and SMS Notification Services
 
 def send_booking_confirmation_email(booking: dict):
-    """Send booking confirmation email via Google Workspace SMTP"""
+    """Send booking confirmation email via Gmail API"""
     try:
-        smtp_server = os.environ.get('SMTP_SERVER', 'smtp.gmail.com')
-        smtp_port = int(os.environ.get('SMTP_PORT', '587'))
-        smtp_username = os.environ.get('SMTP_USERNAME')
-        smtp_password = os.environ.get('SMTP_PASSWORD')
-        sender_email = os.environ.get('SENDER_EMAIL')
+        service_account_file = os.environ.get('GOOGLE_SERVICE_ACCOUNT_FILE')
+        sender_email = os.environ.get('SENDER_EMAIL', 'noreply@bookaride.co.nz')
         
-        if not smtp_username or not smtp_password or not sender_email:
-            logger.warning("SMTP credentials not configured")
+        if not service_account_file:
+            logger.warning("Google service account credentials not configured")
             return False
+        
+        # Create credentials with domain-wide delegation
+        SCOPES = ['https://www.googleapis.com/auth/gmail.send']
+        credentials = service_account.Credentials.from_service_account_file(
+            service_account_file,
+            scopes=SCOPES,
+            subject=sender_email  # Impersonate this email address
+        )
+        
+        # Build Gmail API service
+        service = build('gmail', 'v1', credentials=credentials)
         
         # Create email content
         subject = f"Booking Confirmation - {booking.get('id', '')[:8]}"
@@ -439,7 +447,7 @@ def send_booking_confirmation_email(booking: dict):
         <html>
             <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                 <div style="background-color: #1a1a1a; color: #D4AF37; padding: 20px; text-align: center;">
-                    <h1>Airport Shuttle Service NZ</h1>
+                    <h1>BookaRide.co.nz</h1>
                 </div>
                 <div style="padding: 20px; background-color: #f5f5f5;">
                     <h2 style="color: #1a1a1a;">Booking Confirmed!</h2>
@@ -460,10 +468,10 @@ def send_booking_confirmation_email(booking: dict):
                     <p>We'll be in touch closer to your pickup time to confirm all details.</p>
                     <p>If you have any questions, please contact us at {sender_email} or call +64 21 743 321.</p>
                     
-                    <p style="margin-top: 30px;">Thank you for choosing Airport Shuttle Service NZ!</p>
+                    <p style="margin-top: 30px;">Thank you for choosing BookaRide!</p>
                 </div>
                 <div style="background-color: #1a1a1a; color: #D4AF37; padding: 15px; text-align: center; font-size: 12px;">
-                    <p>Airport Shuttle Service NZ | airportshuttleservice.co.nz</p>
+                    <p>BookaRide NZ | bookaride.co.nz | +64 21 743 321</p>
                 </div>
             </body>
         </html>
@@ -479,17 +487,22 @@ def send_booking_confirmation_email(booking: dict):
         html_part = MIMEText(html_content, 'html')
         message.attach(html_part)
         
-        # Send email via SMTP
-        with smtplib.SMTP(smtp_server, smtp_port) as server:
-            server.starttls()
-            server.login(smtp_username, smtp_password)
-            server.send_message(message)
+        # Encode message
+        raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode('utf-8')
         
-        logger.info(f"Confirmation email sent to {recipient_email} via Google Workspace")
+        # Send email via Gmail API
+        send_message = service.users().messages().send(
+            userId='me',
+            body={'raw': raw_message}
+        ).execute()
+        
+        logger.info(f"Confirmation email sent to {recipient_email} via Gmail API - Message ID: {send_message['id']}")
         return True
         
     except Exception as e:
         logger.error(f"Error sending confirmation email: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
         return False
 
 
