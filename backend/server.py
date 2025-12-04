@@ -316,12 +316,15 @@ async def calculate_price(request: PriceCalculationRequest):
         # VIP Airport Pickup fee: Optional $15 extra service
         airport_fee = 15.0 if request.vipAirportPickup else 0.0
         
+        # Oversized Luggage fee: Optional $25 for skis, bikes, surfboards, etc.
+        oversized_luggage_fee = 25.0 if request.oversizedLuggage else 0.0
+        
         # Passenger fee: 1st passenger included, $5 per additional
         extra_passengers = max(0, request.passengers - 1)
         passenger_fee = extra_passengers * 5.0
         
         # Total price
-        total_price = base_price + airport_fee + passenger_fee
+        total_price = base_price + airport_fee + oversized_luggage_fee + passenger_fee
         
         # Apply minimum fee of $100
         if total_price < 100.0:
@@ -331,6 +334,7 @@ async def calculate_price(request: PriceCalculationRequest):
             distance=distance_km,
             basePrice=round(base_price, 2),
             airportFee=round(airport_fee, 2),
+            oversizedLuggageFee=round(oversized_luggage_fee, 2),
             passengerFee=round(passenger_fee, 2),
             totalPrice=round(total_price, 2)
         )
