@@ -203,10 +203,15 @@ export const AdminDashboard = () => {
               <h1 className="text-4xl font-bold mb-2">Admin Dashboard</h1>
               <p className="text-white/70">Manage bookings and customer communications</p>
             </div>
-            <Button onClick={handleLogout} variant="outline" className="border-gold text-gold hover:bg-gold hover:text-black">
-              <LogOut className="w-4 h-4 mr-2" />
-              Logout
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={() => setShowPasswordModal(true)} variant="outline" className="border-gold text-gold hover:bg-gold hover:text-black">
+                Change Password
+              </Button>
+              <Button onClick={handleLogout} variant="outline" className="border-gold text-gold hover:bg-gold hover:text-black">
+                <LogOut className="w-4 h-4 mr-2" />
+                Logout
+              </Button>
+            </div>
           </div>
         </div>
       </div>
