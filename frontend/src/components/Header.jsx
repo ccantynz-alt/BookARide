@@ -33,6 +33,14 @@ export const Header = () => {
                 filter: 'brightness(1.2) contrast(1.15) drop-shadow(0 0 8px rgba(212, 175, 55, 0.4))',
               }}
             />
+            <div className="hidden lg:block relative z-10">
+              <div className="text-xl font-bold text-white group-hover:text-gold transition-colors duration-300" style={{ textShadow: '0 0 10px rgba(212, 175, 55, 0.3)' }}>
+                BookaRide
+              </div>
+              <div className="text-xs text-gold/80 font-medium tracking-wide">
+                Premium Airport Shuttles
+              </div>
+            </div>
           </Link>
 
           {/* Desktop Navigation */}
