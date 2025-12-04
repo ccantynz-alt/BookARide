@@ -102,7 +102,7 @@
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
 
-user_problem_statement: "Test the return trip booking functionality on the booking form at /book-now page"
+user_problem_statement: "Test comprehensive SEO implementation across all pages of BookaRide.co.nz website - verify title tags, meta descriptions, Open Graph tags, Twitter cards, canonical URLs, geo tags, robots.txt and sitemap.xml"
 
 frontend:
   - task: "Google Places Autocomplete Integration"
