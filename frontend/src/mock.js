@@ -106,10 +106,10 @@ export const fleet = [
 ];
 
 export const companyInfo = {
-  name: "Book A Ride NZ",
-  tagline: "Airport Shuttles & Private Transfers Across New Zealand",
+  name: "Airport Shuttle Service NZ",
+  tagline: "Reliable Airport Shuttles - Best Value in Auckland",
   phone: "+64 21 743 321",
-  email: "info@bookaride.co.nz",
+  email: "info@airportshuttleservice.co.nz",
   address: "Auckland, New Zealand",
   operatingHours: "24/7",
   serviceAreas: ["Auckland", "Hamilton", "Whangarei"],
