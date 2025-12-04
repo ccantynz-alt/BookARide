@@ -285,7 +285,13 @@ async def change_password(
 # Add your routes to the router instead of directly to app
 @api_router.get("/")
 async def root():
-    return {"message": "Hello World"}
+    return {"message": "Welcome to Book A Ride NZ API"}
+
+
+@api_router.get("/health")
+async def health_check():
+    """Health check endpoint for Kubernetes"""
+    return {"status": "healthy", "service": "bookaride-api"}
 
 @api_router.post("/status", response_model=StatusCheck)
 async def create_status_check(input: StatusCheckCreate):
