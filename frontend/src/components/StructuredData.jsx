@@ -37,7 +37,7 @@ const StructuredData = () => {
       "closes": "23:59"
     },
     "priceRange": "$$",
-    "description": "Professional airport shuttle service in New Zealand. Reliable airport transfers for Auckland, Hamilton, and Whangarei airports.",
+    "description": "Affordable airport shuttle service in Auckland. Best value airport transfers for Auckland, Hamilton, and Whangarei airports. Reliable, safe, and budget-friendly.",
     "areaServed": [
       {
         "@type": "City",
