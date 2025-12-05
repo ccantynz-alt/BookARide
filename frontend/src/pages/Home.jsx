@@ -109,18 +109,30 @@ export const Home = () => {
         <div className="container mx-auto px-4 mt-20 relative z-10">
           <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8">
             {[
-              { icon: Users, value: '1,000+', label: 'Happy Customers' },
-              { icon: Clock, value: '60s', label: 'Book in Seconds' },
-              { icon: Shield, value: '100%', label: 'Safe & Insured' },
-              { icon: Award, value: '4.9★', label: 'Customer Rating' }
+              { icon: Users, value: 1000, suffix: '+', label: 'Happy Customers' },
+              { icon: Clock, value: 60, suffix: 's', label: 'Book in Seconds' },
+              { icon: Shield, value: 100, suffix: '%', label: 'Safe & Insured' },
+              { icon: Award, value: 4.9, suffix: '★', label: 'Customer Rating', decimals: 1 }
             ].map((stat, index) => {
               const Icon = stat.icon;
               return (
-                <div key={index} className="text-center p-6 bg-white/5 backdrop-blur-sm rounded-xl border border-gold/20 hover:bg-white/10 transition-all duration-200">
-                  <Icon className="w-8 h-8 text-gold mx-auto mb-3" />
-                  <div className="text-3xl font-bold text-gold mb-1">{stat.value}</div>
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.7 + index * 0.1, duration: 0.5 }}
+                  className="text-center p-6 glass-dark rounded-xl border border-gold/30 hover-lift hover-glow"
+                >
+                  <Icon className="w-8 h-8 text-gold mx-auto mb-3 animate-float" />
+                  <div className="text-3xl font-bold text-gold mb-1">
+                    <AnimatedCounter 
+                      end={stat.value} 
+                      suffix={stat.suffix}
+                      decimals={stat.decimals || 0}
+                    />
+                  </div>
                   <div className="text-sm text-white/70">{stat.label}</div>
-                </div>
+                </motion.div>
               );
             })}
           </div>
