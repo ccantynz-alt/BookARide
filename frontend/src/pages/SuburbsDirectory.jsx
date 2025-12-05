@@ -49,11 +49,11 @@ export const SuburbsDirectory = () => {
           <div className="max-w-4xl mx-auto text-center">
             <MapPin className="w-16 h-16 mx-auto text-gold mb-4" />
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6">
-              Auckland Suburbs
-              <span className="block text-gold mt-2">Airport Shuttle Service</span>
+              Auckland Airport Shuttle Service
+              <span className="block text-gold mt-2">Auckland • Hamilton • Whangarei</span>
             </h1>
             <p className="text-xl text-gray-300 mb-8">
-              We service all Auckland suburbs with reliable airport transfers
+              Professional airport transfers from 44+ locations to Auckland Airport
             </p>
 
             {/* Search Bar */}
