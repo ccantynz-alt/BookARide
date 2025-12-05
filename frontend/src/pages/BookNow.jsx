@@ -149,10 +149,40 @@ export const BookNow = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Enhanced validation with helpful messages
+    if (!formData.serviceType) {
+      toast.error('Please select a service type');
+      return;
+    }
+    
+    if (!formData.pickupAddress || !formData.dropoffAddress) {
+      toast.error('Please enter both pickup and drop-off addresses');
+      return;
+    }
+    
+    if (!formData.date || !formData.time) {
+      toast.error('Please select pickup date and time');
+      return;
+    }
+    
+    if (!formData.name || !formData.email || !formData.phone) {
+      toast.error('Please fill in all contact information');
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+
     if (pricing.totalPrice === 0) {
       toast.error('Please wait for price calculation to complete');
       return;
     }
+
+    setIsProcessingPayment(true);
 
     try {
       const bookingData = {
@@ -178,11 +208,13 @@ export const BookNow = () => {
       if (checkoutResponse.data.url) {
         window.location.href = checkoutResponse.data.url;
       } else {
+        setIsProcessingPayment(false);
         toast.error('Unable to redirect to payment page');
       }
 
     } catch (error) {
       console.error('Error submitting booking:', error);
+      setIsProcessingPayment(false);
       toast.error('Failed to submit booking. Please try again.');
     }
   };
