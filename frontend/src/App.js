@@ -44,6 +44,7 @@ function App() {
                   <Route path="/book-now" element={<BookNow />} />
                   <Route path="/hobbiton-transfers" element={<HobbitonTransfers />} />
                   <Route path="/cruise-transfers" element={<CruiseTransfers />} />
+                  <Route path="/suburbs/:slug" element={<SuburbPage />} />
                   <Route path="/payment-success" element={<PaymentSuccess />} />
                   <Route path="/admin/login" element={<AdminLogin />} />
                   <Route path="/admin/dashboard" element={<AdminDashboard />} />
