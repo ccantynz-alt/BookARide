@@ -155,9 +155,9 @@ export const Home = () => {
                 ⚡ Instant Online Booking Available
               </span>
             </div>
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4" data-aos="fade-up">Our Services</h2>
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4" data-aos="fade-up">{t('services.title')}</h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto" data-aos="fade-up" data-aos-delay="100">
-              Whatever your transportation needs, we've got you covered
+              {t('services.description')}
             </p>
           </AnimatedSection>
 
