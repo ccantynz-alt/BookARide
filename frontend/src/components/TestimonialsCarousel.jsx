@@ -114,30 +114,31 @@ export const TestimonialsCarousel = () => {
           </p>
         </AnimatedSection>
 
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-6xl mx-auto px-4 md:px-0">
           <Slider {...settings}>
             {testimonials.map((testimonial, index) => (
-              <div key={index} className="px-4">
-                <Card className="glass-dark border-gold/20 hover-lift h-full">
-                  <CardContent className="p-8">
-                    <Quote className="w-10 h-10 text-gold mb-4 opacity-50" />
-                    <div className="flex mb-4">
+              <div key={index} className="px-2 md:px-4 py-4">
+                <Card className="bg-white/10 backdrop-blur-md border border-gold/20 hover:border-gold/40 transition-all duration-300 hover:shadow-xl hover:shadow-gold/20 h-full min-h-[300px] flex flex-col">
+                  <CardContent className="p-6 md:p-8 flex flex-col h-full">
+                    <Quote className="w-8 h-8 md:w-10 md:h-10 text-gold mb-4 opacity-50 flex-shrink-0" />
+                    <div className="flex mb-4 flex-shrink-0">
                       {[...Array(testimonial.rating)].map((_, i) => (
                         <Star key={i} className="w-4 h-4 text-gold fill-gold" />
                       ))}
                     </div>
-                    <p className="text-white/80 mb-6 leading-relaxed italic">
+                    <p className="text-white/90 mb-6 leading-relaxed italic text-sm md:text-base flex-grow">
                       "{testimonial.text}"
                     </p>
-                    <div className="flex items-center">
+                    <div className="flex items-center mt-auto flex-shrink-0">
                       <img
                         src={testimonial.avatar}
                         alt={testimonial.name}
-                        className="w-12 h-12 rounded-full mr-4 border-2 border-gold/30"
+                        className="w-12 h-12 rounded-full mr-4 border-2 border-gold/30 object-cover"
+                        loading="lazy"
                       />
                       <div>
-                        <p className="font-semibold text-white">{testimonial.name}</p>
-                        <p className="text-sm text-white/60">{testimonial.role}</p>
+                        <p className="font-semibold text-white text-sm md:text-base">{testimonial.name}</p>
+                        <p className="text-xs md:text-sm text-white/60">{testimonial.role}</p>
                       </div>
                     </div>
                   </CardContent>
