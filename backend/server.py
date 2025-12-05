@@ -1971,6 +1971,27 @@ async def generate_sitemap():
         {"path": "/suburbs/onehunga", "priority": "0.8", "changefreq": "weekly"},
         {"path": "/suburbs/mt-wellington", "priority": "0.8", "changefreq": "weekly"},
         {"path": "/suburbs/panmure", "priority": "0.8", "changefreq": "weekly"},
+        
+        # Hamilton & Waikato - 8 areas
+        {"path": "/suburbs/hamilton-cbd", "priority": "0.9", "changefreq": "weekly"},
+        {"path": "/suburbs/frankton-hamilton", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/suburbs/hillcrest-hamilton", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/suburbs/rototuna-hamilton", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/suburbs/hamilton-east", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/suburbs/chartwell-hamilton", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/suburbs/cambridge", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/suburbs/te-awamutu", "priority": "0.7", "changefreq": "weekly"},
+        
+        # Whangarei & Northland - 9 areas
+        {"path": "/suburbs/whangarei-cbd", "priority": "0.9", "changefreq": "weekly"},
+        {"path": "/suburbs/onerahi-whangarei", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/suburbs/kensington-whangarei", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/suburbs/tikipunga-whangarei", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/suburbs/regent-whangarei", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/suburbs/whangarei-heads", "priority": "0.7", "changefreq": "weekly"},
+        {"path": "/suburbs/ruakaka", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/suburbs/waipu", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/suburbs/mangawhai", "priority": "0.8", "changefreq": "weekly"},
     ]
     
     # Create XML structure
