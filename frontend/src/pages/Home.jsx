@@ -38,15 +38,23 @@ export const Home = () => {
       />
       <StructuredData />
       {/* Hero Section */}
-      <section className="relative pt-32 pb-24 md:pt-40 md:pb-32 overflow-hidden bg-gradient-to-br from-gray-900 via-black to-gray-900">
-        {/* Background Vehicle Image - Subtle */}
-        <div className="absolute inset-0 opacity-15">
+      <section className="relative pt-32 pb-24 md:pt-40 md:pb-32 overflow-hidden gradient-animated">
+        {/* Animated Background */}
+        <div className="absolute inset-0 opacity-20">
           <img 
             src="/shuttle-van.jpg" 
             alt="" 
-            className="w-full h-full object-cover object-right"
+            className="w-full h-full object-cover object-right animate-float"
             style={{ filter: 'brightness(0.4) blur(1px)' }}
           />
+        </div>
+        
+        {/* Floating Particles */}
+        <div className="absolute inset-0 opacity-20">
+          <div className="absolute top-20 left-10 w-2 h-2 bg-gold rounded-full animate-float" style={{ animationDelay: '0s', animationDuration: '4s' }} />
+          <div className="absolute top-40 right-20 w-3 h-3 bg-gold/60 rounded-full animate-float" style={{ animationDelay: '1s', animationDuration: '5s' }} />
+          <div className="absolute bottom-32 left-1/4 w-2 h-2 bg-gold/40 rounded-full animate-float" style={{ animationDelay: '2s', animationDuration: '6s' }} />
+          <div className="absolute top-1/2 right-1/3 w-2 h-2 bg-gold/50 rounded-full animate-float" style={{ animationDelay: '1.5s', animationDuration: '4.5s' }} />
         </div>
         
         <div className="absolute inset-0 opacity-10">
@@ -55,11 +63,24 @@ export const Home = () => {
         
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-5xl mx-auto text-center">
-            <h1 className="text-5xl md:text-7xl font-bold text-white mb-8 leading-tight">
-              Affordable Airport Shuttles
-              <span className="block mt-2 text-gold">Best Value in Auckland</span>
-            </h1>
-            <p className="text-xl md:text-2xl text-white/80 mb-12 max-w-3xl mx-auto leading-relaxed">
+            <FadeIn>
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.6 }}
+              >
+                <h1 className="text-5xl md:text-7xl font-bold text-white mb-8 leading-tight">
+                  Affordable Airport Shuttles
+                  <span className="block mt-2 gradient-text text-6xl md:text-8xl">Best Value in Auckland</span>
+                </h1>
+              </motion.div>
+            </FadeIn>
+            <motion.p 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3, duration: 0.6 }}
+              className="text-xl md:text-2xl text-white/80 mb-12 max-w-3xl mx-auto leading-relaxed"
+            >
               Reliable airport transfers at unbeatable prices. Instant online booking, transparent pricing, and professional service - all in 60 seconds.
             </p>
             <div className="flex flex-col sm:flex-row gap-6 justify-center">
