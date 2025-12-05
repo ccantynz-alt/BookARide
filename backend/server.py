@@ -467,6 +467,118 @@ async def send_booking_email(email_data: dict, current_admin: dict = Depends(get
 
 # Email and SMS Notification Services
 
+# Email translations
+EMAIL_TRANSLATIONS = {
+    'en': {
+        'subject': 'Booking Confirmation',
+        'confirmed': 'Booking Confirmed!',
+        'greeting': 'Dear',
+        'intro': 'Your ride has been confirmed. Here are your booking details:',
+        'reference': 'Booking Reference',
+        'service': 'Service Type',
+        'pickup': 'Pickup',
+        'dropoff': 'Drop-off',
+        'date': 'Date',
+        'time': 'Time',
+        'passengers': 'Passengers',
+        'total': 'Total Paid',
+        'contact_intro': 'We\'ll be in touch closer to your pickup time to confirm all details.',
+        'contact': 'If you have any questions, please contact us at',
+        'or_call': 'or call',
+        'thanks': 'Thank you for choosing BookaRide!'
+    },
+    'zh': {
+        'subject': '预订确认',
+        'confirmed': '预订已确认！',
+        'greeting': '尊敬的',
+        'intro': '您的行程已确认。以下是您的预订详情：',
+        'reference': '预订编号',
+        'service': '服务类型',
+        'pickup': '上车地点',
+        'dropoff': '下车地点',
+        'date': '日期',
+        'time': '时间',
+        'passengers': '乘客人数',
+        'total': '总费用',
+        'contact_intro': '我们会在接送时间前联系您确认所有细节。',
+        'contact': '如有任何问题，请联系我们',
+        'or_call': '或致电',
+        'thanks': '感谢您选择BookaRide！'
+    },
+    'ja': {
+        'subject': '予約確認',
+        'confirmed': 'ご予約が確定しました！',
+        'greeting': '様',
+        'intro': 'ご予約が確定しました。予約詳細は以下の通りです：',
+        'reference': '予約番号',
+        'service': 'サービスタイプ',
+        'pickup': '乗車場所',
+        'dropoff': '降車場所',
+        'date': '日付',
+        'time': '時間',
+        'passengers': '乗客数',
+        'total': '合計金額',
+        'contact_intro': '乗車時間が近づきましたら、詳細確認のためご連絡いたします。',
+        'contact': 'ご質問がございましたら、お問い合わせください',
+        'or_call': 'またはお電話ください',
+        'thanks': 'BookaRideをご利用いただきありがとうございます！'
+    },
+    'ko': {
+        'subject': '예약 확인',
+        'confirmed': '예약이 확정되었습니다!',
+        'greeting': '고객님께',
+        'intro': '예약이 확정되었습니다. 예약 상세 정보는 다음과 같습니다:',
+        'reference': '예약 번호',
+        'service': '서비스 유형',
+        'pickup': '탑승 위치',
+        'dropoff': '하차 위치',
+        'date': '날짜',
+        'time': '시간',
+        'passengers': '승객 수',
+        'total': '총 결제 금액',
+        'contact_intro': '탑승 시간이 가까워지면 모든 세부 사항을 확인하기 위해 연락드리겠습니다.',
+        'contact': '문의사항이 있으시면 연락주세요',
+        'or_call': '또는 전화주세요',
+        'thanks': 'BookaRide를 이용해 주셔서 감사합니다!'
+    },
+    'fr': {
+        'subject': 'Confirmation de Réservation',
+        'confirmed': 'Réservation Confirmée!',
+        'greeting': 'Cher',
+        'intro': 'Votre trajet a été confirmé. Voici les détails de votre réservation:',
+        'reference': 'Référence de Réservation',
+        'service': 'Type de Service',
+        'pickup': 'Lieu de Prise en Charge',
+        'dropoff': 'Lieu de Dépose',
+        'date': 'Date',
+        'time': 'Heure',
+        'passengers': 'Passagers',
+        'total': 'Total Payé',
+        'contact_intro': 'Nous vous contacterons avant votre heure de prise en charge pour confirmer tous les détails.',
+        'contact': 'Pour toute question, veuillez nous contacter à',
+        'or_call': 'ou appelez',
+        'thanks': 'Merci d\'avoir choisi BookaRide!'
+    },
+    'hi': {
+        'subject': 'बुकिंग पुष्टि',
+        'confirmed': 'बुकिंग की पुष्टि हो गई!',
+        'greeting': 'प्रिय',
+        'intro': 'आपकी राइड की पुष्टि हो गई है। यहां आपकी बुकिंग विवरण हैं:',
+        'reference': 'बुकिंग संदर्भ',
+        'service': 'सेवा प्रकार',
+        'pickup': 'पिकअप',
+        'dropoff': 'ड्रॉप-ऑफ',
+        'date': 'तारीख',
+        'time': 'समय',
+        'passengers': 'यात्री',
+        'total': 'कुल भुगतान',
+        'contact_intro': 'हम आपके पिकअप समय से पहले सभी विवरणों की पुष्टि के लिए संपर्क करेंगे।',
+        'contact': 'यदि आपके कोई प्रश्न हैं, तो कृपया हमसे संपर्क करें',
+        'or_call': 'या कॉल करें',
+        'thanks': 'BookaRide चुनने के लिए धन्यवाद!'
+    }
+}
+
 def send_booking_confirmation_email(booking: dict):
     """Send booking confirmation email via Mailgun or SMTP fallback"""
     # Try Mailgun first
