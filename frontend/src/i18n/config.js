@@ -326,6 +326,27 @@ const resources = {
         services: 'सेवाएं',
         legal: 'कानूनी',
         rights: 'सर्वाधिकार सुरक्षित।'
+      },
+      email: {
+        subject: 'बुकिंग पुष्टि',
+        greeting: 'प्रिय',
+        confirmed: 'आपकी राइड की पुष्टि हो गई है!',
+        details: 'बुकिंग विवरण',
+        reference: 'बुकिंग संदर्भ',
+        service: 'सेवा प्रकार',
+        pickup: 'पिकअप',
+        dropoff: 'ड्रॉप-ऑफ',
+        date: 'तारीख',
+        time: 'समय',
+        passengers: 'यात्री',
+        totalPaid: 'कुल भुगतान',
+        contact: 'यदि आपके कोई प्रश्न हैं, तो कृपया हमसे संपर्क करें',
+        thanks: 'BookaRide चुनने के लिए धन्यवाद!',
+        footer: 'BookaRide न्यूजीलैंड'
+      },
+      sms: {
+        confirmed: 'BookaRide: आपकी राइड की पुष्टि हो गई!',
+        details: 'संदर्भ: {{ref}}, {{date}} {{time}}। पिकअप: {{pickup}}। कुल: ${{price}}। धन्यवाद!'
       }
     }
   }
