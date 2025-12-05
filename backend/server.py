@@ -1419,14 +1419,6 @@ async def get_driver_schedule(driver_id: str, date: Optional[str] = None):
         logger.error(f"Error getting driver schedule: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-
-            {"id": {"$in": booking_ids}},
-            {"$set": {"status": new_status}}
-        )
-        return {"message": "Status updated", "count": result.modified_count}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
 @api_router.delete("/bookings/bulk-delete")
 async def bulk_delete(booking_ids: List[str]):
     """Delete multiple bookings"""
