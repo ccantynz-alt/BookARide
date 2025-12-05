@@ -96,9 +96,9 @@ export const Contact = () => {
                       </div>
                       <div>
                         <div className="text-sm font-semibold text-gray-900 mb-2">Phone</div>
-                        <a href={`tel:${companyInfo.phone}`} className="text-sm text-gray-600 hover:text-gold transition-colors duration-200">
+                        <p className="text-sm text-gray-600">
                           {companyInfo.phone}
-                        </a>
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-start space-x-4">
