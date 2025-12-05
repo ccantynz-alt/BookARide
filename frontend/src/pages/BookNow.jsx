@@ -11,6 +11,7 @@ import { Card, CardContent } from '../components/ui/card';
 import { toast } from 'sonner';
 import axios from 'axios';
 import SEO from '../components/SEO';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
