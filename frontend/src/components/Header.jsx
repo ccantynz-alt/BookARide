@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, X, Phone } from 'lucide-react';
 import { Button } from './ui/button';
+import { LanguageSelector } from './LanguageSelector';
 
 export const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
