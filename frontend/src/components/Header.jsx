@@ -68,31 +68,46 @@ export const Header = () => {
             </Link>
           </div>
 
-          {/* Mobile Menu Button */}
+          {/* Mobile Menu Button - Enhanced */}
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="md:hidden p-2 text-white hover:text-gold transition-colors duration-200"
+            className="md:hidden p-2 rounded-lg bg-white/10 hover:bg-white/20 border border-gold/30 hover:border-gold/50 text-gold transition-all duration-200"
           >
             {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
         </div>
 
-        {/* Mobile Menu */}
+        {/* Mobile Menu - Enhanced */}
         {isMenuOpen && (
-          <div className="md:hidden mt-4 pb-4 space-y-4 border-t border-gold/20 pt-4">
+          <div className="md:hidden mt-4 pb-4 space-y-2 border-t border-gold/20 pt-4 animate-in slide-in-from-top-2 duration-200">
             {navLinks.map((link) => (
               <Link
                 key={link.path}
                 to={link.path}
                 onClick={() => setIsMenuOpen(false)}
-                className={`block text-sm font-medium transition-colors duration-200 hover:text-gold ${
-                  isActive(link.path) ? 'text-gold' : 'text-white/90'
+                className={`block px-4 py-3 text-sm font-medium transition-all duration-200 rounded-lg ${
+                  isActive(link.path) 
+                    ? 'text-gold bg-gold/10 border-l-2 border-gold' 
+                    : 'text-white/90 hover:text-gold hover:bg-white/5'
                 }`}
               >
                 {link.label}
               </Link>
             ))}
-            <a href="tel:+6421743321" className="flex items-center space-x-2 text-white/80 hover:text-gold transition-colors duration-200">
+            
+            {/* Mobile Language Selector */}
+            <div className="pt-2 pb-2">
+              <LanguageSelector />
+            </div>
+            
+            {/* Mobile CTA */}
+            <Link to="/book-now" onClick={() => setIsMenuOpen(false)}>
+              <Button className="w-full bg-gradient-to-r from-gold to-yellow-500 hover:from-yellow-500 hover:to-gold text-black font-semibold transition-all duration-300">
+                Book a Ride
+              </Button>
+            </Link>
+            
+            <a href="tel:+6421743321" className="flex items-center space-x-2 px-4 py-3 text-white/80 hover:text-gold transition-colors duration-200 rounded-lg hover:bg-white/5">
               <Phone className="w-4 h-4" />
               <span className="text-sm font-medium">+64 21 743 321</span>
             </a>
