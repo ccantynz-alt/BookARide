@@ -5,6 +5,11 @@ import { Card, CardContent } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import SEO from '../components/SEO';
 import { aucklandSuburbs } from '../data/aucklandSuburbs';
+import { hamiltonAreas } from '../data/hamiltonAreas';
+import { whangareiAreas } from '../data/whangareiAreas';
+
+// Combine all areas
+const allAreas = [...aucklandSuburbs, ...hamiltonAreas, ...whangareiAreas];
 
 export const SuburbsDirectory = () => {
   const [searchTerm, setSearchTerm] = useState('');
