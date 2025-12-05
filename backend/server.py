@@ -1295,7 +1295,12 @@ async def bulk_status_update(booking_ids: List[str], new_status: str):
     """Update status for multiple bookings"""
     try:
         result = await db.bookings.update_many(
-
+            {"id": {"$in": booking_ids}},
+            {"$set": {"status": new_status}}
+        )
+        return {"message": "Status updated", "count": result.modified_count}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # ==================== DRIVER MANAGEMENT ====================
 
