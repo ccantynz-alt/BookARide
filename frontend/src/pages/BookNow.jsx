@@ -64,6 +64,8 @@ export const BookNow = () => {
     calculating: false
   });
 
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+
   const serviceOptions = [
     { value: 'airport-shuttle', label: 'Airport Shuttle' },
     { value: 'private-transfer', label: 'Private Shuttle Transfer' }
