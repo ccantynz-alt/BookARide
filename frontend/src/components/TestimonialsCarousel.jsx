@@ -53,17 +53,45 @@ export const TestimonialsCarousel = () => {
     slidesToScroll: 1,
     autoplay: true,
     autoplaySpeed: 5000,
+    arrows: true,
+    adaptiveHeight: true,
     responsive: [
       {
-        breakpoint: 1024,
+        breakpoint: 1280, // Large tablets & small laptops
         settings: {
           slidesToShow: 2,
+          slidesToScroll: 1,
         }
       },
       {
-        breakpoint: 640,
+        breakpoint: 1024, // iPad Pro landscape
+        settings: {
+          slidesToShow: 2,
+          slidesToScroll: 1,
+        }
+      },
+      {
+        breakpoint: 820, // iPad Air, iPad Pro portrait
         settings: {
           slidesToShow: 1,
+          slidesToScroll: 1,
+          arrows: false,
+        }
+      },
+      {
+        breakpoint: 768, // iPad Mini
+        settings: {
+          slidesToShow: 1,
+          slidesToScroll: 1,
+          arrows: false,
+        }
+      },
+      {
+        breakpoint: 640, // Mobile
+        settings: {
+          slidesToShow: 1,
+          slidesToScroll: 1,
+          arrows: false,
         }
       }
     ]
