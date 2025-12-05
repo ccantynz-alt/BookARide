@@ -47,6 +47,7 @@ export const AdminDashboard = () => {
       return;
     }
     fetchBookings();
+    fetchDrivers();
   }, [navigate]);
 
   useEffect(() => {
