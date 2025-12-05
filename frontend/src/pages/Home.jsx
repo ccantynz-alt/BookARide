@@ -25,6 +25,8 @@ const iconMap = {
 };
 
 export const Home = () => {
+  const { t } = useTranslation();
+  
   useEffect(() => {
     AOS.init({
       duration: 800,
