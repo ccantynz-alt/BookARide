@@ -62,7 +62,7 @@ export const Header = () => {
           <div className="hidden md:flex items-center space-x-4">
             <LanguageSelector />
             <Link to="/book-now">
-              <Button className="bg-gradient-to-r from-gold to-yellow-500 hover:from-yellow-500 hover:to-gold text-black font-semibold transition-all duration-300 shadow-lg hover:shadow-xl hover:shadow-gold/30 hover:scale-105">
+              <Button className="bg-gold hover:bg-yellow-500 text-black font-semibold transition-all duration-300 shadow-lg hover:shadow-xl hover:shadow-gold/30 hover:scale-105">
                 Book a Ride
               </Button>
             </Link>
