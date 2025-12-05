@@ -168,7 +168,7 @@ export const SEODashboard = () => {
                 className="bg-gold hover:bg-gold/90 text-black font-semibold"
               >
                 <RefreshCw className="w-4 h-4 mr-2" />
-                Initialize ALL Pages (34)
+                Initialize ALL Pages (51 Total)
               </Button>
               <Button
                 onClick={handleInitialize}
