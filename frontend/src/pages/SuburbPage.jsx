@@ -6,6 +6,11 @@ import { Card, CardContent } from '../components/ui/card';
 import SEO from '../components/SEO';
 import StructuredData from '../components/StructuredData';
 import { aucklandSuburbs } from '../data/aucklandSuburbs';
+import { hamiltonAreas } from '../data/hamiltonAreas';
+import { whangareiAreas } from '../data/whangareiAreas';
+
+// Combine all areas
+const allAreas = [...aucklandSuburbs, ...hamiltonAreas, ...whangareiAreas];
 
 export const SuburbPage = () => {
   const { slug } = useParams();
