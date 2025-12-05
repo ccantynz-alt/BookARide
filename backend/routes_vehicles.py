@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends
+ndb = None  # Will be injected from server.py
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from models import Vehicle, VehicleCreate
 from datetime import datetime
