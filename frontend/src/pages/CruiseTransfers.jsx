@@ -293,8 +293,7 @@ export const CruiseTransfers = () => {
                       </p>
                       <div className="space-y-1 text-sm">
                         <p className="text-gray-700"><strong>Capacity:</strong> Up to 11 passengers</p>
-                        <p className="text-gray-700"><strong>Extra:</strong> $5 per additional passenger</p>
-                        <p className="text-gold font-semibold"><strong>VIP Service:</strong> +$15 airport pickup</p>
+                        <p className="text-gray-700"><strong>Service:</strong> Contact for quote</p>
                       </div>
                     </div>
                   </div>
