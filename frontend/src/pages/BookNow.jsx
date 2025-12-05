@@ -221,6 +221,7 @@ export const BookNow = () => {
 
   return (
     <div className="min-h-screen pt-20 bg-white">
+      {isProcessingPayment && <LoadingSpinner message="Processing your booking..." />}
       <SEO 
         title="Book Your Airport Shuttle Now - Instant Quote & Online Booking"
         description="Book your airport shuttle online with instant live pricing. Auckland, Hamilton, Whangarei airport transfers. Easy online booking, secure payment, live price calculator. Book your shuttle service now!"
