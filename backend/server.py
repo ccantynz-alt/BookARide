@@ -1904,7 +1904,7 @@ async def initialize_all_seo_pages(credentials: HTTPAuthorizationCredentials = D
         
         return {
             "success": True,
-            "message": f"Initialized SEO for {count} pages (27 Auckland + 8 Hamilton + 9 Whangarei = 44 locations)",
+            "message": f"Initialized SEO for {count} pages (27 Auckland + 8 Hamilton + 9 Whangarei + 20 Hotels = 64 locations)",
             "pages_created": count
         }
     except Exception as e:
