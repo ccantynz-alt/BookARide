@@ -133,6 +133,36 @@ export const DriversTab = () => {
     }
   };
 
+  const handleSetPassword = async () => {
+    if (!newPassword || newPassword.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('adminToken');
+      await axios.post(`${API}/drivers/set-password`, {
+        driver_id: selectedDriverForPassword.id,
+        password: newPassword
+      }, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      toast.success('Password set successfully!');
+      setShowPasswordModal(false);
+      setNewPassword('');
+      setSelectedDriverForPassword(null);
+    } catch (error) {
+      console.error('Error setting password:', error);
+      toast.error('Failed to set password');
+    }
+  };
+
+  const openPasswordModal = (driver) => {
+    setSelectedDriverForPassword(driver);
+    setNewPassword('');
+    setShowPasswordModal(true);
+  };
+
   const handleAssignDriver = async (driverId) => {
     try {
       const token = localStorage.getItem('adminToken');
