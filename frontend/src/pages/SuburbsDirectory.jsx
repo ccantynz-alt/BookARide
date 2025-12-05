@@ -21,11 +21,12 @@ export const SuburbsDirectory = () => {
     'Whangarei & Northland': whangareiAreas
   };
 
-  // Filter suburbs based on search
-  const filteredSuburbs = searchTerm
-    ? aucklandSuburbs.filter(suburb =>
-        suburb.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        suburb.region.toLowerCase().includes(searchTerm.toLowerCase())
+  // Filter areas based on search
+  const filteredAreas = searchTerm
+    ? allAreas.filter(area =>
+        area.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        area.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        area.region.toLowerCase().includes(searchTerm.toLowerCase())
       )
     : null;
 
