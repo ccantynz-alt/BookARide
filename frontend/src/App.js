@@ -12,28 +12,41 @@ import HobbitonTransfers from './pages/HobbitonTransfers';
 import CruiseTransfers from './pages/CruiseTransfers';
 import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
+import DriverLogin from './pages/DriverLogin';
+import DriverPortal from './pages/DriverPortal';
 import { Toaster } from './components/ui/sonner';
 
 function App() {
   return (
     <div className="App">
       <BrowserRouter>
-        <Header />
-        <main>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/services" element={<Services />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/contact" element={<Navigate to="/book-now" replace />} />
-            <Route path="/book-now" element={<BookNow />} />
-            <Route path="/hobbiton-transfers" element={<HobbitonTransfers />} />
-            <Route path="/cruise-transfers" element={<CruiseTransfers />} />
-            <Route path="/payment-success" element={<PaymentSuccess />} />
-            <Route path="/admin/login" element={<AdminLogin />} />
-            <Route path="/admin/dashboard" element={<AdminDashboard />} />
-          </Routes>
-        </main>
-        <Footer />
+        <Routes>
+          {/* Driver Routes (No Header/Footer) */}
+          <Route path="/driver/login" element={<DriverLogin />} />
+          <Route path="/driver/portal" element={<DriverPortal />} />
+          
+          {/* Public Routes (With Header/Footer) */}
+          <Route path="*" element={
+            <>
+              <Header />
+              <main>
+                <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/services" element={<Services />} />
+                  <Route path="/about" element={<About />} />
+                  <Route path="/contact" element={<Navigate to="/book-now" replace />} />
+                  <Route path="/book-now" element={<BookNow />} />
+                  <Route path="/hobbiton-transfers" element={<HobbitonTransfers />} />
+                  <Route path="/cruise-transfers" element={<CruiseTransfers />} />
+                  <Route path="/payment-success" element={<PaymentSuccess />} />
+                  <Route path="/admin/login" element={<AdminLogin />} />
+                  <Route path="/admin/dashboard" element={<AdminDashboard />} />
+                </Routes>
+              </main>
+              <Footer />
+            </>
+          } />
+        </Routes>
         <Toaster />
       </BrowserRouter>
     </div>
