@@ -164,12 +164,18 @@ export const SEODashboard = () => {
             </div>
             <div className="flex gap-3">
               <Button
+                onClick={handleInitializeAll}
+                className="bg-gold hover:bg-gold/90 text-black font-semibold"
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Initialize ALL Pages (34)
+              </Button>
+              <Button
                 onClick={handleInitialize}
                 variant="outline"
                 className="border-gold text-gold hover:bg-gold/10"
               >
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Initialize Defaults
+                Initialize Main Pages Only
               </Button>
               <Button
                 onClick={() => navigate('/admin/dashboard')}
