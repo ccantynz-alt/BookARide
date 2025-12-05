@@ -1094,41 +1094,6 @@ async def stripe_webhook(request: Request):
         raise HTTPException(status_code=500, detail=f"Error processing webhook: {str(e)}")
 
 
-# Import new route modules
-from routes_analytics import analytics_router
-from routes_templates import templates_router
-from routes_drivers import drivers_router
-from routes_vehicles import vehicles_router
-from routes_customers import customers_router
-from routes_settings import settings_router
-from routes_bulk import bulk_router
-
-# Inject database into route modules
-import routes_analytics
-import routes_templates
-import routes_drivers
-import routes_vehicles
-import routes_customers
-import routes_settings
-import routes_bulk
-
-routes_analytics.db = db
-routes_templates.db = db
-routes_drivers.db = db
-routes_vehicles.db = db
-routes_customers.db = db
-routes_settings.db = db
-routes_bulk.db = db
-
-# Include routers
-api_router.include_router(analytics_router)
-api_router.include_router(templates_router)
-api_router.include_router(drivers_router)
-api_router.include_router(vehicles_router)
-api_router.include_router(customers_router)
-api_router.include_router(settings_router)
-api_router.include_router(bulk_router)
-
 # Include the router in the main app
 app.include_router(api_router)
 
