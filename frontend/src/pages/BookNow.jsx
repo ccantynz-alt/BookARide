@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MapPin, Calendar, Users, DollarSign, Clock, Mail, Phone, User } from 'lucide-react';
 import { useLoadScript } from '@react-google-maps/api';
 import { Button } from '../components/ui/button';
