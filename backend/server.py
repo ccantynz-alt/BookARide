@@ -1805,23 +1805,51 @@ async def initialize_all_seo_pages(credentials: HTTPAuthorizationCredentials = D
             {"slug": "ellerslie", "name": "Ellerslie", "distance": 13, "price": 85},
             {"slug": "onehunga", "name": "Onehunga", "distance": 12, "price": 80},
             {"slug": "mt-wellington", "name": "Mt Wellington", "distance": 11, "price": 80},
-            {"slug": "panmure", "name": "Panmure", "distance": 13, "price": 85},
+            {"slug": "panmure", "name": "Panmure", "city": "Auckland", "distance": 13, "price": 85},
         ]
         
-        # Generate SEO for all suburb pages
-        suburb_pages = []
-        for suburb in suburbs_seo:
-            suburb_pages.append({
-                "page_path": f"/suburbs/{suburb['slug']}",
-                "page_name": f"{suburb['name']} Airport Shuttle",
-                "title": f"Airport Shuttle {suburb['name']} Auckland - From ${suburb['price']} | Book A Ride NZ",
-                "description": f"Affordable airport shuttle from {suburb['name']} to Auckland Airport. Professional drivers, fixed prices from ${suburb['price']}. {suburb['distance']}km, 24/7 service. Book online now!",
-                "keywords": f"{suburb['name']} airport shuttle, {suburb['name']} to airport, airport transfer {suburb['name']}, shuttle service {suburb['name']}, {suburb['name']} airport transport, cheap shuttle {suburb['name']}, Auckland airport {suburb['name']}",
-                "canonical": f"/suburbs/{suburb['slug']}"
+        # Hamilton & Waikato areas
+        hamilton_areas = [
+            {"slug": "hamilton-cbd", "name": "Hamilton CBD", "city": "Hamilton", "distance": 125, "price": 220},
+            {"slug": "frankton-hamilton", "name": "Frankton", "city": "Hamilton", "distance": 125, "price": 220},
+            {"slug": "hillcrest-hamilton", "name": "Hillcrest", "city": "Hamilton", "distance": 128, "price": 225},
+            {"slug": "rototuna-hamilton", "name": "Rototuna", "city": "Hamilton", "distance": 130, "price": 225},
+            {"slug": "hamilton-east", "name": "Hamilton East", "city": "Hamilton", "distance": 124, "price": 220},
+            {"slug": "chartwell-hamilton", "name": "Chartwell", "city": "Hamilton", "distance": 127, "price": 220},
+            {"slug": "cambridge", "name": "Cambridge", "city": "Cambridge", "distance": 110, "price": 200},
+            {"slug": "te-awamutu", "name": "Te Awamutu", "city": "Te Awamutu", "distance": 135, "price": 230},
+        ]
+        
+        # Whangarei & Northland areas
+        whangarei_areas = [
+            {"slug": "whangarei-cbd", "name": "Whangarei CBD", "city": "Whangarei", "distance": 165, "price": 280},
+            {"slug": "onerahi-whangarei", "name": "Onerahi", "city": "Whangarei", "distance": 168, "price": 280},
+            {"slug": "kensington-whangarei", "name": "Kensington", "city": "Whangarei", "distance": 164, "price": 280},
+            {"slug": "tikipunga-whangarei", "name": "Tikipunga", "city": "Whangarei", "distance": 162, "price": 280},
+            {"slug": "regent-whangarei", "name": "Regent", "city": "Whangarei", "distance": 165, "price": 280},
+            {"slug": "whangarei-heads", "name": "Whangarei Heads", "city": "Whangarei", "distance": 180, "price": 300},
+            {"slug": "ruakaka", "name": "Ruakaka", "city": "Ruakaka", "distance": 150, "price": 260},
+            {"slug": "waipu", "name": "Waipu", "city": "Waipu", "distance": 140, "price": 250},
+            {"slug": "mangawhai", "name": "Mangawhai", "city": "Mangawhai", "distance": 110, "price": 200},
+        ]
+        
+        # Combine all areas
+        all_areas_data = auckland_suburbs + hamilton_areas + whangarei_areas
+        
+        # Generate SEO for all pages
+        area_pages = []
+        for area in all_areas_data:
+            area_pages.append({
+                "page_path": f"/suburbs/{area['slug']}",
+                "page_name": f"{area['name']} to Auckland Airport Shuttle",
+                "title": f"Airport Shuttle {area['name']} to Auckland Airport - From ${area['price']} | Book A Ride",
+                "description": f"Reliable airport shuttle from {area['name']}, {area['city']} to Auckland Airport. Professional drivers, fixed prices from ${area['price']}. {area['distance']}km, 24/7 service available. Book online now!",
+                "keywords": f"{area['name']} airport shuttle, {area['name']} to Auckland airport, airport transfer {area['name']}, shuttle service {area['name']} Auckland, {area['name']} to airport, Auckland airport {area['name']}, {area['city']} airport shuttle",
+                "canonical": f"/suburbs/{area['slug']}"
             })
         
         # All pages to initialize
-        all_pages = suburb_pages
+        all_pages = area_pages
         
         # Insert all pages
         count = 0
