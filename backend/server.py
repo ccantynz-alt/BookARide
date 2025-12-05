@@ -2028,42 +2028,6 @@ async def generate_sitemap():
     
     return Response(content=xml_header + xml_string, media_type="application/xml")
 
-            },
-            {
-                "page_path": "/hobbiton-transfers",
-                "page_name": "Hobbiton Transfers",
-                "title": "Hobbiton Transfers - Auckland to Hobbiton Movie Set Shuttle Service",
-                "description": "Professional Hobbiton Movie Set transfers from Auckland. Direct shuttle service to Matamata Hobbiton tours.",
-                "keywords": "Hobbiton transfers, Auckland to Hobbiton shuttle, Hobbiton Movie Set transfer",
-                "canonical": "/hobbiton-transfers"
-            },
-            {
-                "page_path": "/cruise-transfers",
-                "page_name": "Cruise Transfers",
-                "title": "Cruise Ship Transfers Auckland - Port & Airport Shuttle Service",
-                "description": "Professional cruise ship transfer service in Auckland. Shuttle between cruise terminals, airport, and hotels.",
-                "keywords": "cruise ship transfers Auckland, cruise terminal shuttle, port transfer Auckland",
-                "canonical": "/cruise-transfers"
-            }
-        ]
-        
-        # Insert default pages
-        for page in default_pages:
-            page['updated_at'] = datetime.now(timezone.utc)
-            await db.seo_pages.update_one(
-                {"page_path": page['page_path']},
-                {"$set": page},
-                upsert=True
-            )
-        
-        return {
-            "success": True,
-            "message": f"Initialized {len(default_pages)} SEO page configurations"
-        }
-    except Exception as e:
-        logger.error(f"Error initializing SEO pages: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
