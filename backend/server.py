@@ -1771,9 +1771,81 @@ async def delete_seo_page(page_path: str, credentials: HTTPAuthorizationCredenti
         logger.error(f"Error deleting SEO page: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@api_router.post("/seo/initialize-all")
+async def initialize_all_seo_pages(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Initialize SEO data for ALL pages including all 27 suburbs"""
+    try:
+        verify_token(credentials.credentials)
+        
+        # Auckland Suburbs data with optimized SEO
+        suburbs_seo = [
+            {"slug": "auckland-cbd", "name": "Auckland CBD", "distance": 21, "price": 100},
+            {"slug": "newmarket", "name": "Newmarket", "distance": 18, "price": 95},
+            {"slug": "parnell", "name": "Parnell", "distance": 19, "price": 95},
+            {"slug": "takapuna", "name": "Takapuna", "distance": 28, "price": 120},
+            {"slug": "albany", "name": "Albany", "distance": 35, "price": 140},
+            {"slug": "browns-bay", "name": "Browns Bay", "distance": 38, "price": 145},
+            {"slug": "devonport", "name": "Devonport", "distance": 24, "price": 110},
+            {"slug": "mt-eden", "name": "Mt Eden", "distance": 17, "price": 90},
+            {"slug": "epsom", "name": "Epsom", "distance": 16, "price": 90},
+            {"slug": "remuera", "name": "Remuera", "distance": 17, "price": 90},
+            {"slug": "greenlane", "name": "Greenlane", "distance": 15, "price": 85},
+            {"slug": "mission-bay", "name": "Mission Bay", "distance": 22, "price": 105},
+            {"slug": "st-heliers", "name": "St Heliers", "distance": 24, "price": 110},
+            {"slug": "howick", "name": "Howick", "distance": 18, "price": 95},
+            {"slug": "botany", "name": "Botany", "distance": 12, "price": 80},
+            {"slug": "pakuranga", "name": "Pakuranga", "distance": 14, "price": 85},
+            {"slug": "manukau", "name": "Manukau", "distance": 8, "price": 70},
+            {"slug": "papakura", "name": "Papakura", "distance": 22, "price": 105},
+            {"slug": "pukekohe", "name": "Pukekohe", "distance": 45, "price": 160},
+            {"slug": "henderson", "name": "Henderson", "distance": 28, "price": 120},
+            {"slug": "new-lynn", "name": "New Lynn", "distance": 24, "price": 110},
+            {"slug": "titirangi", "name": "Titirangi", "distance": 30, "price": 125},
+            {"slug": "ponsonby", "name": "Ponsonby", "distance": 22, "price": 105},
+            {"slug": "ellerslie", "name": "Ellerslie", "distance": 13, "price": 85},
+            {"slug": "onehunga", "name": "Onehunga", "distance": 12, "price": 80},
+            {"slug": "mt-wellington", "name": "Mt Wellington", "distance": 11, "price": 80},
+            {"slug": "panmure", "name": "Panmure", "distance": 13, "price": 85},
+        ]
+        
+        # Generate SEO for all suburb pages
+        suburb_pages = []
+        for suburb in suburbs_seo:
+            suburb_pages.append({
+                "page_path": f"/suburbs/{suburb['slug']}",
+                "page_name": f"{suburb['name']} Airport Shuttle",
+                "title": f"Airport Shuttle {suburb['name']} Auckland - From ${suburb['price']} | Book A Ride NZ",
+                "description": f"Affordable airport shuttle from {suburb['name']} to Auckland Airport. Professional drivers, fixed prices from ${suburb['price']}. {suburb['distance']}km, 24/7 service. Book online now!",
+                "keywords": f"{suburb['name']} airport shuttle, {suburb['name']} to airport, airport transfer {suburb['name']}, shuttle service {suburb['name']}, {suburb['name']} airport transport, cheap shuttle {suburb['name']}, Auckland airport {suburb['name']}",
+                "canonical": f"/suburbs/{suburb['slug']}"
+            })
+        
+        # All pages to initialize
+        all_pages = suburb_pages
+        
+        # Insert all pages
+        count = 0
+        for page in all_pages:
+            page['updated_at'] = datetime.now(timezone.utc)
+            await db.seo_pages.update_one(
+                {"page_path": page['page_path']},
+                {"$set": page},
+                upsert=True
+            )
+            count += 1
+        
+        return {
+            "success": True,
+            "message": f"Initialized SEO for {count} pages (27 suburbs)",
+            "pages_created": count
+        }
+    except Exception as e:
+        logger.error(f"Error initializing all SEO pages: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @api_router.post("/seo/initialize")
 async def initialize_seo_pages(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    """Initialize SEO data for all existing pages"""
+    """Initialize SEO data for main pages only"""
     try:
         verify_token(credentials.credentials)
         
