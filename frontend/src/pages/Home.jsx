@@ -142,39 +142,41 @@ export const Home = () => {
       {/* Services Section */}
       <section className="py-24 bg-white">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <div className="inline-block mb-4">
+          <AnimatedSection className="text-center mb-16">
+            <div className="inline-block mb-4" data-aos="zoom-in">
               <span className="bg-gold text-black text-xs font-bold px-4 py-2 rounded-full uppercase tracking-wide">
                 ⚡ Instant Online Booking Available
               </span>
             </div>
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">Our Services</h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4" data-aos="fade-up">Our Services</h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto" data-aos="fade-up" data-aos-delay="100">
               Whatever your transportation needs, we've got you covered
             </p>
-          </div>
+          </AnimatedSection>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
-            {services.map((service) => {
+            {services.map((service, index) => {
               const Icon = iconMap[service.icon];
               return (
-                <Card key={service.id} className="border-2 border-gray-200 hover:border-gold hover:shadow-xl transition-all duration-200 group">
-                  <CardContent className="p-8">
-                    <div className="w-16 h-16 bg-gray-900 rounded-xl flex items-center justify-center mb-6 group-hover:bg-gold transition-colors duration-200">
-                      <Icon className="w-8 h-8 text-gold group-hover:text-black transition-colors duration-200" />
-                    </div>
-                    <h3 className="text-2xl font-semibold text-gray-900 mb-3">{service.title}</h3>
-                    <p className="text-gray-600 mb-6 text-sm leading-relaxed">{service.description}</p>
-                    <ul className="space-y-3">
-                      {service.features.map((feature, idx) => (
-                        <li key={idx} className="flex items-center text-sm text-gray-700">
-                          <Check className="w-4 h-4 text-gold mr-3 flex-shrink-0" />
-                          {feature}
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
+                <div key={service.id} data-aos="fade-up" data-aos-delay={index * 100}>
+                  <Card className="border-2 border-gray-200 hover:border-gold transition-all-smooth group hover-lift h-full">
+                    <CardContent className="p-8">
+                      <div className="w-16 h-16 bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl flex items-center justify-center mb-6 group-hover:from-gold group-hover:to-yellow-500 transition-all-smooth shadow-lg">
+                        <Icon className="w-8 h-8 text-gold group-hover:text-black transition-colors duration-200" />
+                      </div>
+                      <h3 className="text-2xl font-semibold text-gray-900 mb-3">{service.title}</h3>
+                      <p className="text-gray-600 mb-6 text-sm leading-relaxed">{service.description}</p>
+                      <ul className="space-y-3">
+                        {service.features.map((feature, idx) => (
+                          <li key={idx} className="flex items-center text-sm text-gray-700">
+                            <Check className="w-4 h-4 text-gold mr-3 flex-shrink-0" />
+                            {feature}
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                </div>
               );
             })}
           </div>
