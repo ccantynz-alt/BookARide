@@ -1818,6 +1818,76 @@ async def initialize_seo_pages(credentials: HTTPAuthorizationCredentials = Depen
                 "description": "Book your airport shuttle online with instant live pricing. Auckland, Hamilton, Whangarei airport transfers. Easy online booking, secure payment.",
                 "keywords": "book airport shuttle, online shuttle booking, instant quote shuttle, airport transfer booking",
                 "canonical": "/book-now"
+
+
+# ============================================
+# SITEMAP GENERATION
+# ============================================
+
+@app.get("/sitemap.xml", include_in_schema=False)
+async def generate_sitemap():
+    """Generate XML sitemap for all pages"""
+    from xml.etree.ElementTree import Element, SubElement, tostring
+    
+    base_url = "https://bookaride.co.nz"
+    
+    # Define all pages with priority and change frequency
+    pages = [
+        # Main pages
+        {"path": "/", "priority": "1.0", "changefreq": "daily"},
+        {"path": "/book-now", "priority": "1.0", "changefreq": "daily"},
+        {"path": "/services", "priority": "0.9", "changefreq": "weekly"},
+        {"path": "/about", "priority": "0.8", "changefreq": "monthly"},
+        {"path": "/contact", "priority": "0.9", "changefreq": "monthly"},
+        {"path": "/hobbiton-transfers", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/cruise-transfers", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/suburbs", "priority": "0.9", "changefreq": "weekly"},
+        
+        # Auckland Suburbs - all 27
+        {"path": "/suburbs/auckland-cbd", "priority": "0.9", "changefreq": "weekly"},
+        {"path": "/suburbs/newmarket", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/suburbs/parnell", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/suburbs/takapuna", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/suburbs/albany", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/suburbs/browns-bay", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/suburbs/devonport", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/suburbs/mt-eden", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/suburbs/epsom", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/suburbs/remuera", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/suburbs/greenlane", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/suburbs/mission-bay", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/suburbs/st-heliers", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/suburbs/howick", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/suburbs/botany", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/suburbs/pakuranga", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/suburbs/manukau", "priority": "0.9", "changefreq": "weekly"},
+        {"path": "/suburbs/papakura", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/suburbs/pukekohe", "priority": "0.7", "changefreq": "weekly"},
+        {"path": "/suburbs/henderson", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/suburbs/new-lynn", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/suburbs/titirangi", "priority": "0.7", "changefreq": "weekly"},
+        {"path": "/suburbs/ponsonby", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/suburbs/ellerslie", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/suburbs/onehunga", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/suburbs/mt-wellington", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/suburbs/panmure", "priority": "0.8", "changefreq": "weekly"},
+    ]
+    
+    # Create XML structure
+    urlset = Element('urlset', xmlns="http://www.sitemaps.org/schemas/sitemap/0.9")
+    
+    for page in pages:
+        url = SubElement(urlset, 'url')
+        SubElement(url, 'loc').text = base_url + page['path']
+        SubElement(url, 'lastmod').text = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+        SubElement(url, 'changefreq').text = page['changefreq']
+        SubElement(url, 'priority').text = page['priority']
+    
+    xml_string = tostring(urlset, encoding='unicode')
+    xml_header = '<?xml version="1.0" encoding="UTF-8"?>\n'
+    
+    return Response(content=xml_header + xml_string, media_type="application/xml")
+
             },
             {
                 "page_path": "/hobbiton-transfers",
