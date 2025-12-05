@@ -2051,6 +2051,33 @@ async def generate_sitemap():
         {"path": "/suburbs/ruakaka", "priority": "0.8", "changefreq": "weekly"},
         {"path": "/suburbs/waipu", "priority": "0.8", "changefreq": "weekly"},
         {"path": "/suburbs/mangawhai", "priority": "0.8", "changefreq": "weekly"},
+        
+        # Hotels Directory
+        {"path": "/hotels", "priority": "0.9", "changefreq": "weekly"},
+        
+        # Auckland CBD Hotels - 12 hotels
+        {"path": "/hotels/skycity-grand-hotel", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/hotels/sofitel-auckland-viaduct", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/hotels/hilton-auckland", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/hotels/park-hyatt-auckland", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/hotels/cordis-auckland", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/hotels/stamford-plaza-auckland", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/hotels/grand-millennium-auckland", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/hotels/crowne-plaza-auckland", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/hotels/heritage-auckland", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/hotels/rydges-auckland", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/hotels/sudima-auckland-city", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/hotels/citylife-auckland", "priority": "0.8", "changefreq": "weekly"},
+        
+        # Auckland Airport Hotels - 8 hotels
+        {"path": "/hotels/novotel-auckland-airport", "priority": "0.9", "changefreq": "weekly"},
+        {"path": "/hotels/jet-park-hotel-auckland", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/hotels/sudima-auckland-airport", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/hotels/holiday-inn-auckland-airport", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/hotels/ibis-budget-auckland-airport", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/hotels/distinction-auckland-airport", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/hotels/heartland-hotel-auckland-airport", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/hotels/auckland-airport-kiwi-motel", "priority": "0.7", "changefreq": "weekly"},
     ]
     
     # Create XML structure
