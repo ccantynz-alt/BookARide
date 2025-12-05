@@ -1327,8 +1327,9 @@ async def get_drivers():
 async def create_driver(driver: DriverCreate):
     """Create a new driver"""
     try:
+        driver_id = str(uuid.uuid4())
         new_driver = {
-            "id": str(uuid.uuid4()),
+            "id": driver_id,
             "name": driver.name,
             "phone": driver.phone,
             "email": driver.email,
@@ -1340,8 +1341,19 @@ async def create_driver(driver: DriverCreate):
         }
         
         await db.drivers.insert_one(new_driver)
-        logger.info(f"Driver created: {new_driver['id']}")
-        return new_driver
+        logger.info(f"Driver created: {driver_id}")
+        
+        # Return without MongoDB's _id
+        return {
+            "id": driver_id,
+            "name": driver.name,
+            "phone": driver.phone,
+            "email": driver.email,
+            "license_number": driver.license_number,
+            "status": driver.status,
+            "notes": driver.notes,
+            "message": "Driver created successfully"
+        }
     except Exception as e:
         logger.error(f"Error creating driver: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
