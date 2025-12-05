@@ -268,6 +268,27 @@ const resources = {
         services: 'Services',
         legal: 'Légal',
         rights: 'Tous droits réservés.'
+      },
+      email: {
+        subject: 'Confirmation de Réservation',
+        greeting: 'Cher',
+        confirmed: 'Votre trajet a été confirmé!',
+        details: 'Détails de la Réservation',
+        reference: 'Référence de Réservation',
+        service: 'Type de Service',
+        pickup: 'Lieu de Prise en Charge',
+        dropoff: 'Lieu de Dépose',
+        date: 'Date',
+        time: 'Heure',
+        passengers: 'Passagers',
+        totalPaid: 'Total Payé',
+        contact: 'Pour toute question, veuillez nous contacter à',
+        thanks: 'Merci d\'avoir choisi BookaRide!',
+        footer: 'BookaRide Nouvelle-Zélande'
+      },
+      sms: {
+        confirmed: 'BookaRide: Votre trajet est confirmé!',
+        details: 'Réf: {{ref}}, {{date}} à {{time}}. Prise en charge: {{pickup}}. Total: ${{price}}. Merci!'
       }
     }
   },
