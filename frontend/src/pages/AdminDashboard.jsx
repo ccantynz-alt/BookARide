@@ -476,6 +476,11 @@ export const AdminDashboard = () => {
           <TabsContent value="customers">
             <CustomersTab />
           </TabsContent>
+
+          {/* Drivers Tab */}
+          <TabsContent value="drivers">
+            <DriversTab />
+          </TabsContent>
         </Tabs>
       </div>
 
