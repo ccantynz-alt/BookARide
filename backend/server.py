@@ -1778,8 +1778,8 @@ async def initialize_all_seo_pages(credentials: HTTPAuthorizationCredentials = D
         verify_token(credentials.credentials)
         
         # Auckland Suburbs data with optimized SEO
-        suburbs_seo = [
-            {"slug": "auckland-cbd", "name": "Auckland CBD", "distance": 21, "price": 100},
+        auckland_suburbs = [
+            {"slug": "auckland-cbd", "name": "Auckland CBD", "city": "Auckland", "distance": 21, "price": 100},
             {"slug": "newmarket", "name": "Newmarket", "distance": 18, "price": 95},
             {"slug": "parnell", "name": "Parnell", "distance": 19, "price": 95},
             {"slug": "takapuna", "name": "Takapuna", "distance": 28, "price": 120},
