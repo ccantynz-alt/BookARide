@@ -23,16 +23,25 @@ export const Header = () => {
     <header className="fixed top-0 left-0 right-0 z-50 bg-gray-900 border-b-2 border-gold/40 shadow-xl" style={{ backgroundColor: 'rgba(17, 24, 39, 0.98)' }}>
       <nav className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
-          {/* Logo */}
-          <Link to="/" className="flex items-center space-x-3 group">
-            <img 
-              src="/logo.png" 
-              alt="Book A Ride NZ" 
-              className="h-16 w-auto transform group-hover:scale-105 transition-transform duration-200"
-              style={{ 
-                filter: 'brightness(1.3) contrast(1.15) drop-shadow(0 2px 8px rgba(212, 175, 55, 0.3))',
-              }}
-            />
+          {/* Logo - Enhanced */}
+          <Link to="/" className="flex items-center space-x-3 group relative">
+            {/* Glow background */}
+            <div className="absolute inset-0 bg-gold/20 blur-2xl rounded-full scale-150 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            
+            {/* Logo container with background */}
+            <div className="relative bg-gradient-to-br from-gold/10 to-transparent p-3 rounded-xl border border-gold/30 group-hover:border-gold/60 transition-all duration-300 shadow-lg hover:shadow-2xl hover:shadow-gold/20">
+              <img 
+                src="/logo.png" 
+                alt="Book A Ride NZ" 
+                className="h-20 w-auto transform group-hover:scale-110 transition-all duration-300 relative z-10"
+                style={{ 
+                  filter: 'brightness(1.4) contrast(1.2) drop-shadow(0 4px 12px rgba(212, 175, 55, 0.5))',
+                }}
+              />
+            </div>
+            
+            {/* Animated ring */}
+            <div className="absolute inset-0 rounded-xl border-2 border-gold/0 group-hover:border-gold/50 animate-pulse-slow transition-all duration-500" />
           </Link>
 
           {/* Desktop Navigation */}
