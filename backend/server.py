@@ -1918,6 +1918,25 @@ async def initialize_seo_pages(credentials: HTTPAuthorizationCredentials = Depen
                 "description": "Book your airport shuttle online with instant live pricing. Auckland, Hamilton, Whangarei airport transfers. Easy online booking, secure payment.",
                 "keywords": "book airport shuttle, online shuttle booking, instant quote shuttle, airport transfer booking",
                 "canonical": "/book-now"
+            }
+        ]
+        
+        # Insert default pages
+        for page in default_pages:
+            page['updated_at'] = datetime.now(timezone.utc)
+            await db.seo_pages.update_one(
+                {"page_path": page['page_path']},
+                {"$set": page},
+                upsert=True
+            )
+        
+        return {
+            "success": True,
+            "message": f"Initialized {len(default_pages)} main SEO page configurations"
+        }
+    except Exception as e:
+        logger.error(f"Error initializing SEO pages: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ============================================
