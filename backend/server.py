@@ -1691,6 +1691,170 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+
+# ============================================
+# SEO MANAGEMENT ENDPOINTS
+# ============================================
+
+class SEOPage(BaseModel):
+    page_path: str
+    page_name: str
+    title: str
+    description: str
+    keywords: str
+    canonical: str
+    updated_at: Optional[datetime] = None
+
+@api_router.get("/seo/pages")
+async def get_all_seo_pages(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Get all SEO page configurations"""
+    try:
+        verify_token(credentials.credentials)
+        pages = await db.seo_pages.find({}, {"_id": 0}).to_list(1000)
+        return {"pages": pages}
+    except Exception as e:
+        logger.error(f"Error fetching SEO pages: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/seo/pages/{page_path:path}")
+async def get_seo_page(page_path: str):
+    """Get SEO configuration for a specific page (public endpoint)"""
+    try:
+        page = await db.seo_pages.find_one({"page_path": page_path}, {"_id": 0})
+        if page:
+            return page
+        return None
+    except Exception as e:
+        logger.error(f"Error fetching SEO page: {e}")
+        return None
+
+@api_router.post("/seo/pages")
+async def create_or_update_seo_page(seo_page: SEOPage, credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Create or update SEO configuration for a page"""
+    try:
+        verify_token(credentials.credentials)
+        
+        seo_data = seo_page.model_dump()
+        seo_data['updated_at'] = datetime.now(timezone.utc)
+        
+        # Upsert: update if exists, create if doesn't
+        result = await db.seo_pages.update_one(
+            {"page_path": seo_page.page_path},
+            {"$set": seo_data},
+            upsert=True
+        )
+        
+        return {
+            "success": True,
+            "message": "SEO page configuration saved",
+            "page_path": seo_page.page_path
+        }
+    except Exception as e:
+        logger.error(f"Error saving SEO page: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.delete("/seo/pages/{page_path:path}")
+async def delete_seo_page(page_path: str, credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Delete SEO configuration for a page"""
+    try:
+        verify_token(credentials.credentials)
+        
+        result = await db.seo_pages.delete_one({"page_path": page_path})
+        
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="SEO page not found")
+        
+        return {"success": True, "message": "SEO page configuration deleted"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting SEO page: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/seo/initialize")
+async def initialize_seo_pages(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Initialize SEO data for all existing pages"""
+    try:
+        verify_token(credentials.credentials)
+        
+        # Default SEO configurations for all pages
+        default_pages = [
+            {
+                "page_path": "/",
+                "page_name": "Home",
+                "title": "Airport Shuttle Service NZ - Affordable Auckland Airport Shuttles",
+                "description": "International bookings welcome! Affordable airport shuttle service in Auckland, New Zealand. Best value airport transfers for Auckland, Hamilton, and Whangarei airports. Multi-currency, 6 languages. Book online now!",
+                "keywords": "airport shuttle, international booking, airport shuttle service, cheap airport shuttle, affordable shuttle, Auckland shuttles",
+                "canonical": "/"
+            },
+            {
+                "page_path": "/services",
+                "page_name": "Services",
+                "title": "Airport Shuttle Services - Auckland, Hamilton, Whangarei",
+                "description": "Professional airport shuttle services across New Zealand. Airport transfers, private transfers, group bookings. 24/7 service available.",
+                "keywords": "airport shuttle services, airport transfers, private transfers, group bookings",
+                "canonical": "/services"
+            },
+            {
+                "page_path": "/about",
+                "page_name": "About Us",
+                "title": "About Book A Ride NZ - Your Trusted Airport Shuttle Service",
+                "description": "Learn about Book A Ride NZ, Auckland's trusted airport shuttle service. Professional drivers, reliable service since establishment.",
+                "keywords": "about us, book a ride nz, airport shuttle company, Auckland transport",
+                "canonical": "/about"
+            },
+            {
+                "page_path": "/contact",
+                "page_name": "Contact",
+                "title": "Contact Us - Book Your Airport Shuttle Today",
+                "description": "Contact Book A Ride NZ for airport shuttle bookings and inquiries. Available 24/7 for Auckland airport transfers.",
+                "keywords": "contact, book airport shuttle, airport shuttle booking, contact airport shuttle",
+                "canonical": "/contact"
+            },
+            {
+                "page_path": "/book-now",
+                "page_name": "Book Now",
+                "title": "Book Your Airport Shuttle Now - Instant Quote & Online Booking",
+                "description": "Book your airport shuttle online with instant live pricing. Auckland, Hamilton, Whangarei airport transfers. Easy online booking, secure payment.",
+                "keywords": "book airport shuttle, online shuttle booking, instant quote shuttle, airport transfer booking",
+                "canonical": "/book-now"
+            },
+            {
+                "page_path": "/hobbiton-transfers",
+                "page_name": "Hobbiton Transfers",
+                "title": "Hobbiton Transfers - Auckland to Hobbiton Movie Set Shuttle Service",
+                "description": "Professional Hobbiton Movie Set transfers from Auckland. Direct shuttle service to Matamata Hobbiton tours.",
+                "keywords": "Hobbiton transfers, Auckland to Hobbiton shuttle, Hobbiton Movie Set transfer",
+                "canonical": "/hobbiton-transfers"
+            },
+            {
+                "page_path": "/cruise-transfers",
+                "page_name": "Cruise Transfers",
+                "title": "Cruise Ship Transfers Auckland - Port & Airport Shuttle Service",
+                "description": "Professional cruise ship transfer service in Auckland. Shuttle between cruise terminals, airport, and hotels.",
+                "keywords": "cruise ship transfers Auckland, cruise terminal shuttle, port transfer Auckland",
+                "canonical": "/cruise-transfers"
+            }
+        ]
+        
+        # Insert default pages
+        for page in default_pages:
+            page['updated_at'] = datetime.now(timezone.utc)
+            await db.seo_pages.update_one(
+                {"page_path": page['page_path']},
+                {"$set": page},
+                upsert=True
+            )
+        
+        return {
+            "success": True,
+            "message": f"Initialized {len(default_pages)} SEO page configurations"
+        }
+    except Exception as e:
+        logger.error(f"Error initializing SEO pages: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
