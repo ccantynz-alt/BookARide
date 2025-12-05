@@ -460,6 +460,18 @@ export const AdminDashboard = () => {
             )}
           </CardContent>
         </Card>
+          </TabsContent>
+
+          {/* Analytics Tab */}
+          <TabsContent value="analytics">
+            <AnalyticsTab />
+          </TabsContent>
+
+          {/* Customers Tab */}
+          <TabsContent value="customers">
+            <CustomersTab />
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Booking Details Modal */}
