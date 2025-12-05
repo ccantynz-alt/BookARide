@@ -1295,6 +1295,126 @@ async def bulk_status_update(booking_ids: List[str], new_status: str):
     """Update status for multiple bookings"""
     try:
         result = await db.bookings.update_many(
+
+
+# ==================== DRIVER MANAGEMENT ====================
+
+# Driver Models
+class DriverCreate(BaseModel):
+    name: str
+    phone: str
+    email: str
+    license_number: str
+    status: str = "active"
+    notes: Optional[str] = ""
+
+@api_router.get("/drivers")
+async def get_drivers():
+    """Get all drivers"""
+    try:
+        drivers = await db.drivers.find({}, {"_id": 0}).to_list(1000)
+        return {"drivers": drivers}
+    except Exception as e:
+        logger.error(f"Error getting drivers: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/drivers")
+async def create_driver(driver: DriverCreate):
+    """Create a new driver"""
+    try:
+        new_driver = {
+            "id": str(uuid.uuid4()),
+            "name": driver.name,
+            "phone": driver.phone,
+            "email": driver.email,
+            "license_number": driver.license_number,
+            "status": driver.status,
+            "notes": driver.notes,
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc)
+        }
+        
+        await db.drivers.insert_one(new_driver)
+        logger.info(f"Driver created: {new_driver['id']}")
+        return new_driver
+    except Exception as e:
+        logger.error(f"Error creating driver: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.put("/drivers/{driver_id}")
+async def update_driver(driver_id: str, driver: DriverCreate):
+    """Update a driver"""
+    try:
+        result = await db.drivers.update_one(
+            {"id": driver_id},
+            {"$set": {
+                "name": driver.name,
+                "phone": driver.phone,
+                "email": driver.email,
+                "license_number": driver.license_number,
+                "status": driver.status,
+                "notes": driver.notes,
+                "updated_at": datetime.now(timezone.utc)
+            }}
+        )
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Driver not found")
+        return {"message": "Driver updated successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating driver: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.delete("/drivers/{driver_id}")
+async def delete_driver(driver_id: str):
+    """Delete a driver"""
+    try:
+        result = await db.drivers.delete_one({"id": driver_id})
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Driver not found")
+        return {"message": "Driver deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting driver: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.patch("/drivers/{driver_id}/assign")
+async def assign_driver_to_booking(driver_id: str, booking_id: str):
+    """Assign a driver to a booking"""
+    try:
+        # Update booking with driver assignment
+        result = await db.bookings.update_one(
+            {"id": booking_id},
+            {"$set": {"driver_id": driver_id, "driver_assigned_at": datetime.now(timezone.utc)}}
+        )
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Booking not found")
+        
+        logger.info(f"Driver {driver_id} assigned to booking {booking_id}")
+        return {"message": "Driver assigned successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error assigning driver: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/drivers/{driver_id}/schedule")
+async def get_driver_schedule(driver_id: str, date: Optional[str] = None):
+    """Get driver's schedule for a specific date"""
+    try:
+        query = {"driver_id": driver_id}
+        if date:
+            query["date"] = date
+        
+        bookings = await db.bookings.find(query, {"_id": 0}).to_list(1000)
+        return {"bookings": bookings}
+    except Exception as e:
+        logger.error(f"Error getting driver schedule: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
             {"id": {"$in": booking_ids}},
             {"$set": {"status": new_status}}
         )
