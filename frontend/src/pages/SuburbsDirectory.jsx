@@ -89,11 +89,11 @@ export const SuburbsDirectory = () => {
                       <Link key={area.slug} to={`/suburbs/${area.slug}`}>
                         <Card className="border-2 border-gray-200 hover:border-gold transition-all duration-200 hover:shadow-lg h-full">
                           <CardContent className="p-6">
-                            <h3 className="text-xl font-bold text-gray-900 mb-2">{suburb.name}</h3>
-                            <p className="text-sm text-gray-600 mb-4">{suburb.region}</p>
+                            <h3 className="text-xl font-bold text-gray-900 mb-2">{area.name}</h3>
+                            <p className="text-sm text-gray-600 mb-4">{area.city} • {area.region}</p>
                             <div className="space-y-2 text-sm text-gray-700">
-                              <p><span className="font-semibold">Distance:</span> {suburb.distanceToAirport}km</p>
-                              <p><span className="font-semibold">From:</span> <span className="text-gold font-bold">${suburb.estimatedPrice}</span></p>
+                              <p><span className="font-semibold">Distance:</span> {area.distanceToAirport}km</p>
+                              <p><span className="font-semibold">From:</span> <span className="text-gold font-bold">${area.estimatedPrice}</span></p>
                             </div>
                           </CardContent>
                         </Card>
@@ -102,7 +102,7 @@ export const SuburbsDirectory = () => {
                   </div>
                 ) : (
                   <div className="text-center py-12">
-                    <p className="text-gray-600 text-lg">No suburbs found matching "{searchTerm}"</p>
+                    <p className="text-gray-600 text-lg">No areas found matching "{searchTerm}"</p>
                     <p className="text-gray-500 mt-2">Try a different search term</p>
                   </div>
                 )}
