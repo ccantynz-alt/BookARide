@@ -81,12 +81,12 @@ export const SuburbsDirectory = () => {
               // Show search results
               <div>
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">
-                  Search Results ({filteredSuburbs.length})
+                  Search Results ({filteredAreas.length})
                 </h2>
-                {filteredSuburbs.length > 0 ? (
+                {filteredAreas.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredSuburbs.map((suburb) => (
-                      <Link key={suburb.slug} to={`/suburbs/${suburb.slug}`}>
+                    {filteredAreas.map((area) => (
+                      <Link key={area.slug} to={`/suburbs/${area.slug}`}>
                         <Card className="border-2 border-gray-200 hover:border-gold transition-all duration-200 hover:shadow-lg h-full">
                           <CardContent className="p-6">
                             <h3 className="text-xl font-bold text-gray-900 mb-2">{suburb.name}</h3>
