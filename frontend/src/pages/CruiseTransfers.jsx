@@ -254,7 +254,6 @@ export const CruiseTransfers = () => {
                       <div className="space-y-1 text-sm">
                         <p className="text-gray-700"><strong>Distance:</strong> ~26km</p>
                         <p className="text-gray-700"><strong>Time:</strong> 25-35 minutes</p>
-                        <p className="text-gold font-semibold"><strong>From:</strong> $100 (minimum fare)</p>
                       </div>
                     </div>
                   </div>
