@@ -82,6 +82,36 @@ export const AdminDashboard = () => {
     }
   };
 
+  const fetchDrivers = async () => {
+    try {
+      const response = await axios.get(`${API}/drivers`, getAuthHeaders());
+      setDrivers(response.data.drivers || []);
+    } catch (error) {
+      console.error('Error fetching drivers:', error);
+    }
+  };
+
+  const handleAssignDriver = async () => {
+    if (!selectedDriver) {
+      toast.error('Please select a driver');
+      return;
+    }
+    
+    try {
+      await axios.patch(
+        `${API}/drivers/${selectedDriver}/assign?booking_id=${selectedBooking.id}`,
+        {},
+        getAuthHeaders()
+      );
+      toast.success('Driver assigned successfully!');
+      setSelectedDriver('');
+      fetchBookings();
+    } catch (error) {
+      console.error('Error assigning driver:', error);
+      toast.error('Failed to assign driver');
+    }
+  };
+
   const filterBookings = () => {
     let filtered = bookings;
 
