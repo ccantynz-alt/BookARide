@@ -65,6 +65,24 @@ export const SEODashboard = () => {
     }
   };
 
+  const handleInitializeAll = async () => {
+    if (!window.confirm('This will create SEO for ALL pages including 27 suburbs. Continue?')) {
+      return;
+    }
+    
+    try {
+      const token = localStorage.getItem('adminToken');
+      await axios.post(`${API}/seo/initialize-all`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success('All SEO pages initialized successfully (including all suburbs)!');
+      fetchPages();
+    } catch (error) {
+      console.error('Error initializing all SEO pages:', error);
+      toast.error('Failed to initialize all SEO pages');
+    }
+  };
+
   const handleEdit = (page) => {
     setEditingPage(page.page_path);
     setFormData(page);
