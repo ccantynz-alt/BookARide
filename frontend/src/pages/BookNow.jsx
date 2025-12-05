@@ -18,6 +18,7 @@ const API = `${BACKEND_URL}/api`;
 const libraries = ['places'];
 
 export const BookNow = () => {
+  const { i18n } = useTranslation();
   const { isLoaded } = useLoadScript({
     googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY,
     libraries: libraries
