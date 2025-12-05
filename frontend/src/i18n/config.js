@@ -94,6 +94,27 @@ const resources = {
         services: '服务',
         legal: '法律',
         rights: '版权所有。'
+      },
+      email: {
+        subject: '预订确认',
+        greeting: '尊敬的',
+        confirmed: '您的行程已确认！',
+        details: '预订详情',
+        reference: '预订编号',
+        service: '服务类型',
+        pickup: '上车地点',
+        dropoff: '下车地点',
+        date: '日期',
+        time: '时间',
+        passengers: '乘客人数',
+        totalPaid: '总费用',
+        contact: '如有任何问题，请联系我们',
+        thanks: '感谢您选择BookaRide！',
+        footer: 'BookaRide 新西兰'
+      },
+      sms: {
+        confirmed: 'BookaRide：您的行程已确认！',
+        details: '编号：{{ref}}，{{date}} {{time}}。上车：{{pickup}}。费用：${{price}}。谢谢！'
       }
     }
   },
