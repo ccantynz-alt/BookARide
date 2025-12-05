@@ -136,7 +136,7 @@ export const SuburbPage = () => {
                 Book A Ride NZ offers professional airport transfer services with fixed pricing and no hidden fees.
               </p>
               <p>
-                Located in {suburb.region}, {suburb.name} is approximately {suburb.distanceToAirport}km from Auckland International Airport. 
+                Located in {suburb.city}, {suburb.region}, {suburb.name} is approximately {suburb.distanceToAirport}km from Auckland International Airport. 
                 Our experienced drivers know the best routes and will get you there comfortably in around {suburb.estimatedTime}, 
                 depending on traffic conditions.
               </p>
