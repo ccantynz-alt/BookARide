@@ -108,24 +108,24 @@ export const SuburbsDirectory = () => {
                 )}
               </div>
             ) : (
-              // Show grouped by region
+              // Show grouped by city
               <div className="space-y-12">
-                {Object.keys(suburbsByRegion).sort().map((region) => (
-                  <div key={region}>
+                {Object.keys(areasByCity).map((cityName) => (
+                  <div key={cityName}>
                     <h2 className="text-3xl font-bold text-gray-900 mb-6 pb-2 border-b-2 border-gold/30">
-                      {region}
+                      {cityName}
                     </h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {suburbsByRegion[region].map((suburb) => (
-                        <Link key={suburb.slug} to={`/suburbs/${suburb.slug}`}>
+                      {areasByCity[cityName].map((area) => (
+                        <Link key={area.slug} to={`/suburbs/${area.slug}`}>
                           <Card className="border-2 border-gray-200 hover:border-gold transition-all duration-200 hover:shadow-lg h-full">
                             <CardContent className="p-6">
-                              <h3 className="text-xl font-bold text-gray-900 mb-2">{suburb.name}</h3>
-                              <p className="text-sm text-gray-600 mb-4 line-clamp-2">{suburb.description}</p>
+                              <h3 className="text-xl font-bold text-gray-900 mb-2">{area.name}</h3>
+                              <p className="text-sm text-gray-600 mb-4 line-clamp-2">{area.description}</p>
                               <div className="space-y-2 text-sm text-gray-700">
-                                <p><span className="font-semibold">Distance:</span> {suburb.distanceToAirport}km</p>
-                                <p><span className="font-semibold">Time:</span> {suburb.estimatedTime}</p>
-                                <p><span className="font-semibold">From:</span> <span className="text-gold font-bold">${suburb.estimatedPrice}</span></p>
+                                <p><span className="font-semibold">Distance:</span> {area.distanceToAirport}km</p>
+                                <p><span className="font-semibold">Time:</span> {area.estimatedTime}</p>
+                                <p><span className="font-semibold">From:</span> <span className="text-gold font-bold">${area.estimatedPrice}</span></p>
                               </div>
                             </CardContent>
                           </Card>
