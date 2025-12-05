@@ -145,10 +145,10 @@ export const SuburbsDirectory = () => {
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto text-center">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              Don't See Your Suburb?
+              Don't See Your Location?
             </h2>
             <p className="text-lg text-gray-700 mb-8">
-              We service all Auckland areas! Contact us for a quote or use our online booking system.
+              We service all areas in Auckland, Hamilton, and Whangarei! Contact us for a quote or use our online booking system.
             </p>
             <Link to="/book-now">
               <button className="bg-gold hover:bg-gold/90 text-black font-semibold px-8 py-4 rounded-lg text-lg transition-colors duration-200">
