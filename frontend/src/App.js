@@ -14,6 +14,8 @@ import HobbitonTransfers from './pages/HobbitonTransfers';
 import CruiseTransfers from './pages/CruiseTransfers';
 import SuburbPage from './pages/SuburbPage';
 import SuburbsDirectory from './pages/SuburbsDirectory';
+import HotelPage from './pages/HotelPage';
+import HotelsDirectory from './pages/HotelsDirectory';
 import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
 import SEODashboard from './pages/SEODashboard';
