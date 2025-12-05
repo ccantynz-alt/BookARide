@@ -7,6 +7,7 @@ import { Footer } from './components/Footer';
 import Home from './pages/Home';
 import Services from './pages/Services';
 import About from './pages/About';
+import Contact from './pages/Contact';
 import BookNow from './pages/BookNow';
 import PaymentSuccess from './pages/PaymentSuccess';
 import HobbitonTransfers from './pages/HobbitonTransfers';
@@ -17,7 +18,6 @@ import DriverLogin from './pages/DriverLogin';
 import DriverPortal from './pages/DriverPortal';
 import { Toaster } from './components/ui/sonner';
 import BackToTop from './components/BackToTop';
-import WhatsAppButton from './components/WhatsAppButton';
 import InternationalBanner from './components/InternationalBanner';
 
 function App() {
