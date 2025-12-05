@@ -14,14 +14,12 @@ const allAreas = [...aucklandSuburbs, ...hamiltonAreas, ...whangareiAreas];
 export const SuburbsDirectory = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Group suburbs by region
-  const suburbsByRegion = aucklandSuburbs.reduce((acc, suburb) => {
-    if (!acc[suburb.region]) {
-      acc[suburb.region] = [];
-    }
-    acc[suburb.region].push(suburb);
-    return acc;
-  }, {});
+  // Group suburbs by city first, then region
+  const areasByCity = {
+    'Auckland': aucklandSuburbs,
+    'Hamilton & Waikato': hamiltonAreas,
+    'Whangarei & Northland': whangareiAreas
+  };
 
   // Filter suburbs based on search
   const filteredSuburbs = searchTerm
