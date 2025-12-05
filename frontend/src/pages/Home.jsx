@@ -447,6 +447,18 @@ export const Home = () => {
           </Link>
         </div>
       </section>
+
+      {/* Trust Badges */}
+      <TrustBadges />
+
+      {/* Vehicle Gallery */}
+      <VehicleGallery />
+
+      {/* Testimonials Carousel */}
+      <TestimonialsCarousel />
+
+      {/* Dark Mode Toggle */}
+      <DarkModeToggle />
     </div>
   );
 };
