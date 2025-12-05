@@ -116,10 +116,10 @@ export const Home = () => {
         <div className="container mx-auto px-4 mt-20 relative z-10">
           <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8">
             {[
-              { icon: Users, value: 1000, suffix: '+', label: 'Happy Customers' },
-              { icon: Clock, value: 60, suffix: 's', label: 'Book in Seconds' },
-              { icon: Shield, value: 100, suffix: '%', label: 'Safe & Insured' },
-              { icon: Award, value: 4.9, suffix: '★', label: 'Customer Rating', decimals: 1 }
+              { icon: Users, value: 1000, suffix: '+', label: t('stats.customers') },
+              { icon: Clock, value: 60, suffix: 's', label: t('stats.bookingTime') },
+              { icon: Shield, value: 100, suffix: '%', label: t('stats.safety') },
+              { icon: Award, value: 4.9, suffix: '★', label: t('stats.rating'), decimals: 1 }
             ].map((stat, index) => {
               const Icon = stat.icon;
               return (
