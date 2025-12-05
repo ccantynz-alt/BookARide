@@ -30,10 +30,25 @@ export const SuburbPage = () => {
   return (
     <div className="min-h-screen pt-20 bg-white">
       <SEO 
-        title={`Airport Shuttle ${suburb.name} - Book A Ride NZ | From $${suburb.estimatedPrice}`}
-        description={`Affordable airport shuttle service from ${suburb.name} to Auckland Airport. ${suburb.description}. Book online now! Fixed prices from $${suburb.estimatedPrice}. 24/7 service.`}
-        keywords={`${suburb.name} airport shuttle, ${suburb.name} to airport, airport transfer ${suburb.name}, shuttle service ${suburb.name}, ${suburb.name} airport transport, cheap shuttle ${suburb.name}, Auckland airport from ${suburb.name}`}
+        title={`Airport Shuttle ${suburb.name} Auckland - From $${suburb.estimatedPrice} | Book A Ride NZ`}
+        description={`Affordable airport shuttle from ${suburb.name} to Auckland Airport. Professional drivers, fixed prices from $${suburb.estimatedPrice}. ${suburb.distanceToAirport}km, 24/7 service. Book online now!`}
+        keywords={`${suburb.name} airport shuttle, ${suburb.name} to airport, airport transfer ${suburb.name}, shuttle service ${suburb.name}, ${suburb.name} airport transport, cheap shuttle ${suburb.name}, Auckland airport ${suburb.name}}`}
         canonical={`/suburbs/${slug}`}
+      />
+      <StructuredData 
+        type="suburb" 
+        data={{
+          suburb: {
+            name: suburb.name,
+            slug: suburb.slug,
+            price: suburb.estimatedPrice
+          },
+          breadcrumb: [
+            { name: 'Home', path: '/' },
+            { name: 'Suburbs', path: '/suburbs' },
+            { name: suburb.name, path: `/suburbs/${slug}` }
+          ]
+        }} 
       />
 
       {/* Hero Section */}
