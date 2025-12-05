@@ -445,6 +445,50 @@ export const DriversTab = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Set Password Modal */}
+      <Dialog open={showPasswordModal} onOpenChange={setShowPasswordModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Set Driver Portal Password</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-gray-700 mb-2">
+                <strong>Driver:</strong> {selectedDriverForPassword?.name}
+              </p>
+              <p className="text-sm text-gray-700">
+                <strong>Login Email:</strong> {selectedDriverForPassword?.email}
+              </p>
+            </div>
+
+            <div>
+              <Label htmlFor="new-password">New Password *</Label>
+              <Input
+                id="new-password"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Minimum 6 characters"
+                className="mt-1"
+                minLength={6}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                The driver will use their email and this password to log in at: /driver/login
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button variant="outline" onClick={() => setShowPasswordModal(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSetPassword} className="bg-gold hover:bg-gold/90 text-black">
+                Set Password
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
