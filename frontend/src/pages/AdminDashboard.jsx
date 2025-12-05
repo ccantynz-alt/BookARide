@@ -282,6 +282,10 @@ export const AdminDashboard = () => {
               <p className="text-white/70">Manage bookings and customer communications</p>
             </div>
             <div className="flex gap-2">
+              <Button onClick={() => navigate('/admin/seo')} variant="outline" className="border-gold text-gold hover:bg-gold hover:text-black">
+                <Settings className="w-4 h-4 mr-2" />
+                SEO Management
+              </Button>
               <Button onClick={() => setShowPasswordModal(true)} variant="outline" className="border-gold text-gold hover:bg-gold hover:text-black">
                 Change Password
               </Button>
