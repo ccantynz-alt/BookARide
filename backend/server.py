@@ -1417,6 +1417,115 @@ async def assign_driver_to_booking(driver_id: str, booking_id: str):
         logger.error(f"Error assigning driver: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
+# ==================== DRIVER PORTAL ====================
+
+# Driver Login
+class DriverLogin(BaseModel):
+    email: str
+    password: str
+
+@api_router.post("/driver/login")
+async def driver_login(credentials: DriverLogin):
+    """Driver login endpoint"""
+    try:
+        # Find driver by email
+        driver = await db.drivers.find_one({"email": credentials.email}, {"_id": 0})
+        
+        if not driver:
+            raise HTTPException(status_code=401, detail="Invalid email or password")
+        
+        # Check if driver has a password set
+        if "password" not in driver or not driver["password"]:
+            raise HTTPException(status_code=401, detail="Password not set. Please contact admin.")
+        
+        # Verify password
+        if not verify_password(credentials.password, driver["password"]):
+            raise HTTPException(status_code=401, detail="Invalid email or password")
+        
+        # Check if driver is active
+        if driver.get("status") != "active":
+            raise HTTPException(status_code=403, detail="Your account is not active. Please contact admin.")
+        
+        # Create access token
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": driver["email"], "type": "driver"},
+            expires_delta=access_token_expires
+        )
+        
+        logger.info(f"Driver logged in: {driver['email']}")
+        
+        return {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "driver": {
+                "id": driver["id"],
+                "name": driver["name"],
+                "email": driver["email"],
+                "phone": driver["phone"]
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in driver login: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/drivers/{driver_id}/bookings")
+async def get_driver_bookings(driver_id: str, date: Optional[str] = None):
+    """Get bookings assigned to a driver with reduced pricing (15% commission)"""
+    try:
+        query = {"driver_id": driver_id}
+        
+        # Get all bookings for the driver (for weekly/upcoming view)
+        all_bookings = await db.bookings.find(query, {"_id": 0}).to_list(1000)
+        
+        # Calculate driver price (85% of customer price - 15% commission)
+        for booking in all_bookings:
+            customer_price = booking.get('pricing', {}).get('totalPrice', 0)
+            # Driver gets 85% of the customer price
+            driver_price = customer_price * 0.85
+            booking['driver_price'] = round(driver_price, 2)
+            
+            # Remove the full pricing details from response
+            if 'pricing' in booking:
+                del booking['pricing']
+        
+        return {"bookings": all_bookings}
+    except Exception as e:
+        logger.error(f"Error getting driver bookings: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Set Driver Password (Admin only)
+class SetDriverPassword(BaseModel):
+    driver_id: str
+    password: str
+
+@api_router.post("/drivers/set-password")
+async def set_driver_password(data: SetDriverPassword):
+    """Set password for a driver (admin only)"""
+    try:
+        hashed_password = get_password_hash(data.password)
+        
+        result = await db.drivers.update_one(
+            {"id": data.driver_id},
+            {"$set": {"password": hashed_password, "updated_at": datetime.now(timezone.utc)}}
+        )
+        
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Driver not found")
+        
+        logger.info(f"Password set for driver: {data.driver_id}")
+        return {"message": "Password set successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error setting driver password: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
 @api_router.get("/drivers/{driver_id}/schedule")
 async def get_driver_schedule(driver_id: str, date: Optional[str] = None):
     """Get driver's schedule for a specific date"""
