@@ -106,11 +106,6 @@ export const Header = () => {
                 Book a Ride
               </Button>
             </Link>
-            
-            <a href="tel:+6421743321" className="flex items-center space-x-2 px-4 py-3 text-white/80 hover:text-gold transition-colors duration-200 rounded-lg hover:bg-white/5">
-              <Phone className="w-4 h-4" />
-              <span className="text-sm font-medium">+64 21 743 321</span>
-            </a>
           </div>
         )}
       </nav>
