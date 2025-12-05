@@ -43,3 +43,104 @@ main {
 .min-h-screen.pt-20 {
     padding-top: 120px !important;
 }
+
+
+/* Testimonials Carousel Fixes for iPad and All Devices */
+.slick-slider {
+    position: relative;
+    display: block;
+    box-sizing: border-box;
+    user-select: none;
+    touch-action: pan-y;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.slick-list {
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
+}
+
+.slick-track {
+    display: flex !important;
+    align-items: stretch;
+}
+
+.slick-slide {
+    height: inherit !important;
+    display: flex !important;
+    align-items: stretch;
+}
+
+.slick-slide > div {
+    height: 100%;
+    width: 100%;
+}
+
+/* Fix dots positioning */
+.slick-dots {
+    bottom: -40px !important;
+    display: flex !important;
+    justify-content: center;
+    list-style: none;
+    padding: 0;
+}
+
+.slick-dots li button:before {
+    color: #D4AF37 !important;
+    opacity: 0.5;
+    font-size: 10px !important;
+}
+
+.slick-dots li.slick-active button:before {
+    opacity: 1;
+    color: #D4AF37 !important;
+}
+
+/* Arrow styles */
+.slick-prev,
+.slick-next {
+    z-index: 10;
+    width: 40px;
+    height: 40px;
+}
+
+.slick-prev:before,
+.slick-next:before {
+    color: #D4AF37 !important;
+    font-size: 30px !important;
+    opacity: 0.75;
+}
+
+.slick-prev:hover:before,
+.slick-next:hover:before {
+    opacity: 1;
+}
+
+/* iPad specific fixes */
+@media screen and (min-width: 768px) and (max-width: 1024px) {
+    .slick-slider {
+        margin: 0 auto;
+        max-width: 100%;
+    }
+    
+    .slick-slide {
+        padding: 0 10px;
+    }
+}
+
+/* Mobile fixes */
+@media screen and (max-width: 767px) {
+    .slick-slider {
+        padding: 0 20px;
+    }
+    
+    .slick-prev {
+        left: -15px;
+    }
+    
+    .slick-next {
+        right: -15px;
+    }
+}
+
