@@ -23,7 +23,7 @@ async def get_analytics_data(db: AsyncIOMotorDatabase, start_date: str = None, e
     return bookings
 
 @analytics_router.get("/revenue-trends")
-async def get_revenue_trends(start_date: str = None, end_date: str = None, db: AsyncIOMotorDatabase = None):
+async def get_revenue_trends(start_date: str = None, end_date: str = None):
     """Get revenue trends grouped by date"""
     try:
         bookings = await get_analytics_data(db, start_date, end_date)
@@ -45,7 +45,7 @@ async def get_revenue_trends(start_date: str = None, end_date: str = None, db: A
         raise HTTPException(status_code=500, detail=str(e))
 
 @analytics_router.get("/booking-trends")
-async def get_booking_trends(start_date: str = None, end_date: str = None, db: AsyncIOMotorDatabase = None):
+async def get_booking_trends(start_date: str = None, end_date: str = None):
     """Get booking count trends grouped by date"""
     try:
         bookings = await get_analytics_data(db, start_date, end_date)
@@ -64,7 +64,7 @@ async def get_booking_trends(start_date: str = None, end_date: str = None, db: A
         raise HTTPException(status_code=500, detail=str(e))
 
 @analytics_router.get("/popular-routes")
-async def get_popular_routes(limit: int = 10, db: AsyncIOMotorDatabase = None):
+async def get_popular_routes(limit: int = 10):
     """Get most popular routes"""
     try:
         bookings = await db.bookings.find({}, {"_id": 0}).to_list(10000)
@@ -86,7 +86,7 @@ async def get_popular_routes(limit: int = 10, db: AsyncIOMotorDatabase = None):
         raise HTTPException(status_code=500, detail=str(e))
 
 @analytics_router.get("/export-csv")
-async def export_bookings_csv(start_date: str = None, end_date: str = None, db: AsyncIOMotorDatabase = None):
+async def export_bookings_csv(start_date: str = None, end_date: str = None):
     """Export bookings to CSV"""
     try:
         bookings = await get_analytics_data(db, start_date, end_date)

@@ -16,7 +16,7 @@ async def get_service_types(db: AsyncIOMotorDatabase = None):
         raise HTTPException(status_code=500, detail=str(e))
 
 @settings_router.post("/service-types")
-async def create_service_type(service_type: ServiceTypeConfigCreate, db: AsyncIOMotorDatabase = None):
+async def create_service_type(service_type: ServiceTypeConfigCreate):
     """Create a new service type configuration"""
     try:
         new_service_type = ServiceTypeConfig(
@@ -29,7 +29,7 @@ async def create_service_type(service_type: ServiceTypeConfigCreate, db: AsyncIO
         raise HTTPException(status_code=500, detail=str(e))
 
 @settings_router.put("/service-types/{service_type_id}")
-async def update_service_type(service_type_id: str, service_type: ServiceTypeConfigCreate, db: AsyncIOMotorDatabase = None):
+async def update_service_type(service_type_id: str, service_type: ServiceTypeConfigCreate):
     """Update a service type configuration"""
     try:
         result = await db.service_types.update_one(
@@ -48,7 +48,7 @@ async def update_service_type(service_type_id: str, service_type: ServiceTypeCon
         raise HTTPException(status_code=500, detail=str(e))
 
 @settings_router.delete("/service-types/{service_type_id}")
-async def delete_service_type(service_type_id: str, db: AsyncIOMotorDatabase = None):
+async def delete_service_type(service_type_id: str):
     """Delete a service type configuration"""
     try:
         result = await db.service_types.delete_one({"id": service_type_id})
@@ -81,7 +81,7 @@ async def get_pricing_config(db: AsyncIOMotorDatabase = None):
         raise HTTPException(status_code=500, detail=str(e))
 
 @settings_router.put("/pricing")
-async def update_pricing_config(config: dict, db: AsyncIOMotorDatabase = None):
+async def update_pricing_config(config: dict):
     """Update pricing configuration"""
     try:
         config["type"] = "global"

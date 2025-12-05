@@ -16,7 +16,7 @@ async def get_vehicles(db: AsyncIOMotorDatabase = None):
         raise HTTPException(status_code=500, detail=str(e))
 
 @vehicles_router.post("")
-async def create_vehicle(vehicle: VehicleCreate, db: AsyncIOMotorDatabase = None):
+async def create_vehicle(vehicle: VehicleCreate):
     """Create a new vehicle"""
     try:
         new_vehicle = Vehicle(
@@ -29,7 +29,7 @@ async def create_vehicle(vehicle: VehicleCreate, db: AsyncIOMotorDatabase = None
         raise HTTPException(status_code=500, detail=str(e))
 
 @vehicles_router.put("/{vehicle_id}")
-async def update_vehicle(vehicle_id: str, vehicle: VehicleCreate, db: AsyncIOMotorDatabase = None):
+async def update_vehicle(vehicle_id: str, vehicle: VehicleCreate):
     """Update a vehicle"""
     try:
         result = await db.vehicles.update_one(
@@ -48,7 +48,7 @@ async def update_vehicle(vehicle_id: str, vehicle: VehicleCreate, db: AsyncIOMot
         raise HTTPException(status_code=500, detail=str(e))
 
 @vehicles_router.delete("/{vehicle_id}")
-async def delete_vehicle(vehicle_id: str, db: AsyncIOMotorDatabase = None):
+async def delete_vehicle(vehicle_id: str):
     """Delete a vehicle"""
     try:
         result = await db.vehicles.delete_one({"id": vehicle_id})

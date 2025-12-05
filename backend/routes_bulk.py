@@ -10,7 +10,7 @@ bulk_router = APIRouter(prefix="/bulk", tags=["Bulk Operations"])
 logger = logging.getLogger(__name__)
 
 @bulk_router.post("/status-update")
-async def bulk_status_update(booking_ids: List[str], new_status: str, db: AsyncIOMotorDatabase = None):
+async def bulk_status_update(booking_ids: List[str], new_status: str):
     """Update status for multiple bookings"""
     try:
         result = await db.bookings.update_many(
@@ -25,7 +25,7 @@ async def bulk_status_update(booking_ids: List[str], new_status: str, db: AsyncI
         raise HTTPException(status_code=500, detail=str(e))
 
 @bulk_router.delete("/delete")
-async def bulk_delete(booking_ids: List[str], db: AsyncIOMotorDatabase = None):
+async def bulk_delete(booking_ids: List[str]):
     """Delete multiple bookings"""
     try:
         result = await db.bookings.delete_many({"id": {"$in": booking_ids}})
@@ -70,7 +70,7 @@ def send_email_via_mailgun(email: str, subject: str, message: str):
         return False
 
 @bulk_router.post("/email")
-async def bulk_email(request: BulkEmailRequest, background_tasks: BackgroundTasks, db: AsyncIOMotorDatabase = None):
+async def bulk_email(request: BulkEmailRequest, background_tasks: BackgroundTasks):
     """Send email to multiple customers"""
     try:
         # Get bookings
@@ -100,7 +100,7 @@ async def bulk_email(request: BulkEmailRequest, background_tasks: BackgroundTask
         raise HTTPException(status_code=500, detail=str(e))
 
 @bulk_router.post("/manual-booking")
-async def create_manual_booking(booking_data: dict, db: AsyncIOMotorDatabase = None):
+async def create_manual_booking(booking_data: dict):
     """Create a booking manually from admin panel"""
     try:
         import uuid
