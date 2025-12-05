@@ -293,19 +293,6 @@ export const aucklandSuburbs = [
     slug: 'ellerslie',
     name: 'Ellerslie',
     region: 'Central Auckland',
-
-
-// Import Hamilton and Whangarei areas
-import { hamiltonAreas } from './hamiltonAreas';
-import { whangareiAreas } from './whangareiAreas';
-
-// Export all areas combined
-export const allAreas = [
-  ...aucklandSuburbs,
-  ...hamiltonAreas,
-  ...whangareiAreas
-];
-
     description: 'Suburban area with racecourse and shopping facilities',
     coordinates: { lat: -36.9087, lng: 174.8109 },
     distanceToAirport: 13,
