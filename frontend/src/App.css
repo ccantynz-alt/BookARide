@@ -32,3 +32,14 @@
         transform: rotate(360deg);
     }
 }
+
+
+/* Adjust main content for international banner + header */
+main {
+    padding-top: 120px;
+}
+
+/* For pages with their own pt-20 */
+.min-h-screen.pt-20 {
+    padding-top: 120px !important;
+}
