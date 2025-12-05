@@ -287,8 +287,11 @@ export const BookNow = () => {
                             type="date"
                             value={formData.date}
                             onChange={handleChange}
+                            min={new Date().toISOString().split('T')[0]}
                             required
-                            className="transition-all duration-200 focus:ring-2 focus:ring-gold"
+                            onKeyDown={(e) => e.preventDefault()}
+                            className="transition-all duration-200 focus:ring-2 focus:ring-gold cursor-pointer"
+                            placeholder="Select date"
                           />
                         </div>
                         <div className="space-y-2">
@@ -303,7 +306,9 @@ export const BookNow = () => {
                             value={formData.time}
                             onChange={handleChange}
                             required
-                            className="transition-all duration-200 focus:ring-2 focus:ring-gold"
+                            onKeyDown={(e) => e.preventDefault()}
+                            className="transition-all duration-200 focus:ring-2 focus:ring-gold cursor-pointer"
+                            placeholder="Select time"
                           />
                         </div>
                       </div>
