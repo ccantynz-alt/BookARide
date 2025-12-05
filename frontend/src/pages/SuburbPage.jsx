@@ -14,7 +14,7 @@ const allAreas = [...aucklandSuburbs, ...hamiltonAreas, ...whangareiAreas];
 
 export const SuburbPage = () => {
   const { slug } = useParams();
-  const suburb = aucklandSuburbs.find(s => s.slug === slug);
+  const suburb = allAreas.find(s => s.slug === slug);
 
   // If suburb not found, redirect to home
   if (!suburb) {
