@@ -47,7 +47,6 @@ function App() {
               </main>
               <Footer />
               <BackToTop />
-              <CallNowButton />
             </>
           } />
         </Routes>
