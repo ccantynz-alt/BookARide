@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from backend.models import EmailTemplate, EmailTemplateCreate
+from .models import EmailTemplate, EmailTemplateCreate
 from datetime import datetime
 import uuid
 
