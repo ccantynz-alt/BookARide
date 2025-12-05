@@ -4,6 +4,7 @@ import { MapPin, Clock, DollarSign, CheckCircle, ArrowRight, Star } from 'lucide
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import SEO from '../components/SEO';
+import StructuredData from '../components/StructuredData';
 import { aucklandSuburbs } from '../data/aucklandSuburbs';
 
 export const SuburbPage = () => {
