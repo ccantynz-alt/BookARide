@@ -1876,8 +1876,20 @@ async def initialize_all_seo_pages(credentials: HTTPAuthorizationCredentials = D
                 "canonical": f"/suburbs/{area['slug']}"
             })
         
+        # Generate SEO for all hotel pages
+        hotel_pages = []
+        for hotel in all_hotels_data:
+            hotel_pages.append({
+                "page_path": f"/hotels/{hotel['slug']}",
+                "page_name": f"{hotel['name']} Airport Shuttle",
+                "title": f"Airport Shuttle {hotel['name']} - Auckland Airport Transfer | From ${hotel['price']}",
+                "description": f"Reliable airport shuttle from {hotel['name']}, {hotel['area']} to Auckland Airport. Professional door-to-door service. Fixed price ${hotel['price']}. Book online 24/7.",
+                "keywords": f"{hotel['name']} airport shuttle, {hotel['name']} to airport, airport transfer {hotel['name']}, shuttle from {hotel['name']}, {hotel['name']} Auckland airport, {hotel['area']} hotel shuttle",
+                "canonical": f"/hotels/{hotel['slug']}"
+            })
+        
         # All pages to initialize
-        all_pages = area_pages
+        all_pages = area_pages + hotel_pages
         
         # Insert all pages
         count = 0
