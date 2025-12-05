@@ -388,6 +388,15 @@ export const DriversTab = () => {
               />
             </div>
 
+            {editingDriver && (
+              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-sm text-gray-700">
+                  <strong>Driver Portal Access:</strong> To allow this driver to log in and view their schedule,
+                  you need to set their password separately after saving.
+                </p>
+              </div>
+            )}
+
             <div className="flex justify-end gap-2 pt-4">
               <Button variant="outline" onClick={() => setShowDriverModal(false)}>
                 Cancel
