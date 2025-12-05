@@ -18,8 +18,11 @@ export const DriversTab = () => {
   const [bookings, setBookings] = useState([]);
   const [showDriverModal, setShowDriverModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [editingDriver, setEditingDriver] = useState(null);
   const [selectedBooking, setSelectedBooking] = useState(null);
+  const [selectedDriverForPassword, setSelectedDriverForPassword] = useState(null);
+  const [newPassword, setNewPassword] = useState('');
   const [loading, setLoading] = useState(true);
   
   const [formData, setFormData] = useState({
