@@ -50,6 +50,8 @@ function App() {
                   <Route path="/cruise-transfers" element={<CruiseTransfers />} />
                   <Route path="/suburbs" element={<SuburbsDirectory />} />
                   <Route path="/suburbs/:slug" element={<SuburbPage />} />
+                  <Route path="/hotels" element={<HotelsDirectory />} />
+                  <Route path="/hotels/:slug" element={<HotelPage />} />
                   <Route path="/payment-success" element={<PaymentSuccess />} />
                   <Route path="/admin/login" element={<AdminLogin />} />
                   <Route path="/admin/dashboard" element={<AdminDashboard />} />
