@@ -32,6 +32,7 @@ function App() {
           {/* Public Routes (With Header/Footer) */}
           <Route path="*" element={
             <>
+              <InternationalBanner />
               <Header />
               <main>
                 <Routes>
@@ -49,6 +50,7 @@ function App() {
               </main>
               <Footer />
               <BackToTop />
+              <WhatsAppButton />
             </>
           } />
         </Routes>
