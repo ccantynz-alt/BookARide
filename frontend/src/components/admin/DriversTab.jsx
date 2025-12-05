@@ -263,6 +263,10 @@ export const DriversTab = () => {
                     </div>
                   </div>
                   <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => openPasswordModal(driver)}
+                            title="Set Driver Password">
+                      <Key className="w-4 h-4" />
+                    </Button>
                     <Button size="sm" variant="outline" onClick={() => handleOpenDriverModal(driver)}>
                       <Edit2 className="w-4 h-4" />
                     </Button>
