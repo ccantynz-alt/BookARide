@@ -29,7 +29,7 @@ export const Header = () => {
             <div className="absolute inset-0 bg-gold/20 blur-2xl rounded-full scale-150 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
             
             {/* Logo container with background */}
-            <div className="relative bg-gradient-to-br from-gold/10 to-transparent p-3 rounded-xl border border-gold/30 group-hover:border-gold/60 transition-all duration-300 shadow-lg hover:shadow-2xl hover:shadow-gold/20">
+            <div className="relative bg-gradient-to-br from-gold/10 to-transparent p-3 rounded-xl border border-gold/30 group-hover:border-gold/60 transition-all duration-300 shadow-lg hover:shadow-2xl hover:shadow-gold/20 logo-glow">
               <img 
                 src="/logo.png" 
                 alt="Book A Ride NZ" 
