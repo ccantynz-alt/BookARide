@@ -36,6 +36,27 @@ const resources = {
         services: 'Services',
         legal: 'Legal',
         rights: 'All rights reserved.'
+      },
+      email: {
+        subject: 'Booking Confirmation',
+        greeting: 'Dear',
+        confirmed: 'Your ride has been confirmed!',
+        details: 'Booking Details',
+        reference: 'Booking Reference',
+        service: 'Service Type',
+        pickup: 'Pickup',
+        dropoff: 'Drop-off',
+        date: 'Date',
+        time: 'Time',
+        passengers: 'Passengers',
+        totalPaid: 'Total Paid',
+        contact: 'If you have any questions, please contact us at',
+        thanks: 'Thank you for choosing BookaRide!',
+        footer: 'BookaRide NZ'
+      },
+      sms: {
+        confirmed: 'BookaRide: Your ride is confirmed!',
+        details: 'Ref: {{ref}}, {{date}} at {{time}}. Pickup: {{pickup}}. Total: ${{price}}. Thank you!'
       }
     }
   },
