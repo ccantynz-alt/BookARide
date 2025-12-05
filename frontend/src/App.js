@@ -13,6 +13,7 @@ import PaymentSuccess from './pages/PaymentSuccess';
 import HobbitonTransfers from './pages/HobbitonTransfers';
 import CruiseTransfers from './pages/CruiseTransfers';
 import SuburbPage from './pages/SuburbPage';
+import SuburbsDirectory from './pages/SuburbsDirectory';
 import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
 import DriverLogin from './pages/DriverLogin';
