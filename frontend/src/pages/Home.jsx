@@ -77,8 +77,8 @@ export const Home = () => {
                 transition={{ duration: 0.6 }}
               >
                 <h1 className="text-5xl md:text-7xl font-bold text-white mb-8 leading-tight">
-                  Affordable Airport Shuttles
-                  <span className="block mt-2 gradient-text text-6xl md:text-8xl">Best Value in Auckland</span>
+                  {t('hero.title')}
+                  <span className="block mt-2 gradient-text text-6xl md:text-8xl">{t('hero.subtitle')}</span>
                 </h1>
               </motion.div>
             </FadeIn>
@@ -88,7 +88,7 @@ export const Home = () => {
               transition={{ delay: 0.3, duration: 0.6 }}
               className="text-xl md:text-2xl text-white/80 mb-12 max-w-3xl mx-auto leading-relaxed"
             >
-              Reliable airport transfers at unbeatable prices. Instant online booking, transparent pricing, and professional service - all in 60 seconds.
+              {t('hero.description')}
             </motion.p>
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
