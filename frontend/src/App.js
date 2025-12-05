@@ -17,6 +17,8 @@ import DriverLogin from './pages/DriverLogin';
 import DriverPortal from './pages/DriverPortal';
 import { Toaster } from './components/ui/sonner';
 import BackToTop from './components/BackToTop';
+import WhatsAppButton from './components/WhatsAppButton';
+import InternationalBanner from './components/InternationalBanner';
 
 function App() {
   return (
