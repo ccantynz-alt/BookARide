@@ -50,8 +50,9 @@ export const Header = () => {
             ))}
           </div>
 
-          {/* CTA Button */}
+          {/* CTA Button & Language Selector */}
           <div className="hidden md:flex items-center space-x-4">
+            <LanguageSelector />
             <Link to="/book-now">
               <Button className="bg-gold hover:bg-gold/90 text-black font-semibold transition-colors duration-200">
                 Book a Ride
