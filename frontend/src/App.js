@@ -51,6 +51,7 @@ function App() {
                   <Route path="/payment-success" element={<PaymentSuccess />} />
                   <Route path="/admin/login" element={<AdminLogin />} />
                   <Route path="/admin/dashboard" element={<AdminDashboard />} />
+                  <Route path="/admin/seo" element={<SEODashboard />} />
                 </Routes>
               </main>
               <Footer />
