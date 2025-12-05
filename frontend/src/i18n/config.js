@@ -152,6 +152,27 @@ const resources = {
         services: 'サービス',
         legal: '法的情報',
         rights: '全著作権所有。'
+      },
+      email: {
+        subject: '予約確認',
+        greeting: '様',
+        confirmed: 'ご予約が確定しました！',
+        details: '予約詳細',
+        reference: '予約番号',
+        service: 'サービスタイプ',
+        pickup: '乗車場所',
+        dropoff: '降車場所',
+        date: '日付',
+        time: '時間',
+        passengers: '乗客数',
+        totalPaid: '合計金額',
+        contact: 'ご質問がございましたら、お問い合わせください',
+        thanks: 'BookaRideをご利用いただきありがとうございます！',
+        footer: 'BookaRide ニュージーランド'
+      },
+      sms: {
+        confirmed: 'BookaRide：予約が確定しました！',
+        details: '予約番号：{{ref}}、{{date}} {{time}}。乗車：{{pickup}}。料金：${{price}}。ありがとうございます！'
       }
     }
   },
