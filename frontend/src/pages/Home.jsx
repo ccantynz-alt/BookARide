@@ -1,11 +1,16 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Plane, Briefcase, MapPin, Calendar, Star, Check, Shield, Clock, Award, Users } from 'lucide-react';
+import { ArrowRight, Plane, Briefcase, MapPin, Calendar, Star, Check, Shield, Clock, Award, Users, Sparkles } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { services, testimonials, howItWorksSteps } from '../mock';
 import SEO from '../components/SEO';
 import StructuredData from '../components/StructuredData';
+import { AnimatedSection, FadeIn } from '../components/AnimatedSection';
+import { AnimatedCounter } from '../components/AnimatedCounter';
+import { motion } from 'framer-motion';
+import AOS from 'aos';
+import 'aos/dist/aos.css';
 
 const iconMap = {
   plane: Plane,
