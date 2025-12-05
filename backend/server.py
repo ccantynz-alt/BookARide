@@ -1833,10 +1833,38 @@ async def initialize_all_seo_pages(credentials: HTTPAuthorizationCredentials = D
             {"slug": "mangawhai", "name": "Mangawhai", "city": "Mangawhai", "distance": 110, "price": 200},
         ]
         
-        # Combine all areas
-        all_areas_data = auckland_suburbs + hamilton_areas + whangarei_areas
+        # Auckland Hotels
+        cbd_hotels = [
+            {"slug": "skycity-grand-hotel", "name": "SkyCity Grand Hotel", "area": "Auckland CBD", "distance": 21, "price": 100},
+            {"slug": "sofitel-auckland-viaduct", "name": "Sofitel Auckland Viaduct Harbour", "area": "Auckland CBD", "distance": 22, "price": 100},
+            {"slug": "hilton-auckland", "name": "Hilton Auckland", "area": "Auckland CBD", "distance": 22, "price": 100},
+            {"slug": "park-hyatt-auckland", "name": "Park Hyatt Auckland", "area": "Auckland CBD", "distance": 23, "price": 105},
+            {"slug": "cordis-auckland", "name": "Cordis Auckland", "area": "Auckland CBD", "distance": 20, "price": 95},
+            {"slug": "stamford-plaza-auckland", "name": "Stamford Plaza Auckland", "area": "Auckland CBD", "distance": 21, "price": 100},
+            {"slug": "grand-millennium-auckland", "name": "Grand Millennium Auckland", "area": "Auckland CBD", "distance": 20, "price": 95},
+            {"slug": "crowne-plaza-auckland", "name": "Crowne Plaza Auckland", "area": "Auckland CBD", "distance": 21, "price": 100},
+            {"slug": "heritage-auckland", "name": "Heritage Auckland", "area": "Auckland CBD", "distance": 21, "price": 100},
+            {"slug": "rydges-auckland", "name": "Rydges Auckland", "area": "Auckland CBD", "distance": 21, "price": 100},
+            {"slug": "sudima-auckland-city", "name": "Sudima Auckland City", "area": "Auckland CBD", "distance": 21, "price": 100},
+            {"slug": "citylife-auckland", "name": "CityLife Auckland", "area": "Auckland CBD", "distance": 21, "price": 100},
+        ]
         
-        # Generate SEO for all pages
+        airport_hotels = [
+            {"slug": "novotel-auckland-airport", "name": "Novotel Auckland Airport", "area": "Auckland Airport", "distance": 0.5, "price": 45},
+            {"slug": "jet-park-hotel-auckland", "name": "Jet Park Hotel Auckland Airport", "area": "Auckland Airport", "distance": 1, "price": 45},
+            {"slug": "sudima-auckland-airport", "name": "Sudima Auckland Airport", "area": "Auckland Airport", "distance": 0.8, "price": 45},
+            {"slug": "holiday-inn-auckland-airport", "name": "Holiday Inn Auckland Airport", "area": "Auckland Airport", "distance": 0.7, "price": 45},
+            {"slug": "ibis-budget-auckland-airport", "name": "ibis Budget Auckland Airport", "area": "Auckland Airport", "distance": 1.2, "price": 50},
+            {"slug": "distinction-auckland-airport", "name": "Distinction Hotel Auckland Airport", "area": "Auckland Airport", "distance": 0.9, "price": 45},
+            {"slug": "heartland-hotel-auckland-airport", "name": "Heartland Hotel Auckland Airport", "area": "Auckland Airport", "distance": 0.8, "price": 45},
+            {"slug": "auckland-airport-kiwi-motel", "name": "Auckland Airport Kiwi Motel", "area": "Auckland Airport", "distance": 1.5, "price": 50},
+        ]
+        
+        # Combine all areas and hotels
+        all_areas_data = auckland_suburbs + hamilton_areas + whangarei_areas
+        all_hotels_data = cbd_hotels + airport_hotels
+        
+        # Generate SEO for all location pages
         area_pages = []
         for area in all_areas_data:
             area_pages.append({
