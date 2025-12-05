@@ -592,7 +592,7 @@ def send_booking_confirmation_email(booking: dict):
 
 
 def send_via_mailgun(booking: dict):
-    """Try sending via Mailgun"""
+    """Try sending via Mailgun with multi-language support"""
     try:
         mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
         mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
@@ -602,8 +602,17 @@ def send_via_mailgun(booking: dict):
             logger.warning("Mailgun credentials not configured")
             return False
         
-        # Create email content
-        subject = f"Booking Confirmation - {booking.get('id', '')[:8]}"
+        # Get language preference (default to English)
+        lang = booking.get('language', 'en')
+        if lang not in EMAIL_TRANSLATIONS:
+            lang = 'en'
+        t = EMAIL_TRANSLATIONS[lang]
+        
+        # Get pricing
+        total_price = booking.get('pricing', {}).get('totalPrice', 0) if isinstance(booking.get('pricing'), dict) else 0
+        
+        # Create email content with translations
+        subject = f"{t['subject']} - {booking.get('id', '')[:8]}"
         recipient_email = booking.get('email')
         
         html_content = f"""
@@ -613,23 +622,23 @@ def send_via_mailgun(booking: dict):
                     <h1>BookaRide.co.nz</h1>
                 </div>
                 <div style="padding: 20px; background-color: #f5f5f5;">
-                    <h2 style="color: #1a1a1a;">Booking Confirmed!</h2>
-                    <p>Dear {booking.get('name', 'Customer')},</p>
-                    <p>Your ride has been confirmed. Here are your booking details:</p>
+                    <h2 style="color: #1a1a1a;">✅ {t['confirmed']}</h2>
+                    <p>{t['greeting']} {booking.get('name', 'Customer')},</p>
+                    <p>{t['intro']}</p>
                     
                     <div style="background-color: white; padding: 15px; border-radius: 5px; margin: 20px 0;">
-                        <p><strong>Booking Reference:</strong> {booking.get('id', '')[:8].upper()}</p>
-                        <p><strong>Service Type:</strong> {booking.get('serviceType', 'N/A').replace('-', ' ').title()}</p>
-                        <p><strong>Pickup:</strong> {booking.get('pickupAddress', 'N/A')}</p>
-                        <p><strong>Drop-off:</strong> {booking.get('dropoffAddress', 'N/A')}</p>
-                        <p><strong>Date:</strong> {booking.get('date', 'N/A')}</p>
-                        <p><strong>Time:</strong> {booking.get('time', 'N/A')}</p>
-                        <p><strong>Passengers:</strong> {booking.get('passengers', 'N/A')}</p>
-                        <p><strong>Total Paid:</strong> ${booking.get('totalPrice', 0):.2f} NZD</p>
+                        <p><strong>{t['reference']}:</strong> {booking.get('id', '')[:8].upper()}</p>
+                        <p><strong>{t['service']}:</strong> {booking.get('serviceType', 'N/A').replace('-', ' ').title()}</p>
+                        <p><strong>{t['pickup']}:</strong> {booking.get('pickupAddress', 'N/A')}</p>
+                        <p><strong>{t['dropoff']}:</strong> {booking.get('dropoffAddress', 'N/A')}</p>
+                        <p><strong>{t['date']}:</strong> {booking.get('date', 'N/A')}</p>
+                        <p><strong>{t['time']}:</strong> {booking.get('time', 'N/A')}</p>
+                        <p><strong>{t['passengers']}:</strong> {booking.get('passengers', 'N/A')}</p>
+                        <p><strong>{t['total']}:</strong> ${total_price:.2f} NZD</p>
                     </div>
                     
-                    <p>We'll be in touch closer to your pickup time to confirm all details.</p>
-                    <p>If you have any questions, please contact us at {sender_email} or call +64 21 743 321.</p>
+                    <p>{t['contact_intro']}</p>
+                    <p>{t['contact']} {sender_email} {t['or_call']} +64 21 743 321.</p>
                     
                     <p style="margin-top: 30px;">Thank you for choosing BookaRide!</p>
                 </div>
