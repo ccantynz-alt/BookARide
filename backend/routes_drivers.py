@@ -16,7 +16,7 @@ async def get_drivers(db: AsyncIOMotorDatabase = None):
         raise HTTPException(status_code=500, detail=str(e))
 
 @drivers_router.post("")
-async def create_driver(driver: DriverCreate, db: AsyncIOMotorDatabase = None):
+async def create_driver(driver: DriverCreate):
     """Create a new driver"""
     try:
         new_driver = Driver(
@@ -29,7 +29,7 @@ async def create_driver(driver: DriverCreate, db: AsyncIOMotorDatabase = None):
         raise HTTPException(status_code=500, detail=str(e))
 
 @drivers_router.put("/{driver_id}")
-async def update_driver(driver_id: str, driver: DriverCreate, db: AsyncIOMotorDatabase = None):
+async def update_driver(driver_id: str, driver: DriverCreate):
     """Update a driver"""
     try:
         result = await db.drivers.update_one(
@@ -48,7 +48,7 @@ async def update_driver(driver_id: str, driver: DriverCreate, db: AsyncIOMotorDa
         raise HTTPException(status_code=500, detail=str(e))
 
 @drivers_router.delete("/{driver_id}")
-async def delete_driver(driver_id: str, db: AsyncIOMotorDatabase = None):
+async def delete_driver(driver_id: str):
     """Delete a driver"""
     try:
         result = await db.drivers.delete_one({"id": driver_id})
@@ -61,7 +61,7 @@ async def delete_driver(driver_id: str, db: AsyncIOMotorDatabase = None):
         raise HTTPException(status_code=500, detail=str(e))
 
 @drivers_router.patch("/{driver_id}/assign")
-async def assign_driver(driver_id: str, booking_id: str, db: AsyncIOMotorDatabase = None):
+async def assign_driver(driver_id: str, booking_id: str):
     """Assign driver to a booking"""
     try:
         # Update booking with driver assignment

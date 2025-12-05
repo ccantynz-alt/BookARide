@@ -51,7 +51,7 @@ async def get_customers(db: AsyncIOMotorDatabase = None):
         raise HTTPException(status_code=500, detail=str(e))
 
 @customers_router.get("/{email}")
-async def get_customer(email: str, db: AsyncIOMotorDatabase = None):
+async def get_customer(email: str):
     """Get a specific customer with full details"""
     try:
         # Get customer bookings
@@ -80,7 +80,7 @@ async def get_customer(email: str, db: AsyncIOMotorDatabase = None):
         raise HTTPException(status_code=500, detail=str(e))
 
 @customers_router.post("/notes")
-async def add_customer_note(note: CustomerNoteCreate, admin_username: str, db: AsyncIOMotorDatabase = None):
+async def add_customer_note(note: CustomerNoteCreate, admin_username: str):
     """Add a note for a customer"""
     try:
         new_note = CustomerNote(
@@ -94,7 +94,7 @@ async def add_customer_note(note: CustomerNoteCreate, admin_username: str, db: A
         raise HTTPException(status_code=500, detail=str(e))
 
 @customers_router.delete("/notes/{note_id}")
-async def delete_customer_note(note_id: str, db: AsyncIOMotorDatabase = None):
+async def delete_customer_note(note_id: str):
     """Delete a customer note"""
     try:
         result = await db.customer_notes.delete_one({"id": note_id})

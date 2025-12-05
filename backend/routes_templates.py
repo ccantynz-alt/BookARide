@@ -16,7 +16,7 @@ async def get_templates(db: AsyncIOMotorDatabase = None):
         raise HTTPException(status_code=500, detail=str(e))
 
 @templates_router.post("")
-async def create_template(template: EmailTemplateCreate, db: AsyncIOMotorDatabase = None):
+async def create_template(template: EmailTemplateCreate):
     """Create a new email template"""
     try:
         new_template = EmailTemplate(
@@ -29,7 +29,7 @@ async def create_template(template: EmailTemplateCreate, db: AsyncIOMotorDatabas
         raise HTTPException(status_code=500, detail=str(e))
 
 @templates_router.put("/{template_id}")
-async def update_template(template_id: str, template: EmailTemplateCreate, db: AsyncIOMotorDatabase = None):
+async def update_template(template_id: str, template: EmailTemplateCreate):
     """Update an email template"""
     try:
         result = await db.email_templates.update_one(
@@ -48,7 +48,7 @@ async def update_template(template_id: str, template: EmailTemplateCreate, db: A
         raise HTTPException(status_code=500, detail=str(e))
 
 @templates_router.delete("/{template_id}")
-async def delete_template(template_id: str, db: AsyncIOMotorDatabase = None):
+async def delete_template(template_id: str):
     """Delete an email template"""
     try:
         result = await db.email_templates.delete_one({"id": template_id})
