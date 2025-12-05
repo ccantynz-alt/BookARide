@@ -16,6 +16,7 @@ import SuburbPage from './pages/SuburbPage';
 import SuburbsDirectory from './pages/SuburbsDirectory';
 import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
+import SEODashboard from './pages/SEODashboard';
 import DriverLogin from './pages/DriverLogin';
 import DriverPortal from './pages/DriverPortal';
 import { Toaster } from './components/ui/sonner';
