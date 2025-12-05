@@ -210,6 +210,27 @@ const resources = {
         services: '서비스',
         legal: '법적 정보',
         rights: '모든 권리 보유.'
+      },
+      email: {
+        subject: '예약 확인',
+        greeting: '고객님께',
+        confirmed: '예약이 확정되었습니다!',
+        details: '예약 상세 정보',
+        reference: '예약 번호',
+        service: '서비스 유형',
+        pickup: '탑승 위치',
+        dropoff: '하차 위치',
+        date: '날짜',
+        time: '시간',
+        passengers: '승객 수',
+        totalPaid: '총 결제 금액',
+        contact: '문의사항이 있으시면 연락주세요',
+        thanks: 'BookaRide를 이용해 주셔서 감사합니다!',
+        footer: 'BookaRide 뉴질랜드'
+      },
+      sms: {
+        confirmed: 'BookaRide: 예약이 확정되었습니다!',
+        details: '예약번호: {{ref}}, {{date}} {{time}}. 탑승: {{pickup}}. 금액: ${{price}}. 감사합니다!'
       }
     }
   },
