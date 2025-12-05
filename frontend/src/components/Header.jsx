@@ -20,7 +20,10 @@ export const Header = () => {
   const isActive = (path) => location.pathname === path;
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-gray-900 border-b-2 border-gold/40 shadow-xl" style={{ backgroundColor: 'rgba(17, 24, 39, 0.98)' }}>
+    <header className="fixed top-0 left-0 right-0 z-50 backdrop-blur-lg bg-gray-900/95 border-b border-gold/20 shadow-2xl">
+      {/* Top accent line */}
+      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-gold to-transparent opacity-60"></div>
+      
       <nav className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           {/* Logo */}
@@ -35,26 +38,31 @@ export const Header = () => {
             />
           </Link>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-8">
+          {/* Desktop Navigation - Enhanced */}
+          <div className="hidden md:flex items-center space-x-2">
             {navLinks.map((link) => (
               <Link
                 key={link.path}
                 to={link.path}
-                className={`text-sm font-medium transition-colors duration-200 hover:text-gold ${
-                  isActive(link.path) ? 'text-gold' : 'text-white/90'
+                className={`relative px-4 py-2 text-sm font-medium transition-all duration-300 rounded-lg group ${
+                  isActive(link.path) 
+                    ? 'text-gold bg-gold/10' 
+                    : 'text-white/90 hover:text-gold hover:bg-white/5'
                 }`}
               >
                 {link.label}
+                <span className={`absolute bottom-0 left-1/2 -translate-x-1/2 w-0 h-0.5 bg-gold transition-all duration-300 ${
+                  isActive(link.path) ? 'w-3/4' : 'group-hover:w-3/4'
+                }`}></span>
               </Link>
             ))}
           </div>
 
-          {/* CTA Button & Language Selector */}
+          {/* CTA Button & Language Selector - Enhanced */}
           <div className="hidden md:flex items-center space-x-4">
             <LanguageSelector />
             <Link to="/book-now">
-              <Button className="bg-gold hover:bg-gold/90 text-black font-semibold transition-colors duration-200">
+              <Button className="bg-gradient-to-r from-gold to-yellow-500 hover:from-yellow-500 hover:to-gold text-black font-semibold transition-all duration-300 shadow-lg hover:shadow-xl hover:shadow-gold/30 hover:scale-105">
                 Book a Ride
               </Button>
             </Link>
