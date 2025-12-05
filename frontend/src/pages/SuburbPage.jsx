@@ -209,10 +209,10 @@ export const SuburbPage = () => {
               </p>
               <div className="flex flex-wrap gap-3">
                 {suburb.nearbyAreas.map((area, index) => {
-                  const nearbySuburb = aucklandSuburbs.find(s => s.name === area);
-                  if (nearbySuburb) {
+                  const nearbyArea = allAreas.find(s => s.name === area);
+                  if (nearbyArea) {
                     return (
-                      <Link key={index} to={`/suburbs/${nearbySuburb.slug}`}>
+                      <Link key={index} to={`/suburbs/${nearbyArea.slug}`}>
                         <Button variant="outline" className="border-gold/30 hover:border-gold hover:bg-gold/10">
                           {area}
                         </Button>
