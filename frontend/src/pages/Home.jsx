@@ -101,7 +101,7 @@ export const Home = () => {
                   View Services
                 </Button>
               </Link>
-            </div>
+            </motion.div>
           </div>
         </div>
 
