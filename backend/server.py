@@ -1094,6 +1094,225 @@ async def stripe_webhook(request: Request):
         raise HTTPException(status_code=500, detail=f"Error processing webhook: {str(e)}")
 
 
+
+# ==================== ENHANCED ADMIN FEATURES ====================
+
+# Analytics Endpoints
+@api_router.get("/analytics/stats")
+async def get_analytics_stats(start_date: Optional[str] = None, end_date: Optional[str] = None):
+    """Get comprehensive analytics statistics"""
+    try:
+        query = {}
+        if start_date or end_date:
+            query["createdAt"] = {}
+            if start_date:
+                query["createdAt"]["$gte"] = datetime.fromisoformat(start_date)
+            if end_date:
+                query["createdAt"]["$lte"] = datetime.fromisoformat(end_date)
+        
+        bookings = await db.bookings.find(query, {"_id": 0}).to_list(10000)
+        
+        # Calculate stats
+        total = len(bookings)
+        confirmed = len([b for b in bookings if b.get('payment_status') == 'paid'])
+        pending = total - confirmed
+        total_revenue = sum(b.get('pricing', {}).get('totalPrice', 0) for b in bookings if b.get('payment_status') == 'paid')
+        
+        # Group by date for trends
+        daily_revenue = {}
+        daily_bookings = {}
+        for booking in bookings:
+            date = booking.get('date', '')
+            if date:
+                daily_bookings[date] = daily_bookings.get(date, 0) + 1
+                if booking.get('payment_status') == 'paid':
+                    revenue = booking.get('pricing', {}).get('totalPrice', 0)
+                    daily_revenue[date] = daily_revenue.get(date, 0) + revenue
+        
+        revenue_trends = [{"date": date, "revenue": revenue} for date, revenue in sorted(daily_revenue.items())]
+        booking_trends = [{"date": date, "count": count} for date, count in sorted(daily_bookings.items())]
+        
+        # Popular routes
+        route_counts = {}
+        for booking in bookings:
+            pickup = booking.get('pickupAddress', '').split(',')[0]
+            dropoff = booking.get('dropoffAddress', '').split(',')[0]
+            if pickup and dropoff:
+                route = f"{pickup} → {dropoff}"
+                route_counts[route] = route_counts.get(route, 0) + 1
+        
+        popular_routes = sorted(route_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+        
+        return {
+            "summary": {
+                "total": total,
+                "confirmed": confirmed,
+                "pending": pending,
+                "revenue": total_revenue
+            },
+            "revenue_trends": revenue_trends[-30:],  # Last 30 days
+            "booking_trends": booking_trends[-30:],
+            "popular_routes": [{"route": r[0], "count": r[1]} for r in popular_routes]
+        }
+    except Exception as e:
+        logger.error(f"Error getting analytics: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Customer Management
+@api_router.get("/customers")
+async def get_customers():
+    """Get all customers with their booking history"""
+    try:
+        bookings = await db.bookings.find({}, {"_id": 0}).to_list(10000)
+        
+        customers_dict = {}
+        for booking in bookings:
+            email = booking.get('email', '')
+            if email:
+                if email not in customers_dict:
+                    customers_dict[email] = {
+                        'email': email,
+                        'name': booking.get('name', ''),
+                        'phone': booking.get('phone', ''),
+                        'total_bookings': 0,
+                        'total_spent': 0,
+                        'first_booking': booking.get('createdAt'),
+                        'last_booking': booking.get('createdAt'),
+                        'bookings': []
+                    }
+                
+                customers_dict[email]['total_bookings'] += 1
+                if booking.get('payment_status') == 'paid':
+                    customers_dict[email]['total_spent'] += booking.get('pricing', {}).get('totalPrice', 0)
+                
+                if booking.get('createdAt'):
+                    if booking.get('createdAt') > customers_dict[email]['last_booking']:
+                        customers_dict[email]['last_booking'] = booking.get('createdAt')
+                
+                customers_dict[email]['bookings'].append({
+                    'id': booking.get('id'),
+                    'date': booking.get('date'),
+                    'service': booking.get('serviceType'),
+                    'price': booking.get('pricing', {}).get('totalPrice', 0),
+                    'status': booking.get('status')
+                })
+        
+        customers = sorted(customers_dict.values(), key=lambda x: x['total_bookings'], reverse=True)
+        return {"customers": customers}
+    except Exception as e:
+        logger.error(f"Error getting customers: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Export to CSV
+@api_router.get("/export/csv")
+async def export_csv():
+    """Export bookings to CSV"""
+    try:
+        import pandas as pd
+        from io import BytesIO
+        from fastapi.responses import StreamingResponse
+        
+        bookings = await db.bookings.find({}, {"_id": 0}).to_list(10000)
+        
+        df_data = []
+        for b in bookings:
+            df_data.append({
+                'Booking ID': b.get('id', '')[:8],
+                'Date': b.get('date', ''),
+                'Time': b.get('time', ''),
+                'Customer': b.get('name', ''),
+                'Email': b.get('email', ''),
+                'Phone': b.get('phone', ''),
+                'Service': b.get('serviceType', ''),
+                'Pickup': b.get('pickupAddress', ''),
+                'Dropoff': b.get('dropoffAddress', ''),
+                'Passengers': b.get('passengers', ''),
+                'Price': b.get('pricing', {}).get('totalPrice', 0),
+                'Status': b.get('status', ''),
+                'Payment': b.get('payment_status', '')
+            })
+        
+        df = pd.DataFrame(df_data)
+        stream = BytesIO()
+        df.to_csv(stream, index=False)
+        stream.seek(0)
+        
+        return StreamingResponse(
+            stream,
+            media_type="text/csv",
+            headers={"Content-Disposition": f"attachment; filename=bookings_{datetime.now().strftime('%Y%m%d')}.csv"}
+        )
+    except Exception as e:
+        logger.error(f"Error exporting CSV: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Manual Booking Creation
+class ManualBooking(BaseModel):
+    name: str
+    email: str
+    phone: str
+    serviceType: str
+    pickupAddress: str
+    dropoffAddress: str
+    date: str
+    time: str
+    passengers: str
+    pricing: dict
+    notes: Optional[str] = ""
+
+@api_router.post("/bookings/manual")
+async def create_manual_booking(booking: ManualBooking):
+    """Create a booking manually"""
+    try:
+        new_booking = {
+            "id": str(uuid.uuid4()),
+            "name": booking.name,
+            "email": booking.email,
+            "phone": booking.phone,
+            "serviceType": booking.serviceType,
+            "pickupAddress": booking.pickupAddress,
+            "dropoffAddress": booking.dropoffAddress,
+            "date": booking.date,
+            "time": booking.time,
+            "passengers": booking.passengers,
+            "pricing": booking.pricing,
+            "notes": booking.notes,
+            "status": "confirmed",
+            "payment_status": "manual",
+            "createdAt": datetime.now(timezone.utc)
+        }
+        
+        await db.bookings.insert_one(new_booking)
+        logger.info(f"Manual booking created: {new_booking['id']}")
+        return {"message": "Booking created successfully", "id": new_booking['id']}
+    except Exception as e:
+        logger.error(f"Error creating manual booking: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Bulk Operations
+@api_router.post("/bookings/bulk-status")
+async def bulk_status_update(booking_ids: List[str], new_status: str):
+    """Update status for multiple bookings"""
+    try:
+        result = await db.bookings.update_many(
+            {"id": {"$in": booking_ids}},
+            {"$set": {"status": new_status}}
+        )
+        return {"message": "Status updated", "count": result.modified_count}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.delete("/bookings/bulk-delete")
+async def bulk_delete(booking_ids: List[str]):
+    """Delete multiple bookings"""
+    try:
+        result = await db.bookings.delete_many({"id": {"$in": booking_ids}})
+        return {"message": "Bookings deleted", "count": result.deleted_count}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
 # Include the router in the main app
 app.include_router(api_router)
 
