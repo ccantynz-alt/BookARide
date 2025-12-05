@@ -16,6 +16,8 @@ import AdminDashboard from './pages/AdminDashboard';
 import DriverLogin from './pages/DriverLogin';
 import DriverPortal from './pages/DriverPortal';
 import { Toaster } from './components/ui/sonner';
+import BackToTop from './components/BackToTop';
+import CallNowButton from './components/CallNowButton';
 
 function App() {
   return (
