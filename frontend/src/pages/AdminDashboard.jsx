@@ -648,6 +648,56 @@ export const AdminDashboard = () => {
                 </div>
               </div>
 
+              {/* Driver Assignment */}
+              <div>
+                <h3 className="font-semibold text-gray-900 mb-3">Driver Assignment</h3>
+                {selectedBooking.driver_id ? (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-600">Assigned Driver</p>
+                        <p className="font-medium text-gray-900">
+                          {drivers.find(d => d.id === selectedBooking.driver_id)?.name || 'Unknown Driver'}
+                        </p>
+                      </div>
+                      <Button 
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setSelectedDriver('')}
+                        className="text-red-600 hover:bg-red-50"
+                      >
+                        Change Driver
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <p className="text-sm text-gray-600">No driver assigned yet</p>
+                    <div className="flex gap-2">
+                      <Select value={selectedDriver} onValueChange={setSelectedDriver}>
+                        <SelectTrigger className="flex-1">
+                          <SelectValue placeholder="Select a driver..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {drivers.filter(d => d.status === 'active').map((driver) => (
+                            <SelectItem key={driver.id} value={driver.id}>
+                              {driver.name} - {driver.phone}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button 
+                        onClick={handleAssignDriver}
+                        disabled={!selectedDriver}
+                        className="bg-gold hover:bg-gold/90 text-black"
+                      >
+                        Assign
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* Notes */}
               {selectedBooking.notes && (
                 <div>
