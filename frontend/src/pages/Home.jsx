@@ -20,6 +20,14 @@ const iconMap = {
 };
 
 export const Home = () => {
+  useEffect(() => {
+    AOS.init({
+      duration: 800,
+      once: true,
+      offset: 100
+    });
+  }, []);
+
   return (
     <div className="min-h-screen bg-white">
       <SEO 
