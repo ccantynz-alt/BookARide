@@ -102,7 +102,7 @@ export const Header = () => {
             
             {/* Mobile CTA */}
             <Link to="/book-now" onClick={() => setIsMenuOpen(false)}>
-              <Button className="w-full bg-gradient-to-r from-gold to-yellow-500 hover:from-yellow-500 hover:to-gold text-black font-semibold transition-all duration-300">
+              <Button className="w-full bg-gold hover:bg-yellow-500 text-black font-semibold transition-all duration-300 shadow-lg">
                 Book a Ride
               </Button>
             </Link>
