@@ -274,7 +274,6 @@ export const CruiseTransfers = () => {
                       <div className="space-y-1 text-sm">
                         <p className="text-gray-700"><strong>Service:</strong> Two separate trips</p>
                         <p className="text-gray-700"><strong>Flexibility:</strong> Book both at once</p>
-                        <p className="text-gold font-semibold"><strong>From:</strong> Contact for quote</p>
                       </div>
                     </div>
                   </div>
