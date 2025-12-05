@@ -466,8 +466,11 @@ export const BookNow = () => {
                                 type="date"
                                 value={formData.returnDate}
                                 onChange={handleChange}
+                                min={formData.date || new Date().toISOString().split('T')[0]}
                                 required={formData.bookReturn}
-                                className="transition-all duration-200 focus:ring-2 focus:ring-gold"
+                                onKeyDown={(e) => e.preventDefault()}
+                                className="transition-all duration-200 focus:ring-2 focus:ring-gold cursor-pointer"
+                                placeholder="Select return date"
                               />
                             </div>
                             <div className="space-y-2">
@@ -482,7 +485,9 @@ export const BookNow = () => {
                                 value={formData.returnTime}
                                 onChange={handleChange}
                                 required={formData.bookReturn}
-                                className="transition-all duration-200 focus:ring-2 focus:ring-gold"
+                                onKeyDown={(e) => e.preventDefault()}
+                                className="transition-all duration-200 focus:ring-2 focus:ring-gold cursor-pointer"
+                                placeholder="Select return time"
                               />
                             </div>
                           </div>
