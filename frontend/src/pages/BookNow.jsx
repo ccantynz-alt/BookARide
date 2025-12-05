@@ -156,6 +156,7 @@ export const BookNow = () => {
         ...formData,
         pricing: pricing,
         status: 'pending',
+        language: i18n.language, // Capture selected language
         createdAt: new Date()
       };
 
