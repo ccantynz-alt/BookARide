@@ -716,12 +716,17 @@ export const BookNow = () => {
                             </div>
                           )}
                           <div className="flex justify-between pt-4 border-t-2 border-gold/30">
-                            <span className="text-xl font-bold text-gray-900">Total</span>
+                            <span className="text-xl font-bold text-gray-900">Total (NZD)</span>
                             <span className="text-3xl font-bold text-gold">${pricing.totalPrice.toFixed(2)}</span>
                           </div>
                           <p className="text-xs text-gray-500 text-center mt-4">
                             *This is an estimate. Final price will be confirmed before your trip.
                           </p>
+                          
+                          {/* Currency Converter */}
+                          <div className="mt-6">
+                            <CurrencyConverter nzdAmount={pricing.totalPrice} />
+                          </div>
                         </div>
                       ) : (
                         <div className="text-center py-8 text-gray-500">
