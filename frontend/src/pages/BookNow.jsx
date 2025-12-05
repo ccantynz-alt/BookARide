@@ -520,7 +520,9 @@ export const BookNow = () => {
                                   type="time"
                                   value={formData.returnDepartureTime}
                                   onChange={handleChange}
-                                  className="transition-all duration-200 focus:ring-2 focus:ring-gold"
+                                  onKeyDown={(e) => e.preventDefault()}
+                                  className="transition-all duration-200 focus:ring-2 focus:ring-gold cursor-pointer"
+                                  placeholder="Select time"
                                 />
                               </div>
                               <div className="space-y-2">
@@ -542,7 +544,9 @@ export const BookNow = () => {
                                   type="time"
                                   value={formData.returnArrivalTime}
                                   onChange={handleChange}
-                                  className="transition-all duration-200 focus:ring-2 focus:ring-gold"
+                                  onKeyDown={(e) => e.preventDefault()}
+                                  className="transition-all duration-200 focus:ring-2 focus:ring-gold cursor-pointer"
+                                  placeholder="Select time"
                                 />
                               </div>
                             </div>
