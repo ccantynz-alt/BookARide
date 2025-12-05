@@ -137,12 +137,9 @@ export const Contact = () => {
               <Card className="border-2 border-gold/30 bg-gradient-to-br from-gray-50 to-white">
                 <CardContent className="p-8">
                   <h4 className="font-semibold text-gray-900 mb-3">Need Help Right Away?</h4>
-                  <p className="text-sm text-gray-600 mb-6">Call us now for instant booking and support.</p>
-                  <a href={`tel:${companyInfo.phone}`}>
-                    <Button className="w-full bg-gold hover:bg-gold/90 text-black font-semibold transition-colors duration-200">
-                      Call Now
-                    </Button>
-                  </a>
+                  <p className="text-sm text-gray-600 mb-4">Call us for instant booking and support.</p>
+                  <p className="text-lg font-bold text-gray-900 mb-6">{companyInfo.phone}</p>
+                  <p className="text-xs text-gray-500">Available 24/7</p>
                 </CardContent>
               </Card>
             </div>
