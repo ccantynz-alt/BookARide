@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from models import Vehicle, VehicleCreate
+from .models import Vehicle, VehicleCreate
 from datetime import datetime
 import uuid
 

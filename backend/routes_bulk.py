@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from models import BulkEmailRequest
+from .models import BulkEmailRequest
 from typing import List
 import os
 import requests
