@@ -139,6 +139,20 @@
   animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
+/* Logo Glow Animation */
+@keyframes logoGlow {
+  0%, 100% {
+    filter: drop-shadow(0 0 8px rgba(212, 175, 55, 0.3));
+  }
+  50% {
+    filter: drop-shadow(0 0 20px rgba(212, 175, 55, 0.6));
+  }
+}
+
+.logo-glow {
+  animation: logoGlow 4s ease-in-out infinite;
+}
+
 /* Float Animation */
 .animate-float {
   animation: float 3s ease-in-out infinite;
