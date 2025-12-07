@@ -72,7 +72,7 @@ const SuburbSchema = ({ suburb }) => {
         "name": `How much does an airport shuttle from ${suburb.name} to Auckland Airport cost?`,
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": `Our fixed-price airport shuttle from ${suburb.name} to Auckland Airport starts from $${suburb.price} NZD. The price is guaranteed with no surge pricing, regardless of traffic or time of day.`
+          "text": `Airport shuttle pricing from ${suburb.name} to Auckland Airport starts from $${suburb.price} NZD for the ${suburb.distance}km journey. Your exact price is calculated based on the actual distance traveled from your specific pickup location.`
         }
       },
       {
