@@ -61,6 +61,9 @@ function App() {
                   <Route path="/admin/login" element={<AdminLogin />} />
                   <Route path="/admin/dashboard" element={<AdminDashboard />} />
                   <Route path="/admin/seo" element={<SEODashboard />} />
+                  <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
+                  <Route path="/website-usage-policy" element={<WebsiteUsagePolicy />} />
+                  <Route path="/privacy-policy" element={<PrivacyPolicy />} />
                 </Routes>
               </main>
               <Footer />
