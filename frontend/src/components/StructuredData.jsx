@@ -1,15 +1,16 @@
 import React from 'react';
 import { Helmet } from 'react-helmet-async';
+import siteConfig from '../config/siteConfig';
 
 const StructuredData = () => {
   const organizationSchema = {
     "@context": "https://schema.org",
     "@type": "LocalBusiness",
-    "name": "Airport Shuttle Service NZ",
-    "image": "https://airportshuttleservice.co.nz/logo.png",
-    "url": "https://airportshuttleservice.co.nz",
-    "telephone": "+64-21-743-321",
-    "email": "info@airportshuttleservice.co.nz",
+    "name": siteConfig.siteName,
+    "image": `${siteConfig.siteUrl}/logo.png`,
+    "url": siteConfig.siteUrl,
+    "telephone": siteConfig.phone,
+    "email": siteConfig.email,
     "address": {
       "@type": "PostalAddress",
       "streetAddress": "Auckland",
