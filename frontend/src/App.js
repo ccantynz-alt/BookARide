@@ -51,6 +51,7 @@ function App() {
                   <Route path="/cruise-transfers" element={<CruiseTransfers />} />
                   <Route path="/suburbs" element={<SuburbsDirectory />} />
                   <Route path="/suburbs/:slug" element={<SuburbPage />} />
+                  <Route path="/hibiscus-coast" element={<HibiscusCoastPage />} />
                   <Route path="/hotels" element={<HotelsDirectory />} />
                   <Route path="/hotels/:slug" element={<HotelPage />} />
                   <Route path="/payment-success" element={<PaymentSuccess />} />
