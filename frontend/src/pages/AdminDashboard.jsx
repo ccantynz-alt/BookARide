@@ -953,6 +953,221 @@ export const AdminDashboard = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Create Booking Modal */}
+      <Dialog open={showCreateBookingModal} onOpenChange={setShowCreateBookingModal}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create Manual Booking</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6 pt-4">
+            {/* Customer Information */}
+            <div>
+              <h3 className="font-semibold text-gray-900 mb-3">Customer Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Name *</Label>
+                  <Input
+                    value={newBooking.name}
+                    onChange={(e) => setNewBooking({...newBooking, name: e.target.value})}
+                    placeholder="Customer name"
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label>Email *</Label>
+                  <Input
+                    type="email"
+                    value={newBooking.email}
+                    onChange={(e) => setNewBooking({...newBooking, email: e.target.value})}
+                    placeholder="customer@example.com"
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label>Phone *</Label>
+                  <Input
+                    value={newBooking.phone}
+                    onChange={(e) => setNewBooking({...newBooking, phone: e.target.value})}
+                    placeholder="+64 21 XXX XXXX"
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label>Service Type *</Label>
+                  <Select 
+                    value={newBooking.serviceType} 
+                    onValueChange={(value) => setNewBooking({...newBooking, serviceType: value})}
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="airport-shuttle">Airport Shuttle</SelectItem>
+                      <SelectItem value="private-transfer">Private Shuttle Transfer</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+
+            {/* Trip Information */}
+            <div>
+              <h3 className="font-semibold text-gray-900 mb-3">Trip Information</h3>
+              <div className="space-y-4">
+                <div>
+                  <Label>Pickup Address *</Label>
+                  <Input
+                    value={newBooking.pickupAddress}
+                    onChange={(e) => setNewBooking({...newBooking, pickupAddress: e.target.value})}
+                    placeholder="123 Pickup Street, Auckland"
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label>Drop-off Address *</Label>
+                  <Input
+                    value={newBooking.dropoffAddress}
+                    onChange={(e) => setNewBooking({...newBooking, dropoffAddress: e.target.value})}
+                    placeholder="456 Destination Road, Auckland"
+                    className="mt-1"
+                  />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <Label>Date *</Label>
+                    <Input
+                      type="date"
+                      value={newBooking.date}
+                      onChange={(e) => setNewBooking({...newBooking, date: e.target.value})}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label>Time *</Label>
+                    <Input
+                      type="time"
+                      value={newBooking.time}
+                      onChange={(e) => setNewBooking({...newBooking, time: e.target.value})}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label>Passengers *</Label>
+                    <Select 
+                      value={newBooking.passengers} 
+                      onValueChange={(value) => setNewBooking({...newBooking, passengers: value})}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[1, 2, 3, 4, 5, 6, 7, 8].map(num => (
+                          <SelectItem key={num} value={num.toString()}>{num}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div>
+                  <Label>Special Notes</Label>
+                  <Textarea
+                    value={newBooking.notes}
+                    onChange={(e) => setNewBooking({...newBooking, notes: e.target.value})}
+                    placeholder="Any special requests or notes..."
+                    rows={3}
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Pricing */}
+            <div>
+              <h3 className="font-semibold text-gray-900 mb-3">Pricing</h3>
+              <div className="bg-gray-50 p-4 rounded-lg">
+                {bookingPricing.totalPrice > 0 ? (
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span>Distance:</span>
+                      <span className="font-medium">{bookingPricing.distance} km</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Base Price:</span>
+                      <span className="font-medium">${bookingPricing.basePrice.toFixed(2)}</span>
+                    </div>
+                    {bookingPricing.airportFee > 0 && (
+                      <div className="flex justify-between">
+                        <span>Airport Fee:</span>
+                        <span className="font-medium">${bookingPricing.airportFee.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {bookingPricing.passengerFee > 0 && (
+                      <div className="flex justify-between">
+                        <span>Passenger Fee:</span>
+                        <span className="font-medium">${bookingPricing.passengerFee.toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between pt-2 border-t font-semibold text-base">
+                      <span>Total:</span>
+                      <span className="text-gold">${bookingPricing.totalPrice.toFixed(2)}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-600 text-center">
+                    Click "Calculate Price" to get pricing details
+                  </p>
+                )}
+                <Button 
+                  onClick={calculateBookingPrice}
+                  disabled={calculatingPrice || !newBooking.pickupAddress || !newBooking.dropoffAddress}
+                  className="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  {calculatingPrice ? 'Calculating...' : 'Calculate Price'}
+                </Button>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-2 pt-4 border-t">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowCreateBookingModal(false);
+                  setNewBooking({
+                    name: '',
+                    email: '',
+                    phone: '',
+                    serviceType: 'airport-shuttle',
+                    pickupAddress: '',
+                    dropoffAddress: '',
+                    date: '',
+                    time: '',
+                    passengers: '1',
+                    notes: ''
+                  });
+                  setBookingPricing({
+                    distance: 0,
+                    basePrice: 0,
+                    airportFee: 0,
+                    passengerFee: 0,
+                    totalPrice: 0
+                  });
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleCreateManualBooking}
+                className="bg-gold hover:bg-gold/90 text-black font-semibold"
+                disabled={bookingPricing.totalPrice === 0}
+              >
+                Create Booking
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
