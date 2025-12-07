@@ -500,7 +500,7 @@ export const AdminDashboard = () => {
           </Card>
         </div>
 
-        {/* Filters */}
+        {/* Filters and Actions */}
         <Card className="mb-6">
           <CardContent className="p-6">
             <div className="flex flex-col md:flex-row gap-4">
@@ -529,6 +529,12 @@ export const AdminDashboard = () => {
                   </SelectContent>
                 </Select>
               </div>
+              <Button 
+                onClick={() => setShowCreateBookingModal(true)}
+                className="bg-gold hover:bg-gold/90 text-black font-semibold"
+              >
+                + Create Booking
+              </Button>
             </div>
           </CardContent>
         </Card>
