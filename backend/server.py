@@ -1686,14 +1686,13 @@ class SEOPage(BaseModel):
     updated_at: Optional[datetime] = None
 
 @api_router.get("/seo/pages")
-async def get_all_seo_pages(credentials: HTTPAuthorizationCredentials = Depends(security)):
+async def get_all_seo_pages(current_admin: dict = Depends(get_current_admin)):
     """Get all SEO page configurations"""
     try:
-        verify_token(credentials.credentials)
         pages = await db.seo_pages.find({}, {"_id": 0}).to_list(1000)
         return {"pages": pages}
     except Exception as e:
-        logger.error(f"Error fetching SEO pages: {e}")
+        logging.error(f"Error fetching SEO pages: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.get("/seo/pages/{page_path:path}")
