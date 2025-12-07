@@ -30,7 +30,7 @@ export const SuburbPageSEO = () => {
     <div className="min-h-screen bg-white">
       <SEO 
         title={`${suburb.name} Airport Shuttle to Auckland Airport - From $${suburb.price} | Book A Ride`}
-        description={`Professional airport shuttle service from ${suburb.name} to Auckland Airport. Fixed price $${suburb.price}, ${suburb.distance}km journey, 24/7 availability. Book online for instant confirmation. Reliable, safe, affordable.`}
+        description={`Professional airport shuttle service from ${suburb.name} to Auckland Airport. From $${suburb.price}, ${suburb.distance}km journey, 24/7 availability. Book online for instant confirmation. Reliable, safe, affordable.`}
         keywords={`${suburb.name} airport shuttle, ${suburb.name} to Auckland Airport, airport transfer ${suburb.name}, shuttle service ${suburb.name}, ${suburb.name} airport transport, ${suburb.name} to airport taxi, book airport shuttle ${suburb.name}, cheap airport shuttle ${suburb.name}, ${cityName} airport shuttle`}
         canonical={`/suburbs/${slug}`}
       />
