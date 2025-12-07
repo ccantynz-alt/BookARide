@@ -1948,7 +1948,7 @@ async def initialize_seo_pages(current_admin: dict = Depends(get_current_admin))
             "message": f"Initialized {len(default_pages)} main SEO page configurations"
         }
     except Exception as e:
-        logger.error(f"Error initializing SEO pages: {e}")
+        logging.error(f"Error initializing SEO pages: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
