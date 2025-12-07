@@ -18,6 +18,13 @@ import { DriversTab } from '../components/admin/DriversTab';
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
+// Helper function to format date to DD/MM/YYYY
+const formatDate = (dateString) => {
+  if (!dateString) return '';
+  const [year, month, day] = dateString.split('-');
+  return `${day}/${month}/${year}`;
+};
+
 export const AdminDashboard = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('bookings');
