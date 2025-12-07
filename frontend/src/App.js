@@ -12,7 +12,7 @@ import BookNow from './pages/BookNow';
 import PaymentSuccess from './pages/PaymentSuccess';
 import HobbitonTransfers from './pages/HobbitonTransfers';
 import CruiseTransfers from './pages/CruiseTransfers';
-import SuburbPage from './pages/SuburbPage';
+import SuburbPage from './pages/SuburbPageSEO';
 import SuburbsDirectory from './pages/SuburbsDirectory';
 import HotelPage from './pages/HotelPage';
 import HotelsDirectory from './pages/HotelsDirectory';
