@@ -8,9 +8,10 @@ import StructuredData from '../components/StructuredData';
 import { aucklandSuburbs } from '../data/aucklandSuburbs';
 import { hamiltonAreas } from '../data/hamiltonAreas';
 import { whangareiAreas } from '../data/whangareiAreas';
+import { hibiscusCoastSuburbs } from '../data/hibiscusCoastSuburbs';
 
 // Combine all areas
-const allAreas = [...aucklandSuburbs, ...hamiltonAreas, ...whangareiAreas];
+const allAreas = [...aucklandSuburbs, ...hamiltonAreas, ...whangareiAreas, ...hibiscusCoastSuburbs];
 
 export const SuburbPage = () => {
   const { slug } = useParams();
