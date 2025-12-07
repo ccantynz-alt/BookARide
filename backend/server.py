@@ -1747,10 +1747,9 @@ async def delete_seo_page(page_path: str, current_admin: dict = Depends(get_curr
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.post("/seo/initialize-all")
-async def initialize_all_seo_pages(credentials: HTTPAuthorizationCredentials = Depends(security)):
+async def initialize_all_seo_pages(current_admin: dict = Depends(get_current_admin)):
     """Initialize SEO data for ALL pages including all 27 suburbs"""
     try:
-        verify_token(credentials.credentials)
         
         # Auckland Suburbs data with optimized SEO
         auckland_suburbs = [
