@@ -1813,6 +1813,24 @@ async def initialize_all_seo_pages(current_admin: dict = Depends(get_current_adm
             {"slug": "mangawhai", "name": "Mangawhai", "city": "Mangawhai", "distance": 110, "price": 200},
         ]
         
+        # Hibiscus Coast suburbs
+        hibiscus_coast_suburbs = [
+            {"slug": "orewa", "name": "Orewa", "city": "Hibiscus Coast", "distance": 42, "price": 125},
+            {"slug": "whangaparaoa", "name": "Whangaparāoa", "city": "Hibiscus Coast", "distance": 48, "price": 135},
+            {"slug": "silverdale", "name": "Silverdale", "city": "Hibiscus Coast", "distance": 38, "price": 120},
+            {"slug": "red-beach", "name": "Red Beach", "city": "Hibiscus Coast", "distance": 45, "price": 130},
+            {"slug": "stanmore-bay", "name": "Stanmore Bay", "city": "Hibiscus Coast", "distance": 46, "price": 130},
+            {"slug": "arkles-bay", "name": "Arkles Bay", "city": "Hibiscus Coast", "distance": 47, "price": 135},
+            {"slug": "army-bay", "name": "Army Bay", "city": "Hibiscus Coast", "distance": 49, "price": 135},
+            {"slug": "manly", "name": "Manly", "city": "Hibiscus Coast", "distance": 47, "price": 130},
+            {"slug": "gulf-harbour", "name": "Gulf Harbour", "city": "Hibiscus Coast", "distance": 50, "price": 140},
+            {"slug": "millwater", "name": "Millwater", "city": "Hibiscus Coast", "distance": 40, "price": 120},
+            {"slug": "stillwater", "name": "Stillwater", "city": "Hibiscus Coast", "distance": 36, "price": 115},
+            {"slug": "hatfields-beach", "name": "Hatfields Beach", "city": "Hibiscus Coast", "distance": 43, "price": 125},
+            {"slug": "waiwera", "name": "Waiwera", "city": "Hibiscus Coast", "distance": 45, "price": 130},
+            {"slug": "wenderholm", "name": "Wenderholm", "city": "Hibiscus Coast", "distance": 44, "price": 125},
+        ]
+        
         # Auckland Hotels
         cbd_hotels = [
             {"slug": "skycity-grand-hotel", "name": "SkyCity Grand Hotel", "area": "Auckland CBD", "distance": 21, "price": 100},
