@@ -207,7 +207,7 @@ export const SuburbPageSEO = () => {
             <div className="space-y-6">
               <div>
                 <h4 className="font-bold text-lg mb-2">Q: How much does an airport shuttle from {suburb.name} to Auckland Airport cost?</h4>
-                <p className="text-gray-700">A: Our fixed price for a shuttle from {suburb.name} to Auckland Airport is ${suburb.price} NZD. This price is guaranteed regardless of traffic, time of day, or demand.</p>
+                <p className="text-gray-700">A: Pricing for a shuttle from {suburb.name} to Auckland Airport starts from ${suburb.price} NZD based on the {suburb.distance}km distance. Your exact price is calculated based on your specific pickup and dropoff locations.</p>
               </div>
 
               <div>
