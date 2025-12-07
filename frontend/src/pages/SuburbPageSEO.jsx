@@ -254,11 +254,11 @@ export const SuburbPageSEO = () => {
 
             <div className="grid md:grid-cols-2 gap-6 my-6">
               <div className="border-l-4 border-green-500 pl-4">
-                <h4 className="font-bold mb-2">✓ Us - Fixed Price ${suburb.price}</h4>
-                <p className="text-sm text-gray-600">Guaranteed price, no surge charges</p>
+                <h4 className="font-bold mb-2">✓ Us - Transparent Pricing</h4>
+                <p className="text-sm text-gray-600">Distance-based rates, from ${suburb.price}</p>
               </div>
               <div className="border-l-4 border-red-500 pl-4">
-                <h4 className="font-bold mb-2">✗ Rideshare - Variable Pricing</h4>
+                <h4 className="font-bold mb-2">✗ Rideshare - Surge Pricing</h4>
                 <p className="text-sm text-gray-600">Price can double during peak times</p>
               </div>
               <div className="border-l-4 border-green-500 pl-4">
