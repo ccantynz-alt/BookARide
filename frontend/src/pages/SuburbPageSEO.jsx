@@ -114,11 +114,11 @@ export const SuburbPageSEO = () => {
             </h2>
             
             <p className="text-lg leading-relaxed mb-4">
-              Looking for a reliable, affordable airport shuttle from <strong>{suburb.name}</strong> to Auckland International Airport? You've come to the right place. We specialize in providing premium airport transfer services for residents and visitors of {suburb.name}, {cityName}, offering fixed-price shuttles with professional drivers available 24 hours a day, 7 days a week.
+              Looking for a reliable, affordable airport shuttle from <strong>{suburb.name}</strong> to Auckland International Airport? You've come to the right place. We specialize in providing premium airport transfer services for residents and visitors of {suburb.name}, {cityName}, with professional drivers available 24 hours a day, 7 days a week.
             </p>
 
             <p className="text-lg leading-relaxed mb-4">
-              Our <strong>{suburb.name} airport shuttle service</strong> is designed specifically for the {suburb.distance}km journey from {suburb.name} to Auckland Airport. Unlike rideshare services with unpredictable surge pricing, we offer a guaranteed fixed price of <strong>${suburb.price} NZD</strong> - no matter what time of day you're traveling or how busy the airport is.
+              Our <strong>{suburb.name} airport shuttle service</strong> is designed specifically for the {suburb.distance}km journey from {suburb.name} to Auckland Airport. We offer transparent, distance-based pricing starting from <strong>${suburb.price} NZD</strong> for this route, with rates calculated fairly based on the actual distance traveled.
             </p>
 
             <h3 className="text-2xl font-bold mt-8 mb-4">
