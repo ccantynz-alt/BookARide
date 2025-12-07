@@ -94,10 +94,25 @@ export const Footer = () => {
         </div>
 
         {/* Bottom Bar */}
-        <div className="border-t border-gray-800 mt-8 pt-8 text-center">
-          <p className="text-sm text-gray-400">
-            © {new Date().getFullYear()} Book A Ride NZ. All rights reserved.
-          </p>
+        <div className="border-t border-gray-800 mt-8 pt-8">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+            <p className="text-sm text-gray-400">
+              © {new Date().getFullYear()} Book A Ride NZ. All rights reserved.
+            </p>
+            <div className="flex flex-wrap justify-center gap-4 text-sm">
+              <Link to="/privacy-policy" className="text-gray-400 hover:text-gold transition-colors duration-200">
+                Privacy Policy
+              </Link>
+              <span className="text-gray-600">|</span>
+              <Link to="/terms-and-conditions" className="text-gray-400 hover:text-gold transition-colors duration-200">
+                Terms & Conditions
+              </Link>
+              <span className="text-gray-600">|</span>
+              <Link to="/website-usage-policy" className="text-gray-400 hover:text-gold transition-colors duration-200">
+                Website Usage
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
     </footer>
