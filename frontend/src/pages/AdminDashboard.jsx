@@ -588,7 +588,7 @@ export const AdminDashboard = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <span className="text-gray-600">Date:</span>
-                      <p className="font-medium">{selectedBooking.date}</p>
+                      <p className="font-medium">{formatDate(selectedBooking.date)}</p>
                     </div>
                     <div>
                       <span className="text-gray-600">Time:</span>
