@@ -1882,14 +1882,13 @@ async def initialize_all_seo_pages(current_admin: dict = Depends(get_current_adm
             "pages_created": count
         }
     except Exception as e:
-        logger.error(f"Error initializing all SEO pages: {e}")
+        logging.error(f"Error initializing all SEO pages: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.post("/seo/initialize")
-async def initialize_seo_pages(credentials: HTTPAuthorizationCredentials = Depends(security)):
+async def initialize_seo_pages(current_admin: dict = Depends(get_current_admin)):
     """Initialize SEO data for main pages only"""
     try:
-        verify_token(credentials.credentials)
         
         # Default SEO configurations for all pages
         default_pages = [
