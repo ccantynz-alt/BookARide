@@ -283,6 +283,98 @@ export const AdminDashboard = () => {
     }
   };
 
+  const calculateBookingPrice = async () => {
+    if (!newBooking.pickupAddress || !newBooking.dropoffAddress) {
+      toast.error('Please enter pickup and drop-off addresses');
+      return;
+    }
+
+    setCalculatingPrice(true);
+    try {
+      const response = await axios.post(`${API}/calculate-price`, {
+        pickupAddress: newBooking.pickupAddress,
+        dropoffAddress: newBooking.dropoffAddress,
+        passengers: parseInt(newBooking.passengers),
+        vipAirportPickup: false,
+        oversizedLuggage: false
+      });
+
+      setBookingPricing(response.data);
+      toast.success('Price calculated successfully!');
+    } catch (error) {
+      console.error('Error calculating price:', error);
+      toast.error('Failed to calculate price');
+    } finally {
+      setCalculatingPrice(false);
+    }
+  };
+
+  const handleCreateManualBooking = async () => {
+    // Validation
+    if (!newBooking.name || !newBooking.email || !newBooking.phone) {
+      toast.error('Please fill in customer details');
+      return;
+    }
+
+    if (!newBooking.pickupAddress || !newBooking.dropoffAddress) {
+      toast.error('Please enter pickup and drop-off addresses');
+      return;
+    }
+
+    if (!newBooking.date || !newBooking.time) {
+      toast.error('Please select date and time');
+      return;
+    }
+
+    if (bookingPricing.totalPrice === 0) {
+      toast.error('Please calculate the price first');
+      return;
+    }
+
+    try {
+      await axios.post(`${API}/bookings/manual`, {
+        name: newBooking.name,
+        email: newBooking.email,
+        phone: newBooking.phone,
+        serviceType: newBooking.serviceType,
+        pickupAddress: newBooking.pickupAddress,
+        dropoffAddress: newBooking.dropoffAddress,
+        date: newBooking.date,
+        time: newBooking.time,
+        passengers: newBooking.passengers,
+        pricing: bookingPricing,
+        notes: newBooking.notes
+      }, getAuthHeaders());
+
+      toast.success('Booking created successfully!');
+      setShowCreateBookingModal(false);
+      // Reset form
+      setNewBooking({
+        name: '',
+        email: '',
+        phone: '',
+        serviceType: 'airport-shuttle',
+        pickupAddress: '',
+        dropoffAddress: '',
+        date: '',
+        time: '',
+        passengers: '1',
+        notes: ''
+      });
+      setBookingPricing({
+        distance: 0,
+        basePrice: 0,
+        airportFee: 0,
+        passengerFee: 0,
+        totalPrice: 0
+      });
+      fetchBookings(); // Refresh bookings list
+    } catch (error) {
+      console.error('Error creating booking:', error);
+      toast.error(error.response?.data?.detail || 'Failed to create booking');
+    }
+  };
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'confirmed': return 'text-green-600 bg-green-100';
