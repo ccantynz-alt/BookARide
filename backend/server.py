@@ -1708,11 +1708,9 @@ async def get_seo_page(page_path: str):
         return None
 
 @api_router.post("/seo/pages")
-async def create_or_update_seo_page(seo_page: SEOPage, credentials: HTTPAuthorizationCredentials = Depends(security)):
+async def create_or_update_seo_page(seo_page: SEOPage, current_admin: dict = Depends(get_current_admin)):
     """Create or update SEO configuration for a page"""
     try:
-        verify_token(credentials.credentials)
-        
         seo_data = seo_page.model_dump()
         seo_data['updated_at'] = datetime.now(timezone.utc)
         
@@ -1729,7 +1727,7 @@ async def create_or_update_seo_page(seo_page: SEOPage, credentials: HTTPAuthoriz
             "page_path": seo_page.page_path
         }
     except Exception as e:
-        logger.error(f"Error saving SEO page: {e}")
+        logging.error(f"Error saving SEO page: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.delete("/seo/pages/{page_path:path}")
