@@ -134,7 +134,7 @@ export const SuburbPageSEO = () => {
               <ul className="space-y-2">
                 <li className="flex items-start gap-2">
                   <CheckCircle className="w-5 h-5 text-green-600 mt-1 flex-shrink-0" />
-                  <span><strong>Fixed Price Guarantee:</strong> ${suburb.price} from {suburb.name} to Auckland Airport - no surge pricing, no surprises</span>
+                  <span><strong>Transparent Pricing:</strong> Fair distance-based rates from ${suburb.price} for {suburb.name} to Auckland Airport</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle className="w-5 h-5 text-green-600 mt-1 flex-shrink-0" />
