@@ -1903,7 +1903,7 @@ async def initialize_all_seo_pages(current_admin: dict = Depends(get_current_adm
         
         return {
             "success": True,
-            "message": f"Initialized SEO for {count} pages (27 Auckland + 8 Hamilton + 9 Whangarei + 20 Hotels = 64 locations)",
+            "message": f"Initialized SEO for {count} pages (27 Auckland + 8 Hamilton + 9 Whangarei + 14 Hibiscus Coast + 20 Hotels = 78 locations)",
             "pages_created": count
         }
     except Exception as e:
