@@ -80,9 +80,9 @@ export const SuburbPageSEO = () => {
             <Card>
               <CardContent className="p-6 text-center">
                 <DollarSign className="w-12 h-12 mx-auto mb-3 text-green-600" />
-                <h3 className="font-bold text-xl mb-2">Fixed Price</h3>
-                <p className="text-3xl font-bold text-green-600 mb-2">${suburb.price}</p>
-                <p className="text-gray-600">No surge pricing, no hidden fees</p>
+                <h3 className="font-bold text-xl mb-2">Competitive Pricing</h3>
+                <p className="text-3xl font-bold text-green-600 mb-2">From ${suburb.price}</p>
+                <p className="text-gray-600">Based on distance traveled</p>
               </CardContent>
             </Card>
             <Card>
