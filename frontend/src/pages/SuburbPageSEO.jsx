@@ -46,7 +46,7 @@ export const SuburbPageSEO = () => {
                 {suburb.name} Airport Shuttle Service
               </h1>
               <p className="text-2xl md:text-3xl text-blue-100 font-semibold mb-4">
-                ${suburb.price} Fixed Price to Auckland Airport
+                From ${suburb.price} to Auckland Airport
               </p>
               <p className="text-xl text-blue-200">
                 {suburb.distance}km • Professional Drivers • 24/7 Available • Instant Booking
