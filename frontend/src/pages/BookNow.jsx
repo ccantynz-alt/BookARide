@@ -503,17 +503,14 @@ export const BookNow = () => {
                                 <Calendar className="w-4 h-4 text-gold" />
                                 <span>Return Date *</span>
                               </Label>
-                              <Input
+                              <DateInput
                                 id="returnDate"
                                 name="returnDate"
-                                type="date"
                                 value={formData.returnDate}
                                 onChange={handleChange}
                                 min={formData.date || new Date().toISOString().split('T')[0]}
                                 required={formData.bookReturn}
-                                onKeyDown={(e) => e.preventDefault()}
-                                className="transition-all duration-200 focus:ring-2 focus:ring-gold cursor-pointer"
-                                placeholder="Select return date"
+                                className="transition-all duration-200 focus:ring-2 focus:ring-gold"
                               />
                             </div>
                             <div className="space-y-2">
