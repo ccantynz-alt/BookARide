@@ -1859,7 +1859,7 @@ async def initialize_all_seo_pages(current_admin: dict = Depends(get_current_adm
         ]
         
         # Combine all areas and hotels
-        all_areas_data = auckland_suburbs + hamilton_areas + whangarei_areas
+        all_areas_data = auckland_suburbs + hamilton_areas + whangarei_areas + hibiscus_coast_suburbs
         all_hotels_data = cbd_hotels + airport_hotels
         
         # Generate SEO for all location pages
