@@ -450,7 +450,7 @@ export const AdminDashboard = () => {
                     {filteredBookings.map((booking) => (
                       <tr key={booking.id} className="border-b hover:bg-gray-50">
                         <td className="p-4">
-                          <div className="text-sm font-medium text-gray-900">{booking.date}</div>
+                          <div className="text-sm font-medium text-gray-900">{formatDate(booking.date)}</div>
                           <div className="text-xs text-gray-500">{booking.time}</div>
                         </td>
                         <td className="p-4">
