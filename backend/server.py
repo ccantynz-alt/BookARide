@@ -1731,11 +1731,9 @@ async def create_or_update_seo_page(seo_page: SEOPage, current_admin: dict = Dep
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.delete("/seo/pages/{page_path:path}")
-async def delete_seo_page(page_path: str, credentials: HTTPAuthorizationCredentials = Depends(security)):
+async def delete_seo_page(page_path: str, current_admin: dict = Depends(get_current_admin)):
     """Delete SEO configuration for a page"""
     try:
-        verify_token(credentials.credentials)
-        
         result = await db.seo_pages.delete_one({"page_path": page_path})
         
         if result.deleted_count == 0:
@@ -1745,7 +1743,7 @@ async def delete_seo_page(page_path: str, credentials: HTTPAuthorizationCredenti
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error deleting SEO page: {e}")
+        logging.error(f"Error deleting SEO page: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.post("/seo/initialize-all")
