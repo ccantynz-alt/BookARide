@@ -292,6 +292,7 @@ export const AdminDashboard = () => {
     setCalculatingPrice(true);
     try {
       const response = await axios.post(`${API}/calculate-price`, {
+        serviceType: newBooking.serviceType,
         pickupAddress: newBooking.pickupAddress,
         dropoffAddress: newBooking.dropoffAddress,
         passengers: parseInt(newBooking.passengers),
