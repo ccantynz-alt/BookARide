@@ -1841,12 +1841,13 @@ async def initialize_all_seo_pages(current_admin: dict = Depends(get_current_adm
         # Generate SEO for all location pages
         area_pages = []
         for area in all_areas_data:
+            city_name = area.get('city', 'Auckland')
             area_pages.append({
                 "page_path": f"/suburbs/{area['slug']}",
                 "page_name": f"{area['name']} to Auckland Airport Shuttle",
                 "title": f"Airport Shuttle {area['name']} to Auckland Airport - From ${area['price']} | Book A Ride",
-                "description": f"Reliable airport shuttle from {area['name']}, {area['city']} to Auckland Airport. Professional drivers, fixed prices from ${area['price']}. {area['distance']}km, 24/7 service available. Book online now!",
-                "keywords": f"{area['name']} airport shuttle, {area['name']} to Auckland airport, airport transfer {area['name']}, shuttle service {area['name']} Auckland, {area['name']} to airport, Auckland airport {area['name']}, {area['city']} airport shuttle",
+                "description": f"Reliable airport shuttle from {area['name']}, {city_name} to Auckland Airport. Professional drivers, fixed prices from ${area['price']}. {area['distance']}km, 24/7 service available. Book online now!",
+                "keywords": f"{area['name']} airport shuttle, {area['name']} to Auckland airport, airport transfer {area['name']}, shuttle service {area['name']} Auckland, {area['name']} to airport, Auckland airport {area['name']}, {city_name} airport shuttle",
                 "canonical": f"/suburbs/{area['slug']}"
             })
         
