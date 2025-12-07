@@ -188,7 +188,7 @@ export const SuburbPageSEO = () => {
 
             <ol className="list-decimal list-inside space-y-3 mb-6">
               <li className="text-lg"><strong>Enter Your Details:</strong> Pickup address in {suburb.name}, flight time, and passenger count</li>
-              <li className="text-lg"><strong>Confirm Your Price:</strong> See your fixed ${suburb.price} price upfront</li>
+              <li className="text-lg"><strong>Get Your Quote:</strong> See your estimated price based on exact distance</li>
               <li className="text-lg"><strong>Secure Payment:</strong> Pay securely online</li>
               <li className="text-lg"><strong>Instant Confirmation:</strong> Receive booking confirmation immediately via email and SMS</li>
             </ol>
