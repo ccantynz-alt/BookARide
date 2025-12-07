@@ -45,6 +45,27 @@ export const AdminDashboard = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [drivers, setDrivers] = useState([]);
   const [selectedDriver, setSelectedDriver] = useState('');
+  const [showCreateBookingModal, setShowCreateBookingModal] = useState(false);
+  const [newBooking, setNewBooking] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    serviceType: 'airport-shuttle',
+    pickupAddress: '',
+    dropoffAddress: '',
+    date: '',
+    time: '',
+    passengers: '1',
+    notes: ''
+  });
+  const [bookingPricing, setBookingPricing] = useState({
+    distance: 0,
+    basePrice: 0,
+    airportFee: 0,
+    passengerFee: 0,
+    totalPrice: 0
+  });
+  const [calculatingPrice, setCalculatingPrice] = useState(false);
 
   useEffect(() => {
     // Check authentication
