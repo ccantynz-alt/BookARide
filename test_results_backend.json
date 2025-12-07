@@ -1,0 +1,111 @@
+{
+  "timestamp": "2025-12-07T09:14:28.928055",
+  "success": false,
+  "results": [
+    {
+      "test": "Health Check",
+      "status": "\u2705 PASS",
+      "message": "API is healthy: {'status': 'healthy', 'service': 'bookaride-api'}",
+      "details": {},
+      "timestamp": "2025-12-07T09:14:27.496208"
+    },
+    {
+      "test": "Admin Login",
+      "status": "\u2705 PASS",
+      "message": "Admin authentication successful",
+      "details": {},
+      "timestamp": "2025-12-07T09:14:27.749709"
+    },
+    {
+      "test": "Direct Mailgun Test",
+      "status": "\u2705 PASS",
+      "message": "Email sent successfully: Queued. Thank you.",
+      "details": {},
+      "timestamp": "2025-12-07T09:14:27.959537"
+    },
+    {
+      "test": "Price Calculation",
+      "status": "\u2705 PASS",
+      "message": "Price calculated: $100.0 for 26.29km",
+      "details": {},
+      "timestamp": "2025-12-07T09:14:28.125953"
+    },
+    {
+      "test": "Create Booking (EN)",
+      "status": "\u2705 PASS",
+      "message": "Booking created: 1fc7d11f-03da-4b65-8138-300e304a8051",
+      "details": {},
+      "timestamp": "2025-12-07T09:14:28.138154"
+    },
+    {
+      "test": "Create Booking (ZH)",
+      "status": "\u2705 PASS",
+      "message": "Booking created: 1ac30410-4a5e-46f9-9f10-fe5a11678dbc",
+      "details": {},
+      "timestamp": "2025-12-07T09:14:28.146211"
+    },
+    {
+      "test": "Create Booking (JA)",
+      "status": "\u2705 PASS",
+      "message": "Booking created: 916be8be-ce57-47c4-9961-aa2e7f0cbc68",
+      "details": {},
+      "timestamp": "2025-12-07T09:14:28.154168"
+    },
+    {
+      "test": "Get Bookings",
+      "status": "\u2705 PASS",
+      "message": "Retrieved 21 bookings",
+      "details": {},
+      "timestamp": "2025-12-07T09:14:28.160729"
+    },
+    {
+      "test": "Create Booking (EN)",
+      "status": "\u2705 PASS",
+      "message": "Booking created: bcc37063-cdfb-403b-9bfc-5e032cb54340",
+      "details": {},
+      "timestamp": "2025-12-07T09:14:28.166255"
+    },
+    {
+      "test": "Payment Checkout Test",
+      "status": "\u2705 PASS",
+      "message": "Checkout session created: cs_live_a1Uut4C8Bl2yfxVvIsDiW2my9qtUcKdcoAvYuoSeM5SYUBs3CeeDG9cyzf",
+      "details": {},
+      "timestamp": "2025-12-07T09:14:28.801732"
+    },
+    {
+      "test": "Create Booking (EN)",
+      "status": "\u2705 PASS",
+      "message": "Booking created: 3e050e8c-25b5-41f4-9520-409037ff1210",
+      "details": {},
+      "timestamp": "2025-12-07T09:14:28.808535"
+    },
+    {
+      "test": "Stripe Webhook Test",
+      "status": "\u274c FAIL",
+      "message": "Webhook failed with status 400",
+      "details": "{\"detail\":\"Missing Stripe signature\"}",
+      "timestamp": "2025-12-07T09:14:28.853691"
+    },
+    {
+      "test": "Email Endpoint Test",
+      "status": "\u2705 PASS",
+      "message": "Email endpoint not found (expected - using webhook flow)",
+      "details": {},
+      "timestamp": "2025-12-07T09:14:28.858947"
+    },
+    {
+      "test": "Translation Support",
+      "status": "\u2705 PASS",
+      "message": "Translation status: en: Not found (using hardcoded translations), zh: Not found (using hardcoded translations), ja: Not found (using hardcoded translations), ko: Not found (using hardcoded translations), fr: Not found (using hardcoded translations)",
+      "details": {},
+      "timestamp": "2025-12-07T09:14:28.927913"
+    }
+  ],
+  "booking_ids": [
+    "1fc7d11f-03da-4b65-8138-300e304a8051",
+    "1ac30410-4a5e-46f9-9f10-fe5a11678dbc",
+    "916be8be-ce57-47c4-9961-aa2e7f0cbc68",
+    "bcc37063-cdfb-403b-9bfc-5e032cb54340",
+    "3e050e8c-25b5-41f4-9520-409037ff1210"
+  ]
+}
