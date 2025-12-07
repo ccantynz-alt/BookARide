@@ -16,6 +16,7 @@ import SuburbPage from './pages/SuburbPage';
 import SuburbsDirectory from './pages/SuburbsDirectory';
 import HotelPage from './pages/HotelPage';
 import HotelsDirectory from './pages/HotelsDirectory';
+import HibiscusCoastPage from './pages/HibiscusCoastPage';
 import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
 import SEODashboard from './pages/SEODashboard';
