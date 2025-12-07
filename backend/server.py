@@ -1704,7 +1704,7 @@ async def get_seo_page(page_path: str):
             return page
         return None
     except Exception as e:
-        logger.error(f"Error fetching SEO page: {e}")
+        logging.error(f"Error fetching SEO page: {e}")
         return None
 
 @api_router.post("/seo/pages")
