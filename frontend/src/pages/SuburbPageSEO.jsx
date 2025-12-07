@@ -238,7 +238,7 @@ export const SuburbPageSEO = () => {
 
             <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-8 rounded-lg my-12 text-center">
               <h3 className="text-2xl font-bold mb-4">Ready to Book Your {suburb.name} Airport Shuttle?</h3>
-              <p className="text-lg mb-6">Fixed ${suburb.price} price • {suburb.distance}km to airport • 24/7 service</p>
+              <p className="text-lg mb-6">From ${suburb.price} • {suburb.distance}km to airport • 24/7 service</p>
               <Button 
                 size="lg"
                 onClick={() => navigate('/book-now')}
