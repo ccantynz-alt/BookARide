@@ -909,8 +909,9 @@ async def google_calendar_login(http_request: Request):
         if not client_id or not client_secret:
             raise HTTPException(status_code=500, detail="Google OAuth credentials not configured")
         
-        host_url = str(http_request.base_url).rstrip('/')
-        redirect_uri = f"{host_url}/api/auth/google/callback"
+        # Use public domain for OAuth callback (not internal Emergent domain)
+        public_domain = os.environ.get('PUBLIC_DOMAIN', 'https://bookaride.co.nz')
+        redirect_uri = f"{public_domain}/api/auth/google/callback"
         
         flow = Flow.from_client_config(
             {
