@@ -951,8 +951,9 @@ async def google_calendar_callback(code: str, http_request: Request):
         client_id = os.environ.get('GOOGLE_CLIENT_ID')
         client_secret = os.environ.get('GOOGLE_CLIENT_SECRET')
         
-        host_url = str(http_request.base_url).rstrip('/')
-        redirect_uri = f"{host_url}/api/auth/google/callback"
+        # Use public domain for OAuth callback (not internal Emergent domain)
+        public_domain = os.environ.get('PUBLIC_DOMAIN', 'https://bookaride.co.nz')
+        redirect_uri = f"{public_domain}/api/auth/google/callback"
         
         # Exchange code for tokens
         token_response = requests.post('https://oauth2.googleapis.com/token', data={
