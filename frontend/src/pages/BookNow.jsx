@@ -322,17 +322,14 @@ export const BookNow = () => {
                             <Calendar className="w-4 h-4 text-gold" />
                             <span>Pickup Date *</span>
                           </Label>
-                          <Input
+                          <DateInput
                             id="date"
                             name="date"
-                            type="date"
                             value={formData.date}
                             onChange={handleChange}
                             min={new Date().toISOString().split('T')[0]}
                             required
-                            onKeyDown={(e) => e.preventDefault()}
-                            className="transition-all duration-200 focus:ring-2 focus:ring-gold cursor-pointer"
-                            placeholder="Select date"
+                            className="transition-all duration-200 focus:ring-2 focus:ring-gold"
                           />
                         </div>
                         <div className="space-y-2">
