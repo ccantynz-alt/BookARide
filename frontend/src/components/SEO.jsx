@@ -1,5 +1,6 @@
 import React from 'react';
 import { Helmet } from 'react-helmet-async';
+import siteConfig from '../config/siteConfig';
 
 export const SEO = ({ 
   title, 
@@ -9,10 +10,10 @@ export const SEO = ({
   ogImage,
   ogType = 'website'
 }) => {
-  const siteName = "Airport Shuttle Service NZ";
-  const defaultDescription = "Affordable airport shuttle service in Auckland. Best value airport transfers for Auckland, Hamilton, and Whangarei airports. Reliable, safe, and budget-friendly shuttle service available 24/7.";
-  const defaultKeywords = "airport, airport shuttle, airport shuttle service, shuttle service, Auckland shuttles, Auckland airport shuttle, cheap airport shuttle, affordable airport transfer, budget shuttle, Hamilton airport shuttle, Whangarei airport transfer, airport transfer, airport transportation, shuttle service Auckland, New Zealand shuttle, NZ airport shuttle, best value shuttle, reliable shuttle, airport pickup, airport drop off";
-  const siteUrl = "https://airportshuttleservice.co.nz";
+  const siteName = siteConfig.siteName;
+  const defaultDescription = siteConfig.description;
+  const defaultKeywords = siteConfig.keywords;
+  const siteUrl = siteConfig.siteUrl;
   const defaultImage = `${siteUrl}/logo.png`;
 
   const fullTitle = title ? `${title} | ${siteName}` : siteName;
