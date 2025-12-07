@@ -217,7 +217,7 @@ export const SuburbPageSEO = () => {
 
               <div>
                 <h4 className="font-bold text-lg mb-2">Q: Do you provide airport pickups from Auckland Airport to {suburb.name}?</h4>
-                <p className="text-gray-700">A: Yes! We provide both directions - from {suburb.name} to the airport AND from Auckland Airport back to {suburb.name}. Same fixed price both ways.</p>
+                <p className="text-gray-700">A: Yes! We provide both directions - from {suburb.name} to the airport AND from Auckland Airport back to {suburb.name}. Pricing is based on distance for both directions.</p>
               </div>
 
               <div>
