@@ -7,7 +7,7 @@ const configs = {
     domain: 'bookaride.co.nz',
     siteUrl: 'https://bookaride.co.nz',
     email: 'info@bookaride.co.nz',
-    phone: '+64 9 555 0123',
+    phone: '+64 21 743 321',
     tagline: 'Airport Shuttles & Private Transfers Across New Zealand',
     description: 'Professional airport shuttle service in Auckland, Hamilton, and Whangarei. Book online for instant confirmation.',
     keywords: 'airport shuttle, Auckland airport transfer, private shuttle, airport transport',
