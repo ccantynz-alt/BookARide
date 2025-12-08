@@ -1784,6 +1784,9 @@ async def create_manual_booking(booking: ManualBooking):
         # Send confirmation SMS
         send_booking_confirmation_sms(new_booking)
         
+        # Send admin notification
+        await send_booking_notification_to_admin(new_booking)
+        
         # Create calendar event
         await create_calendar_event(new_booking)
         
