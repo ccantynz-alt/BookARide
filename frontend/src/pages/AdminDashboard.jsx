@@ -401,6 +401,7 @@ export const AdminDashboard = () => {
             <div>
               <h1 className="text-4xl font-bold mb-2">Admin Dashboard</h1>
               <p className="text-white/70">Manage bookings and customer communications</p>
+              <p className="text-white/50 text-xs mt-1">v2024.12.08</p>
             </div>
             <div className="flex gap-2">
               <Button 
