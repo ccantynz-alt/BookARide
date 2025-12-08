@@ -1109,6 +1109,22 @@ export const AdminDashboard = () => {
                     </SelectContent>
                   </Select>
                 </div>
+                <div>
+                  <Label>Payment Method *</Label>
+                  <Select 
+                    value={newBooking.paymentMethod} 
+                    onValueChange={(value) => setNewBooking({...newBooking, paymentMethod: value})}
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cash">Cash</SelectItem>
+                      <SelectItem value="card">Card (Paid)</SelectItem>
+                      <SelectItem value="bank-transfer">Bank Transfer</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
 
