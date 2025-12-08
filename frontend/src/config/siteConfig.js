@@ -28,7 +28,7 @@ const configs = {
     domain: 'bookaridenz.com',
     siteUrl: 'https://bookaridenz.com',
     email: 'international@bookaridenz.com',
-    phone: '+64 9 555 0123',
+    phone: '+64 21 743 321',
     tagline: 'New Zealand Airport Transfers for International Travelers',
     description: 'Premium airport shuttle service across New Zealand. Serving international visitors with transfers in Auckland, Hamilton, Whangarei, and beyond. Multi-currency payments accepted.',
     keywords: 'New Zealand airport transfer, Auckland airport shuttle international, NZ airport transport, New Zealand taxi service, airport pickup Auckland, New Zealand travel transport',
