@@ -786,6 +786,103 @@ Thank you for booking with us!"""
         return False
 
 
+async def send_driver_notification(booking: dict, driver: dict):
+    """Send email and SMS notification to driver about new booking assignment"""
+    try:
+        # Send Email to Driver
+        mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
+        mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
+        sender_email = os.environ.get('SENDER_EMAIL', 'noreply@bookaride.co.nz')
+        
+        if mailgun_api_key and mailgun_domain:
+            total_price = booking.get('pricing', {}).get('totalPrice', 0) if isinstance(booking.get('pricing'), dict) else 0
+            driver_commission = total_price * 0.15  # 15% commission
+            
+            html_content = f"""
+            <html>
+                <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <div style="background-color: #1a1a1a; color: #D4AF37; padding: 20px; text-align: center;">
+                        <h1>BookaRide.co.nz - New Booking Assigned</h1>
+                    </div>
+                    <div style="padding: 20px; background-color: #f5f5f5;">
+                        <h2 style="color: #1a1a1a;">🚗 New Ride Assignment</h2>
+                        <p>Hi {driver.get('name', 'Driver')},</p>
+                        <p>You have been assigned a new booking:</p>
+                        
+                        <div style="background-color: white; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                            <p><strong>Booking Reference:</strong> {booking.get('id', '')[:8].upper()}</p>
+                            <p><strong>Customer Name:</strong> {booking.get('name', 'N/A')}</p>
+                            <p><strong>Customer Phone:</strong> {booking.get('phone', 'N/A')}</p>
+                            <p><strong>Service Type:</strong> {booking.get('serviceType', 'N/A').replace('-', ' ').title()}</p>
+                            <p><strong>Pickup:</strong> {booking.get('pickupAddress', 'N/A')}</p>
+                            <p><strong>Drop-off:</strong> {booking.get('dropoffAddress', 'N/A')}</p>
+                            <p><strong>Date:</strong> {booking.get('date', 'N/A')}</p>
+                            <p><strong>Time:</strong> {booking.get('time', 'N/A')}</p>
+                            <p><strong>Passengers:</strong> {booking.get('passengers', 'N/A')}</p>
+                            <p style="color: #D4AF37;"><strong>Your Commission (15%):</strong> ${driver_commission:.2f} NZD</p>
+                        </div>
+                        
+                        <p><strong>Special Notes:</strong> {booking.get('notes', 'None')}</p>
+                        
+                        <p style="margin-top: 30px;">Please confirm receipt and contact the customer if needed.</p>
+                        <p>Login to your driver portal for more details: <a href="https://bookaride.co.nz/driver/login">Driver Portal</a></p>
+                    </div>
+                    <div style="background-color: #1a1a1a; color: #D4AF37; padding: 15px; text-align: center; font-size: 12px;">
+                        <p>BookaRide NZ | bookaride.co.nz | +64 21 743 321</p>
+                    </div>
+                </body>
+            </html>
+            """
+            
+            response = requests.post(
+                f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
+                auth=("api", mailgun_api_key),
+                data={
+                    "from": f"BookaRide <{sender_email}>",
+                    "to": driver.get('email'),
+                    "subject": f"New Booking Assignment - {booking.get('id', '')[:8].upper()}",
+                    "html": html_content
+                }
+            )
+            
+            if response.status_code == 200:
+                logger.info(f"Driver notification email sent to {driver.get('email')}")
+            else:
+                logger.error(f"Failed to send driver email: {response.status_code} - {response.text}")
+        
+        # Send SMS to Driver
+        account_sid = os.environ.get('TWILIO_ACCOUNT_SID')
+        auth_token = os.environ.get('TWILIO_AUTH_TOKEN')
+        twilio_phone = os.environ.get('TWILIO_PHONE_NUMBER')
+        
+        if account_sid and auth_token and twilio_phone:
+            client = Client(account_sid, auth_token)
+            
+            sms_body = f"""BookaRide - New Booking!
+
+Ref: {booking.get('id', '')[:8].upper()}
+Customer: {booking.get('name', 'N/A')}
+Phone: {booking.get('phone', 'N/A')}
+Pickup: {booking.get('pickupAddress', 'N/A')}
+Date: {booking.get('date', 'N/A')} at {booking.get('time', 'N/A')}
+
+Check your email for full details."""
+            
+            message = client.messages.create(
+                body=sms_body,
+                from_=twilio_phone,
+                to=driver.get('phone')
+            )
+            
+            logger.info(f"Driver notification SMS sent to {driver.get('phone')} - SID: {message.sid}")
+        
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error sending driver notification: {str(e)}")
+        return False
+
+
 # Google Calendar Integration
 
 async def get_calendar_credentials():
