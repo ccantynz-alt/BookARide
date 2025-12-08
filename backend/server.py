@@ -952,7 +952,6 @@ async def send_booking_notification_to_admin(booking: dict):
         # Format booking details
         total_price = booking.get('totalPrice', 0)
         pricing = booking.get('pricing', {})
-        is_overridden = pricing.get('isOverridden', False)
         
         # Create simplified email for quick notification
         html_content = f"""
