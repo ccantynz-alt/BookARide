@@ -688,6 +688,7 @@ export const AdminDashboard = () => {
                               variant="outline"
                               onClick={() => openDetailsModal(booking)}
                               className="hover:bg-gray-100"
+                              title="View Details"
                             >
                               <Eye className="w-4 h-4" />
                             </Button>
@@ -696,8 +697,18 @@ export const AdminDashboard = () => {
                               variant="outline"
                               onClick={() => openEmailModal(booking)}
                               className="hover:bg-gold hover:text-black"
+                              title="Send Email"
                             >
                               <Mail className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleDeleteBooking(booking.id, booking.name)}
+                              className="hover:bg-red-100 hover:text-red-600"
+                              title="Delete Booking"
+                            >
+                              <Trash2 className="w-4 h-4" />
                             </Button>
                           </div>
                         </td>
