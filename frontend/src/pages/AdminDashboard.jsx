@@ -286,6 +286,56 @@ export const AdminDashboard = () => {
     }
   };
 
+  const exportToCSV = () => {
+    try {
+      // Define CSV headers
+      const headers = ['Booking ID', 'Date', 'Time', 'Customer Name', 'Email', 'Phone', 'Service Type', 'Pickup Address', 'Dropoff Address', 'Passengers', 'Price', 'Payment Status', 'Status', 'Notes', 'Created At'];
+      
+      // Convert bookings to CSV rows
+      const rows = filteredBookings.map(booking => [
+        booking.id || '',
+        booking.date || '',
+        booking.time || '',
+        booking.name || '',
+        booking.email || '',
+        booking.phone || '',
+        booking.serviceType?.replace('-', ' ').toUpperCase() || '',
+        booking.pickupAddress || '',
+        booking.dropoffAddress || '',
+        booking.passengers || '',
+        booking.totalPrice || booking.pricing?.totalPrice || '',
+        booking.payment_status || '',
+        booking.status || '',
+        booking.notes || '',
+        booking.createdAt || ''
+      ]);
+      
+      // Combine headers and rows
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.map(cell => `\"${cell}\"`).join(','))
+      ].join('\\n');
+      
+      // Create download link
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      
+      link.setAttribute('href', url);
+      link.setAttribute('download', `bookings-export-${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast.success(`Exported ${filteredBookings.length} bookings to CSV`);
+    } catch (error) {
+      console.error('Error exporting to CSV:', error);
+      toast.error('Failed to export bookings');
+    }
+  };
+
   const handlePriceOverride = async () => {
     try {
       const newPrice = parseFloat(priceOverride);
