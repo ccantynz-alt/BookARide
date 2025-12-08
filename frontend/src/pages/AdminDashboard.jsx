@@ -1315,6 +1315,49 @@ export const AdminDashboard = () => {
                   {calculatingPrice ? 'Calculating...' : 'Calculate Price'}
                 </Button>
               </div>
+
+              {/* Price Override Section */}
+              <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <Label className="text-sm font-semibold text-gray-900 mb-2 block">
+                  💰 Manual Price Override (Optional)
+                </Label>
+                <p className="text-xs text-gray-600 mb-3">
+                  Enter a custom price to override the calculated amount. Leave empty to use calculated price.
+                </p>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={manualPriceOverride}
+                      onChange={(e) => setManualPriceOverride(e.target.value)}
+                      placeholder="0.00"
+                      className="pl-7"
+                    />
+                  </div>
+                  {manualPriceOverride && (
+                    <Button
+                      variant="outline"
+                      onClick={() => setManualPriceOverride('')}
+                      className="text-red-600 hover:bg-red-50"
+                    >
+                      Clear
+                    </Button>
+                  )}
+                </div>
+                {manualPriceOverride && parseFloat(manualPriceOverride) > 0 && (
+                  <div className="mt-3 p-2 bg-green-50 border border-green-200 rounded text-sm">
+                    <strong>Final Price:</strong> <span className="text-green-700 font-bold">${parseFloat(manualPriceOverride).toFixed(2)} NZD</span>
+                    <span className="text-xs text-gray-600 block mt-1">
+                      {bookingPricing.totalPrice > 0 && (
+                        `Original: $${bookingPricing.totalPrice.toFixed(2)}`
+                      )}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Action Buttons */}
