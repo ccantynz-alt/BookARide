@@ -137,7 +137,13 @@ export const AdminDashboard = () => {
   const fetchBookings = async () => {
     try {
       const response = await axios.get(`${API}/bookings`, getAuthHeaders());
-      setBookings(response.data);
+      // Sort bookings by date (newest first)
+      const sortedBookings = response.data.sort((a, b) => {
+        const dateA = new Date(a.date + ' ' + a.time);
+        const dateB = new Date(b.date + ' ' + b.time);
+        return dateB - dateA;
+      });
+      setBookings(sortedBookings);
       setLoading(false);
     } catch (error) {
       if (error.response?.status === 401) {
