@@ -1063,9 +1063,10 @@ export const AdminDashboard = () => {
                 <div>
                   <Label>Pickup Address *</Label>
                   <Input
+                    ref={pickupInputRef}
                     value={newBooking.pickupAddress}
                     onChange={(e) => setNewBooking({...newBooking, pickupAddress: e.target.value})}
-                    placeholder="123 Pickup Street, Auckland"
+                    placeholder="Start typing address..."
                     className="mt-1"
                   />
                 </div>
