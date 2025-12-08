@@ -1153,6 +1153,7 @@ export const AdminDashboard = () => {
                     onChange={(e) => setNewBooking({...newBooking, dropoffAddress: e.target.value})}
                     placeholder="Start typing address..."
                     className="mt-1"
+                    autoComplete="off"
                   />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
