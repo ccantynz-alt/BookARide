@@ -1393,9 +1393,9 @@ export const AdminDashboard = () => {
               <Button
                 onClick={handleCreateManualBooking}
                 className="bg-gold hover:bg-gold/90 text-black font-semibold"
-                disabled={bookingPricing.totalPrice === 0}
+                disabled={bookingPricing.totalPrice === 0 && (!manualPriceOverride || parseFloat(manualPriceOverride) <= 0)}
               >
-                Create Booking
+                Create Booking & Send Confirmations
               </Button>
             </div>
           </div>
