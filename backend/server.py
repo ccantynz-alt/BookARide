@@ -1486,8 +1486,17 @@ class ManualBooking(BaseModel):
 async def create_manual_booking(booking: ManualBooking):
     """Create a booking manually"""
     try:
-        # Extract total price from pricing
-        total_price = booking.pricing.get('totalPrice', 0) if isinstance(booking.pricing, dict) else 0
+        # Extract total price from pricing or use override
+        if booking.priceOverride is not None and booking.priceOverride > 0:
+            total_price = booking.priceOverride
+            # Update pricing dict with override
+            pricing_data = booking.pricing.copy() if isinstance(booking.pricing, dict) else {}
+            pricing_data['totalPrice'] = total_price
+            pricing_data['isOverridden'] = True
+            logger.info(f"Using price override: ${total_price:.2f}")
+        else:
+            total_price = booking.pricing.get('totalPrice', 0) if isinstance(booking.pricing, dict) else 0
+            pricing_data = booking.pricing
         
         new_booking = {
             "id": str(uuid.uuid4()),
@@ -1500,7 +1509,7 @@ async def create_manual_booking(booking: ManualBooking):
             "date": booking.date,
             "time": booking.time,
             "passengers": booking.passengers,
-            "pricing": booking.pricing,
+            "pricing": pricing_data,
             "totalPrice": total_price,
             "notes": booking.notes,
             "status": "confirmed",
