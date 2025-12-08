@@ -866,6 +866,39 @@ export const AdminDashboard = () => {
           </DialogHeader>
           {selectedBooking && (
             <div className="space-y-6">
+              {/* Booking Status & Payment Banner */}
+              <div className="bg-gray-50 p-4 rounded-lg border-l-4 border-gold">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-xs text-gray-600">Booking Status</span>
+                    <p className={`font-semibold text-sm mt-1 ${
+                      selectedBooking.status === 'confirmed' ? 'text-green-600' : 
+                      selectedBooking.status === 'completed' ? 'text-blue-600' : 
+                      selectedBooking.status === 'cancelled' ? 'text-red-600' : 'text-yellow-600'
+                    }`}>
+                      {selectedBooking.status?.toUpperCase()}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-xs text-gray-600">Payment Status</span>
+                    <div className="mt-1">
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold inline-flex items-center gap-1 ${
+                        selectedBooking.payment_status === 'paid' 
+                          ? 'bg-green-100 text-green-700' 
+                          : selectedBooking.payment_status === 'cash'
+                          ? 'bg-yellow-100 text-yellow-700'
+                          : 'bg-red-100 text-red-700'
+                      }`}>
+                        {selectedBooking.payment_status === 'paid' && '✓ '}
+                        {selectedBooking.payment_status === 'cash' && '💵 '}
+                        {selectedBooking.payment_status === 'unpaid' && '✗ '}
+                        <span className="uppercase">{selectedBooking.payment_status || 'UNPAID'}</span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Customer Info */}
               <div>
                 <h3 className="font-semibold text-gray-900 mb-3">Customer Information</h3>
