@@ -1029,6 +1029,20 @@ export const AdminDashboard = () => {
                   <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded">{selectedBooking.notes}</p>
                 </div>
               )}
+
+              {/* Admin Actions */}
+              <div className="pt-4 border-t">
+                <Button
+                  onClick={() => handleSendToAdmin(selectedBooking.id)}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  <Mail className="w-4 h-4 mr-2" />
+                  Send Booking Details to Admin Mailbox
+                </Button>
+                <p className="text-xs text-gray-500 mt-2 text-center">
+                  This will send a complete summary of this booking to the admin email address
+                </p>
+              </div>
             </div>
           )}
         </DialogContent>
