@@ -801,34 +801,41 @@ async def send_driver_notification(booking: dict, driver: dict):
             html_content = f"""
             <html>
                 <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                    <div style="background-color: #1a1a1a; color: #D4AF37; padding: 20px; text-align: center;">
-                        <h1>BookaRide.co.nz - New Booking Assigned</h1>
+                    <div style="background-color: #D4AF37; color: #1a1a1a; padding: 20px; text-align: center;">
+                        <h1 style="margin: 0;">BookaRide.co.nz</h1>
                     </div>
                     <div style="padding: 20px; background-color: #f5f5f5;">
-                        <h2 style="color: #1a1a1a;">🚗 New Ride Assignment</h2>
+                        <h2 style="color: #1a1a1a;">✅ New Booking Assignment</h2>
                         <p>Hi {driver.get('name', 'Driver')},</p>
-                        <p>You have been assigned a new booking:</p>
+                        <p>You have been assigned a new booking. Please review the details below:</p>
                         
-                        <div style="background-color: white; padding: 15px; border-radius: 5px; margin: 20px 0;">
-                            <p><strong>Booking Reference:</strong> {booking.get('id', '')[:8].upper()}</p>
+                        <div style="background-color: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #D4AF37;">
+                            <p><strong>Booking Reference:</strong> {booking.get('id', '').upper()}</p>
                             <p><strong>Customer Name:</strong> {booking.get('name', 'N/A')}</p>
                             <p><strong>Customer Phone:</strong> {booking.get('phone', 'N/A')}</p>
+                            <p><strong>Customer Email:</strong> {booking.get('email', 'N/A')}</p>
+                            <hr style="border: 0; border-top: 1px solid #e0e0e0; margin: 15px 0;">
                             <p><strong>Service Type:</strong> {booking.get('serviceType', 'N/A').replace('-', ' ').title()}</p>
                             <p><strong>Pickup:</strong> {booking.get('pickupAddress', 'N/A')}</p>
                             <p><strong>Drop-off:</strong> {booking.get('dropoffAddress', 'N/A')}</p>
                             <p><strong>Date:</strong> {booking.get('date', 'N/A')}</p>
                             <p><strong>Time:</strong> {booking.get('time', 'N/A')}</p>
                             <p><strong>Passengers:</strong> {booking.get('passengers', 'N/A')}</p>
-                            <p style="color: #D4AF37;"><strong>Your Commission (15%):</strong> ${driver_commission:.2f} NZD</p>
+                            <hr style="border: 0; border-top: 1px solid #e0e0e0; margin: 15px 0;">
+                            <p style="color: #D4AF37; font-size: 16px;"><strong>Your Commission (15%):</strong> ${driver_commission:.2f} NZD</p>
                         </div>
                         
-                        <p><strong>Special Notes:</strong> {booking.get('notes', 'None')}</p>
+                        <div style="background-color: #fff3cd; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                            <p style="margin: 0;"><strong>Special Notes:</strong></p>
+                            <p style="margin: 5px 0 0 0;">{booking.get('notes', 'None')}</p>
+                        </div>
                         
-                        <p style="margin-top: 30px;">Please confirm receipt and contact the customer if needed.</p>
-                        <p>Login to your driver portal for more details: <a href="https://bookaride.co.nz/driver/login">Driver Portal</a></p>
+                        <p style="margin-top: 30px;">Please confirm receipt and contact the customer if you have any questions.</p>
+                        <p>Login to your <a href="https://bookaride.co.nz/driver/login" style="color: #D4AF37; text-decoration: none; font-weight: bold;">Driver Portal</a> for more details.</p>
                     </div>
-                    <div style="background-color: #1a1a1a; color: #D4AF37; padding: 15px; text-align: center; font-size: 12px;">
-                        <p>BookaRide NZ | bookaride.co.nz | +64 21 743 321</p>
+                    <div style="background-color: #f8f9fa; color: #6c757d; padding: 20px; text-align: center; font-size: 12px; border-top: 1px solid #dee2e6;">
+                        <p style="margin: 0;">BookaRide NZ</p>
+                        <p style="margin: 5px 0;">bookaride.co.nz | +64 21 743 321</p>
                     </div>
                 </body>
             </html>
