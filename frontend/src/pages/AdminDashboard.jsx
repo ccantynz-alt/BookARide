@@ -448,6 +448,7 @@ export const AdminDashboard = () => {
         date: '',
         time: '',
         passengers: '1',
+        paymentMethod: 'cash',
         notes: ''
       });
       setBookingPricing({
