@@ -937,6 +937,92 @@ Thank you for booking with us!"""
         return False
 
 
+async def send_booking_notification_to_admin(booking: dict):
+    """Automatically send booking notification to admin email"""
+    try:
+        admin_email = os.environ.get('ADMIN_EMAIL', 'bookings@bookaride.co.nz')
+        mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
+        mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
+        sender_email = os.environ.get('SENDER_EMAIL', 'noreply@mg.bookaride.co.nz')
+        
+        if not mailgun_api_key or not mailgun_domain:
+            logger.warning("Mailgun not configured - cannot send admin notification")
+            return False
+        
+        # Format booking details
+        total_price = booking.get('totalPrice', 0)
+        pricing = booking.get('pricing', {})
+        is_overridden = pricing.get('isOverridden', False)
+        
+        # Create simplified email for quick notification
+        html_content = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <div style="background-color: #1a1a1a; color: #D4AF37; padding: 20px; text-align: center;">
+                    <h1>BookaRide.co.nz</h1>
+                    <p style="margin: 5px 0; font-size: 14px;">🔔 New Booking Received</p>
+                </div>
+                
+                <div style="padding: 20px; background-color: #f5f5f5;">
+                    <div style="background-color: #e3f2fd; padding: 15px; border-radius: 8px; border-left: 4px solid #2196f3; margin-bottom: 20px;">
+                        <p style="margin: 0; font-size: 18px; font-weight: bold; color: #1976d2;">New booking from {booking.get('name', 'Customer')}</p>
+                        <p style="margin: 5px 0 0 0; font-size: 14px; color: #666;">Booking Reference: {booking.get('id', '')[:8].upper()}</p>
+                    </div>
+                    
+                    <div style="background-color: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #D4AF37;">
+                        <h3 style="margin-top: 0; color: #1a1a1a;">Quick Details</h3>
+                        <p style="margin: 5px 0;"><strong>Customer:</strong> {booking.get('name', 'N/A')}</p>
+                        <p style="margin: 5px 0;"><strong>Phone:</strong> {booking.get('phone', 'N/A')}</p>
+                        <p style="margin: 5px 0;"><strong>Email:</strong> {booking.get('email', 'N/A')}</p>
+                        <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
+                        <p style="margin: 5px 0;"><strong>Service:</strong> {booking.get('serviceType', 'N/A').replace('-', ' ').title()}</p>
+                        <p style="margin: 5px 0;"><strong>Date:</strong> {booking.get('date', 'N/A')} at {booking.get('time', 'N/A')}</p>
+                        <p style="margin: 5px 0;"><strong>Passengers:</strong> {booking.get('passengers', 'N/A')}</p>
+                        <p style="margin: 5px 0;"><strong>Pickup:</strong> {booking.get('pickupAddress', 'N/A')}</p>
+                        <p style="margin: 5px 0;"><strong>Drop-off:</strong> {booking.get('dropoffAddress', 'N/A')}</p>
+                        <hr style="border: 0; border-top: 2px solid #D4AF37; margin: 15px 0;">
+                        <p style="margin: 5px 0; font-size: 18px;"><strong>Total:</strong> <span style="color: #D4AF37;">${total_price:.2f} NZD</span></p>
+                        <p style="margin: 5px 0;"><strong>Payment Status:</strong> {booking.get('payment_status', 'N/A')}</p>
+                    </div>
+                    
+                    <div style="margin-top: 20px; padding: 15px; background-color: #fff3cd; border-radius: 8px; border-left: 4px solid #ffc107;">
+                        <p style="margin: 0; font-weight: bold;">⚡ Action Required:</p>
+                        <p style="margin: 5px 0 0 0; font-size: 14px;">Review and assign a driver in your <a href="https://bookaride.co.nz/admin/login" style="color: #D4AF37; text-decoration: none; font-weight: bold;">Admin Dashboard</a></p>
+                    </div>
+                </div>
+                
+                <div style="background-color: #1a1a1a; color: #D4AF37; padding: 15px; text-align: center; font-size: 12px;">
+                    <p style="margin: 0;">BookaRide NZ Admin System</p>
+                    <p style="margin: 5px 0;">Automatic Booking Notification</p>
+                </div>
+            </body>
+        </html>
+        """
+        
+        # Send email via Mailgun API
+        response = requests.post(
+            f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
+            auth=("api", mailgun_api_key),
+            data={
+                "from": f"BookaRide System <{sender_email}>",
+                "to": admin_email,
+                "subject": f"🔔 New Booking - {booking.get('name', 'Customer')} - {booking.get('date', '')}",
+                "html": html_content
+            }
+        )
+        
+        if response.status_code == 200:
+            logger.info(f"Auto-notification sent to admin: {admin_email} for booking: {booking.get('id', '')[:8]}")
+            return True
+        else:
+            logger.error(f"Failed to send admin notification: {response.status_code} - {response.text}")
+            return False
+            
+    except Exception as e:
+        logger.error(f"Error sending admin notification: {str(e)}")
+        return False
+
+
 async def send_driver_notification(booking: dict, driver: dict):
     """Send email and SMS notification to driver about new booking assignment"""
     try:
