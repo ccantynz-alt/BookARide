@@ -30,6 +30,12 @@ const formatDate = (dateString) => {
 
 export const AdminDashboard = () => {
   const navigate = useNavigate();
+  const { isLoaded } = useLoadScript({
+    googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY,
+    libraries: libraries
+  });
+  const pickupInputRef = useRef(null);
+  const dropoffInputRef = useRef(null);
   const [activeTab, setActiveTab] = useState('bookings');
   const [bookings, setBookings] = useState([]);
   const [filteredBookings, setFilteredBookings] = useState([]);
