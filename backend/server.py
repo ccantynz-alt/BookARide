@@ -501,6 +501,122 @@ async def send_booking_email(email_data: dict, current_admin: dict = Depends(get
         raise HTTPException(status_code=500, detail=f"Error sending email: {str(e)}")
 
 
+@api_router.post("/bookings/{booking_id}/send-to-admin")
+async def send_booking_to_admin(booking_id: str, current_admin: dict = Depends(get_current_admin)):
+    """Send booking details to admin mailbox"""
+    try:
+        # Get booking details
+        booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+        if not booking:
+            raise HTTPException(status_code=404, detail="Booking not found")
+        
+        # Get admin email from environment or use default
+        admin_email = os.environ.get('ADMIN_EMAIL', 'admin@bookaride.co.nz')
+        
+        # Send via Mailgun
+        mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
+        mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
+        sender_email = os.environ.get('SENDER_EMAIL', 'noreply@mg.bookaride.co.nz')
+        
+        if not mailgun_api_key or not mailgun_domain:
+            raise HTTPException(status_code=500, detail="Mailgun not configured")
+        
+        # Format booking details
+        total_price = booking.get('totalPrice', 0)
+        pricing = booking.get('pricing', {})
+        is_overridden = pricing.get('isOverridden', False)
+        
+        # Create HTML email content with all booking details
+        html_content = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <div style="background-color: #1a1a1a; color: #D4AF37; padding: 20px; text-align: center;">
+                    <h1>BookaRide.co.nz</h1>
+                    <p style="margin: 5px 0; font-size: 14px;">Admin Booking Notification</p>
+                </div>
+                
+                <div style="padding: 20px; background-color: #f5f5f5;">
+                    <h2 style="color: #1a1a1a; margin-top: 0;">📋 Booking Details</h2>
+                    
+                    <div style="background-color: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #D4AF37;">
+                        <p style="margin: 5px 0;"><strong>Booking Reference:</strong> {booking.get('id', '')[:8].upper()}</p>
+                        <p style="margin: 5px 0;"><strong>Status:</strong> <span style="color: {'#16a34a' if booking.get('status') == 'confirmed' else '#ea580c'}; font-weight: bold;">{booking.get('status', 'N/A').upper()}</span></p>
+                        <p style="margin: 5px 0;"><strong>Payment Status:</strong> {booking.get('payment_status', 'N/A')}</p>
+                        <p style="margin: 5px 0;"><strong>Created:</strong> {booking.get('createdAt', 'N/A')}</p>
+                    </div>
+                    
+                    <h3 style="color: #1a1a1a; margin-top: 30px;">👤 Customer Information</h3>
+                    <div style="background-color: white; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                        <p style="margin: 5px 0;"><strong>Name:</strong> {booking.get('name', 'N/A')}</p>
+                        <p style="margin: 5px 0;"><strong>Email:</strong> <a href="mailto:{booking.get('email', 'N/A')}">{booking.get('email', 'N/A')}</a></p>
+                        <p style="margin: 5px 0;"><strong>Phone:</strong> <a href="tel:{booking.get('phone', 'N/A')}">{booking.get('phone', 'N/A')}</a></p>
+                    </div>
+                    
+                    <h3 style="color: #1a1a1a; margin-top: 30px;">🚗 Trip Details</h3>
+                    <div style="background-color: white; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                        <p style="margin: 5px 0;"><strong>Service Type:</strong> {booking.get('serviceType', 'N/A').replace('-', ' ').title()}</p>
+                        <p style="margin: 5px 0;"><strong>Pickup:</strong> {booking.get('pickupAddress', 'N/A')}</p>
+                        <p style="margin: 5px 0;"><strong>Drop-off:</strong> {booking.get('dropoffAddress', 'N/A')}</p>
+                        <p style="margin: 5px 0;"><strong>Date:</strong> {booking.get('date', 'N/A')}</p>
+                        <p style="margin: 5px 0;"><strong>Time:</strong> {booking.get('time', 'N/A')}</p>
+                        <p style="margin: 5px 0;"><strong>Passengers:</strong> {booking.get('passengers', 'N/A')}</p>
+                    </div>
+                    
+                    <h3 style="color: #1a1a1a; margin-top: 30px;">💰 Pricing Details</h3>
+                    <div style="background-color: white; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                        <p style="margin: 5px 0;"><strong>Distance:</strong> {pricing.get('distance', 0)} km</p>
+                        <p style="margin: 5px 0;"><strong>Base Price:</strong> ${pricing.get('basePrice', 0):.2f} NZD</p>
+                        {'<p style="margin: 5px 0;"><strong>Airport Fee:</strong> $' + f"{pricing.get('airportFee', 0):.2f}" + ' NZD</p>' if pricing.get('airportFee', 0) > 0 else ''}
+                        {'<p style="margin: 5px 0;"><strong>Passenger Fee:</strong> $' + f"{pricing.get('passengerFee', 0):.2f}" + ' NZD</p>' if pricing.get('passengerFee', 0) > 0 else ''}
+                        <hr style="border: 0; border-top: 2px solid #D4AF37; margin: 15px 0;">
+                        <p style="margin: 5px 0; font-size: 18px;"><strong>Total Price:</strong> <span style="color: #D4AF37; font-size: 20px;">${total_price:.2f} NZD</span></p>
+                        {f'<p style="margin: 5px 0; color: #ea580c; font-size: 12px;">⚠️ Price was manually overridden</p>' if is_overridden else ''}
+                    </div>
+                    
+                    {'<h3 style="color: #1a1a1a; margin-top: 30px;">✈️ Flight Information</h3><div style="background-color: white; padding: 15px; border-radius: 8px; margin: 15px 0;"><p style="margin: 5px 0;"><strong>Departure Flight:</strong> ' + booking.get('departureFlightNumber', 'N/A') + ' at ' + booking.get('departureTime', 'N/A') + '</p><p style="margin: 5px 0;"><strong>Arrival Flight:</strong> ' + booking.get('arrivalFlightNumber', 'N/A') + ' at ' + booking.get('arrivalTime', 'N/A') + '</p></div>' if booking.get('departureFlightNumber') or booking.get('arrivalFlightNumber') else ''}
+                    
+                    {f'<h3 style="color: #1a1a1a; margin-top: 30px;">📝 Special Notes</h3><div style="background-color: #fff3cd; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #ffc107;"><p style="margin: 0;">{booking.get("notes", "")}</p></div>' if booking.get('notes') else ''}
+                    
+                    <div style="margin-top: 30px; padding: 15px; background-color: #e3f2fd; border-radius: 8px; border-left: 4px solid #2196f3;">
+                        <p style="margin: 0; color: #1976d2;"><strong>💡 Quick Actions:</strong></p>
+                        <p style="margin: 5px 0; font-size: 14px;">Log in to your <a href="https://bookaride.co.nz/admin/login" style="color: #D4AF37; text-decoration: none; font-weight: bold;">Admin Dashboard</a> to manage this booking.</p>
+                    </div>
+                </div>
+                
+                <div style="background-color: #1a1a1a; color: #D4AF37; padding: 15px; text-align: center; font-size: 12px;">
+                    <p style="margin: 0;">BookaRide NZ Admin System</p>
+                    <p style="margin: 5px 0;">bookaride.co.nz | +64 21 743 321</p>
+                </div>
+            </body>
+        </html>
+        """
+        
+        # Send email via Mailgun API
+        response = requests.post(
+            f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
+            auth=("api", mailgun_api_key),
+            data={
+                "from": f"BookaRide System <{sender_email}>",
+                "to": admin_email,
+                "subject": f"📋 Booking Details - {booking.get('name', 'Customer')} - {booking.get('id', '')[:8].upper()}",
+                "html": html_content
+            }
+        )
+        
+        if response.status_code == 200:
+            logger.info(f"Booking details sent to admin: {admin_email} - Booking: {booking_id}")
+            return {"message": f"Booking details sent to {admin_email}"}
+        else:
+            logger.error(f"Mailgun error: {response.status_code} - {response.text}")
+            raise HTTPException(status_code=500, detail=f"Failed to send email: {response.text}")
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error sending booking to admin: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error sending booking to admin: {str(e)}")
+
+
 # Email and SMS Notification Services
 
 # Email translations
