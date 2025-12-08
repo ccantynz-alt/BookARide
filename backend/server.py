@@ -886,40 +886,27 @@ Check your email for full details."""
 # Google Calendar Integration
 
 async def get_calendar_credentials():
-    """Get Google Calendar credentials for the business account"""
+    """Get Google Calendar credentials using service account"""
     try:
-        # Get stored tokens from database
-        calendar_auth = await db.calendar_auth.find_one({"email": "info@airportshuttleservice.co.nz"}, {"_id": 0})
+        from google.oauth2 import service_account
         
-        if not calendar_auth or 'google_tokens' not in calendar_auth:
-            logger.warning("Google Calendar not authenticated. Please authenticate at /api/auth/google/login")
+        service_account_file = os.environ.get('GOOGLE_SERVICE_ACCOUNT_FILE')
+        
+        if not service_account_file or not os.path.exists(service_account_file):
+            logger.warning("Google service account file not found")
             return None
         
-        tokens = calendar_auth['google_tokens']
-        
-        creds = Credentials(
-            token=tokens.get('access_token'),
-            refresh_token=tokens.get('refresh_token'),
-            token_uri='https://oauth2.googleapis.com/token',
-            client_id=os.environ.get('GOOGLE_CLIENT_ID'),
-            client_secret=os.environ.get('GOOGLE_CLIENT_SECRET'),
+        # Load service account credentials
+        creds = service_account.Credentials.from_service_account_file(
+            service_account_file,
             scopes=['https://www.googleapis.com/auth/calendar']
         )
         
-        # Refresh token if expired
-        if creds.expired and creds.refresh_token:
-            creds.refresh(GoogleRequest())
-            # Update tokens in database
-            await db.calendar_auth.update_one(
-                {"email": "info@airportshuttleservice.co.nz"},
-                {"$set": {"google_tokens.access_token": creds.token}}
-            )
-            logger.info("Google Calendar token refreshed")
-        
+        logger.info("✅ Service account credentials loaded successfully")
         return creds
         
     except Exception as e:
-        logger.error(f"Error getting calendar credentials: {str(e)}")
+        logger.error(f"Error loading service account credentials: {str(e)}")
         return None
 
 
