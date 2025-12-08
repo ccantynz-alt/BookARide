@@ -1471,6 +1471,7 @@ class ManualBooking(BaseModel):
     time: str
     passengers: str
     pricing: dict
+    paymentMethod: str = "cash"
     notes: Optional[str] = ""
 
 @api_router.post("/bookings/manual")
