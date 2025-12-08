@@ -111,3 +111,53 @@ code {
     background-color: rgba(212, 175, 55, 0.9);
   }
 }
+
+/* Google Places Autocomplete Dropdown Fix */
+.pac-container {
+  z-index: 9999 !important;
+  background-color: white;
+  border-radius: 4px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  font-family: 'Inter', sans-serif;
+  margin-top: 2px;
+}
+
+.pac-container:after {
+  display: none;
+}
+
+.pac-item {
+  cursor: pointer !important;
+  padding: 8px 12px;
+  font-size: 14px;
+  line-height: 1.5;
+  border-top: 1px solid #e5e7eb;
+}
+
+.pac-item:first-child {
+  border-top: none;
+}
+
+.pac-item:hover {
+  background-color: #f3f4f6 !important;
+}
+
+.pac-item-query {
+  font-size: 14px;
+  padding-right: 4px;
+  color: #1f2937;
+}
+
+.pac-matched {
+  font-weight: 600;
+  color: #000;
+}
+
+.pac-icon {
+  margin-right: 8px;
+}
+
+/* Ensure dropdown appears above modal */
+[role="dialog"] .pac-container {
+  z-index: 10000 !important;
+}
