@@ -1073,9 +1073,10 @@ export const AdminDashboard = () => {
                 <div>
                   <Label>Drop-off Address *</Label>
                   <Input
+                    ref={dropoffInputRef}
                     value={newBooking.dropoffAddress}
                     onChange={(e) => setNewBooking({...newBooking, dropoffAddress: e.target.value})}
-                    placeholder="456 Destination Road, Auckland"
+                    placeholder="Start typing address..."
                     className="mt-1"
                   />
                 </div>
