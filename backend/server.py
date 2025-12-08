@@ -1633,7 +1633,17 @@ async def assign_driver_to_booking(driver_id: str, booking_id: str):
         if result.matched_count == 0:
             raise HTTPException(status_code=404, detail="Booking not found")
         
-        logger.info(f"Driver {driver_id} assigned to booking {booking_id}")
+        # Get driver and booking details for notification
+        driver = await db.drivers.find_one({"id": driver_id}, {"_id": 0})
+        booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+        
+        if driver and booking:
+            # Send notification to driver
+            await send_driver_notification(booking, driver)
+            logger.info(f"Driver {driver_id} assigned to booking {booking_id} and notification sent")
+        else:
+            logger.warning(f"Driver or booking not found for notification - Driver: {driver_id}, Booking: {booking_id}")
+        
         return {"message": "Driver assigned successfully"}
     except HTTPException:
         raise
