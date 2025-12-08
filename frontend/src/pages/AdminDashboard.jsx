@@ -622,6 +622,13 @@ export const AdminDashboard = () => {
                 </Select>
               </div>
               <Button 
+                onClick={exportToCSV}
+                variant="outline"
+                className="border-gold text-gold hover:bg-gold hover:text-black"
+              >
+                Export CSV
+              </Button>
+              <Button 
                 onClick={() => setShowCreateBookingModal(true)}
                 className="bg-gold hover:bg-gold/90 text-black font-semibold"
               >
