@@ -1386,6 +1386,7 @@ export const AdminDashboard = () => {
                     passengerFee: 0,
                     totalPrice: 0
                   });
+                  setManualPriceOverride('');
                 }}
               >
                 Cancel
