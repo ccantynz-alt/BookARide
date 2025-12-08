@@ -432,6 +432,7 @@ export const AdminDashboard = () => {
         time: newBooking.time,
         passengers: newBooking.passengers,
         pricing: bookingPricing,
+        paymentMethod: newBooking.paymentMethod,
         notes: newBooking.notes
       }, getAuthHeaders());
 
