@@ -1774,6 +1774,21 @@ async def get_driver_schedule(driver_id: str, date: Optional[str] = None):
         logger.error(f"Error getting driver schedule: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@api_router.delete("/bookings/{booking_id}")
+async def delete_booking(booking_id: str, current_admin: dict = Depends(get_current_admin)):
+    """Delete a single booking"""
+    try:
+        result = await db.bookings.delete_one({"id": booking_id})
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Booking not found")
+        logger.info(f"Booking {booking_id} deleted by admin")
+        return {"message": "Booking deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting booking: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @api_router.delete("/bookings/bulk-delete")
 async def bulk_delete(booking_ids: List[str]):
     """Delete multiple bookings"""
