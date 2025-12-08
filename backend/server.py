@@ -896,21 +896,36 @@ async def get_calendar_credentials():
     """Get Google Calendar credentials using service account"""
     try:
         from google.oauth2 import service_account
+        import json
         
+        # Try to read from environment variable first (for production)
+        service_account_json = os.environ.get('GOOGLE_SERVICE_ACCOUNT_JSON')
+        
+        if service_account_json:
+            # Load from environment variable (production/Kubernetes)
+            try:
+                service_account_info = json.loads(service_account_json)
+                creds = service_account.Credentials.from_service_account_info(
+                    service_account_info,
+                    scopes=['https://www.googleapis.com/auth/calendar']
+                )
+                logger.info("✅ Service account credentials loaded from environment variable")
+                return creds
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse GOOGLE_SERVICE_ACCOUNT_JSON: {str(e)}")
+        
+        # Fallback to file (for local development only)
         service_account_file = os.environ.get('GOOGLE_SERVICE_ACCOUNT_FILE')
+        if service_account_file and os.path.exists(service_account_file):
+            creds = service_account.Credentials.from_service_account_file(
+                service_account_file,
+                scopes=['https://www.googleapis.com/auth/calendar']
+            )
+            logger.info("✅ Service account credentials loaded from file")
+            return creds
         
-        if not service_account_file or not os.path.exists(service_account_file):
-            logger.warning("Google service account file not found")
-            return None
-        
-        # Load service account credentials
-        creds = service_account.Credentials.from_service_account_file(
-            service_account_file,
-            scopes=['https://www.googleapis.com/auth/calendar']
-        )
-        
-        logger.info("✅ Service account credentials loaded successfully")
-        return creds
+        logger.warning("Google service account credentials not configured (neither env var nor file)")
+        return None
         
     except Exception as e:
         logger.error(f"Error loading service account credentials: {str(e)}")
