@@ -466,12 +466,18 @@ export const AdminDashboard = () => {
       return;
     }
 
-    if (bookingPricing.totalPrice === 0) {
-      toast.error('Please calculate the price first');
+    // Check if either calculated price or manual override is provided
+    const hasCalculatedPrice = bookingPricing.totalPrice > 0;
+    const hasManualPrice = manualPriceOverride && parseFloat(manualPriceOverride) > 0;
+    
+    if (!hasCalculatedPrice && !hasManualPrice) {
+      toast.error('Please calculate the price or enter a manual price override');
       return;
     }
 
     try {
+      const priceOverride = hasManualPrice ? parseFloat(manualPriceOverride) : null;
+      
       await axios.post(`${API}/bookings/manual`, {
         name: newBooking.name,
         email: newBooking.email,
@@ -484,10 +490,11 @@ export const AdminDashboard = () => {
         passengers: newBooking.passengers,
         pricing: bookingPricing,
         paymentMethod: newBooking.paymentMethod,
-        notes: newBooking.notes
+        notes: newBooking.notes,
+        priceOverride: priceOverride
       }, getAuthHeaders());
 
-      toast.success('Booking created successfully!');
+      toast.success('Booking created successfully! Customer will receive email & SMS confirmation.');
       setShowCreateBookingModal(false);
       // Reset form
       setNewBooking({
@@ -510,6 +517,7 @@ export const AdminDashboard = () => {
         passengerFee: 0,
         totalPrice: 0
       });
+      setManualPriceOverride('');
       fetchBookings(); // Refresh bookings list
     } catch (error) {
       console.error('Error creating booking:', error);
