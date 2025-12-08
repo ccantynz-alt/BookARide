@@ -91,6 +91,40 @@ export const AdminDashboard = () => {
     filterBookings();
   }, [bookings, searchTerm, statusFilter]);
 
+  // Initialize Google Places Autocomplete for admin booking form
+  useEffect(() => {
+    if (!isLoaded || !showCreateBookingModal) return;
+
+    // Small delay to ensure inputs are rendered
+    const timer = setTimeout(() => {
+      if (pickupInputRef.current && dropoffInputRef.current) {
+        const pickupAutocomplete = new window.google.maps.places.Autocomplete(pickupInputRef.current, {
+          componentRestrictions: { country: 'nz' }
+        });
+
+        const dropoffAutocomplete = new window.google.maps.places.Autocomplete(dropoffInputRef.current, {
+          componentRestrictions: { country: 'nz' }
+        });
+
+        pickupAutocomplete.addListener('place_changed', () => {
+          const place = pickupAutocomplete.getPlace();
+          if (place.formatted_address) {
+            setNewBooking(prev => ({ ...prev, pickupAddress: place.formatted_address }));
+          }
+        });
+
+        dropoffAutocomplete.addListener('place_changed', () => {
+          const place = dropoffAutocomplete.getPlace();
+          if (place.formatted_address) {
+            setNewBooking(prev => ({ ...prev, dropoffAddress: place.formatted_address }));
+          }
+        });
+      }
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [isLoaded, showCreateBookingModal]);
+
   const getAuthHeaders = () => {
     const token = localStorage.getItem('adminToken');
     return {
