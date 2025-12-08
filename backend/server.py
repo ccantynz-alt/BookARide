@@ -1031,6 +1031,7 @@ async def google_calendar_login(http_request: Request):
         )
         
         logger.info(f"Google Calendar OAuth initiated. Redirect URI: {redirect_uri}")
+        logger.info(f"Using Client ID: {client_id[:20]}...")
         
         # Auto-redirect to Google OAuth instead of returning JSON
         from fastapi.responses import RedirectResponse
