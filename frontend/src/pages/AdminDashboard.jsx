@@ -287,6 +287,21 @@ export const AdminDashboard = () => {
     }
   };
 
+  const handleSendToAdmin = async (bookingId) => {
+    try {
+      const response = await axios.post(`${API}/bookings/${bookingId}/send-to-admin`, {}, getAuthHeaders());
+      toast.success(response.data.message || 'Booking details sent to admin mailbox');
+    } catch (error) {
+      if (error.response?.status === 401) {
+        toast.error('Session expired. Please login again.');
+        handleLogout();
+        return;
+      }
+      console.error('Error sending booking to admin:', error);
+      toast.error(error.response?.data?.detail || 'Failed to send booking to admin');
+    }
+  };
+
   const exportToCSV = () => {
     try {
       // Define CSV headers
