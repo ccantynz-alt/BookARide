@@ -2209,6 +2209,30 @@ async def generate_sitemap():
         {"path": "/hotels/distinction-auckland-airport", "priority": "0.8", "changefreq": "weekly"},
         {"path": "/hotels/heartland-hotel-auckland-airport", "priority": "0.8", "changefreq": "weekly"},
         {"path": "/hotels/auckland-airport-kiwi-motel", "priority": "0.7", "changefreq": "weekly"},
+        
+        # Hibiscus Coast Main Page
+        {"path": "/hibiscus-coast", "priority": "0.9", "changefreq": "weekly"},
+        
+        # Hibiscus Coast Suburbs - 14 suburbs
+        {"path": "/suburbs/orewa", "priority": "0.9", "changefreq": "weekly"},
+        {"path": "/suburbs/whangaparaoa", "priority": "0.9", "changefreq": "weekly"},
+        {"path": "/suburbs/silverdale", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/suburbs/red-beach", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/suburbs/stanmore-bay", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/suburbs/arkles-bay", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/suburbs/army-bay", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/suburbs/manly", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/suburbs/gulf-harbour", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/suburbs/millwater", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/suburbs/stillwater", "priority": "0.7", "changefreq": "weekly"},
+        {"path": "/suburbs/hatfields-beach", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/suburbs/waiwera", "priority": "0.8", "changefreq": "weekly"},
+        {"path": "/suburbs/wenderholm", "priority": "0.7", "changefreq": "weekly"},
+        
+        # Policy Pages
+        {"path": "/terms-and-conditions", "priority": "0.5", "changefreq": "monthly"},
+        {"path": "/website-usage-policy", "priority": "0.5", "changefreq": "monthly"},
+        {"path": "/privacy-policy", "priority": "0.5", "changefreq": "monthly"},
     ]
     
     # Create XML structure
