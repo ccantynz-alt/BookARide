@@ -95,36 +95,48 @@ export const AdminDashboard = () => {
   useEffect(() => {
     if (!isLoaded || !showCreateBookingModal) return;
 
-    // Small delay to ensure inputs are rendered
+    // Delay to ensure modal and inputs are fully rendered
     const timer = setTimeout(() => {
       try {
         if (pickupInputRef.current && dropoffInputRef.current && window.google && window.google.maps && window.google.maps.places) {
-          const pickupAutocomplete = new window.google.maps.places.Autocomplete(pickupInputRef.current, {
-            componentRestrictions: { country: 'nz' }
-          });
+          // Create autocomplete instances with better options
+          const autocompleteOptions = {
+            componentRestrictions: { country: 'nz' },
+            fields: ['formatted_address', 'geometry', 'name']
+          };
 
-          const dropoffAutocomplete = new window.google.maps.places.Autocomplete(dropoffInputRef.current, {
-            componentRestrictions: { country: 'nz' }
-          });
+          const pickupAutocomplete = new window.google.maps.places.Autocomplete(
+            pickupInputRef.current,
+            autocompleteOptions
+          );
 
+          const dropoffAutocomplete = new window.google.maps.places.Autocomplete(
+            dropoffInputRef.current,
+            autocompleteOptions
+          );
+
+          // Pickup address selection handler
           pickupAutocomplete.addListener('place_changed', () => {
             const place = pickupAutocomplete.getPlace();
-            if (place.formatted_address) {
+            if (place && place.formatted_address) {
               setNewBooking(prev => ({ ...prev, pickupAddress: place.formatted_address }));
             }
           });
 
+          // Dropoff address selection handler
           dropoffAutocomplete.addListener('place_changed', () => {
             const place = dropoffAutocomplete.getPlace();
-            if (place.formatted_address) {
+            if (place && place.formatted_address) {
               setNewBooking(prev => ({ ...prev, dropoffAddress: place.formatted_address }));
             }
           });
+
+          console.log('✅ Google Places Autocomplete initialized for admin form');
         } else {
-          console.warn('Google Maps Places API not loaded yet');
+          console.warn('⚠️ Google Maps Places API not loaded yet');
         }
       } catch (error) {
-        console.error('Error initializing Google Places Autocomplete:', error);
+        console.error('❌ Error initializing Google Places Autocomplete:', error);
       }
     }, 500);
 
