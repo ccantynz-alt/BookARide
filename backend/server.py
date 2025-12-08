@@ -441,26 +441,61 @@ async def update_booking(booking_id: str, update_data: dict, current_admin: dict
 @api_router.post("/send-booking-email")
 async def send_booking_email(email_data: dict, current_admin: dict = Depends(get_current_admin)):
     try:
-        # In production, you would integrate with an email service like SendGrid, Mailgun, etc.
-        # For now, we'll just log it and return success
-        logger.info(f"Email would be sent to: {email_data.get('email')}")
-        logger.info(f"Subject: {email_data.get('subject')}")
-        logger.info(f"Message: {email_data.get('message')}")
+        recipient_email = email_data.get('email')
+        subject = email_data.get('subject')
+        message = email_data.get('message')
         
-        # TODO: Integrate with actual email service
-        # Example with SendGrid:
-        # import sendgrid
-        # from sendgrid.helpers.mail import Mail
-        # message = Mail(
-        #     from_email='noreply@bookaride.co.nz',
-        #     to_emails=email_data.get('email'),
-        #     subject=email_data.get('subject'),
-        #     plain_text_content=email_data.get('message')
-        # )
-        # sg = sendgrid.SendGridAPIClient(api_key=os.environ.get('SENDGRID_API_KEY'))
-        # response = sg.send(message)
+        if not recipient_email or not subject or not message:
+            raise HTTPException(status_code=400, detail="Missing required email fields")
         
-        return {"message": "Email sent successfully (currently logged only - integrate email service)"}
+        # Send via Mailgun
+        mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
+        mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
+        sender_email = os.environ.get('SENDER_EMAIL', 'noreply@mg.bookaride.co.nz')
+        
+        if not mailgun_api_key or not mailgun_domain:
+            raise HTTPException(status_code=500, detail="Mailgun not configured")
+        
+        # Create HTML email content
+        html_content = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <div style="background-color: #1a1a1a; color: #D4AF37; padding: 20px; text-align: center;">
+                    <h1>BookaRide.co.nz</h1>
+                </div>
+                <div style="padding: 20px; background-color: #f5f5f5;">
+                    <h2 style="color: #1a1a1a;">{subject}</h2>
+                    <div style="white-space: pre-wrap; line-height: 1.6;">{message}</div>
+                </div>
+                <div style="background-color: #1a1a1a; color: #D4AF37; padding: 15px; text-align: center; font-size: 12px;">
+                    <p>BookaRide NZ | bookaride.co.nz | +64 21 743 321</p>
+                </div>
+            </body>
+        </html>
+        """
+        
+        # Send email via Mailgun API
+        response = requests.post(
+            f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
+            auth=("api", mailgun_api_key),
+            data={
+                "from": f"BookaRide Admin <{sender_email}>",
+                "to": recipient_email,
+                "subject": subject,
+                "html": html_content,
+                "text": message
+            }
+        )
+        
+        if response.status_code == 200:
+            logger.info(f"Admin email sent to {recipient_email} - Subject: {subject}")
+            return {"message": "Email sent successfully"}
+        else:
+            logger.error(f"Mailgun error: {response.status_code} - {response.text}")
+            raise HTTPException(status_code=500, detail=f"Failed to send email: {response.text}")
+        
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error sending email: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error sending email: {str(e)}")
