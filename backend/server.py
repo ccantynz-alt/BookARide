@@ -965,7 +965,8 @@ Notes: {booking.get('notes', 'None')}
             },
         }
         
-        created_event = service.events().insert(calendarId='primary', body=event).execute()
+        calendar_id = os.environ.get('GOOGLE_CALENDAR_ID', 'primary')
+        created_event = service.events().insert(calendarId=calendar_id, body=event).execute()
         
         # Store event ID in booking
         await db.bookings.update_one(
