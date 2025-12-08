@@ -847,7 +847,7 @@ async def send_driver_notification(booking: dict, driver: dict):
                 data={
                     "from": f"BookaRide <{sender_email}>",
                     "to": driver.get('email'),
-                    "subject": f"New Booking Assignment - {booking.get('id', '')[:8].upper()}",
+                    "subject": f"New Booking Assignment - {booking.get('id', '').upper()}",
                     "html": html_content
                 }
             )
