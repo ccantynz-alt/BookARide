@@ -765,6 +765,22 @@ export const AdminDashboard = () => {
                           <div className="text-xs text-gray-500">{booking.pricing.distance}km</div>
                         </td>
                         <td className="p-4">
+                          <div className="flex flex-col gap-1">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium inline-flex items-center gap-1 w-fit ${
+                              booking.payment_status === 'paid' 
+                                ? 'bg-green-100 text-green-700' 
+                                : booking.payment_status === 'cash'
+                                ? 'bg-yellow-100 text-yellow-700'
+                                : 'bg-red-100 text-red-700'
+                            }`}>
+                              {booking.payment_status === 'paid' && '✓'}
+                              {booking.payment_status === 'cash' && '💵'}
+                              {booking.payment_status === 'unpaid' && '✗'}
+                              <span className="capitalize">{booking.payment_status || 'unpaid'}</span>
+                            </span>
+                          </div>
+                        </td>
+                        <td className="p-4">
                           <Select
                             value={booking.status}
                             onValueChange={(value) => handleStatusUpdate(booking.id, value)}
