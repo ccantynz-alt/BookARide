@@ -76,6 +76,7 @@ export const AdminDashboard = () => {
     totalPrice: 0
   });
   const [calculatingPrice, setCalculatingPrice] = useState(false);
+  const [manualPriceOverride, setManualPriceOverride] = useState('');
 
   useEffect(() => {
     // Check authentication
