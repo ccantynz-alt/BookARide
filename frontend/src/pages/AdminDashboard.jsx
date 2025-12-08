@@ -1142,6 +1142,7 @@ export const AdminDashboard = () => {
                     onChange={(e) => setNewBooking({...newBooking, pickupAddress: e.target.value})}
                     placeholder="Start typing address..."
                     className="mt-1"
+                    autoComplete="off"
                   />
                 </div>
                 <div>
