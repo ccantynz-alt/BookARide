@@ -247,6 +247,26 @@ export const AdminDashboard = () => {
     }
   };
 
+  const handleDeleteBooking = async (bookingId, bookingName) => {
+    if (!window.confirm(`Are you sure you want to delete booking for ${bookingName}? This cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      await axios.delete(`${API}/bookings/${bookingId}`, getAuthHeaders());
+      toast.success('Booking deleted successfully');
+      fetchBookings();
+    } catch (error) {
+      if (error.response?.status === 401) {
+        toast.error('Session expired. Please login again.');
+        handleLogout();
+        return;
+      }
+      console.error('Error deleting booking:', error);
+      toast.error('Failed to delete booking');
+    }
+  };
+
   const handlePriceOverride = async () => {
     try {
       const newPrice = parseFloat(priceOverride);
