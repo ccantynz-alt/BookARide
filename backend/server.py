@@ -1478,6 +1478,9 @@ class ManualBooking(BaseModel):
 async def create_manual_booking(booking: ManualBooking):
     """Create a booking manually"""
     try:
+        # Extract total price from pricing
+        total_price = booking.pricing.get('totalPrice', 0) if isinstance(booking.pricing, dict) else 0
+        
         new_booking = {
             "id": str(uuid.uuid4()),
             "name": booking.name,
@@ -1490,14 +1493,25 @@ async def create_manual_booking(booking: ManualBooking):
             "time": booking.time,
             "passengers": booking.passengers,
             "pricing": booking.pricing,
+            "totalPrice": total_price,
             "notes": booking.notes,
             "status": "confirmed",
-            "payment_status": "manual",
+            "payment_status": booking.paymentMethod,  # cash, card, bank-transfer
             "createdAt": datetime.now(timezone.utc)
         }
         
         await db.bookings.insert_one(new_booking)
-        logger.info(f"Manual booking created: {new_booking['id']}")
+        logger.info(f"Manual booking created: {new_booking['id']} - Payment: {booking.paymentMethod}")
+        
+        # Send confirmation email
+        send_booking_confirmation_email(new_booking)
+        
+        # Send confirmation SMS
+        send_booking_confirmation_sms(new_booking)
+        
+        # Create calendar event
+        await create_calendar_event(new_booking)
+        
         return {"message": "Booking created successfully", "id": new_booking['id']}
     except Exception as e:
         logger.error(f"Error creating manual booking: {str(e)}")
