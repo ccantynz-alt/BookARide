@@ -84,35 +84,63 @@ export const VehicleGallery = () => {
               <div key={index} className="px-4">
                 <Card className="overflow-hidden hover-lift transition-all-smooth border-2 border-gray-200 hover:border-gold">
                   <div className="relative h-64 overflow-hidden">
+                    {/* Nighttime sky background for night service */}
+                    {vehicle.isNight && (
+                      <div className="absolute inset-0 bg-gradient-to-b from-gray-900 via-blue-900 to-black">
+                        {/* Stars */}
+                        <div className="absolute top-4 left-10 w-1 h-1 bg-white rounded-full animate-pulse" />
+                        <div className="absolute top-8 left-32 w-1 h-1 bg-white rounded-full" />
+                        <div className="absolute top-6 right-20 w-1 h-1 bg-white rounded-full animate-pulse" style={{ animationDelay: '0.5s' }} />
+                        <div className="absolute top-12 right-40 w-1 h-1 bg-white rounded-full" />
+                        <div className="absolute top-16 left-1/3 w-1 h-1 bg-white rounded-full animate-pulse" style={{ animationDelay: '1s' }} />
+                      </div>
+                    )}
+                    
                     <img
                       src={vehicle.image}
                       alt={vehicle.name}
-                      className={`w-full h-full object-cover transition-transform duration-500 hover:scale-110 ${vehicle.isNight ? 'brightness-75 contrast-125' : ''}`}
-                      style={vehicle.isNight ? { filter: 'brightness(0.6) contrast(1.2) saturate(0.8)' } : {}}
+                      className={`w-full h-full object-cover transition-transform duration-500 hover:scale-110 ${vehicle.isNight ? 'relative z-10' : ''}`}
+                      style={vehicle.isNight ? { 
+                        filter: 'brightness(0.4) contrast(1.3)',
+                        mixBlendMode: 'lighten'
+                      } : {}}
                     />
-                    {vehicle.isNight && (
-                      <div className="absolute inset-0 bg-gradient-to-t from-blue-900/40 via-black/30 to-black/60" />
-                    )}
+                    
                     {!vehicle.isNight && (
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                     )}
                     
                     {/* Badge */}
                     {vehicle.badge && (
-                      <div className="absolute top-4 right-4 bg-gold px-4 py-2 rounded-full shadow-lg">
+                      <div className="absolute top-4 right-4 bg-gold px-4 py-2 rounded-full shadow-lg z-20">
                         <span className="text-black font-bold text-xs">{vehicle.badge}</span>
                       </div>
                     )}
                     
-                    {/* Lights effect for night service */}
+                    {/* Flashing blinker lights for night service */}
                     {vehicle.isNight && (
                       <>
-                        <div className="absolute top-1/2 left-1/4 w-20 h-20 bg-yellow-300/30 rounded-full blur-3xl animate-pulse" />
-                        <div className="absolute top-1/3 right-1/4 w-16 h-16 bg-yellow-200/20 rounded-full blur-2xl animate-pulse" style={{ animationDelay: '0.5s' }} />
+                        {/* Front left blinker */}
+                        <div className="absolute left-[15%] top-[45%] w-3 h-3 bg-orange-400 rounded-full animate-pulse shadow-2xl z-20" 
+                             style={{ 
+                               boxShadow: '0 0 20px 8px rgba(251, 146, 60, 0.8)',
+                               animationDuration: '1s'
+                             }} />
+                        
+                        {/* Front right blinker */}
+                        <div className="absolute right-[15%] top-[45%] w-3 h-3 bg-orange-400 rounded-full animate-pulse shadow-2xl z-20" 
+                             style={{ 
+                               boxShadow: '0 0 20px 8px rgba(251, 146, 60, 0.8)',
+                               animationDuration: '1s'
+                             }} />
+                        
+                        {/* Headlights glow */}
+                        <div className="absolute left-[12%] top-[48%] w-24 h-16 bg-yellow-200/20 rounded-full blur-2xl z-10" />
+                        <div className="absolute right-[12%] top-[48%] w-24 h-16 bg-yellow-200/20 rounded-full blur-2xl z-10" />
                       </>
                     )}
                     
-                    <div className="absolute bottom-4 left-4 text-white">
+                    <div className="absolute bottom-4 left-4 text-white z-20">
                       <h3 className="text-2xl font-bold mb-1">{vehicle.name}</h3>
                       <p className="text-sm text-white/90 font-semibold">{vehicle.description}</p>
                     </div>
