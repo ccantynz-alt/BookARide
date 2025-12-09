@@ -1,5 +1,6 @@
-// Fix Google Places Autocomplete dropdown positioning
+// Fix Google Places Autocomplete dropdown positioning and click handling
 // This utility ensures dropdowns appear directly under input fields
+// and prevents focus loss when clicking dropdown items
 
 export const initAutocompleteWithFix = (inputElement, options = {}) => {
   if (!window.google || !window.google.maps || !window.google.maps.places) {
@@ -32,6 +33,22 @@ export const initAutocompleteWithFix = (inputElement, options = {}) => {
     }, 50);
   };
 
+  // CRITICAL FIX: Prevent mousedown on pac-container from causing input blur
+  // This fixes the issue where clicking the dropdown causes the form to "disappear"
+  const preventBlurOnDropdownClick = (e) => {
+    // Check if the click target is inside a pac-container (Google's dropdown)
+    if (e.target.closest('.pac-container')) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  };
+
+  // Add mousedown listener to document to catch dropdown clicks before blur
+  document.addEventListener('mousedown', preventBlurOnDropdownClick, true);
+
+  // Also add touchstart for mobile devices
+  document.addEventListener('touchstart', preventBlurOnDropdownClick, true);
+
   // Attach listeners to input
   inputElement.addEventListener('focus', repositionDropdown);
   inputElement.addEventListener('input', repositionDropdown);
@@ -41,11 +58,36 @@ export const initAutocompleteWithFix = (inputElement, options = {}) => {
   window.addEventListener('scroll', repositionDropdown, { passive: true });
   window.addEventListener('resize', repositionDropdown, { passive: true });
 
-  // Watch for dropdown creation
-  const observer = new MutationObserver(repositionDropdown);
+  // Watch for dropdown creation and add click prevention to new pac-containers
+  const observer = new MutationObserver((mutations) => {
+    repositionDropdown();
+    
+    // Ensure pac-containers have proper event handling
+    mutations.forEach((mutation) => {
+      mutation.addedNodes.forEach((node) => {
+        if (node.classList && node.classList.contains('pac-container')) {
+          // Prevent mousedown from blurring the input
+          node.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+          });
+          node.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+          }, { passive: false });
+        }
+      });
+    });
+  });
+  
   observer.observe(document.body, {
     childList: true,
     subtree: false
+  });
+
+  // Also attach to any existing pac-containers
+  document.querySelectorAll('.pac-container').forEach(container => {
+    container.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+    });
   });
 
   return {
@@ -56,6 +98,8 @@ export const initAutocompleteWithFix = (inputElement, options = {}) => {
       inputElement.removeEventListener('keydown', repositionDropdown);
       window.removeEventListener('scroll', repositionDropdown);
       window.removeEventListener('resize', repositionDropdown);
+      document.removeEventListener('mousedown', preventBlurOnDropdownClick, true);
+      document.removeEventListener('touchstart', preventBlurOnDropdownClick, true);
       observer.disconnect();
     }
   };
