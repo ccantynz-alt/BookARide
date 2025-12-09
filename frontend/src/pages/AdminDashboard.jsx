@@ -541,6 +541,7 @@ export const AdminDashboard = () => {
         phone: '',
         serviceType: 'airport-shuttle',
         pickupAddress: '',
+        pickupAddresses: [],
         dropoffAddress: '',
         date: '',
         time: '',
