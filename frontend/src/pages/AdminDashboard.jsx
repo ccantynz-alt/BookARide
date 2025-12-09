@@ -106,36 +106,57 @@ export const AdminDashboard = () => {
     // Delay to ensure modal and inputs are fully rendered
     const timer = setTimeout(() => {
       try {
-        if (pickupInputRef.current && dropoffInputRef.current && window.google && window.google.maps && window.google.maps.places) {
+        if (window.google && window.google.maps && window.google.maps.places) {
           // Create autocomplete instances with better options
           const autocompleteOptions = {
             componentRestrictions: { country: 'nz' },
             fields: ['formatted_address', 'geometry', 'name']
           };
 
-          const pickupAutocomplete = new window.google.maps.places.Autocomplete(
-            pickupInputRef.current,
-            autocompleteOptions
-          );
+          // Initialize pickup autocomplete
+          if (pickupInputRef.current) {
+            const pickupAutocomplete = new window.google.maps.places.Autocomplete(
+              pickupInputRef.current,
+              autocompleteOptions
+            );
 
-          const dropoffAutocomplete = new window.google.maps.places.Autocomplete(
-            dropoffInputRef.current,
-            autocompleteOptions
-          );
+            pickupAutocomplete.addListener('place_changed', () => {
+              const place = pickupAutocomplete.getPlace();
+              if (place && place.formatted_address) {
+                setNewBooking(prev => ({ ...prev, pickupAddress: place.formatted_address }));
+              }
+            });
+          }
 
-          // Pickup address selection handler
-          pickupAutocomplete.addListener('place_changed', () => {
-            const place = pickupAutocomplete.getPlace();
-            if (place && place.formatted_address) {
-              setNewBooking(prev => ({ ...prev, pickupAddress: place.formatted_address }));
-            }
-          });
+          // Initialize dropoff autocomplete
+          if (dropoffInputRef.current) {
+            const dropoffAutocomplete = new window.google.maps.places.Autocomplete(
+              dropoffInputRef.current,
+              autocompleteOptions
+            );
 
-          // Dropoff address selection handler
-          dropoffAutocomplete.addListener('place_changed', () => {
-            const place = dropoffAutocomplete.getPlace();
-            if (place && place.formatted_address) {
-              setNewBooking(prev => ({ ...prev, dropoffAddress: place.formatted_address }));
+            dropoffAutocomplete.addListener('place_changed', () => {
+              const place = dropoffAutocomplete.getPlace();
+              if (place && place.formatted_address) {
+                setNewBooking(prev => ({ ...prev, dropoffAddress: place.formatted_address }));
+              }
+            });
+          }
+
+          // Initialize autocomplete for additional pickup addresses
+          additionalPickupRefs.current.forEach((ref, index) => {
+            if (ref) {
+              const additionalAutocomplete = new window.google.maps.places.Autocomplete(
+                ref,
+                autocompleteOptions
+              );
+
+              additionalAutocomplete.addListener('place_changed', () => {
+                const place = additionalAutocomplete.getPlace();
+                if (place && place.formatted_address) {
+                  handlePickupAddressChange(index, place.formatted_address);
+                }
+              });
             }
           });
 
@@ -149,7 +170,7 @@ export const AdminDashboard = () => {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [isLoaded, showCreateBookingModal]);
+  }, [isLoaded, showCreateBookingModal, newBooking.pickupAddresses.length]);
 
   const getAuthHeaders = () => {
     const token = localStorage.getItem('adminToken');
