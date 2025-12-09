@@ -194,11 +194,11 @@
 
 /* Time caption */
 .react-datepicker-time__header {
-  color: #D4AF37;
+  color: #ffffff !important;
   font-weight: 700;
   font-size: 14px;
   padding: 12px 0;
-  background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+  background: #D4AF37 !important;
   border-bottom: 2px solid #D4AF37;
 }
 
