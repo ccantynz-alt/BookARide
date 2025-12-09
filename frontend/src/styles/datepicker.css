@@ -34,7 +34,7 @@
 }
 
 .react-datepicker__day-name {
-  color: #ffffff;
+  color: #ffffff !important;
   font-weight: 600;
   font-size: 13px;
   width: 36px;
