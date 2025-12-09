@@ -1430,21 +1430,36 @@ export const AdminDashboard = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <Label>Date *</Label>
-                    <Input
-                      type="date"
-                      value={newBooking.date}
-                      onChange={(e) => setNewBooking({...newBooking, date: e.target.value})}
-                      className="mt-1"
-                    />
+                    <div className="mt-1">
+                      <CustomDatePicker
+                        selected={adminPickupDate}
+                        onChange={(date) => {
+                          setAdminPickupDate(date);
+                          if (date) {
+                            const formattedDate = date.toISOString().split('T')[0];
+                            setNewBooking({...newBooking, date: formattedDate});
+                          }
+                        }}
+                        placeholder="Select date"
+                      />
+                    </div>
                   </div>
                   <div>
                     <Label>Time *</Label>
-                    <Input
-                      type="time"
-                      value={newBooking.time}
-                      onChange={(e) => setNewBooking({...newBooking, time: e.target.value})}
-                      className="mt-1"
-                    />
+                    <div className="mt-1">
+                      <CustomTimePicker
+                        selected={adminPickupTime}
+                        onChange={(time) => {
+                          setAdminPickupTime(time);
+                          if (time) {
+                            const hours = time.getHours().toString().padStart(2, '0');
+                            const minutes = time.getMinutes().toString().padStart(2, '0');
+                            setNewBooking({...newBooking, time: `${hours}:${minutes}`});
+                          }
+                        }}
+                        placeholder="Select time"
+                      />
+                    </div>
                   </div>
                   <div>
                     <Label>Passengers *</Label>
