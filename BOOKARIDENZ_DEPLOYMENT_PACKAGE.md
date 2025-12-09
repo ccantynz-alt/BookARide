@@ -108,7 +108,7 @@ const siteConfig = {
   },
   
   // Backend API (SAME - shared backend!)
-  apiUrl: process.env.REACT_APP_BACKEND_URL || 'https://ridenow-dashboard.preview.emergentagent.com/api',
+  apiUrl: process.env.REACT_APP_BACKEND_URL || 'https://bookmyride-nz.preview.emergentagent.com/api',
   
   // International flag
   isInternational: true  // ← NEW: Enables international features
