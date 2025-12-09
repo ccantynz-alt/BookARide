@@ -1310,7 +1310,7 @@ export const AdminDashboard = () => {
               <h3 className="font-semibold text-gray-900 mb-3">Trip Information</h3>
               <div className="space-y-4">
                 <div>
-                  <Label>Pickup Address *</Label>
+                  <Label>Pickup Address 1 *</Label>
                   <Input
                     ref={pickupInputRef}
                     value={newBooking.pickupAddress}
@@ -1320,6 +1320,42 @@ export const AdminDashboard = () => {
                     autoComplete="off"
                   />
                 </div>
+
+                {/* Additional Pickup Addresses */}
+                {newBooking.pickupAddresses.map((pickup, index) => (
+                  <div key={index} className="relative">
+                    <Label>Pickup Address {index + 2}</Label>
+                    <div className="flex gap-2 mt-1">
+                      <Input
+                        value={pickup}
+                        onChange={(e) => handlePickupAddressChange(index, e.target.value)}
+                        placeholder="Start typing address..."
+                        autoComplete="off"
+                        className="flex-1"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => handleRemovePickup(index)}
+                        className="text-red-600 hover:bg-red-50"
+                      >
+                        ✕
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+
+                {/* Add Pickup Button */}
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleAddPickup}
+                  className="w-full border-dashed border-2 text-blue-600 hover:bg-blue-50"
+                >
+                  <span className="text-lg mr-2">+</span>
+                  Add Another Pickup Location
+                </Button>
+
                 <div>
                   <Label>Drop-off Address *</Label>
                   <Input
