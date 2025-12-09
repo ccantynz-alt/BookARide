@@ -1785,6 +1785,10 @@ class ManualBooking(BaseModel):
     paymentMethod: str = "cash"
     notes: Optional[str] = ""
     priceOverride: Optional[float] = None
+    flightArrivalNumber: Optional[str] = ""
+    flightArrivalTime: Optional[str] = ""
+    flightDepartureNumber: Optional[str] = ""
+    flightDepartureTime: Optional[str] = ""
 
 @api_router.post("/bookings/manual")
 async def create_manual_booking(booking: ManualBooking):
