@@ -356,8 +356,8 @@ metadata:
   run_ui: false
 
 test_plan:
-  current_focus: []
-  stuck_tasks: ["SEO Implementation Testing"]
+  current_focus: ["Google Places Autocomplete Dropdown Positioning Fix"]
+  stuck_tasks: ["SEO Implementation Testing", "Google Places Autocomplete Dropdown Positioning Fix"]
   test_all: false
   test_priority: "high_first"
 
