@@ -44,57 +44,128 @@ export const Home = () => {
         canonical="/"
       />
       <StructuredData />
-      {/* Hero Section */}
-      <section className="relative pt-32 pb-24 md:pt-40 md:pb-32 overflow-hidden gradient-animated">
-        {/* Animated Background */}
-        <div className="absolute inset-0 opacity-20">
-          <img 
-            src="/shuttle-van.jpg" 
-            alt="" 
-            className="w-full h-full object-cover object-right animate-float"
-            style={{ filter: 'brightness(0.4) blur(1px)' }}
-          />
+      {/* DRAMATIC HERO SECTION */}
+      <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
+        {/* Dramatic Background with Overlay */}
+        <div className="absolute inset-0 z-0">
+          {/* Dark gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-br from-black via-gray-900 to-black z-10" />
+          
+          {/* Animated gold shine effect */}
+          <div className="absolute inset-0 z-20 opacity-30">
+            <div className="absolute top-0 -left-1/4 w-1/2 h-full bg-gradient-to-r from-transparent via-gold/40 to-transparent transform -skew-x-12 animate-shine" />
+          </div>
+          
+          {/* Background image with parallax effect */}
+          <div className="absolute inset-0 opacity-40">
+            <img 
+              src="/shuttle-van.jpg" 
+              alt="" 
+              className="w-full h-full object-cover scale-110 animate-slow-zoom"
+            />
+          </div>
+          
+          {/* Dramatic particles and light effects */}
+          <div className="absolute inset-0 z-30">
+            {/* Large animated gold orbs */}
+            <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-gold/20 rounded-full blur-3xl animate-pulse-glow" />
+            <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-gold/10 rounded-full blur-3xl animate-pulse-glow" style={{ animationDelay: '1s' }} />
+            
+            {/* Floating sparkles */}
+            {[...Array(20)].map((_, i) => (
+              <div
+                key={i}
+                className="absolute w-1 h-1 bg-gold rounded-full animate-float-sparkle"
+                style={{
+                  top: `${Math.random() * 100}%`,
+                  left: `${Math.random() * 100}%`,
+                  animationDelay: `${Math.random() * 3}s`,
+                  animationDuration: `${3 + Math.random() * 4}s`
+                }}
+              />
+            ))}
+          </div>
+          
+          {/* Radial gradient spotlight */}
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_40%,rgba(212,175,55,0.15),transparent_70%)] z-20" />
         </div>
         
-        {/* Floating Particles */}
-        <div className="absolute inset-0 opacity-20">
-          <div className="absolute top-20 left-10 w-2 h-2 bg-gold rounded-full animate-float" style={{ animationDelay: '0s', animationDuration: '4s' }} />
-          <div className="absolute top-40 right-20 w-3 h-3 bg-gold/60 rounded-full animate-float" style={{ animationDelay: '1s', animationDuration: '5s' }} />
-          <div className="absolute bottom-32 left-1/4 w-2 h-2 bg-gold/40 rounded-full animate-float" style={{ animationDelay: '2s', animationDuration: '6s' }} />
-          <div className="absolute top-1/2 right-1/3 w-2 h-2 bg-gold/50 rounded-full animate-float" style={{ animationDelay: '1.5s', animationDuration: '4.5s' }} />
-        </div>
-        
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(212,175,55,0.15),transparent_50%)]" />
-        </div>
-        
-        <div className="container mx-auto px-4 relative z-10">
-          <div className="max-w-5xl mx-auto text-center">
-            <FadeIn>
-              <motion.div
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ duration: 0.6 }}
-              >
-                <h1 className="text-5xl md:text-7xl font-bold text-white mb-8 leading-tight">
-                  {t('hero.title')}
-                  <span className="block mt-2 gradient-text text-6xl md:text-8xl">{t('hero.subtitle')}</span>
-                </h1>
-              </motion.div>
-            </FadeIn>
+        <div className="container mx-auto px-4 relative z-40 py-32">
+          <div className="max-w-6xl mx-auto text-center">
+            {/* Dramatic badge */}
+            <motion.div
+              initial={{ scale: 0, rotate: -180 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+              className="inline-flex items-center gap-2 bg-gold/20 backdrop-blur-sm border border-gold/40 rounded-full px-6 py-3 mb-8"
+            >
+              <Sparkles className="w-5 h-5 text-gold animate-pulse" />
+              <span className="text-gold font-semibold text-sm uppercase tracking-wider">New Zealand's Premium Transfer Service</span>
+              <Sparkles className="w-5 h-5 text-gold animate-pulse" />
+            </motion.div>
+            
+            {/* Massive dramatic heading */}
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+            >
+              <h1 className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-black text-white mb-6 leading-none">
+                <span className="block" style={{ textShadow: '0 0 40px rgba(212,175,55,0.5)' }}>
+                  ARRIVE IN
+                </span>
+                <span className="block mt-2 bg-gradient-to-r from-gold via-yellow-400 to-gold bg-clip-text text-transparent animate-gradient-flow" style={{ 
+                  backgroundSize: '200% auto',
+                  textShadow: '0 0 80px rgba(212,175,55,0.8)'
+                }}>
+                  LUXURY
+                </span>
+              </h1>
+            </motion.div>
+            
+            {/* Dramatic subheading */}
             <motion.p 
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5, duration: 0.8 }}
+              className="text-2xl sm:text-3xl md:text-4xl text-white/90 mb-8 font-light leading-relaxed max-w-4xl mx-auto"
+              style={{ textShadow: '0 2px 20px rgba(0,0,0,0.8)' }}
+            >
+              Experience <span className="font-bold text-gold">premium airport transfers</span> that redefine excellence
+            </motion.p>
+            
+            {/* Dramatic feature list */}
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3, duration: 0.6 }}
-              className="text-xl md:text-2xl text-white/80 mb-12 max-w-3xl mx-auto leading-relaxed"
+              transition={{ delay: 0.7, duration: 0.8 }}
+              className="flex flex-wrap items-center justify-center gap-6 mb-12"
             >
-              {t('hero.description')}
-            </motion.p>
+              {[
+                { icon: Shield, text: '100% Safe' },
+                { icon: Clock, text: '24/7 Available' },
+                { icon: Award, text: 'Premium Service' },
+                { icon: Users, text: '10,000+ Rides' }
+              ].map((item, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, scale: 0 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.9 + index * 0.1, duration: 0.5 }}
+                  className="flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-full px-5 py-3 hover:bg-white/20 transition-all group"
+                >
+                  <item.icon className="w-5 h-5 text-gold group-hover:scale-110 transition-transform" />
+                  <span className="text-white font-semibold text-sm">{item.text}</span>
+                </motion.div>
+              ))}
+            </motion.div>
+            
+            {/* Massive CTA buttons */}
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5, duration: 0.6 }}
-              className="flex flex-col sm:flex-row gap-6 justify-center"
+              transition={{ delay: 1.1, duration: 0.8 }}
+              className="flex flex-col sm:flex-row gap-6 justify-center items-center"
             >
               <Link to="/book-now">
                 <Button size="lg" className="bg-gold hover:bg-gold/90 text-black font-semibold px-10 py-6 text-base group transition-all-smooth shadow-lg hover:shadow-2xl hover:scale-105 animate-pulse-slow">
