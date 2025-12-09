@@ -42,7 +42,7 @@ export const Services = () => {
         <div className="absolute right-0 top-0 w-1/3 h-full bg-gradient-to-l from-gold/10 to-transparent" />
         
         <div className="container mx-auto px-4 relative z-10">
-          <div className="max-w-4xl mx-auto text-center">
+          <div className="max-w-5xl mx-auto text-center">
             {/* Premium Badge */}
             <div className="inline-flex items-center gap-2 bg-gold/10 border border-gold/30 rounded-full px-6 py-2 mb-8">
               <Award className="w-5 h-5 text-gold" />
@@ -56,10 +56,37 @@ export const Services = () => {
               Professional airport shuttles across New Zealand's North Island
             </p>
             
+            {/* LIVE PRICING BANNER - SELL SELL SELL */}
+            <div className="bg-gradient-to-r from-gold to-yellow-500 rounded-2xl p-8 mb-8 shadow-2xl border-2 border-yellow-300">
+              <div className="flex flex-col md:flex-row items-center justify-center gap-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-16 h-16 bg-black/20 rounded-full flex items-center justify-center">
+                    <DollarSign className="w-8 h-8 text-black" strokeWidth={3} />
+                  </div>
+                  <div className="text-left">
+                    <div className="text-2xl md:text-3xl font-black text-black leading-tight">LIVE PRICING</div>
+                    <div className="text-black/80 font-semibold">See Your Exact Price in Seconds!</div>
+                  </div>
+                </div>
+                <div className="h-12 w-px bg-black/20 hidden md:block"></div>
+                <div className="text-center md:text-left">
+                  <div className="text-black font-bold mb-2">✓ Instant Quotes</div>
+                  <div className="text-black font-bold mb-2">✓ No Hidden Fees</div>
+                  <div className="text-black font-bold">✓ Pay Per Kilometer</div>
+                </div>
+                <Link to="/book-now">
+                  <Button className="bg-black hover:bg-gray-900 text-gold font-black text-lg px-8 py-6 shadow-xl">
+                    GET INSTANT QUOTE
+                    <ArrowRight className="ml-2 w-5 h-5" />
+                  </Button>
+                </Link>
+              </div>
+            </div>
+            
             {/* Trust Indicators */}
-            <div className="flex flex-wrap justify-center gap-8 mt-12">
+            <div className="flex flex-wrap justify-center gap-8">
               <div className="text-center">
-                <div className="text-4xl font-black text-gold mb-2">4 </div>
+                <div className="text-4xl font-black text-gold mb-2">4</div>
                 <div className="text-white/70 text-sm">Locations</div>
               </div>
               <div className="h-12 w-px bg-white/20"></div>
