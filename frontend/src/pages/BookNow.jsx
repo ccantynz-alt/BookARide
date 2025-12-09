@@ -57,6 +57,16 @@ export const BookNow = () => {
     notes: ''
   });
 
+  // Date/Time picker states
+  const [pickupDate, setPickupDate] = useState(null);
+  const [pickupTime, setPickupTime] = useState(null);
+  const [departureTimeDate, setDepartureTimeDate] = useState(null);
+  const [arrivalTimeDate, setArrivalTimeDate] = useState(null);
+  const [returnDatePicker, setReturnDatePicker] = useState(null);
+  const [returnTimePicker, setReturnTimePicker] = useState(null);
+  const [returnDepartureTimeDate, setReturnDepartureTimeDate] = useState(null);
+  const [returnArrivalTimeDate, setReturnArrivalTimeDate] = useState(null);
+
   const [pricing, setPricing] = useState({
     distance: 0,
     basePrice: 0,
