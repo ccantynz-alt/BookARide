@@ -33,7 +33,7 @@ export const Contact = () => {
     // Mock submission - will be connected to backend later
     console.log('Contact form submitted:', formData);
     toast.success("Message Sent!", {
-      description: "We'll get back to you as soon as possible.",
+      description: "We&apos;ll get back to you as soon as possible.",
     });
     // Reset form
     setFormData({
