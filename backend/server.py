@@ -1850,6 +1850,32 @@ async def create_manual_booking(booking: ManualBooking):
         logger.error(f"Error creating manual booking: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# Update Payment Status
+@api_router.put("/bookings/{booking_id}/payment-status")
+async def update_payment_status(booking_id: str, paymentStatus: str = Body(..., embed=True)):
+    """Update payment status for a booking"""
+    try:
+        # Validate payment status
+        valid_statuses = ['paid', 'unpaid', 'cash']
+        if paymentStatus not in valid_statuses:
+            raise HTTPException(status_code=400, detail=f"Invalid payment status. Must be one of: {valid_statuses}")
+        
+        result = await db.bookings.update_one(
+            {"id": booking_id},
+            {"$set": {"payment_status": paymentStatus}}
+        )
+        
+        if result.modified_count == 0:
+            raise HTTPException(status_code=404, detail="Booking not found")
+        
+        logger.info(f"Payment status updated for booking {booking_id} to {paymentStatus}")
+        return {"success": True, "message": "Payment status updated successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating payment status: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Bulk Operations
 @api_router.post("/bookings/bulk-status")
 async def bulk_status_update(booking_ids: List[str], new_status: str):
