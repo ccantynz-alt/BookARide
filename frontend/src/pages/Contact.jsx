@@ -16,12 +16,6 @@ export const Contact = () => {
     name: '',
     email: '',
     phone: '',
-    serviceType: '',
-    pickupLocation: '',
-    dropoffLocation: '',
-    date: '',
-    time: '',
-    passengers: '',
     message: ''
   });
 
