@@ -68,7 +68,11 @@ export const AdminDashboard = () => {
     time: '',
     passengers: '1',
     paymentMethod: 'cash',
-    notes: ''
+    notes: '',
+    flightArrivalNumber: '',
+    flightArrivalTime: '',
+    flightDepartureNumber: '',
+    flightDepartureTime: ''
   });
   const [bookingPricing, setBookingPricing] = useState({
     distance: 0,
