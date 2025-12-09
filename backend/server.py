@@ -1823,6 +1823,10 @@ async def create_manual_booking(booking: ManualBooking):
             "notes": booking.notes,
             "status": "confirmed",
             "payment_status": booking.paymentMethod,  # cash, card, bank-transfer
+            "flightArrivalNumber": booking.flightArrivalNumber or "",
+            "flightArrivalTime": booking.flightArrivalTime or "",
+            "flightDepartureNumber": booking.flightDepartureNumber or "",
+            "flightDepartureTime": booking.flightDepartureTime or "",
             "createdAt": datetime.now(timezone.utc)
         }
         
