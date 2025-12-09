@@ -49,11 +49,11 @@ export const Home = () => {
         
         {/* Cinematic Background */}
         <div className="absolute inset-0">
-          {/* High-quality background image - Happy smiling passengers in luxury vehicle */}
+          {/* High-quality background image - Group of friends laughing in van */}
           <div className="absolute inset-0">
             <img 
-              src="https://images.unsplash.com/photo-1597724903883-84d0be041aa8?w=1920&q=80" 
-              alt="Happy smiling passenger in premium luxury vehicle" 
+              src="https://images.pexels.com/photos/7464537/pexels-photo-7464537.jpeg?auto=compress&cs=tinysrgb&w=1920" 
+              alt="Happy group of passengers laughing and having fun in premium van" 
               className="w-full h-full object-cover opacity-60"
               style={{ objectPosition: 'center' }}
             />
