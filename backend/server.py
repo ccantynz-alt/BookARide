@@ -1730,6 +1730,7 @@ class ManualBooking(BaseModel):
     phone: str
     serviceType: str
     pickupAddress: str
+    pickupAddresses: Optional[List[str]] = []  # Multiple pickups support
     dropoffAddress: str
     date: str
     time: str
