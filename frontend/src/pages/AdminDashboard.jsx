@@ -1454,6 +1454,55 @@ export const AdminDashboard = () => {
                     </Select>
                   </div>
                 </div>
+
+                {/* Flight Details Section */}
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                  <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    ✈️ Flight Details (Optional)
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label>Flight Arrival Number</Label>
+                      <Input
+                        value={newBooking.flightArrivalNumber}
+                        onChange={(e) => setNewBooking({...newBooking, flightArrivalNumber: e.target.value})}
+                        placeholder="e.g., NZ123"
+                        className="mt-1 bg-white"
+                      />
+                    </div>
+                    <div>
+                      <Label>Flight Arrival Time</Label>
+                      <Input
+                        type="time"
+                        value={newBooking.flightArrivalTime}
+                        onChange={(e) => setNewBooking({...newBooking, flightArrivalTime: e.target.value})}
+                        className="mt-1 bg-white"
+                      />
+                    </div>
+                    <div>
+                      <Label>Flight Departure Number</Label>
+                      <Input
+                        value={newBooking.flightDepartureNumber}
+                        onChange={(e) => setNewBooking({...newBooking, flightDepartureNumber: e.target.value})}
+                        placeholder="e.g., NZ456"
+                        className="mt-1 bg-white"
+                      />
+                    </div>
+                    <div>
+                      <Label>Flight Departure Time</Label>
+                      <Input
+                        type="time"
+                        value={newBooking.flightDepartureTime}
+                        onChange={(e) => setNewBooking({...newBooking, flightDepartureTime: e.target.value})}
+                        className="mt-1 bg-white"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-600 mt-2">
+                    Add flight details for airport pickups/drop-offs to better track and coordinate transfers
+                  </p>
+                </div>
+
                 <div>
                   <Label>Special Notes</Label>
                   <Textarea
