@@ -437,6 +437,15 @@ async def create_booking(booking: BookingCreate):
         booking_dict['payment_status'] = 'unpaid'
         await db.bookings.insert_one(booking_dict)
         logger.info(f"Booking created: {booking_obj.id}")
+        
+        # Send admin notification email for new booking
+        try:
+            await send_booking_notification_to_admin(booking_dict)
+            logger.info(f"Admin notification sent for booking {booking_obj.id}")
+        except Exception as email_error:
+            logger.error(f"Failed to send admin notification for booking {booking_obj.id}: {str(email_error)}")
+            # Don't fail the booking creation if email fails
+        
         return booking_obj
     except Exception as e:
         logger.error(f"Error creating booking: {str(e)}")
