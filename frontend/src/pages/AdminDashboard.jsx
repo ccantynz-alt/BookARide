@@ -985,7 +985,7 @@ export const AdminDashboard = () => {
                           <SelectTrigger className="h-7 text-xs w-[100px]">
                             <SelectValue placeholder="Change" />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="z-[9999]">
                             <SelectItem value="paid">✓ Paid</SelectItem>
                             <SelectItem value="cash">💵 Cash</SelectItem>
                             <SelectItem value="unpaid">✗ Unpaid</SelectItem>
