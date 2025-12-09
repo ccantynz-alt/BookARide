@@ -1366,6 +1366,7 @@ export const AdminDashboard = () => {
                     <Label>Pickup Address {index + 2}</Label>
                     <div className="flex gap-2 mt-1">
                       <Input
+                        ref={(el) => (additionalPickupRefs.current[index] = el)}
                         value={pickup}
                         onChange={(e) => handlePickupAddressChange(index, e.target.value)}
                         placeholder="Start typing address..."
