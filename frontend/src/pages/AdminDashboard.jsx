@@ -521,6 +521,7 @@ export const AdminDashboard = () => {
         phone: newBooking.phone,
         serviceType: newBooking.serviceType,
         pickupAddress: newBooking.pickupAddress,
+        pickupAddresses: newBooking.pickupAddresses.filter(addr => addr.trim()),  // Filter empty addresses
         dropoffAddress: newBooking.dropoffAddress,
         date: newBooking.date,
         time: newBooking.time,
