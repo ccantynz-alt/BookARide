@@ -84,6 +84,12 @@ export const AdminDashboard = () => {
   });
   const [calculatingPrice, setCalculatingPrice] = useState(false);
   const [manualPriceOverride, setManualPriceOverride] = useState('');
+  
+  // Date/Time picker states for admin form
+  const [adminPickupDate, setAdminPickupDate] = useState(null);
+  const [adminPickupTime, setAdminPickupTime] = useState(null);
+  const [adminFlightArrivalTime, setAdminFlightArrivalTime] = useState(null);
+  const [adminFlightDepartureTime, setAdminFlightDepartureTime] = useState(null);
 
   useEffect(() => {
     // Check authentication
