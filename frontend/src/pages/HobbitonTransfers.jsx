@@ -219,6 +219,67 @@ export const HobbitonTransfers = () => {
         </div>
       </section>
 
+      {/* Customer Testimonials Section */}
+      <section className="py-16 bg-gradient-to-br from-gray-900 to-black text-white">
+        <div className="container mx-auto px-4">
+          <div className="max-w-5xl mx-auto">
+            <h2 className="text-3xl font-bold text-center mb-4">
+              What Our Hobbiton Travelers Say
+            </h2>
+            <p className="text-gray-300 text-center mb-12">
+              Join hundreds of satisfied customers who've experienced the magic of Middle-earth with us
+            </p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card className="bg-white/10 border-gold/30 backdrop-blur-sm">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-1 mb-3">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} className="w-4 h-4 text-gold fill-gold" />
+                    ))}
+                  </div>
+                  <p className="text-white mb-4 italic">
+                    "Best decision we made! The driver was so knowledgeable about LOTR and the route was scenic. Made our Hobbiton experience even more magical!"
+                  </p>
+                  <p className="text-gold font-semibold">Emma & James</p>
+                  <p className="text-gray-400 text-sm">Auckland → Hobbiton</p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white/10 border-gold/30 backdrop-blur-sm">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-1 mb-3">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} className="w-4 h-4 text-gold fill-gold" />
+                    ))}
+                  </div>
+                  <p className="text-white mb-4 italic">
+                    "Punctual, professional, and the vehicle was spotless. We were able to relax and enjoy the beautiful Waikato scenery. Highly recommend!"
+                  </p>
+                  <p className="text-gold font-semibold">David L.</p>
+                  <p className="text-gray-400 text-sm">International Traveller</p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white/10 border-gold/30 backdrop-blur-sm">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-1 mb-3">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} className="w-4 h-4 text-gold fill-gold" />
+                    ))}
+                  </div>
+                  <p className="text-white mb-4 italic">
+                    "Perfect for our family of 5! Comfortable ride, friendly driver, and we arrived right on time for our Hobbiton tour. Worth every penny!"
+                  </p>
+                  <p className="text-gold font-semibold">Sarah M.</p>
+                  <p className="text-gray-400 text-sm">Family of 5</p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Tips Section */}
       <section className="py-16 bg-white">
         <div className="container mx-auto px-4">
