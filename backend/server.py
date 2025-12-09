@@ -1208,11 +1208,23 @@ async def create_calendar_event(booking: dict):
         
         service = build('calendar', 'v3', credentials=creds)
         
-        # Parse booking date and time
-        booking_datetime = f"{booking.get('date')}T{booking.get('time')}:00"
+        # Parse booking date and time in New Zealand timezone
+        from datetime import datetime
+        import pytz
+        
+        # Create datetime in NZ timezone
+        nz_tz = pytz.timezone('Pacific/Auckland')
+        booking_date = booking.get('date')  # "2025-12-09"
+        booking_time = booking.get('time')  # "10:00"
+        
+        # Parse as NZ time (not UTC)
+        naive_dt = datetime.strptime(f"{booking_date} {booking_time}", '%Y-%m-%d %H:%M')
+        nz_dt = nz_tz.localize(naive_dt)
+        
+        # Format for Google Calendar (ISO 8601 with timezone)
+        booking_datetime = nz_dt.isoformat()
         
         # Format date as "Day Month Year" (e.g., "9 December 2025")
-        from datetime import datetime
         date_obj = datetime.strptime(booking.get('date'), '%Y-%m-%d')
         formatted_date = date_obj.strftime('%d %B %Y')  # "09 December 2025"
         
