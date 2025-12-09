@@ -334,6 +334,21 @@ frontend:
           agent: "testing"
           comment: "❌ PAYMENT STATUS UPDATE FEATURE PARTIALLY WORKING - Comprehensive testing results: 1) ✅ Admin Login: Successfully logged in with admin/BookARide2024!, 2) ✅ Bookings Tab: Navigated to bookings tab with 38 bookings displayed, 3) ✅ Booking Details Modal: Successfully opened booking details modal by clicking View Details button, 4) ✅ Payment Status Section: Found Payment Status section with current status 'UNPAID' clearly displayed, 5) ✅ Payment Status Dropdown: Located dropdown next to current payment status with 'Change' placeholder, 6) ❌ CRITICAL ISSUE: Dropdown options are not appearing when clicked. The Radix UI Select component dropdown button is clickable but the options list does not render, preventing selection of different payment statuses, 7) ✅ Update Button: Update button is present and appears functional. ROOT CAUSE: UI interaction issue with Radix UI Select component where dropdown options are not rendering properly when clicked. This prevents the core functionality of changing payment status from working."
 
+  - task: "Google Places Autocomplete Dropdown Positioning Fix"
+    implemented: true
+    working: false
+    file: "/app/frontend/src/pages/BookNow.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "testing"
+          comment: "Testing Google Places Autocomplete dropdown positioning on booking form as specifically requested by user. Testing: 1) Navigate to /book-now page, 2) Test Pickup Location 1 field with 'Auckland Airport', 3) Test Drop-off Address field with 'Auckland CBD', 4) Test Add Another Pickup Location functionality, 5) Verify dropdown positioning directly under input fields, 6) Measure positioning accuracy and alignment."
+        - working: false
+          agent: "testing"
+          comment: "❌ GOOGLE PLACES AUTOCOMPLETE DROPDOWN POSITIONING CRITICAL ISSUE - Comprehensive testing revealed major UX problem: 1) ✅ Google Places Functionality: All address fields successfully trigger autocomplete with proper suggestions (5 suggestions per field), 2) ✅ Add Another Pickup Location: Button works correctly creating additional pickup fields, 3) ❌ CRITICAL POSITIONING ISSUE: All autocomplete dropdowns appear at bottom of page (y=2140-2412px) instead of directly under input fields. Measured distances: Pickup Location 1 dropdown 1870px away, Drop-off Address dropdown 2771px away, Additional pickup field dropdown 1646px away from expected positions, 4) ❌ USER EXPERIENCE IMPACT: Users must scroll to bottom of page to see suggestions, making feature nearly unusable, 5) 🔍 ROOT CAUSE: Existing CSS positioning fix in BookNow.jsx (lines 114-128) not working effectively. The .pac-container elements positioned absolutely but not relative to parent input fields. This is a critical UX issue requiring immediate fix."
+
 metadata:
   created_by: "testing_agent"
   version: "1.1"
