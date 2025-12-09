@@ -168,11 +168,23 @@ code {
   pointer-events: none !important;
 }
 
-/* Ensure dropdown appears above everything */
+/* Ensure dropdown appears above everything and positions correctly */
 body .pac-container {
   z-index: 99999 !important;
+  position: absolute !important;
+  display: block !important;
+  top: auto !important;
+  left: auto !important;
 }
 
+/* For dropdowns in modals/dialogs */
 [role="dialog"] + .pac-container {
   z-index: 100000 !important;
+  position: absolute !important;
+}
+
+/* Ensure the Google dropdown is visible */
+.pac-container {
+  display: block !important;
+  visibility: visible !important;
 }
