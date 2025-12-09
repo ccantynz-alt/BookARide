@@ -432,6 +432,28 @@ export const AdminDashboard = () => {
     }
   };
 
+  const handleUpdatePaymentStatus = async () => {
+    if (!selectedBooking || !selectedPaymentStatus) {
+      toast.error('Please select a payment status');
+      return;
+    }
+
+    try {
+      const response = await axios.put(`${API}/bookings/${selectedBooking.id}/payment-status`, {
+        paymentStatus: selectedPaymentStatus
+      });
+
+      if (response.data.success) {
+        toast.success('Payment status updated successfully');
+        fetchBookings();
+        setShowDetailsModal(false);
+      }
+    } catch (error) {
+      console.error('Error updating payment status:', error);
+      toast.error('Failed to update payment status');
+    }
+  };
+
   const handleSendEmail = async () => {
     try {
       await axios.post(`${API}/send-booking-email`, {
