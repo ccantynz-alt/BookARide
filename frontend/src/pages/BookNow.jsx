@@ -443,9 +443,7 @@ export const BookNow = () => {
                               type="time"
                               value={formData.departureTime}
                               onChange={handleChange}
-                              onKeyDown={(e) => e.preventDefault()}
                               className="transition-all duration-200 focus:ring-2 focus:ring-gold cursor-pointer"
-                              placeholder="Select time"
                             />
                           </div>
                           <div className="space-y-2">
