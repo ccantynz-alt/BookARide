@@ -161,245 +161,221 @@ export const Services = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
             {/* Corporate Events */}
-            <Card className="border-2 border-gold/30 bg-gradient-to-br from-white to-gray-50 hover:shadow-2xl hover:shadow-gold/20 transition-all duration-300 group overflow-hidden">
-              <CardContent className="p-0">
-                <div className="relative h-48 bg-gradient-to-br from-gold to-yellow-600 overflow-hidden">
-                  <div className="absolute inset-0 bg-black/20"></div>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <Briefcase className="w-20 h-20 text-white" strokeWidth={1.5} />
+            <Card className="border-2 border-gray-200 hover:border-gold hover:shadow-xl transition-all duration-300 group overflow-hidden bg-white">
+              <CardContent className="p-8">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-16 h-16 bg-gradient-to-br from-gray-900 to-black rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                    <Briefcase className="w-8 h-8 text-gold" strokeWidth={2} />
                   </div>
-                  <div className="absolute top-4 right-4 bg-black/50 backdrop-blur-sm px-4 py-2 rounded-full">
-                    <span className="text-white font-bold text-sm">FROM $120</span>
-                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900">Corporate Events</h3>
                 </div>
-                <div className="p-8">
-                  <h3 className="text-2xl font-black text-gray-900 mb-3">Corporate Events</h3>
-                  <p className="text-gray-600 mb-6 leading-relaxed">
-                    Impress clients and colleagues with professional group transportation for conferences, meetings, and corporate functions.
-                  </p>
-                  <div className="space-y-2 mb-6">
-                    {[
-                      '🏢 Executive-level service',
-                      '👔 Professional chauffeurs',
-                      '📊 Invoice billing available',
-                      '🚐 Fleet of 4-11 passenger vehicles',
-                      '⏰ Punctual & reliable',
-                      '💼 Perfect for team outings'
-                    ].map((item, idx) => (
-                      <div key={idx} className="flex items-center gap-2 text-sm text-gray-700">
-                        <span>{item}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <Link to="/book-now">
-                    <Button className="w-full bg-gray-900 hover:bg-black text-white font-bold py-4">
-                      Book Corporate Transfer
-                    </Button>
-                  </Link>
+                <p className="text-gray-600 mb-6 leading-relaxed">
+                  Impress clients and colleagues with professional group transportation for conferences, meetings, and corporate functions.
+                </p>
+                <div className="space-y-3 mb-8">
+                  {[
+                    'Executive-level service',
+                    'Professional chauffeurs',
+                    'Invoice billing available',
+                    'Fleet of 4-11 passenger vehicles',
+                    'Punctual & reliable service',
+                    'Perfect for team outings'
+                  ].map((item, idx) => (
+                    <div key={idx} className="flex items-start gap-3">
+                      <Check className="w-5 h-5 text-gold flex-shrink-0 mt-0.5" strokeWidth={2.5} />
+                      <span className="text-gray-700">{item}</span>
+                    </div>
+                  ))}
                 </div>
+                <Link to="/book-now">
+                  <Button className="w-full bg-gray-900 hover:bg-black text-white font-semibold py-4">
+                    Request Corporate Quote
+                    <ArrowRight className="ml-2 w-5 h-5" />
+                  </Button>
+                </Link>
               </CardContent>
             </Card>
 
             {/* Concert Shuttles - Matakana */}
-            <Card className="border-2 border-gold/30 bg-gradient-to-br from-white to-gray-50 hover:shadow-2xl hover:shadow-gold/20 transition-all duration-300 group overflow-hidden">
-              <CardContent className="p-0">
-                <div className="relative h-48 bg-gradient-to-br from-purple-600 to-pink-600 overflow-hidden">
-                  <div className="absolute inset-0 bg-black/20"></div>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-6xl">🎵</div>
+            <Card className="border-2 border-gold hover:border-gold hover:shadow-xl transition-all duration-300 group overflow-hidden bg-white relative">
+              <div className="absolute top-4 right-4 bg-gold px-3 py-1 rounded-full z-10">
+                <span className="text-black font-bold text-xs">POPULAR</span>
+              </div>
+              <CardContent className="p-8">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-16 h-16 bg-gradient-to-br from-gray-900 to-black rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                    <Calendar className="w-8 h-8 text-gold" strokeWidth={2} />
                   </div>
-                  <div className="absolute top-4 left-4 bg-red-500 px-4 py-2 rounded-full animate-pulse">
-                    <span className="text-white font-bold text-xs">POPULAR</span>
-                  </div>
-                  <div className="absolute top-4 right-4 bg-black/50 backdrop-blur-sm px-4 py-2 rounded-full">
-                    <span className="text-white font-bold text-sm">FROM $95</span>
-                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900">Concert Shuttles</h3>
                 </div>
-                <div className="p-8">
-                  <h3 className="text-2xl font-black text-gray-900 mb-3">Matakana Concerts</h3>
-                  <p className="text-gray-600 mb-6 leading-relaxed">
-                    Don't drink and drive! Enjoy concerts at Matakana, Mission Estate, and Villa Maria with safe, reliable transportation.
-                  </p>
-                  <div className="space-y-2 mb-6">
-                    {[
-                      '🎸 Matakana Country Park concerts',
-                      '🍷 Villa Maria & Mission Estate events',
-                      '🚫 No drink-driving worries',
-                      '🎉 Groups of 4-11 passengers',
-                      '🌙 Late-night return service',
-                      '💯 Door-to-door convenience'
-                    ].map((item, idx) => (
-                      <div key={idx} className="flex items-center gap-2 text-sm text-gray-700">
-                        <span>{item}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <Link to="/book-now">
-                    <Button className="w-full bg-gold hover:bg-yellow-500 text-black font-bold py-4">
-                      Book Concert Shuttle
-                    </Button>
-                  </Link>
+                <p className="text-gray-600 mb-6 leading-relaxed">
+                  Enjoy concerts at Matakana, Mission Estate, and Villa Maria with safe, reliable transportation. Don't drink and drive!
+                </p>
+                <div className="space-y-3 mb-8">
+                  {[
+                    'Matakana Country Park concerts',
+                    'Villa Maria & Mission Estate events',
+                    'No drink-driving worries',
+                    'Groups of 4-11 passengers',
+                    'Late-night return service available',
+                    'Door-to-door convenience'
+                  ].map((item, idx) => (
+                    <div key={idx} className="flex items-start gap-3">
+                      <Check className="w-5 h-5 text-gold flex-shrink-0 mt-0.5" strokeWidth={2.5} />
+                      <span className="text-gray-700">{item}</span>
+                    </div>
+                  ))}
                 </div>
+                <Link to="/book-now">
+                  <Button className="w-full bg-gold hover:bg-yellow-500 text-black font-semibold py-4">
+                    Book Concert Shuttle
+                    <ArrowRight className="ml-2 w-5 h-5" />
+                  </Button>
+                </Link>
               </CardContent>
             </Card>
 
             {/* Sports & Stadium Events */}
-            <Card className="border-2 border-gold/30 bg-gradient-to-br from-white to-gray-50 hover:shadow-2xl hover:shadow-gold/20 transition-all duration-300 group overflow-hidden">
-              <CardContent className="p-0">
-                <div className="relative h-48 bg-gradient-to-br from-green-600 to-blue-600 overflow-hidden">
-                  <div className="absolute inset-0 bg-black/20"></div>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-6xl">⚽</div>
+            <Card className="border-2 border-gray-200 hover:border-gold hover:shadow-xl transition-all duration-300 group overflow-hidden bg-white">
+              <CardContent className="p-8">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-16 h-16 bg-gradient-to-br from-gray-900 to-black rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                    <Users className="w-8 h-8 text-gold" strokeWidth={2} />
                   </div>
-                  <div className="absolute top-4 right-4 bg-black/50 backdrop-blur-sm px-4 py-2 rounded-full">
-                    <span className="text-white font-bold text-sm">FROM $85</span>
-                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900">Stadium Events</h3>
                 </div>
-                <div className="p-8">
-                  <h3 className="text-2xl font-black text-gray-900 mb-3">Sports & Stadium Events</h3>
-                  <p className="text-gray-600 mb-6 leading-relaxed">
-                    Rugby, cricket, concerts at Eden Park, Mt Smart Stadium, or Western Springs - we'll get you there stress-free!
-                  </p>
-                  <div className="space-y-2 mb-6">
-                    {[
-                      '🏟️ Eden Park & Mt Smart Stadium',
-                      '🎤 Western Springs events',
-                      '🅿️ Skip parking hassles',
-                      '👥 Perfect for groups',
-                      '⚡ Fast drop-off & pickup',
-                      '🍺 Safe post-game transport'
-                    ].map((item, idx) => (
-                      <div key={idx} className="flex items-center gap-2 text-sm text-gray-700">
-                        <span>{item}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <Link to="/book-now">
-                    <Button className="w-full bg-gray-900 hover:bg-black text-white font-bold py-4">
-                      Book Stadium Transfer
-                    </Button>
-                  </Link>
+                <p className="text-gray-600 mb-6 leading-relaxed">
+                  Rugby, cricket, concerts at Eden Park, Mt Smart Stadium, or Western Springs - we'll get you there stress-free!
+                </p>
+                <div className="space-y-3 mb-8">
+                  {[
+                    'Eden Park & Mt Smart Stadium',
+                    'Western Springs events',
+                    'Skip parking hassles',
+                    'Perfect for groups',
+                    'Fast drop-off & pickup',
+                    'Safe post-event transport'
+                  ].map((item, idx) => (
+                    <div key={idx} className="flex items-start gap-3">
+                      <Check className="w-5 h-5 text-gold flex-shrink-0 mt-0.5" strokeWidth={2.5} />
+                      <span className="text-gray-700">{item}</span>
+                    </div>
+                  ))}
                 </div>
+                <Link to="/book-now">
+                  <Button className="w-full bg-gray-900 hover:bg-black text-white font-semibold py-4">
+                    Book Stadium Transfer
+                    <ArrowRight className="ml-2 w-5 h-5" />
+                  </Button>
+                </Link>
               </CardContent>
             </Card>
 
             {/* Weddings & Special Occasions */}
-            <Card className="border-2 border-gold/30 bg-gradient-to-br from-white to-gray-50 hover:shadow-2xl hover:shadow-gold/20 transition-all duration-300 group overflow-hidden">
-              <CardContent className="p-0">
-                <div className="relative h-48 bg-gradient-to-br from-pink-400 to-rose-600 overflow-hidden">
-                  <div className="absolute inset-0 bg-black/10"></div>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-6xl">💐</div>
+            <Card className="border-2 border-gray-200 hover:border-gold hover:shadow-xl transition-all duration-300 group overflow-hidden bg-white">
+              <CardContent className="p-8">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-16 h-16 bg-gradient-to-br from-gray-900 to-black rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                    <Award className="w-8 h-8 text-gold" strokeWidth={2} />
                   </div>
-                  <div className="absolute top-4 right-4 bg-black/50 backdrop-blur-sm px-4 py-2 rounded-full">
-                    <span className="text-white font-bold text-sm">CUSTOM</span>
-                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900">Weddings & Celebrations</h3>
                 </div>
-                <div className="p-8">
-                  <h3 className="text-2xl font-black text-gray-900 mb-3">Weddings & Celebrations</h3>
-                  <p className="text-gray-600 mb-6 leading-relaxed">
-                    Make your special day perfect with elegant transportation for weddings, anniversaries, and milestone celebrations.
-                  </p>
-                  <div className="space-y-2 mb-6">
-                    {[
-                      '👰 Wedding party transport',
-                      '🎂 Birthday celebrations',
-                      '💍 Anniversary events',
-                      '✨ Elegant & professional',
-                      '📸 Photo-worthy vehicles',
-                      '🥂 Special occasion packages'
-                    ].map((item, idx) => (
-                      <div key={idx} className="flex items-center gap-2 text-sm text-gray-700">
-                        <span>{item}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <Link to="/book-now">
-                    <Button className="w-full bg-gold hover:bg-yellow-500 text-black font-bold py-4">
-                      Request Quote
-                    </Button>
-                  </Link>
+                <p className="text-gray-600 mb-6 leading-relaxed">
+                  Make your special day perfect with elegant transportation for weddings, anniversaries, and milestone celebrations.
+                </p>
+                <div className="space-y-3 mb-8">
+                  {[
+                    'Wedding party transport',
+                    'Birthday celebrations',
+                    'Anniversary events',
+                    'Elegant & professional service',
+                    'Immaculate vehicles',
+                    'Special occasion packages'
+                  ].map((item, idx) => (
+                    <div key={idx} className="flex items-start gap-3">
+                      <Check className="w-5 h-5 text-gold flex-shrink-0 mt-0.5" strokeWidth={2.5} />
+                      <span className="text-gray-700">{item}</span>
+                    </div>
+                  ))}
                 </div>
+                <Link to="/book-now">
+                  <Button className="w-full bg-gold hover:bg-yellow-500 text-black font-semibold py-4">
+                    Request Custom Quote
+                    <ArrowRight className="ml-2 w-5 h-5" />
+                  </Button>
+                </Link>
               </CardContent>
             </Card>
 
             {/* Wine Tours */}
-            <Card className="border-2 border-gold/30 bg-gradient-to-br from-white to-gray-50 hover:shadow-2xl hover:shadow-gold/20 transition-all duration-300 group overflow-hidden">
-              <CardContent className="p-0">
-                <div className="relative h-48 bg-gradient-to-br from-purple-700 to-red-700 overflow-hidden">
-                  <div className="absolute inset-0 bg-black/20"></div>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-6xl">🍷</div>
+            <Card className="border-2 border-gray-200 hover:border-gold hover:shadow-xl transition-all duration-300 group overflow-hidden bg-white">
+              <CardContent className="p-8">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-16 h-16 bg-gradient-to-br from-gray-900 to-black rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                    <MapPin className="w-8 h-8 text-gold" strokeWidth={2} />
                   </div>
-                  <div className="absolute top-4 right-4 bg-black/50 backdrop-blur-sm px-4 py-2 rounded-full">
-                    <span className="text-white font-bold text-sm">FROM $150</span>
-                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900">Wine Tours</h3>
                 </div>
-                <div className="p-8">
-                  <h3 className="text-2xl font-black text-gray-900 mb-3">Wine Tours</h3>
-                  <p className="text-gray-600 mb-6 leading-relaxed">
-                    Explore Waiheke Island, Matakana, or Kumeu wineries without worrying about designated drivers.
-                  </p>
-                  <div className="space-y-2 mb-6">
-                    {[
-                      '🍇 Waiheke Island wine tours',
-                      '🏞️ Matakana & Kumeu regions',
-                      '🚐 Group-friendly vehicles',
-                      '⏱️ Flexible itineraries',
-                      '📍 Multiple winery stops',
-                      '☀️ Full-day or half-day options'
-                    ].map((item, idx) => (
-                      <div key={idx} className="flex items-center gap-2 text-sm text-gray-700">
-                        <span>{item}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <Link to="/book-now">
-                    <Button className="w-full bg-gray-900 hover:bg-black text-white font-bold py-4">
-                      Plan Wine Tour
-                    </Button>
-                  </Link>
+                <p className="text-gray-600 mb-6 leading-relaxed">
+                  Explore Waiheke Island, Matakana, or Kumeu wineries without worrying about designated drivers.
+                </p>
+                <div className="space-y-3 mb-8">
+                  {[
+                    'Waiheke Island wine tours',
+                    'Matakana & Kumeu wine regions',
+                    'Group-friendly vehicles',
+                    'Flexible itineraries',
+                    'Multiple winery stops',
+                    'Full-day or half-day options'
+                  ].map((item, idx) => (
+                    <div key={idx} className="flex items-start gap-3">
+                      <Check className="w-5 h-5 text-gold flex-shrink-0 mt-0.5" strokeWidth={2.5} />
+                      <span className="text-gray-700">{item}</span>
+                    </div>
+                  ))}
                 </div>
+                <Link to="/book-now">
+                  <Button className="w-full bg-gray-900 hover:bg-black text-white font-semibold py-4">
+                    Plan Wine Tour
+                    <ArrowRight className="ml-2 w-5 h-5" />
+                  </Button>
+                </Link>
               </CardContent>
             </Card>
 
             {/* Group Outings */}
-            <Card className="border-2 border-gold/30 bg-gradient-to-br from-white to-gray-50 hover:shadow-2xl hover:shadow-gold/20 transition-all duration-300 group overflow-hidden">
-              <CardContent className="p-0">
-                <div className="relative h-48 bg-gradient-to-br from-blue-600 to-cyan-600 overflow-hidden">
-                  <div className="absolute inset-0 bg-black/20"></div>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <Users className="w-20 h-20 text-white" strokeWidth={1.5} />
+            <Card className="border-2 border-gray-200 hover:border-gold hover:shadow-xl transition-all duration-300 group overflow-hidden bg-white">
+              <CardContent className="p-8">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-16 h-16 bg-gradient-to-br from-gray-900 to-black rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                    <Users className="w-8 h-8 text-gold" strokeWidth={2} />
                   </div>
-                  <div className="absolute top-4 right-4 bg-black/50 backdrop-blur-sm px-4 py-2 rounded-full">
-                    <span className="text-white font-bold text-sm">FROM $100</span>
-                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900">Group Outings</h3>
                 </div>
-                <div className="p-8">
-                  <h3 className="text-2xl font-black text-gray-900 mb-3">Group Outings</h3>
-                  <p className="text-gray-600 mb-6 leading-relaxed">
-                    Beach trips, shopping expeditions, restaurant tours, or any group activity - we make it easy and fun!
-                  </p>
-                  <div className="space-y-2 mb-6">
-                    {[
-                      '🏖️ Beach & day trips',
-                      '🛍️ Shopping groups',
-                      '🍽️ Restaurant tours',
-                      '🎭 Theater & shows',
-                      '👨‍👩‍👧‍👦 Family reunions',
-                      '🎊 Bachelor/Bachelorette parties'
-                    ].map((item, idx) => (
-                      <div key={idx} className="flex items-center gap-2 text-sm text-gray-700">
-                        <span>{item}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <Link to="/book-now">
-                    <Button className="w-full bg-gold hover:bg-yellow-500 text-black font-bold py-4">
-                      Book Group Transfer
-                    </Button>
-                  </Link>
+                <p className="text-gray-600 mb-6 leading-relaxed">
+                  Beach trips, shopping expeditions, restaurant tours, or any group activity - we make it easy and fun!
+                </p>
+                <div className="space-y-3 mb-8">
+                  {[
+                    'Beach & day trips',
+                    'Shopping expeditions',
+                    'Restaurant tours',
+                    'Theater & cultural events',
+                    'Family reunions',
+                    'Bachelor/Bachelorette parties'
+                  ].map((item, idx) => (
+                    <div key={idx} className="flex items-start gap-3">
+                      <Check className="w-5 h-5 text-gold flex-shrink-0 mt-0.5" strokeWidth={2.5} />
+                      <span className="text-gray-700">{item}</span>
+                    </div>
+                  ))}
                 </div>
+                <Link to="/book-now">
+                  <Button className="w-full bg-gold hover:bg-yellow-500 text-black font-semibold py-4">
+                    Book Group Transfer
+                    <ArrowRight className="ml-2 w-5 h-5" />
+                  </Button>
+                </Link>
               </CardContent>
             </Card>
           </div>
