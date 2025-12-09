@@ -465,11 +465,17 @@ export const AdminDashboard = () => {
       return;
     }
 
+    const pickupCount = 1 + newBooking.pickupAddresses.filter(addr => addr.trim()).length;
+    if (pickupCount > 1) {
+      toast.info(`Calculating route for ${pickupCount} pickup locations...`);
+    }
+
     setCalculatingPrice(true);
     try {
       const response = await axios.post(`${API}/calculate-price`, {
         serviceType: newBooking.serviceType,
         pickupAddress: newBooking.pickupAddress,
+        pickupAddresses: newBooking.pickupAddresses.filter(addr => addr.trim()),  // Filter empty
         dropoffAddress: newBooking.dropoffAddress,
         passengers: parseInt(newBooking.passengers),
         vipAirportPickup: false,
@@ -477,7 +483,7 @@ export const AdminDashboard = () => {
       });
 
       setBookingPricing(response.data);
-      toast.success('Price calculated successfully!');
+      toast.success(`Price calculated: $${response.data.totalPrice.toFixed(2)} for ${response.data.distance}km route`);
     } catch (error) {
       console.error('Error calculating price:', error);
       toast.error('Failed to calculate price');
