@@ -305,7 +305,7 @@ metadata:
   run_ui: false
 
 test_plan:
-  current_focus: []
+  current_focus: ["Custom Date/Time Pickers Testing on Booking Form"]
   stuck_tasks: ["SEO Implementation Testing"]
   test_all: false
   test_priority: "high_first"
