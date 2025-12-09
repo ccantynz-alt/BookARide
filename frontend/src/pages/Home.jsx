@@ -187,7 +187,7 @@ export const Home = () => {
               </motion.div>
             </motion.div>
 
-            {/* RIGHT SIDE - SOCIAL PROOF & BOOKING CARD */}
+            {/* RIGHT SIDE - COMPELLING SALES CONTENT */}
             <motion.div
               initial={{ opacity: 0, x: 50 }}
               animate={{ opacity: 1, x: 0 }}
@@ -198,60 +198,63 @@ export const Home = () => {
                 {/* Glowing card effect */}
                 <div className="absolute inset-0 bg-gradient-to-br from-gold/20 to-yellow-600/20 rounded-3xl blur-3xl" />
                 
-                {/* Premium booking preview card */}
+                {/* Premium value proposition card */}
                 <div className="relative bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl border border-white/20 rounded-3xl p-8 shadow-2xl">
-                  {/* Quick booking form preview */}
-                  <div className="mb-6">
-                    <h3 className="text-2xl font-bold text-white mb-2">Instant Quote</h3>
-                    <p className="text-white/70">Get your price in seconds</p>
+                  {/* Main value prop */}
+                  <div className="mb-8">
+                    <h3 className="text-3xl font-bold text-white mb-4">Why Thousands Choose Us</h3>
+                    <p className="text-white/80 text-lg leading-relaxed">
+                      New Zealand's most trusted airport transfer service. We don't just drive you—we deliver peace of mind.
+                    </p>
                   </div>
 
-                  <div className="space-y-4 mb-6">
-                    {/* Visual service options */}
-                    {[
-                      { icon: Plane, title: 'Airport Transfer', price: 'From $60', popular: true },
-                      { icon: Briefcase, title: 'Corporate Travel', price: 'From $75', popular: false },
-                      { icon: MapPin, title: 'City to City', price: 'From $120', popular: false }
-                    ].map((service, index) => (
-                      <div
-                        key={index}
-                        className={`p-4 rounded-xl border-2 transition-all cursor-pointer hover:border-gold hover:bg-white/5 ${
-                          service.popular ? 'border-gold bg-gold/10' : 'border-white/20 bg-white/5'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                              service.popular ? 'bg-gold text-black' : 'bg-white/10 text-gold'
-                            }`}>
-                              <service.icon className="w-5 h-5" />
-                            </div>
-                            <div>
-                              <p className="text-white font-semibold">{service.title}</p>
-                              <p className="text-gold text-sm font-bold">{service.price}</p>
-                            </div>
-                          </div>
-                          {service.popular && (
-                            <span className="text-xs bg-gold text-black px-3 py-1 rounded-full font-bold">
-                              POPULAR
-                            </span>
-                          )}
-                        </div>
+                  {/* Key differentiators */}
+                  <div className="space-y-6 mb-8">
+                    <div className="flex gap-4">
+                      <div className="flex-shrink-0 w-12 h-12 bg-gold/20 rounded-xl flex items-center justify-center">
+                        <Shield className="w-6 h-6 text-gold" />
                       </div>
-                    ))}
+                      <div>
+                        <h4 className="text-white font-bold text-lg mb-1">100% Reliable</h4>
+                        <p className="text-white/70 text-sm">Never miss a flight. We track your arrival and adjust pickup times automatically.</p>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-4">
+                      <div className="flex-shrink-0 w-12 h-12 bg-gold/20 rounded-xl flex items-center justify-center">
+                        <DollarSign className="w-6 h-6 text-gold" />
+                      </div>
+                      <div>
+                        <h4 className="text-white font-bold text-lg mb-1">Best Price Guarantee</h4>
+                        <p className="text-white/70 text-sm">Fixed rates mean no surge pricing, no surprises. What you see is what you pay.</p>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-4">
+                      <div className="flex-shrink-0 w-12 h-12 bg-gold/20 rounded-xl flex items-center justify-center">
+                        <Award className="w-6 h-6 text-gold" />
+                      </div>
+                      <div>
+                        <h4 className="text-white font-bold text-lg mb-1">5-Star Experience</h4>
+                        <p className="text-white/70 text-sm">Professional drivers, luxury vehicles, VIP service. Travel like you deserve.</p>
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Testimonial snippet */}
-                  <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
-                    <div className="flex items-center gap-1 mb-2">
-                      {[...Array(5)].map((_, i) => (
-                        <Star key={i} className="w-4 h-4 text-gold fill-gold" />
-                      ))}
+                  {/* Social proof */}
+                  <div className="bg-white/5 backdrop-blur-sm rounded-xl p-5 border border-white/10">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-1">
+                        {[...Array(5)].map((_, i) => (
+                          <Star key={i} className="w-5 h-5 text-gold fill-gold" />
+                        ))}
+                      </div>
+                      <span className="text-gold font-bold text-lg">4.9/5</span>
                     </div>
                     <p className="text-white/90 text-sm italic mb-3">
-                      "Exceptional service! The driver was professional, the vehicle spotless. Will definitely book again."
+                      "Best airport transfer I've ever had in NZ. Professional, on-time, and great value. Highly recommend!"
                     </p>
-                    <p className="text-white/60 text-xs">— Sarah M., Auckland</p>
+                    <p className="text-white/60 text-xs">— Michael T., International Traveller</p>
                   </div>
                 </div>
               </div>
