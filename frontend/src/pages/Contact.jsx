@@ -31,21 +31,15 @@ export const Contact = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     // Mock submission - will be connected to backend later
-    console.log('Booking submitted:', formData);
-    toast.success("Booking Request Received!", {
-      description: "We'll contact you shortly to confirm your booking.",
+    console.log('Contact form submitted:', formData);
+    toast.success("Message Sent!", {
+      description: "We'll get back to you as soon as possible.",
     });
     // Reset form
     setFormData({
       name: '',
       email: '',
       phone: '',
-      serviceType: '',
-      pickupLocation: '',
-      dropoffLocation: '',
-      date: '',
-      time: '',
-      passengers: '',
       message: ''
     });
   };
