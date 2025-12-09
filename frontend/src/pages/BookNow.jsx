@@ -452,14 +452,18 @@ export const BookNow = () => {
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor="departureTime">Departure Time</Label>
-                            <Input
-                              id="departureTime"
-                              name="departureTime"
-                              type="time"
-                              value={formData.departureTime}
-                              onChange={handleChange}
-                              className="transition-all duration-200 focus:ring-2 focus:ring-gold cursor-pointer"
+                            <Label>Departure Time</Label>
+                            <CustomTimePicker
+                              selected={departureTimeDate}
+                              onChange={(time) => {
+                                setDepartureTimeDate(time);
+                                if (time) {
+                                  const hours = time.getHours().toString().padStart(2, '0');
+                                  const minutes = time.getMinutes().toString().padStart(2, '0');
+                                  setFormData(prev => ({ ...prev, departureTime: `${hours}:${minutes}` }));
+                                }
+                              }}
+                              placeholder="Select departure time"
                             />
                           </div>
                           <div className="space-y-2">
@@ -474,16 +478,18 @@ export const BookNow = () => {
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor="arrivalTime">Arrival Time</Label>
-                            <Input
-                              id="arrivalTime"
-                              name="arrivalTime"
-                              type="time"
-                              value={formData.arrivalTime}
-                              onChange={handleChange}
-                              className="transition-all duration-200 focus:ring-2 focus:ring-gold cursor-pointer"
-                              placeholder="Select time"
-                              className="transition-all duration-200 focus:ring-2 focus:ring-gold"
+                            <Label>Arrival Time</Label>
+                            <CustomTimePicker
+                              selected={arrivalTimeDate}
+                              onChange={(time) => {
+                                setArrivalTimeDate(time);
+                                if (time) {
+                                  const hours = time.getHours().toString().padStart(2, '0');
+                                  const minutes = time.getMinutes().toString().padStart(2, '0');
+                                  setFormData(prev => ({ ...prev, arrivalTime: `${hours}:${minutes}` }));
+                                }
+                              }}
+                              placeholder="Select arrival time"
                             />
                           </div>
                         </div>
