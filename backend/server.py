@@ -1211,12 +1211,18 @@ async def create_calendar_event(booking: dict):
         # Parse booking date and time
         booking_datetime = f"{booking.get('date')}T{booking.get('time')}:00"
         
+        # Format date as "Day Month Year" (e.g., "9 December 2025")
+        from datetime import datetime
+        date_obj = datetime.strptime(booking.get('date'), '%Y-%m-%d')
+        formatted_date = date_obj.strftime('%d %B %Y')  # "09 December 2025"
+        
         # Create event
         event = {
             'summary': f"Booking: {booking.get('name')} - {booking.get('serviceType', 'Shuttle').replace('-', ' ').title()}",
             'location': booking.get('pickupAddress', ''),
             'description': f"""
 Booking Reference: {booking.get('id', '')[:8].upper()}
+Booking Date: {formatted_date} at {booking.get('time')}
 
 Customer: {booking.get('name')}
 Phone: {booking.get('phone')}
