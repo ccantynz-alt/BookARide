@@ -286,6 +286,18 @@ frontend:
           agent: "testing"
           comment: "✅ ADMIN BOOKING FORM GOOGLE PLACES AUTOCOMPLETE TEST COMPLETED SUCCESSFULLY - All requested functionality working perfectly: 1) ✅ Admin Login: Successfully authenticated with admin/BookARide2024!, 2) ✅ Create Booking Modal: Opens correctly showing complete form with all sections, 3) ✅ Pickup Address 1: Google Places Autocomplete FULLY WORKING - Found 5 suggestions for 'Auckland Airport' and selection works perfectly, 4) ✅ Drop-off Address: Field exists with Google Places integration confirmed via form analysis, 5) ✅ Add Another Pickup Location: Button present and functional for multi-stop trips, 6) ✅ Date Input: Clickable and opens native date picker, 7) ✅ Time Input: Clickable and opens native time picker, 8) ✅ Flight Details Section: Visible with all 4 required fields (Flight Arrival Number, Flight Arrival Time, Flight Departure Number, Flight Departure Time). Google Places API integration is fully functional across all address fields in the admin booking form."
 
+  - task: "Custom Date/Time Pickers Testing on Booking Form"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/components/DateTimePicker.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+          agent: "testing"
+          comment: "Starting comprehensive test of custom date/time pickers on customer booking form. Testing: 1) Navigate to /book-now page, 2) Test Pickup Date field with beautiful calendar popup (gold/black theme, current date highlighted), 3) Test Pickup Time field with AM/PM format and 15-minute intervals, 4) Test Flight Information departure/arrival time pickers, 5) Test return trip date/time pickers if checkbox is available, 6) Verify smooth animations and proper value display in input fields. Will capture screenshots of date and time picker popups."
+
 metadata:
   created_by: "testing_agent"
   version: "1.1"
