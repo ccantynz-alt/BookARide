@@ -327,6 +327,67 @@ export const CruiseTransfers = () => {
         </div>
       </section>
 
+      {/* Customer Testimonials Section */}
+      <section className="py-16 bg-gradient-to-br from-gray-900 to-black text-white">
+        <div className="container mx-auto px-4">
+          <div className="max-w-5xl mx-auto">
+            <h2 className="text-3xl font-bold text-center mb-4">
+              Trusted by Cruise Passengers Worldwide
+            </h2>
+            <p className="text-gray-300 text-center mb-12">
+              Hear from travelers who chose us for their Auckland cruise transfers
+            </p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card className="bg-white/10 border-gold/30 backdrop-blur-sm">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-1 mb-3">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} className="w-4 h-4 text-gold fill-gold" />
+                    ))}
+                  </div>
+                  <p className="text-white mb-4 italic">
+                    "Perfect timing! Driver was waiting when we disembarked. Made our connection to the airport stress-free. Would definitely use again!"
+                  </p>
+                  <p className="text-gold font-semibold">Robert & Linda</p>
+                  <p className="text-gray-400 text-sm">Celebrity Cruise Passengers</p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white/10 border-gold/30 backdrop-blur-sm">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-1 mb-3">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} className="w-4 h-4 text-gold fill-gold" />
+                    ))}
+                  </div>
+                  <p className="text-white mb-4 italic">
+                    "Excellent service from airport to cruise terminal. Driver helped with all our luggage and got us there with time to spare. Highly professional!"
+                  </p>
+                  <p className="text-gold font-semibold">Jennifer K.</p>
+                  <p className="text-gray-400 text-sm">International Traveller</p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white/10 border-gold/30 backdrop-blur-sm">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-1 mb-3">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} className="w-4 h-4 text-gold fill-gold" />
+                    ))}
+                  </div>
+                  <p className="text-white mb-4 italic">
+                    "Booked both ways - to cruise and back to airport. Reliable, comfortable, and great value. Made our Auckland stopover easy!"
+                  </p>
+                  <p className="text-gold font-semibold">Paul & Maria</p>
+                  <p className="text-gray-400 text-sm">Cruise Couple</p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Tips Section */}
       <section className="py-16 bg-white">
         <div className="container mx-auto px-4">
@@ -339,11 +400,11 @@ export const CruiseTransfers = () => {
                 <CardContent className="p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-3">Before Your Cruise</h3>
                   <ul className="space-y-2 text-gray-700 text-sm">
-                    <li>• Book transfer in advance for guaranteed service</li>
-                    <li>• Provide flight/cruise details for tracking</li>
-                    <li>• Allow extra time during peak cruise season</li>
-                    <li>• Confirm pickup time 24 hours before</li>
-                    <li>• Have cruise terminal address handy</li>
+                    <li>• Book transfer 24-48 hours in advance</li>
+                    <li>• Share your cruise itinerary with us</li>
+                    <li>• Confirm pickup time day before</li>
+                    <li>• Allow extra time for check-in</li>
+                    <li>• Have cruise documents ready</li>
                   </ul>
                 </CardContent>
               </Card>
