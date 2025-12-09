@@ -24,11 +24,11 @@ export const Services = () => {
       />
       {/* Professional Hero Section */}
       <section className="py-32 bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
-        {/* Background Vehicle Image */}
+        {/* Background Vehicle Image - Our Actual Fleet */}
         <div className="absolute inset-0 opacity-20">
           <img 
-            src="https://images.pexels.com/photos/7464537/pexels-photo-7464537.jpeg?auto=compress&cs=tinysrgb&w=1920" 
-            alt="" 
+            src="https://customer-assets.emergentagent.com/job_bookmyride-nz/artifacts/6fpsudnh_IMG_0158%20%281%29.jpeg" 
+            alt="Book A Ride fleet vehicle" 
             className="w-full h-full object-cover"
             style={{ filter: 'brightness(0.4) blur(1px)' }}
           />
