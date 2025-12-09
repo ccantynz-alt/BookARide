@@ -33,6 +33,7 @@ export const BookNow = () => {
   const [formData, setFormData] = useState({
     serviceType: '',
     pickupAddress: '',
+    pickupAddresses: [],  // Multiple pickups support
     dropoffAddress: '',
     date: '',
     time: '',
