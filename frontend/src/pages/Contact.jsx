@@ -60,10 +60,10 @@ export const Contact = () => {
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-3xl mx-auto text-center">
             <h1 className="text-5xl md:text-6xl font-bold text-white mb-6">
-              Book Your Ride
+              Contact Us
             </h1>
             <p className="text-xl text-white/80">
-              Fill out the form below and we'll get back to you shortly to confirm your booking.
+              Get in touch for inquiries, quotes, or any questions about our services.
             </p>
           </div>
         </div>
