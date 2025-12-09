@@ -967,7 +967,7 @@ export const AdminDashboard = () => {
                   </div>
                   <div>
                     <span className="text-xs text-gray-600">Payment Status</span>
-                    <div className="mt-1">
+                    <div className="mt-1 flex items-center gap-2">
                       <span className={`px-3 py-1 rounded-full text-xs font-semibold inline-flex items-center gap-1 ${
                         selectedBooking.payment_status === 'paid' 
                           ? 'bg-green-100 text-green-700' 
@@ -980,6 +980,26 @@ export const AdminDashboard = () => {
                         {selectedBooking.payment_status === 'unpaid' && '✗ '}
                         <span className="uppercase">{selectedBooking.payment_status || 'UNPAID'}</span>
                       </span>
+                      <div className="flex gap-1">
+                        <Select value={selectedPaymentStatus} onValueChange={setSelectedPaymentStatus}>
+                          <SelectTrigger className="h-7 text-xs w-[100px]">
+                            <SelectValue placeholder="Change" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="paid">✓ Paid</SelectItem>
+                            <SelectItem value="cash">💵 Cash</SelectItem>
+                            <SelectItem value="unpaid">✗ Unpaid</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button 
+                          size="sm"
+                          onClick={handleUpdatePaymentStatus}
+                          disabled={!selectedPaymentStatus}
+                          className="h-7 px-2 text-xs bg-gold hover:bg-gold/90 text-black"
+                        >
+                          Update
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </div>
