@@ -1021,22 +1021,24 @@ export const AdminDashboard = () => {
               </div>
 
               {/* Flight Info */}
-              {(selectedBooking.departureFlightNumber || selectedBooking.arrivalFlightNumber) && (
-                <div>
-                  <h3 className="font-semibold text-gray-900 mb-3">Flight Information</h3>
+              {(selectedBooking.flightArrivalNumber || selectedBooking.flightDepartureNumber) && (
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                  <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    ✈️ Flight Information
+                  </h3>
                   <div className="grid grid-cols-2 gap-4 text-sm">
-                    {selectedBooking.departureFlightNumber && (
-                      <div>
-                        <span className="text-gray-600">Departure Flight:</span>
-                        <p className="font-medium">{selectedBooking.departureFlightNumber}</p>
-                        {selectedBooking.departureTime && <p className="text-xs text-gray-500">{selectedBooking.departureTime}</p>}
-                      </div>
-                    )}
-                    {selectedBooking.arrivalFlightNumber && (
+                    {selectedBooking.flightArrivalNumber && (
                       <div>
                         <span className="text-gray-600">Arrival Flight:</span>
-                        <p className="font-medium">{selectedBooking.arrivalFlightNumber}</p>
-                        {selectedBooking.arrivalTime && <p className="text-xs text-gray-500">{selectedBooking.arrivalTime}</p>}
+                        <p className="font-medium">{selectedBooking.flightArrivalNumber}</p>
+                        {selectedBooking.flightArrivalTime && <p className="text-xs text-gray-500">Arrival: {selectedBooking.flightArrivalTime}</p>}
+                      </div>
+                    )}
+                    {selectedBooking.flightDepartureNumber && (
+                      <div>
+                        <span className="text-gray-600">Departure Flight:</span>
+                        <p className="font-medium">{selectedBooking.flightDepartureNumber}</p>
+                        {selectedBooking.flightDepartureTime && <p className="text-xs text-gray-500">Departure: {selectedBooking.flightDepartureTime}</p>}
                       </div>
                     )}
                   </div>
