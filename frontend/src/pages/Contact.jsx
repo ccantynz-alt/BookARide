@@ -145,11 +145,13 @@ export const Contact = () => {
               </Card>
             </div>
 
-            {/* Booking Form */}
+            {/* Contact & Inquiry Form */}
             <div className="lg:col-span-2">
               <Card className="border-2 border-gray-200">
                 <CardContent className="p-10">
-                  <h3 className="text-3xl font-bold text-gray-900 mb-8">Booking Form</h3>
+                  <h3 className="text-3xl font-bold text-gray-900 mb-4">Send Us a Message</h3>
+                  <p className="text-gray-600 mb-8">Have questions? Need a custom quote? We're here to help!</p>
+                  
                   <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
@@ -179,122 +181,49 @@ export const Contact = () => {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <Label htmlFor="phone">Phone Number *</Label>
-                        <Input
-                          id="phone"
-                          name="phone"
-                          type="tel"
-                          value={formData.phone}
-                          onChange={handleChange}
-                          placeholder="+64 21 123 4567"
-                          required
-                          className="transition-all duration-200 focus:ring-2 focus:ring-gold"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="serviceType">Service Type *</Label>
-                        <Select onValueChange={(value) => handleSelectChange('serviceType', value)} required>
-                          <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-gold">
-                            <SelectValue placeholder="Select service" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="auckland-airport">Auckland Airport Shuttle</SelectItem>
-                            <SelectItem value="hamilton-airport">Hamilton Airport Shuttle</SelectItem>
-                            <SelectItem value="whangarei-airport">Whangarei Airport Shuttle</SelectItem>
-                            <SelectItem value="private-auckland">Private Auckland Transfer</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <Label htmlFor="pickupLocation">Pickup Location *</Label>
-                        <Input
-                          id="pickupLocation"
-                          name="pickupLocation"
-                          value={formData.pickupLocation}
-                          onChange={handleChange}
-                          placeholder="123 Main Street, Auckland"
-                          required
-                          className="transition-all duration-200 focus:ring-2 focus:ring-gold"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="dropoffLocation">Drop-off Location *</Label>
-                        <Input
-                          id="dropoffLocation"
-                          name="dropoffLocation"
-                          value={formData.dropoffLocation}
-                          onChange={handleChange}
-                          placeholder="Auckland Airport"
-                          required
-                          className="transition-all duration-200 focus:ring-2 focus:ring-gold"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <div className="space-y-2">
-                        <Label htmlFor="date">Date *</Label>
-                        <Input
-                          id="date"
-                          name="date"
-                          type="date"
-                          value={formData.date}
-                          onChange={handleChange}
-                          required
-                          className="transition-all duration-200 focus:ring-2 focus:ring-gold"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="time">Time *</Label>
-                        <Input
-                          id="time"
-                          name="time"
-                          type="time"
-                          value={formData.time}
-                          onChange={handleChange}
-                          required
-                          className="transition-all duration-200 focus:ring-2 focus:ring-gold"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="passengers">Passengers *</Label>
-                        <Select onValueChange={(value) => handleSelectChange('passengers', value)} required>
-                          <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-gold">
-                            <SelectValue placeholder="Number" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="1">1 Passenger</SelectItem>
-                            <SelectItem value="2">2 Passengers</SelectItem>
-                            <SelectItem value="3">3 Passengers</SelectItem>
-                            <SelectItem value="4">4 Passengers</SelectItem>
-                            <SelectItem value="5+">5+ Passengers</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">Phone Number</Label>
+                      <Input
+                        id="phone"
+                        name="phone"
+                        type="tel"
+                        value={formData.phone}
+                        onChange={handleChange}
+                        placeholder="+64 21 123 4567"
+                        className="transition-all duration-200 focus:ring-2 focus:ring-gold"
+                      />
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="message">Additional Information</Label>
+                      <Label htmlFor="message">Your Message *</Label>
                       <Textarea
                         id="message"
                         name="message"
                         value={formData.message}
                         onChange={handleChange}
-                        placeholder="Any special requirements or notes..."
-                        rows={4}
+                        placeholder="Tell us about your transfer needs, ask a question, or request a custom quote..."
+                        rows={6}
+                        required
                         className="transition-all duration-200 focus:ring-2 focus:ring-gold"
                       />
                     </div>
 
-                    <Button type="submit" className="w-full bg-gold hover:bg-gold/90 text-black font-semibold text-lg py-7 transition-colors duration-200">
-                      Submit Booking Request
+                    <Button type="submit" className="w-full bg-gold hover:bg-gold/90 text-black font-semibold text-lg py-6 transition-colors duration-200">
+                      Send Message
                     </Button>
                   </form>
+
+                  {/* Book Online CTA */}
+                  <div className="mt-8 pt-8 border-t border-gray-200 text-center">
+                    <p className="text-gray-700 mb-4 font-medium">Ready to book your transfer?</p>
+                    <Link to="/book-now">
+                      <Button className="bg-gray-900 hover:bg-gray-800 text-white font-semibold px-10 py-6 text-lg">
+                        Book Online Now
+                        <ArrowRight className="ml-2 w-5 h-5" />
+                      </Button>
+                    </Link>
+                    <p className="text-sm text-gray-500 mt-3">Get instant pricing and confirmation</p>
+                  </div>
                 </CardContent>
               </Card>
             </div>
