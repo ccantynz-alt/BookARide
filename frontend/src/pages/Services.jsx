@@ -77,15 +77,15 @@ export const Services = () => {
         </div>
       </section>
 
-      {/* Services Detail - Professional Layout */}
+      {/* Core Services - Professional Layout */}
       <section className="py-24 bg-gradient-to-b from-gray-50 to-white">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-4">
-              Choose Your <span className="text-gold">Perfect Ride</span>
+              Airport <span className="text-gold">Transfers</span>
             </h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Professional transfer services tailored to your needs
+              Professional airport shuttle services across New Zealand
             </p>
           </div>
           
@@ -139,6 +139,275 @@ export const Services = () => {
                 </Card>
               );
             })}
+          </div>
+        </div>
+      </section>
+
+      {/* Premium Event Services - STUNNING DESIGN */}
+      <section className="py-24 bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
+        {/* Decorative elements */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-0 left-1/4 w-96 h-96 bg-gold rounded-full blur-3xl"></div>
+          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-gold rounded-full blur-3xl"></div>
+        </div>
+        
+        <div className="container mx-auto px-4 relative z-10">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 bg-gold/20 border border-gold rounded-full px-6 py-2 mb-6">
+              <Award className="w-5 h-5 text-gold" />
+              <span className="text-gold font-bold text-sm tracking-wide">PREMIUM EVENT SERVICES</span>
+            </div>
+            <h2 className="text-4xl md:text-6xl font-black text-white mb-6">
+              Events & <span className="text-gold">Special Occasions</span>
+            </h2>
+            <p className="text-xl text-white/80 max-w-3xl mx-auto leading-relaxed">
+              Arrive in style for concerts, corporate events, and special occasions
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
+            {/* Corporate Events */}
+            <Card className="border-2 border-gold/30 bg-gradient-to-br from-white to-gray-50 hover:shadow-2xl hover:shadow-gold/20 transition-all duration-300 group overflow-hidden">
+              <CardContent className="p-0">
+                <div className="relative h-48 bg-gradient-to-br from-gold to-yellow-600 overflow-hidden">
+                  <div className="absolute inset-0 bg-black/20"></div>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Briefcase className="w-20 h-20 text-white" strokeWidth={1.5} />
+                  </div>
+                  <div className="absolute top-4 right-4 bg-black/50 backdrop-blur-sm px-4 py-2 rounded-full">
+                    <span className="text-white font-bold text-sm">FROM $120</span>
+                  </div>
+                </div>
+                <div className="p-8">
+                  <h3 className="text-2xl font-black text-gray-900 mb-3">Corporate Events</h3>
+                  <p className="text-gray-600 mb-6 leading-relaxed">
+                    Impress clients and colleagues with professional group transportation for conferences, meetings, and corporate functions.
+                  </p>
+                  <div className="space-y-2 mb-6">
+                    {[
+                      '🏢 Executive-level service',
+                      '👔 Professional chauffeurs',
+                      '📊 Invoice billing available',
+                      '🚐 Fleet of 4-11 passenger vehicles',
+                      '⏰ Punctual & reliable',
+                      '💼 Perfect for team outings'
+                    ].map((item, idx) => (
+                      <div key={idx} className="flex items-center gap-2 text-sm text-gray-700">
+                        <span>{item}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <Link to="/book-now">
+                    <Button className="w-full bg-gray-900 hover:bg-black text-white font-bold py-4">
+                      Book Corporate Transfer
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Concert Shuttles - Matakana */}
+            <Card className="border-2 border-gold/30 bg-gradient-to-br from-white to-gray-50 hover:shadow-2xl hover:shadow-gold/20 transition-all duration-300 group overflow-hidden">
+              <CardContent className="p-0">
+                <div className="relative h-48 bg-gradient-to-br from-purple-600 to-pink-600 overflow-hidden">
+                  <div className="absolute inset-0 bg-black/20"></div>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="text-6xl">🎵</div>
+                  </div>
+                  <div className="absolute top-4 left-4 bg-red-500 px-4 py-2 rounded-full animate-pulse">
+                    <span className="text-white font-bold text-xs">POPULAR</span>
+                  </div>
+                  <div className="absolute top-4 right-4 bg-black/50 backdrop-blur-sm px-4 py-2 rounded-full">
+                    <span className="text-white font-bold text-sm">FROM $95</span>
+                  </div>
+                </div>
+                <div className="p-8">
+                  <h3 className="text-2xl font-black text-gray-900 mb-3">Matakana Concerts</h3>
+                  <p className="text-gray-600 mb-6 leading-relaxed">
+                    Don't drink and drive! Enjoy concerts at Matakana, Mission Estate, and Villa Maria with safe, reliable transportation.
+                  </p>
+                  <div className="space-y-2 mb-6">
+                    {[
+                      '🎸 Matakana Country Park concerts',
+                      '🍷 Villa Maria & Mission Estate events',
+                      '🚫 No drink-driving worries',
+                      '🎉 Groups of 4-11 passengers',
+                      '🌙 Late-night return service',
+                      '💯 Door-to-door convenience'
+                    ].map((item, idx) => (
+                      <div key={idx} className="flex items-center gap-2 text-sm text-gray-700">
+                        <span>{item}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <Link to="/book-now">
+                    <Button className="w-full bg-gold hover:bg-yellow-500 text-black font-bold py-4">
+                      Book Concert Shuttle
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Sports & Stadium Events */}
+            <Card className="border-2 border-gold/30 bg-gradient-to-br from-white to-gray-50 hover:shadow-2xl hover:shadow-gold/20 transition-all duration-300 group overflow-hidden">
+              <CardContent className="p-0">
+                <div className="relative h-48 bg-gradient-to-br from-green-600 to-blue-600 overflow-hidden">
+                  <div className="absolute inset-0 bg-black/20"></div>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="text-6xl">⚽</div>
+                  </div>
+                  <div className="absolute top-4 right-4 bg-black/50 backdrop-blur-sm px-4 py-2 rounded-full">
+                    <span className="text-white font-bold text-sm">FROM $85</span>
+                  </div>
+                </div>
+                <div className="p-8">
+                  <h3 className="text-2xl font-black text-gray-900 mb-3">Sports & Stadium Events</h3>
+                  <p className="text-gray-600 mb-6 leading-relaxed">
+                    Rugby, cricket, concerts at Eden Park, Mt Smart Stadium, or Western Springs - we'll get you there stress-free!
+                  </p>
+                  <div className="space-y-2 mb-6">
+                    {[
+                      '🏟️ Eden Park & Mt Smart Stadium',
+                      '🎤 Western Springs events',
+                      '🅿️ Skip parking hassles',
+                      '👥 Perfect for groups',
+                      '⚡ Fast drop-off & pickup',
+                      '🍺 Safe post-game transport'
+                    ].map((item, idx) => (
+                      <div key={idx} className="flex items-center gap-2 text-sm text-gray-700">
+                        <span>{item}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <Link to="/book-now">
+                    <Button className="w-full bg-gray-900 hover:bg-black text-white font-bold py-4">
+                      Book Stadium Transfer
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Weddings & Special Occasions */}
+            <Card className="border-2 border-gold/30 bg-gradient-to-br from-white to-gray-50 hover:shadow-2xl hover:shadow-gold/20 transition-all duration-300 group overflow-hidden">
+              <CardContent className="p-0">
+                <div className="relative h-48 bg-gradient-to-br from-pink-400 to-rose-600 overflow-hidden">
+                  <div className="absolute inset-0 bg-black/10"></div>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="text-6xl">💐</div>
+                  </div>
+                  <div className="absolute top-4 right-4 bg-black/50 backdrop-blur-sm px-4 py-2 rounded-full">
+                    <span className="text-white font-bold text-sm">CUSTOM</span>
+                  </div>
+                </div>
+                <div className="p-8">
+                  <h3 className="text-2xl font-black text-gray-900 mb-3">Weddings & Celebrations</h3>
+                  <p className="text-gray-600 mb-6 leading-relaxed">
+                    Make your special day perfect with elegant transportation for weddings, anniversaries, and milestone celebrations.
+                  </p>
+                  <div className="space-y-2 mb-6">
+                    {[
+                      '👰 Wedding party transport',
+                      '🎂 Birthday celebrations',
+                      '💍 Anniversary events',
+                      '✨ Elegant & professional',
+                      '📸 Photo-worthy vehicles',
+                      '🥂 Special occasion packages'
+                    ].map((item, idx) => (
+                      <div key={idx} className="flex items-center gap-2 text-sm text-gray-700">
+                        <span>{item}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <Link to="/book-now">
+                    <Button className="w-full bg-gold hover:bg-yellow-500 text-black font-bold py-4">
+                      Request Quote
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Wine Tours */}
+            <Card className="border-2 border-gold/30 bg-gradient-to-br from-white to-gray-50 hover:shadow-2xl hover:shadow-gold/20 transition-all duration-300 group overflow-hidden">
+              <CardContent className="p-0">
+                <div className="relative h-48 bg-gradient-to-br from-purple-700 to-red-700 overflow-hidden">
+                  <div className="absolute inset-0 bg-black/20"></div>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="text-6xl">🍷</div>
+                  </div>
+                  <div className="absolute top-4 right-4 bg-black/50 backdrop-blur-sm px-4 py-2 rounded-full">
+                    <span className="text-white font-bold text-sm">FROM $150</span>
+                  </div>
+                </div>
+                <div className="p-8">
+                  <h3 className="text-2xl font-black text-gray-900 mb-3">Wine Tours</h3>
+                  <p className="text-gray-600 mb-6 leading-relaxed">
+                    Explore Waiheke Island, Matakana, or Kumeu wineries without worrying about designated drivers.
+                  </p>
+                  <div className="space-y-2 mb-6">
+                    {[
+                      '🍇 Waiheke Island wine tours',
+                      '🏞️ Matakana & Kumeu regions',
+                      '🚐 Group-friendly vehicles',
+                      '⏱️ Flexible itineraries',
+                      '📍 Multiple winery stops',
+                      '☀️ Full-day or half-day options'
+                    ].map((item, idx) => (
+                      <div key={idx} className="flex items-center gap-2 text-sm text-gray-700">
+                        <span>{item}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <Link to="/book-now">
+                    <Button className="w-full bg-gray-900 hover:bg-black text-white font-bold py-4">
+                      Plan Wine Tour
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Group Outings */}
+            <Card className="border-2 border-gold/30 bg-gradient-to-br from-white to-gray-50 hover:shadow-2xl hover:shadow-gold/20 transition-all duration-300 group overflow-hidden">
+              <CardContent className="p-0">
+                <div className="relative h-48 bg-gradient-to-br from-blue-600 to-cyan-600 overflow-hidden">
+                  <div className="absolute inset-0 bg-black/20"></div>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Users className="w-20 h-20 text-white" strokeWidth={1.5} />
+                  </div>
+                  <div className="absolute top-4 right-4 bg-black/50 backdrop-blur-sm px-4 py-2 rounded-full">
+                    <span className="text-white font-bold text-sm">FROM $100</span>
+                  </div>
+                </div>
+                <div className="p-8">
+                  <h3 className="text-2xl font-black text-gray-900 mb-3">Group Outings</h3>
+                  <p className="text-gray-600 mb-6 leading-relaxed">
+                    Beach trips, shopping expeditions, restaurant tours, or any group activity - we make it easy and fun!
+                  </p>
+                  <div className="space-y-2 mb-6">
+                    {[
+                      '🏖️ Beach & day trips',
+                      '🛍️ Shopping groups',
+                      '🍽️ Restaurant tours',
+                      '🎭 Theater & shows',
+                      '👨‍👩‍👧‍👦 Family reunions',
+                      '🎊 Bachelor/Bachelorette parties'
+                    ].map((item, idx) => (
+                      <div key={idx} className="flex items-center gap-2 text-sm text-gray-700">
+                        <span>{item}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <Link to="/book-now">
+                    <Button className="w-full bg-gold hover:bg-yellow-500 text-black font-bold py-4">
+                      Book Group Transfer
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </section>
