@@ -14,6 +14,7 @@ import SEO from '../components/SEO';
 import LoadingSpinner from '../components/LoadingSpinner';
 import CurrencyConverter from '../components/CurrencyConverter';
 import { CustomDatePicker, CustomTimePicker } from '../components/DateTimePicker';
+import { initAutocompleteWithFix } from '../utils/fixGoogleAutocomplete';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
