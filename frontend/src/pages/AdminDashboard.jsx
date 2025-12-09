@@ -303,6 +303,27 @@ export const AdminDashboard = () => {
     }
   };
 
+  const handleAddPickup = () => {
+    setNewBooking(prev => ({
+      ...prev,
+      pickupAddresses: [...prev.pickupAddresses, '']
+    }));
+  };
+
+  const handleRemovePickup = (index) => {
+    setNewBooking(prev => ({
+      ...prev,
+      pickupAddresses: prev.pickupAddresses.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handlePickupAddressChange = (index, value) => {
+    setNewBooking(prev => ({
+      ...prev,
+      pickupAddresses: prev.pickupAddresses.map((addr, i) => i === index ? value : addr)
+    }));
+  };
+
   const exportToCSV = () => {
     try {
       // Define CSV headers
