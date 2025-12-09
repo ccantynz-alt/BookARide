@@ -149,6 +149,27 @@ export const BookNow = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleAddPickup = () => {
+    setFormData(prev => ({
+      ...prev,
+      pickupAddresses: [...prev.pickupAddresses, '']
+    }));
+  };
+
+  const handleRemovePickup = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      pickupAddresses: prev.pickupAddresses.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handlePickupAddressChange = (index, value) => {
+    setFormData(prev => ({
+      ...prev,
+      pickupAddresses: prev.pickupAddresses.map((addr, i) => i === index ? value : addr)
+    }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
