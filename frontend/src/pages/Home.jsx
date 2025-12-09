@@ -44,129 +44,238 @@ export const Home = () => {
         canonical="/"
       />
       <StructuredData />
-      {/* DRAMATIC HERO SECTION */}
-      <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-        {/* Dramatic Background with Overlay */}
-        <div className="absolute inset-0 z-0">
-          {/* Dark gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-br from-black via-gray-900 to-black z-10" />
-          
-          {/* Animated gold shine effect */}
-          <div className="absolute inset-0 z-20 opacity-30">
-            <div className="absolute top-0 -left-1/4 w-1/2 h-full bg-gradient-to-r from-transparent via-gold/40 to-transparent transform -skew-x-12 animate-shine" />
-          </div>
-          
-          {/* Background image with parallax effect */}
-          <div className="absolute inset-0 opacity-40">
+      {/* ULTRA PROFESSIONAL LUXURY HERO SECTION */}
+      <section className="relative min-h-screen flex items-center overflow-hidden bg-black">
+        
+        {/* Cinematic Background */}
+        <div className="absolute inset-0">
+          {/* High-quality background image */}
+          <div className="absolute inset-0">
             <img 
               src="/shuttle-van.jpg" 
-              alt="" 
-              className="w-full h-full object-cover scale-110 animate-slow-zoom"
+              alt="Luxury Airport Transfer" 
+              className="w-full h-full object-cover opacity-50"
+              style={{ objectPosition: 'center' }}
             />
           </div>
           
-          {/* Dramatic particles and light effects */}
-          <div className="absolute inset-0 z-30">
-            {/* Large animated gold orbs */}
-            <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-gold/20 rounded-full blur-3xl animate-pulse-glow" />
-            <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-gold/10 rounded-full blur-3xl animate-pulse-glow" style={{ animationDelay: '1s' }} />
-            
-            {/* Floating sparkles */}
-            {[...Array(20)].map((_, i) => (
-              <div
-                key={i}
-                className="absolute w-1 h-1 bg-gold rounded-full animate-float-sparkle"
-                style={{
-                  top: `${Math.random() * 100}%`,
-                  left: `${Math.random() * 100}%`,
-                  animationDelay: `${Math.random() * 3}s`,
-                  animationDuration: `${3 + Math.random() * 4}s`
-                }}
-              />
-            ))}
+          {/* Professional gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-r from-black via-black/95 to-black/80" />
+          
+          {/* Elegant gold accent light */}
+          <div className="absolute inset-0 opacity-20">
+            <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-gold/30 via-transparent to-transparent" />
           </div>
           
-          {/* Radial gradient spotlight */}
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_40%,rgba(212,175,55,0.15),transparent_70%)] z-20" />
+          {/* Subtle animated shine effect */}
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shine-slow" 
+                 style={{ transform: 'translateX(-100%)', animationDuration: '8s' }} />
+          </div>
         </div>
-        
-        <div className="container mx-auto px-4 relative z-40 py-32">
-          <div className="max-w-6xl mx-auto text-center">
-            {/* Dramatic badge */}
-            <motion.div
-              initial={{ scale: 0, rotate: -180 }}
-              animate={{ scale: 1, rotate: 0 }}
-              transition={{ duration: 0.8, ease: "easeOut" }}
-              className="inline-flex items-center gap-2 bg-gold/20 backdrop-blur-sm border border-gold/40 rounded-full px-6 py-3 mb-8"
-            >
-              <Sparkles className="w-5 h-5 text-gold animate-pulse" />
-              <span className="text-gold font-semibold text-sm uppercase tracking-wider">New Zealand's Premium Transfer Service</span>
-              <Sparkles className="w-5 h-5 text-gold animate-pulse" />
-            </motion.div>
+
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10 py-20 sm:py-32">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
             
-            {/* Massive dramatic heading */}
+            {/* LEFT SIDE - POWERFUL MESSAGING */}
             <motion.div
-              initial={{ opacity: 0, y: 50 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
+              initial={{ opacity: 0, x: -50 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8 }}
+              className="text-left"
             >
-              <h1 className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-black text-white mb-6 leading-none">
-                <span className="block" style={{ textShadow: '0 0 40px rgba(212,175,55,0.5)' }}>
-                  ARRIVE IN
-                </span>
-                <span className="block mt-2 bg-gradient-to-r from-gold via-yellow-400 to-gold bg-clip-text text-transparent animate-gradient-flow" style={{ 
-                  backgroundSize: '200% auto',
-                  textShadow: '0 0 80px rgba(212,175,55,0.8)'
-                }}>
-                  LUXURY
+              {/* Premium Badge */}
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.2, duration: 0.6 }}
+                className="inline-flex items-center gap-2 bg-gold/10 border border-gold/30 rounded-full px-4 py-2 mb-6"
+              >
+                <Star className="w-4 h-4 text-gold fill-gold" />
+                <span className="text-gold font-semibold text-sm tracking-wide">★★★★★ 5-STAR RATED</span>
+              </motion.div>
+
+              {/* Massive Headline - SELLING POINT */}
+              <h1 className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-black text-white mb-6 leading-tight">
+                <span className="block mb-2">Premium</span>
+                <span className="block bg-gradient-to-r from-gold via-yellow-300 to-gold bg-clip-text text-transparent" 
+                      style={{ WebkitTextStroke: '1px rgba(212,175,55,0.3)' }}>
+                  Airport Transfers
                 </span>
               </h1>
+
+              {/* Compelling Subheading */}
+              <p className="text-xl sm:text-2xl lg:text-3xl text-gray-300 mb-8 leading-relaxed font-light">
+                Your journey matters. Arrive in <span className="text-gold font-semibold">comfort</span>, <span className="text-gold font-semibold">style</span>, and <span className="text-gold font-semibold">safety</span>.
+              </p>
+
+              {/* Key Benefits - SELLING FEATURES */}
+              <div className="space-y-4 mb-10">
+                {[
+                  { icon: Check, text: 'Professional Drivers - Licensed & Experienced' },
+                  { icon: Check, text: 'Luxury Vehicles - Immaculate & Comfortable' },
+                  { icon: Check, text: 'Fixed Rates - No Hidden Fees, Ever' },
+                  { icon: Check, text: 'Flight Tracking - We Monitor Your Arrival' }
+                ].map((benefit, index) => (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.4 + index * 0.1, duration: 0.6 }}
+                    className="flex items-center gap-4 group"
+                  >
+                    <div className="flex-shrink-0 w-8 h-8 bg-gold/20 rounded-full flex items-center justify-center group-hover:bg-gold/30 transition-colors">
+                      <benefit.icon className="w-5 h-5 text-gold" strokeWidth={3} />
+                    </div>
+                    <span className="text-white text-lg font-medium">{benefit.text}</span>
+                  </motion.div>
+                ))}
+              </div>
+
+              {/* POWERFUL CTA BUTTONS */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.8, duration: 0.6 }}
+                className="flex flex-col sm:flex-row gap-4"
+              >
+                <Link to="/book-now" className="flex-1">
+                  <Button 
+                    size="lg" 
+                    className="w-full h-16 bg-gold hover:bg-yellow-500 text-black font-bold text-lg px-8 shadow-2xl hover:shadow-gold/50 transform hover:scale-105 transition-all duration-300 group relative overflow-hidden"
+                  >
+                    <span className="relative z-10 flex items-center justify-center gap-3">
+                      <span>BOOK YOUR RIDE NOW</span>
+                      <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
+                    </span>
+                    {/* Button shine effect */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000" />
+                  </Button>
+                </Link>
+                <Link to="/services">
+                  <Button 
+                    variant="outline" 
+                    size="lg"
+                    className="h-16 border-2 border-gold text-gold hover:bg-gold/10 font-semibold text-lg px-8 backdrop-blur-sm hover:border-yellow-400 transition-all duration-300"
+                  >
+                    VIEW SERVICES
+                  </Button>
+                </Link>
+              </motion.div>
+
+              {/* Trust Indicators */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 1, duration: 0.6 }}
+                className="mt-8 pt-8 border-t border-white/10"
+              >
+                <div className="flex flex-wrap items-center gap-8">
+                  <div className="flex items-center gap-2">
+                    <Shield className="w-5 h-5 text-gold" />
+                    <span className="text-white/80 text-sm font-medium">Fully Insured</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-5 h-5 text-gold" />
+                    <span className="text-white/80 text-sm font-medium">24/7 Support</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Users className="w-5 h-5 text-gold" />
+                    <span className="text-white/80 text-sm font-medium">10,000+ Happy Clients</span>
+                  </div>
+                </div>
+              </motion.div>
             </motion.div>
-            
-            {/* Dramatic subheading */}
-            <motion.p 
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5, duration: 0.8 }}
-              className="text-2xl sm:text-3xl md:text-4xl text-white/90 mb-8 font-light leading-relaxed max-w-4xl mx-auto"
-              style={{ textShadow: '0 2px 20px rgba(0,0,0,0.8)' }}
-            >
-              Experience <span className="font-bold text-gold">premium airport transfers</span> that redefine excellence
-            </motion.p>
-            
-            {/* Dramatic feature list */}
+
+            {/* RIGHT SIDE - SOCIAL PROOF & BOOKING CARD */}
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.7, duration: 0.8 }}
-              className="flex flex-wrap items-center justify-center gap-6 mb-12"
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8, delay: 0.3 }}
+              className="hidden lg:block"
             >
-              {[
-                { icon: Shield, text: '100% Safe' },
-                { icon: Clock, text: '24/7 Available' },
-                { icon: Award, text: 'Premium Service' },
-                { icon: Users, text: '10,000+ Rides' }
-              ].map((item, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, scale: 0 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.9 + index * 0.1, duration: 0.5 }}
-                  className="flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-full px-5 py-3 hover:bg-white/20 transition-all group"
-                >
-                  <item.icon className="w-5 h-5 text-gold group-hover:scale-110 transition-transform" />
-                  <span className="text-white font-semibold text-sm">{item.text}</span>
-                </motion.div>
-              ))}
+              <div className="relative">
+                {/* Glowing card effect */}
+                <div className="absolute inset-0 bg-gradient-to-br from-gold/20 to-yellow-600/20 rounded-3xl blur-3xl" />
+                
+                {/* Premium booking preview card */}
+                <div className="relative bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl border border-white/20 rounded-3xl p-8 shadow-2xl">
+                  {/* Quick booking form preview */}
+                  <div className="mb-6">
+                    <h3 className="text-2xl font-bold text-white mb-2">Instant Quote</h3>
+                    <p className="text-white/70">Get your price in seconds</p>
+                  </div>
+
+                  <div className="space-y-4 mb-6">
+                    {/* Visual service options */}
+                    {[
+                      { icon: Plane, title: 'Airport Transfer', price: 'From $60', popular: true },
+                      { icon: Briefcase, title: 'Corporate Travel', price: 'From $75', popular: false },
+                      { icon: MapPin, title: 'City to City', price: 'From $120', popular: false }
+                    ].map((service, index) => (
+                      <div
+                        key={index}
+                        className={`p-4 rounded-xl border-2 transition-all cursor-pointer hover:border-gold hover:bg-white/5 ${
+                          service.popular ? 'border-gold bg-gold/10' : 'border-white/20 bg-white/5'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                              service.popular ? 'bg-gold text-black' : 'bg-white/10 text-gold'
+                            }`}>
+                              <service.icon className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <p className="text-white font-semibold">{service.title}</p>
+                              <p className="text-gold text-sm font-bold">{service.price}</p>
+                            </div>
+                          </div>
+                          {service.popular && (
+                            <span className="text-xs bg-gold text-black px-3 py-1 rounded-full font-bold">
+                              POPULAR
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Testimonial snippet */}
+                  <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
+                    <div className="flex items-center gap-1 mb-2">
+                      {[...Array(5)].map((_, i) => (
+                        <Star key={i} className="w-4 h-4 text-gold fill-gold" />
+                      ))}
+                    </div>
+                    <p className="text-white/90 text-sm italic mb-3">
+                      "Exceptional service! The driver was professional, the vehicle spotless. Will definitely book again."
+                    </p>
+                    <p className="text-white/60 text-xs">— Sarah M., Auckland</p>
+                  </div>
+                </div>
+              </div>
             </motion.div>
-            
-            {/* Massive CTA buttons */}
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 1.1, duration: 0.8 }}
-              className="flex flex-col sm:flex-row gap-6 justify-center items-center"
-            >
+
+          </div>
+        </div>
+
+        {/* Scroll indicator */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.5, duration: 1 }}
+          className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-20"
+        >
+          <div className="flex flex-col items-center gap-2 animate-bounce">
+            <span className="text-white/60 text-sm font-medium tracking-wider">SCROLL TO EXPLORE</span>
+            <div className="w-6 h-10 border-2 border-white/30 rounded-full flex justify-center pt-2">
+              <div className="w-1 h-3 bg-gold rounded-full animate-pulse" />
+            </div>
+          </div>
+        </motion.div>
+
+      </section>
               <Link to="/book-now">
                 <Button size="lg" className="bg-gold hover:bg-gold/90 text-black font-semibold px-10 py-6 text-base group transition-all-smooth shadow-lg hover:shadow-2xl hover:scale-105 animate-pulse-slow">
                   <Sparkles className="mr-2 w-5 h-5" />
