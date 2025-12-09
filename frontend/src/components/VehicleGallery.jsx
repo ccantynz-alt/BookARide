@@ -9,25 +9,29 @@ import { Car, Users, Luggage } from 'lucide-react';
 export const VehicleGallery = () => {
   const vehicles = [
     {
-      name: 'Toyota Hiace',
+      name: 'Toyota Hiace - Day Service',
       image: 'https://customer-assets.emergentagent.com/job_bookmyride-nz/artifacts/6fpsudnh_IMG_0158%20%281%29.jpeg',
       capacity: '11 passengers',
       luggage: '12+ bags',
-      description: 'Our premium fleet vehicle'
+      description: 'Premium daytime transfers',
+      badge: 'MOST POPULAR'
     },
     {
-      name: 'Toyota Hiace',
+      name: 'Toyota Hiace - Night Service',
       image: 'https://customer-assets.emergentagent.com/job_bookmyride-nz/artifacts/6fpsudnh_IMG_0158%20%281%29.jpeg',
       capacity: '11 passengers',
       luggage: '12+ bags',
-      description: 'Spacious & comfortable'
+      description: 'Late night pickups with LED lights',
+      badge: '24/7 AVAILABLE',
+      isNight: true
     },
     {
-      name: 'Toyota Hiace',
+      name: 'Toyota Hiace - Airport Express',
       image: 'https://customer-assets.emergentagent.com/job_bookmyride-nz/artifacts/6fpsudnh_IMG_0158%20%281%29.jpeg',
       capacity: '11 passengers',
       luggage: '12+ bags',
-      description: 'Professional service'
+      description: 'Flight-tracked service',
+      badge: 'AIRPORT SPECIAL'
     }
   ];
 
