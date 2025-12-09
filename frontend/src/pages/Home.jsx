@@ -62,8 +62,8 @@ export const Home = () => {
           {/* Gold sparkly gradient on the left side */}
           <div className="absolute inset-0 bg-gradient-to-r from-gold/20 via-transparent to-transparent" />
           
-          {/* Professional gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/90 to-black/80" />
+          {/* Professional gradient overlay - darker on left */}
+          <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/90 to-black/75" />
           
           {/* Elegant gold accent light on right */}
           <div className="absolute inset-0 opacity-20">
