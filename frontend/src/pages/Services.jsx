@@ -143,25 +143,19 @@ export const Services = () => {
         </div>
       </section>
 
-      {/* Premium Event Services - STUNNING DESIGN */}
-      <section className="py-24 bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
-        {/* Decorative elements */}
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-0 left-1/4 w-96 h-96 bg-gold rounded-full blur-3xl"></div>
-          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-gold rounded-full blur-3xl"></div>
-        </div>
-        
+      {/* Premium Event Services - Professional Design */}
+      <section className="py-24 bg-white relative overflow-hidden">
         <div className="container mx-auto px-4 relative z-10">
           <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 bg-gold/20 border border-gold rounded-full px-6 py-2 mb-6">
+            <div className="inline-flex items-center gap-2 bg-gold/10 border border-gold/30 rounded-full px-6 py-2 mb-6">
               <Award className="w-5 h-5 text-gold" />
               <span className="text-gold font-bold text-sm tracking-wide">PREMIUM EVENT SERVICES</span>
             </div>
-            <h2 className="text-4xl md:text-6xl font-black text-white mb-6">
+            <h2 className="text-4xl md:text-6xl font-black text-gray-900 mb-6">
               Events & <span className="text-gold">Special Occasions</span>
             </h2>
-            <p className="text-xl text-white/80 max-w-3xl mx-auto leading-relaxed">
-              Arrive in style for concerts, corporate events, and special occasions
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
+              Professional group transportation for concerts, corporate events, and celebrations
             </p>
           </div>
 
