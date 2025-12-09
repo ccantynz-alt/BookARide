@@ -9,32 +9,25 @@ import { Car, Users, Luggage } from 'lucide-react';
 export const VehicleGallery = () => {
   const vehicles = [
     {
-      name: 'Mercedes Sprinter',
-      image: 'https://images.unsplash.com/photo-1570125909232-eb263c188f7e?w=800&q=80',
-      capacity: '12 passengers',
-      luggage: '15 bags',
-      description: 'Luxury group transport'
+      name: 'Toyota Hiace',
+      image: 'https://customer-assets.emergentagent.com/job_bookmyride-nz/artifacts/6fpsudnh_IMG_0158%20%281%29.jpeg',
+      capacity: '11 passengers',
+      luggage: '12+ bags',
+      description: 'Our premium fleet vehicle'
     },
     {
       name: 'Toyota Hiace',
-      image: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=800&q=80',
-      capacity: '8 passengers',
-      luggage: '10 bags',
-      description: 'Perfect for families'
+      image: 'https://customer-assets.emergentagent.com/job_bookmyride-nz/artifacts/6fpsudnh_IMG_0158%20%281%29.jpeg',
+      capacity: '11 passengers',
+      luggage: '12+ bags',
+      description: 'Spacious & comfortable'
     },
     {
-      name: 'Executive Sedan',
-      image: 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=800&q=80',
-      capacity: '4 passengers',
-      luggage: '4 bags',
-      description: 'Premium comfort'
-    },
-    {
-      name: 'SUV',
-      image: 'https://images.unsplash.com/photo-1519641471654-76ce0107ad1b?w=800&q=80',
-      capacity: '6 passengers',
-      luggage: '8 bags',
-      description: 'Spacious and reliable'
+      name: 'Toyota Hiace',
+      image: 'https://customer-assets.emergentagent.com/job_bookmyride-nz/artifacts/6fpsudnh_IMG_0158%20%281%29.jpeg',
+      capacity: '11 passengers',
+      luggage: '12+ bags',
+      description: 'Professional service'
     }
   ];
 
