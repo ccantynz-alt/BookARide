@@ -84,6 +84,7 @@ export const AdminDashboard = () => {
   });
   const [calculatingPrice, setCalculatingPrice] = useState(false);
   const [manualPriceOverride, setManualPriceOverride] = useState('');
+  const [selectedPaymentStatus, setSelectedPaymentStatus] = useState('');
   
   // Date/Time picker states for admin form
   const [adminPickupDate, setAdminPickupDate] = useState(null);
