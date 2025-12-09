@@ -276,55 +276,6 @@ export const Home = () => {
         </motion.div>
 
       </section>
-              <Link to="/book-now">
-                <Button size="lg" className="bg-gold hover:bg-gold/90 text-black font-semibold px-10 py-6 text-base group transition-all-smooth shadow-lg hover:shadow-2xl hover:scale-105 animate-pulse-slow">
-                  <Sparkles className="mr-2 w-5 h-5" />
-                  {t('hero.bookNow')}
-                  <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform duration-200" />
-                </Button>
-              </Link>
-              <Link to="/services">
-                <Button size="lg" variant="outline" className="border-2 border-gold text-gold hover:bg-gold hover:text-black font-semibold px-10 py-6 text-base transition-all duration-200">
-                  {t('hero.viewServices')}
-                </Button>
-              </Link>
-            </motion.div>
-          </div>
-        </div>
-
-        {/* Trust Indicators */}
-        <div className="container mx-auto px-4 mt-20 relative z-10">
-          <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8">
-            {[
-              { icon: Users, value: 1000, suffix: '+', label: t('stats.customers') },
-              { icon: Clock, value: 60, suffix: 's', label: t('stats.bookingTime') },
-              { icon: Shield, value: 100, suffix: '%', label: t('stats.safety') },
-              { icon: Award, value: 4.9, suffix: '★', label: t('stats.rating'), decimals: 1 }
-            ].map((stat, index) => {
-              const Icon = stat.icon;
-              return (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.7 + index * 0.1, duration: 0.5 }}
-                  className="text-center p-6 glass-dark rounded-xl border border-gold/30 hover-lift hover-glow"
-                >
-                  <Icon className="w-8 h-8 text-gold mx-auto mb-3 animate-float" />
-                  <div className="text-3xl font-bold text-gold mb-1">
-                    <AnimatedCounter 
-                      end={stat.value} 
-                      suffix={stat.suffix}
-                      decimals={stat.decimals || 0}
-                    />
-                  </div>
-                  <div className="text-sm text-white/70">{stat.label}</div>
-                </motion.div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
 
       {/* Services Section */}
       <section className="py-24 bg-white">
