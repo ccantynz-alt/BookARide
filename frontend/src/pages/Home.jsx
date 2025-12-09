@@ -236,7 +236,7 @@ export const Home = () => {
                       </div>
                       <div>
                         <h4 className="text-white font-bold text-lg mb-1">5-Star Experience</h4>
-                        <p className="text-white/70 text-sm">Professional drivers, luxury vehicles, VIP service. Travel like you deserve.</p>
+                        <p className="text-white/70 text-sm">Professional drivers, premium vehicles, VIP service. Travel like you deserve.</p>
                       </div>
                     </div>
                   </div>
