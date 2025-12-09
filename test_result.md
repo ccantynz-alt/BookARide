@@ -319,6 +319,21 @@ frontend:
           agent: "testing"
           comment: "✅ COMPREHENSIVE DEBUG TEST COMPLETED - User-requested debugging confirmed all date/time pickers working perfectly: 1) ✅ Date Picker: Calendar popup opens correctly with gold header (#D4AF37), current date highlighted, smooth animations, 2) ✅ Time Picker: Opens with AM/PM format showing 15-minute intervals (9:30 AM, 9:45 AM, 10:00 AM, etc.), scrollable list working, 3) ✅ Flight Information: Both Departure Time and Arrival Time pickers functional with same beautiful interface, 4) ✅ Return Trip: Checkbox toggles Return Trip Details section correctly, return date/time pickers working, 5) ✅ All Interactions: Click on calendar/clock icons opens respective popups, input fields display selected values correctly. Screenshots captured showing all functionality. No JavaScript errors detected. All custom date/time pickers are production-ready and working as designed."
 
+  - task: "Admin Panel Payment Status Update Feature"
+    implemented: true
+    working: false
+    file: "/app/frontend/src/pages/AdminDashboard.jsx"
+    stuck_count: 1
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "testing"
+          comment: "Starting comprehensive test of payment status update feature in admin panel. Testing: 1) Admin login with admin/BookARide2024!, 2) Navigate to Bookings tab, 3) Click on booking to open details modal, 4) Find Payment Status section, 5) Verify current payment status display, 6) Use dropdown to select different status, 7) Click Update button, 8) Verify success message, 9) Check modal closes, 10) Verify change in booking list, 11) Confirm persistence after reopening."
+        - working: false
+          agent: "testing"
+          comment: "❌ PAYMENT STATUS UPDATE FEATURE PARTIALLY WORKING - Comprehensive testing results: 1) ✅ Admin Login: Successfully logged in with admin/BookARide2024!, 2) ✅ Bookings Tab: Navigated to bookings tab with 38 bookings displayed, 3) ✅ Booking Details Modal: Successfully opened booking details modal by clicking View Details button, 4) ✅ Payment Status Section: Found Payment Status section with current status 'UNPAID' clearly displayed, 5) ✅ Payment Status Dropdown: Located dropdown next to current payment status with 'Change' placeholder, 6) ❌ CRITICAL ISSUE: Dropdown options are not appearing when clicked. The Radix UI Select component dropdown button is clickable but the options list does not render, preventing selection of different payment statuses, 7) ✅ Update Button: Update button is present and appears functional. ROOT CAUSE: UI interaction issue with Radix UI Select component where dropdown options are not rendering properly when clicked. This prevents the core functionality of changing payment status from working."
+
 metadata:
   created_by: "testing_agent"
   version: "1.1"
