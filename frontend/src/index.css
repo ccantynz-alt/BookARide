@@ -120,8 +120,7 @@ code {
   border-radius: 4px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
   font-family: 'Inter', sans-serif;
-  margin-top: 2px;
-  position: fixed !important;
+  margin-top: 2px !important;
   pointer-events: auto !important;
 }
 
