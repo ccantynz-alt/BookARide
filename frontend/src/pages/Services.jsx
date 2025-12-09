@@ -22,29 +22,57 @@ export const Services = () => {
         keywords="airport shuttle service, Auckland shuttles, shuttle service, Auckland airport shuttle, Hamilton airport shuttle, Whangarei airport transfer, private shuttle service, airport transportation, corporate shuttle, cruise transfers, Hobbiton transfers, airport pickup service, shuttle service Auckland"
         canonical="/services"
       />
-      {/* Hero Section */}
-      <section className="py-24 bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
+      {/* Professional Hero Section */}
+      <section className="py-32 bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
         {/* Background Vehicle Image */}
-        <div className="absolute inset-0 opacity-15">
+        <div className="absolute inset-0 opacity-20">
           <img 
-            src="/shuttle-van.jpg" 
+            src="https://images.pexels.com/photos/7464537/pexels-photo-7464537.jpeg?auto=compress&cs=tinysrgb&w=1920" 
             alt="" 
-            className="w-full h-full object-cover object-left"
+            className="w-full h-full object-cover"
             style={{ filter: 'brightness(0.4) blur(1px)' }}
           />
         </div>
         
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(212,175,55,0.15),transparent_50%)]" />
+        {/* Gold accent gradients */}
+        <div className="absolute inset-0 opacity-20">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(212,175,55,0.2),transparent_50%)]" />
         </div>
+        <div className="absolute left-0 top-0 w-1/3 h-full bg-gradient-to-r from-gold/10 to-transparent" />
+        <div className="absolute right-0 top-0 w-1/3 h-full bg-gradient-to-l from-gold/10 to-transparent" />
+        
         <div className="container mx-auto px-4 relative z-10">
-          <div className="max-w-3xl mx-auto text-center">
-            <h1 className="text-5xl md:text-6xl font-bold text-white mb-6">
-              Our Services
+          <div className="max-w-4xl mx-auto text-center">
+            {/* Premium Badge */}
+            <div className="inline-flex items-center gap-2 bg-gold/10 border border-gold/30 rounded-full px-6 py-2 mb-8">
+              <Award className="w-5 h-5 text-gold" />
+              <span className="text-gold font-semibold text-sm tracking-wide">PREMIUM TRANSFER SERVICES</span>
+            </div>
+            
+            <h1 className="text-5xl md:text-7xl font-black text-white mb-6 leading-tight">
+              Our <span className="text-gold">Services</span>
             </h1>
-            <p className="text-xl text-white/80">
-              Airport shuttles for Auckland, Hamilton & Whangarei, plus private transfers in Auckland
+            <p className="text-xl md:text-2xl text-white/90 mb-8 leading-relaxed">
+              Professional airport shuttles across New Zealand's North Island
             </p>
+            
+            {/* Trust Indicators */}
+            <div className="flex flex-wrap justify-center gap-8 mt-12">
+              <div className="text-center">
+                <div className="text-4xl font-black text-gold mb-2">4 </div>
+                <div className="text-white/70 text-sm">Locations</div>
+              </div>
+              <div className="h-12 w-px bg-white/20"></div>
+              <div className="text-center">
+                <div className="text-4xl font-black text-gold mb-2">24/7</div>
+                <div className="text-white/70 text-sm">Available</div>
+              </div>
+              <div className="h-12 w-px bg-white/20"></div>
+              <div className="text-center">
+                <div className="text-4xl font-black text-gold mb-2">100%</div>
+                <div className="text-white/70 text-sm">Reliable</div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
