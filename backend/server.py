@@ -1793,6 +1793,7 @@ async def create_manual_booking(booking: ManualBooking):
             "phone": booking.phone,
             "serviceType": booking.serviceType,
             "pickupAddress": booking.pickupAddress,
+            "pickupAddresses": booking.pickupAddresses or [],  # Store multiple pickups
             "dropoffAddress": booking.dropoffAddress,
             "date": booking.date,
             "time": booking.time,
