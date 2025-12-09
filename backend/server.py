@@ -128,6 +128,7 @@ class StatusCheckCreate(BaseModel):
 class PriceCalculationRequest(BaseModel):
     serviceType: str
     pickupAddress: str
+    pickupAddresses: Optional[List[str]] = []  # Multiple pickups support
     dropoffAddress: str
     passengers: int
     vipAirportPickup: bool = False
