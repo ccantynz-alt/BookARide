@@ -59,17 +59,34 @@ export const Home = () => {
             />
           </div>
           
-          {/* Professional gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-r from-black via-black/95 to-black/80" />
+          {/* Gold sparkly gradient on the left side */}
+          <div className="absolute inset-0 bg-gradient-to-r from-gold/20 via-transparent to-transparent" />
           
-          {/* Elegant gold accent light */}
+          {/* Professional gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/90 to-black/80" />
+          
+          {/* Elegant gold accent light on right */}
           <div className="absolute inset-0 opacity-20">
             <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-gold/30 via-transparent to-transparent" />
           </div>
           
+          {/* Gold sparkle particles on the left */}
+          <div className="absolute left-0 top-0 w-1/2 h-full overflow-hidden">
+            <div className="absolute top-10 left-10 w-2 h-2 bg-gold rounded-full animate-pulse opacity-60" />
+            <div className="absolute top-32 left-24 w-1 h-1 bg-gold rounded-full animate-pulse opacity-80" style={{ animationDelay: '0.5s' }} />
+            <div className="absolute top-64 left-16 w-3 h-3 bg-gold rounded-full animate-pulse opacity-40" style={{ animationDelay: '1s' }} />
+            <div className="absolute top-96 left-32 w-2 h-2 bg-gold rounded-full animate-pulse opacity-70" style={{ animationDelay: '1.5s' }} />
+            <div className="absolute top-1/4 left-1/4 w-1 h-1 bg-gold rounded-full animate-pulse opacity-90" style={{ animationDelay: '0.3s' }} />
+            <div className="absolute top-1/3 left-1/3 w-2 h-2 bg-gold rounded-full animate-pulse opacity-50" style={{ animationDelay: '0.8s' }} />
+            <div className="absolute top-1/2 left-1/5 w-1 h-1 bg-gold rounded-full animate-pulse opacity-75" style={{ animationDelay: '1.2s' }} />
+            <div className="absolute top-2/3 left-1/4 w-2 h-2 bg-gold rounded-full animate-pulse opacity-60" style={{ animationDelay: '0.6s' }} />
+            <div className="absolute bottom-32 left-20 w-3 h-3 bg-gold rounded-full animate-pulse opacity-40" style={{ animationDelay: '1.8s' }} />
+            <div className="absolute bottom-64 left-28 w-1 h-1 bg-gold rounded-full animate-pulse opacity-85" style={{ animationDelay: '0.4s' }} />
+          </div>
+          
           {/* Subtle animated shine effect */}
           <div className="absolute inset-0 opacity-10">
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shine-slow" 
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-gold/30 to-transparent animate-shine-slow" 
                  style={{ transform: 'translateX(-100%)', animationDuration: '8s' }} />
           </div>
         </div>
