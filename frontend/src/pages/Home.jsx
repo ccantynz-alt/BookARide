@@ -113,7 +113,7 @@ export const Home = () => {
               <div className="space-y-4 mb-10">
                 {[
                   { icon: Check, text: 'Professional Drivers - Licensed & Experienced' },
-                  { icon: Check, text: 'Luxury Vehicles - Immaculate & Comfortable' },
+                  { icon: Check, text: 'Premium Vehicles - Immaculate & Comfortable' },
                   { icon: Check, text: 'Fixed Rates - No Hidden Fees, Ever' },
                   { icon: Check, text: 'Flight Tracking - We Monitor Your Arrival' }
                 ].map((benefit, index) => (
