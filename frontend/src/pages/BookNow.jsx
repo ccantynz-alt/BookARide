@@ -115,6 +115,7 @@ export const BookNow = () => {
       const response = await axios.post(`${API}/calculate-price`, {
         serviceType: formData.serviceType,
         pickupAddress: formData.pickupAddress,
+        pickupAddresses: formData.pickupAddresses.filter(addr => addr.trim()),  // Filter empty
         dropoffAddress: formData.dropoffAddress,
         passengers: parseInt(formData.passengers),
         vipAirportPickup: formData.vipAirportPickup,
