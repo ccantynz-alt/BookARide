@@ -214,3 +214,17 @@
 .animate-on-scroll.animated {
   opacity: 1;
 }
+
+/* Shine Animation for Hero Section */
+@keyframes shine-slow {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-shine-slow {
+  animation: shine-slow 8s ease-in-out infinite;
+}
