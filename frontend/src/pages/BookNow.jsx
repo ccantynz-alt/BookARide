@@ -398,34 +398,40 @@ export const BookNow = () => {
                       {/* Date and Time */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                         <div className="space-y-2">
-                          <Label htmlFor="date" className="flex items-center space-x-2">
+                          <Label className="flex items-center space-x-2">
                             <Calendar className="w-4 h-4 text-gold" />
                             <span>Pickup Date *</span>
                           </Label>
-                          <Input
-                            id="date"
-                            name="date"
-                            type="date"
-                            value={formData.date}
-                            onChange={handleChange}
-                            min={new Date().toISOString().split('T')[0]}
+                          <CustomDatePicker
+                            selected={pickupDate}
+                            onChange={(date) => {
+                              setPickupDate(date);
+                              if (date) {
+                                const formattedDate = date.toISOString().split('T')[0];
+                                setFormData(prev => ({ ...prev, date: formattedDate }));
+                              }
+                            }}
+                            placeholder="Select pickup date"
                             required
-                            className="transition-all duration-200 focus:ring-2 focus:ring-gold cursor-pointer"
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="time" className="flex items-center space-x-2">
+                          <Label className="flex items-center space-x-2">
                             <Clock className="w-4 h-4 text-gold" />
                             <span>Pickup Time *</span>
                           </Label>
-                          <Input
-                            id="time"
-                            name="time"
-                            type="time"
-                            value={formData.time}
-                            onChange={handleChange}
+                          <CustomTimePicker
+                            selected={pickupTime}
+                            onChange={(time) => {
+                              setPickupTime(time);
+                              if (time) {
+                                const hours = time.getHours().toString().padStart(2, '0');
+                                const minutes = time.getMinutes().toString().padStart(2, '0');
+                                setFormData(prev => ({ ...prev, time: `${hours}:${minutes}` }));
+                              }
+                            }}
+                            placeholder="Select pickup time"
                             required
-                            className="transition-all duration-200 focus:ring-2 focus:ring-gold cursor-pointer"
                           />
                         </div>
                       </div>
