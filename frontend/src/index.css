@@ -116,12 +116,18 @@ code {
 /* Google Places Autocomplete Dropdown Fix */
 .pac-container {
   z-index: 99999 !important;
-  background-color: white;
+  background-color: white !important;
   border-radius: 4px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
   font-family: 'Inter', sans-serif;
   margin-top: 2px !important;
   pointer-events: auto !important;
+  /* Prevent any transform that might cause click issues */
+  transform: none !important;
+  /* Ensure container is always visible and clickable */
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
 }
 
 .pac-container:after {
@@ -136,6 +142,13 @@ code {
   border-top: 1px solid #e5e7eb !important;
   pointer-events: auto !important;
   background-color: white !important;
+  /* Ensure items are always visible and clickable */
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  /* Allow click events to properly register */
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .pac-item:first-child {
@@ -154,6 +167,7 @@ code {
   font-size: 14px !important;
   padding-right: 4px !important;
   color: #1f2937 !important;
+  /* Allow clicks to pass through to parent pac-item */
   pointer-events: none !important;
 }
 
@@ -168,20 +182,20 @@ code {
   pointer-events: none !important;
 }
 
-/* Force Google dropdown to position correctly */
-.pac-container {
-  z-index: 99999 !important;
-  background-color: white !important;
-  display: block !important;
-  visibility: visible !important;
-}
-
-/* Remove any transform or positioning that breaks layout */
-body .pac-container {
-  transform: none !important;
+/* Ensure pac-item-selected-query also allows clicks through */
+.pac-item-selected,
+.pac-item-selected-query {
+  pointer-events: auto !important;
 }
 
 /* For dropdowns in modals/dialogs */
 [role="dialog"] + .pac-container {
   z-index: 100000 !important;
+}
+
+/* Ensure the dropdown stays visible when interacting */
+.pac-container:focus-within,
+.pac-container:hover {
+  display: block !important;
+  visibility: visible !important;
 }
