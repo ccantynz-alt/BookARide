@@ -109,6 +109,23 @@ export const BookNow = () => {
         setFormData(prev => ({ ...prev, dropoffAddress: place.formatted_address }));
       }
     });
+
+    // Fix Google autocomplete dropdown positioning
+    const fixAutocompletePosition = () => {
+      const pacContainers = document.querySelectorAll('.pac-container');
+      pacContainers.forEach(container => {
+        // Reset positioning
+        container.style.position = 'absolute';
+        container.style.left = '';
+        container.style.top = '';
+      });
+    };
+
+    // Run fix after autocomplete renders
+    const observer = new MutationObserver(fixAutocompletePosition);
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    return () => observer.disconnect();
   }, [isLoaded]);
 
   // Calculate price when addresses, passengers, VIP service, oversized luggage, or return trip changes
