@@ -77,32 +77,63 @@ export const Services = () => {
         </div>
       </section>
 
-      {/* Services Detail */}
-      <section className="py-24 bg-white">
+      {/* Services Detail - Professional Layout */}
+      <section className="py-24 bg-gradient-to-b from-gray-50 to-white">
         <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-4">
+              Choose Your <span className="text-gold">Perfect Ride</span>
+            </h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Professional transfer services tailored to your needs
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-7xl mx-auto">
             {services.map((service, index) => {
               const Icon = iconMap[service.icon];
               return (
-                <Card key={service.id} className="border-2 border-gray-200 hover:border-gold hover:shadow-xl transition-all duration-300">
-                  <CardContent className="p-10">
-                    <div className="flex items-start space-x-6">
-                      <div className="w-20 h-20 bg-gray-900 rounded-xl flex items-center justify-center flex-shrink-0">
-                        <Icon className="w-10 h-10 text-gold" />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="text-3xl font-bold text-gray-900 mb-4">{service.title}</h3>
-                        <p className="text-gray-600 mb-8 leading-relaxed">{service.description}</p>
-                        <div className="space-y-4">
-                          <h4 className="font-semibold text-gray-900">Features:</h4>
-                          {service.features.map((feature, idx) => (
-                            <div key={idx} className="flex items-center space-x-3">
-                              <Check className="w-5 h-5 text-gold flex-shrink-0" />
-                              <span className="text-gray-700">{feature}</span>
-                            </div>
-                          ))}
+                <Card key={service.id} className="border-2 border-gray-200 hover:border-gold hover:shadow-2xl transition-all duration-300 group overflow-hidden">
+                  <CardContent className="p-0">
+                    {/* Card Header with Icon */}
+                    <div className="bg-gradient-to-br from-gray-900 to-black p-8 relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-64 h-64 bg-gold/5 rounded-full -mr-32 -mt-32"></div>
+                      <div className="flex items-center justify-between relative z-10">
+                        <div className="flex items-center gap-4">
+                          <div className="w-16 h-16 bg-gold/20 border-2 border-gold rounded-xl flex items-center justify-center flex-shrink-0">
+                            <Icon className="w-8 h-8 text-gold" />
+                          </div>
+                          <h3 className="text-2xl md:text-3xl font-bold text-white">{service.title}</h3>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-xs text-gold font-semibold mb-1">FROM</div>
+                          <div className="text-3xl font-black text-gold">$60</div>
                         </div>
                       </div>
+                    </div>
+                    
+                    {/* Card Body */}
+                    <div className="p-8">
+                      <p className="text-gray-600 mb-6 leading-relaxed text-lg">{service.description}</p>
+                      
+                      <div className="space-y-3 mb-8">
+                        <h4 className="font-bold text-gray-900 text-sm uppercase tracking-wide mb-4">What's Included:</h4>
+                        {service.features.map((feature, idx) => (
+                          <div key={idx} className="flex items-start gap-3">
+                            <div className="flex-shrink-0 w-5 h-5 bg-gold/20 rounded-full flex items-center justify-center mt-0.5">
+                              <Check className="w-3 h-3 text-gold" strokeWidth={3} />
+                            </div>
+                            <span className="text-gray-700 text-sm leading-relaxed">{feature}</span>
+                          </div>
+                        ))}
+                      </div>
+                      
+                      <Link to="/book-now">
+                        <Button className="w-full bg-gold hover:bg-yellow-500 text-black font-bold py-6 text-base shadow-lg group-hover:shadow-xl transition-all">
+                          Book This Service
+                          <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                        </Button>
+                      </Link>
                     </div>
                   </CardContent>
                 </Card>
