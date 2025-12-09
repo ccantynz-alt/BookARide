@@ -89,50 +89,31 @@ export const BookNow = () => {
   useEffect(() => {
     if (!isLoaded || !pickupRef.current || !dropoffRef.current) return;
 
-    const pickupAutocomplete = new window.google.maps.places.Autocomplete(pickupRef.current, {
-      componentRestrictions: { country: 'nz' }
-    });
+    const pickupSetup = initAutocompleteWithFix(pickupRef.current);
+    const dropoffSetup = initAutocompleteWithFix(dropoffRef.current);
 
-    const dropoffAutocomplete = new window.google.maps.places.Autocomplete(dropoffRef.current, {
-      componentRestrictions: { country: 'nz' }
-    });
+    if (pickupSetup && pickupSetup.autocomplete) {
+      pickupSetup.autocomplete.addListener('place_changed', () => {
+        const place = pickupSetup.autocomplete.getPlace();
+        if (place.formatted_address) {
+          setFormData(prev => ({ ...prev, pickupAddress: place.formatted_address }));
+        }
+      });
+    }
 
-    pickupAutocomplete.addListener('place_changed', () => {
-      const place = pickupAutocomplete.getPlace();
-      if (place.formatted_address) {
-        setFormData(prev => ({ ...prev, pickupAddress: place.formatted_address }));
-      }
-    });
+    if (dropoffSetup && dropoffSetup.autocomplete) {
+      dropoffSetup.autocomplete.addListener('place_changed', () => {
+        const place = dropoffSetup.autocomplete.getPlace();
+        if (place.formatted_address) {
+          setFormData(prev => ({ ...prev, dropoffAddress: place.formatted_address }));
+        }
+      });
+    }
 
-    dropoffAutocomplete.addListener('place_changed', () => {
-      const place = dropoffAutocomplete.getPlace();
-      if (place.formatted_address) {
-        setFormData(prev => ({ ...prev, dropoffAddress: place.formatted_address }));
-      }
-    });
-
-    // Fix Google autocomplete dropdown positioning
-    const fixDropdownPosition = (inputElement) => {
-      setTimeout(() => {
-        const pacContainers = document.querySelectorAll('.pac-container');
-        pacContainers.forEach(container => {
-          if (container.style.display !== 'none') {
-            const rect = inputElement.getBoundingClientRect();
-            container.style.position = 'fixed';
-            container.style.left = `${rect.left}px`;
-            container.style.top = `${rect.bottom + window.scrollY}px`;
-            container.style.width = `${rect.width}px`;
-          }
-        });
-      }, 10);
+    return () => {
+      if (pickupSetup) pickupSetup.cleanup();
+      if (dropoffSetup) dropoffSetup.cleanup();
     };
-
-    // Add event listeners to inputs
-    pickupRef.current.addEventListener('focus', () => fixDropdownPosition(pickupRef.current));
-    pickupRef.current.addEventListener('input', () => fixDropdownPosition(pickupRef.current));
-    dropoffRef.current.addEventListener('focus', () => fixDropdownPosition(dropoffRef.current));
-    dropoffRef.current.addEventListener('input', () => fixDropdownPosition(dropoffRef.current));
-
   }, [isLoaded]);
 
   // Calculate price when addresses, passengers, VIP service, oversized luggage, or return trip changes
