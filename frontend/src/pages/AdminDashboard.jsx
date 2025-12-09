@@ -61,6 +61,7 @@ export const AdminDashboard = () => {
     phone: '',
     serviceType: 'airport-shuttle',
     pickupAddress: '',
+    pickupAddresses: [],  // Multiple pickups support
     dropoffAddress: '',
     date: '',
     time: '',
