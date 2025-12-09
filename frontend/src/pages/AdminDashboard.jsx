@@ -961,8 +961,21 @@ export const AdminDashboard = () => {
                     <p className="font-medium">{selectedBooking.serviceType}</p>
                   </div>
                   <div>
-                    <span className="text-gray-600">Pickup:</span>
-                    <p className="font-medium">{selectedBooking.pickupAddress}</p>
+                    <span className="text-gray-600">Pickup Addresses:</span>
+                    <div className="font-medium space-y-1">
+                      <p className="flex items-start">
+                        <span className="text-blue-600 mr-2">1.</span>
+                        <span>{selectedBooking.pickupAddress}</span>
+                      </p>
+                      {selectedBooking.pickupAddresses && selectedBooking.pickupAddresses.length > 0 && 
+                        selectedBooking.pickupAddresses.map((addr, idx) => addr && (
+                          <p key={idx} className="flex items-start">
+                            <span className="text-blue-600 mr-2">{idx + 2}.</span>
+                            <span>{addr}</span>
+                          </p>
+                        ))
+                      }
+                    </div>
                   </div>
                   <div>
                     <span className="text-gray-600">Drop-off:</span>
