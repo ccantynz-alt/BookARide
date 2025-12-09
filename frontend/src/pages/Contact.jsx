@@ -138,7 +138,7 @@ export const Contact = () => {
               <Card className="border-2 border-gray-200">
                 <CardContent className="p-10">
                   <h3 className="text-3xl font-bold text-gray-900 mb-4">Send Us a Message</h3>
-                  <p className="text-gray-600 mb-8">Have questions? Need a custom quote? We're here to help!</p>
+                  <p className="text-gray-600 mb-8">Have questions? Need a custom quote? We&apos;re here to help!</p>
                   
                   <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
