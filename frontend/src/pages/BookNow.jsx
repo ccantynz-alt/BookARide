@@ -587,34 +587,41 @@ export const BookNow = () => {
                           {/* Return Date and Time */}
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                             <div className="space-y-2">
-                              <Label htmlFor="returnDate" className="flex items-center space-x-2">
+                              <Label className="flex items-center space-x-2">
                                 <Calendar className="w-4 h-4 text-gold" />
                                 <span>Return Date *</span>
                               </Label>
-                              <Input
-                                id="returnDate"
-                                name="returnDate"
-                                type="date"
-                                value={formData.returnDate}
-                                onChange={handleChange}
-                                min={formData.date || new Date().toISOString().split('T')[0]}
+                              <CustomDatePicker
+                                selected={returnDatePicker}
+                                onChange={(date) => {
+                                  setReturnDatePicker(date);
+                                  if (date) {
+                                    const formattedDate = date.toISOString().split('T')[0];
+                                    setFormData(prev => ({ ...prev, returnDate: formattedDate }));
+                                  }
+                                }}
+                                placeholder="Select return date"
+                                minDate={pickupDate || new Date()}
                                 required={formData.bookReturn}
-                                className="transition-all duration-200 focus:ring-2 focus:ring-gold cursor-pointer"
                               />
                             </div>
                             <div className="space-y-2">
-                              <Label htmlFor="returnTime" className="flex items-center space-x-2">
+                              <Label className="flex items-center space-x-2">
                                 <Clock className="w-4 h-4 text-gold" />
                                 <span>Return Time *</span>
                               </Label>
-                              <Input
-                                id="returnTime"
-                                name="returnTime"
-                                type="time"
-                                value={formData.returnTime}
-                                onChange={handleChange}
+                              <CustomTimePicker
+                                selected={returnTimePicker}
+                                onChange={(time) => {
+                                  setReturnTimePicker(time);
+                                  if (time) {
+                                    const hours = time.getHours().toString().padStart(2, '0');
+                                    const minutes = time.getMinutes().toString().padStart(2, '0');
+                                    setFormData(prev => ({ ...prev, returnTime: `${hours}:${minutes}` }));
+                                  }
+                                }}
+                                placeholder="Select return time"
                                 required={formData.bookReturn}
-                                className="transition-all duration-200 focus:ring-2 focus:ring-gold cursor-pointer"
                               />
                             </div>
                           </div>
