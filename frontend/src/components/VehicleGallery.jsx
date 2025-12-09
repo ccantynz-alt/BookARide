@@ -67,7 +67,7 @@ export const VehicleGallery = () => {
             Our Fleet
           </h2>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto mb-6" data-aos="fade-up" data-aos-delay="100">
-            Modern, well-maintained Toyota Hiace vehicles - 24/7 service with LED lighting
+            Modern, well-maintained Toyota Hiace vehicles - 24/7 service available
           </p>
           
           {/* MULTIPLE VANS BANNER */}
