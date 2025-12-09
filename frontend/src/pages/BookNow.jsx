@@ -86,7 +86,7 @@ export const BookNow = () => {
 
   // Initialize Google Places Autocomplete
   useEffect(() => {
-    if (!isLoaded) return;
+    if (!isLoaded || !pickupRef.current || !dropoffRef.current) return;
 
     const pickupAutocomplete = new window.google.maps.places.Autocomplete(pickupRef.current, {
       componentRestrictions: { country: 'nz' }
@@ -111,21 +111,27 @@ export const BookNow = () => {
     });
 
     // Fix Google autocomplete dropdown positioning
-    const fixAutocompletePosition = () => {
-      const pacContainers = document.querySelectorAll('.pac-container');
-      pacContainers.forEach(container => {
-        // Reset positioning
-        container.style.position = 'absolute';
-        container.style.left = '';
-        container.style.top = '';
-      });
+    const fixDropdownPosition = (inputElement) => {
+      setTimeout(() => {
+        const pacContainers = document.querySelectorAll('.pac-container');
+        pacContainers.forEach(container => {
+          if (container.style.display !== 'none') {
+            const rect = inputElement.getBoundingClientRect();
+            container.style.position = 'fixed';
+            container.style.left = `${rect.left}px`;
+            container.style.top = `${rect.bottom + window.scrollY}px`;
+            container.style.width = `${rect.width}px`;
+          }
+        });
+      }, 10);
     };
 
-    // Run fix after autocomplete renders
-    const observer = new MutationObserver(fixAutocompletePosition);
-    observer.observe(document.body, { childList: true, subtree: true });
+    // Add event listeners to inputs
+    pickupRef.current.addEventListener('focus', () => fixDropdownPosition(pickupRef.current));
+    pickupRef.current.addEventListener('input', () => fixDropdownPosition(pickupRef.current));
+    dropoffRef.current.addEventListener('focus', () => fixDropdownPosition(dropoffRef.current));
+    dropoffRef.current.addEventListener('input', () => fixDropdownPosition(dropoffRef.current));
 
-    return () => observer.disconnect();
   }, [isLoaded]);
 
   // Calculate price when addresses, passengers, VIP service, oversized luggage, or return trip changes
