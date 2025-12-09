@@ -1256,11 +1256,9 @@ Notes: {booking.get('notes', 'None')}
             """.strip(),
             'start': {
                 'dateTime': booking_datetime,
-                'timeZone': 'Pacific/Auckland',
             },
             'end': {
-                'dateTime': booking_datetime,  # Can adjust duration if needed
-                'timeZone': 'Pacific/Auckland',
+                'dateTime': (nz_dt + timedelta(hours=2)).isoformat(),  # 2 hour duration
             },
             'reminders': {
                 'useDefault': False,
