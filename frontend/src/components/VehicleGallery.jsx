@@ -21,7 +21,7 @@ export const VehicleGallery = () => {
       image: 'https://customer-assets.emergentagent.com/job_bookmyride-nz/artifacts/6fpsudnh_IMG_0158%20%281%29.jpeg',
       capacity: '11 passengers',
       luggage: '12+ bags',
-      description: 'Late night pickups with LED lights',
+      description: 'Late night & early morning pickups',
       badge: '24/7 AVAILABLE',
       isNight: true
     },
