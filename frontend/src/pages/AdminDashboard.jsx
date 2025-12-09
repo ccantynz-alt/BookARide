@@ -1496,12 +1496,20 @@ export const AdminDashboard = () => {
                     </div>
                     <div>
                       <Label>Flight Arrival Time</Label>
-                      <Input
-                        type="time"
-                        value={newBooking.flightArrivalTime}
-                        onChange={(e) => setNewBooking({...newBooking, flightArrivalTime: e.target.value})}
-                        className="mt-1 bg-white"
-                      />
+                      <div className="mt-1">
+                        <CustomTimePicker
+                          selected={adminFlightArrivalTime}
+                          onChange={(time) => {
+                            setAdminFlightArrivalTime(time);
+                            if (time) {
+                              const hours = time.getHours().toString().padStart(2, '0');
+                              const minutes = time.getMinutes().toString().padStart(2, '0');
+                              setNewBooking({...newBooking, flightArrivalTime: `${hours}:${minutes}`});
+                            }
+                          }}
+                          placeholder="Select arrival time"
+                        />
+                      </div>
                     </div>
                     <div>
                       <Label>Flight Departure Number</Label>
@@ -1514,12 +1522,20 @@ export const AdminDashboard = () => {
                     </div>
                     <div>
                       <Label>Flight Departure Time</Label>
-                      <Input
-                        type="time"
-                        value={newBooking.flightDepartureTime}
-                        onChange={(e) => setNewBooking({...newBooking, flightDepartureTime: e.target.value})}
-                        className="mt-1 bg-white"
-                      />
+                      <div className="mt-1">
+                        <CustomTimePicker
+                          selected={adminFlightDepartureTime}
+                          onChange={(time) => {
+                            setAdminFlightDepartureTime(time);
+                            if (time) {
+                              const hours = time.getHours().toString().padStart(2, '0');
+                              const minutes = time.getMinutes().toString().padStart(2, '0');
+                              setNewBooking({...newBooking, flightDepartureTime: `${hours}:${minutes}`});
+                            }
+                          }}
+                          placeholder="Select departure time"
+                        />
+                      </div>
                     </div>
                   </div>
                   <p className="text-xs text-gray-600 mt-2">
