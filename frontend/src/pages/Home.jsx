@@ -94,67 +94,94 @@ export const Home = () => {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10 py-20 sm:py-32">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             
-            {/* LEFT SIDE - POWERFUL MESSAGING */}
+            {/* LEFT SIDE - ULTRA SALES-FOCUSED */}
             <motion.div
               initial={{ opacity: 0, x: -50 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.8 }}
-              className="text-left"
+              className="text-left space-y-6"
             >
-              {/* Premium Badge */}
+              {/* URGENCY ALERT */}
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
-                transition={{ delay: 0.2, duration: 0.6 }}
-                className="inline-flex items-center gap-2 bg-gold/10 border border-gold/30 rounded-full px-4 py-2 mb-6"
+                transition={{ delay: 0.2, duration: 0.6, type: "spring" }}
+                className="inline-flex items-center gap-3 bg-gradient-to-r from-red-600 to-red-500 rounded-full px-6 py-3 shadow-2xl border-2 border-red-400 animate-pulse"
               >
-                <Star className="w-4 h-4 text-gold fill-gold" />
-                <span className="text-gold font-semibold text-sm tracking-wide">★★★★★ 5-STAR RATED</span>
+                <span className="text-white font-black text-base">🔥 BOOK NOW</span>
+                <span className="text-white font-bold text-sm">Save 15% on First Ride!</span>
               </motion.div>
 
-              {/* Massive Headline - SELLING POINT */}
-              <h1 className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-black text-white mb-6 leading-tight">
-                <span className="block mb-2">Premium</span>
-                <span className="block bg-gradient-to-r from-gold via-yellow-300 to-gold bg-clip-text text-transparent" 
-                      style={{ WebkitTextStroke: '1px rgba(212,175,55,0.3)' }}>
-                  Airport Transfers
+              {/* MASSIVE ATTENTION-GRABBING HEADLINE */}
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-black text-white leading-[1.1] tracking-tight">
+                <span className="block mb-3 text-white">NEVER MISS</span>
+                <span className="block bg-gradient-to-r from-gold via-yellow-300 to-gold bg-clip-text text-transparent mb-3 animate-pulse" 
+                      style={{ WebkitTextStroke: '2px rgba(212,175,55,0.3)' }}>
+                  YOUR FLIGHT
+                </span>
+                <span className="block text-white/90 text-3xl sm:text-4xl lg:text-5xl font-black">
+                  AGAIN!
                 </span>
               </h1>
 
-              {/* Compelling Subheading */}
-              <p className="text-xl sm:text-2xl lg:text-3xl text-gray-300 mb-8 leading-relaxed font-light">
-                Your journey matters. Arrive in <span className="text-gold font-semibold">comfort</span>, <span className="text-gold font-semibold">style</span>, and <span className="text-gold font-semibold">safety</span>.
-              </p>
+              {/* 100% GUARANTEE BOX */}
+              <div className="bg-gradient-to-r from-gold/30 to-yellow-500/30 border-4 border-gold rounded-2xl p-6 backdrop-blur-md shadow-2xl">
+                <p className="text-2xl sm:text-3xl lg:text-4xl text-white font-black leading-tight">
+                  100% ON-TIME
+                </p>
+                <p className="text-2xl sm:text-3xl lg:text-4xl text-white font-black leading-tight mb-2">
+                  GUARANTEE
+                </p>
+                <p className="text-xl text-white font-bold">
+                  or YOUR MONEY BACK! 💰
+                </p>
+              </div>
 
-              {/* Key Benefits - SELLING FEATURES */}
-              <div className="space-y-4 mb-10">
+              {/* IRRESISTIBLE BENEFITS */}
+              <div className="space-y-3 bg-black/60 rounded-2xl p-6 border-2 border-gold/40 backdrop-blur-sm">
                 {[
-                  { icon: Check, text: 'Professional Drivers - Licensed & Experienced' },
-                  { icon: Check, text: 'Premium Vehicles - Immaculate & Comfortable' },
-                  { icon: Check, text: 'Fixed Rates - No Hidden Fees, Ever' },
-                  { icon: Check, text: 'Flight Tracking - We Monitor Your Arrival' }
+                  { emoji: '⚡', text: 'Book in 60 SECONDS', bold: true },
+                  { emoji: '💎', text: 'Luxury Vehicles - Travel Like a VIP' },
+                  { emoji: '🎯', text: 'FIXED PRICES - No Surge Pricing' },
+                  { emoji: '📱', text: 'LIVE GPS Tracking Included' }
                 ].map((benefit, index) => (
                   <motion.div
                     key={index}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.4 + index * 0.1, duration: 0.6 }}
-                    className="flex items-center gap-4 group"
+                    transition={{ delay: 0.5 + index * 0.1, duration: 0.6 }}
+                    className={`flex items-center gap-3 ${benefit.bold ? 'bg-gold/30 rounded-lg p-3 border border-gold' : ''}`}
                   >
-                    <div className="flex-shrink-0 w-8 h-8 bg-gold/20 rounded-full flex items-center justify-center group-hover:bg-gold/30 transition-colors">
-                      <benefit.icon className="w-5 h-5 text-gold" strokeWidth={3} />
-                    </div>
-                    <span className="text-white text-lg font-medium">{benefit.text}</span>
+                    <span className="text-3xl">{benefit.emoji}</span>
+                    <span className={`text-white ${benefit.bold ? 'text-xl font-black' : 'text-lg font-semibold'}`}>
+                      {benefit.text}
+                    </span>
                   </motion.div>
                 ))}
               </div>
 
-              {/* POWERFUL CTA BUTTONS */}
+              {/* TRUST BADGES */}
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="bg-white/10 backdrop-blur-sm rounded-xl px-6 py-3 border border-gold/30">
+                  <div className="flex items-center gap-2">
+                    <span className="text-gold text-3xl font-black">4.9★</span>
+                    <div>
+                      <div className="text-white font-bold text-sm">10,000+ Rides</div>
+                      <div className="text-white/70 text-xs">#1 Rated in NZ</div>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-green-600/80 backdrop-blur-sm rounded-xl px-6 py-3 border-2 border-green-400">
+                  <div className="text-white font-black text-sm">✓ 24/7 SERVICE</div>
+                </div>
+              </div>
+
+              {/* MASSIVE CTA BUTTONS */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.8, duration: 0.6 }}
-                className="flex flex-col sm:flex-row gap-4"
+                className="flex flex-col sm:flex-row gap-4 pt-4"
               >
                 <Link to="/book-now" className="flex-1">
                   <Button 
