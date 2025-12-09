@@ -288,15 +288,18 @@ frontend:
 
   - task: "Custom Date/Time Pickers Testing on Booking Form"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/frontend/src/components/DateTimePicker.jsx"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: "NA"
           agent: "testing"
           comment: "Starting comprehensive test of custom date/time pickers on customer booking form. Testing: 1) Navigate to /book-now page, 2) Test Pickup Date field with beautiful calendar popup (gold/black theme, current date highlighted), 3) Test Pickup Time field with AM/PM format and 15-minute intervals, 4) Test Flight Information departure/arrival time pickers, 5) Test return trip date/time pickers if checkbox is available, 6) Verify smooth animations and proper value display in input fields. Will capture screenshots of date and time picker popups."
+        - working: true
+          agent: "testing"
+          comment: "✅ CUSTOM DATE/TIME PICKERS TESTING COMPLETED SUCCESSFULLY - All requested functionality working perfectly: 1) ✅ Beautiful Calendar Popup: Gold (#D4AF37) and black theme confirmed with dark gradient header and gold month text, 2) ✅ Current Date Highlighted: Today's date properly highlighted with gold border, 3) ✅ Easy Date Selection: Smooth date selection with hover effects working, 4) ✅ Time Picker AM/PM Format: 12-hour format confirmed with 96 time options showing AM/PM, 5) ✅ 15-Minute Intervals: Confirmed 72 interval times (:15, :30, :45) in scrollable list, 6) ✅ Flight Information Time Pickers: Departure and Arrival time pickers using same beautiful interface, 7) ✅ Return Trip Functionality: Return date/time pickers working when checkbox checked, 8) ✅ Smooth Animations: Professional animations and easy-to-use interface, 9) ✅ Selected Values Display: Values properly appear in input fields (14/12/2025, 12:00 AM, 10:00 AM). Screenshots captured showing beautiful calendar and time picker popups. All expected results achieved perfectly."
 
 metadata:
   created_by: "testing_agent"
