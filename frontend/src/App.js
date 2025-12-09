@@ -52,6 +52,14 @@ function App() {
               <main>
                 <Routes>
                   <Route path="/" element={siteConfig.isInternational ? <InternationalHomePage /> : <Home />} />
+                  
+                  {/* International Pages */}
+                  <Route path="/international/auckland-airport" element={<AucklandAirportInternational />} />
+                  <Route path="/international/hamilton-airport" element={<HamiltonAirportInternational />} />
+                  <Route path="/international/corporate-transfers" element={<CorporateTransfers />} />
+                  <Route path="/international/group-bookings" element={<GroupBookings />} />
+                  
+                  {/* Standard Pages */}
                   <Route path="/services" element={<Services />} />
                   <Route path="/about" element={<About />} />
                   <Route path="/contact" element={<Contact />} />
@@ -64,9 +72,13 @@ function App() {
                   <Route path="/hotels" element={<HotelsDirectory />} />
                   <Route path="/hotels/:slug" element={<HotelPage />} />
                   <Route path="/payment-success" element={<PaymentSuccess />} />
+                  
+                  {/* Admin Routes */}
                   <Route path="/admin/login" element={<AdminLogin />} />
                   <Route path="/admin/dashboard" element={<AdminDashboard />} />
                   <Route path="/admin/seo" element={<SEODashboard />} />
+                  
+                  {/* Legal Pages */}
                   <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
                   <Route path="/website-usage-policy" element={<WebsiteUsagePolicy />} />
                   <Route path="/privacy-policy" element={<PrivacyPolicy />} />
