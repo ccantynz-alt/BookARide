@@ -36,6 +36,7 @@ export const AdminDashboard = () => {
   });
   const pickupInputRef = useRef(null);
   const dropoffInputRef = useRef(null);
+  const additionalPickupRefs = useRef([]);
   const [activeTab, setActiveTab] = useState('bookings');
   const [bookings, setBookings] = useState([]);
   const [filteredBookings, setFilteredBookings] = useState([]);
