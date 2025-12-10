@@ -2477,21 +2477,45 @@ async def initialize_seo_pages(current_admin: dict = Depends(get_current_admin))
 
 @app.get("/sitemap.xml", include_in_schema=False)
 async def generate_sitemap():
-    """Generate XML sitemap for all pages"""
+    """Generate XML sitemap with hreflang support for international SEO"""
     from xml.etree.ElementTree import Element, SubElement, tostring
     
     base_url = "https://bookaride.co.nz"
     
+    # Supported languages
+    languages = ['en', 'zh', 'ja', 'ko', 'es', 'fr']
+    
     # Define all pages with priority and change frequency
-    pages = [
-        # Main pages
-        {"path": "/", "priority": "1.0", "changefreq": "daily"},
-        {"path": "/book-now", "priority": "1.0", "changefreq": "daily"},
-        {"path": "/services", "priority": "0.9", "changefreq": "weekly"},
-        {"path": "/about", "priority": "0.8", "changefreq": "monthly"},
-        {"path": "/contact", "priority": "0.9", "changefreq": "monthly"},
-        {"path": "/hobbiton-transfers", "priority": "0.8", "changefreq": "weekly"},
-        {"path": "/cruise-transfers", "priority": "0.8", "changefreq": "weekly"},
+    main_pages = [
+        # Main pages (will have language versions)
+        {"path": "/", "priority": "1.0", "changefreq": "daily", "multilang": True},
+        {"path": "/book-now", "priority": "1.0", "changefreq": "daily", "multilang": True},
+        {"path": "/services", "priority": "0.9", "changefreq": "weekly", "multilang": True},
+        {"path": "/about", "priority": "0.8", "changefreq": "monthly", "multilang": True},
+        {"path": "/contact", "priority": "0.9", "changefreq": "monthly", "multilang": True},
+        {"path": "/hobbiton-transfers", "priority": "0.8", "changefreq": "weekly", "multilang": True},
+        {"path": "/cruise-transfers", "priority": "0.8", "changefreq": "weekly", "multilang": True},
+        
+        # International Market Landing Pages
+        {"path": "/visitors/australia", "priority": "0.9", "changefreq": "weekly", "multilang": False},
+        {"path": "/visitors/china", "priority": "0.9", "changefreq": "weekly", "multilang": False},
+        {"path": "/visitors/japan", "priority": "0.9", "changefreq": "weekly", "multilang": False},
+        {"path": "/visitors/korea", "priority": "0.9", "changefreq": "weekly", "multilang": False},
+        {"path": "/visitors/singapore", "priority": "0.9", "changefreq": "weekly", "multilang": False},
+        {"path": "/visitors/usa", "priority": "0.9", "changefreq": "weekly", "multilang": False},
+        {"path": "/visitors/uk", "priority": "0.9", "changefreq": "weekly", "multilang": False},
+        {"path": "/visitors/germany", "priority": "0.9", "changefreq": "weekly", "multilang": False},
+        {"path": "/visitors/france", "priority": "0.9", "changefreq": "weekly", "multilang": False},
+        
+        # International Service Pages
+        {"path": "/international/auckland-airport", "priority": "0.9", "changefreq": "weekly", "multilang": True},
+        {"path": "/international/hamilton-airport", "priority": "0.9", "changefreq": "weekly", "multilang": True},
+        {"path": "/international/corporate-transfers", "priority": "0.8", "changefreq": "weekly", "multilang": True},
+        {"path": "/international/group-bookings", "priority": "0.8", "changefreq": "weekly", "multilang": True},
+    ]
+    
+    # Suburb and hotel pages (English only)
+    local_pages = [
         {"path": "/suburbs", "priority": "0.9", "changefreq": "weekly"},
         
         # Auckland Suburbs - all 27
@@ -2596,13 +2620,82 @@ async def generate_sitemap():
         {"path": "/privacy-policy", "priority": "0.5", "changefreq": "monthly"},
     ]
     
-    # Create XML structure
-    urlset = Element('urlset', xmlns="http://www.sitemaps.org/schemas/sitemap/0.9")
+    # Create XML structure with xhtml namespace for hreflang
+    nsmap = {
+        'xmlns': "http://www.sitemaps.org/schemas/sitemap/0.9",
+        'xmlns:xhtml': "http://www.w3.org/1999/xhtml"
+    }
     
-    for page in pages:
+    urlset = Element('urlset')
+    urlset.set('xmlns', "http://www.sitemaps.org/schemas/sitemap/0.9")
+    urlset.set('xmlns:xhtml', "http://www.w3.org/1999/xhtml")
+    
+    today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+    
+    # Add multilingual pages with hreflang
+    for page in main_pages:
+        if page.get('multilang', False):
+            # Add English version (default, no prefix)
+            url = SubElement(urlset, 'url')
+            SubElement(url, 'loc').text = base_url + page['path']
+            SubElement(url, 'lastmod').text = today
+            SubElement(url, 'changefreq').text = page['changefreq']
+            SubElement(url, 'priority').text = page['priority']
+            
+            # Add hreflang links for all languages
+            for lang in languages:
+                link = SubElement(url, '{http://www.w3.org/1999/xhtml}link')
+                link.set('rel', 'alternate')
+                link.set('hreflang', lang)
+                if lang == 'en':
+                    link.set('href', base_url + page['path'])
+                else:
+                    link.set('href', base_url + '/' + lang + page['path'])
+            
+            # Add x-default
+            link = SubElement(url, '{http://www.w3.org/1999/xhtml}link')
+            link.set('rel', 'alternate')
+            link.set('hreflang', 'x-default')
+            link.set('href', base_url + page['path'])
+            
+            # Add other language versions
+            for lang in languages:
+                if lang == 'en':
+                    continue
+                url = SubElement(urlset, 'url')
+                SubElement(url, 'loc').text = base_url + '/' + lang + page['path']
+                SubElement(url, 'lastmod').text = today
+                SubElement(url, 'changefreq').text = page['changefreq']
+                SubElement(url, 'priority').text = str(float(page['priority']) - 0.1)  # Slightly lower priority for non-English
+                
+                # Add hreflang links
+                for hlang in languages:
+                    link = SubElement(url, '{http://www.w3.org/1999/xhtml}link')
+                    link.set('rel', 'alternate')
+                    link.set('hreflang', hlang)
+                    if hlang == 'en':
+                        link.set('href', base_url + page['path'])
+                    else:
+                        link.set('href', base_url + '/' + hlang + page['path'])
+                
+                # Add x-default
+                link = SubElement(url, '{http://www.w3.org/1999/xhtml}link')
+                link.set('rel', 'alternate')
+                link.set('hreflang', 'x-default')
+                link.set('href', base_url + page['path'])
+        else:
+            # Non-multilingual page
+            url = SubElement(urlset, 'url')
+            SubElement(url, 'loc').text = base_url + page['path']
+            SubElement(url, 'lastmod').text = today
+            SubElement(url, 'changefreq').text = page['changefreq']
+            SubElement(url, 'priority').text = page['priority']
+    
+    # Add local pages (English only)
+    for page in local_pages:
         url = SubElement(urlset, 'url')
         SubElement(url, 'loc').text = base_url + page['path']
-        SubElement(url, 'lastmod').text = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+        SubElement(url, 'lastmod').text = today
         SubElement(url, 'changefreq').text = page['changefreq']
         SubElement(url, 'priority').text = page['priority']
     
