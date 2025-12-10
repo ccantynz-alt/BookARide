@@ -844,8 +844,12 @@ def send_via_mailgun(booking: dict):
         # Get pricing
         total_price = booking.get('pricing', {}).get('totalPrice', 0) if isinstance(booking.get('pricing'), dict) else 0
         
+        # Format date as DD/MM/YYYY and get reference
+        formatted_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
+        booking_ref = get_booking_reference(booking)
+        
         # Create email content with translations
-        subject = f"{t['subject']} - {booking.get('id', '')[:8]}"
+        subject = f"{t['subject']} - Ref: {booking_ref}"
         recipient_email = booking.get('email')
         
         html_content = f"""
@@ -860,11 +864,11 @@ def send_via_mailgun(booking: dict):
                     <p>{t['intro']}</p>
                     
                     <div style="background-color: white; padding: 15px; border-radius: 5px; margin: 20px 0;">
-                        <p><strong>{t['reference']}:</strong> {booking.get('id', '')[:8].upper()}</p>
+                        <p><strong>{t['reference']}:</strong> {booking_ref}</p>
                         <p><strong>{t['service']}:</strong> {booking.get('serviceType', 'N/A').replace('-', ' ').title()}</p>
                         <p><strong>{t['pickup']}:</strong> {booking.get('pickupAddress', 'N/A')}</p>
                         <p><strong>{t['dropoff']}:</strong> {booking.get('dropoffAddress', 'N/A')}</p>
-                        <p><strong>{t['date']}:</strong> {booking.get('date', 'N/A')}</p>
+                        <p><strong>{t['date']}:</strong> {formatted_date}</p>
                         <p><strong>{t['time']}:</strong> {booking.get('time', 'N/A')}</p>
                         <p><strong>{t['passengers']}:</strong> {booking.get('passengers', 'N/A')}</p>
                         <p><strong>{t['total']}:</strong> ${total_price:.2f} NZD</p>
