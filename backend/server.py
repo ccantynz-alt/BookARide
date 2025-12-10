@@ -12,6 +12,7 @@ from typing import List, Optional, Dict
 import uuid
 from datetime import datetime, timezone, timedelta
 import requests
+import httpx
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
