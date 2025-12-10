@@ -22,6 +22,16 @@ import AucklandAirportInternational from './pages/international/AucklandAirportI
 import HamiltonAirportInternational from './pages/international/HamiltonAirportInternational';
 import CorporateTransfers from './pages/international/CorporateTransfers';
 import GroupBookings from './pages/international/GroupBookings';
+// International Market Landing Pages
+import AustraliaLanding from './pages/markets/AustraliaLanding';
+import ChinaLanding from './pages/markets/ChinaLanding';
+import JapanLanding from './pages/markets/JapanLanding';
+import KoreaLanding from './pages/markets/KoreaLanding';
+import SingaporeLanding from './pages/markets/SingaporeLanding';
+import USALanding from './pages/markets/USALanding';
+import UKLanding from './pages/markets/UKLanding';
+import GermanyLanding from './pages/markets/GermanyLanding';
+import FranceLanding from './pages/markets/FranceLanding';
 import AdminLogin from './pages/AdminLogin';
 import TermsAndConditions from './pages/TermsAndConditions';
 import WebsiteUsagePolicy from './pages/WebsiteUsagePolicy';
@@ -34,6 +44,8 @@ import DriverPortal from './pages/DriverPortal';
 import { Toaster } from './components/ui/sonner';
 import BackToTop from './components/BackToTop';
 import InternationalBanner from './components/InternationalBanner';
+import LanguageRedirect from './components/LanguageRedirect';
+import { SUPPORTED_LANGUAGES } from './config/languages';
 
 function App() {
   return (
