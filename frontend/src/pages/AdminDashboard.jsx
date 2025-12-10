@@ -929,9 +929,9 @@ export const AdminDashboard = () => {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => handleDeleteBooking(booking.id, booking.name)}
+                              onClick={() => handleDeleteBooking(booking.id, booking.name, true)}
                               className="hover:bg-red-100 hover:text-red-600"
-                              title="Delete Booking"
+                              title="Cancel Booking (notify customer)"
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
