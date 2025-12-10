@@ -84,6 +84,12 @@ export const PaymentSuccess = () => {
                   {paymentDetails && (
                     <div className="bg-gray-50 p-6 rounded-lg mb-8">
                       <div className="text-left space-y-3">
+                        {paymentDetails.referenceNumber && (
+                          <div className="flex justify-between items-center bg-gold/10 p-3 rounded-lg mb-4">
+                            <span className="text-gray-700 font-medium">Your Booking Reference:</span>
+                            <span className="font-bold text-2xl text-gold">#{paymentDetails.referenceNumber}</span>
+                          </div>
+                        )}
                         <div className="flex justify-between">
                           <span className="text-gray-600">Amount Paid:</span>
                           <span className="font-semibold text-gray-900">
@@ -95,6 +101,9 @@ export const PaymentSuccess = () => {
                           <span className="font-semibold text-green-600">Confirmed</span>
                         </div>
                       </div>
+                      <p className="text-sm text-gray-500 mt-4 text-center">
+                        Please save this reference number for your records.
+                      </p>
                     </div>
                   )}
                   <button
