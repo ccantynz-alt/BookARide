@@ -2271,7 +2271,10 @@ async def send_cancellation_email(booking: dict, to_email: str, customer_name: s
         logger.warning("Mailgun credentials not configured for cancellation email")
         return
     
-    booking_date = booking.get('date', 'N/A')
+    # Format date and get references
+    formatted_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
+    booking_ref = get_booking_reference(booking)
+    full_booking_id = get_full_booking_reference(booking)
     booking_time = booking.get('time', 'N/A')
     pickup = booking.get('pickupAddress', 'N/A')
     dropoff = booking.get('dropoffAddress', 'N/A')
@@ -2307,8 +2310,10 @@ async def send_cancellation_email(booking: dict, to_email: str, customer_name: s
                 
                 <div class="booking-details">
                     <h3 style="margin-top: 0; color: #dc2626;">Cancelled Booking Details</h3>
+                    <div class="detail-row"><span class="label">Reference:</span> {booking_ref}</div>
+                    <div class="detail-row" style="font-size: 11px; color: #999;">Full ID: {full_booking_id}</div>
                     <div class="detail-row"><span class="label">Service:</span> {service_type}</div>
-                    <div class="detail-row"><span class="label">Date:</span> {booking_date}</div>
+                    <div class="detail-row"><span class="label">Date:</span> {formatted_date}</div>
                     <div class="detail-row"><span class="label">Time:</span> {booking_time}</div>
                     <div class="detail-row"><span class="label">Pickup:</span> {pickup}</div>
                     <div class="detail-row"><span class="label">Drop-off:</span> {dropoff}</div>
@@ -2339,7 +2344,7 @@ async def send_cancellation_email(booking: dict, to_email: str, customer_name: s
             data={
                 "from": f"Book A Ride NZ <{sender_email}>",
                 "to": to_email,
-                "subject": "Your Booking Has Been Cancelled - Book A Ride NZ",
+                "subject": f"Booking Cancelled - Ref: {booking_ref} - Book A Ride NZ",
                 "html": html_content
             }
         )
@@ -2358,14 +2363,17 @@ def send_cancellation_sms(booking: dict, to_phone: str, customer_name: str):
         logger.warning("Twilio credentials not configured for cancellation SMS")
         return
     
-    booking_date = booking.get('date', 'N/A')
+    # Format date and get reference
+    formatted_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
+    booking_ref = get_booking_reference(booking)
     booking_time = booking.get('time', 'N/A')
     
     sms_body = f"""Book A Ride NZ - Booking Cancelled
 
+Ref: {booking_ref}
 Hi {customer_name.split()[0] if customer_name else 'there'},
 
-Your booking for {booking_date} at {booking_time} has been cancelled.
+Your booking for {formatted_date} at {booking_time} has been cancelled.
 
 If you didn't request this, please call us at 027-246-0201.
 
