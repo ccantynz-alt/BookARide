@@ -658,6 +658,46 @@ async def send_booking_to_admin(booking_id: str, current_admin: dict = Depends(g
         raise HTTPException(status_code=500, detail=f"Error sending booking to admin: {str(e)}")
 
 
+# ============================================
+# DATE AND REFERENCE FORMATTING HELPERS
+# ============================================
+
+def format_date_ddmmyyyy(date_str: str) -> str:
+    """Convert date from YYYY-MM-DD to DD/MM/YYYY format"""
+    if not date_str or date_str == 'N/A':
+        return 'N/A'
+    try:
+        # Handle various input formats
+        if '/' in date_str:
+            # Already in DD/MM/YYYY or similar format
+            parts = date_str.split('/')
+            if len(parts) == 3 and len(parts[0]) == 4:
+                # YYYY/MM/DD format
+                return f"{parts[2]}/{parts[1]}/{parts[0]}"
+            return date_str  # Already DD/MM/YYYY
+        elif '-' in date_str:
+            # YYYY-MM-DD format
+            parts = date_str.split('-')
+            if len(parts) == 3:
+                return f"{parts[2]}/{parts[1]}/{parts[0]}"
+        return date_str
+    except Exception:
+        return date_str
+
+def get_booking_reference(booking: dict) -> str:
+    """Get a short booking reference for cross-referencing"""
+    # Use the booking ID or generate a short reference
+    booking_id = booking.get('id', '')
+    if booking_id:
+        # Return first 8 characters of UUID in uppercase
+        return booking_id[:8].upper()
+    return 'N/A'
+
+def get_full_booking_reference(booking: dict) -> str:
+    """Get the full booking ID for admin reference"""
+    return booking.get('id', 'N/A')
+
+
 # Email and SMS Notification Services
 
 # Email translations
