@@ -48,55 +48,104 @@ import LanguageRedirect from './components/LanguageRedirect';
 import { SUPPORTED_LANGUAGES } from './config/languages';
 
 function App() {
+  // Generate language-prefixed routes
+  const languagePrefixes = SUPPORTED_LANGUAGES.filter(l => l.code !== 'en').map(l => l.code);
+
+  // Common page routes that need language prefixes
+  const PageRoutes = () => (
+    <>
+      <Route index element={siteConfig.isInternational ? <InternationalHomePage /> : <Home />} />
+      
+      {/* International Pages */}
+      <Route path="international/auckland-airport" element={<AucklandAirportInternational />} />
+      <Route path="international/hamilton-airport" element={<HamiltonAirportInternational />} />
+      <Route path="international/corporate-transfers" element={<CorporateTransfers />} />
+      <Route path="international/group-bookings" element={<GroupBookings />} />
+      
+      {/* Market-Specific Landing Pages */}
+      <Route path="visitors/australia" element={<AustraliaLanding />} />
+      <Route path="visitors/china" element={<ChinaLanding />} />
+      <Route path="visitors/japan" element={<JapanLanding />} />
+      <Route path="visitors/korea" element={<KoreaLanding />} />
+      <Route path="visitors/singapore" element={<SingaporeLanding />} />
+      <Route path="visitors/usa" element={<USALanding />} />
+      <Route path="visitors/uk" element={<UKLanding />} />
+      <Route path="visitors/germany" element={<GermanyLanding />} />
+      <Route path="visitors/france" element={<FranceLanding />} />
+      
+      {/* Standard Pages */}
+      <Route path="services" element={<Services />} />
+      <Route path="about" element={<About />} />
+      <Route path="contact" element={<Contact />} />
+      <Route path="book-now" element={<BookNow />} />
+      <Route path="hobbiton-transfers" element={<HobbitonTransfers />} />
+      <Route path="cruise-transfers" element={<CruiseTransfers />} />
+      <Route path="suburbs" element={<SuburbsDirectory />} />
+      <Route path="suburbs/:slug" element={<SuburbPage />} />
+      <Route path="hibiscus-coast" element={<HibiscusCoastPage />} />
+      <Route path="hotels" element={<HotelsDirectory />} />
+      <Route path="hotels/:slug" element={<HotelPage />} />
+      <Route path="payment-success" element={<PaymentSuccess />} />
+      
+      {/* Legal Pages */}
+      <Route path="terms-and-conditions" element={<TermsAndConditions />} />
+      <Route path="website-usage-policy" element={<WebsiteUsagePolicy />} />
+      <Route path="privacy-policy" element={<PrivacyPolicy />} />
+    </>
+  );
+
   return (
     <div className="App">
       <BrowserRouter>
-        <Routes>
-          {/* Driver Routes (No Header/Footer) */}
-          <Route path="/driver/login" element={<DriverLogin />} />
-          <Route path="/driver/portal" element={<DriverPortal />} />
-          
-          {/* Public Routes (With Header/Footer) */}
-          <Route path="*" element={
-            <>
-              <InternationalBanner />
-              <Header />
-              <main>
-                <Routes>
-                  <Route path="/" element={siteConfig.isInternational ? <InternationalHomePage /> : <Home />} />
-                  
-                  {/* International Pages */}
-                  <Route path="/international/auckland-airport" element={<AucklandAirportInternational />} />
-                  <Route path="/international/hamilton-airport" element={<HamiltonAirportInternational />} />
-                  <Route path="/international/corporate-transfers" element={<CorporateTransfers />} />
-                  <Route path="/international/group-bookings" element={<GroupBookings />} />
-                  
-                  {/* Standard Pages */}
-                  <Route path="/services" element={<Services />} />
-                  <Route path="/about" element={<About />} />
-                  <Route path="/contact" element={<Contact />} />
-                  <Route path="/book-now" element={<BookNow />} />
-                  <Route path="/hobbiton-transfers" element={<HobbitonTransfers />} />
-                  <Route path="/cruise-transfers" element={<CruiseTransfers />} />
-                  <Route path="/suburbs" element={<SuburbsDirectory />} />
-                  <Route path="/suburbs/:slug" element={<SuburbPage />} />
-                  <Route path="/hibiscus-coast" element={<HibiscusCoastPage />} />
-                  <Route path="/hotels" element={<HotelsDirectory />} />
-                  <Route path="/hotels/:slug" element={<HotelPage />} />
-                  <Route path="/payment-success" element={<PaymentSuccess />} />
-                  
-                  {/* Admin Routes */}
-                  <Route path="/admin/login" element={<AdminLogin />} />
-                  <Route path="/admin/dashboard" element={<AdminDashboard />} />
-                  <Route path="/admin/seo" element={<SEODashboard />} />
-                  
-                  {/* Legal Pages */}
-                  <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
-                  <Route path="/website-usage-policy" element={<WebsiteUsagePolicy />} />
-                  <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-                </Routes>
-              </main>
-              <Footer />
+        <LanguageRedirect>
+          <Routes>
+            {/* Driver Routes (No Header/Footer) */}
+            <Route path="/driver/login" element={<DriverLogin />} />
+            <Route path="/driver/portal" element={<DriverPortal />} />
+            
+            {/* Admin Routes (No language prefix) */}
+            <Route path="/admin/login" element={<AdminLogin />} />
+            <Route path="/admin/dashboard" element={<AdminDashboard />} />
+            <Route path="/admin/seo" element={<SEODashboard />} />
+            
+            {/* Language-prefixed routes (zh, ja, ko, es, fr) */}
+            {languagePrefixes.map(lang => (
+              <Route key={lang} path={`/${lang}/*`} element={
+                <>
+                  <InternationalBanner />
+                  <Header />
+                  <main>
+                    <Routes>
+                      <PageRoutes />
+                    </Routes>
+                  </main>
+                  <Footer />
+                  <BackToTop />
+                </>
+              } />
+            ))}
+            
+            {/* Default English routes (no prefix) */}
+            <Route path="/*" element={
+              <>
+                <InternationalBanner />
+                <Header />
+                <main>
+                  <Routes>
+                    <PageRoutes />
+                  </Routes>
+                </main>
+                <Footer />
+                <BackToTop />
+              </>
+            } />
+          </Routes>
+          <Toaster />
+        </LanguageRedirect>
+      </BrowserRouter>
+    </div>
+  );
+}
               <BackToTop />
             </>
           } />
