@@ -165,6 +165,26 @@ class BookingCreate(BaseModel):
 
 class Booking(BookingCreate):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    referenceNumber: Optional[int] = None  # Sequential reference number starting from 10
+
+async def get_next_reference_number():
+    """Get the next sequential reference number for bookings, starting from 10"""
+    # Use a counter collection to maintain sequential numbers
+    counter = await db.counters.find_one_and_update(
+        {"_id": "booking_reference"},
+        {"$inc": {"seq": 1}},
+        upsert=True,
+        return_document=True
+    )
+    # Start from 10 if this is a new counter
+    if counter is None or counter.get('seq', 0) < 10:
+        await db.counters.update_one(
+            {"_id": "booking_reference"},
+            {"$set": {"seq": 10}},
+            upsert=True
+        )
+        return 10
+    return counter.get('seq', 10)
 
 # Authentication Endpoints
 
