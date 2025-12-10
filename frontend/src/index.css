@@ -113,21 +113,17 @@ code {
   }
 }
 
-/* Google Places Autocomplete Dropdown Fix */
+/* Google Places Autocomplete Dropdown Fix - CRITICAL FOR BOOKING */
 .pac-container {
-  z-index: 99999 !important;
+  z-index: 999999 !important;
   background-color: white !important;
   border-radius: 4px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
   font-family: 'Inter', sans-serif;
   margin-top: 2px !important;
   pointer-events: auto !important;
-  /* Prevent any transform that might cause click issues */
   transform: none !important;
-  /* Ensure container is always visible and clickable */
-  display: block !important;
-  visibility: visible !important;
-  opacity: 1 !important;
+  position: fixed !important;
 }
 
 .pac-container:after {
