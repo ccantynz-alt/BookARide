@@ -711,11 +711,14 @@ def format_date_ddmmyyyy(date_str: str) -> str:
         return date_str
 
 def get_booking_reference(booking: dict) -> str:
-    """Get a short booking reference for cross-referencing"""
-    # Use the booking ID or generate a short reference
+    """Get the booking reference number for display"""
+    # Use the sequential reference number if available
+    ref_num = booking.get('referenceNumber')
+    if ref_num:
+        return f"#{ref_num}"
+    # Fallback to first 8 chars of UUID for old bookings
     booking_id = booking.get('id', '')
     if booking_id:
-        # Return first 8 characters of UUID in uppercase
         return booking_id[:8].upper()
     return 'N/A'
 
