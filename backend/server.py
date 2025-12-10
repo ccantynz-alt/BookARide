@@ -453,18 +453,24 @@ async def create_booking(booking: BookingCreate):
     try:
         booking_obj = Booking(**booking.dict())
         booking_dict = booking_obj.dict()
+        
+        # Get sequential reference number
+        ref_number = await get_next_reference_number()
+        booking_dict['referenceNumber'] = ref_number
+        booking_obj.referenceNumber = ref_number
+        
         # Extract totalPrice from pricing for payment processing
         booking_dict['totalPrice'] = booking.pricing.get('totalPrice', 0)
         booking_dict['payment_status'] = 'unpaid'
         await db.bookings.insert_one(booking_dict)
-        logger.info(f"Booking created: {booking_obj.id}")
+        logger.info(f"Booking created: {booking_obj.id} with reference #{ref_number}")
         
         # Send admin notification email for new booking
         try:
             await send_booking_notification_to_admin(booking_dict)
-            logger.info(f"Admin notification sent for booking {booking_obj.id}")
+            logger.info(f"Admin notification sent for booking #{ref_number}")
         except Exception as email_error:
-            logger.error(f"Failed to send admin notification for booking {booking_obj.id}: {str(email_error)}")
+            logger.error(f"Failed to send admin notification for booking #{ref_number}: {str(email_error)}")
             # Don't fail the booking creation if email fails
         
         return booking_obj
