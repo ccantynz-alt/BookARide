@@ -1,6 +1,52 @@
-// Fix Google Places Autocomplete dropdown positioning and click handling
-// This utility ensures dropdowns appear directly under input fields
-// and prevents focus loss when clicking dropdown items
+// Fix Google Places Autocomplete dropdown - CONSOLIDATED APPROACH
+// Single capture-phase event handler to prevent dialog closing
+
+// Global flag to track if the global handler is installed
+let globalHandlerInstalled = false;
+
+// Install global capture-phase handler ONCE at app startup
+const installGlobalHandler = () => {
+  if (globalHandlerInstalled) return;
+  
+  // Capture phase runs BEFORE any other handlers
+  // This ensures we catch the event before Dialog's onInteractOutside
+  const handler = (e) => {
+    const target = e.target;
+    
+    // Check if click is on Google Places dropdown
+    if (target && (
+      target.closest('.pac-container') ||
+      target.closest('.pac-item') ||
+      target.classList?.contains('pac-container') ||
+      target.classList?.contains('pac-item') ||
+      target.classList?.contains('pac-item-query') ||
+      target.classList?.contains('pac-matched') ||
+      target.classList?.contains('pac-icon')
+    )) {
+      // Stop the event from reaching Dialog's onInteractOutside
+      e.stopPropagation();
+      // Don't prevent default - let the selection happen
+    }
+  };
+  
+  // Use capture: true to run BEFORE bubble phase handlers
+  document.addEventListener('mousedown', handler, true);
+  document.addEventListener('pointerdown', handler, true);
+  document.addEventListener('touchstart', handler, true);
+  
+  globalHandlerInstalled = true;
+  console.log('✅ Google Places global click handler installed');
+};
+
+// Auto-install on module load
+if (typeof window !== 'undefined') {
+  // Install immediately if DOM is ready
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    installGlobalHandler();
+  } else {
+    document.addEventListener('DOMContentLoaded', installGlobalHandler);
+  }
+}
 
 export const initAutocompleteWithFix = (inputElement, options = {}) => {
   if (!window.google || !window.google.maps || !window.google.maps.places) {
@@ -8,99 +54,50 @@ export const initAutocompleteWithFix = (inputElement, options = {}) => {
     return null;
   }
 
+  // Ensure global handler is installed
+  installGlobalHandler();
+
   const autocomplete = new window.google.maps.places.Autocomplete(inputElement, {
     componentRestrictions: { country: 'nz' },
     ...options
   });
 
-  // Force repositioning of dropdown
+  // Simple repositioning function
   const repositionDropdown = () => {
-    // Small delay to ensure pac-container is in DOM
-    setTimeout(() => {
+    requestAnimationFrame(() => {
       const pacContainers = document.querySelectorAll('.pac-container');
       const inputRect = inputElement.getBoundingClientRect();
       
       pacContainers.forEach(container => {
-        // Only reposition if dropdown is visible
-        if (container.style.display !== 'none' && container.offsetParent !== null) {
+        if (container.style.display !== 'none') {
           container.style.position = 'fixed';
           container.style.left = `${inputRect.left}px`;
-          container.style.top = `${inputRect.bottom}px`;
+          container.style.top = `${inputRect.bottom + 2}px`;
           container.style.width = `${inputRect.width}px`;
-          container.style.zIndex = '99999';
+          container.style.zIndex = '999999';
         }
       });
-    }, 50);
+    });
   };
 
-  // CRITICAL FIX: Prevent mousedown on pac-container from causing input blur
-  // This fixes the issue where clicking the dropdown causes the form to "disappear"
-  const preventBlurOnDropdownClick = (e) => {
-    // Check if the click target is inside a pac-container (Google's dropdown)
-    if (e.target.closest('.pac-container')) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-  };
-
-  // Add mousedown listener to document to catch dropdown clicks before blur
-  document.addEventListener('mousedown', preventBlurOnDropdownClick, true);
-
-  // Also add touchstart for mobile devices
-  document.addEventListener('touchstart', preventBlurOnDropdownClick, true);
-
-  // Attach listeners to input
+  // Attach listeners
   inputElement.addEventListener('focus', repositionDropdown);
   inputElement.addEventListener('input', repositionDropdown);
-  inputElement.addEventListener('keydown', repositionDropdown);
   
-  // Reposition on scroll
-  window.addEventListener('scroll', repositionDropdown, { passive: true });
-  window.addEventListener('resize', repositionDropdown, { passive: true });
-
-  // Watch for dropdown creation and add click prevention to new pac-containers
-  const observer = new MutationObserver((mutations) => {
-    repositionDropdown();
-    
-    // Ensure pac-containers have proper event handling
-    mutations.forEach((mutation) => {
-      mutation.addedNodes.forEach((node) => {
-        if (node.classList && node.classList.contains('pac-container')) {
-          // Prevent mousedown from blurring the input
-          node.addEventListener('mousedown', (e) => {
-            e.preventDefault();
-          });
-          node.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-          }, { passive: false });
-        }
-      });
-    });
-  });
-  
-  observer.observe(document.body, {
-    childList: true,
-    subtree: false
-  });
-
-  // Also attach to any existing pac-containers
-  document.querySelectorAll('.pac-container').forEach(container => {
-    container.addEventListener('mousedown', (e) => {
-      e.preventDefault();
-    });
-  });
+  // Reposition on scroll/resize
+  const scrollHandler = () => repositionDropdown();
+  window.addEventListener('scroll', scrollHandler, { passive: true });
+  window.addEventListener('resize', scrollHandler, { passive: true });
 
   return {
     autocomplete,
     cleanup: () => {
       inputElement.removeEventListener('focus', repositionDropdown);
       inputElement.removeEventListener('input', repositionDropdown);
-      inputElement.removeEventListener('keydown', repositionDropdown);
-      window.removeEventListener('scroll', repositionDropdown);
-      window.removeEventListener('resize', repositionDropdown);
-      document.removeEventListener('mousedown', preventBlurOnDropdownClick, true);
-      document.removeEventListener('touchstart', preventBlurOnDropdownClick, true);
-      observer.disconnect();
+      window.removeEventListener('scroll', scrollHandler);
+      window.removeEventListener('resize', scrollHandler);
     }
   };
 };
+
+export default initAutocompleteWithFix;
