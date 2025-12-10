@@ -1891,6 +1891,9 @@ class ManualBooking(BaseModel):
 async def create_manual_booking(booking: ManualBooking):
     """Create a booking manually"""
     try:
+        # Get sequential reference number
+        ref_number = await get_next_reference_number()
+        
         # Extract total price from pricing or use override
         if booking.priceOverride is not None and booking.priceOverride > 0:
             total_price = booking.priceOverride
@@ -1905,6 +1908,7 @@ async def create_manual_booking(booking: ManualBooking):
         
         new_booking = {
             "id": str(uuid.uuid4()),
+            "referenceNumber": ref_number,  # Sequential reference number
             "name": booking.name,
             "email": booking.email,
             "phone": booking.phone,
@@ -1928,7 +1932,7 @@ async def create_manual_booking(booking: ManualBooking):
         }
         
         await db.bookings.insert_one(new_booking)
-        logger.info(f"Manual booking created: {new_booking['id']} - Payment: {booking.paymentMethod}")
+        logger.info(f"Manual booking created: #{ref_number} - Payment: {booking.paymentMethod}")
         
         # Send confirmation email
         send_booking_confirmation_email(new_booking)
@@ -1942,7 +1946,7 @@ async def create_manual_booking(booking: ManualBooking):
         # Create calendar event
         await create_calendar_event(new_booking)
         
-        return {"message": "Booking created successfully", "id": new_booking['id']}
+        return {"message": "Booking created successfully", "id": new_booking['id'], "referenceNumber": ref_number}
     except Exception as e:
         logger.error(f"Error creating manual booking: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
