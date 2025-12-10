@@ -1569,7 +1569,7 @@ async def create_payment_checkout(request: PaymentCheckoutRequest, http_request:
         raise HTTPException(status_code=500, detail=f"Error creating checkout session: {str(e)}")
 
 
-@api_router.get("/payment/status/{session_id}", response_model=CheckoutStatusResponse)
+@api_router.get("/payment/status/{session_id}")
 async def get_payment_status(session_id: str):
     try:
         # Get Stripe API key
@@ -1585,13 +1585,19 @@ async def get_payment_status(session_id: str):
         
         if existing_transaction:
             logger.info(f"Payment already processed for session: {session_id}")
-            return CheckoutStatusResponse(
-                status=existing_transaction['status'],
-                payment_status=existing_transaction['payment_status'],
-                amount_total=int(existing_transaction['amount'] * 100),
-                currency=existing_transaction['currency'],
-                metadata={"booking_id": existing_transaction['booking_id']}
+            # Get the booking to retrieve reference number
+            booking = await db.bookings.find_one(
+                {"id": existing_transaction['booking_id']}, 
+                {"_id": 0, "referenceNumber": 1}
             )
+            return {
+                "status": existing_transaction['status'],
+                "payment_status": existing_transaction['payment_status'],
+                "amount_total": int(existing_transaction['amount'] * 100),
+                "currency": existing_transaction['currency'],
+                "metadata": {"booking_id": existing_transaction['booking_id']},
+                "referenceNumber": booking.get('referenceNumber') if booking else None
+            }
         
         # Initialize Stripe Checkout (webhook_url not needed for status check)
         stripe_checkout = StripeCheckout(api_key=stripe_api_key, webhook_url="")
@@ -1611,6 +1617,8 @@ async def get_payment_status(session_id: str):
             {"$set": update_data}
         )
         
+        reference_number = None
+        
         # If payment is successful, update booking status and send confirmations
         if checkout_status.payment_status == "paid" and result.modified_count > 0:
             booking_id = checkout_status.metadata.get('booking_id')
@@ -1624,6 +1632,8 @@ async def get_payment_status(session_id: str):
                 # Get booking details for notifications
                 booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
                 if booking:
+                    reference_number = booking.get('referenceNumber')
+                    
                     # Send email confirmation
                     send_booking_confirmation_email(booking)
                     
@@ -1636,7 +1646,15 @@ async def get_payment_status(session_id: str):
                     # Create Google Calendar event
                     await create_calendar_event(booking)
         
-        return checkout_status
+        # Return response with reference number
+        return {
+            "status": checkout_status.status,
+            "payment_status": checkout_status.payment_status,
+            "amount_total": checkout_status.amount_total,
+            "currency": checkout_status.currency,
+            "metadata": checkout_status.metadata,
+            "referenceNumber": reference_number
+        }
     
     except Exception as e:
         logger.error(f"Error getting payment status: {str(e)}")
