@@ -1,7 +1,7 @@
 import React from 'react';
 import './App.css';
 import './i18n/config';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import Home from './pages/Home';
@@ -47,52 +47,62 @@ import InternationalBanner from './components/InternationalBanner';
 import LanguageRedirect from './components/LanguageRedirect';
 import { SUPPORTED_LANGUAGES } from './config/languages';
 
+// Layout component with Header/Footer
+const MainLayout = () => (
+  <>
+    <InternationalBanner />
+    <Header />
+    <main>
+      <Outlet />
+    </main>
+    <Footer />
+    <BackToTop />
+  </>
+);
+
+// Get the homepage component based on config
+const HomePage = siteConfig.isInternational ? InternationalHomePage : Home;
+
 function App() {
   // Generate language-prefixed routes
   const languagePrefixes = SUPPORTED_LANGUAGES.filter(l => l.code !== 'en').map(l => l.code);
 
-  // Common page routes that need language prefixes
-  const PageRoutes = () => (
-    <>
-      <Route index element={siteConfig.isInternational ? <InternationalHomePage /> : <Home />} />
-      
-      {/* International Pages */}
-      <Route path="international/auckland-airport" element={<AucklandAirportInternational />} />
-      <Route path="international/hamilton-airport" element={<HamiltonAirportInternational />} />
-      <Route path="international/corporate-transfers" element={<CorporateTransfers />} />
-      <Route path="international/group-bookings" element={<GroupBookings />} />
-      
-      {/* Market-Specific Landing Pages */}
-      <Route path="visitors/australia" element={<AustraliaLanding />} />
-      <Route path="visitors/china" element={<ChinaLanding />} />
-      <Route path="visitors/japan" element={<JapanLanding />} />
-      <Route path="visitors/korea" element={<KoreaLanding />} />
-      <Route path="visitors/singapore" element={<SingaporeLanding />} />
-      <Route path="visitors/usa" element={<USALanding />} />
-      <Route path="visitors/uk" element={<UKLanding />} />
-      <Route path="visitors/germany" element={<GermanyLanding />} />
-      <Route path="visitors/france" element={<FranceLanding />} />
-      
-      {/* Standard Pages */}
-      <Route path="services" element={<Services />} />
-      <Route path="about" element={<About />} />
-      <Route path="contact" element={<Contact />} />
-      <Route path="book-now" element={<BookNow />} />
-      <Route path="hobbiton-transfers" element={<HobbitonTransfers />} />
-      <Route path="cruise-transfers" element={<CruiseTransfers />} />
-      <Route path="suburbs" element={<SuburbsDirectory />} />
-      <Route path="suburbs/:slug" element={<SuburbPage />} />
-      <Route path="hibiscus-coast" element={<HibiscusCoastPage />} />
-      <Route path="hotels" element={<HotelsDirectory />} />
-      <Route path="hotels/:slug" element={<HotelPage />} />
-      <Route path="payment-success" element={<PaymentSuccess />} />
-      
-      {/* Legal Pages */}
-      <Route path="terms-and-conditions" element={<TermsAndConditions />} />
-      <Route path="website-usage-policy" element={<WebsiteUsagePolicy />} />
-      <Route path="privacy-policy" element={<PrivacyPolicy />} />
-    </>
-  );
+  // Define common routes as an array to avoid repetition
+  const commonRoutes = [
+    { index: true, element: <HomePage /> },
+    // International Pages
+    { path: "international/auckland-airport", element: <AucklandAirportInternational /> },
+    { path: "international/hamilton-airport", element: <HamiltonAirportInternational /> },
+    { path: "international/corporate-transfers", element: <CorporateTransfers /> },
+    { path: "international/group-bookings", element: <GroupBookings /> },
+    // Market-Specific Landing Pages
+    { path: "visitors/australia", element: <AustraliaLanding /> },
+    { path: "visitors/china", element: <ChinaLanding /> },
+    { path: "visitors/japan", element: <JapanLanding /> },
+    { path: "visitors/korea", element: <KoreaLanding /> },
+    { path: "visitors/singapore", element: <SingaporeLanding /> },
+    { path: "visitors/usa", element: <USALanding /> },
+    { path: "visitors/uk", element: <UKLanding /> },
+    { path: "visitors/germany", element: <GermanyLanding /> },
+    { path: "visitors/france", element: <FranceLanding /> },
+    // Standard Pages
+    { path: "services", element: <Services /> },
+    { path: "about", element: <About /> },
+    { path: "contact", element: <Contact /> },
+    { path: "book-now", element: <BookNow /> },
+    { path: "hobbiton-transfers", element: <HobbitonTransfers /> },
+    { path: "cruise-transfers", element: <CruiseTransfers /> },
+    { path: "suburbs", element: <SuburbsDirectory /> },
+    { path: "suburbs/:slug", element: <SuburbPage /> },
+    { path: "hibiscus-coast", element: <HibiscusCoastPage /> },
+    { path: "hotels", element: <HotelsDirectory /> },
+    { path: "hotels/:slug", element: <HotelPage /> },
+    { path: "payment-success", element: <PaymentSuccess /> },
+    // Legal Pages
+    { path: "terms-and-conditions", element: <TermsAndConditions /> },
+    { path: "website-usage-policy", element: <WebsiteUsagePolicy /> },
+    { path: "privacy-policy", element: <PrivacyPolicy /> },
+  ];
 
   return (
     <div className="App">
@@ -110,35 +120,29 @@ function App() {
             
             {/* Language-prefixed routes (zh, ja, ko, es, fr) */}
             {languagePrefixes.map(lang => (
-              <Route key={lang} path={`/${lang}/*`} element={
-                <>
-                  <InternationalBanner />
-                  <Header />
-                  <main>
-                    <Routes>
-                      <PageRoutes />
-                    </Routes>
-                  </main>
-                  <Footer />
-                  <BackToTop />
-                </>
-              } />
+              <Route key={lang} path={`/${lang}`} element={<MainLayout />}>
+                {commonRoutes.map((route, idx) => (
+                  <Route 
+                    key={`${lang}-${idx}`}
+                    index={route.index}
+                    path={route.path}
+                    element={route.element}
+                  />
+                ))}
+              </Route>
             ))}
             
             {/* Default English routes (no prefix) */}
-            <Route path="/*" element={
-              <>
-                <InternationalBanner />
-                <Header />
-                <main>
-                  <Routes>
-                    <PageRoutes />
-                  </Routes>
-                </main>
-                <Footer />
-                <BackToTop />
-              </>
-            } />
+            <Route path="/" element={<MainLayout />}>
+              {commonRoutes.map((route, idx) => (
+                <Route 
+                  key={`en-${idx}`}
+                  index={route.index}
+                  path={route.path}
+                  element={route.element}
+                />
+              ))}
+            </Route>
           </Routes>
           <Toaster />
         </LanguageRedirect>
