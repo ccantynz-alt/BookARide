@@ -146,14 +146,5 @@ function App() {
     </div>
   );
 }
-              <BackToTop />
-            </>
-          } />
-        </Routes>
-        <Toaster />
-      </BrowserRouter>
-    </div>
-  );
-}
 
 export default App;
