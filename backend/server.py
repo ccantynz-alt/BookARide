@@ -2147,26 +2147,195 @@ async def get_driver_schedule(driver_id: str, date: Optional[str] = None):
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.delete("/bookings/{booking_id}")
-async def delete_booking(booking_id: str, current_admin: dict = Depends(get_current_admin)):
-    """Delete a single booking"""
+async def delete_booking(booking_id: str, send_notification: bool = True, current_admin: dict = Depends(get_current_admin)):
+    """Delete a single booking and optionally send cancellation notifications"""
     try:
+        # First, get the booking details before deleting (for notifications)
+        booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+        if not booking:
+            raise HTTPException(status_code=404, detail="Booking not found")
+        
+        # Send cancellation notifications if requested
+        if send_notification:
+            try:
+                await send_cancellation_notifications(booking)
+            except Exception as e:
+                logger.error(f"Error sending cancellation notifications: {str(e)}")
+                # Continue with deletion even if notifications fail
+        
+        # Delete the booking
         result = await db.bookings.delete_one({"id": booking_id})
         if result.deleted_count == 0:
             raise HTTPException(status_code=404, detail="Booking not found")
-        logger.info(f"Booking {booking_id} deleted by admin")
-        return {"message": "Booking deleted successfully"}
+        
+        logger.info(f"Booking {booking_id} deleted by admin, notifications sent: {send_notification}")
+        return {"message": "Booking cancelled successfully", "notifications_sent": send_notification}
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error deleting booking: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+async def send_cancellation_notifications(booking: dict):
+    """Send cancellation email and SMS to customer"""
+    customer_email = booking.get('email')
+    customer_phone = booking.get('phone')
+    customer_name = booking.get('name', 'Valued Customer')
+    booking_date = booking.get('date', 'N/A')
+    booking_time = booking.get('time', 'N/A')
+    pickup = booking.get('pickupAddress', 'N/A')
+    dropoff = booking.get('dropoffAddress', 'N/A')
+    
+    # Send cancellation email
+    if customer_email:
+        try:
+            await send_cancellation_email(booking, customer_email, customer_name)
+            logger.info(f"Cancellation email sent to {customer_email}")
+        except Exception as e:
+            logger.error(f"Failed to send cancellation email: {str(e)}")
+    
+    # Send cancellation SMS
+    if customer_phone:
+        try:
+            send_cancellation_sms(booking, customer_phone, customer_name)
+            logger.info(f"Cancellation SMS sent to {customer_phone}")
+        except Exception as e:
+            logger.error(f"Failed to send cancellation SMS: {str(e)}")
+
+async def send_cancellation_email(booking: dict, to_email: str, customer_name: str):
+    """Send cancellation email via Mailgun"""
+    mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
+    mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
+    sender_email = os.environ.get('SENDER_EMAIL', 'bookings@bookaride.co.nz')
+    
+    if not mailgun_api_key or not mailgun_domain:
+        logger.warning("Mailgun credentials not configured for cancellation email")
+        return
+    
+    booking_date = booking.get('date', 'N/A')
+    booking_time = booking.get('time', 'N/A')
+    pickup = booking.get('pickupAddress', 'N/A')
+    dropoff = booking.get('dropoffAddress', 'N/A')
+    service_type = booking.get('serviceType', 'Transfer')
+    
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+            .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+            .header {{ background: linear-gradient(135deg, #1a1a1a 0%, #333 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+            .header h1 {{ margin: 0; color: #d4af37; }}
+            .content {{ background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }}
+            .booking-details {{ background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #dc2626; }}
+            .detail-row {{ margin: 10px 0; }}
+            .label {{ font-weight: bold; color: #666; }}
+            .footer {{ text-align: center; margin-top: 30px; color: #666; font-size: 14px; }}
+            .contact {{ background: #f0f0f0; padding: 15px; border-radius: 8px; margin-top: 20px; text-align: center; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>Booking Cancelled</h1>
+                <p style="margin: 10px 0 0 0; color: #ccc;">Book A Ride NZ</p>
+            </div>
+            <div class="content">
+                <p>Dear {customer_name},</p>
+                
+                <p>We're sorry to inform you that your booking has been cancelled. If you did not request this cancellation, please contact us immediately.</p>
+                
+                <div class="booking-details">
+                    <h3 style="margin-top: 0; color: #dc2626;">Cancelled Booking Details</h3>
+                    <div class="detail-row"><span class="label">Service:</span> {service_type}</div>
+                    <div class="detail-row"><span class="label">Date:</span> {booking_date}</div>
+                    <div class="detail-row"><span class="label">Time:</span> {booking_time}</div>
+                    <div class="detail-row"><span class="label">Pickup:</span> {pickup}</div>
+                    <div class="detail-row"><span class="label">Drop-off:</span> {dropoff}</div>
+                </div>
+                
+                <p>If you paid for this booking, a refund will be processed within 5-7 business days.</p>
+                
+                <p>We hope to serve you again in the future!</p>
+                
+                <div class="contact">
+                    <p style="margin: 0;"><strong>Need to rebook?</strong></p>
+                    <p style="margin: 5px 0;">Visit <a href="https://bookaride.co.nz/book-now">bookaride.co.nz</a> or call us at <strong>027-246-0201</strong></p>
+                </div>
+            </div>
+            <div class="footer">
+                <p>Book A Ride NZ - Your Trusted Airport Shuttle Service</p>
+                <p>Auckland | Hamilton | Nationwide</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
+            auth=("api", mailgun_api_key),
+            data={
+                "from": f"Book A Ride NZ <{sender_email}>",
+                "to": to_email,
+                "subject": "Your Booking Has Been Cancelled - Book A Ride NZ",
+                "html": html_content
+            }
+        )
+        
+        if response.status_code != 200:
+            logger.error(f"Mailgun cancellation email failed: {response.text}")
+            raise Exception(f"Failed to send email: {response.status_code}")
+
+def send_cancellation_sms(booking: dict, to_phone: str, customer_name: str):
+    """Send cancellation SMS via Twilio"""
+    account_sid = os.environ.get('TWILIO_ACCOUNT_SID')
+    auth_token = os.environ.get('TWILIO_AUTH_TOKEN')
+    twilio_phone = os.environ.get('TWILIO_PHONE_NUMBER')
+    
+    if not account_sid or not auth_token or not twilio_phone:
+        logger.warning("Twilio credentials not configured for cancellation SMS")
+        return
+    
+    booking_date = booking.get('date', 'N/A')
+    booking_time = booking.get('time', 'N/A')
+    
+    sms_body = f"""Book A Ride NZ - Booking Cancelled
+
+Hi {customer_name.split()[0] if customer_name else 'there'},
+
+Your booking for {booking_date} at {booking_time} has been cancelled.
+
+If you didn't request this, please call us at 027-246-0201.
+
+To rebook: bookaride.co.nz"""
+    
+    client = Client(account_sid, auth_token)
+    message = client.messages.create(
+        body=sms_body,
+        from_=twilio_phone,
+        to=to_phone
+    )
+    
+    logger.info(f"Cancellation SMS sent to {to_phone} - SID: {message.sid}")
+
 @api_router.delete("/bookings/bulk-delete")
-async def bulk_delete(booking_ids: List[str]):
-    """Delete multiple bookings"""
+async def bulk_delete(booking_ids: List[str], send_notifications: bool = False):
+    """Delete multiple bookings (notifications optional for bulk)"""
     try:
+        if send_notifications:
+            # Get all bookings first to send notifications
+            bookings = await db.bookings.find({"id": {"$in": booking_ids}}, {"_id": 0}).to_list(1000)
+            for booking in bookings:
+                try:
+                    await send_cancellation_notifications(booking)
+                except Exception as e:
+                    logger.error(f"Error sending cancellation for booking {booking.get('id')}: {str(e)}")
+        
         result = await db.bookings.delete_many({"id": {"$in": booking_ids}})
-        return {"message": "Bookings deleted", "count": result.deleted_count}
+        return {"message": "Bookings deleted", "count": result.deleted_count, "notifications_sent": send_notifications}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
