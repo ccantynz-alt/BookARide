@@ -313,14 +313,23 @@ export const AdminDashboard = () => {
     }
   };
 
-  const handleDeleteBooking = async (bookingId, bookingName) => {
-    if (!window.confirm(`Are you sure you want to delete booking for ${bookingName}? This cannot be undone.`)) {
+  const handleDeleteBooking = async (bookingId, bookingName, sendNotification = true) => {
+    const confirmMessage = sendNotification 
+      ? `Are you sure you want to CANCEL booking for ${bookingName}?\n\nThe customer will receive a cancellation email and SMS.`
+      : `Are you sure you want to DELETE booking for ${bookingName}?\n\nNo notification will be sent to the customer.`;
+    
+    if (!window.confirm(confirmMessage)) {
       return;
     }
 
     try {
-      await axios.delete(`${API}/bookings/${bookingId}`, getAuthHeaders());
-      toast.success('Booking deleted successfully');
+      await axios.delete(`${API}/bookings/${bookingId}?send_notification=${sendNotification}`, getAuthHeaders());
+      
+      if (sendNotification) {
+        toast.success('Booking cancelled - Customer notified via email & SMS');
+      } else {
+        toast.success('Booking deleted (no notification sent)');
+      }
       fetchBookings();
     } catch (error) {
       if (error.response?.status === 401) {
@@ -329,7 +338,7 @@ export const AdminDashboard = () => {
         return;
       }
       console.error('Error deleting booking:', error);
-      toast.error('Failed to delete booking');
+      toast.error('Failed to cancel booking');
     }
   };
 
