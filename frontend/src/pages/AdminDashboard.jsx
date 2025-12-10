@@ -849,7 +849,10 @@ export const AdminDashboard = () => {
                     {filteredBookings.map((booking) => (
                       <tr key={booking.id} className="border-b hover:bg-gray-50">
                         <td className="p-4">
-                          <div className="text-sm font-medium text-gray-900">{formatDate(booking.date)}</div>
+                          <div className="text-sm font-bold text-gold">
+                            #{booking.referenceNumber || booking.id?.slice(0, 8).toUpperCase()}
+                          </div>
+                          <div className="text-sm text-gray-900">{formatDate(booking.date)}</div>
                           <div className="text-xs text-gray-500">{booking.time}</div>
                         </td>
                         <td className="p-4">
@@ -867,8 +870,8 @@ export const AdminDashboard = () => {
                           </div>
                         </td>
                         <td className="p-4">
-                          <div className="text-sm font-semibold text-gray-900">${booking.pricing.totalPrice.toFixed(2)}</div>
-                          <div className="text-xs text-gray-500">{booking.pricing.distance}km</div>
+                          <div className="text-sm font-semibold text-gray-900">${booking.pricing?.totalPrice?.toFixed(2) || '0.00'}</div>
+                          <div className="text-xs text-gray-500">{booking.pricing?.distance || 0}km</div>
                         </td>
                         <td className="p-4">
                           <div className="flex flex-col gap-1">
