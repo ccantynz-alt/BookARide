@@ -1040,6 +1040,9 @@ async def send_booking_notification_to_admin(booking: dict):
         
         # Format booking details
         total_price = booking.get('totalPrice', 0)
+        formatted_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
+        booking_ref = get_booking_reference(booking)
+        full_booking_id = get_full_booking_reference(booking)
         
         # Create simplified email for quick notification
         html_content = f"""
@@ -1053,7 +1056,8 @@ async def send_booking_notification_to_admin(booking: dict):
                 <div style="padding: 20px; background-color: #f5f5f5;">
                     <div style="background-color: #e3f2fd; padding: 15px; border-radius: 8px; border-left: 4px solid #2196f3; margin-bottom: 20px;">
                         <p style="margin: 0; font-size: 18px; font-weight: bold; color: #1976d2;">New booking from {booking.get('name', 'Customer')}</p>
-                        <p style="margin: 5px 0 0 0; font-size: 14px; color: #666;">Booking Reference: {booking.get('id', '')[:8].upper()}</p>
+                        <p style="margin: 5px 0 0 0; font-size: 14px; color: #666;">Booking Reference: {booking_ref}</p>
+                        <p style="margin: 5px 0 0 0; font-size: 11px; color: #999;">Full ID: {full_booking_id}</p>
                     </div>
                     
                     <div style="background-color: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #D4AF37;">
@@ -1063,7 +1067,7 @@ async def send_booking_notification_to_admin(booking: dict):
                         <p style="margin: 5px 0;"><strong>Email:</strong> {booking.get('email', 'N/A')}</p>
                         <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
                         <p style="margin: 5px 0;"><strong>Service:</strong> {booking.get('serviceType', 'N/A').replace('-', ' ').title()}</p>
-                        <p style="margin: 5px 0;"><strong>Date:</strong> {booking.get('date', 'N/A')} at {booking.get('time', 'N/A')}</p>
+                        <p style="margin: 5px 0;"><strong>Date:</strong> {formatted_date} at {booking.get('time', 'N/A')}</p>
                         <p style="margin: 5px 0;"><strong>Passengers:</strong> {booking.get('passengers', 'N/A')}</p>
                         <p style="margin: 5px 0;"><strong>Pickup:</strong> {booking.get('pickupAddress', 'N/A')}</p>
                         <p style="margin: 5px 0;"><strong>Drop-off:</strong> {booking.get('dropoffAddress', 'N/A')}</p>
@@ -1093,13 +1097,13 @@ async def send_booking_notification_to_admin(booking: dict):
             data={
                 "from": f"BookaRide System <{sender_email}>",
                 "to": admin_email,
-                "subject": f"🔔 New Booking - {booking.get('name', 'Customer')} - {booking.get('date', '')}",
+                "subject": f"🔔 New Booking - {booking.get('name', 'Customer')} - {formatted_date} - Ref: {booking_ref}",
                 "html": html_content
             }
         )
         
         if response.status_code == 200:
-            logger.info(f"Auto-notification sent to admin: {admin_email} for booking: {booking.get('id', '')[:8]}")
+            logger.info(f"Auto-notification sent to admin: {admin_email} for booking: {booking_ref}")
             return True
         else:
             logger.error(f"Failed to send admin notification: {response.status_code} - {response.text}")
