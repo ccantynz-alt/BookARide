@@ -138,13 +138,6 @@ code {
   border-top: 1px solid #e5e7eb !important;
   pointer-events: auto !important;
   background-color: white !important;
-  /* Ensure items are always visible and clickable */
-  display: block !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  /* Allow click events to properly register */
-  user-select: none;
-  -webkit-user-select: none;
 }
 
 .pac-item:first-child {
