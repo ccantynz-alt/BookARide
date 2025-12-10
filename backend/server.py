@@ -1117,6 +1117,11 @@ async def send_booking_notification_to_admin(booking: dict):
 async def send_driver_notification(booking: dict, driver: dict):
     """Send email and SMS notification to driver about new booking assignment"""
     try:
+        # Format date and get references
+        formatted_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
+        booking_ref = get_booking_reference(booking)
+        full_booking_id = get_full_booking_reference(booking)
+        
         # Send Email to Driver
         mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
         mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
@@ -1138,7 +1143,8 @@ async def send_driver_notification(booking: dict, driver: dict):
                         <p>You have been assigned a new booking. Please review the details below:</p>
                         
                         <div style="background-color: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #D4AF37;">
-                            <p><strong>Booking Reference:</strong> {booking.get('id', '').upper()}</p>
+                            <p><strong>Booking Reference:</strong> {booking_ref}</p>
+                            <p style="font-size: 11px; color: #999;">Full ID: {full_booking_id}</p>
                             <p><strong>Customer Name:</strong> {booking.get('name', 'N/A')}</p>
                             <p><strong>Customer Phone:</strong> {booking.get('phone', 'N/A')}</p>
                             <p><strong>Customer Email:</strong> {booking.get('email', 'N/A')}</p>
@@ -1146,7 +1152,7 @@ async def send_driver_notification(booking: dict, driver: dict):
                             <p><strong>Service Type:</strong> {booking.get('serviceType', 'N/A').replace('-', ' ').title()}</p>
                             <p><strong>Pickup:</strong> {booking.get('pickupAddress', 'N/A')}</p>
                             <p><strong>Drop-off:</strong> {booking.get('dropoffAddress', 'N/A')}</p>
-                            <p><strong>Date:</strong> {booking.get('date', 'N/A')}</p>
+                            <p><strong>Date:</strong> {formatted_date}</p>
                             <p><strong>Time:</strong> {booking.get('time', 'N/A')}</p>
                             <p><strong>Passengers:</strong> {booking.get('passengers', 'N/A')}</p>
                             <hr style="border: 0; border-top: 1px solid #e0e0e0; margin: 15px 0;">
@@ -1175,7 +1181,7 @@ async def send_driver_notification(booking: dict, driver: dict):
                 data={
                     "from": f"BookaRide <{sender_email}>",
                     "to": driver.get('email'),
-                    "subject": f"New Booking Assignment - {booking.get('id', '').upper()}",
+                    "subject": f"New Booking Assignment - Ref: {booking_ref} - {formatted_date}",
                     "html": html_content
                 }
             )
@@ -1195,11 +1201,11 @@ async def send_driver_notification(booking: dict, driver: dict):
             
             sms_body = f"""BookaRide - New Booking!
 
-Ref: {booking.get('id', '')[:8].upper()}
+Ref: {booking_ref}
 Customer: {booking.get('name', 'N/A')}
 Phone: {booking.get('phone', 'N/A')}
 Pickup: {booking.get('pickupAddress', 'N/A')}
-Date: {booking.get('date', 'N/A')} at {booking.get('time', 'N/A')}
+Date: {formatted_date} at {booking.get('time', 'N/A')}
 
 Check your email for full details."""
             
