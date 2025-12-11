@@ -2041,7 +2041,7 @@ async def update_payment_status(booking_id: str, paymentStatus: str = Body(..., 
     """Update payment status for a booking"""
     try:
         # Validate payment status
-        valid_statuses = ['paid', 'unpaid', 'cash']
+        valid_statuses = ['paid', 'unpaid', 'cash', 'pay-on-pickup', 'pending']
         if paymentStatus not in valid_statuses:
             raise HTTPException(status_code=400, detail=f"Invalid payment status. Must be one of: {valid_statuses}")
         
