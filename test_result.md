@@ -102,7 +102,7 @@
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
 
-user_problem_statement: "Comprehensive Booking & Multi-Language Email Testing - Test complete booking flow end-to-end, verify multi-language email confirmations work correctly, test Mailgun email sending, verify SMS notifications"
+user_problem_statement: "New Admin Booking Features Testing - Test the new admin booking features: Manual Calendar Sync Endpoint (POST /api/bookings/{booking_id}/sync-calendar), Resend Confirmation Endpoint (POST /api/bookings/{booking_id}/resend-confirmation), Update Booking Endpoint (PATCH /api/bookings/{booking_id}) with support for multiple pickup addresses"
 
 backend:
   - task: "Mailgun Email Integration Testing"
