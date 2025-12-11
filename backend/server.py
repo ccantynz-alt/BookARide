@@ -161,6 +161,7 @@ class BookingCreate(BaseModel):
     notes: Optional[str] = ""
     pricing: dict
     status: str = "pending"
+    payment_status: Optional[str] = "unpaid"
     createdAt: datetime = Field(default_factory=datetime.utcnow)
 
 class Booking(BookingCreate):
