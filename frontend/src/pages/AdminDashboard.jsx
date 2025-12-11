@@ -74,7 +74,15 @@ export const AdminDashboard = () => {
     flightArrivalNumber: '',
     flightArrivalTime: '',
     flightDepartureNumber: '',
-    flightDepartureTime: ''
+    flightDepartureTime: '',
+    // Return trip fields
+    bookReturn: false,
+    returnDate: '',
+    returnTime: '',
+    returnDepartureFlightNumber: '',
+    returnDepartureTime: '',
+    returnArrivalFlightNumber: '',
+    returnArrivalTime: ''
   });
   const [bookingPricing, setBookingPricing] = useState({
     distance: 0,
@@ -98,6 +106,8 @@ export const AdminDashboard = () => {
   // Date/Time picker states for admin form
   const [adminPickupDate, setAdminPickupDate] = useState(null);
   const [adminPickupTime, setAdminPickupTime] = useState(null);
+  const [adminReturnDate, setAdminReturnDate] = useState(null);
+  const [adminReturnTime, setAdminReturnTime] = useState(null);
   const [adminFlightArrivalTime, setAdminFlightArrivalTime] = useState(null);
   const [adminFlightDepartureTime, setAdminFlightDepartureTime] = useState(null);
 
