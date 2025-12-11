@@ -1,5 +1,16 @@
 /* Custom DatePicker Styles */
 
+/* Ensure the wrapper takes full width */
+.react-datepicker-wrapper {
+  display: block !important;
+  width: 100% !important;
+}
+
+.react-datepicker__input-container {
+  display: block !important;
+  width: 100% !important;
+}
+
 /* Popper container */
 .custom-popper {
   z-index: 9999 !important;
