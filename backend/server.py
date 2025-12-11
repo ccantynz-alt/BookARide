@@ -2008,6 +2008,7 @@ async def create_manual_booking(booking: ManualBooking):
             "referenceNumber": ref_number,  # Sequential reference number
             "name": booking.name,
             "email": booking.email,
+            "ccEmail": booking.ccEmail or "",  # CC email for confirmations
             "phone": booking.phone,
             "serviceType": booking.serviceType,
             "pickupAddress": booking.pickupAddress,
@@ -2020,18 +2021,21 @@ async def create_manual_booking(booking: ManualBooking):
             "totalPrice": total_price,
             "notes": booking.notes,
             "status": "confirmed",
-            "payment_status": booking.paymentMethod,  # cash, card, bank-transfer
+            "payment_status": booking.paymentMethod,  # cash, card, bank-transfer, pay-on-pickup
             "flightArrivalNumber": booking.flightArrivalNumber or "",
             "flightArrivalTime": booking.flightArrivalTime or "",
             "flightDepartureNumber": booking.flightDepartureNumber or "",
             "flightDepartureTime": booking.flightDepartureTime or "",
+            "bookReturn": booking.bookReturn or False,
+            "returnDate": booking.returnDate or "",
+            "returnTime": booking.returnTime or "",
             "createdAt": datetime.now(timezone.utc)
         }
         
         await db.bookings.insert_one(new_booking)
         logger.info(f"Manual booking created: #{ref_number} - Payment: {booking.paymentMethod}")
         
-        # Send confirmation email
+        # Send confirmation email (with CC if provided)
         send_booking_confirmation_email(new_booking)
         
         # Send confirmation SMS
