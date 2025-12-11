@@ -497,10 +497,13 @@ async def update_booking(booking_id: str, update_data: dict, current_admin: dict
             {"id": booking_id},
             {"$set": update_data}
         )
-        if result.modified_count == 0:
+        # Use matched_count, not modified_count - a booking with identical data is still valid
+        if result.matched_count == 0:
             raise HTTPException(status_code=404, detail="Booking not found")
         logger.info(f"Booking updated: {booking_id}")
         return {"message": "Booking updated successfully"}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error updating booking: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error updating booking: {str(e)}")
