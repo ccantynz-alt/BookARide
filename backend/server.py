@@ -936,96 +936,13 @@ def send_via_smtp(booking: dict):
             logger.warning("SMTP credentials not configured")
             return False
         
-        # Create email content
+        # Create email content using the beautiful template
         booking_ref = get_booking_reference(booking)
         subject = f"Booking Confirmation - Ref: {booking_ref}"
         recipient_email = booking.get('email')
-        formatted_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
-        total_price = booking.get('totalPrice', 0) or booking.get('pricing', {}).get('totalPrice', 0)
         
-        # Build pickup addresses list for outbound
-        pickup_addresses = booking.get('pickupAddresses', [])
-        primary_pickup = booking.get('pickupAddress', 'N/A')
-        dropoff_address = booking.get('dropoffAddress', 'N/A')
-        
-        # Build the route display for outbound trip
-        outbound_route_html = f"<p><strong>Pickup 1:</strong> {primary_pickup}</p>"
-        if pickup_addresses and len(pickup_addresses) > 0:
-            for i, addr in enumerate(pickup_addresses):
-                if addr and addr.strip():
-                    outbound_route_html += f"<p><strong>Pickup {i + 2}:</strong> {addr}</p>"
-        outbound_route_html += f"<p><strong>Drop-off:</strong> {dropoff_address}</p>"
-        
-        # Build return trip section if applicable
-        return_trip_html = ""
-        has_return = booking.get('bookReturn', False)
-        return_date = booking.get('returnDate', '')
-        return_time = booking.get('returnTime', '')
-        
-        if has_return and return_date:
-            formatted_return_date = format_date_ddmmyyyy(return_date)
-            
-            # Build reverse route for return trip
-            return_route_html = f"<p><strong>Pickup:</strong> {dropoff_address}</p>"
-            
-            all_pickups = [primary_pickup]
-            if pickup_addresses:
-                all_pickups.extend([addr for addr in pickup_addresses if addr and addr.strip()])
-            
-            reversed_dropoffs = list(reversed(all_pickups))
-            for i, addr in enumerate(reversed_dropoffs):
-                if i < len(reversed_dropoffs) - 1:
-                    return_route_html += f"<p><strong>Drop-off {i + 1}:</strong> {addr}</p>"
-                else:
-                    return_route_html += f"<p><strong>Final Drop-off:</strong> {addr}</p>"
-            
-            return_trip_html = f"""
-                    <div style="background-color: #fff8e6; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #D4AF37;">
-                        <h3 style="color: #1a1a1a; margin-top: 0;">🔄 Return Trip</h3>
-                        <p><strong>Return Date:</strong> {formatted_return_date}</p>
-                        <p><strong>Return Time:</strong> {return_time or 'N/A'}</p>
-                        <hr style="border: none; border-top: 1px solid #ddd; margin: 10px 0;">
-                        {return_route_html}
-                    </div>
-            """
-        
-        html_content = f"""
-        <html>
-            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <div style="background-color: #1a1a1a; color: #D4AF37; padding: 20px; text-align: center;">
-                    <h1>BookaRide.co.nz</h1>
-                </div>
-                <div style="padding: 20px; background-color: #f5f5f5;">
-                    <h2 style="color: #1a1a1a;">✅ Booking Confirmed!</h2>
-                    <p>Dear {booking.get('name', 'Customer')},</p>
-                    <p>Your ride has been confirmed. Here are your booking details:</p>
-                    
-                    <div style="background-color: white; padding: 15px; border-radius: 5px; margin: 20px 0;">
-                        <h3 style="color: #1a1a1a; margin-top: 0;">📍 Outbound Trip</h3>
-                        <p><strong>Booking Reference:</strong> {booking_ref}</p>
-                        <p><strong>Service Type:</strong> {booking.get('serviceType', 'N/A').replace('-', ' ').title()}</p>
-                        <p><strong>Date:</strong> {formatted_date}</p>
-                        <p><strong>Time:</strong> {booking.get('time', 'N/A')}</p>
-                        <p><strong>Passengers:</strong> {booking.get('passengers', 'N/A')}</p>
-                        <hr style="border: none; border-top: 1px solid #ddd; margin: 10px 0;">
-                        {outbound_route_html}
-                        <hr style="border: none; border-top: 1px solid #ddd; margin: 10px 0;">
-                        <p><strong>Total:</strong> ${total_price:.2f} NZD</p>
-                    </div>
-                    
-                    {return_trip_html}
-                    
-                    <p>We'll be in touch closer to your pickup time to confirm all details.</p>
-                    <p>If you have any questions, please contact us at {sender_email} or call +64 21 743 321.</p>
-                    
-                    <p style="margin-top: 30px;">Thank you for choosing BookaRide!</p>
-                </div>
-                <div style="background-color: #1a1a1a; color: #D4AF37; padding: 15px; text-align: center; font-size: 12px;">
-                    <p>BookaRide NZ | bookaride.co.nz | +64 21 743 321</p>
-                </div>
-            </body>
-        </html>
-        """
+        # Use the beautiful email template
+        html_content = generate_confirmation_email_html(booking)
         
         # Create message
         message = MIMEMultipart('alternative')
