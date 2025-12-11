@@ -442,18 +442,6 @@ export const AdminDashboard = () => {
       toast.error(error.response?.data?.detail || 'Failed to send booking to admin');
     }
   };
-
-  const handleAddPickup = () => {
-    setNewBooking(prev => ({
-      ...prev,
-      pickupAddresses: [...prev.pickupAddresses, '']
-    }));
-    
-    // Re-initialize autocomplete for new input after DOM update
-    setTimeout(() => {
-      initializeAdditionalPickupAutocomplete();
-    }, 100);
-  };
   
   const handleRemovePickup = (index) => {
     setNewBooking(prev => ({
