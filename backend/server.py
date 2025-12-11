@@ -867,7 +867,7 @@ def send_booking_confirmation_email(booking: dict):
 
 
 def send_via_mailgun(booking: dict):
-    """Try sending via Mailgun with multi-language support"""
+    """Try sending via Mailgun with beautiful email template"""
     try:
         mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
         mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
@@ -877,27 +877,20 @@ def send_via_mailgun(booking: dict):
             logger.warning("Mailgun credentials not configured")
             return False
         
-        # Get language preference (default to English)
+        # Get booking reference for subject line
+        booking_ref = get_booking_reference(booking)
+        
+        # Get language preference for subject (default to English)
         lang = booking.get('language', 'en')
         if lang not in EMAIL_TRANSLATIONS:
             lang = 'en'
         t = EMAIL_TRANSLATIONS[lang]
         
-        # Get pricing
-        total_price = booking.get('pricing', {}).get('totalPrice', 0) if isinstance(booking.get('pricing'), dict) else 0
-        
-        # Format date as DD/MM/YYYY and get reference
-        formatted_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
-        booking_ref = get_booking_reference(booking)
-        
-        # Create email content with translations
         subject = f"{t['subject']} - Ref: {booking_ref}"
         recipient_email = booking.get('email')
         
-        # Build pickup addresses list for outbound
-        pickup_addresses = booking.get('pickupAddresses', [])
-        primary_pickup = booking.get('pickupAddress', 'N/A')
-        dropoff_address = booking.get('dropoffAddress', 'N/A')
+        # Use the beautiful email template
+        html_content = generate_confirmation_email_html(booking)
         
         # Build the route display for outbound trip
         outbound_route_html = f"<p><strong>Pickup 1:</strong> {primary_pickup}</p>"
