@@ -195,6 +195,21 @@ backend:
           agent: "testing"
           comment: "✅ GOOGLE MAPS INTEGRATION WORKING PERFECTLY - Distance calculation system fully functional: 1) Google Maps API key (AIzaSyC-QyiCGkKOVMFr7Gc5GVG4nPttiNYAgH0) working correctly, 2) Distance Matrix API calls successful for route calculations, 3) Accurate distance measurements (Auckland Airport to Queen Street: 31.85km, to Sky Tower: 26.29km), 4) Tiered pricing system working ($2.50/km for 0-75km, $2.70/km for 75-100km, $3.50/km for 100-300km), 5) Additional fees calculated correctly (VIP Airport Pickup: $15, Oversized Luggage: $25, Extra Passengers: $5 each), 6) Minimum fare of $100 enforced. All pricing calculations are accurate and production-ready."
 
+  - task: "New Admin Booking Features Testing"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "testing"
+          comment: "Testing new admin booking features as requested: 1) Manual Calendar Sync Endpoint (POST /api/bookings/{booking_id}/sync-calendar), 2) Resend Confirmation Endpoint (POST /api/bookings/{booking_id}/resend-confirmation), 3) Update Booking Endpoint (PATCH /api/bookings/{booking_id}) with support for multiple pickup addresses"
+        - working: true
+          agent: "testing"
+          comment: "✅ NEW ADMIN BOOKING FEATURES FULLY WORKING - Comprehensive testing completed with 100% success rate (7/7 tests passed): 1) ✅ Admin Authentication: Successfully logged in with admin/Chico9620!@ credentials and obtained JWT token, 2) ✅ Manual Calendar Sync: POST /api/bookings/{booking_id}/sync-calendar working perfectly - Google Calendar integration successful with proper event creation, 3) ✅ Resend Confirmation: POST /api/bookings/{booking_id}/resend-confirmation working - both email and SMS confirmations resent successfully via Mailgun and Twilio, 4) ✅ Update Booking: PATCH /api/bookings/{booking_id} working - successfully updated booking fields including name, email, phone, addresses, date, time, and notes, 5) ✅ Multiple Pickup Support: pickupAddresses array properly supported for multi-stop bookings, 6) ✅ Security: All admin endpoints properly protected with JWT authentication (403 Forbidden without token). All new admin booking features are production-ready and working as specified."
+
 frontend:
   - task: "Admin Login Functionality Testing"
     implemented: true
