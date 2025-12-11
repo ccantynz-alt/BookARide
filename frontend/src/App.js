@@ -46,6 +46,14 @@ import BackToTop from './components/BackToTop';
 import InternationalBanner from './components/InternationalBanner';
 import LanguageRedirect from './components/LanguageRedirect';
 import { SUPPORTED_LANGUAGES } from './config/languages';
+// New SEO Pages
+import AucklandAirportShuttle from './pages/seo/AucklandAirportShuttle';
+import GlobalLanding from './pages/seo/GlobalLanding';
+import VisitorsHub from './pages/seo/VisitorsHub';
+import RoutePage from './pages/routes/RoutePage';
+import RoutesDirectory from './pages/routes/RoutesDirectory';
+import BlogIndex from './pages/blog/BlogIndex';
+import BlogPost from './pages/blog/BlogPost';
 
 // Layout component with Header/Footer
 const MainLayout = () => (
