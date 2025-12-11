@@ -62,6 +62,7 @@ export const AdminDashboard = () => {
   const [newBooking, setNewBooking] = useState({
     name: '',
     email: '',
+    ccEmail: '',  // CC email for confirmation
     phone: '',
     serviceType: 'airport-shuttle',
     pickupAddress: '',
