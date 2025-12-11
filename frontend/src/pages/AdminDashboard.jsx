@@ -1991,6 +1991,269 @@ export const AdminDashboard = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Booking Modal */}
+      <Dialog open={showEditBookingModal} onOpenChange={setShowEditBookingModal}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Booking #{editingBooking?.referenceNumber || editingBooking?.id?.slice(0, 8)}</DialogTitle>
+          </DialogHeader>
+          {editingBooking && (
+            <div className="space-y-6 pt-4">
+              {/* Customer Information */}
+              <div>
+                <h3 className="font-semibold text-gray-900 mb-3">Customer Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label>Name *</Label>
+                    <Input
+                      value={editingBooking.name}
+                      onChange={(e) => setEditingBooking({...editingBooking, name: e.target.value})}
+                      placeholder="Customer name"
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label>Email *</Label>
+                    <Input
+                      type="email"
+                      value={editingBooking.email}
+                      onChange={(e) => setEditingBooking({...editingBooking, email: e.target.value})}
+                      placeholder="customer@example.com"
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label>Phone *</Label>
+                    <Input
+                      value={editingBooking.phone}
+                      onChange={(e) => setEditingBooking({...editingBooking, phone: e.target.value})}
+                      placeholder="+64 21 XXX XXXX"
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label>Passengers</Label>
+                    <Select 
+                      value={editingBooking.passengers?.toString()} 
+                      onValueChange={(value) => setEditingBooking({...editingBooking, passengers: value})}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(num => (
+                          <SelectItem key={num} value={num.toString()}>{num}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Trip Information */}
+              <div>
+                <h3 className="font-semibold text-gray-900 mb-3">Trip Information</h3>
+                <div className="space-y-4">
+                  <div>
+                    <Label>Pickup Address 1 *</Label>
+                    <Input
+                      ref={editPickupInputRef}
+                      value={editingBooking.pickupAddress}
+                      onChange={(e) => setEditingBooking({...editingBooking, pickupAddress: e.target.value})}
+                      placeholder="Start typing address..."
+                      className="mt-1"
+                      autoComplete="off"
+                    />
+                  </div>
+
+                  {/* Additional Pickup Addresses */}
+                  {editingBooking.pickupAddresses?.map((pickup, index) => (
+                    <div key={index} className="relative">
+                      <Label>Pickup Address {index + 2}</Label>
+                      <div className="flex gap-2 mt-1">
+                        <Input
+                          ref={(el) => (editAdditionalPickupRefs.current[index] = el)}
+                          value={pickup}
+                          onChange={(e) => handleEditPickupAddressChange(index, e.target.value)}
+                          placeholder="Start typing address..."
+                          autoComplete="off"
+                          className="flex-1"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => handleRemoveEditPickup(index)}
+                          className="text-red-600 hover:bg-red-50"
+                        >
+                          ✕
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Add Pickup Button */}
+                  <div>
+                    <button
+                      type="button"
+                      onClick={handleAddEditPickup}
+                      className="group w-full flex items-center justify-center gap-3 px-6 py-4 bg-gradient-to-r from-gold/10 to-gold/5 hover:from-gold/20 hover:to-gold/10 border-2 border-dashed border-gold/40 hover:border-gold/60 rounded-lg transition-all duration-300"
+                    >
+                      <MapPin className="w-4 h-4 text-gold" />
+                      <span className="text-sm font-semibold text-gray-700">Add Another Pickup Location</span>
+                      <span className="w-6 h-6 rounded-full bg-gold text-white text-xs font-bold flex items-center justify-center">+</span>
+                    </button>
+                  </div>
+
+                  <div>
+                    <Label>Drop-off Address *</Label>
+                    <Input
+                      ref={editDropoffInputRef}
+                      value={editingBooking.dropoffAddress}
+                      onChange={(e) => setEditingBooking({...editingBooking, dropoffAddress: e.target.value})}
+                      placeholder="Start typing address..."
+                      className="mt-1"
+                      autoComplete="off"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label>Date *</Label>
+                      <Input
+                        type="date"
+                        value={editingBooking.date}
+                        onChange={(e) => setEditingBooking({...editingBooking, date: e.target.value})}
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label>Time *</Label>
+                      <Input
+                        type="time"
+                        value={editingBooking.time}
+                        onChange={(e) => setEditingBooking({...editingBooking, time: e.target.value})}
+                        className="mt-1"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Flight Details */}
+                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                    <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                      ✈️ Flight Details (Optional)
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label>Flight Arrival Number</Label>
+                        <Input
+                          value={editingBooking.flightArrivalNumber || ''}
+                          onChange={(e) => setEditingBooking({...editingBooking, flightArrivalNumber: e.target.value})}
+                          placeholder="e.g., NZ123"
+                          className="mt-1 bg-white"
+                        />
+                      </div>
+                      <div>
+                        <Label>Flight Arrival Time</Label>
+                        <Input
+                          type="time"
+                          value={editingBooking.flightArrivalTime || ''}
+                          onChange={(e) => setEditingBooking({...editingBooking, flightArrivalTime: e.target.value})}
+                          className="mt-1 bg-white"
+                        />
+                      </div>
+                      <div>
+                        <Label>Flight Departure Number</Label>
+                        <Input
+                          value={editingBooking.flightDepartureNumber || ''}
+                          onChange={(e) => setEditingBooking({...editingBooking, flightDepartureNumber: e.target.value})}
+                          placeholder="e.g., NZ456"
+                          className="mt-1 bg-white"
+                        />
+                      </div>
+                      <div>
+                        <Label>Flight Departure Time</Label>
+                        <Input
+                          type="time"
+                          value={editingBooking.flightDepartureTime || ''}
+                          onChange={(e) => setEditingBooking({...editingBooking, flightDepartureTime: e.target.value})}
+                          className="mt-1 bg-white"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label>Special Notes</Label>
+                    <Textarea
+                      value={editingBooking.notes || ''}
+                      onChange={(e) => setEditingBooking({...editingBooking, notes: e.target.value})}
+                      placeholder="Any special requests or notes..."
+                      rows={3}
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Current Pricing Info */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h3 className="font-semibold text-gray-900 mb-2">Current Pricing</h3>
+                <div className="flex justify-between items-center">
+                  <span>Total Price:</span>
+                  <span className="text-xl font-bold text-gold">${editingBooking.pricing?.totalPrice?.toFixed(2) || '0.00'}</span>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">To change pricing, use the View Details modal and override the price.</p>
+              </div>
+
+              {/* Quick Actions */}
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <h3 className="font-semibold text-gray-900 mb-3">Quick Actions</h3>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleResendConfirmation(editingBooking.id)}
+                    className="bg-white"
+                  >
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Resend Confirmation
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleManualCalendarSync(editingBooking.id)}
+                    className="bg-white"
+                    disabled={calendarLoading}
+                  >
+                    <Calendar className="w-4 h-4 mr-2" />
+                    Sync to Calendar
+                  </Button>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-2 pt-4 border-t">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowEditBookingModal(false);
+                    setEditingBooking(null);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSaveEditedBooking}
+                  className="bg-gold hover:bg-gold/90 text-black font-semibold"
+                >
+                  Save Changes
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
