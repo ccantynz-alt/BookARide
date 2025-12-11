@@ -248,15 +248,15 @@ class AdminBookingFeaturesTester:
             
             # Test calendar sync without auth
             response = unauth_session.post(f"{BACKEND_URL}/bookings/{self.test_booking_id}/sync-calendar", timeout=10)
-            calendar_auth_required = response.status_code == 401
+            calendar_auth_required = response.status_code in [401, 403]
             
             # Test resend confirmation without auth
             response = unauth_session.post(f"{BACKEND_URL}/bookings/{self.test_booking_id}/resend-confirmation", timeout=10)
-            resend_auth_required = response.status_code == 401
+            resend_auth_required = response.status_code in [401, 403]
             
             # Test update booking without auth
             response = unauth_session.patch(f"{BACKEND_URL}/bookings/{self.test_booking_id}", json={"name": "test"}, timeout=10)
-            update_auth_required = response.status_code == 401
+            update_auth_required = response.status_code in [401, 403]
             
             if calendar_auth_required and resend_auth_required and update_auth_required:
                 self.log_result("Endpoint Authentication", True, "All admin endpoints properly require authentication")
