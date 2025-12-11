@@ -757,6 +757,45 @@ export const AdminDashboard = () => {
     }
   };
 
+  // Preview confirmation before sending
+  const handlePreviewConfirmation = async (bookingId) => {
+    setPreviewLoading(true);
+    try {
+      const response = await axios.get(`${API}/bookings/${bookingId}/preview-confirmation`, getAuthHeaders());
+      setPreviewHtml(response.data.html);
+      setPreviewBookingInfo(response.data.booking);
+      setShowPreviewModal(true);
+    } catch (error) {
+      console.error('Error previewing confirmation:', error);
+      toast.error(error.response?.data?.detail || 'Failed to load preview');
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  // Send confirmation after preview
+  const handleSendAfterPreview = async () => {
+    if (!previewBookingInfo) return;
+    
+    // Find the booking ID from the current editing context or most recent preview
+    const bookingId = editingBooking?.id;
+    if (!bookingId) {
+      toast.error('No booking selected');
+      return;
+    }
+    
+    try {
+      const response = await axios.post(`${API}/bookings/${bookingId}/resend-confirmation`, {}, getAuthHeaders());
+      toast.success(response.data.message || 'Confirmation sent to customer!');
+      setShowPreviewModal(false);
+      setPreviewHtml('');
+      setPreviewBookingInfo(null);
+    } catch (error) {
+      console.error('Error sending confirmation:', error);
+      toast.error(error.response?.data?.detail || 'Failed to send confirmation');
+    }
+  };
+
   const handleChangePassword = async () => {
     try {
       // Validation
