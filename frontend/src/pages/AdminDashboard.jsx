@@ -86,6 +86,14 @@ export const AdminDashboard = () => {
   const [calculatingPrice, setCalculatingPrice] = useState(false);
   const [manualPriceOverride, setManualPriceOverride] = useState('');
   const [selectedPaymentStatus, setSelectedPaymentStatus] = useState('');
+  const [showEditBookingModal, setShowEditBookingModal] = useState(false);
+  const [editingBooking, setEditingBooking] = useState(null);
+  const [calendarLoading, setCalendarLoading] = useState(false);
+  
+  // Refs for edit modal autocomplete
+  const editPickupInputRef = useRef(null);
+  const editDropoffInputRef = useRef(null);
+  const editAdditionalPickupRefs = useRef([]);
   
   // Date/Time picker states for admin form
   const [adminPickupDate, setAdminPickupDate] = useState(null);
