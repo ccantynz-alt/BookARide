@@ -1714,6 +1714,17 @@ export const AdminDashboard = () => {
                   />
                 </div>
                 <div>
+                  <Label>CC Email (optional)</Label>
+                  <Input
+                    type="email"
+                    value={newBooking.ccEmail}
+                    onChange={(e) => setNewBooking({...newBooking, ccEmail: e.target.value})}
+                    placeholder="copy@example.com"
+                    className="mt-1"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Send copy of confirmation to this email</p>
+                </div>
+                <div>
                   <Label>Phone *</Label>
                   <Input
                     value={newBooking.phone}
