@@ -1963,6 +1963,7 @@ async def export_csv():
 class ManualBooking(BaseModel):
     name: str
     email: str
+    ccEmail: Optional[str] = ""  # CC email for confirmation
     phone: str
     serviceType: str
     pickupAddress: str
@@ -1979,6 +1980,9 @@ class ManualBooking(BaseModel):
     flightArrivalTime: Optional[str] = ""
     flightDepartureNumber: Optional[str] = ""
     flightDepartureTime: Optional[str] = ""
+    bookReturn: Optional[bool] = False
+    returnDate: Optional[str] = ""
+    returnTime: Optional[str] = ""
 
 @api_router.post("/bookings/manual")
 async def create_manual_booking(booking: ManualBooking):
