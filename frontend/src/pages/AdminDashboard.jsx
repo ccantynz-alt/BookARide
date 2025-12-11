@@ -1737,6 +1737,7 @@ export const AdminDashboard = () => {
                     <SelectContent>
                       <SelectItem value="cash">Cash</SelectItem>
                       <SelectItem value="card">Card (Paid)</SelectItem>
+                      <SelectItem value="pay-on-pickup">Pay on Pickup</SelectItem>
                       <SelectItem value="bank-transfer">Bank Transfer</SelectItem>
                     </SelectContent>
                   </Select>
