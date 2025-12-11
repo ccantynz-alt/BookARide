@@ -533,6 +533,126 @@ export const AdminDashboard = () => {
     }
   };
 
+  // Open edit booking modal
+  const openEditBookingModal = (booking) => {
+    setEditingBooking({
+      ...booking,
+      pickupAddresses: booking.pickupAddresses || []
+    });
+    setShowEditBookingModal(true);
+  };
+
+  // Handle edit booking save
+  const handleSaveEditedBooking = async () => {
+    if (!editingBooking) return;
+
+    try {
+      await axios.patch(`${API}/bookings/${editingBooking.id}`, {
+        name: editingBooking.name,
+        email: editingBooking.email,
+        phone: editingBooking.phone,
+        pickupAddress: editingBooking.pickupAddress,
+        pickupAddresses: editingBooking.pickupAddresses?.filter(addr => addr.trim()) || [],
+        dropoffAddress: editingBooking.dropoffAddress,
+        date: editingBooking.date,
+        time: editingBooking.time,
+        passengers: editingBooking.passengers,
+        notes: editingBooking.notes,
+        flightArrivalNumber: editingBooking.flightArrivalNumber,
+        flightArrivalTime: editingBooking.flightArrivalTime,
+        flightDepartureNumber: editingBooking.flightDepartureNumber,
+        flightDepartureTime: editingBooking.flightDepartureTime
+      }, getAuthHeaders());
+
+      toast.success('Booking updated successfully!');
+      setShowEditBookingModal(false);
+      setEditingBooking(null);
+      fetchBookings();
+    } catch (error) {
+      console.error('Error updating booking:', error);
+      toast.error(error.response?.data?.detail || 'Failed to update booking');
+    }
+  };
+
+  // Handle adding pickup to edit form
+  const handleAddEditPickup = () => {
+    setEditingBooking(prev => ({
+      ...prev,
+      pickupAddresses: [...(prev.pickupAddresses || []), '']
+    }));
+    
+    // Re-initialize autocomplete for new input after DOM update
+    setTimeout(() => {
+      initializeEditAdditionalPickupAutocomplete();
+    }, 100);
+  };
+
+  // Handle removing pickup from edit form
+  const handleRemoveEditPickup = (index) => {
+    setEditingBooking(prev => ({
+      ...prev,
+      pickupAddresses: prev.pickupAddresses.filter((_, i) => i !== index)
+    }));
+  };
+
+  // Handle edit pickup address change
+  const handleEditPickupAddressChange = (index, value) => {
+    setEditingBooking(prev => ({
+      ...prev,
+      pickupAddresses: prev.pickupAddresses.map((addr, i) => i === index ? value : addr)
+    }));
+  };
+
+  // Initialize autocomplete for edit modal additional pickups
+  const initializeEditAdditionalPickupAutocomplete = useCallback(() => {
+    if (!isLoaded || !window.google?.maps?.places) return;
+    
+    const autocompleteOptions = {
+      fields: ['formatted_address', 'geometry', 'name']
+    };
+    
+    editAdditionalPickupRefs.current.forEach((ref, index) => {
+      if (ref && !ref._autocompleteInitialized) {
+        const setup = initAutocompleteWithFix(ref, autocompleteOptions);
+        if (setup?.autocomplete) {
+          setup.autocomplete.addListener('place_changed', () => {
+            const place = setup.autocomplete.getPlace();
+            if (place?.formatted_address) {
+              handleEditPickupAddressChange(index, place.formatted_address);
+            }
+          });
+          ref._autocompleteInitialized = true;
+        }
+      }
+    });
+  }, [isLoaded]);
+
+  // Manual calendar sync
+  const handleManualCalendarSync = async (bookingId) => {
+    setCalendarLoading(true);
+    try {
+      const response = await axios.post(`${API}/bookings/${bookingId}/sync-calendar`, {}, getAuthHeaders());
+      toast.success(response.data.message || 'Booking synced to Google Calendar!');
+      fetchBookings();
+    } catch (error) {
+      console.error('Error syncing to calendar:', error);
+      toast.error(error.response?.data?.detail || 'Failed to sync to calendar');
+    } finally {
+      setCalendarLoading(false);
+    }
+  };
+
+  // Resend confirmation email/SMS
+  const handleResendConfirmation = async (bookingId) => {
+    try {
+      const response = await axios.post(`${API}/bookings/${bookingId}/resend-confirmation`, {}, getAuthHeaders());
+      toast.success(response.data.message || 'Confirmation resent to customer!');
+    } catch (error) {
+      console.error('Error resending confirmation:', error);
+      toast.error(error.response?.data?.detail || 'Failed to resend confirmation');
+    }
+  };
+
   const handleChangePassword = async () => {
     try {
       // Validation
