@@ -2015,10 +2015,23 @@ export const AdminDashboard = () => {
                         <span className="font-medium">${bookingPricing.passengerFee.toFixed(2)}</span>
                       </div>
                     )}
+                    {newBooking.bookReturn && (
+                      <div className="flex justify-between text-green-700">
+                        <span>🔄 Return Trip:</span>
+                        <span className="font-medium">x2</span>
+                      </div>
+                    )}
                     <div className="flex justify-between pt-2 border-t font-semibold text-base">
                       <span>Total:</span>
-                      <span className="text-gold">${bookingPricing.totalPrice.toFixed(2)}</span>
+                      <span className="text-gold">
+                        ${(newBooking.bookReturn ? bookingPricing.totalPrice * 2 : bookingPricing.totalPrice).toFixed(2)}
+                      </span>
                     </div>
+                    {newBooking.bookReturn && (
+                      <p className="text-xs text-green-600 text-center mt-1">
+                        Includes return trip (outbound + return)
+                      </p>
+                    )}
                   </div>
                 ) : (
                   <p className="text-sm text-gray-600 text-center">
