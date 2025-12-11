@@ -50,6 +50,7 @@ export const AdminDashboard = () => {
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [emailSubject, setEmailSubject] = useState('');
   const [emailMessage, setEmailMessage] = useState('');
+  const [emailCC, setEmailCC] = useState('');
   const [priceOverride, setPriceOverride] = useState('');
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
