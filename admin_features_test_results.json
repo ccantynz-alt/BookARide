@@ -1,0 +1,56 @@
+{
+  "timestamp": "2025-12-11T09:27:23.636593",
+  "success": false,
+  "results": [
+    {
+      "test": "Admin Login",
+      "status": "\u2705 PASS",
+      "message": "Admin authentication successful with token: eyJhbGciOiJIUzI1NiIs...",
+      "details": {},
+      "timestamp": "2025-12-11T09:27:22.688145"
+    },
+    {
+      "test": "Get Bookings List",
+      "status": "\u2705 PASS",
+      "message": "Retrieved 37 bookings, using booking ID: e28adbfd-07a0-4348-94d1-2d18a7a51c46",
+      "details": {},
+      "timestamp": "2025-12-11T09:27:22.701435"
+    },
+    {
+      "test": "Manual Calendar Sync",
+      "status": "\u2705 PASS",
+      "message": "Calendar sync endpoint working but calendar not configured: Failed to sync to calendar. Please check Google Calendar authorization.",
+      "details": {},
+      "timestamp": "2025-12-11T09:27:22.874432"
+    },
+    {
+      "test": "Resend Confirmation",
+      "status": "\u2705 PASS",
+      "message": "Confirmation resent successfully: Confirmation email and SMS resent successfully!",
+      "details": {},
+      "timestamp": "2025-12-11T09:27:23.512063"
+    },
+    {
+      "test": "Update Booking",
+      "status": "\u2705 PASS",
+      "message": "Booking updated successfully: Booking updated successfully",
+      "details": {},
+      "timestamp": "2025-12-11T09:27:23.524077"
+    },
+    {
+      "test": "Update Booking (Multiple Pickups)",
+      "status": "\u2705 PASS",
+      "message": "Booking updated with multiple pickups: Booking updated successfully",
+      "details": {},
+      "timestamp": "2025-12-11T09:27:23.532187"
+    },
+    {
+      "test": "Endpoint Authentication",
+      "status": "\u274c FAIL",
+      "message": "Some endpoints don't require auth: Calendar: False, Resend: False, Update: False",
+      "details": {},
+      "timestamp": "2025-12-11T09:27:23.635695"
+    }
+  ],
+  "test_booking_id": "e28adbfd-07a0-4348-94d1-2d18a7a51c46"
+}
