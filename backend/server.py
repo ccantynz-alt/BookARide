@@ -1383,6 +1383,71 @@ Notes: {booking.get('notes', 'None')}
         return False
 
 
+# Manual Calendar Sync Endpoint
+@api_router.post("/bookings/{booking_id}/sync-calendar")
+async def sync_booking_to_calendar(booking_id: str, current_admin: dict = Depends(get_current_admin)):
+    """Manually sync a booking to Google Calendar"""
+    try:
+        booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+        if not booking:
+            raise HTTPException(status_code=404, detail="Booking not found")
+        
+        success = await create_calendar_event(booking)
+        if success:
+            return {"success": True, "message": "Booking synced to Google Calendar successfully!"}
+        else:
+            raise HTTPException(status_code=500, detail="Failed to sync to calendar. Please check Google Calendar authorization.")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error syncing booking to calendar: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error syncing to calendar: {str(e)}")
+
+
+# Resend Confirmation Endpoint
+@api_router.post("/bookings/{booking_id}/resend-confirmation")
+async def resend_booking_confirmation(booking_id: str, current_admin: dict = Depends(get_current_admin)):
+    """Resend confirmation email and SMS to customer"""
+    try:
+        booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+        if not booking:
+            raise HTTPException(status_code=404, detail="Booking not found")
+        
+        email_sent = False
+        sms_sent = False
+        
+        # Send confirmation email
+        try:
+            await send_booking_confirmation_email(booking)
+            email_sent = True
+            logger.info(f"Confirmation email resent for booking {booking_id}")
+        except Exception as e:
+            logger.error(f"Failed to resend email for booking {booking_id}: {str(e)}")
+        
+        # Send confirmation SMS
+        try:
+            await send_booking_confirmation_sms(booking)
+            sms_sent = True
+            logger.info(f"Confirmation SMS resent for booking {booking_id}")
+        except Exception as e:
+            logger.error(f"Failed to resend SMS for booking {booking_id}: {str(e)}")
+        
+        if email_sent and sms_sent:
+            return {"success": True, "message": "Confirmation email and SMS resent successfully!"}
+        elif email_sent:
+            return {"success": True, "message": "Confirmation email resent (SMS failed)"}
+        elif sms_sent:
+            return {"success": True, "message": "Confirmation SMS resent (Email failed)"}
+        else:
+            raise HTTPException(status_code=500, detail="Failed to resend both email and SMS")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error resending confirmation: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error resending confirmation: {str(e)}")
+
+
 # Google Calendar OAuth Endpoints
 
 @api_router.get("/auth/google/login")
