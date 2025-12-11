@@ -1985,49 +1985,6 @@ export const AdminDashboard = () => {
                           </div>
                         </div>
                       </div>
-
-                      {/* Return Flight Details */}
-                      <div className="bg-white p-3 rounded-lg">
-                        <h4 className="text-sm font-semibold text-gray-700 mb-3">Return Flight Details (Optional)</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <div>
-                            <Label className="text-xs">Departure Flight #</Label>
-                            <Input
-                              value={newBooking.returnDepartureFlightNumber}
-                              onChange={(e) => setNewBooking({...newBooking, returnDepartureFlightNumber: e.target.value})}
-                              placeholder="e.g., NZ123"
-                              className="mt-1 bg-white text-sm"
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-xs">Departure Time</Label>
-                            <Input
-                              type="time"
-                              value={newBooking.returnDepartureTime}
-                              onChange={(e) => setNewBooking({...newBooking, returnDepartureTime: e.target.value})}
-                              className="mt-1 bg-white text-sm"
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-xs">Arrival Flight #</Label>
-                            <Input
-                              value={newBooking.returnArrivalFlightNumber}
-                              onChange={(e) => setNewBooking({...newBooking, returnArrivalFlightNumber: e.target.value})}
-                              placeholder="e.g., NZ456"
-                              className="mt-1 bg-white text-sm"
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-xs">Arrival Time</Label>
-                            <Input
-                              type="time"
-                              value={newBooking.returnArrivalTime}
-                              onChange={(e) => setNewBooking({...newBooking, returnArrivalTime: e.target.value})}
-                              className="mt-1 bg-white text-sm"
-                            />
-                          </div>
-                        </div>
-                      </div>
                     </div>
                   )}
                 </div>
