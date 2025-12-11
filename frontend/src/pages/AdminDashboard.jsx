@@ -455,6 +455,20 @@ export const AdminDashboard = () => {
     }, 100);
   };
   
+  const handleRemovePickup = (index) => {
+    setNewBooking(prev => ({
+      ...prev,
+      pickupAddresses: prev.pickupAddresses.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handlePickupAddressChange = (index, value) => {
+    setNewBooking(prev => ({
+      ...prev,
+      pickupAddresses: prev.pickupAddresses.map((addr, i) => i === index ? value : addr)
+    }));
+  };
+
   // Function to initialize autocomplete for additional pickup inputs
   const initializeAdditionalPickupAutocomplete = useCallback(() => {
     if (!isLoaded || !window.google?.maps?.places) return;
@@ -470,7 +484,13 @@ export const AdminDashboard = () => {
           setup.autocomplete.addListener('place_changed', () => {
             const place = setup.autocomplete.getPlace();
             if (place?.formatted_address) {
-              handlePickupAddressChange(index, place.formatted_address);
+              // Update the pickup address directly using setNewBooking
+              setNewBooking(prev => ({
+                ...prev,
+                pickupAddresses: prev.pickupAddresses.map((addr, i) => 
+                  i === index ? place.formatted_address : addr
+                )
+              }));
             }
           });
           ref._autocompleteInitialized = true;
@@ -480,18 +500,16 @@ export const AdminDashboard = () => {
     });
   }, [isLoaded]);
 
-  const handleRemovePickup = (index) => {
+  const handleAddPickup = () => {
     setNewBooking(prev => ({
       ...prev,
-      pickupAddresses: prev.pickupAddresses.filter((_, i) => i !== index)
+      pickupAddresses: [...prev.pickupAddresses, '']
     }));
-  };
-
-  const handlePickupAddressChange = (index, value) => {
-    setNewBooking(prev => ({
-      ...prev,
-      pickupAddresses: prev.pickupAddresses.map((addr, i) => i === index ? value : addr)
-    }));
+    
+    // Re-initialize autocomplete for new input after DOM update
+    setTimeout(() => {
+      initializeAdditionalPickupAutocomplete();
+    }, 200);
   };
 
   const exportToCSV = () => {
