@@ -1317,12 +1317,15 @@ export const AdminDashboard = () => {
                           ? 'bg-green-100 text-green-700' 
                           : selectedBooking.payment_status === 'cash'
                           ? 'bg-yellow-100 text-yellow-700'
+                          : selectedBooking.payment_status === 'pay-on-pickup'
+                          ? 'bg-blue-100 text-blue-700'
                           : 'bg-red-100 text-red-700'
                       }`}>
                         {selectedBooking.payment_status === 'paid' && '✓ '}
                         {selectedBooking.payment_status === 'cash' && '💵 '}
+                        {selectedBooking.payment_status === 'pay-on-pickup' && '🚗 '}
                         {selectedBooking.payment_status === 'unpaid' && '✗ '}
-                        <span className="uppercase">{selectedBooking.payment_status || 'UNPAID'}</span>
+                        <span className="uppercase">{selectedBooking.payment_status?.replace('-', ' ') || 'UNPAID'}</span>
                       </span>
                       <div className="flex gap-1">
                         <Select value={selectedPaymentStatus} onValueChange={setSelectedPaymentStatus}>
