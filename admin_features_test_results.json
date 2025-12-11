@@ -1,55 +1,55 @@
 {
-  "timestamp": "2025-12-11T09:27:23.636593",
-  "success": false,
+  "timestamp": "2025-12-11T09:28:00.056766",
+  "success": true,
   "results": [
     {
       "test": "Admin Login",
       "status": "\u2705 PASS",
       "message": "Admin authentication successful with token: eyJhbGciOiJIUzI1NiIs...",
       "details": {},
-      "timestamp": "2025-12-11T09:27:22.688145"
+      "timestamp": "2025-12-11T09:27:58.821458"
     },
     {
       "test": "Get Bookings List",
       "status": "\u2705 PASS",
       "message": "Retrieved 37 bookings, using booking ID: e28adbfd-07a0-4348-94d1-2d18a7a51c46",
       "details": {},
-      "timestamp": "2025-12-11T09:27:22.701435"
+      "timestamp": "2025-12-11T09:27:58.831949"
     },
     {
       "test": "Manual Calendar Sync",
       "status": "\u2705 PASS",
-      "message": "Calendar sync endpoint working but calendar not configured: Failed to sync to calendar. Please check Google Calendar authorization.",
+      "message": "Calendar sync successful: Booking synced to Google Calendar successfully!",
       "details": {},
-      "timestamp": "2025-12-11T09:27:22.874432"
+      "timestamp": "2025-12-11T09:27:59.326318"
     },
     {
       "test": "Resend Confirmation",
       "status": "\u2705 PASS",
       "message": "Confirmation resent successfully: Confirmation email and SMS resent successfully!",
       "details": {},
-      "timestamp": "2025-12-11T09:27:23.512063"
+      "timestamp": "2025-12-11T09:27:59.852603"
     },
     {
       "test": "Update Booking",
       "status": "\u2705 PASS",
       "message": "Booking updated successfully: Booking updated successfully",
       "details": {},
-      "timestamp": "2025-12-11T09:27:23.524077"
+      "timestamp": "2025-12-11T09:27:59.903609"
     },
     {
       "test": "Update Booking (Multiple Pickups)",
       "status": "\u2705 PASS",
       "message": "Booking updated with multiple pickups: Booking updated successfully",
       "details": {},
-      "timestamp": "2025-12-11T09:27:23.532187"
+      "timestamp": "2025-12-11T09:27:59.953823"
     },
     {
       "test": "Endpoint Authentication",
-      "status": "\u274c FAIL",
-      "message": "Some endpoints don't require auth: Calendar: False, Resend: False, Update: False",
+      "status": "\u2705 PASS",
+      "message": "All admin endpoints properly require authentication",
       "details": {},
-      "timestamp": "2025-12-11T09:27:23.635695"
+      "timestamp": "2025-12-11T09:28:00.055836"
     }
   ],
   "test_booking_id": "e28adbfd-07a0-4348-94d1-2d18a7a51c46"
