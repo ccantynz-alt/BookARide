@@ -1623,13 +1623,47 @@ def generate_confirmation_email_html(booking: dict) -> str:
     primary_pickup = booking.get('pickupAddress', 'N/A')
     dropoff_address = booking.get('dropoffAddress', 'N/A')
     
-    # Build the route display for outbound trip
-    outbound_route_html = f"<p><strong>Pickup 1:</strong> {primary_pickup}</p>"
+    # Build the route display for outbound trip with elegant styling
+    outbound_route_html = f'''
+        <div style="background: linear-gradient(135deg, #fefefe 0%, #f8f6f0 100%); border-radius: 8px; padding: 15px; margin: 10px 0;">
+            <div style="display: flex; align-items: flex-start; margin-bottom: 8px;">
+                <div style="width: 24px; height: 24px; background: #D4AF37; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px; flex-shrink: 0;">
+                    <span style="color: white; font-size: 12px; font-weight: bold;">1</span>
+                </div>
+                <div style="flex: 1;">
+                    <span style="color: #666; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Pickup</span>
+                    <p style="margin: 2px 0 0 0; color: #333; font-size: 14px;">{primary_pickup}</p>
+                </div>
+            </div>
+    '''
+    
     if pickup_addresses and len(pickup_addresses) > 0:
         for i, addr in enumerate(pickup_addresses):
             if addr and addr.strip():
-                outbound_route_html += f"<p><strong>Pickup {i + 2}:</strong> {addr}</p>"
-    outbound_route_html += f"<p><strong>Drop-off:</strong> {dropoff_address}</p>"
+                outbound_route_html += f'''
+            <div style="display: flex; align-items: flex-start; margin-bottom: 8px; padding-left: 36px; border-left: 2px dashed #D4AF37; margin-left: 11px;">
+                <div style="width: 24px; height: 24px; background: #D4AF37; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px; margin-left: -49px; flex-shrink: 0;">
+                    <span style="color: white; font-size: 12px; font-weight: bold;">{i + 2}</span>
+                </div>
+                <div style="flex: 1;">
+                    <span style="color: #666; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Pickup</span>
+                    <p style="margin: 2px 0 0 0; color: #333; font-size: 14px;">{addr}</p>
+                </div>
+            </div>
+                '''
+    
+    outbound_route_html += f'''
+            <div style="display: flex; align-items: flex-start; padding-left: 36px; border-left: 2px solid #D4AF37; margin-left: 11px;">
+                <div style="width: 24px; height: 24px; background: #22c55e; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px; margin-left: -49px; flex-shrink: 0;">
+                    <span style="color: white; font-size: 14px;">✓</span>
+                </div>
+                <div style="flex: 1;">
+                    <span style="color: #666; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Drop-off</span>
+                    <p style="margin: 2px 0 0 0; color: #333; font-size: 14px; font-weight: 600;">{dropoff_address}</p>
+                </div>
+            </div>
+        </div>
+    '''
     
     # Build return trip section if applicable
     return_trip_html = ""
@@ -1641,68 +1675,167 @@ def generate_confirmation_email_html(booking: dict) -> str:
         # Format return date
         formatted_return_date = format_date_ddmmyyyy(return_date)
         
-        # Build reverse route for return trip
-        return_route_html = f"<p><strong>Pickup:</strong> {dropoff_address}</p>"
-        
         # Reverse the pickups to become drop-offs
         all_pickups = [primary_pickup]
         if pickup_addresses:
             all_pickups.extend([addr for addr in pickup_addresses if addr and addr.strip()])
         
         reversed_dropoffs = list(reversed(all_pickups))
-        for i, addr in enumerate(reversed_dropoffs):
-            if i < len(reversed_dropoffs) - 1:
-                return_route_html += f"<p><strong>Drop-off {i + 1}:</strong> {addr}</p>"
-            else:
-                return_route_html += f"<p><strong>Final Drop-off:</strong> {addr}</p>"
         
-        return_trip_html = f"""
-                <div style="background-color: #fff8e6; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #D4AF37;">
-                    <h3 style="color: #1a1a1a; margin-top: 0;">🔄 Return Trip</h3>
-                    <p><strong>Return Date:</strong> {formatted_return_date}</p>
-                    <p><strong>Return Time:</strong> {return_time or 'TBC'}</p>
-                    <hr style="border: none; border-top: 1px solid #ddd; margin: 10px 0;">
+        # Build return route HTML
+        return_route_html = f'''
+        <div style="background: linear-gradient(135deg, #fefefe 0%, #f8f6f0 100%); border-radius: 8px; padding: 15px; margin: 10px 0;">
+            <div style="display: flex; align-items: flex-start; margin-bottom: 8px;">
+                <div style="width: 24px; height: 24px; background: #D4AF37; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px; flex-shrink: 0;">
+                    <span style="color: white; font-size: 14px;">↩</span>
+                </div>
+                <div style="flex: 1;">
+                    <span style="color: #666; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Pickup</span>
+                    <p style="margin: 2px 0 0 0; color: #333; font-size: 14px;">{dropoff_address}</p>
+                </div>
+            </div>
+        '''
+        
+        for i, addr in enumerate(reversed_dropoffs):
+            is_final = i == len(reversed_dropoffs) - 1
+            label = "Final Drop-off" if is_final else f"Drop-off"
+            bg_color = "#22c55e" if is_final else "#D4AF37"
+            icon = "✓" if is_final else str(i + 1)
+            
+            return_route_html += f'''
+            <div style="display: flex; align-items: flex-start; margin-bottom: 8px; padding-left: 36px; border-left: 2px {'solid' if is_final else 'dashed'} #D4AF37; margin-left: 11px;">
+                <div style="width: 24px; height: 24px; background: {bg_color}; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px; margin-left: -49px; flex-shrink: 0;">
+                    <span style="color: white; font-size: {'14px' if is_final else '12px'}; font-weight: bold;">{icon}</span>
+                </div>
+                <div style="flex: 1;">
+                    <span style="color: #666; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">{label}</span>
+                    <p style="margin: 2px 0 0 0; color: #333; font-size: 14px; {'font-weight: 600;' if is_final else ''}">{addr}</p>
+                </div>
+            </div>
+            '''
+        
+        return_route_html += '</div>'
+        
+        return_trip_html = f'''
+                <!-- Return Trip Section -->
+                <div style="margin-top: 30px;">
+                    <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                        <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
+                            <span style="color: white; font-size: 18px;">↩</span>
+                        </div>
+                        <div>
+                            <h3 style="margin: 0; color: #1a1a1a; font-size: 18px;">Return Trip</h3>
+                            <p style="margin: 2px 0 0 0; color: #666; font-size: 13px;">{formatted_return_date} at {return_time or 'TBC'}</p>
+                        </div>
+                    </div>
                     {return_route_html}
                 </div>
-        """
+        '''
     
-    html_content = f"""
+    # Logo as inline SVG (gold B logo)
+    logo_svg = '''
+        <svg width="60" height="60" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="64" height="64" rx="12" fill="#D4AF37"/>
+            <circle cx="32" cy="32" r="20" stroke="white" stroke-width="3" fill="none"/>
+            <text x="32" y="42" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="white" text-anchor="middle">B</text>
+        </svg>
+    '''
+    
+    html_content = f'''
+    <!DOCTYPE html>
     <html>
-        <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <div style="background-color: #1a1a1a; color: #D4AF37; padding: 20px; text-align: center;">
-                <h1>BookaRide.co.nz</h1>
-            </div>
-            <div style="padding: 20px; background-color: #f5f5f5;">
-                <h2 style="color: #1a1a1a;">✅ Booking Confirmed!</h2>
-                <p>Dear {booking.get('name', 'Customer')},</p>
-                <p>Thank you for your booking! Here are your trip details:</p>
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 0; background-color: #f5f5f5;">
+            <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
                 
-                <div style="background-color: white; padding: 15px; border-radius: 5px; margin: 20px 0;">
-                    <h3 style="color: #1a1a1a; margin-top: 0;">📍 Outbound Trip</h3>
-                    <p><strong>Booking Reference:</strong> {booking_ref}</p>
-                    <p><strong>Service Type:</strong> {booking.get('serviceType', 'N/A').replace('-', ' ').title()}</p>
-                    <p><strong>Date:</strong> {formatted_date}</p>
-                    <p><strong>Time:</strong> {booking.get('time', 'N/A')}</p>
-                    <p><strong>Passengers:</strong> {booking.get('passengers', 'N/A')}</p>
-                    <hr style="border: none; border-top: 1px solid #ddd; margin: 10px 0;">
-                    {outbound_route_html}
-                    <hr style="border: none; border-top: 1px solid #ddd; margin: 10px 0;">
-                    <p><strong>Total:</strong> ${total_price:.2f} NZD</p>
+                <!-- Header with Logo -->
+                <div style="background: linear-gradient(135deg, #ffffff 0%, #faf8f3 100%); padding: 30px 20px; text-align: center; border-bottom: 3px solid #D4AF37;">
+                    {logo_svg}
+                    <h1 style="margin: 15px 0 5px 0; color: #1a1a1a; font-size: 24px; font-weight: 300; letter-spacing: 2px;">BOOK<span style="color: #D4AF37; font-weight: 600;">A</span>RIDE</h1>
+                    <p style="margin: 0; color: #888; font-size: 12px; letter-spacing: 1px;">PREMIUM AIRPORT TRANSFERS</p>
                 </div>
                 
-                {return_trip_html}
+                <!-- Confirmation Badge -->
+                <div style="background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%); padding: 20px; text-align: center;">
+                    <div style="display: inline-block; background: white; border-radius: 50%; width: 50px; height: 50px; line-height: 50px; margin-bottom: 10px;">
+                        <span style="color: #22c55e; font-size: 28px;">✓</span>
+                    </div>
+                    <h2 style="margin: 0; color: white; font-size: 22px; font-weight: 400;">Booking Confirmed</h2>
+                    <p style="margin: 5px 0 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">Reference: <strong>{booking_ref}</strong></p>
+                </div>
                 
-                <p>We'll be in touch closer to your pickup time to confirm all details.</p>
-                <p>If you have any questions, please contact us at {sender_email} or call +64 21 743 321.</p>
+                <!-- Main Content -->
+                <div style="padding: 30px 25px;">
+                    <p style="color: #333; font-size: 15px; line-height: 1.6; margin: 0 0 25px 0;">
+                        Dear <strong>{booking.get('name', 'Customer')}</strong>,<br><br>
+                        Thank you for choosing BookaRide! Your booking has been confirmed. Here are your trip details:
+                    </p>
+                    
+                    <!-- Outbound Trip Section -->
+                    <div style="margin-bottom: 25px;">
+                        <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                            <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
+                                <span style="color: white; font-size: 18px;">→</span>
+                            </div>
+                            <div>
+                                <h3 style="margin: 0; color: #1a1a1a; font-size: 18px;">Outbound Trip</h3>
+                                <p style="margin: 2px 0 0 0; color: #666; font-size: 13px;">{formatted_date} at {booking.get('time', 'N/A')}</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Trip Details Card -->
+                        <div style="background: #faf8f3; border-radius: 10px; padding: 15px; margin-bottom: 15px; border: 1px solid #e8e4d9;">
+                            <table style="width: 100%; border-collapse: collapse;">
+                                <tr>
+                                    <td style="padding: 8px 0; color: #666; font-size: 13px; width: 120px;">Service Type</td>
+                                    <td style="padding: 8px 0; color: #333; font-size: 14px; font-weight: 500;">{booking.get('serviceType', 'N/A').replace('-', ' ').title()}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 8px 0; color: #666; font-size: 13px;">Passengers</td>
+                                    <td style="padding: 8px 0; color: #333; font-size: 14px; font-weight: 500;">{booking.get('passengers', 'N/A')}</td>
+                                </tr>
+                            </table>
+                        </div>
+                        
+                        <!-- Route -->
+                        {outbound_route_html}
+                    </div>
+                    
+                    {return_trip_html}
+                    
+                    <!-- Price Section -->
+                    <div style="background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); border-radius: 10px; padding: 20px; margin: 25px 0; text-align: center;">
+                        <p style="margin: 0 0 5px 0; color: #888; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Total Amount</p>
+                        <p style="margin: 0; color: #D4AF37; font-size: 32px; font-weight: 600;">${total_price:.2f} <span style="font-size: 16px; color: #888;">NZD</span></p>
+                    </div>
+                    
+                    <!-- Contact Info -->
+                    <div style="background: #f8f8f8; border-radius: 10px; padding: 20px; text-align: center; border: 1px solid #eee;">
+                        <p style="margin: 0 0 10px 0; color: #666; font-size: 14px;">Questions? We're here to help!</p>
+                        <p style="margin: 0;">
+                            <a href="tel:+6421743321" style="color: #D4AF37; text-decoration: none; font-weight: 600; font-size: 16px;">+64 21 743 321</a>
+                            <span style="color: #ccc; margin: 0 10px;">|</span>
+                            <a href="mailto:{sender_email}" style="color: #D4AF37; text-decoration: none; font-size: 14px;">{sender_email}</a>
+                        </p>
+                    </div>
+                </div>
                 
-                <p style="margin-top: 30px;">Thank you for choosing BookaRide!</p>
-            </div>
-            <div style="background-color: #1a1a1a; color: #D4AF37; padding: 15px; text-align: center; font-size: 12px;">
-                <p>BookaRide NZ | bookaride.co.nz | +64 21 743 321</p>
+                <!-- Footer -->
+                <div style="background: #faf8f3; padding: 25px; text-align: center; border-top: 1px solid #e8e4d9;">
+                    <p style="margin: 0 0 10px 0; color: #333; font-size: 14px; font-weight: 500;">Thank you for choosing BookaRide!</p>
+                    <p style="margin: 0; color: #888; font-size: 12px;">Premium Airport Transfers across Auckland</p>
+                    <div style="margin-top: 15px;">
+                        <a href="https://bookaride.co.nz" style="color: #D4AF37; text-decoration: none; font-size: 12px;">bookaride.co.nz</a>
+                    </div>
+                </div>
+                
             </div>
         </body>
     </html>
-    """
+    '''
     return html_content
 
 
