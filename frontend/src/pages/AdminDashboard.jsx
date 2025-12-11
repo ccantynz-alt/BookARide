@@ -1871,6 +1871,111 @@ export const AdminDashboard = () => {
                   </p>
                 </div>
 
+                {/* Return Trip Section */}
+                <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                  <div className="flex items-center space-x-2 mb-4">
+                    <input
+                      type="checkbox"
+                      id="adminBookReturn"
+                      checked={newBooking.bookReturn}
+                      onChange={(e) => setNewBooking({...newBooking, bookReturn: e.target.checked})}
+                      className="w-4 h-4 text-gold border-gray-300 rounded focus:ring-gold"
+                    />
+                    <Label htmlFor="adminBookReturn" className="cursor-pointer font-semibold text-gray-900">
+                      🔄 Book a Return Trip
+                    </Label>
+                  </div>
+
+                  {newBooking.bookReturn && (
+                    <div className="space-y-4 mt-4 pt-4 border-t border-green-200">
+                      <p className="text-sm text-gray-600">
+                        Return trip: Drop-off → Pickup (reverse of outbound journey)
+                      </p>
+                      
+                      {/* Return Date and Time */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label>Return Date *</Label>
+                          <div className="mt-1">
+                            <CustomDatePicker
+                              selected={adminReturnDate}
+                              onChange={(date) => {
+                                setAdminReturnDate(date);
+                                if (date) {
+                                  const formattedDate = date.toISOString().split('T')[0];
+                                  setNewBooking({...newBooking, returnDate: formattedDate});
+                                }
+                              }}
+                              placeholder="Select return date"
+                              minDate={adminPickupDate || new Date()}
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <Label>Return Time *</Label>
+                          <div className="mt-1">
+                            <CustomTimePicker
+                              selected={adminReturnTime}
+                              onChange={(time) => {
+                                setAdminReturnTime(time);
+                                if (time) {
+                                  const hours = time.getHours().toString().padStart(2, '0');
+                                  const minutes = time.getMinutes().toString().padStart(2, '0');
+                                  setNewBooking({...newBooking, returnTime: `${hours}:${minutes}`});
+                                }
+                              }}
+                              placeholder="Select return time"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Return Flight Details */}
+                      <div className="bg-white p-3 rounded-lg">
+                        <h4 className="text-sm font-semibold text-gray-700 mb-3">Return Flight Details (Optional)</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div>
+                            <Label className="text-xs">Departure Flight #</Label>
+                            <Input
+                              value={newBooking.returnDepartureFlightNumber}
+                              onChange={(e) => setNewBooking({...newBooking, returnDepartureFlightNumber: e.target.value})}
+                              placeholder="e.g., NZ123"
+                              className="mt-1 bg-white text-sm"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Departure Time</Label>
+                            <Input
+                              type="time"
+                              value={newBooking.returnDepartureTime}
+                              onChange={(e) => setNewBooking({...newBooking, returnDepartureTime: e.target.value})}
+                              className="mt-1 bg-white text-sm"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Arrival Flight #</Label>
+                            <Input
+                              value={newBooking.returnArrivalFlightNumber}
+                              onChange={(e) => setNewBooking({...newBooking, returnArrivalFlightNumber: e.target.value})}
+                              placeholder="e.g., NZ456"
+                              className="mt-1 bg-white text-sm"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Arrival Time</Label>
+                            <Input
+                              type="time"
+                              value={newBooking.returnArrivalTime}
+                              onChange={(e) => setNewBooking({...newBooking, returnArrivalTime: e.target.value})}
+                              className="mt-1 bg-white text-sm"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 <div>
                   <Label>Special Notes</Label>
                   <Textarea
