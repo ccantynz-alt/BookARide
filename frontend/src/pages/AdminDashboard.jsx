@@ -239,7 +239,23 @@ export const AdminDashboard = () => {
           }
 
           // Initialize additional pickup autocompletes for edit modal
-          initializeEditAdditionalPickupAutocomplete();
+          editAdditionalPickupRefs.current.forEach((ref, index) => {
+            if (ref && !ref._autocompleteInitialized) {
+              const setup = initAutocompleteWithFix(ref, autocompleteOptions);
+              if (setup?.autocomplete) {
+                setup.autocomplete.addListener('place_changed', () => {
+                  const place = setup.autocomplete.getPlace();
+                  if (place?.formatted_address) {
+                    setEditingBooking(prev => ({
+                      ...prev,
+                      pickupAddresses: prev.pickupAddresses.map((addr, i) => i === index ? place.formatted_address : addr)
+                    }));
+                  }
+                });
+                ref._autocompleteInitialized = true;
+              }
+            }
+          });
 
           console.log('✅ Google Places Autocomplete initialized for edit modal');
         }
@@ -249,7 +265,7 @@ export const AdminDashboard = () => {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [isLoaded, showEditBookingModal, editingBooking?.pickupAddresses?.length, initializeEditAdditionalPickupAutocomplete]);
+  }, [isLoaded, showEditBookingModal, editingBooking?.pickupAddresses?.length]);
 
   const getAuthHeaders = () => {
     const token = localStorage.getItem('adminToken');
