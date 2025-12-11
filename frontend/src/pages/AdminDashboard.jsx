@@ -2454,6 +2454,16 @@ export const AdminDashboard = () => {
                   <Button
                     size="sm"
                     variant="outline"
+                    onClick={() => handlePreviewConfirmation(editingBooking.id)}
+                    className="bg-white"
+                    disabled={previewLoading}
+                  >
+                    <Eye className="w-4 h-4 mr-2" />
+                    {previewLoading ? 'Loading...' : 'Preview Confirmation'}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
                     onClick={() => handleResendConfirmation(editingBooking.id)}
                     className="bg-white"
                   >
