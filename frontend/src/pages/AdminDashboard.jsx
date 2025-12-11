@@ -1120,7 +1120,7 @@ export const AdminDashboard = () => {
                           </Select>
                         </td>
                         <td className="p-4">
-                          <div className="flex space-x-2">
+                          <div className="flex flex-wrap gap-1">
                             <Button
                               size="sm"
                               variant="outline"
@@ -1133,11 +1133,39 @@ export const AdminDashboard = () => {
                             <Button
                               size="sm"
                               variant="outline"
+                              onClick={() => openEditBookingModal(booking)}
+                              className="hover:bg-blue-100 hover:text-blue-600"
+                              title="Edit Booking"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
                               onClick={() => openEmailModal(booking)}
                               className="hover:bg-gold hover:text-black"
                               title="Send Email"
                             >
                               <Mail className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleManualCalendarSync(booking.id)}
+                              className="hover:bg-green-100 hover:text-green-600"
+                              title="Sync to Google Calendar"
+                              disabled={calendarLoading}
+                            >
+                              <Calendar className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleResendConfirmation(booking.id)}
+                              className="hover:bg-purple-100 hover:text-purple-600"
+                              title="Resend Confirmation (Email & SMS)"
+                            >
+                              <RefreshCw className="w-4 h-4" />
                             </Button>
                             <Button
                               size="sm"
