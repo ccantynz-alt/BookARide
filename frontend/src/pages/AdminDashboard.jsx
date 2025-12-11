@@ -1170,12 +1170,15 @@ export const AdminDashboard = () => {
                                 ? 'bg-green-100 text-green-700' 
                                 : booking.payment_status === 'cash'
                                 ? 'bg-yellow-100 text-yellow-700'
+                                : booking.payment_status === 'pay-on-pickup'
+                                ? 'bg-blue-100 text-blue-700'
                                 : 'bg-red-100 text-red-700'
                             }`}>
                               {booking.payment_status === 'paid' && '✓'}
                               {booking.payment_status === 'cash' && '💵'}
+                              {booking.payment_status === 'pay-on-pickup' && '🚗'}
                               {booking.payment_status === 'unpaid' && '✗'}
-                              <span className="capitalize">{booking.payment_status || 'unpaid'}</span>
+                              <span className="capitalize">{booking.payment_status?.replace('-', ' ') || 'unpaid'}</span>
                             </span>
                           </div>
                         </td>
