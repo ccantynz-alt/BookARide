@@ -894,6 +894,57 @@ def send_via_mailgun(booking: dict):
         subject = f"{t['subject']} - Ref: {booking_ref}"
         recipient_email = booking.get('email')
         
+        # Build pickup addresses list for outbound
+        pickup_addresses = booking.get('pickupAddresses', [])
+        primary_pickup = booking.get('pickupAddress', 'N/A')
+        dropoff_address = booking.get('dropoffAddress', 'N/A')
+        
+        # Build the route display for outbound trip
+        outbound_route_html = f"<p><strong>Pickup 1:</strong> {primary_pickup}</p>"
+        if pickup_addresses and len(pickup_addresses) > 0:
+            for i, addr in enumerate(pickup_addresses):
+                if addr and addr.strip():
+                    outbound_route_html += f"<p><strong>Pickup {i + 2}:</strong> {addr}</p>"
+        outbound_route_html += f"<p><strong>Drop-off:</strong> {dropoff_address}</p>"
+        
+        # Build return trip section if applicable
+        return_trip_html = ""
+        has_return = booking.get('bookReturn', False)
+        return_date = booking.get('returnDate', '')
+        return_time = booking.get('returnTime', '')
+        
+        if has_return and return_date:
+            # Format return date
+            formatted_return_date = format_date_ddmmyyyy(return_date)
+            
+            # Build reverse route for return trip
+            # Return pickup is the original drop-off
+            # Return drop-offs are the original pickups in reverse order
+            return_route_html = f"<p><strong>Pickup:</strong> {dropoff_address}</p>"
+            
+            # Reverse the additional pickups to become drop-offs
+            all_pickups = [primary_pickup]
+            if pickup_addresses:
+                all_pickups.extend([addr for addr in pickup_addresses if addr and addr.strip()])
+            
+            # Reverse them for the return journey
+            reversed_dropoffs = list(reversed(all_pickups))
+            for i, addr in enumerate(reversed_dropoffs):
+                if i < len(reversed_dropoffs) - 1:
+                    return_route_html += f"<p><strong>Drop-off {i + 1}:</strong> {addr}</p>"
+                else:
+                    return_route_html += f"<p><strong>Final Drop-off:</strong> {addr}</p>"
+            
+            return_trip_html = f"""
+                    <div style="background-color: #fff8e6; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #D4AF37;">
+                        <h3 style="color: #1a1a1a; margin-top: 0;">🔄 Return Trip</h3>
+                        <p><strong>Return Date:</strong> {formatted_return_date}</p>
+                        <p><strong>Return Time:</strong> {return_time or 'N/A'}</p>
+                        <hr style="border: none; border-top: 1px solid #ddd; margin: 10px 0;">
+                        {return_route_html}
+                    </div>
+            """
+        
         html_content = f"""
         <html>
             <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -906,15 +957,19 @@ def send_via_mailgun(booking: dict):
                     <p>{t['intro']}</p>
                     
                     <div style="background-color: white; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                        <h3 style="color: #1a1a1a; margin-top: 0;">📍 Outbound Trip</h3>
                         <p><strong>{t['reference']}:</strong> {booking_ref}</p>
                         <p><strong>{t['service']}:</strong> {booking.get('serviceType', 'N/A').replace('-', ' ').title()}</p>
-                        <p><strong>{t['pickup']}:</strong> {booking.get('pickupAddress', 'N/A')}</p>
-                        <p><strong>{t['dropoff']}:</strong> {booking.get('dropoffAddress', 'N/A')}</p>
                         <p><strong>{t['date']}:</strong> {formatted_date}</p>
                         <p><strong>{t['time']}:</strong> {booking.get('time', 'N/A')}</p>
                         <p><strong>{t['passengers']}:</strong> {booking.get('passengers', 'N/A')}</p>
+                        <hr style="border: none; border-top: 1px solid #ddd; margin: 10px 0;">
+                        {outbound_route_html}
+                        <hr style="border: none; border-top: 1px solid #ddd; margin: 10px 0;">
                         <p><strong>{t['total']}:</strong> ${total_price:.2f} NZD</p>
                     </div>
+                    
+                    {return_trip_html}
                     
                     <p>{t['contact_intro']}</p>
                     <p>{t['contact']} {sender_email} {t['or_call']} +64 21 743 321.</p>
