@@ -510,6 +510,7 @@ async def update_booking(booking_id: str, update_data: dict, current_admin: dict
 async def send_booking_email(email_data: dict, current_admin: dict = Depends(get_current_admin)):
     try:
         recipient_email = email_data.get('email')
+        cc_emails = email_data.get('cc', '')  # CC email addresses (comma separated)
         subject = email_data.get('subject')
         message = email_data.get('message')
         
@@ -542,21 +543,29 @@ async def send_booking_email(email_data: dict, current_admin: dict = Depends(get
         </html>
         """
         
+        # Build email data
+        email_payload = {
+            "from": f"BookaRide Admin <{sender_email}>",
+            "to": recipient_email,
+            "subject": subject,
+            "html": html_content,
+            "text": message
+        }
+        
+        # Add CC if provided
+        if cc_emails and cc_emails.strip():
+            email_payload["cc"] = cc_emails.strip()
+        
         # Send email via Mailgun API
         response = requests.post(
             f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
             auth=("api", mailgun_api_key),
-            data={
-                "from": f"BookaRide Admin <{sender_email}>",
-                "to": recipient_email,
-                "subject": subject,
-                "html": html_content,
-                "text": message
-            }
+            data=email_payload
         )
         
         if response.status_code == 200:
-            logger.info(f"Admin email sent to {recipient_email} - Subject: {subject}")
+            cc_info = f" (CC: {cc_emails})" if cc_emails else ""
+            logger.info(f"Admin email sent to {recipient_email}{cc_info} - Subject: {subject}")
             return {"message": "Email sent successfully"}
         else:
             logger.error(f"Mailgun error: {response.status_code} - {response.text}")
