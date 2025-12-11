@@ -925,20 +925,29 @@ def send_via_mailgun(booking: dict):
         </html>
         """
         
+        # Build email data with CC support
+        email_data = {
+            "from": f"BookaRide <{sender_email}>",
+            "to": recipient_email,
+            "subject": subject,
+            "html": html_content
+        }
+        
+        # Add CC if provided
+        cc_email = booking.get('ccEmail', '')
+        if cc_email and cc_email.strip():
+            email_data["cc"] = cc_email.strip()
+        
         # Send email via Mailgun API
         response = requests.post(
             f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
             auth=("api", mailgun_api_key),
-            data={
-                "from": f"BookaRide <{sender_email}>",
-                "to": recipient_email,
-                "subject": subject,
-                "html": html_content
-            }
+            data=email_data
         )
         
         if response.status_code == 200:
-            logger.info(f"Confirmation email sent to {recipient_email} via Mailgun")
+            cc_info = f" (CC: {cc_email})" if cc_email else ""
+            logger.info(f"Confirmation email sent to {recipient_email}{cc_info} via Mailgun")
             return True
         else:
             logger.error(f"Mailgun error: {response.status_code} - {response.text}")
