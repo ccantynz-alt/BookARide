@@ -100,6 +100,12 @@ export const AdminDashboard = () => {
   const [editingBooking, setEditingBooking] = useState(null);
   const [calendarLoading, setCalendarLoading] = useState(false);
   
+  // Preview confirmation modal states
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [previewHtml, setPreviewHtml] = useState('');
+  const [previewBookingInfo, setPreviewBookingInfo] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  
   // Refs for edit modal autocomplete
   const editPickupInputRef = useRef(null);
   const editDropoffInputRef = useRef(null);
