@@ -2049,7 +2049,7 @@ async def update_payment_status(booking_id: str, paymentStatus: str = Body(..., 
             {"$set": {"payment_status": paymentStatus}}
         )
         
-        if result.modified_count == 0:
+        if result.matched_count == 0:
             raise HTTPException(status_code=404, detail="Booking not found")
         
         logger.info(f"Payment status updated for booking {booking_id} to {paymentStatus}")
@@ -2058,7 +2058,7 @@ async def update_payment_status(booking_id: str, paymentStatus: str = Body(..., 
         raise
     except Exception as e:
         logger.error(f"Error updating payment status: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)}
 
 # Bulk Operations
 @api_router.post("/bookings/bulk-status")
