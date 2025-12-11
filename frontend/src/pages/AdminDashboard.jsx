@@ -139,6 +139,11 @@ export const AdminDashboard = () => {
     });
     autocompleteCleanupRef.current = [];
 
+    // Reset initialization flags for additional pickup refs
+    additionalPickupRefs.current.forEach(ref => {
+      if (ref) ref._autocompleteInitialized = false;
+    });
+
     // Delay to ensure modal and inputs are fully rendered
     const timer = setTimeout(() => {
       try {
@@ -177,15 +182,22 @@ export const AdminDashboard = () => {
 
           // Initialize autocomplete for additional pickup addresses with fix
           additionalPickupRefs.current.forEach((ref, index) => {
-            if (ref) {
+            if (ref && !ref._autocompleteInitialized) {
               const additionalSetup = initAutocompleteWithFix(ref, autocompleteOptions);
               if (additionalSetup && additionalSetup.autocomplete) {
                 additionalSetup.autocomplete.addListener('place_changed', () => {
                   const place = additionalSetup.autocomplete.getPlace();
                   if (place && place.formatted_address) {
-                    handlePickupAddressChange(index, place.formatted_address);
+                    // Use functional update to avoid stale closure
+                    setNewBooking(prev => ({
+                      ...prev,
+                      pickupAddresses: prev.pickupAddresses.map((addr, i) => 
+                        i === index ? place.formatted_address : addr
+                      )
+                    }));
                   }
                 });
+                ref._autocompleteInitialized = true;
                 autocompleteCleanupRef.current.push(additionalSetup.cleanup);
               }
             }
