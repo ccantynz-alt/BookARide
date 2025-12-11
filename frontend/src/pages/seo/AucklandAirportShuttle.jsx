@@ -169,7 +169,7 @@ const AucklandAirportShuttle = () => {
 
       {/* Hero Section */}
       <section className="relative bg-gradient-to-br from-black via-gray-900 to-black text-white py-20">
-        <div className="absolute inset-0 bg-[url('/images/auckland-airport.jpg')] bg-cover bg-center opacity-20"></div>
+        <div className="absolute inset-0 bg-gradient-to-br from-black/90 via-gray-900/80 to-black/90"></div>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <div className="inline-flex items-center bg-gold/20 text-gold px-4 py-2 rounded-full text-sm font-medium mb-6">
