@@ -83,7 +83,7 @@ function App() {
     { path: "international/hamilton-airport", element: <HamiltonAirportInternational /> },
     { path: "international/corporate-transfers", element: <CorporateTransfers /> },
     { path: "international/group-bookings", element: <GroupBookings /> },
-    // Market-Specific Landing Pages
+    // Market-Specific Landing Pages (Old)
     { path: "visitors/australia", element: <AustraliaLanding /> },
     { path: "visitors/china", element: <ChinaLanding /> },
     { path: "visitors/japan", element: <JapanLanding /> },
@@ -93,6 +93,16 @@ function App() {
     { path: "visitors/uk", element: <UKLanding /> },
     { path: "visitors/germany", element: <GermanyLanding /> },
     { path: "visitors/france", element: <FranceLanding /> },
+    // NEW: Global SEO Pages
+    { path: "visitors", element: <VisitorsHub /> },
+    { path: "visitors/:countrySlug", element: <GlobalLanding /> },
+    { path: "auckland-airport-shuttle", element: <AucklandAirportShuttle /> },
+    // NEW: Route Pages
+    { path: "routes", element: <RoutesDirectory /> },
+    { path: "routes/:routeSlug", element: <RoutePage /> },
+    // NEW: Blog
+    { path: "blog", element: <BlogIndex /> },
+    { path: "blog/:postSlug", element: <BlogPost /> },
     // Standard Pages
     { path: "services", element: <Services /> },
     { path: "about", element: <About /> },
