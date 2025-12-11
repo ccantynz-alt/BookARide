@@ -595,7 +595,7 @@ export const AdminDashboard = () => {
     try {
       const response = await axios.put(`${API}/bookings/${selectedBooking.id}/payment-status`, {
         paymentStatus: selectedPaymentStatus
-      });
+      }, getAuthHeaders());
 
       if (response.data.success) {
         toast.success('Payment status updated successfully');
@@ -604,7 +604,7 @@ export const AdminDashboard = () => {
       }
     } catch (error) {
       console.error('Error updating payment status:', error);
-      toast.error('Failed to update payment status');
+      toast.error(error.response?.data?.detail || 'Failed to update payment status');
     }
   };
 
