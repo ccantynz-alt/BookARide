@@ -651,7 +651,29 @@ export const AdminDashboard = () => {
     
     // Re-initialize autocomplete for new input after DOM update
     setTimeout(() => {
-      initializeEditAdditionalPickupAutocomplete();
+      if (!isLoaded || !window.google?.maps?.places) return;
+      
+      const autocompleteOptions = {
+        fields: ['formatted_address', 'geometry', 'name']
+      };
+      
+      editAdditionalPickupRefs.current.forEach((ref, index) => {
+        if (ref && !ref._autocompleteInitialized) {
+          const setup = initAutocompleteWithFix(ref, autocompleteOptions);
+          if (setup?.autocomplete) {
+            setup.autocomplete.addListener('place_changed', () => {
+              const place = setup.autocomplete.getPlace();
+              if (place?.formatted_address) {
+                setEditingBooking(prev => ({
+                  ...prev,
+                  pickupAddresses: prev.pickupAddresses.map((addr, i) => i === index ? place.formatted_address : addr)
+                }));
+              }
+            });
+            ref._autocompleteInitialized = true;
+          }
+        }
+      });
     }, 100);
   };
 
@@ -670,30 +692,6 @@ export const AdminDashboard = () => {
       pickupAddresses: prev.pickupAddresses.map((addr, i) => i === index ? value : addr)
     }));
   };
-
-  // Initialize autocomplete for edit modal additional pickups
-  const initializeEditAdditionalPickupAutocomplete = useCallback(() => {
-    if (!isLoaded || !window.google?.maps?.places) return;
-    
-    const autocompleteOptions = {
-      fields: ['formatted_address', 'geometry', 'name']
-    };
-    
-    editAdditionalPickupRefs.current.forEach((ref, index) => {
-      if (ref && !ref._autocompleteInitialized) {
-        const setup = initAutocompleteWithFix(ref, autocompleteOptions);
-        if (setup?.autocomplete) {
-          setup.autocomplete.addListener('place_changed', () => {
-            const place = setup.autocomplete.getPlace();
-            if (place?.formatted_address) {
-              handleEditPickupAddressChange(index, place.formatted_address);
-            }
-          });
-          ref._autocompleteInitialized = true;
-        }
-      }
-    });
-  }, [isLoaded]);
 
   // Manual calendar sync
   const handleManualCalendarSync = async (bookingId) => {
