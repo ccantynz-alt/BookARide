@@ -199,6 +199,58 @@ export const AdminDashboard = () => {
     };
   }, [isLoaded, showCreateBookingModal, newBooking.pickupAddresses.length]);
 
+  // Initialize autocomplete for edit modal
+  useEffect(() => {
+    if (!isLoaded || !showEditBookingModal || !editingBooking) return;
+
+    const timer = setTimeout(() => {
+      try {
+        if (window.google?.maps?.places) {
+          const autocompleteOptions = {
+            fields: ['formatted_address', 'geometry', 'name']
+          };
+
+          // Initialize pickup autocomplete for edit modal
+          if (editPickupInputRef.current && !editPickupInputRef.current._autocompleteInitialized) {
+            const pickupSetup = initAutocompleteWithFix(editPickupInputRef.current, autocompleteOptions);
+            if (pickupSetup?.autocomplete) {
+              pickupSetup.autocomplete.addListener('place_changed', () => {
+                const place = pickupSetup.autocomplete.getPlace();
+                if (place?.formatted_address) {
+                  setEditingBooking(prev => ({ ...prev, pickupAddress: place.formatted_address }));
+                }
+              });
+              editPickupInputRef.current._autocompleteInitialized = true;
+            }
+          }
+
+          // Initialize dropoff autocomplete for edit modal
+          if (editDropoffInputRef.current && !editDropoffInputRef.current._autocompleteInitialized) {
+            const dropoffSetup = initAutocompleteWithFix(editDropoffInputRef.current, autocompleteOptions);
+            if (dropoffSetup?.autocomplete) {
+              dropoffSetup.autocomplete.addListener('place_changed', () => {
+                const place = dropoffSetup.autocomplete.getPlace();
+                if (place?.formatted_address) {
+                  setEditingBooking(prev => ({ ...prev, dropoffAddress: place.formatted_address }));
+                }
+              });
+              editDropoffInputRef.current._autocompleteInitialized = true;
+            }
+          }
+
+          // Initialize additional pickup autocompletes for edit modal
+          initializeEditAdditionalPickupAutocomplete();
+
+          console.log('✅ Google Places Autocomplete initialized for edit modal');
+        }
+      } catch (error) {
+        console.error('❌ Error initializing autocomplete for edit modal:', error);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [isLoaded, showEditBookingModal, editingBooking?.pickupAddresses?.length, initializeEditAdditionalPickupAutocomplete]);
+
   const getAuthHeaders = () => {
     const token = localStorage.getItem('adminToken');
     return {
