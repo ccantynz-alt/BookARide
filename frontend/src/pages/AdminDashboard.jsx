@@ -614,6 +614,7 @@ export const AdminDashboard = () => {
       await axios.post(`${API}/send-booking-email`, {
         bookingId: selectedBooking.id,
         email: selectedBooking.email,
+        cc: emailCC,
         subject: emailSubject,
         message: emailMessage
       }, getAuthHeaders());
