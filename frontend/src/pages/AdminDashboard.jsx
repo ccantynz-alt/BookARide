@@ -1581,6 +1581,14 @@ export const AdminDashboard = () => {
                 <Input value={selectedBooking.email} disabled className="bg-gray-50" />
               </div>
               <div>
+                <Label>CC (optional):</Label>
+                <Input
+                  value={emailCC}
+                  onChange={(e) => setEmailCC(e.target.value)}
+                  placeholder="Additional email addresses (comma separated)"
+                />
+              </div>
+              <div>
                 <Label>Subject:</Label>
                 <Input
                   value={emailSubject}
