@@ -393,6 +393,7 @@ export const AdminDashboard = () => {
     setSelectedBooking(booking);
     setEmailSubject(`Booking Confirmation - ${booking.serviceType}`);
     setEmailMessage(`Dear ${booking.name},\n\nYour booking has been confirmed!\n\nDetails:\nService: ${booking.serviceType}\nPickup: ${booking.pickupAddress}\nDrop-off: ${booking.dropoffAddress}\nDate: ${formatDate(booking.date)}\nTime: ${booking.time}\nPassengers: ${booking.passengers}\n\nTotal Price: $${booking.pricing.totalPrice.toFixed(2)}\n\nThank you for choosing Book A Ride NZ!`);
+    setEmailCC('');
     setShowEmailModal(true);
   };
 
