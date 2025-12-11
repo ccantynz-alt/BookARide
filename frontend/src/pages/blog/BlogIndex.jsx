@@ -2,8 +2,8 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { Card, CardContent } from '../../components/ui/card';
-import Header from '../../components/Header';
-import Footer from '../../components/Footer';
+import { Header } from '../../components/Header';
+import { Footer } from '../../components/Footer';
 import { Calendar, Clock, User, ArrowRight, Tag } from 'lucide-react';
 
 // Blog posts data
