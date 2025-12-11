@@ -1567,6 +1567,18 @@ def generate_confirmation_email_html(booking: dict) -> str:
         </svg>
     '''
     
+    # Dynamic service tagline based on service type
+    service_type = booking.get('serviceType', 'private-transfer')
+    service_tagline_map = {
+        'private-transfer': 'PRIVATE SHUTTLE TRANSFER',
+        'private-shuttle': 'PRIVATE SHUTTLE TRANSFER',
+        'airport-transfer': 'AIRPORT TRANSFER',
+        'shared-shuttle': 'SHARED SHUTTLE SERVICE',
+        'cruise-transfer': 'CRUISE SHIP TRANSFER',
+        'charter': 'CHARTER SERVICE',
+    }
+    service_tagline = service_tagline_map.get(service_type, service_type.replace('-', ' ').upper())
+    
     html_content = f'''
     <!DOCTYPE html>
     <html>
@@ -1581,7 +1593,7 @@ def generate_confirmation_email_html(booking: dict) -> str:
                 <div style="background: linear-gradient(135deg, #ffffff 0%, #faf8f3 100%); padding: 30px 20px; text-align: center; border-bottom: 3px solid #D4AF37;">
                     {logo_svg}
                     <h1 style="margin: 15px 0 5px 0; color: #1a1a1a; font-size: 24px; font-weight: 300; letter-spacing: 2px;">BOOK<span style="color: #D4AF37; font-weight: 600;">A</span>RIDE</h1>
-                    <p style="margin: 0; color: #888; font-size: 12px; letter-spacing: 1px;">PREMIUM AIRPORT TRANSFERS</p>
+                    <p style="margin: 0; color: #888; font-size: 12px; letter-spacing: 1px;">{service_tagline}</p>
                 </div>
                 
                 <!-- Confirmation Badge -->
