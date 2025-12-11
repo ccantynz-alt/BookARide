@@ -819,6 +819,12 @@ export const AdminDashboard = () => {
       return;
     }
 
+    // Return trip validation
+    if (newBooking.bookReturn && (!newBooking.returnDate || !newBooking.returnTime)) {
+      toast.error('Please select return date and time for the return trip');
+      return;
+    }
+
     // Check if either calculated price or manual override is provided
     const hasCalculatedPrice = bookingPricing.totalPrice > 0;
     const hasManualPrice = manualPriceOverride && parseFloat(manualPriceOverride) > 0;
@@ -829,7 +835,13 @@ export const AdminDashboard = () => {
     }
 
     try {
-      const priceOverride = hasManualPrice ? parseFloat(manualPriceOverride) : null;
+      // Calculate final price (double if return trip)
+      let finalPrice = hasManualPrice ? parseFloat(manualPriceOverride) : bookingPricing.totalPrice;
+      if (newBooking.bookReturn && !hasManualPrice) {
+        finalPrice = finalPrice * 2; // Double for return trip
+      }
+      
+      const priceOverride = hasManualPrice ? parseFloat(manualPriceOverride) : (newBooking.bookReturn ? finalPrice : null);
       
       await axios.post(`${API}/bookings/manual`, {
         name: newBooking.name,
@@ -842,10 +854,23 @@ export const AdminDashboard = () => {
         date: newBooking.date,
         time: newBooking.time,
         passengers: newBooking.passengers,
-        pricing: bookingPricing,
+        pricing: newBooking.bookReturn ? { ...bookingPricing, totalPrice: finalPrice } : bookingPricing,
         paymentMethod: newBooking.paymentMethod,
         notes: newBooking.notes,
-        priceOverride: priceOverride
+        priceOverride: priceOverride,
+        // Flight details
+        flightArrivalNumber: newBooking.flightArrivalNumber,
+        flightArrivalTime: newBooking.flightArrivalTime,
+        flightDepartureNumber: newBooking.flightDepartureNumber,
+        flightDepartureTime: newBooking.flightDepartureTime,
+        // Return trip details
+        bookReturn: newBooking.bookReturn,
+        returnDate: newBooking.returnDate,
+        returnTime: newBooking.returnTime,
+        returnDepartureFlightNumber: newBooking.returnDepartureFlightNumber,
+        returnDepartureTime: newBooking.returnDepartureTime,
+        returnArrivalFlightNumber: newBooking.returnArrivalFlightNumber,
+        returnArrivalTime: newBooking.returnArrivalTime
       }, getAuthHeaders());
 
       toast.success('Booking created successfully! Customer will receive email & SMS confirmation.');
@@ -863,8 +888,21 @@ export const AdminDashboard = () => {
         time: '',
         passengers: '1',
         paymentMethod: 'cash',
-        notes: ''
+        notes: '',
+        flightArrivalNumber: '',
+        flightArrivalTime: '',
+        flightDepartureNumber: '',
+        flightDepartureTime: '',
+        bookReturn: false,
+        returnDate: '',
+        returnTime: '',
+        returnDepartureFlightNumber: '',
+        returnDepartureTime: '',
+        returnArrivalFlightNumber: '',
+        returnArrivalTime: ''
       });
+      setAdminReturnDate(null);
+      setAdminReturnTime(null);
       setBookingPricing({
         distance: 0,
         basePrice: 0,
