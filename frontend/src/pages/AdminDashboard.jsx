@@ -370,7 +370,37 @@ export const AdminDashboard = () => {
       ...prev,
       pickupAddresses: [...prev.pickupAddresses, '']
     }));
+    
+    // Re-initialize autocomplete for new input after DOM update
+    setTimeout(() => {
+      initializeAdditionalPickupAutocomplete();
+    }, 100);
   };
+  
+  // Function to initialize autocomplete for additional pickup inputs
+  const initializeAdditionalPickupAutocomplete = useCallback(() => {
+    if (!isLoaded || !window.google?.maps?.places) return;
+    
+    const autocompleteOptions = {
+      fields: ['formatted_address', 'geometry', 'name']
+    };
+    
+    additionalPickupRefs.current.forEach((ref, index) => {
+      if (ref && !ref._autocompleteInitialized) {
+        const setup = initAutocompleteWithFix(ref, autocompleteOptions);
+        if (setup?.autocomplete) {
+          setup.autocomplete.addListener('place_changed', () => {
+            const place = setup.autocomplete.getPlace();
+            if (place?.formatted_address) {
+              handlePickupAddressChange(index, place.formatted_address);
+            }
+          });
+          ref._autocompleteInitialized = true;
+          autocompleteCleanupRef.current.push(setup.cleanup);
+        }
+      }
+    });
+  }, [isLoaded]);
 
   const handleRemovePickup = (index) => {
     setNewBooking(prev => ({
