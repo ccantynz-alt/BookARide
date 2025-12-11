@@ -868,6 +868,7 @@ export const AdminDashboard = () => {
       await axios.post(`${API}/bookings/manual`, {
         name: newBooking.name,
         email: newBooking.email,
+        ccEmail: newBooking.ccEmail,  // CC email for confirmation
         phone: newBooking.phone,
         serviceType: newBooking.serviceType,
         pickupAddress: newBooking.pickupAddress,
@@ -901,6 +902,7 @@ export const AdminDashboard = () => {
       setNewBooking({
         name: '',
         email: '',
+        ccEmail: '',
         phone: '',
         serviceType: 'airport-shuttle',
         pickupAddress: '',
