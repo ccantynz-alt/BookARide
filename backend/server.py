@@ -1418,7 +1418,7 @@ async def resend_booking_confirmation(booking_id: str, current_admin: dict = Dep
         
         # Send confirmation email
         try:
-            await send_booking_confirmation_email(booking)
+            send_booking_confirmation_email(booking)
             email_sent = True
             logger.info(f"Confirmation email resent for booking {booking_id}")
         except Exception as e:
@@ -1426,7 +1426,7 @@ async def resend_booking_confirmation(booking_id: str, current_admin: dict = Dep
         
         # Send confirmation SMS
         try:
-            await send_booking_confirmation_sms(booking)
+            send_booking_confirmation_sms(booking)
             sms_sent = True
             logger.info(f"Confirmation SMS resent for booking {booking_id}")
         except Exception as e:
