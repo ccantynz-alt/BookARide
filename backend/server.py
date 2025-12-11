@@ -2058,7 +2058,7 @@ async def update_payment_status(booking_id: str, paymentStatus: str = Body(..., 
         raise
     except Exception as e:
         logger.error(f"Error updating payment status: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e)}
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Bulk Operations
 @api_router.post("/bookings/bulk-status")
