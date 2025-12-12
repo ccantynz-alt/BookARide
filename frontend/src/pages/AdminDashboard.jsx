@@ -796,6 +796,21 @@ export const AdminDashboard = () => {
     }
   };
 
+  // Send day-before reminders
+  const handleSendReminders = async () => {
+    if (!window.confirm('Send reminder emails and SMS to all customers with bookings tomorrow?')) {
+      return;
+    }
+    
+    try {
+      const response = await axios.post(`${API}/admin/send-reminders`, {}, getAuthHeaders());
+      toast.success(response.data.message || 'Reminders sent successfully!');
+    } catch (error) {
+      console.error('Error sending reminders:', error);
+      toast.error(error.response?.data?.detail || 'Failed to send reminders');
+    }
+  };
+
   const handleChangePassword = async () => {
     try {
       // Validation
