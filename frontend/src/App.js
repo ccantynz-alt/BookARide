@@ -158,6 +158,9 @@ function App() {
             
             {/* Admin Routes (No language prefix) */}
             <Route path="/admin/login" element={<AdminLogin />} />
+            <Route path="/admin/auth/callback" element={<AdminAuthCallback />} />
+            <Route path="/admin/forgot-password" element={<AdminForgotPassword />} />
+            <Route path="/admin/reset-password" element={<AdminResetPassword />} />
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
             <Route path="/admin/seo" element={<SEODashboard />} />
             <Route path="/admin/facebook-strategy" element={<FacebookStrategy />} />
