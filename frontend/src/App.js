@@ -50,6 +50,7 @@ import { SUPPORTED_LANGUAGES } from './config/languages';
 import AucklandAirportShuttle from './pages/seo/AucklandAirportShuttle';
 import GlobalLanding from './pages/seo/GlobalLanding';
 import VisitorsHub from './pages/seo/VisitorsHub';
+import SEORoutePage from './pages/seo/SEORoutePage';
 import RoutePage from './pages/routes/RoutePage';
 import RoutesDirectory from './pages/routes/RoutesDirectory';
 import BlogIndex from './pages/blog/BlogIndex';
