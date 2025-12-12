@@ -311,6 +311,396 @@ async def change_password(
         raise HTTPException(status_code=500, detail=f"Error changing password: {str(e)}")
 
 
+# ============================================
+# GOOGLE OAUTH FOR ADMIN
+# ============================================
+
+class GoogleAuthSession(BaseModel):
+    session_id: str
+
+@api_router.post("/admin/google-auth/session")
+async def process_google_auth_session(auth_data: GoogleAuthSession, response: Response):
+    """Process Google OAuth session_id from Emergent Auth and create admin session"""
+    try:
+        # Verify session with Emergent Auth
+        async with httpx.AsyncClient() as client:
+            auth_response = await client.get(
+                "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data",
+                headers={"X-Session-ID": auth_data.session_id}
+            )
+        
+        if auth_response.status_code != 200:
+            logger.error(f"Emergent Auth error: {auth_response.text}")
+            raise HTTPException(status_code=401, detail="Invalid session")
+        
+        user_data = auth_response.json()
+        email = user_data.get("email")
+        name = user_data.get("name")
+        picture = user_data.get("picture")
+        emergent_session_token = user_data.get("session_token")
+        
+        if not email:
+            raise HTTPException(status_code=400, detail="Email not provided by Google")
+        
+        # Check if admin exists with this email
+        admin = await db.admin_users.find_one({"email": email}, {"_id": 0})
+        
+        if not admin:
+            # Admin doesn't exist - reject login
+            logger.warning(f"Google OAuth attempt for non-admin email: {email}")
+            raise HTTPException(
+                status_code=403, 
+                detail="This Google account is not authorized as an admin. Please contact the system administrator."
+            )
+        
+        # Admin exists - create session
+        session_token = f"admin_session_{uuid.uuid4().hex}"
+        expires_at = datetime.now(timezone.utc) + timedelta(days=7)
+        
+        # Store session in database
+        await db.admin_sessions.insert_one({
+            "admin_id": admin["id"],
+            "username": admin["username"],
+            "email": email,
+            "session_token": session_token,
+            "google_name": name,
+            "google_picture": picture,
+            "emergent_session_token": emergent_session_token,
+            "expires_at": expires_at.isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+        
+        # Set httpOnly cookie
+        response.set_cookie(
+            key="admin_session_token",
+            value=session_token,
+            httponly=True,
+            secure=True,
+            samesite="none",
+            path="/",
+            max_age=7 * 24 * 60 * 60  # 7 days
+        )
+        
+        # Also return JWT token for localStorage (backward compatibility)
+        access_token = create_access_token(data={"sub": admin["username"]})
+        
+        logger.info(f"Admin logged in via Google: {admin['username']} ({email})")
+        
+        return {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "admin": {
+                "username": admin["username"],
+                "email": email,
+                "name": name,
+                "picture": picture
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Google OAuth error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Authentication failed: {str(e)}")
+
+
+@api_router.get("/admin/auth/me")
+async def get_admin_from_session(request: Request):
+    """Get current admin from session cookie or Authorization header"""
+    try:
+        # First check cookie
+        session_token = request.cookies.get("admin_session_token")
+        
+        if session_token:
+            session = await db.admin_sessions.find_one(
+                {"session_token": session_token}, 
+                {"_id": 0}
+            )
+            
+            if session:
+                # Check expiry
+                expires_at = session.get("expires_at")
+                if isinstance(expires_at, str):
+                    expires_at = datetime.fromisoformat(expires_at)
+                if expires_at.tzinfo is None:
+                    expires_at = expires_at.replace(tzinfo=timezone.utc)
+                
+                if expires_at > datetime.now(timezone.utc):
+                    admin = await db.admin_users.find_one(
+                        {"username": session["username"]}, 
+                        {"_id": 0}
+                    )
+                    if admin:
+                        return {
+                            "username": admin["username"],
+                            "email": admin["email"],
+                            "name": session.get("google_name"),
+                            "picture": session.get("google_picture"),
+                            "auth_method": "google"
+                        }
+        
+        # Fallback to Authorization header (JWT)
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+            try:
+                payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+                username = payload.get("sub")
+                if username:
+                    admin = await db.admin_users.find_one(
+                        {"username": username}, 
+                        {"_id": 0}
+                    )
+                    if admin:
+                        return {
+                            "username": admin["username"],
+                            "email": admin["email"],
+                            "auth_method": "jwt"
+                        }
+            except JWTError:
+                pass
+        
+        raise HTTPException(status_code=401, detail="Not authenticated")
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Auth check error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Authentication check failed")
+
+
+@api_router.post("/admin/logout")
+async def admin_logout(request: Request, response: Response):
+    """Logout admin and clear session"""
+    try:
+        session_token = request.cookies.get("admin_session_token")
+        
+        if session_token:
+            # Delete session from database
+            await db.admin_sessions.delete_one({"session_token": session_token})
+        
+        # Clear cookie
+        response.delete_cookie(
+            key="admin_session_token",
+            path="/",
+            secure=True,
+            samesite="none"
+        )
+        
+        return {"message": "Logged out successfully"}
+        
+    except Exception as e:
+        logger.error(f"Logout error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Logout failed")
+
+
+# ============================================
+# PASSWORD RESET FOR ADMIN
+# ============================================
+
+class PasswordResetRequest(BaseModel):
+    email: str
+
+class PasswordResetConfirm(BaseModel):
+    token: str
+    new_password: str
+
+@api_router.post("/admin/password-reset/request")
+async def request_password_reset(reset_request: PasswordResetRequest):
+    """Request a password reset email for admin"""
+    try:
+        email = reset_request.email.lower().strip()
+        
+        # Check if admin exists with this email
+        admin = await db.admin_users.find_one({"email": email}, {"_id": 0})
+        
+        # Always return success (security - don't reveal if email exists)
+        if not admin:
+            logger.info(f"Password reset requested for non-existent email: {email}")
+            return {"message": "If this email is registered, you will receive a password reset link."}
+        
+        # Generate reset token
+        reset_token = uuid.uuid4().hex
+        expires_at = datetime.now(timezone.utc) + timedelta(hours=1)  # 1 hour expiry
+        
+        # Store reset token
+        await db.password_reset_tokens.insert_one({
+            "admin_id": admin["id"],
+            "username": admin["username"],
+            "email": email,
+            "token": reset_token,
+            "expires_at": expires_at.isoformat(),
+            "used": False,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+        
+        # Send reset email via Mailgun
+        public_domain = os.environ.get('PUBLIC_DOMAIN', 'https://bookaride.co.nz')
+        reset_link = f"{public_domain}/admin/reset-password?token={reset_token}"
+        
+        mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
+        mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
+        sender_email = os.environ.get('SENDER_EMAIL', 'noreply@bookaride.co.nz')
+        
+        if mailgun_api_key and mailgun_domain:
+            email_html = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                    .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                    .header {{ background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 30px; text-align: center; }}
+                    .header h1 {{ color: #d4af37; margin: 0; font-size: 28px; }}
+                    .content {{ background: #fff; padding: 30px; border: 1px solid #e5e5e5; }}
+                    .button {{ display: inline-block; background: #d4af37; color: #000 !important; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; margin: 20px 0; }}
+                    .footer {{ text-align: center; padding: 20px; color: #666; font-size: 12px; }}
+                    .warning {{ background: #fff3cd; border: 1px solid #ffc107; padding: 10px; border-radius: 5px; margin: 15px 0; }}
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>🔐 Password Reset Request</h1>
+                    </div>
+                    <div class="content">
+                        <p>Hello <strong>{admin['username']}</strong>,</p>
+                        <p>We received a request to reset your admin password for Book A Ride NZ.</p>
+                        <p>Click the button below to reset your password:</p>
+                        <p style="text-align: center;">
+                            <a href="{reset_link}" class="button">Reset Password</a>
+                        </p>
+                        <div class="warning">
+                            ⏰ <strong>This link will expire in 1 hour.</strong><br>
+                            If you didn't request this reset, please ignore this email.
+                        </div>
+                        <p>Or copy and paste this link into your browser:</p>
+                        <p style="word-break: break-all; background: #f5f5f5; padding: 10px; border-radius: 5px; font-size: 12px;">{reset_link}</p>
+                    </div>
+                    <div class="footer">
+                        <p>Book A Ride NZ | Premium Airport Transfers</p>
+                        <p>This is an automated message. Please do not reply.</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+            
+            try:
+                mailgun_response = requests.post(
+                    f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
+                    auth=("api", mailgun_api_key),
+                    data={
+                        "from": f"Book A Ride NZ <{sender_email}>",
+                        "to": email,
+                        "subject": "Password Reset Request - Book A Ride NZ Admin",
+                        "html": email_html
+                    }
+                )
+                
+                if mailgun_response.status_code == 200:
+                    logger.info(f"Password reset email sent to: {email}")
+                else:
+                    logger.error(f"Mailgun error: {mailgun_response.text}")
+                    
+            except Exception as mail_error:
+                logger.error(f"Failed to send reset email: {str(mail_error)}")
+        
+        return {"message": "If this email is registered, you will receive a password reset link."}
+        
+    except Exception as e:
+        logger.error(f"Password reset request error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to process password reset request")
+
+
+@api_router.post("/admin/password-reset/confirm")
+async def confirm_password_reset(reset_data: PasswordResetConfirm):
+    """Confirm password reset with token and new password"""
+    try:
+        # Find the reset token
+        token_doc = await db.password_reset_tokens.find_one(
+            {"token": reset_data.token, "used": False}, 
+            {"_id": 0}
+        )
+        
+        if not token_doc:
+            raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+        
+        # Check expiry
+        expires_at = token_doc.get("expires_at")
+        if isinstance(expires_at, str):
+            expires_at = datetime.fromisoformat(expires_at)
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        
+        if expires_at < datetime.now(timezone.utc):
+            raise HTTPException(status_code=400, detail="Reset token has expired. Please request a new one.")
+        
+        # Validate new password
+        if len(reset_data.new_password) < 8:
+            raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+        
+        # Hash new password
+        hashed_password = get_password_hash(reset_data.new_password)
+        
+        # Update admin password
+        result = await db.admin_users.update_one(
+            {"username": token_doc["username"]},
+            {"$set": {
+                "hashed_password": hashed_password,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        
+        if result.modified_count == 0:
+            raise HTTPException(status_code=404, detail="Admin user not found")
+        
+        # Mark token as used
+        await db.password_reset_tokens.update_one(
+            {"token": reset_data.token},
+            {"$set": {"used": True, "used_at": datetime.now(timezone.utc).isoformat()}}
+        )
+        
+        logger.info(f"Password reset completed for: {token_doc['username']}")
+        
+        return {"message": "Password has been reset successfully. You can now login with your new password."}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Password reset confirm error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to reset password")
+
+
+@api_router.get("/admin/password-reset/validate/{token}")
+async def validate_reset_token(token: str):
+    """Validate if a reset token is still valid"""
+    try:
+        token_doc = await db.password_reset_tokens.find_one(
+            {"token": token, "used": False}, 
+            {"_id": 0}
+        )
+        
+        if not token_doc:
+            return {"valid": False, "message": "Invalid or expired token"}
+        
+        # Check expiry
+        expires_at = token_doc.get("expires_at")
+        if isinstance(expires_at, str):
+            expires_at = datetime.fromisoformat(expires_at)
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        
+        if expires_at < datetime.now(timezone.utc):
+            return {"valid": False, "message": "Token has expired"}
+        
+        return {"valid": True, "email": token_doc.get("email")}
+        
+    except Exception as e:
+        logger.error(f"Token validation error: {str(e)}")
+        return {"valid": False, "message": "Validation failed"}
+
+
 # Add your routes to the router instead of directly to app
 @api_router.get("/")
 async def root():
