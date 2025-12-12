@@ -1922,6 +1922,54 @@ async def get_calendar_credentials():
         return None
 
 
+def contains_non_english(text: str) -> bool:
+    """Check if text contains non-ASCII characters (likely non-English)"""
+    if not text:
+        return False
+    return any(ord(c) > 127 for c in str(text))
+
+def translate_to_english(text: str) -> str:
+    """Translate non-English text to English using Emergent LLM"""
+    if not text or not contains_non_english(text):
+        return text
+    
+    try:
+        from emergentintegrations.llm.openai import chat
+        
+        response = chat(
+            api_key="sk-emergent-1221fFe2cB790B632B",
+            prompt=f"Translate the following text to English. Only return the translation, nothing else:\n\n{text}",
+            model="gpt-4o-mini"
+        )
+        
+        translated = response.strip()
+        if translated:
+            return f"{translated} ({text})"  # Show translation with original
+        return text
+    except Exception as e:
+        logger.warning(f"Translation failed: {str(e)}")
+        return text
+
+def get_english_calendar_text(booking: dict) -> dict:
+    """Get English versions of booking fields for calendar, with translations if needed"""
+    name = booking.get('name', '')
+    pickup = booking.get('pickupAddress', '')
+    dropoff = booking.get('dropoffAddress', '')
+    notes = booking.get('notes', '')
+    
+    # Translate if non-English detected
+    translated_name = translate_to_english(name) if contains_non_english(name) else name
+    translated_pickup = translate_to_english(pickup) if contains_non_english(pickup) else pickup
+    translated_dropoff = translate_to_english(dropoff) if contains_non_english(dropoff) else dropoff
+    translated_notes = translate_to_english(notes) if contains_non_english(notes) else notes
+    
+    return {
+        'name': translated_name,
+        'pickup': translated_pickup,
+        'dropoff': translated_dropoff,
+        'notes': translated_notes or 'None'
+    }
+
 async def create_calendar_event(booking: dict):
     """Create a Google Calendar event for the booking"""
     try:
@@ -1952,21 +2000,24 @@ async def create_calendar_event(booking: dict):
         date_obj = datetime.strptime(booking.get('date'), '%Y-%m-%d')
         formatted_date = date_obj.strftime('%d %B %Y')  # "09 December 2025"
         
-        # Create event
+        # Get English translations for calendar (translates non-English text)
+        eng = get_english_calendar_text(booking)
+        
+        # Create event with English text
         event = {
-            'summary': f"Booking: {booking.get('name')} - {booking.get('serviceType', 'Shuttle').replace('-', ' ').title()}",
-            'location': booking.get('pickupAddress', ''),
+            'summary': f"Booking: {eng['name']} - {booking.get('serviceType', 'Shuttle').replace('-', ' ').title()}",
+            'location': eng['pickup'],
             'description': f"""
 Booking Reference: {booking.get('id', '')[:8].upper()}
 Booking Date: {formatted_date} at {booking.get('time')}
 
-Customer: {booking.get('name')}
+Customer: {eng['name']}
 Phone: {booking.get('phone')}
 Email: {booking.get('email')}
 
 Service: {booking.get('serviceType', '').replace('-', ' ').title()}
-Pickup: {booking.get('pickupAddress')}
-Drop-off: {booking.get('dropoffAddress')}
+Pickup: {eng['pickup']}
+Drop-off: {eng['dropoff']}
 Passengers: {booking.get('passengers')}
 
 Total Price: ${booking.get('totalPrice', 0):.2f} NZD
@@ -1976,7 +2027,7 @@ Flight Info:
 Departure: {booking.get('departureFlightNumber', 'N/A')} at {booking.get('departureTime', 'N/A')}
 Arrival: {booking.get('arrivalFlightNumber', 'N/A')} at {booking.get('arrivalTime', 'N/A')}
 
-Notes: {booking.get('notes', 'None')}
+Notes: {eng['notes']}
             """.strip(),
             'start': {
                 'dateTime': booking_datetime,
