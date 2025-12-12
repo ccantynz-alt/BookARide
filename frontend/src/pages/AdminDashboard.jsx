@@ -2267,7 +2267,7 @@ export const AdminDashboard = () => {
                     <Label>Name *</Label>
                     <Input
                       value={editingBooking.name}
-                      onChange={(e) => setEditingBooking({...editingBooking, name: e.target.value})}
+                      onChange={(e) => setEditingBooking(prev => ({...prev, name: e.target.value}))}
                       placeholder="Customer name"
                       className="mt-1"
                     />
@@ -2277,7 +2277,7 @@ export const AdminDashboard = () => {
                     <Input
                       type="email"
                       value={editingBooking.email}
-                      onChange={(e) => setEditingBooking({...editingBooking, email: e.target.value})}
+                      onChange={(e) => setEditingBooking(prev => ({...prev, email: e.target.value}))}
                       placeholder="customer@example.com"
                       className="mt-1"
                     />
@@ -2286,7 +2286,7 @@ export const AdminDashboard = () => {
                     <Label>Phone *</Label>
                     <Input
                       value={editingBooking.phone}
-                      onChange={(e) => setEditingBooking({...editingBooking, phone: e.target.value})}
+                      onChange={(e) => setEditingBooking(prev => ({...prev, phone: e.target.value}))}
                       placeholder="+64 21 XXX XXXX"
                       className="mt-1"
                     />
@@ -2295,7 +2295,7 @@ export const AdminDashboard = () => {
                     <Label>Passengers</Label>
                     <Select 
                       value={editingBooking.passengers?.toString()} 
-                      onValueChange={(value) => setEditingBooking({...editingBooking, passengers: value})}
+                      onValueChange={(value) => setEditingBooking(prev => ({...prev, passengers: value}))}
                     >
                       <SelectTrigger className="mt-1">
                         <SelectValue />
