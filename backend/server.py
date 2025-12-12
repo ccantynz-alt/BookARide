@@ -477,6 +477,14 @@ async def create_booking(booking: BookingCreate):
             logger.error(f"Failed to send admin notification for booking #{ref_number}: {str(email_error)}")
             # Don't fail the booking creation if email fails
         
+        # Sync to Google Calendar
+        try:
+            await create_calendar_event(booking_dict)
+            logger.info(f"Calendar event created for booking #{ref_number}")
+        except Exception as calendar_error:
+            logger.error(f"Failed to create calendar event for booking #{ref_number}: {str(calendar_error)}")
+            # Don't fail the booking creation if calendar sync fails
+        
         return booking_obj
     except Exception as e:
         logger.error(f"Error creating booking: {str(e)}")
