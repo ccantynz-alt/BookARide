@@ -1011,30 +1011,30 @@ async def send_booking_to_admin(booking_id: str, current_admin: dict = Depends(g
         html_content = f"""
         <html>
             <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <div style="background-color: #1a1a1a; color: #D4AF37; padding: 20px; text-align: center;">
-                    <h1>BookaRide.co.nz</h1>
-                    <p style="margin: 5px 0; font-size: 14px;">Admin Booking Notification</p>
+                <div style="background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%); color: white; padding: 20px; text-align: center; border-radius: 10px 10px 0 0;">
+                    <h1 style="margin: 0;">BookaRide.co.nz</h1>
+                    <p style="margin: 5px 0; font-size: 14px; color: rgba(255,255,255,0.9);">Admin Booking Notification</p>
                 </div>
                 
-                <div style="padding: 20px; background-color: #f5f5f5;">
-                    <h2 style="color: #1a1a1a; margin-top: 0;">📋 Booking Details</h2>
+                <div style="padding: 20px; background-color: #ffffff; border: 1px solid #e8e4d9; border-top: none;">
+                    <h2 style="color: #333; margin-top: 0;">📋 Booking Details</h2>
                     
-                    <div style="background-color: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #D4AF37;">
+                    <div style="background-color: #faf8f3; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #D4AF37;">
                         <p style="margin: 5px 0;"><strong>Booking Reference:</strong> {booking.get('id', '')[:8].upper()}</p>
                         <p style="margin: 5px 0;"><strong>Status:</strong> <span style="color: {'#16a34a' if booking.get('status') == 'confirmed' else '#ea580c'}; font-weight: bold;">{booking.get('status', 'N/A').upper()}</span></p>
                         <p style="margin: 5px 0;"><strong>Payment Status:</strong> {booking.get('payment_status', 'N/A')}</p>
                         <p style="margin: 5px 0;"><strong>Created:</strong> {booking.get('createdAt', 'N/A')}</p>
                     </div>
                     
-                    <h3 style="color: #1a1a1a; margin-top: 30px;">👤 Customer Information</h3>
-                    <div style="background-color: white; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                    <h3 style="color: #333; margin-top: 30px;">👤 Customer Information</h3>
+                    <div style="background-color: #faf8f3; padding: 15px; border-radius: 8px; margin: 15px 0;">
                         <p style="margin: 5px 0;"><strong>Name:</strong> {booking.get('name', 'N/A')}</p>
-                        <p style="margin: 5px 0;"><strong>Email:</strong> <a href="mailto:{booking.get('email', 'N/A')}">{booking.get('email', 'N/A')}</a></p>
-                        <p style="margin: 5px 0;"><strong>Phone:</strong> <a href="tel:{booking.get('phone', 'N/A')}">{booking.get('phone', 'N/A')}</a></p>
+                        <p style="margin: 5px 0;"><strong>Email:</strong> <a href="mailto:{booking.get('email', 'N/A')}" style="color: #D4AF37;">{booking.get('email', 'N/A')}</a></p>
+                        <p style="margin: 5px 0;"><strong>Phone:</strong> <a href="tel:{booking.get('phone', 'N/A')}" style="color: #D4AF37;">{booking.get('phone', 'N/A')}</a></p>
                     </div>
                     
-                    <h3 style="color: #1a1a1a; margin-top: 30px;">🚗 Trip Details</h3>
-                    <div style="background-color: white; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                    <h3 style="color: #333; margin-top: 30px;">🚗 Trip Details</h3>
+                    <div style="background-color: #faf8f3; padding: 15px; border-radius: 8px; margin: 15px 0;">
                         <p style="margin: 5px 0;"><strong>Service Type:</strong> {booking.get('serviceType', 'N/A').replace('-', ' ').title()}</p>
                         <p style="margin: 5px 0;"><strong>Pickup:</strong> {booking.get('pickupAddress', 'N/A')}</p>
                         <p style="margin: 5px 0;"><strong>Drop-off:</strong> {booking.get('dropoffAddress', 'N/A')}</p>
@@ -1043,8 +1043,8 @@ async def send_booking_to_admin(booking_id: str, current_admin: dict = Depends(g
                         <p style="margin: 5px 0;"><strong>Passengers:</strong> {booking.get('passengers', 'N/A')}</p>
                     </div>
                     
-                    <h3 style="color: #1a1a1a; margin-top: 30px;">💰 Pricing Details</h3>
-                    <div style="background-color: white; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                    <h3 style="color: #333; margin-top: 30px;">💰 Pricing Details</h3>
+                    <div style="background-color: #faf8f3; padding: 15px; border-radius: 8px; margin: 15px 0;">
                         <p style="margin: 5px 0;"><strong>Distance:</strong> {pricing.get('distance', 0)} km</p>
                         <p style="margin: 5px 0;"><strong>Base Price:</strong> ${pricing.get('basePrice', 0):.2f} NZD</p>
                         {'<p style="margin: 5px 0;"><strong>Airport Fee:</strong> $' + f"{pricing.get('airportFee', 0):.2f}" + ' NZD</p>' if pricing.get('airportFee', 0) > 0 else ''}
@@ -1054,18 +1054,18 @@ async def send_booking_to_admin(booking_id: str, current_admin: dict = Depends(g
                         {f'<p style="margin: 5px 0; color: #ea580c; font-size: 12px;">⚠️ Price was manually overridden</p>' if is_overridden else ''}
                     </div>
                     
-                    {'<h3 style="color: #1a1a1a; margin-top: 30px;">✈️ Flight Information</h3><div style="background-color: white; padding: 15px; border-radius: 8px; margin: 15px 0;"><p style="margin: 5px 0;"><strong>Departure Flight:</strong> ' + booking.get('departureFlightNumber', 'N/A') + ' at ' + booking.get('departureTime', 'N/A') + '</p><p style="margin: 5px 0;"><strong>Arrival Flight:</strong> ' + booking.get('arrivalFlightNumber', 'N/A') + ' at ' + booking.get('arrivalTime', 'N/A') + '</p></div>' if booking.get('departureFlightNumber') or booking.get('arrivalFlightNumber') else ''}
+                    {'<h3 style="color: #333; margin-top: 30px;">✈️ Flight Information</h3><div style="background-color: #faf8f3; padding: 15px; border-radius: 8px; margin: 15px 0;"><p style="margin: 5px 0;"><strong>Departure Flight:</strong> ' + booking.get('departureFlightNumber', 'N/A') + ' at ' + booking.get('departureTime', 'N/A') + '</p><p style="margin: 5px 0;"><strong>Arrival Flight:</strong> ' + booking.get('arrivalFlightNumber', 'N/A') + ' at ' + booking.get('arrivalTime', 'N/A') + '</p></div>' if booking.get('departureFlightNumber') or booking.get('arrivalFlightNumber') else ''}
                     
-                    {f'<h3 style="color: #1a1a1a; margin-top: 30px;">📝 Special Notes</h3><div style="background-color: #fff3cd; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #ffc107;"><p style="margin: 0;">{booking.get("notes", "")}</p></div>' if booking.get('notes') else ''}
+                    {f'<h3 style="color: #333; margin-top: 30px;">📝 Special Notes</h3><div style="background-color: #fff8e6; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #D4AF37;"><p style="margin: 0;">{booking.get("notes", "")}</p></div>' if booking.get('notes') else ''}
                     
-                    <div style="margin-top: 30px; padding: 15px; background-color: #e3f2fd; border-radius: 8px; border-left: 4px solid #2196f3;">
-                        <p style="margin: 0; color: #1976d2;"><strong>💡 Quick Actions:</strong></p>
+                    <div style="margin-top: 30px; padding: 15px; background-color: #fff8e6; border-radius: 8px; border-left: 4px solid #D4AF37;">
+                        <p style="margin: 0; color: #333;"><strong>💡 Quick Actions:</strong></p>
                         <p style="margin: 5px 0; font-size: 14px;">Log in to your <a href="https://bookaride.co.nz/admin/login" style="color: #D4AF37; text-decoration: none; font-weight: bold;">Admin Dashboard</a> to manage this booking.</p>
                     </div>
                 </div>
                 
-                <div style="background-color: #1a1a1a; color: #D4AF37; padding: 15px; text-align: center; font-size: 12px;">
-                    <p style="margin: 0;">BookaRide NZ Admin System</p>
+                <div style="background: #faf8f3; color: #666; padding: 15px; text-align: center; font-size: 12px; border-radius: 0 0 10px 10px; border: 1px solid #e8e4d9; border-top: none;">
+                    <p style="margin: 0;"><span style="color: #D4AF37; font-weight: bold;">BookaRide NZ</span> Admin System</p>
                     <p style="margin: 5px 0;">bookaride.co.nz | +64 21 743 321</p>
                 </div>
             </body>
