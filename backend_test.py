@@ -486,6 +486,14 @@ class BookaRideBackendTester:
         self.test_email_endpoint()
         self.test_translation_endpoints()
         
+        # New Admin Authentication Features
+        print("\n🔐 Testing New Admin Authentication Features...")
+        self.test_google_oauth_session_endpoint()
+        self.test_password_reset_request()
+        self.test_password_reset_validate()
+        self.test_password_reset_confirm()
+        self.test_admin_auth_me_endpoint()
+        
         # Summary
         print("\n" + "=" * 60)
         print("📊 TEST SUMMARY")
