@@ -45,10 +45,10 @@ export const AdminForgotPassword = () => {
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Check Your Email</h2>
             <p className="text-gray-600 mb-6">
-              If <strong>{email}</strong> is registered as an admin, you'll receive a password reset link shortly.
+              If <strong>{email}</strong> is registered as an admin, you&apos;ll receive a password reset link shortly.
             </p>
             <p className="text-sm text-gray-500 mb-6">
-              The link will expire in 1 hour. Don't forget to check your spam folder.
+              The link will expire in 1 hour. Don&apos;t forget to check your spam folder.
             </p>
             <Link 
               to="/admin/login" 
