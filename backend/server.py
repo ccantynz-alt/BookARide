@@ -3424,21 +3424,21 @@ async def send_cancellation_email(booking: dict, to_email: str, customer_name: s
         <style>
             body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
             .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-            .header {{ background: linear-gradient(135deg, #1a1a1a 0%, #333 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
-            .header h1 {{ margin: 0; color: #d4af37; }}
-            .content {{ background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }}
-            .booking-details {{ background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #dc2626; }}
+            .header {{ background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+            .header h1 {{ margin: 0; color: white; }}
+            .content {{ background: #ffffff; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e8e4d9; border-top: none; }}
+            .booking-details {{ background: #faf8f3; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #dc2626; }}
             .detail-row {{ margin: 10px 0; }}
             .label {{ font-weight: bold; color: #666; }}
-            .footer {{ text-align: center; margin-top: 30px; color: #666; font-size: 14px; }}
-            .contact {{ background: #f0f0f0; padding: 15px; border-radius: 8px; margin-top: 20px; text-align: center; }}
+            .footer {{ text-align: center; margin-top: 30px; padding: 20px; color: #666; font-size: 14px; background: #faf8f3; border-radius: 8px; }}
+            .contact {{ background: #fff8e6; padding: 15px; border-radius: 8px; margin-top: 20px; text-align: center; border: 1px solid #D4AF37; }}
         </style>
     </head>
     <body>
         <div class="container">
             <div class="header">
                 <h1>Booking Cancelled</h1>
-                <p style="margin: 10px 0 0 0; color: #ccc;">Book A Ride NZ</p>
+                <p style="margin: 10px 0 0 0; color: rgba(255,255,255,0.9);">Book A Ride NZ</p>
             </div>
             <div class="content">
                 <p>Dear {customer_name},</p>
@@ -3462,7 +3462,7 @@ async def send_cancellation_email(booking: dict, to_email: str, customer_name: s
                 
                 <div class="contact">
                     <p style="margin: 0;"><strong>Need to rebook?</strong></p>
-                    <p style="margin: 5px 0;">Visit <a href="https://bookaride.co.nz/book-now">bookaride.co.nz</a> or call us at <strong>027-246-0201</strong></p>
+                    <p style="margin: 5px 0;">Visit <a href="https://bookaride.co.nz/book-now" style="color: #D4AF37;">bookaride.co.nz</a> or call us at <strong style="color: #D4AF37;">+64 21 743 321</strong></p>
                 </div>
             </div>
             <div class="footer">
