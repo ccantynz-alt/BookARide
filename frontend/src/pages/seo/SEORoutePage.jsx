@@ -1,5 +1,5 @@
 import React from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent } from '../../components/ui/card';
@@ -13,7 +13,9 @@ import {
 import { routeData, comparisonData } from '../../data/seoRouteData';
 
 const SEORoutePage = () => {
-  const { routeSlug } = useParams();
+  const location = useLocation();
+  // Extract route slug from URL path (e.g., /auckland-airport-to-whangaparaoa -> auckland-airport-to-whangaparaoa)
+  const routeSlug = location.pathname.replace('/', '');
   const route = routeData[routeSlug];
   
   if (!route) {
