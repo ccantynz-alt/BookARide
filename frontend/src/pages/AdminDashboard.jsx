@@ -2407,7 +2407,7 @@ export const AdminDashboard = () => {
                         <Label>Flight Arrival Number</Label>
                         <Input
                           value={editingBooking.flightArrivalNumber || ''}
-                          onChange={(e) => setEditingBooking({...editingBooking, flightArrivalNumber: e.target.value})}
+                          onChange={(e) => setEditingBooking(prev => ({...prev, flightArrivalNumber: e.target.value}))}
                           placeholder="e.g., NZ123"
                           className="mt-1 bg-white"
                         />
@@ -2417,7 +2417,7 @@ export const AdminDashboard = () => {
                         <Input
                           type="time"
                           value={editingBooking.flightArrivalTime || ''}
-                          onChange={(e) => setEditingBooking({...editingBooking, flightArrivalTime: e.target.value})}
+                          onChange={(e) => setEditingBooking(prev => ({...prev, flightArrivalTime: e.target.value}))}
                           className="mt-1 bg-white"
                         />
                       </div>
@@ -2425,7 +2425,7 @@ export const AdminDashboard = () => {
                         <Label>Flight Departure Number</Label>
                         <Input
                           value={editingBooking.flightDepartureNumber || ''}
-                          onChange={(e) => setEditingBooking({...editingBooking, flightDepartureNumber: e.target.value})}
+                          onChange={(e) => setEditingBooking(prev => ({...prev, flightDepartureNumber: e.target.value}))}
                           placeholder="e.g., NZ456"
                           className="mt-1 bg-white"
                         />
@@ -2435,7 +2435,7 @@ export const AdminDashboard = () => {
                         <Input
                           type="time"
                           value={editingBooking.flightDepartureTime || ''}
-                          onChange={(e) => setEditingBooking({...editingBooking, flightDepartureTime: e.target.value})}
+                          onChange={(e) => setEditingBooking(prev => ({...prev, flightDepartureTime: e.target.value}))}
                           className="mt-1 bg-white"
                         />
                       </div>
@@ -2446,7 +2446,7 @@ export const AdminDashboard = () => {
                     <Label>Special Notes</Label>
                     <Textarea
                       value={editingBooking.notes || ''}
-                      onChange={(e) => setEditingBooking({...editingBooking, notes: e.target.value})}
+                      onChange={(e) => setEditingBooking(prev => ({...prev, notes: e.target.value}))}
                       placeholder="Any special requests or notes..."
                       rows={3}
                       className="mt-1"
