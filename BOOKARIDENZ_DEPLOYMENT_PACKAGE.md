@@ -108,7 +108,7 @@ const siteConfig = {
   },
   
   // Backend API (SAME - shared backend!)
-  apiUrl: process.env.REACT_APP_BACKEND_URL || 'https://smart-shuttle-admin.preview.emergentagent.com/api',
+  apiUrl: process.env.REACT_APP_BACKEND_URL || 'https://code-fusion-14.preview.emergentagent.com/api',
   
   // International flag
   isInternational: true  // ← NEW: Enables international features
