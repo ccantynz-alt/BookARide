@@ -550,12 +550,12 @@ async def request_password_reset(reset_request: PasswordResetRequest):
                 <style>
                     body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
                     .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-                    .header {{ background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 30px; text-align: center; }}
-                    .header h1 {{ color: #d4af37; margin: 0; font-size: 28px; }}
+                    .header {{ background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+                    .header h1 {{ color: white; margin: 0; font-size: 28px; }}
                     .content {{ background: #fff; padding: 30px; border: 1px solid #e5e5e5; }}
                     .button {{ display: inline-block; background: #d4af37; color: #000 !important; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; margin: 20px 0; }}
-                    .footer {{ text-align: center; padding: 20px; color: #666; font-size: 12px; }}
-                    .warning {{ background: #fff3cd; border: 1px solid #ffc107; padding: 10px; border-radius: 5px; margin: 15px 0; }}
+                    .footer {{ text-align: center; padding: 20px; color: #666; font-size: 12px; background: #faf8f3; }}
+                    .warning {{ background: #fff8e6; border: 1px solid #D4AF37; padding: 10px; border-radius: 5px; margin: 15px 0; }}
                 </style>
             </head>
             <body>
@@ -575,7 +575,7 @@ async def request_password_reset(reset_request: PasswordResetRequest):
                             If you didn't request this reset, please ignore this email.
                         </div>
                         <p>Or copy and paste this link into your browser:</p>
-                        <p style="word-break: break-all; background: #f5f5f5; padding: 10px; border-radius: 5px; font-size: 12px;">{reset_link}</p>
+                        <p style="word-break: break-all; background: #faf8f3; padding: 10px; border-radius: 5px; font-size: 12px; border: 1px solid #e8e4d9;">{reset_link}</p>
                     </div>
                     <div class="footer">
                         <p>Book A Ride NZ | Premium Airport Transfers</p>
