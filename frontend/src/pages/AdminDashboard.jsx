@@ -1842,7 +1842,7 @@ export const AdminDashboard = () => {
                   <Input
                     ref={pickupInputRef}
                     value={newBooking.pickupAddress}
-                    onChange={(e) => setNewBooking({...newBooking, pickupAddress: e.target.value})}
+                    onChange={(e) => setNewBooking(prev => ({...prev, pickupAddress: e.target.value}))}
                     placeholder="Start typing address..."
                     className="mt-1"
                     autoComplete="off"
@@ -1901,7 +1901,7 @@ export const AdminDashboard = () => {
                   <Input
                     ref={dropoffInputRef}
                     value={newBooking.dropoffAddress}
-                    onChange={(e) => setNewBooking({...newBooking, dropoffAddress: e.target.value})}
+                    onChange={(e) => setNewBooking(prev => ({...prev, dropoffAddress: e.target.value}))}
                     placeholder="Start typing address..."
                     className="mt-1"
                     autoComplete="off"
@@ -1921,7 +1921,7 @@ export const AdminDashboard = () => {
                             const month = String(date.getMonth() + 1).padStart(2, '0');
                             const day = String(date.getDate()).padStart(2, '0');
                             const formattedDate = `${year}-${month}-${day}`;
-                            setNewBooking({...newBooking, date: formattedDate});
+                            setNewBooking(prev => ({...prev, date: formattedDate}));
                           }
                         }}
                         placeholder="Select date"
@@ -1938,7 +1938,7 @@ export const AdminDashboard = () => {
                           if (time) {
                             const hours = time.getHours().toString().padStart(2, '0');
                             const minutes = time.getMinutes().toString().padStart(2, '0');
-                            setNewBooking({...newBooking, time: `${hours}:${minutes}`});
+                            setNewBooking(prev => ({...prev, time: `${hours}:${minutes}`}));
                           }
                         }}
                         placeholder="Select time"
@@ -1949,7 +1949,7 @@ export const AdminDashboard = () => {
                     <Label>Passengers *</Label>
                     <Select 
                       value={newBooking.passengers} 
-                      onValueChange={(value) => setNewBooking({...newBooking, passengers: value})}
+                      onValueChange={(value) => setNewBooking(prev => ({...prev, passengers: value}))}
                     >
                       <SelectTrigger className="mt-1">
                         <SelectValue />
