@@ -120,6 +120,11 @@ function App() {
     // NEW: Blog
     { path: "blog", element: <BlogIndex /> },
     { path: "blog/:postSlug", element: <BlogPost /> },
+    // NEW: Comparison Pages
+    { path: "compare", element: <ComparisonDirectory /> },
+    { path: "bookaride-vs-supershuttle", element: <ComparisonPage /> },
+    { path: "bookaride-vs-uber", element: <ComparisonPage /> },
+    { path: "bookaride-vs-taxi", element: <ComparisonPage /> },
     // Standard Pages
     { path: "services", element: <Services /> },
     { path: "about", element: <About /> },
