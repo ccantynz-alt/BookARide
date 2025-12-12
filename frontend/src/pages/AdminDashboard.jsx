@@ -1030,16 +1030,6 @@ export const AdminDashboard = () => {
               <p className="text-white/50 text-xs mt-1">v2024.12.08</p>
             </div>
             <div className="flex gap-2">
-              <Button 
-                onClick={() => {
-                  window.open(`${BACKEND_URL}/api/auth/google/login`, '_blank');
-                  toast.info('Opening Google Calendar authorization in new tab...');
-                }}
-                variant="outline" 
-                className="border-green-500 text-green-500 hover:bg-green-500 hover:text-white"
-              >
-                📅 Authorize Calendar
-              </Button>
               <Button onClick={() => navigate('/admin/seo')} variant="outline" className="border-gold text-gold hover:bg-gold hover:text-black">
                 <Settings className="w-4 h-4 mr-2" />
                 SEO Management
