@@ -98,7 +98,20 @@ function App() {
     { path: "visitors", element: <VisitorsHub /> },
     { path: "visitors/:countrySlug", element: <GlobalLanding /> },
     { path: "auckland-airport-shuttle", element: <AucklandAirportShuttle /> },
-    // NEW: Route Pages
+    // NEW: SEO Route Pages (Comprehensive)
+    { path: "auckland-airport-to-whangaparaoa", element: <SEORoutePage /> },
+    { path: "auckland-airport-to-orewa", element: <SEORoutePage /> },
+    { path: "auckland-airport-to-north-shore", element: <SEORoutePage /> },
+    { path: "auckland-airport-to-hibiscus-coast", element: <SEORoutePage /> },
+    { path: "auckland-airport-to-silverdale", element: <SEORoutePage /> },
+    { path: "auckland-airport-to-gulf-harbour", element: <SEORoutePage /> },
+    { path: "auckland-airport-to-albany", element: <SEORoutePage /> },
+    { path: "auckland-airport-to-takapuna", element: <SEORoutePage /> },
+    { path: "auckland-airport-to-devonport", element: <SEORoutePage /> },
+    { path: "auckland-airport-to-matakana", element: <SEORoutePage /> },
+    { path: "auckland-airport-to-city", element: <SEORoutePage /> },
+    { path: "auckland-cruise-terminal-transfer", element: <SEORoutePage /> },
+    // NEW: Route Pages (Directory)
     { path: "routes", element: <RoutesDirectory /> },
     { path: "routes/:routeSlug", element: <RoutePage /> },
     // NEW: Blog
