@@ -157,6 +157,7 @@ function App() {
             <Route path="/admin/login" element={<AdminLogin />} />
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
             <Route path="/admin/seo" element={<SEODashboard />} />
+            <Route path="/admin/facebook-strategy" element={<FacebookStrategy />} />
             
             {/* Language-prefixed routes (zh, ja, ko, es, fr) */}
             {languagePrefixes.map(lang => (
