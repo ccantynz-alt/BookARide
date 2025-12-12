@@ -1973,7 +1973,7 @@ export const AdminDashboard = () => {
                       <Label>Flight Arrival Number</Label>
                       <Input
                         value={newBooking.flightArrivalNumber}
-                        onChange={(e) => setNewBooking({...newBooking, flightArrivalNumber: e.target.value})}
+                        onChange={(e) => setNewBooking(prev => ({...prev, flightArrivalNumber: e.target.value}))}
                         placeholder="e.g., NZ123"
                         className="mt-1 bg-white"
                       />
@@ -1988,7 +1988,7 @@ export const AdminDashboard = () => {
                             if (time) {
                               const hours = time.getHours().toString().padStart(2, '0');
                               const minutes = time.getMinutes().toString().padStart(2, '0');
-                              setNewBooking({...newBooking, flightArrivalTime: `${hours}:${minutes}`});
+                              setNewBooking(prev => ({...prev, flightArrivalTime: `${hours}:${minutes}`}));
                             }
                           }}
                           placeholder="Select arrival time"
@@ -1999,7 +1999,7 @@ export const AdminDashboard = () => {
                       <Label>Flight Departure Number</Label>
                       <Input
                         value={newBooking.flightDepartureNumber}
-                        onChange={(e) => setNewBooking({...newBooking, flightDepartureNumber: e.target.value})}
+                        onChange={(e) => setNewBooking(prev => ({...prev, flightDepartureNumber: e.target.value}))}
                         placeholder="e.g., NZ456"
                         className="mt-1 bg-white"
                       />
@@ -2014,7 +2014,7 @@ export const AdminDashboard = () => {
                             if (time) {
                               const hours = time.getHours().toString().padStart(2, '0');
                               const minutes = time.getMinutes().toString().padStart(2, '0');
-                              setNewBooking({...newBooking, flightDepartureTime: `${hours}:${minutes}`});
+                              setNewBooking(prev => ({...prev, flightDepartureTime: `${hours}:${minutes}`}));
                             }
                           }}
                           placeholder="Select departure time"
@@ -2034,7 +2034,7 @@ export const AdminDashboard = () => {
                       type="checkbox"
                       id="adminBookReturn"
                       checked={newBooking.bookReturn}
-                      onChange={(e) => setNewBooking({...newBooking, bookReturn: e.target.checked})}
+                      onChange={(e) => setNewBooking(prev => ({...prev, bookReturn: e.target.checked}))}
                       className="w-4 h-4 text-gold border-gray-300 rounded focus:ring-gold"
                     />
                     <Label htmlFor="adminBookReturn" className="cursor-pointer font-semibold text-gray-900">
@@ -2063,7 +2063,7 @@ export const AdminDashboard = () => {
                                   const month = String(date.getMonth() + 1).padStart(2, '0');
                                   const day = String(date.getDate()).padStart(2, '0');
                                   const formattedDate = `${year}-${month}-${day}`;
-                                  setNewBooking({...newBooking, returnDate: formattedDate});
+                                  setNewBooking(prev => ({...prev, returnDate: formattedDate}));
                                 }
                               }}
                               placeholder="Select return date"
@@ -2081,7 +2081,7 @@ export const AdminDashboard = () => {
                                 if (time) {
                                   const hours = time.getHours().toString().padStart(2, '0');
                                   const minutes = time.getMinutes().toString().padStart(2, '0');
-                                  setNewBooking({...newBooking, returnTime: `${hours}:${minutes}`});
+                                  setNewBooking(prev => ({...prev, returnTime: `${hours}:${minutes}`}));
                                 }
                               }}
                               placeholder="Select return time"
@@ -2097,7 +2097,7 @@ export const AdminDashboard = () => {
                   <Label>Special Notes</Label>
                   <Textarea
                     value={newBooking.notes}
-                    onChange={(e) => setNewBooking({...newBooking, notes: e.target.value})}
+                    onChange={(e) => setNewBooking(prev => ({...prev, notes: e.target.value}))}
                     placeholder="Any special requests or notes..."
                     rows={3}
                     className="mt-1"
