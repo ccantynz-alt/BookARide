@@ -2316,9 +2316,9 @@ def generate_confirmation_email_html(booking: dict) -> str:
                     {return_trip_html}
                     
                     <!-- Price Section -->
-                    <div style="background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); border-radius: 10px; padding: 20px; margin: 25px 0; text-align: center;">
-                        <p style="margin: 0 0 5px 0; color: #888; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Total Amount</p>
-                        <p style="margin: 0; color: #D4AF37; font-size: 32px; font-weight: 600;">${total_price:.2f} <span style="font-size: 16px; color: #888;">NZD</span></p>
+                    <div style="background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%); border-radius: 10px; padding: 20px; margin: 25px 0; text-align: center;">
+                        <p style="margin: 0 0 5px 0; color: rgba(255,255,255,0.9); font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Total Amount</p>
+                        <p style="margin: 0; color: white; font-size: 32px; font-weight: 600;">${total_price:.2f} <span style="font-size: 16px; color: rgba(255,255,255,0.8);">NZD</span></p>
                     </div>
                     
                     <!-- Contact Info -->
