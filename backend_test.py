@@ -294,6 +294,131 @@ class BookaRideBackendTester:
         self.log_result("Translation Support", success, f"Translation status: {', '.join(translation_results)}")
         return success
     
+    def test_google_oauth_session_endpoint(self):
+        """Test Google OAuth session processing endpoint"""
+        try:
+            # Test with a mock session ID (this will fail but we can check the endpoint exists)
+            oauth_data = {
+                "session_id": "test_session_12345"
+            }
+            
+            response = self.session.post(f"{BACKEND_URL}/admin/google-auth/session", json=oauth_data, timeout=10)
+            
+            # We expect this to fail with 401 (invalid session) but endpoint should exist
+            if response.status_code == 401:
+                self.log_result("Google OAuth Endpoint", True, "Google OAuth endpoint exists and validates sessions correctly")
+                return True
+            elif response.status_code == 404:
+                self.log_result("Google OAuth Endpoint", False, "Google OAuth endpoint not found")
+                return False
+            else:
+                # Any other response means endpoint exists
+                self.log_result("Google OAuth Endpoint", True, f"Google OAuth endpoint exists (status: {response.status_code})")
+                return True
+        except Exception as e:
+            self.log_result("Google OAuth Endpoint", False, f"Google OAuth endpoint error: {str(e)}")
+            return False
+    
+    def test_password_reset_request(self):
+        """Test password reset request endpoint"""
+        try:
+            reset_data = {
+                "email": "bookings@bookaride.co.nz"
+            }
+            
+            response = self.session.post(f"{BACKEND_URL}/admin/password-reset/request", json=reset_data, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                message = data.get('message', '')
+                if 'password reset link' in message.lower():
+                    self.log_result("Password Reset Request", True, f"Password reset request successful: {message}")
+                    return True
+                else:
+                    self.log_result("Password Reset Request", False, f"Unexpected response: {message}")
+                    return False
+            else:
+                self.log_result("Password Reset Request", False, f"Password reset request failed with status {response.status_code}", response.text)
+                return False
+        except Exception as e:
+            self.log_result("Password Reset Request", False, f"Password reset request error: {str(e)}")
+            return False
+    
+    def test_password_reset_validate(self):
+        """Test password reset token validation endpoint"""
+        try:
+            # Test with a dummy token (should return invalid)
+            test_token = "test_token_12345"
+            
+            response = self.session.get(f"{BACKEND_URL}/admin/password-reset/validate/{test_token}", timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                valid = data.get('valid', False)
+                if not valid:  # We expect this to be invalid
+                    self.log_result("Password Reset Validate", True, "Password reset validation endpoint working correctly")
+                    return True
+                else:
+                    self.log_result("Password Reset Validate", False, "Validation endpoint returned unexpected result")
+                    return False
+            else:
+                self.log_result("Password Reset Validate", False, f"Password reset validate failed with status {response.status_code}", response.text)
+                return False
+        except Exception as e:
+            self.log_result("Password Reset Validate", False, f"Password reset validate error: {str(e)}")
+            return False
+    
+    def test_password_reset_confirm(self):
+        """Test password reset confirm endpoint"""
+        try:
+            # Test with dummy data (should fail but endpoint should exist)
+            confirm_data = {
+                "token": "test_token_12345",
+                "new_password": "NewTestPassword123!"
+            }
+            
+            response = self.session.post(f"{BACKEND_URL}/admin/password-reset/confirm", json=confirm_data, timeout=10)
+            
+            # We expect this to fail with 400 (invalid token) but endpoint should exist
+            if response.status_code == 400:
+                data = response.json()
+                detail = data.get('detail', '')
+                if 'invalid' in detail.lower() or 'expired' in detail.lower():
+                    self.log_result("Password Reset Confirm", True, "Password reset confirm endpoint working correctly")
+                    return True
+                else:
+                    self.log_result("Password Reset Confirm", False, f"Unexpected error message: {detail}")
+                    return False
+            elif response.status_code == 404:
+                self.log_result("Password Reset Confirm", False, "Password reset confirm endpoint not found")
+                return False
+            else:
+                self.log_result("Password Reset Confirm", True, f"Password reset confirm endpoint exists (status: {response.status_code})")
+                return True
+        except Exception as e:
+            self.log_result("Password Reset Confirm", False, f"Password reset confirm error: {str(e)}")
+            return False
+    
+    def test_admin_auth_me_endpoint(self):
+        """Test admin auth/me endpoint for session-based authentication"""
+        try:
+            response = self.session.get(f"{BACKEND_URL}/admin/auth/me", timeout=10)
+            
+            # Without session cookie, this should return 401
+            if response.status_code == 401:
+                self.log_result("Admin Auth Me Endpoint", True, "Admin auth/me endpoint exists and requires authentication")
+                return True
+            elif response.status_code == 404:
+                self.log_result("Admin Auth Me Endpoint", False, "Admin auth/me endpoint not found")
+                return False
+            else:
+                # Any other response means endpoint exists
+                self.log_result("Admin Auth Me Endpoint", True, f"Admin auth/me endpoint exists (status: {response.status_code})")
+                return True
+        except Exception as e:
+            self.log_result("Admin Auth Me Endpoint", False, f"Admin auth/me endpoint error: {str(e)}")
+            return False
+    
     def test_payment_checkout_creation(self):
         """Test Stripe checkout session creation"""
         try:
