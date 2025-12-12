@@ -1677,6 +1677,119 @@ def generate_confirmation_email_html(booking: dict) -> str:
     return html_content
 
 
+# Import Bookings from WordPress/CSV
+class ImportBooking(BaseModel):
+    booking_id: Optional[str] = ""
+    first_name: str
+    last_name: str
+    email: str
+    phone: str
+    pickup_address: str
+    dropoff_address: str
+    pickup_date: str  # DD-MM-YYYY format
+    pickup_time: str  # HH:MM format
+    return_date: Optional[str] = ""
+    return_time: Optional[str] = ""
+    passengers: int = 1
+    total_price: float
+    flight_number: Optional[str] = ""
+    flight_time: Optional[str] = ""
+    notes: Optional[str] = ""
+    service_type: str = "private-transfer"
+    status: str = "confirmed"
+
+class ImportBookingsRequest(BaseModel):
+    bookings: List[ImportBooking]
+
+@api_router.post("/bookings/import")
+async def import_bookings(request: ImportBookingsRequest, current_admin: dict = Depends(get_current_admin)):
+    """Import multiple bookings from WordPress or CSV data"""
+    try:
+        imported = []
+        errors = []
+        
+        for idx, booking_data in enumerate(request.bookings):
+            try:
+                # Parse date from DD-MM-YYYY to YYYY-MM-DD
+                date_parts = booking_data.pickup_date.split('-')
+                if len(date_parts) == 3:
+                    formatted_date = f"{date_parts[2]}-{date_parts[1]}-{date_parts[0]}"
+                else:
+                    formatted_date = booking_data.pickup_date
+                
+                # Parse return date if present
+                formatted_return_date = ""
+                if booking_data.return_date:
+                    return_parts = booking_data.return_date.split('-')
+                    if len(return_parts) == 3:
+                        formatted_return_date = f"{return_parts[2]}-{return_parts[1]}-{return_parts[0]}"
+                    else:
+                        formatted_return_date = booking_data.return_date
+                
+                # Generate new booking ID and reference
+                new_id = str(uuid.uuid4())
+                ref_number = await get_next_reference_number()
+                
+                # Build the booking document
+                new_booking = {
+                    "id": new_id,
+                    "referenceNumber": ref_number,
+                    "importedFrom": "wordpress",
+                    "originalBookingId": booking_data.booking_id or "",
+                    "name": f"{booking_data.first_name} {booking_data.last_name}".strip(),
+                    "email": booking_data.email,
+                    "phone": booking_data.phone,
+                    "pickupAddress": booking_data.pickup_address,
+                    "dropoffAddress": booking_data.dropoff_address,
+                    "pickupAddresses": [],
+                    "date": formatted_date,
+                    "time": booking_data.pickup_time,
+                    "passengers": str(booking_data.passengers),
+                    "serviceType": booking_data.service_type,
+                    "flightNumber": booking_data.flight_number or "",
+                    "flightTime": booking_data.flight_time or "",
+                    "notes": booking_data.notes or f"Imported from WordPress booking #{booking_data.booking_id}",
+                    "status": booking_data.status,
+                    "paymentStatus": "paid",
+                    "paymentMethod": "imported",
+                    "totalPrice": booking_data.total_price,
+                    "pricing": {"totalPrice": booking_data.total_price},
+                    "bookReturn": bool(formatted_return_date),
+                    "returnDate": formatted_return_date,
+                    "returnTime": booking_data.return_time or "",
+                    "createdAt": datetime.now(timezone.utc).isoformat(),
+                    "importedAt": datetime.now(timezone.utc).isoformat()
+                }
+                
+                # Insert into database
+                await db.bookings.insert_one(new_booking)
+                imported.append({
+                    "originalId": booking_data.booking_id,
+                    "newId": new_id,
+                    "referenceNumber": ref_number,
+                    "name": new_booking["name"]
+                })
+                
+            except Exception as e:
+                errors.append({
+                    "index": idx,
+                    "booking_id": booking_data.booking_id,
+                    "error": str(e)
+                })
+        
+        return {
+            "success": True,
+            "imported_count": len(imported),
+            "error_count": len(errors),
+            "imported": imported,
+            "errors": errors
+        }
+        
+    except Exception as e:
+        logger.error(f"Error importing bookings: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error importing bookings: {str(e)}")
+
+
 # Google Calendar OAuth Endpoints
 
 @api_router.get("/auth/google/login")
