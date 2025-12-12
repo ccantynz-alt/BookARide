@@ -45,6 +45,7 @@ export const Home = () => {
         canonical="/"
       />
       <StructuredData />
+      <HomePageSchema />
       {/* ULTRA PROFESSIONAL LUXURY HERO SECTION */}
       <section className="relative min-h-screen flex items-center overflow-hidden bg-black">
         
