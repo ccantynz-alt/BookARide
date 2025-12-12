@@ -1704,24 +1704,24 @@ async def send_booking_notification_to_admin(booking: dict):
         html_content = f"""
         <html>
             <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <div style="background-color: #1a1a1a; color: #D4AF37; padding: 20px; text-align: center;">
-                    <h1>BookaRide.co.nz</h1>
-                    <p style="margin: 5px 0; font-size: 14px;">🔔 New Booking Received</p>
+                <div style="background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%); color: white; padding: 20px; text-align: center; border-radius: 10px 10px 0 0;">
+                    <h1 style="margin: 0;">BookaRide.co.nz</h1>
+                    <p style="margin: 5px 0; font-size: 14px; color: rgba(255,255,255,0.9);">🔔 New Booking Received</p>
                 </div>
                 
-                <div style="padding: 20px; background-color: #f5f5f5;">
-                    <div style="background-color: #e3f2fd; padding: 15px; border-radius: 8px; border-left: 4px solid #2196f3; margin-bottom: 20px;">
-                        <p style="margin: 0; font-size: 18px; font-weight: bold; color: #1976d2;">New booking from {booking.get('name', 'Customer')}</p>
+                <div style="padding: 20px; background-color: #ffffff; border: 1px solid #e8e4d9; border-top: none;">
+                    <div style="background-color: #fff8e6; padding: 15px; border-radius: 8px; border-left: 4px solid #D4AF37; margin-bottom: 20px;">
+                        <p style="margin: 0; font-size: 18px; font-weight: bold; color: #333;">New booking from {booking.get('name', 'Customer')}</p>
                         <p style="margin: 5px 0 0 0; font-size: 14px; color: #666;">Booking Reference: {booking_ref}</p>
                         <p style="margin: 5px 0 0 0; font-size: 11px; color: #999;">Full ID: {full_booking_id}</p>
                     </div>
                     
-                    <div style="background-color: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #D4AF37;">
-                        <h3 style="margin-top: 0; color: #1a1a1a;">Quick Details</h3>
+                    <div style="background-color: #faf8f3; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #D4AF37;">
+                        <h3 style="margin-top: 0; color: #333;">Quick Details</h3>
                         <p style="margin: 5px 0;"><strong>Customer:</strong> {booking.get('name', 'N/A')}</p>
                         <p style="margin: 5px 0;"><strong>Phone:</strong> {booking.get('phone', 'N/A')}</p>
                         <p style="margin: 5px 0;"><strong>Email:</strong> {booking.get('email', 'N/A')}</p>
-                        <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
+                        <hr style="border: 0; border-top: 1px solid #e8e4d9; margin: 15px 0;">
                         <p style="margin: 5px 0;"><strong>Service:</strong> {booking.get('serviceType', 'N/A').replace('-', ' ').title()}</p>
                         <p style="margin: 5px 0;"><strong>Date:</strong> {formatted_date} at {booking.get('time', 'N/A')}</p>
                         <p style="margin: 5px 0;"><strong>Passengers:</strong> {booking.get('passengers', 'N/A')}</p>
@@ -1732,14 +1732,14 @@ async def send_booking_notification_to_admin(booking: dict):
                         <p style="margin: 5px 0;"><strong>Payment Status:</strong> {booking.get('payment_status', 'N/A')}</p>
                     </div>
                     
-                    <div style="margin-top: 20px; padding: 15px; background-color: #fff3cd; border-radius: 8px; border-left: 4px solid #ffc107;">
-                        <p style="margin: 0; font-weight: bold;">⚡ Action Required:</p>
+                    <div style="margin-top: 20px; padding: 15px; background-color: #fff8e6; border-radius: 8px; border-left: 4px solid #D4AF37;">
+                        <p style="margin: 0; font-weight: bold; color: #333;">⚡ Action Required:</p>
                         <p style="margin: 5px 0 0 0; font-size: 14px;">Review and assign a driver in your <a href="https://bookaride.co.nz/admin/login" style="color: #D4AF37; text-decoration: none; font-weight: bold;">Admin Dashboard</a></p>
                     </div>
                 </div>
                 
-                <div style="background-color: #1a1a1a; color: #D4AF37; padding: 15px; text-align: center; font-size: 12px;">
-                    <p style="margin: 0;">BookaRide NZ Admin System</p>
+                <div style="background: #faf8f3; color: #666; padding: 15px; text-align: center; font-size: 12px; border-radius: 0 0 10px 10px; border: 1px solid #e8e4d9; border-top: none;">
+                    <p style="margin: 0;"><span style="color: #D4AF37; font-weight: bold;">BookaRide NZ</span> Admin System</p>
                     <p style="margin: 5px 0;">Automatic Booking Notification</p>
                 </div>
             </body>
