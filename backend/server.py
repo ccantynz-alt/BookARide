@@ -1928,29 +1928,32 @@ def contains_non_english(text: str) -> bool:
         return False
     return any(ord(c) > 127 for c in str(text))
 
-def translate_to_english(text: str) -> str:
+async def translate_to_english_async(text: str) -> str:
     """Translate non-English text to English using Emergent LLM"""
     if not text or not contains_non_english(text):
         return text
     
     try:
-        from emergentintegrations.llm.openai import chat
+        from emergentintegrations.llm.openai import LlmChat, UserMessage
+        import uuid
         
-        response = chat(
+        llm = LlmChat(
             api_key="sk-emergent-1221fFe2cB790B632B",
-            prompt=f"Translate the following text to English. Only return the translation, nothing else:\n\n{text}",
-            model="gpt-4o-mini"
+            session_id=str(uuid.uuid4()),
+            system_message="You are a translator. Translate text to English. Only return the translation, nothing else. Keep any English text as-is."
         )
         
-        translated = response.strip()
-        if translated:
-            return f"{translated} ({text})"  # Show translation with original
+        user_msg = UserMessage(text=text)
+        translated = await llm.send_message(user_msg)
+        
+        if translated and translated.strip():
+            return f"{translated.strip()} ({text})"  # Show translation with original
         return text
     except Exception as e:
         logger.warning(f"Translation failed: {str(e)}")
         return text
 
-def get_english_calendar_text(booking: dict) -> dict:
+async def get_english_calendar_text(booking: dict) -> dict:
     """Get English versions of booking fields for calendar, with translations if needed"""
     name = booking.get('name', '')
     pickup = booking.get('pickupAddress', '')
@@ -1958,10 +1961,10 @@ def get_english_calendar_text(booking: dict) -> dict:
     notes = booking.get('notes', '')
     
     # Translate if non-English detected
-    translated_name = translate_to_english(name) if contains_non_english(name) else name
-    translated_pickup = translate_to_english(pickup) if contains_non_english(pickup) else pickup
-    translated_dropoff = translate_to_english(dropoff) if contains_non_english(dropoff) else dropoff
-    translated_notes = translate_to_english(notes) if contains_non_english(notes) else notes
+    translated_name = await translate_to_english_async(name) if contains_non_english(name) else name
+    translated_pickup = await translate_to_english_async(pickup) if contains_non_english(pickup) else pickup
+    translated_dropoff = await translate_to_english_async(dropoff) if contains_non_english(dropoff) else dropoff
+    translated_notes = await translate_to_english_async(notes) if contains_non_english(notes) else notes
     
     return {
         'name': translated_name,
