@@ -1044,6 +1044,10 @@ export const AdminDashboard = () => {
                 <Settings className="w-4 h-4 mr-2" />
                 SEO Management
               </Button>
+              <Button onClick={() => navigate('/admin/facebook-strategy')} variant="outline" className="border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white">
+                <Facebook className="w-4 h-4 mr-2" />
+                Facebook Strategy
+              </Button>
               <Button onClick={() => setShowPasswordModal(true)} variant="outline" className="border-gold text-gold hover:bg-gold hover:text-black">
                 Change Password
               </Button>
