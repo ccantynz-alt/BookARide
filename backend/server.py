@@ -2004,7 +2004,7 @@ async def create_calendar_event(booking: dict):
         formatted_date = date_obj.strftime('%d %B %Y')  # "09 December 2025"
         
         # Get English translations for calendar (translates non-English text)
-        eng = get_english_calendar_text(booking)
+        eng = await get_english_calendar_text(booking)
         
         # Create event with English text
         event = {
