@@ -7,6 +7,7 @@ import { Card, CardContent } from '../components/ui/card';
 import { services, testimonials, howItWorksSteps } from '../mock';
 import SEO from '../components/SEO';
 import StructuredData from '../components/StructuredData';
+import { HomePageSchema } from '../components/SchemaMarkup';
 import { AnimatedSection, FadeIn } from '../components/AnimatedSection';
 import { AnimatedCounter } from '../components/AnimatedCounter';
 import { VehicleGallery } from '../components/VehicleGallery';
