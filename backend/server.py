@@ -3702,7 +3702,77 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Initialize the scheduler
+scheduler = AsyncIOScheduler()
+
+async def scheduled_send_reminders():
+    """Scheduled task to send reminders for tomorrow's bookings at 8 AM NZ time"""
+    try:
+        logger.info("🔔 Running scheduled reminder task...")
+        
+        # Get tomorrow's date in YYYY-MM-DD format (NZ timezone)
+        nz_tz = pytz.timezone('Pacific/Auckland')
+        nz_now = datetime.now(nz_tz)
+        nz_tomorrow = (nz_now + timedelta(days=1)).strftime('%Y-%m-%d')
+        
+        # Find all confirmed bookings for tomorrow
+        bookings = await db.bookings.find({
+            "status": "confirmed",
+            "date": nz_tomorrow
+        }, {"_id": 0}).to_list(100)
+        
+        sent_count = 0
+        for booking in bookings:
+            # Check if reminder already sent today
+            reminder_sent = booking.get('reminderSentAt', '')
+            today_str = nz_now.strftime('%Y-%m-%d')
+            
+            if reminder_sent and reminder_sent.startswith(today_str):
+                logger.info(f"Skipping {booking.get('name')} - reminder already sent today")
+                continue
+            
+            # Send email reminder
+            if booking.get('email'):
+                send_reminder_email(booking)
+                logger.info(f"Sent reminder email to {booking.get('email')}")
+            
+            # Send SMS reminder
+            if booking.get('phone'):
+                send_reminder_sms(booking)
+                logger.info(f"Sent reminder SMS to {booking.get('phone')}")
+            
+            # Mark reminder as sent
+            await db.bookings.update_one(
+                {"id": booking.get('id')},
+                {"$set": {"reminderSentAt": datetime.now(timezone.utc).isoformat()}}
+            )
+            sent_count += 1
+        
+        logger.info(f"✅ Scheduled reminders complete: {sent_count} bookings notified for {nz_tomorrow}")
+        
+    except Exception as e:
+        logger.error(f"❌ Scheduled reminder error: {str(e)}")
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Start the scheduler when the app starts"""
+    # Schedule reminders at 8:00 AM New Zealand time every day
+    nz_tz = pytz.timezone('Pacific/Auckland')
+    
+    scheduler.add_job(
+        scheduled_send_reminders,
+        CronTrigger(hour=8, minute=0, timezone=nz_tz),
+        id='daily_reminders',
+        name='Send day-before reminders at 8 AM NZ time',
+        replace_existing=True
+    )
+    
+    scheduler.start()
+    logger.info("🚀 Scheduler started - Reminders will be sent at 8:00 AM NZ time daily")
+
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
+    scheduler.shutdown()
     client.close()
