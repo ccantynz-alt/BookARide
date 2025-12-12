@@ -1165,6 +1165,15 @@ export const AdminDashboard = () => {
                 Export CSV
               </Button>
               <Button 
+                onClick={handleSendReminders}
+                variant="outline"
+                className="border-gold text-gold hover:bg-gold hover:text-black"
+                title="Send reminders to tomorrow's bookings"
+              >
+                <Bell className="w-4 h-4 mr-2" />
+                Send Reminders
+              </Button>
+              <Button 
                 onClick={() => setShowCreateBookingModal(true)}
                 className="bg-gold hover:bg-gold/90 text-black font-semibold"
               >
