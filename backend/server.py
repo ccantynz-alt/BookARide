@@ -2067,15 +2067,31 @@ Notes: {eng['notes']}
 # Manual Calendar Sync Endpoint
 @api_router.post("/bookings/{booking_id}/sync-calendar")
 async def sync_booking_to_calendar(booking_id: str, current_admin: dict = Depends(get_current_admin)):
-    """Manually sync a booking to Google Calendar"""
+    """Manually sync a booking to Google Calendar - updates existing or creates new"""
     try:
         booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
         if not booking:
             raise HTTPException(status_code=404, detail="Booking not found")
         
+        # Check if calendar event already exists
+        existing_event_id = booking.get('calendar_event_id')
+        
+        if existing_event_id:
+            # Delete existing event first, then create new one (to update with latest data)
+            try:
+                creds = await get_calendar_credentials()
+                if creds:
+                    service = build('calendar', 'v3', credentials=creds)
+                    calendar_id = os.environ.get('GOOGLE_CALENDAR_ID', 'primary')
+                    service.events().delete(calendarId=calendar_id, eventId=existing_event_id).execute()
+                    logger.info(f"Deleted existing calendar event {existing_event_id} for booking {booking_id}")
+            except Exception as del_error:
+                logger.warning(f"Could not delete existing calendar event: {str(del_error)}")
+        
         success = await create_calendar_event(booking)
         if success:
-            return {"success": True, "message": "Booking synced to Google Calendar successfully!"}
+            action = "updated" if existing_event_id else "created"
+            return {"success": True, "message": f"Booking {action} in Google Calendar successfully!"}
         else:
             raise HTTPException(status_code=500, detail="Failed to sync to calendar. Please check Google Calendar authorization.")
     except HTTPException:
