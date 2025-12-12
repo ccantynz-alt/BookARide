@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 # Configuration
 BACKEND_URL = "https://code-fusion-14.preview.emergentagent.com/api"
 ADMIN_USERNAME = "admin"
-ADMIN_PASSWORD = "BookARide2024!"
+ADMIN_PASSWORD = "Chico9620!@"
 
 # Test data for different languages
 TEST_BOOKINGS = {
