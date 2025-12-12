@@ -55,6 +55,9 @@ import RoutePage from './pages/routes/RoutePage';
 import RoutesDirectory from './pages/routes/RoutesDirectory';
 import BlogIndex from './pages/blog/BlogIndex';
 import BlogPost from './pages/blog/BlogPost';
+import ComparisonPage from './pages/compare/ComparisonPage';
+import ComparisonDirectory from './pages/compare/ComparisonDirectory';
+import FacebookStrategy from './pages/FacebookStrategy';
 
 // Layout component with Header/Footer
 const MainLayout = () => (
