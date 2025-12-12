@@ -366,12 +366,12 @@ frontend:
 
 metadata:
   created_by: "testing_agent"
-  version: "1.2"
-  test_sequence: 4
+  version: "1.3"
+  test_sequence: 5
   run_ui: false
 
 test_plan:
-  current_focus: ["Google Places Autocomplete Dropdown Positioning Fix"]
+  current_focus: ["Priority 3 SEO Features - Schema Markup, International Pages, Facebook Strategy"]
   stuck_tasks: ["SEO Implementation Testing", "Google Places Autocomplete Dropdown Positioning Fix"]
   test_all: false
   test_priority: "high_first"
