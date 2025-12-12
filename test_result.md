@@ -430,3 +430,26 @@ agent_communication:
       message: "✅ NEW ADMIN BOOKING FEATURES TESTING COMPLETED SUCCESSFULLY - Comprehensive testing of requested admin booking features with 100% success rate (7/7 tests passed): 1) ✅ Admin Authentication: Successfully authenticated with admin/Chico9620!@ credentials and obtained JWT token, 2) ✅ Manual Calendar Sync (POST /api/bookings/{booking_id}/sync-calendar): Working perfectly - Google Calendar integration successful with proper event creation for booking e28adbfd-07a0-4348-94d1-2d18a7a51c46, 3) ✅ Resend Confirmation (POST /api/bookings/{booking_id}/resend-confirmation): Working flawlessly - both email and SMS confirmations resent successfully via Mailgun and Twilio, 4) ✅ Update Booking (PATCH /api/bookings/{booking_id}): Successfully updated booking fields including name, email, phone, addresses, date, time, and notes, 5) ✅ Multiple Pickup Support: pickupAddresses array properly supported for multi-stop bookings, 6) ✅ Security: All admin endpoints properly protected with JWT authentication (403 Forbidden without token), 7) ✅ Retrieved 37 existing bookings for testing. All new admin booking features are production-ready and working exactly as specified in the review request."
     - agent: "testing"
       message: "✅ PRIORITY 3 SEO FEATURES TESTING COMPLETED SUCCESSFULLY - Comprehensive testing of all 5 requested SEO features: 1) ✅ Schema Markup Implementation: SEO component properly implemented with LocalBusiness, Service, and FAQPage schemas, react-helmet-async configured correctly in components/SEO.jsx, 2) ✅ Comparison Directory Page: Successfully loads at /compare with 3 comparison cards (BookaRide vs SuperShuttle, Uber, Taxi), proper navigation implemented in ComparisonDirectory.jsx, 3) ✅ USA Landing Page: Successfully loads at /visitors/usa with Header/Footer components, American flag emoji and 'Welcome American Visitors!' text present, Hobbiton section with Middle-earth references, TouristTrip and FAQPage schemas embedded in USALanding.jsx, 4) ✅ Facebook Strategy Page: Successfully loads at /admin/facebook-strategy with weekly content calendar, expandable Post Templates section, Facebook Ad Templates section in FacebookStrategy.jsx, 5) ✅ Blog Page: Successfully loads at /blog with Featured Articles section and 6 blog posts in BlogIndex.jsx. All pages return HTTP 200 status and are fully accessible. All Priority 3 SEO features are implemented and working as specified in the review request."
+  - task: "Google OAuth Login for Admin"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py, /app/frontend/src/pages/AdminLogin.jsx, /app/frontend/src/pages/AdminAuthCallback.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Implemented Google OAuth login for admin using Emergent-managed Google Auth. Features: 1) 'Continue with Google' button on admin login page, 2) AuthCallback page to handle OAuth redirect, 3) Backend endpoint to process Google OAuth session, 4) Admin must have existing account with matching email to use Google login"
+
+  - task: "Admin Password Reset via Email"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py, /app/frontend/src/pages/AdminForgotPassword.jsx, /app/frontend/src/pages/AdminResetPassword.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Implemented email-based password reset for admin. Features: 1) Forgot Password page with email input, 2) Reset Password page with token validation, 3) Backend endpoints: POST /api/admin/password-reset/request, POST /api/admin/password-reset/confirm, GET /api/admin/password-reset/validate/{token}. Emails sent via Mailgun with professional HTML template. Token expires in 1 hour."
