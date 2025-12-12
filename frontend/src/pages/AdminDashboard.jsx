@@ -2319,7 +2319,7 @@ export const AdminDashboard = () => {
                     <Input
                       ref={editPickupInputRef}
                       value={editingBooking.pickupAddress}
-                      onChange={(e) => setEditingBooking({...editingBooking, pickupAddress: e.target.value})}
+                      onChange={(e) => setEditingBooking(prev => ({...prev, pickupAddress: e.target.value}))}
                       placeholder="Start typing address..."
                       className="mt-1"
                       autoComplete="off"
@@ -2369,7 +2369,7 @@ export const AdminDashboard = () => {
                     <Input
                       ref={editDropoffInputRef}
                       value={editingBooking.dropoffAddress}
-                      onChange={(e) => setEditingBooking({...editingBooking, dropoffAddress: e.target.value})}
+                      onChange={(e) => setEditingBooking(prev => ({...prev, dropoffAddress: e.target.value}))}
                       placeholder="Start typing address..."
                       className="mt-1"
                       autoComplete="off"
@@ -2382,7 +2382,7 @@ export const AdminDashboard = () => {
                       <Input
                         type="date"
                         value={editingBooking.date}
-                        onChange={(e) => setEditingBooking({...editingBooking, date: e.target.value})}
+                        onChange={(e) => setEditingBooking(prev => ({...prev, date: e.target.value}))}
                         className="mt-1"
                       />
                     </div>
@@ -2391,7 +2391,7 @@ export const AdminDashboard = () => {
                       <Input
                         type="time"
                         value={editingBooking.time}
-                        onChange={(e) => setEditingBooking({...editingBooking, time: e.target.value})}
+                        onChange={(e) => setEditingBooking(prev => ({...prev, time: e.target.value}))}
                         className="mt-1"
                       />
                     </div>
