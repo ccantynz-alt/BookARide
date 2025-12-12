@@ -1763,7 +1763,7 @@ export const AdminDashboard = () => {
                   <Label>Name *</Label>
                   <Input
                     value={newBooking.name}
-                    onChange={(e) => setNewBooking({...newBooking, name: e.target.value})}
+                    onChange={(e) => setNewBooking(prev => ({...prev, name: e.target.value}))}
                     placeholder="Customer name"
                     className="mt-1"
                   />
@@ -1773,7 +1773,7 @@ export const AdminDashboard = () => {
                   <Input
                     type="email"
                     value={newBooking.email}
-                    onChange={(e) => setNewBooking({...newBooking, email: e.target.value})}
+                    onChange={(e) => setNewBooking(prev => ({...prev, email: e.target.value}))}
                     placeholder="customer@example.com"
                     className="mt-1"
                   />
@@ -1783,7 +1783,7 @@ export const AdminDashboard = () => {
                   <Input
                     type="email"
                     value={newBooking.ccEmail}
-                    onChange={(e) => setNewBooking({...newBooking, ccEmail: e.target.value})}
+                    onChange={(e) => setNewBooking(prev => ({...prev, ccEmail: e.target.value}))}
                     placeholder="copy@example.com"
                     className="mt-1"
                   />
@@ -1793,7 +1793,7 @@ export const AdminDashboard = () => {
                   <Label>Phone *</Label>
                   <Input
                     value={newBooking.phone}
-                    onChange={(e) => setNewBooking({...newBooking, phone: e.target.value})}
+                    onChange={(e) => setNewBooking(prev => ({...prev, phone: e.target.value}))}
                     placeholder="+64 21 XXX XXXX"
                     className="mt-1"
                   />
@@ -1802,7 +1802,7 @@ export const AdminDashboard = () => {
                   <Label>Service Type *</Label>
                   <Select 
                     value={newBooking.serviceType} 
-                    onValueChange={(value) => setNewBooking({...newBooking, serviceType: value})}
+                    onValueChange={(value) => setNewBooking(prev => ({...prev, serviceType: value}))}
                   >
                     <SelectTrigger className="mt-1">
                       <SelectValue />
@@ -1817,7 +1817,7 @@ export const AdminDashboard = () => {
                   <Label>Payment Method *</Label>
                   <Select 
                     value={newBooking.paymentMethod} 
-                    onValueChange={(value) => setNewBooking({...newBooking, paymentMethod: value})}
+                    onValueChange={(value) => setNewBooking(prev => ({...prev, paymentMethod: value}))}
                   >
                     <SelectTrigger className="mt-1">
                       <SelectValue />
