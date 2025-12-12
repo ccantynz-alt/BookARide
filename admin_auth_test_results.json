@@ -1,0 +1,55 @@
+{
+  "timestamp": "2025-12-12T18:57:55.243679",
+  "success": true,
+  "results": [
+    {
+      "test": "Admin Login (New Credentials)",
+      "status": "\u2705 PASS",
+      "message": "Successfully logged in with admin/Chico9620!@",
+      "details": {},
+      "timestamp": "2025-12-12T18:57:54.995129"
+    },
+    {
+      "test": "Google OAuth Session Endpoint",
+      "status": "\u2705 PASS",
+      "message": "Endpoint exists and validates Emergent Auth sessions correctly",
+      "details": {},
+      "timestamp": "2025-12-12T18:57:55.128758"
+    },
+    {
+      "test": "Password Reset Request",
+      "status": "\u2705 PASS",
+      "message": "Email reset request successful for bookings@bookaride.co.nz",
+      "details": {},
+      "timestamp": "2025-12-12T18:57:55.149475"
+    },
+    {
+      "test": "Password Reset Validate",
+      "status": "\u2705 PASS",
+      "message": "Token validation working correctly: Invalid or expired token",
+      "details": {},
+      "timestamp": "2025-12-12T18:57:55.204434"
+    },
+    {
+      "test": "Password Reset Confirm",
+      "status": "\u2705 PASS",
+      "message": "Confirm endpoint working correctly: Invalid or expired reset token",
+      "details": {},
+      "timestamp": "2025-12-12T18:57:55.212498"
+    },
+    {
+      "test": "Admin Auth Me",
+      "status": "\u2705 PASS",
+      "message": "Auth endpoint working - User: admin, Email: admin@bookaride.co.nz, Method: jwt",
+      "details": {},
+      "timestamp": "2025-12-12T18:57:55.232441"
+    },
+    {
+      "test": "Admin Logout",
+      "status": "\u2705 PASS",
+      "message": "Logout endpoint working: Logged out successfully",
+      "details": {},
+      "timestamp": "2025-12-12T18:57:55.243561"
+    }
+  ]
+}
