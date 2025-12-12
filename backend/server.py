@@ -933,15 +933,15 @@ async def send_booking_email(email_data: dict, current_admin: dict = Depends(get
         html_content = f"""
         <html>
             <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <div style="background-color: #1a1a1a; color: #D4AF37; padding: 20px; text-align: center;">
-                    <h1>BookaRide.co.nz</h1>
+                <div style="background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%); color: white; padding: 20px; text-align: center; border-radius: 10px 10px 0 0;">
+                    <h1 style="margin: 0;">BookaRide.co.nz</h1>
                 </div>
-                <div style="padding: 20px; background-color: #f5f5f5;">
-                    <h2 style="color: #1a1a1a;">{subject}</h2>
-                    <div style="white-space: pre-wrap; line-height: 1.6;">{message}</div>
+                <div style="padding: 20px; background-color: #ffffff; border: 1px solid #e8e4d9; border-top: none;">
+                    <h2 style="color: #333;">{subject}</h2>
+                    <div style="white-space: pre-wrap; line-height: 1.6; color: #333;">{message}</div>
                 </div>
-                <div style="background-color: #1a1a1a; color: #D4AF37; padding: 15px; text-align: center; font-size: 12px;">
-                    <p>BookaRide NZ | bookaride.co.nz | +64 21 743 321</p>
+                <div style="background: #faf8f3; color: #666; padding: 15px; text-align: center; font-size: 12px; border-radius: 0 0 10px 10px; border: 1px solid #e8e4d9; border-top: none;">
+                    <p style="margin: 0;"><span style="color: #D4AF37; font-weight: bold;">BookaRide NZ</span> | bookaride.co.nz | +64 21 743 321</p>
                 </div>
             </body>
         </html>
