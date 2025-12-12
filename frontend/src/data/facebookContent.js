@@ -110,7 +110,7 @@ Our verdict? For airport transfers, you can't beat a pre-booked shuttle.
 Did you know we offer door-to-door airport transfers from {LOCATION}?
 
 🚐 Private shuttle (no sharing!)
-💰 From ${PRICE}
+💰 From {PRICE}
 ⏱️ {DURATION} to Auckland Airport
 ✈️ Flight tracking included
 
