@@ -1011,6 +1011,276 @@ Thank you for booking with us!"""
         return False
 
 
+def send_reminder_email(booking: dict):
+    """Send day-before reminder email to customer"""
+    try:
+        mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
+        mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
+        sender_email = os.environ.get('SENDER_EMAIL', 'noreply@bookaride.co.nz')
+        
+        if not mailgun_api_key or not mailgun_domain:
+            logger.warning("Mailgun credentials not configured for reminder")
+            return False
+        
+        booking_ref = get_booking_reference(booking)
+        formatted_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
+        recipient_email = booking.get('email')
+        
+        # Build pickup addresses
+        primary_pickup = booking.get('pickupAddress', 'N/A')
+        pickup_addresses = booking.get('pickupAddresses', [])
+        
+        pickup_html = f"<p><strong>Pickup:</strong> {primary_pickup}</p>"
+        if pickup_addresses:
+            for i, addr in enumerate(pickup_addresses):
+                if addr and addr.strip():
+                    pickup_html += f"<p><strong>Additional Stop {i+1}:</strong> {addr}</p>"
+        
+        # Logo as inline SVG
+        logo_svg = '''
+            <svg width="50" height="50" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect width="64" height="64" rx="12" fill="#D4AF37"/>
+                <circle cx="32" cy="32" r="20" stroke="white" stroke-width="3" fill="none"/>
+                <text x="32" y="42" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="white" text-anchor="middle">B</text>
+            </svg>
+        '''
+        
+        html_content = f'''
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"></head>
+        <body style="font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f5f5f5;">
+            <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+                <div style="background: linear-gradient(135deg, #ffffff 0%, #faf8f3 100%); padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;">
+                    {logo_svg}
+                    <h1 style="margin: 10px 0 0 0; color: #1a1a1a; font-size: 20px;">BOOK<span style="color: #D4AF37;">A</span>RIDE</h1>
+                </div>
+                
+                <div style="background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%); padding: 20px; text-align: center;">
+                    <h2 style="margin: 0; color: white; font-size: 20px;">🔔 Reminder: Your Ride is Tomorrow!</h2>
+                </div>
+                
+                <div style="padding: 25px;">
+                    <p style="color: #333; font-size: 15px;">Dear <strong>{booking.get('name', 'Customer')}</strong>,</p>
+                    <p style="color: #333; font-size: 15px;">This is a friendly reminder that your ride is scheduled for <strong>tomorrow</strong>.</p>
+                    
+                    <div style="background: #faf8f3; border-radius: 10px; padding: 20px; margin: 20px 0; border: 1px solid #e8e4d9;">
+                        <p style="margin: 5px 0;"><strong>Reference:</strong> {booking_ref}</p>
+                        <p style="margin: 5px 0;"><strong>Date:</strong> {formatted_date}</p>
+                        <p style="margin: 5px 0;"><strong>Time:</strong> {booking.get('time', 'N/A')}</p>
+                        <p style="margin: 5px 0;"><strong>Passengers:</strong> {booking.get('passengers', 'N/A')}</p>
+                        <hr style="border: none; border-top: 1px solid #ddd; margin: 15px 0;">
+                        {pickup_html}
+                        <p style="margin: 5px 0;"><strong>Drop-off:</strong> {booking.get('dropoffAddress', 'N/A')}</p>
+                    </div>
+                    
+                    <div style="background: #fff8e6; padding: 15px; border-radius: 8px; border-left: 4px solid #D4AF37; margin: 20px 0;">
+                        <p style="margin: 0; font-size: 14px; color: #666;">
+                            <strong>📍 Please be ready</strong> at your pickup location 5 minutes before your scheduled time.
+                        </p>
+                    </div>
+                    
+                    <p style="color: #666; font-size: 14px;">
+                        If you need to make any changes or have questions, please contact us:<br>
+                        📞 <a href="tel:+6421743321" style="color: #D4AF37;">+64 21 743 321</a><br>
+                        ✉️ <a href="mailto:info@bookaride.co.nz" style="color: #D4AF37;">info@bookaride.co.nz</a>
+                    </p>
+                    
+                    <p style="color: #333; margin-top: 25px;">See you tomorrow!<br><strong>The BookaRide Team</strong></p>
+                </div>
+                
+                <div style="background: #faf8f3; padding: 15px; text-align: center; border-top: 1px solid #e8e4d9;">
+                    <p style="margin: 0; color: #888; font-size: 12px;">BookaRide NZ | bookaride.co.nz | +64 21 743 321</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        '''
+        
+        response = requests.post(
+            f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
+            auth=("api", mailgun_api_key),
+            data={
+                "from": f"BookaRide <{sender_email}>",
+                "to": recipient_email,
+                "subject": f"🔔 Reminder: Your Ride Tomorrow - Ref: {booking_ref}",
+                "html": html_content
+            }
+        )
+        
+        if response.status_code == 200:
+            logger.info(f"Reminder email sent to {recipient_email}")
+            return True
+        else:
+            logger.error(f"Reminder email failed: {response.status_code} - {response.text}")
+            return False
+            
+    except Exception as e:
+        logger.error(f"Error sending reminder email: {str(e)}")
+        return False
+
+
+def send_reminder_sms(booking: dict):
+    """Send day-before reminder SMS to customer"""
+    try:
+        account_sid = os.environ.get('TWILIO_ACCOUNT_SID')
+        auth_token = os.environ.get('TWILIO_AUTH_TOKEN')
+        twilio_phone = os.environ.get('TWILIO_PHONE_NUMBER')
+        
+        if not account_sid or not auth_token or not twilio_phone:
+            logger.warning("Twilio credentials not configured for reminder")
+            return False
+        
+        client = Client(account_sid, auth_token)
+        
+        booking_ref = get_booking_reference(booking)
+        formatted_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
+        
+        message_body = f"""🔔 BookaRide Reminder
+
+Your ride is TOMORROW!
+
+Ref: {booking_ref}
+Date: {formatted_date}
+Time: {booking.get('time', 'N/A')}
+Pickup: {booking.get('pickupAddress', 'N/A')[:50]}...
+
+Please be ready 5 mins early.
+Questions? Call +64 21 743 321"""
+        
+        message = client.messages.create(
+            body=message_body,
+            from_=twilio_phone,
+            to=booking.get('phone')
+        )
+        
+        logger.info(f"Reminder SMS sent to {booking.get('phone')} - SID: {message.sid}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error sending reminder SMS: {str(e)}")
+        return False
+
+
+@api_router.post("/admin/send-reminders")
+async def send_tomorrow_reminders(current_admin: dict = Depends(get_current_admin)):
+    """Manually trigger sending reminders for tomorrow's bookings"""
+    try:
+        # Get tomorrow's date in YYYY-MM-DD format
+        tomorrow = datetime.now(timezone.utc) + timedelta(days=1)
+        tomorrow_str = tomorrow.strftime('%Y-%m-%d')
+        
+        # Also check for NZ timezone (UTC+12/13)
+        nz_tomorrow = (datetime.now(timezone.utc) + timedelta(hours=13) + timedelta(days=1)).strftime('%Y-%m-%d')
+        
+        # Find all confirmed bookings for tomorrow
+        bookings = await db.bookings.find({
+            "status": "confirmed",
+            "$or": [
+                {"date": tomorrow_str},
+                {"date": nz_tomorrow}
+            ]
+        }, {"_id": 0}).to_list(100)
+        
+        results = {
+            "total_bookings": len(bookings),
+            "emails_sent": 0,
+            "sms_sent": 0,
+            "errors": []
+        }
+        
+        for booking in bookings:
+            # Check if reminder already sent today
+            reminder_sent = booking.get('reminderSentAt', '')
+            today_str = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+            
+            if reminder_sent and reminder_sent.startswith(today_str):
+                continue  # Skip if already sent today
+            
+            # Send email reminder
+            if booking.get('email'):
+                if send_reminder_email(booking):
+                    results['emails_sent'] += 1
+                else:
+                    results['errors'].append(f"Email failed for {booking.get('name')}")
+            
+            # Send SMS reminder
+            if booking.get('phone'):
+                if send_reminder_sms(booking):
+                    results['sms_sent'] += 1
+                else:
+                    results['errors'].append(f"SMS failed for {booking.get('name')}")
+            
+            # Mark reminder as sent
+            await db.bookings.update_one(
+                {"id": booking.get('id')},
+                {"$set": {"reminderSentAt": datetime.now(timezone.utc).isoformat()}}
+            )
+        
+        logger.info(f"Reminders sent: {results['emails_sent']} emails, {results['sms_sent']} SMS for {results['total_bookings']} bookings")
+        
+        return {
+            "success": True,
+            "message": f"Sent {results['emails_sent']} emails and {results['sms_sent']} SMS for {results['total_bookings']} bookings tomorrow",
+            "details": results
+        }
+        
+    except Exception as e:
+        logger.error(f"Error sending reminders: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error sending reminders: {str(e)}")
+
+
+# Auto-run reminders endpoint (can be called by external cron service)
+@api_router.get("/cron/send-reminders")
+async def cron_send_reminders(api_key: str = None):
+    """Endpoint for external cron service to trigger reminders (requires API key)"""
+    try:
+        expected_key = os.environ.get('CRON_API_KEY', 'bookaride-cron-secret-2024')
+        
+        if api_key != expected_key:
+            raise HTTPException(status_code=401, detail="Invalid API key")
+        
+        # Get tomorrow's date
+        tomorrow = datetime.now(timezone.utc) + timedelta(days=1)
+        tomorrow_str = tomorrow.strftime('%Y-%m-%d')
+        nz_tomorrow = (datetime.now(timezone.utc) + timedelta(hours=13) + timedelta(days=1)).strftime('%Y-%m-%d')
+        
+        bookings = await db.bookings.find({
+            "status": "confirmed",
+            "$or": [
+                {"date": tomorrow_str},
+                {"date": nz_tomorrow}
+            ]
+        }, {"_id": 0}).to_list(100)
+        
+        sent_count = 0
+        for booking in bookings:
+            reminder_sent = booking.get('reminderSentAt', '')
+            today_str = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+            
+            if reminder_sent and reminder_sent.startswith(today_str):
+                continue
+            
+            if booking.get('email'):
+                send_reminder_email(booking)
+            if booking.get('phone'):
+                send_reminder_sms(booking)
+            
+            await db.bookings.update_one(
+                {"id": booking.get('id')},
+                {"$set": {"reminderSentAt": datetime.now(timezone.utc).isoformat()}}
+            )
+            sent_count += 1
+        
+        return {"success": True, "reminders_sent": sent_count}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Cron reminder error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 async def send_booking_notification_to_admin(booking: dict):
     """Automatically send booking notification to admin email"""
     try:
