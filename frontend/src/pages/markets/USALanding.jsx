@@ -258,15 +258,15 @@ const USALanding = () => {
       <section className="py-16 bg-gray-50">
         <div className="container mx-auto px-4">
           <h2 className="text-3xl font-bold text-center mb-4">Popular Routes for American Visitors</h2>
-          <p className="text-center text-gray-600 mb-12">Fixed prices in NZD - no surprises</p>
+          <p className="text-center text-gray-600 mb-12">Fixed prices, no surge pricing - get an instant quote</p>
           <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
             {[
-              { from: 'Auckland Airport', to: 'Auckland CBD', price: 65, usd: 40, time: '25-35 min' },
-              { from: 'Auckland Airport', to: 'Hobbiton', price: 320, usd: 195, time: '2.5 hours' },
-              { from: 'Auckland Airport', to: 'Rotorua', price: 280, usd: 170, time: '3 hours' },
-              { from: 'Auckland Airport', to: 'Waitomo Caves', price: 290, usd: 175, time: '2.5 hours' },
-              { from: 'Auckland Airport', to: 'Bay of Islands', price: 450, usd: 275, time: '4 hours' },
-              { from: 'Auckland Airport', to: 'Coromandel', price: 320, usd: 195, time: '2.5 hours' },
+              { from: 'Auckland Airport', to: 'Auckland CBD', price: 'From $100', time: '25-35 min' },
+              { from: 'Auckland Airport', to: 'North Shore', price: 'From $100', time: '35-50 min' },
+              { from: 'Auckland Airport', to: 'Hobbiton', price: 'Get Quote', time: '2.5 hours' },
+              { from: 'Auckland Airport', to: 'Rotorua', price: 'Get Quote', time: '3 hours' },
+              { from: 'Auckland Airport', to: 'Waitomo Caves', price: 'Get Quote', time: '2.5 hours' },
+              { from: 'Auckland Airport', to: 'Coromandel', price: 'Get Quote', time: '2.5 hours' },
             ].map((route, idx) => (
               <Card key={idx} className="hover:shadow-lg transition-shadow">
                 <CardContent className="p-6">
@@ -279,8 +279,8 @@ const USALanding = () => {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-gold">${route.price} NZD</p>
-                      <p className="text-xs text-gray-500">~${route.usd} USD</p>
+                      <p className="font-bold text-gold">{route.price}</p>
+                      <p className="text-xs text-gray-500">NZD</p>
                     </div>
                   </div>
                 </CardContent>
