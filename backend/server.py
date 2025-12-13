@@ -3376,6 +3376,116 @@ async def bulk_status_update(booking_ids: List[str], new_status: str):
 
 # ==================== DRIVER MANAGEMENT ====================
 
+# Driver Application Model
+class DriverApplication(BaseModel):
+    name: str
+    email: str
+    phone: str
+    suburb: str
+    vehicleType: str
+    vehicleYear: str
+    experience: Optional[str] = ""
+    availability: Optional[str] = ""
+    message: Optional[str] = ""
+
+@api_router.post("/driver-applications")
+async def submit_driver_application(application: DriverApplication):
+    """Submit a new driver application"""
+    try:
+        app_data = {
+            "id": str(uuid4()),
+            "name": application.name,
+            "email": application.email,
+            "phone": application.phone,
+            "suburb": application.suburb,
+            "vehicle_type": application.vehicleType,
+            "vehicle_year": application.vehicleYear,
+            "experience": application.experience,
+            "availability": application.availability,
+            "message": application.message,
+            "status": "pending",
+            "created_at": datetime.now(timezone.utc),
+            "reviewed_at": None,
+            "notes": ""
+        }
+        
+        await db.driver_applications.insert_one(app_data)
+        
+        # Send notification email to admin
+        mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
+        mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
+        admin_email = os.environ.get('ADMIN_EMAIL', 'bookings@bookaride.co.nz')
+        
+        if mailgun_api_key and mailgun_domain:
+            html_content = f"""
+            <html>
+                <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <div style="background-color: #D4AF37; color: #1a1a1a; padding: 20px; text-align: center;">
+                        <h1 style="margin: 0;">New Driver Application</h1>
+                    </div>
+                    <div style="padding: 20px; background-color: #f5f5f5;">
+                        <h2>🚗 Driver Application Received</h2>
+                        <div style="background-color: white; padding: 20px; border-radius: 8px; border-left: 4px solid #D4AF37;">
+                            <p><strong>Name:</strong> {application.name}</p>
+                            <p><strong>Phone:</strong> {application.phone}</p>
+                            <p><strong>Email:</strong> {application.email}</p>
+                            <p><strong>Suburb:</strong> {application.suburb}</p>
+                            <hr style="border: 0; border-top: 1px solid #e0e0e0;">
+                            <p><strong>Vehicle:</strong> {application.vehicleType} ({application.vehicleYear})</p>
+                            <p><strong>Experience:</strong> {application.experience or 'Not specified'}</p>
+                            <p><strong>Availability:</strong> {application.availability or 'Not specified'}</p>
+                            <p><strong>Message:</strong> {application.message or 'None'}</p>
+                        </div>
+                        <p style="margin-top: 20px;">Review this application in your <a href="https://bookaride.co.nz/admin/dashboard" style="color: #D4AF37;">Admin Dashboard</a>.</p>
+                    </div>
+                </body>
+            </html>
+            """
+            
+            requests.post(
+                f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
+                auth=("api", mailgun_api_key),
+                data={
+                    "from": f"BookaRide <noreply@{mailgun_domain}>",
+                    "to": admin_email,
+                    "subject": f"New Driver Application - {application.name}",
+                    "html": html_content
+                }
+            )
+        
+        logger.info(f"Driver application received from {application.name} ({application.email})")
+        return {"success": True, "message": "Application submitted successfully"}
+    except Exception as e:
+        logger.error(f"Error submitting driver application: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/driver-applications")
+async def get_driver_applications(current_admin: dict = Depends(get_current_admin)):
+    """Get all driver applications (admin only)"""
+    try:
+        applications = await db.driver_applications.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+        return {"applications": applications}
+    except Exception as e:
+        logger.error(f"Error getting driver applications: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.patch("/driver-applications/{application_id}")
+async def update_driver_application(application_id: str, status: str, notes: Optional[str] = ""):
+    """Update driver application status"""
+    try:
+        result = await db.driver_applications.update_one(
+            {"id": application_id},
+            {"$set": {"status": status, "notes": notes, "reviewed_at": datetime.now(timezone.utc)}}
+        )
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Application not found")
+        return {"message": "Application updated successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating driver application: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Driver Models
 class DriverCreate(BaseModel):
     name: str
