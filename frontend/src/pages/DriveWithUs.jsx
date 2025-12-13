@@ -121,8 +121,8 @@ const DriveWithUs = () => {
           {/* Stats */}
           <div className="grid grid-cols-3 gap-8 max-w-3xl mx-auto">
             <div className="text-center p-6 bg-white rounded-2xl shadow-lg" style={{border: `2px solid ${goldColor}30`}}>
-              <div className="text-4xl font-bold" style={{color: goldColor}}>$1000+</div>
-              <div className="text-gray-500 text-sm mt-1">Weekly Potential</div>
+              <div className="text-4xl font-bold" style={{color: goldColor}}>Great</div>
+              <div className="text-gray-500 text-sm mt-1">Earning Potential</div>
             </div>
             <div className="text-center p-6 bg-white rounded-2xl shadow-lg" style={{border: `2px solid ${goldColor}30`}}>
               <div className="text-4xl font-bold" style={{color: goldColor}}>100%</div>
