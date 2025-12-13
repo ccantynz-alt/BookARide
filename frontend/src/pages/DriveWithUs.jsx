@@ -12,6 +12,11 @@ import axios from 'axios';
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
+// True gold color matching BookaRide branding
+const goldColor = '#D4AF37';
+const goldLight = '#E8D48A';
+const goldDark = '#B8972E';
+
 const DriveWithUs = () => {
   const [formData, setFormData] = useState({
     name: '',
