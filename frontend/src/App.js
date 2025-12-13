@@ -134,6 +134,12 @@ function App() {
     { path: "bookaride-vs-supershuttle", element: <ComparisonPage /> },
     { path: "bookaride-vs-uber", element: <ComparisonPage /> },
     { path: "bookaride-vs-taxi", element: <ComparisonPage /> },
+    // SEO Battle Pages - Competitor Targeting
+    { path: "hibiscus-coast-airport-shuttle", element: <HibiscusCoastShuttlePage /> },
+    { path: "bookaride-vs-hibiscus-shuttles", element: <BookarideVsHibiscusShuttles /> },
+    { path: "best-hibiscus-coast-shuttle-service", element: <BestHibiscusCoastShuttle /> },
+    { path: "orewa-to-auckland-airport", element: <OrewaToAirportPage /> },
+    { path: "whangaparaoa-airport-transfer", element: <WhangaparoaAirportPage /> },
     // Standard Pages
     { path: "services", element: <Services /> },
     { path: "about", element: <About /> },
