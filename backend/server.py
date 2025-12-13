@@ -4225,10 +4225,23 @@ async def generate_sitemap():
 # Include the router in the main app
 app.include_router(api_router)
 
+# Configure CORS with specific origins for credentials support
+cors_origins_env = os.environ.get('CORS_ORIGINS', '*')
+if cors_origins_env == '*':
+    # When using credentials, we need specific origins
+    cors_origins = [
+        "https://bookaride.co.nz",
+        "https://www.bookaride.co.nz",
+        "https://bookaseat-1.preview.emergentagent.com",
+        "http://localhost:3000"
+    ]
+else:
+    cors_origins = cors_origins_env.split(',')
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_origins=cors_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
