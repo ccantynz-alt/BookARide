@@ -16,6 +16,7 @@ import axios from 'axios';
 import { AnalyticsTab } from '../components/admin/AnalyticsTab';
 import { CustomersTab } from '../components/admin/CustomersTab';
 import { DriversTab } from '../components/admin/DriversTab';
+import { LandingPagesTab } from '../components/admin/LandingPagesTab';
 import { initAutocompleteWithFix } from '../utils/fixGoogleAutocomplete';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
