@@ -1202,6 +1202,25 @@ export const AdminDashboard = () => {
                 <table className="w-full">
                   <thead className="bg-gray-100 border-b">
                     <tr>
+                      <th className="p-4 w-10">
+                        <button
+                          onClick={() => {
+                            if (selectedBookings.size === filteredBookings.length) {
+                              setSelectedBookings(new Set());
+                            } else {
+                              setSelectedBookings(new Set(filteredBookings.map(b => b.id)));
+                            }
+                          }}
+                          className="p-1 hover:bg-gray-200 rounded"
+                          title="Select all"
+                        >
+                          {selectedBookings.size === filteredBookings.length && filteredBookings.length > 0 ? (
+                            <CheckSquare className="w-5 h-5 text-gold" />
+                          ) : (
+                            <Square className="w-5 h-5 text-gray-400" />
+                          )}
+                        </button>
+                      </th>
                       <th className="text-left p-4 font-semibold text-gray-700">Ref # / Date</th>
                       <th className="text-left p-4 font-semibold text-gray-700">Customer</th>
                       <th className="text-left p-4 font-semibold text-gray-700">Service</th>
