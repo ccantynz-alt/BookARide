@@ -1597,6 +1597,30 @@ export const AdminDashboard = () => {
                       <p className="font-medium">{selectedBooking.time}</p>
                     </div>
                   </div>
+                  
+                  {/* Return Trip Info - Inline */}
+                  {selectedBooking.bookReturn && (
+                    <div className="mt-4 bg-amber-50 p-3 rounded-lg border border-amber-200">
+                      <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2 text-sm">
+                        🔄 Return Trip
+                      </h4>
+                      <div className="text-sm">
+                        <p className="text-gray-600 text-xs italic mb-2">
+                          Reverse: {selectedBooking.dropoffAddress?.split(',')[0]} → {selectedBooking.pickupAddress?.split(',')[0]}
+                        </p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <span className="text-gray-500 text-xs">Return Date:</span>
+                            <p className="font-medium">{formatDate(selectedBooking.returnDate)}</p>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 text-xs">Return Time:</span>
+                            <p className="font-medium">{selectedBooking.returnTime}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
