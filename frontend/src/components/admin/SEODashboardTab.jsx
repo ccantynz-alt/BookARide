@@ -97,18 +97,18 @@ const seoPages = {
   ]
 };
 
-// New suburb suggestions for expansion
+// New suburb suggestions for expansion (future opportunities)
 const suggestedSuburbs = [
-  { name: 'Manukau', region: 'South Auckland', population: '85,000+' },
-  { name: 'Papakura', region: 'South Auckland', population: '50,000+' },
-  { name: 'Botany', region: 'East Auckland', population: '60,000+' },
-  { name: 'Henderson', region: 'West Auckland', population: '70,000+' },
-  { name: 'New Lynn', region: 'West Auckland', population: '30,000+' },
-  { name: 'Mt Eden', region: 'Central Auckland', population: '15,000+' },
-  { name: 'Ponsonby', region: 'Central Auckland', population: '10,000+' },
-  { name: 'Remuera', region: 'Central Auckland', population: '20,000+' },
-  { name: 'Howick', region: 'East Auckland', population: '40,000+' },
-  { name: 'Pakuranga', region: 'East Auckland', population: '25,000+' },
+  { name: 'Pukekohe', region: 'South Auckland', population: '35,000+' },
+  { name: 'Drury', region: 'South Auckland', population: '10,000+' },
+  { name: 'Flat Bush', region: 'East Auckland', population: '40,000+' },
+  { name: 'Te Atatu', region: 'West Auckland', population: '25,000+' },
+  { name: 'Massey', region: 'West Auckland', population: '30,000+' },
+  { name: 'Glen Eden', region: 'West Auckland', population: '20,000+' },
+  { name: 'Epsom', region: 'Central Auckland', population: '18,000+' },
+  { name: 'Grey Lynn', region: 'Central Auckland', population: '12,000+' },
+  { name: 'Mission Bay', region: 'Eastern Suburbs', population: '8,000+' },
+  { name: 'St Heliers', region: 'Eastern Suburbs', population: '10,000+' },
 ];
 
 // PageCard Component - moved outside to prevent re-render issues
