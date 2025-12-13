@@ -351,12 +351,25 @@ export const AdminDashboard = () => {
     }
     
     try {
-      await axios.patch(
+      const response = await axios.patch(
         `${API}/drivers/${selectedDriver}/assign?booking_id=${selectedBooking.id}`,
         {},
         getAuthHeaders()
       );
-      toast.success('Driver assigned successfully!');
+      
+      // Get the driver details to update selectedBooking
+      const assignedDriver = drivers.find(d => d.id === selectedDriver);
+      
+      // Update the selectedBooking with driver info
+      setSelectedBooking(prev => ({
+        ...prev,
+        driver_id: selectedDriver,
+        driver_name: assignedDriver?.name || '',
+        driver_phone: assignedDriver?.phone || '',
+        driver_email: assignedDriver?.email || ''
+      }));
+      
+      toast.success(response.data?.message || 'Driver assigned successfully!');
       setSelectedDriver('');
       fetchBookings();
     } catch (error) {
