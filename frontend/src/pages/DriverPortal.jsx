@@ -102,7 +102,20 @@ const BookingCard = ({ booking, showDate = false }) => (
 export const DriverPortal = () => {
   const navigate = useNavigate();
   const [bookings, setBookings] = useState([]);
-  const [driver, setDriver] = useState(null);
+  // Initialize driver from localStorage
+  const getStoredDriver = () => {
+    const driverData = localStorage.getItem('driverAuth');
+    if (driverData) {
+      try {
+        return JSON.parse(driverData);
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  };
+
+  const [driver, setDriver] = useState(getStoredDriver);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('schedule');
 
