@@ -803,8 +803,8 @@ export const BookNow = () => {
                           
                           <div className="bg-gray-50 rounded-lg p-4 text-center">
                             <p className="text-sm text-gray-600">
-                              {pricing.distance} km journey • {formData.passengers} passenger{parseInt(formData.passengers) > 1 ? 's' : ''}
-                              {formData.bookReturn && ' • Return trip included'}
+                              {formData.bookReturn ? `${pricing.distance / 2} km each way` : `${pricing.distance} km`} • {formData.passengers} passenger{parseInt(formData.passengers) > 1 ? 's' : ''}
+                              {formData.bookReturn && ' • Round trip (both ways)'}
                             </p>
                           </div>
                           
