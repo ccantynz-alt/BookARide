@@ -2012,31 +2012,102 @@ async def create_calendar_event(booking: dict):
         # Get English translations for calendar (translates non-English text)
         eng = await get_english_calendar_text(booking)
         
-        # Create event with English text
+        # Build pickup addresses list
+        pickup_addresses = []
+        main_pickup = eng['pickup']
+        pickup_addresses.append(f"1. {main_pickup}")
+        
+        additional_pickups = booking.get('pickupAddresses', [])
+        if additional_pickups:
+            for i, addr in enumerate(additional_pickups, start=2):
+                if addr and addr.strip():
+                    pickup_addresses.append(f"{i}. {addr}")
+        
+        pickup_list = "\n".join(pickup_addresses)
+        
+        # Build return trip info if applicable
+        return_info = ""
+        has_return = booking.get('bookReturn', False)
+        if has_return:
+            return_date = booking.get('returnDate', '')
+            return_time = booking.get('returnTime', '')
+            if return_date:
+                try:
+                    return_date_obj = datetime.strptime(return_date, '%Y-%m-%d')
+                    formatted_return_date = return_date_obj.strftime('%d %B %Y')
+                except:
+                    formatted_return_date = return_date
+            else:
+                formatted_return_date = 'N/A'
+            
+            # Build reverse route for return
+            reverse_pickups = []
+            if additional_pickups:
+                for addr in reversed(additional_pickups):
+                    if addr and addr.strip():
+                        reverse_pickups.append(addr)
+            reverse_pickups.append(main_pickup)
+            
+            return_info = f"""
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔄 RETURN TRIP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Return Date: {formatted_return_date}
+Return Time: {return_time}
+
+Return Route (reverse order):
+Start: {eng['dropoff']}
+"""
+            for i, addr in enumerate(reverse_pickups, start=1):
+                return_info += f"Stop {i}: {addr}\n"
+        
+        # Create event with all details
         event = {
             'summary': f"Booking: {eng['name']} - {booking.get('serviceType', 'Shuttle').replace('-', ' ').title()}",
-            'location': eng['pickup'],
+            'location': main_pickup,
             'description': f"""
-Booking Reference: {booking.get('id', '')[:8].upper()}
-Booking Date: {formatted_date} at {booking.get('time')}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 BOOKING DETAILS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Reference: #{booking.get('referenceNumber', booking.get('id', '')[:8].upper())}
+Date: {formatted_date}
+Time: {booking.get('time')}
 
-Customer: {eng['name']}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+👤 CUSTOMER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Name: {eng['name']}
 Phone: {booking.get('phone')}
 Email: {booking.get('email')}
-
-Service: {booking.get('serviceType', '').replace('-', ' ').title()}
-Pickup: {eng['pickup']}
-Drop-off: {eng['dropoff']}
 Passengers: {booking.get('passengers')}
 
-Total Price: ${booking.get('totalPrice', 0):.2f} NZD
-Payment Status: {booking.get('payment_status', 'pending')}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚗 OUTBOUND TRIP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Service: {booking.get('serviceType', '').replace('-', ' ').title()}
 
-Flight Info:
-Departure: {booking.get('departureFlightNumber', 'N/A')} at {booking.get('departureTime', 'N/A')}
-Arrival: {booking.get('arrivalFlightNumber', 'N/A')} at {booking.get('arrivalTime', 'N/A')}
+PICKUP LOCATIONS:
+{pickup_list}
 
-Notes: {eng['notes']}
+DROP-OFF:
+📍 {eng['dropoff']}
+{return_info}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💰 PAYMENT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Total: ${booking.get('totalPrice', booking.get('pricing', {}).get('totalPrice', 0)):.2f} NZD
+Status: {booking.get('payment_status', 'pending').upper()}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✈️ FLIGHT INFO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Arrival: {booking.get('arrivalFlightNumber') or booking.get('flightArrivalNumber') or 'N/A'} at {booking.get('arrivalTime') or booking.get('flightArrivalTime') or 'N/A'}
+Departure: {booking.get('departureFlightNumber') or booking.get('flightDepartureNumber') or 'N/A'} at {booking.get('departureTime') or booking.get('flightDepartureTime') or 'N/A'}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📝 NOTES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+{eng['notes'] or 'No special notes'}
             """.strip(),
             'start': {
                 'dateTime': booking_datetime,
