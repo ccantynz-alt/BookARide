@@ -85,10 +85,10 @@ const AustraliaLanding = () => {
           <h2 className="text-3xl font-bold text-center mb-12">Popular Routes for Aussie Visitors</h2>
           <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
             {[
-              { from: 'Auckland Airport', to: 'Auckland CBD', price: 'From $65 NZD', time: '~35 mins' },
-              { from: 'Auckland Airport', to: 'Queenstown Hotels', price: 'From $85 NZD', time: '~45 mins' },
-              { from: 'Auckland Airport', to: 'Rotorua', price: 'From $280 NZD', time: '~3 hours' },
-              { from: 'Auckland Airport', to: 'Hobbiton', price: 'From $320 NZD', time: '~2.5 hours' },
+              { from: 'Auckland Airport', to: 'Auckland CBD', price: 'From $100 NZD', time: '~35 mins' },
+              { from: 'Auckland Airport', to: 'North Shore', price: 'From $100 NZD', time: '~45 mins' },
+              { from: 'Auckland Airport', to: 'Rotorua', price: 'Get Quote', time: '~3 hours' },
+              { from: 'Auckland Airport', to: 'Hobbiton', price: 'Get Quote', time: '~2.5 hours' },
             ].map((route, idx) => (
               <div key={idx} className="flex items-center justify-between p-6 bg-gray-50 rounded-xl hover:shadow-md transition-shadow">
                 <div className="flex items-center gap-4">
