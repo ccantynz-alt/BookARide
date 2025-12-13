@@ -280,7 +280,7 @@ export const SEODashboardTab = () => {
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-2">
               {filterPages(seoPages.routes).map((page, idx) => (
-                <PageCard key={idx} page={page} />
+                <PageCard key={idx} page={page} onOpenPage={openPage} />
               ))}
             </CardContent>
           </Card>
@@ -296,7 +296,7 @@ export const SEODashboardTab = () => {
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-2">
               {filterPages(seoPages.suburbs).map((page, idx) => (
-                <PageCard key={idx} page={page} />
+                <PageCard key={idx} page={page} onOpenPage={openPage} />
               ))}
             </CardContent>
           </Card>
@@ -312,7 +312,7 @@ export const SEODashboardTab = () => {
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-2">
               {filterPages(seoPages.international).map((page, idx) => (
-                <PageCard key={idx} page={page} />
+                <PageCard key={idx} page={page} onOpenPage={openPage} />
               ))}
             </CardContent>
           </Card>
@@ -328,7 +328,7 @@ export const SEODashboardTab = () => {
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-2">
               {filterPages(seoPages.blog).map((page, idx) => (
-                <PageCard key={idx} page={page} />
+                <PageCard key={idx} page={page} onOpenPage={openPage} />
               ))}
             </CardContent>
           </Card>
@@ -344,7 +344,7 @@ export const SEODashboardTab = () => {
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-2">
               {filterPages(seoPages.hotels).map((page, idx) => (
-                <PageCard key={idx} page={page} />
+                <PageCard key={idx} page={page} onOpenPage={openPage} />
               ))}
             </CardContent>
           </Card>
