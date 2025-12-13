@@ -237,18 +237,6 @@ export const DriversTab = () => {
             </p>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-          <CardContent className="p-6">
-            <p className="text-sm text-purple-600 mb-1">Your Commission (15%)</p>
-            <p className="text-3xl font-bold text-purple-700">
-              ${bookings.filter(b => b.driver_id).reduce((sum, b) => {
-                const total = b.pricing?.totalPrice || 0;
-                return sum + (total * 0.15);
-              }, 0).toFixed(2)}
-            </p>
-            <p className="text-xs text-purple-500 mt-1">From {bookings.filter(b => b.driver_id).length} assigned bookings</p>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Drivers List */}
