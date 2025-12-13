@@ -212,7 +212,7 @@ export const DriversTab = () => {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card>
           <CardContent className="p-6">
             <p className="text-sm text-gray-600 mb-1">Total Drivers</p>
@@ -235,6 +235,18 @@ export const DriversTab = () => {
                 b.date === new Date().toISOString().split('T')[0]
               )).length}
             </p>
+          </CardContent>
+        </Card>
+        <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+          <CardContent className="p-6">
+            <p className="text-sm text-purple-600 mb-1">Your Commission (15%)</p>
+            <p className="text-3xl font-bold text-purple-700">
+              ${bookings.reduce((sum, b) => {
+                const total = b.pricing?.totalPrice || 0;
+                return sum + (total * 0.15);
+              }, 0).toFixed(2)}
+            </p>
+            <p className="text-xs text-purple-500 mt-1">From all assigned bookings</p>
           </CardContent>
         </Card>
       </div>
