@@ -303,6 +303,30 @@ export const DriversTab = () => {
                   License: {driver.license_number}
                 </div>
                 
+                {/* Driver Earnings Summary */}
+                <div className="pt-3 border-t">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="p-2 bg-green-50 rounded">
+                      <p className="text-xs text-green-600">Driver Earnings (85%)</p>
+                      <p className="font-bold text-green-700">
+                        ${driverBookings.reduce((sum, b) => {
+                          const total = b.pricing?.totalPrice || 0;
+                          return sum + (total * 0.85);
+                        }, 0).toFixed(2)}
+                      </p>
+                    </div>
+                    <div className="p-2 bg-purple-50 rounded">
+                      <p className="text-xs text-purple-600">Your Cut (15%)</p>
+                      <p className="font-bold text-purple-700">
+                        ${driverBookings.reduce((sum, b) => {
+                          const total = b.pricing?.totalPrice || 0;
+                          return sum + (total * 0.15);
+                        }, 0).toFixed(2)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
                 {driver.notes && (
                   <div className="pt-3 border-t">
                     <p className="text-sm text-gray-600 italic">{driver.notes}</p>
