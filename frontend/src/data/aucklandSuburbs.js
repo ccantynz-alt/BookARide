@@ -199,32 +199,6 @@ export const aucklandSuburbs = [
     landmarks: ['Pakuranga Plaza', 'Highland Park', 'Pigeon Mountain'],
     nearbyAreas: ['Howick', 'Botany', 'Half Moon Bay']
   },
-  
-  // South Auckland
-  {
-    slug: 'manukau',
-    name: 'Manukau',
-    region: 'South Auckland',
-    description: 'Major commercial center close to airport with shopping',
-    coordinates: { lat: -37.0082, lng: 174.8785 },
-    distanceToAirport: 8,
-    estimatedPrice: 70,
-    estimatedTime: '12-17 minutes',
-    landmarks: ['Westfield Manukau City', 'Manukau Sports Bowl', 'MIT'],
-    nearbyAreas: ['Papatoetoe', 'Otara', 'Airport Area']
-  },
-  {
-    slug: 'papakura',
-    name: 'Papakura',
-    region: 'South Auckland',
-    description: 'Growing town with rail connections and local amenities',
-    coordinates: { lat: -37.0654, lng: 174.9431 },
-    distanceToAirport: 22,
-    estimatedPrice: 105,
-    estimatedTime: '25-30 minutes',
-    landmarks: ['Papakura Town Centre', 'Red Hill', 'Clevedon Valley'],
-    nearbyAreas: ['Drury', 'Takanini', 'Manurewa']
-  },
   {
     slug: 'pukekohe',
     name: 'Pukekohe',
