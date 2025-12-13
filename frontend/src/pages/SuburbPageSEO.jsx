@@ -16,12 +16,19 @@ const allAreas = [...aucklandSuburbs, ...hamiltonAreas, ...whangareiAreas, ...hi
 export const SuburbPageSEO = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
-  const suburb = allAreas.find(s => s.slug === slug);
+  const rawSuburb = allAreas.find(s => s.slug === slug);
 
   // If suburb not found, redirect to home
-  if (!suburb) {
+  if (!rawSuburb) {
     return <Navigate to="/" replace />;
   }
+
+  // Normalize suburb data to handle both data formats
+  const suburb = {
+    ...rawSuburb,
+    price: rawSuburb.price || rawSuburb.estimatedPrice || 100,
+    distance: rawSuburb.distance || rawSuburb.distanceToAirport || 20
+  };
 
   const cityName = suburb.city || suburb.region || "Auckland";
   const isHibiscusCoast = suburb.region === "Hibiscus Coast";
