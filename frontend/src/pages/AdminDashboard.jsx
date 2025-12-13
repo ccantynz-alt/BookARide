@@ -1628,21 +1628,25 @@ export const AdminDashboard = () => {
               <div>
                 <h3 className="font-semibold text-gray-900 mb-3">Pricing Details</h3>
                 <div className="bg-gray-50 p-4 rounded-lg space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span>Distance:</span>
-                    <span className="font-medium">{selectedBooking.pricing.distance} km</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Base Price:</span>
-                    <span className="font-medium">${selectedBooking.pricing.basePrice.toFixed(2)}</span>
-                  </div>
-                  {selectedBooking.pricing.airportFee > 0 && (
+                  {selectedBooking.pricing?.distance && (
+                    <div className="flex justify-between">
+                      <span>Distance:</span>
+                      <span className="font-medium">{selectedBooking.pricing.distance} km</span>
+                    </div>
+                  )}
+                  {selectedBooking.pricing?.basePrice != null && (
+                    <div className="flex justify-between">
+                      <span>Base Price:</span>
+                      <span className="font-medium">${selectedBooking.pricing.basePrice.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {selectedBooking.pricing?.airportFee > 0 && (
                     <div className="flex justify-between">
                       <span>Airport Fee:</span>
                       <span className="font-medium">${selectedBooking.pricing.airportFee.toFixed(2)}</span>
                     </div>
                   )}
-                  {selectedBooking.pricing.passengerFee > 0 && (
+                  {selectedBooking.pricing?.passengerFee > 0 && (
                     <div className="flex justify-between">
                       <span>Passenger Fee:</span>
                       <span className="font-medium">${selectedBooking.pricing.passengerFee.toFixed(2)}</span>
@@ -1650,7 +1654,7 @@ export const AdminDashboard = () => {
                   )}
                   <div className="flex justify-between pt-2 border-t font-semibold text-base">
                     <span>Total:</span>
-                    <span className="text-gold">${selectedBooking.pricing.totalPrice.toFixed(2)}</span>
+                    <span className="text-gold">${selectedBooking.pricing?.totalPrice?.toFixed(2) || selectedBooking.totalPrice?.toFixed(2) || '0.00'}</span>
                   </div>
                 </div>
 
