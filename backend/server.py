@@ -1980,7 +1980,7 @@ async def get_english_calendar_text(booking: dict) -> dict:
     }
 
 async def create_calendar_event(booking: dict):
-    """Create a Google Calendar event for the booking"""
+    """Create Google Calendar event(s) for the booking - creates TWO events if there's a return trip"""
     try:
         creds = await get_calendar_credentials()
         if not creds:
@@ -1988,152 +1988,178 @@ async def create_calendar_event(booking: dict):
             return False
         
         service = build('calendar', 'v3', credentials=creds)
+        calendar_id = os.environ.get('GOOGLE_CALENDAR_ID', 'primary')
         
         # Parse booking date and time in New Zealand timezone
         from datetime import datetime
         import pytz
         
-        # Create datetime in NZ timezone
         nz_tz = pytz.timezone('Pacific/Auckland')
-        booking_date = booking.get('date')  # "2025-12-09"
-        booking_time = booking.get('time')  # "10:00"
-        
-        # Parse as NZ time (not UTC)
-        naive_dt = datetime.strptime(f"{booking_date} {booking_time}", '%Y-%m-%d %H:%M')
-        nz_dt = nz_tz.localize(naive_dt)
-        
-        # Format for Google Calendar (ISO 8601 with timezone)
-        booking_datetime = nz_dt.isoformat()
-        
-        # Format date as "Day Month Year" (e.g., "9 December 2025")
-        date_obj = datetime.strptime(booking.get('date'), '%Y-%m-%d')
-        formatted_date = date_obj.strftime('%d %B %Y')  # "09 December 2025"
         
         # Get English translations for calendar (translates non-English text)
         eng = await get_english_calendar_text(booking)
         
         # Build pickup addresses list
-        pickup_addresses = []
         main_pickup = eng['pickup']
-        pickup_addresses.append(f"1. {main_pickup}")
-        
+        pickup_list = [f"1. {main_pickup}"]
         additional_pickups = booking.get('pickupAddresses', [])
         if additional_pickups:
             for i, addr in enumerate(additional_pickups, start=2):
                 if addr and addr.strip():
-                    pickup_addresses.append(f"{i}. {addr}")
+                    pickup_list.append(f"{i}. {addr}")
         
-        pickup_list = "\n".join(pickup_addresses)
+        # Common booking info
+        ref_num = booking.get('referenceNumber', booking.get('id', '')[:8].upper())
+        customer_name = eng['name']
+        customer_phone = booking.get('phone')
+        customer_email = booking.get('email')
+        passengers = booking.get('passengers')
+        total_price = booking.get('totalPrice', booking.get('pricing', {}).get('totalPrice', 0))
+        payment_status = booking.get('payment_status', 'pending').upper()
+        notes = eng['notes'] or 'No special notes'
+        service_type = booking.get('serviceType', '').replace('-', ' ').title()
         
-        # Build return trip info if applicable
-        return_info = ""
+        created_event_ids = []
+        
+        # ========== EVENT 1: OUTBOUND TRIP ==========
+        booking_date = booking.get('date')
+        booking_time = booking.get('time')
+        naive_dt = datetime.strptime(f"{booking_date} {booking_time}", '%Y-%m-%d %H:%M')
+        nz_dt = nz_tz.localize(naive_dt)
+        formatted_date = datetime.strptime(booking_date, '%Y-%m-%d').strftime('%d %B %Y')
+        
         has_return = booking.get('bookReturn', False)
-        if has_return:
-            return_date = booking.get('returnDate', '')
-            return_time = booking.get('returnTime', '')
-            if return_date:
-                try:
-                    return_date_obj = datetime.strptime(return_date, '%Y-%m-%d')
-                    formatted_return_date = return_date_obj.strftime('%d %B %Y')
-                except:
-                    formatted_return_date = return_date
-            else:
-                formatted_return_date = 'N/A'
-            
-            # Build reverse route for return
-            reverse_pickups = []
-            if additional_pickups:
-                for addr in reversed(additional_pickups):
-                    if addr and addr.strip():
-                        reverse_pickups.append(addr)
-            reverse_pickups.append(main_pickup)
-            
-            return_info = f"""
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🔄 RETURN TRIP
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Return Date: {formatted_return_date}
-Return Time: {return_time}
-
-Return Route (reverse order):
-Start: {eng['dropoff']}
-"""
-            for i, addr in enumerate(reverse_pickups, start=1):
-                return_info += f"Stop {i}: {addr}\n"
         
-        # Create event with all details
-        event = {
-            'summary': f"Booking: {eng['name']} - {booking.get('serviceType', 'Shuttle').replace('-', ' ').title()}",
+        outbound_event = {
+            'summary': f"🚗 OUTBOUND: {customer_name} - {service_type}" + (" (+ RETURN)" if has_return else ""),
             'location': main_pickup,
             'description': f"""
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📋 BOOKING DETAILS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Reference: #{booking.get('referenceNumber', booking.get('id', '')[:8].upper())}
-Date: {formatted_date}
-Time: {booking.get('time')}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-👤 CUSTOMER
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Name: {eng['name']}
-Phone: {booking.get('phone')}
-Email: {booking.get('email')}
-Passengers: {booking.get('passengers')}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🚗 OUTBOUND TRIP
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Service: {booking.get('serviceType', '').replace('-', ' ').title()}
+Reference: #{ref_num}
+Date: {formatted_date}
+Pickup Time: {booking_time}
 
-PICKUP LOCATIONS:
-{pickup_list}
+👤 CUSTOMER
+Name: {customer_name}
+Phone: {customer_phone}
+Email: {customer_email}
+Passengers: {passengers}
 
-DROP-OFF:
-📍 {eng['dropoff']}
-{return_info}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📍 PICKUP LOCATIONS:
+{chr(10).join(pickup_list)}
+
+🏁 DROP-OFF:
+{eng['dropoff']}
+
 💰 PAYMENT
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Total: ${booking.get('totalPrice', booking.get('pricing', {}).get('totalPrice', 0)):.2f} NZD
-Status: {booking.get('payment_status', 'pending').upper()}
+Total: ${total_price:.2f} NZD
+Status: {payment_status}
 
+📝 NOTES: {notes}
+{"" if not has_return else f'''
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-✈️ FLIGHT INFO
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Arrival: {booking.get('arrivalFlightNumber') or booking.get('flightArrivalNumber') or 'N/A'} at {booking.get('arrivalTime') or booking.get('flightArrivalTime') or 'N/A'}
-Departure: {booking.get('departureFlightNumber') or booking.get('flightDepartureNumber') or 'N/A'} at {booking.get('departureTime') or booking.get('flightDepartureTime') or 'N/A'}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📝 NOTES
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-{eng['notes'] or 'No special notes'}
+⚠️ THIS BOOKING HAS A RETURN TRIP
+Return Date: {booking.get('returnDate', 'N/A')}
+Return Time: {booking.get('returnTime', 'N/A')}
+(See separate calendar event for return)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'''}
             """.strip(),
-            'start': {
-                'dateTime': booking_datetime,
-            },
-            'end': {
-                'dateTime': (nz_dt + timedelta(hours=2)).isoformat(),  # 2 hour duration
-            },
+            'start': {'dateTime': nz_dt.isoformat()},
+            'end': {'dateTime': (nz_dt + timedelta(hours=2)).isoformat()},
             'reminders': {
                 'useDefault': False,
                 'overrides': [
-                    {'method': 'email', 'minutes': 24 * 60},  # 1 day before
-                    {'method': 'popup', 'minutes': 60},  # 1 hour before
+                    {'method': 'email', 'minutes': 24 * 60},
+                    {'method': 'popup', 'minutes': 60},
                 ],
             },
         }
         
-        calendar_id = os.environ.get('GOOGLE_CALENDAR_ID', 'primary')
-        created_event = service.events().insert(calendarId=calendar_id, body=event).execute()
+        outbound_created = service.events().insert(calendarId=calendar_id, body=outbound_event).execute()
+        created_event_ids.append(outbound_created.get('id'))
+        logger.info(f"Outbound calendar event created: {outbound_created.get('htmlLink')}")
         
-        # Store event ID in booking
+        # ========== EVENT 2: RETURN TRIP (if applicable) ==========
+        if has_return and booking.get('returnDate') and booking.get('returnTime'):
+            return_date = booking.get('returnDate')
+            return_time = booking.get('returnTime')
+            
+            try:
+                return_naive_dt = datetime.strptime(f"{return_date} {return_time}", '%Y-%m-%d %H:%M')
+                return_nz_dt = nz_tz.localize(return_naive_dt)
+                formatted_return_date = datetime.strptime(return_date, '%Y-%m-%d').strftime('%d %B %Y')
+            except Exception as parse_error:
+                logger.warning(f"Could not parse return date/time: {parse_error}")
+                return_nz_dt = None
+                formatted_return_date = return_date
+            
+            if return_nz_dt:
+                # Build reverse route for return
+                reverse_stops = []
+                if additional_pickups:
+                    for i, addr in enumerate(reversed(additional_pickups), start=1):
+                        if addr and addr.strip():
+                            reverse_stops.append(f"{i}. {addr}")
+                reverse_stops.append(f"{len(reverse_stops) + 1}. {main_pickup} (FINAL DROP-OFF)")
+                
+                return_event = {
+                    'summary': f"🔄 RETURN: {customer_name} - {service_type}",
+                    'location': eng['dropoff'],  # Return starts from original drop-off
+                    'description': f"""
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔄 RETURN TRIP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Reference: #{ref_num} (RETURN)
+Date: {formatted_return_date}
+Pickup Time: {return_time}
+
+👤 CUSTOMER
+Name: {customer_name}
+Phone: {customer_phone}
+Email: {customer_email}
+Passengers: {passengers}
+
+📍 PICKUP (Start of Return):
+{eng['dropoff']}
+
+🛤️ DROP-OFF STOPS (Reverse Order):
+{chr(10).join(reverse_stops)}
+
+💰 PAYMENT
+Total (both ways): ${total_price:.2f} NZD
+Status: {payment_status}
+
+📝 NOTES: {notes}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ This is the RETURN leg of booking #{ref_num}
+Outbound was: {formatted_date} at {booking_time}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                    """.strip(),
+                    'start': {'dateTime': return_nz_dt.isoformat()},
+                    'end': {'dateTime': (return_nz_dt + timedelta(hours=2)).isoformat()},
+                    'reminders': {
+                        'useDefault': False,
+                        'overrides': [
+                            {'method': 'email', 'minutes': 24 * 60},
+                            {'method': 'popup', 'minutes': 60},
+                        ],
+                    },
+                }
+                
+                return_created = service.events().insert(calendarId=calendar_id, body=return_event).execute()
+                created_event_ids.append(return_created.get('id'))
+                logger.info(f"Return calendar event created: {return_created.get('htmlLink')}")
+        
+        # Store event IDs in booking (comma-separated if multiple)
         await db.bookings.update_one(
             {"id": booking.get('id')},
-            {"$set": {"calendar_event_id": created_event.get('id')}}
+            {"$set": {"calendar_event_id": ",".join(created_event_ids)}}
         )
         
-        logger.info(f"Calendar event created for booking {booking.get('id')}: {created_event.get('htmlLink')}")
+        logger.info(f"Calendar event(s) created for booking {booking.get('id')}: {len(created_event_ids)} event(s)")
         return True
         
     except Exception as e:
