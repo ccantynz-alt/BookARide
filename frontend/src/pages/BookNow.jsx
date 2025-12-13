@@ -791,43 +791,22 @@ export const BookNow = () => {
                       {pricing.calculating ? (
                         <div className="text-center py-8">
                           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold mx-auto mb-4"></div>
-                          <p className="text-gray-600">Calculating...</p>
+                          <p className="text-gray-600">Calculating your quote...</p>
                         </div>
                       ) : pricing.totalPrice > 0 ? (
                         <div className="space-y-4">
-                          <div className="flex justify-between pb-3 border-b border-gray-200">
-                            <span className="text-gray-600">Distance</span>
-                            <span className="font-semibold text-gray-900">{pricing.distance} km</span>
+                          <div className="text-center py-6">
+                            <p className="text-gray-600 mb-2">Your Quote</p>
+                            <span className="text-5xl font-bold text-gold">${pricing.totalPrice.toFixed(2)}</span>
+                            <p className="text-gray-500 text-sm mt-2">NZD - Fixed Price, No Hidden Fees</p>
                           </div>
-                          <div className="flex justify-between pb-3 border-b border-gray-200">
-                            <span className="text-gray-600">Base Price ($2.50/km)</span>
-                            <span className="font-semibold text-gray-900">${pricing.basePrice.toFixed(2)}</span>
+                          
+                          <div className="bg-gray-50 rounded-lg p-4 text-center">
+                            <p className="text-sm text-gray-600">
+                              {pricing.distance} km journey • {formData.passengers} passenger{parseInt(formData.passengers) > 1 ? 's' : ''}
+                              {formData.bookReturn && ' • Return trip included'}
+                            </p>
                           </div>
-                          {pricing.airportFee > 0 && (
-                            <div className="flex justify-between pb-3 border-b border-gray-200">
-                              <span className="text-gray-600">VIP Airport Pickup</span>
-                              <span className="font-semibold text-gray-900">${pricing.airportFee.toFixed(2)}</span>
-                            </div>
-                          )}
-                          {pricing.oversizedLuggageFee > 0 && (
-                            <div className="flex justify-between pb-3 border-b border-gray-200">
-                              <span className="text-gray-600">Oversized Luggage</span>
-                              <span className="font-semibold text-gray-900">${pricing.oversizedLuggageFee.toFixed(2)}</span>
-                            </div>
-                          )}
-                          {pricing.passengerFee > 0 && (
-                            <div className="flex justify-between pb-3 border-b border-gray-200">
-                              <span className="text-gray-600">Extra Passengers</span>
-                              <span className="font-semibold text-gray-900">${pricing.passengerFee.toFixed(2)}</span>
-                            </div>
-                          )}
-                          <div className="flex justify-between pt-4 border-t-2 border-gold/30">
-                            <span className="text-xl font-bold text-gray-900">Total (NZD)</span>
-                            <span className="text-3xl font-bold text-gold">${pricing.totalPrice.toFixed(2)}</span>
-                          </div>
-                          <p className="text-xs text-gray-500 text-center mt-4">
-                            *This is an estimate. Final price will be confirmed before your trip.
-                          </p>
                           
                           {/* Currency Converter */}
                           <div className="mt-6">
