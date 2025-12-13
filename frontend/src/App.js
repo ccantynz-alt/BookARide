@@ -79,6 +79,7 @@ const MainLayout = () => (
     </main>
     <Footer />
     <BackToTop />
+    <AdminBackButton />
   </>
 );
 
