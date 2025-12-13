@@ -93,7 +93,7 @@ const KoreaLanding = () => {
           <p className="text-center text-gray-600 mb-12">Popular Destinations</p>
           <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
             {[
-              { name: '호비튼 Hobbiton', desc: '반지의 제왕 촬영지', price: '$320 NZD부터' },
+              { name: '호비튼 Hobbiton', desc: '반지의 제왕 촬영지', price: '견적 문의' },
               { name: '로토루아 Rotorua', desc: '마오리 문화와 온천', price: '$280 NZD부터' },
               { name: '와이헤키 섬 Waiheke', desc: '와이너리와 해변', price: '$95 NZD부터' },
             ].map((dest, idx) => (
