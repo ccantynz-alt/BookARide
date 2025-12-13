@@ -170,6 +170,7 @@ function App() {
             {/* Driver Routes (No Header/Footer) */}
             <Route path="/driver/login" element={<DriverLogin />} />
             <Route path="/driver/portal" element={<DriverPortal />} />
+            <Route path="/drive-with-us" element={<DriveWithUs />} />
             
             {/* Admin Routes (No language prefix) */}
             <Route path="/admin/login" element={<AdminLogin />} />
