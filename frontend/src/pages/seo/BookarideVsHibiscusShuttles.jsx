@@ -2,8 +2,8 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { CheckCircle, Clock, Shield, Star, MapPin, Phone, Car, Users, Plane, ArrowRight, Award, Zap } from 'lucide-react';
-import { Button } from '../components/ui/button';
-import { Card, CardContent } from '../components/ui/card';
+import { Button } from '../../components/ui/button';
+import { Card, CardContent } from '../../components/ui/card';
 
 export const BookarideVsHibiscusShuttles = () => {
   const schema = {
