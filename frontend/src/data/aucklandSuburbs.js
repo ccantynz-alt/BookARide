@@ -336,5 +336,131 @@ export const aucklandSuburbs = [
     estimatedTime: '17-22 minutes',
     landmarks: ['Panmure Basin', 'Panmure Town Centre', 'Panmure Bridge'],
     nearbyAreas: ['Mt Wellington', 'Pakuranga', 'Glen Innes']
+  },
+  
+  // South Auckland - NEW
+  {
+    slug: 'manukau',
+    name: 'Manukau',
+    region: 'South Auckland',
+    description: 'Major commercial hub in South Auckland with Westfield mall and transport links',
+    coordinates: { lat: -36.9932, lng: 174.8795 },
+    distanceToAirport: 8,
+    estimatedPrice: 65,
+    estimatedTime: '12-15 minutes',
+    landmarks: ['Westfield Manukau', 'Manukau Bus Station', 'Rainbow\'s End'],
+    nearbyAreas: ['Papatoetoe', 'Otahuhu', 'Mangere']
+  },
+  {
+    slug: 'papakura',
+    name: 'Papakura',
+    region: 'South Auckland',
+    description: 'Historic town in South Auckland with train station and growing community',
+    coordinates: { lat: -37.0652, lng: 174.9455 },
+    distanceToAirport: 19,
+    estimatedPrice: 95,
+    estimatedTime: '20-25 minutes',
+    landmarks: ['Papakura Town Centre', 'Papakura Train Station', 'Hawkins Theatre'],
+    nearbyAreas: ['Takanini', 'Drury', 'Manukau']
+  },
+  {
+    slug: 'botany',
+    name: 'Botany',
+    region: 'East Auckland',
+    description: 'Modern suburb with Botany Town Centre and diverse community',
+    coordinates: { lat: -36.9326, lng: 174.9163 },
+    distanceToAirport: 15,
+    estimatedPrice: 90,
+    estimatedTime: '18-22 minutes',
+    landmarks: ['Botany Town Centre', 'Botany Junction', 'Ormiston Town Centre'],
+    nearbyAreas: ['Pakuranga', 'Flat Bush', 'Howick']
+  },
+  {
+    slug: 'howick',
+    name: 'Howick',
+    region: 'East Auckland',
+    description: 'Coastal suburb with historic village, beaches, and family-friendly atmosphere',
+    coordinates: { lat: -36.8985, lng: 174.9283 },
+    distanceToAirport: 18,
+    estimatedPrice: 95,
+    estimatedTime: '22-28 minutes',
+    landmarks: ['Howick Historical Village', 'Stockade Hill', 'Howick Beach'],
+    nearbyAreas: ['Botany', 'Pakuranga', 'Half Moon Bay']
+  },
+  {
+    slug: 'pakuranga',
+    name: 'Pakuranga',
+    region: 'East Auckland',
+    description: 'Established suburb with Pakuranga Plaza and good transport connections',
+    coordinates: { lat: -36.9064, lng: 174.8997 },
+    distanceToAirport: 14,
+    estimatedPrice: 85,
+    estimatedTime: '18-22 minutes',
+    landmarks: ['Pakuranga Plaza', 'Lloyd Elsmore Park', 'Pakuranga Town Centre'],
+    nearbyAreas: ['Howick', 'Botany', 'Highland Park']
+  },
+  
+  // West Auckland - NEW
+  {
+    slug: 'henderson',
+    name: 'Henderson',
+    region: 'West Auckland',
+    description: 'Major hub of West Auckland with Westfield mall and train station',
+    coordinates: { lat: -36.8756, lng: 174.6324 },
+    distanceToAirport: 25,
+    estimatedPrice: 110,
+    estimatedTime: '28-35 minutes',
+    landmarks: ['Westfield WestCity', 'Henderson Train Station', 'Henderson Valley'],
+    nearbyAreas: ['Te Atatu', 'Glen Eden', 'Massey']
+  },
+  {
+    slug: 'new-lynn',
+    name: 'New Lynn',
+    region: 'West Auckland',
+    description: 'Revitalized suburb with LynnMall and modern town centre',
+    coordinates: { lat: -36.9076, lng: 174.6845 },
+    distanceToAirport: 20,
+    estimatedPrice: 100,
+    estimatedTime: '23-28 minutes',
+    landmarks: ['LynnMall', 'New Lynn Train Station', 'Merchant Quarter'],
+    nearbyAreas: ['Mt Albert', 'Avondale', 'Green Bay']
+  },
+  
+  // Central Auckland - NEW
+  {
+    slug: 'mt-eden',
+    name: 'Mt Eden',
+    region: 'Central Auckland',
+    description: 'Leafy inner-city suburb with volcanic cone and village atmosphere',
+    coordinates: { lat: -36.8775, lng: 174.7652 },
+    distanceToAirport: 17,
+    estimatedPrice: 90,
+    estimatedTime: '20-25 minutes',
+    landmarks: ['Mt Eden Summit', 'Eden Park', 'Mt Eden Village'],
+    nearbyAreas: ['Epsom', 'Kingsland', 'Newmarket']
+  },
+  {
+    slug: 'ponsonby',
+    name: 'Ponsonby',
+    region: 'Central Auckland',
+    description: 'Trendy inner-city suburb with boutique shopping and dining',
+    coordinates: { lat: -36.8507, lng: 174.7445 },
+    distanceToAirport: 22,
+    estimatedPrice: 100,
+    estimatedTime: '25-30 minutes',
+    landmarks: ['Ponsonby Road', 'Western Park', 'Three Lamps'],
+    nearbyAreas: ['Herne Bay', 'Grey Lynn', 'Auckland CBD']
+  },
+  {
+    slug: 'remuera',
+    name: 'Remuera',
+    region: 'Central Auckland',
+    description: 'Prestigious suburb with heritage homes and excellent schools',
+    coordinates: { lat: -36.8751, lng: 174.7977 },
+    distanceToAirport: 16,
+    estimatedPrice: 90,
+    estimatedTime: '20-25 minutes',
+    landmarks: ['Remuera Village', 'Orakei Basin', 'Cornwall Park'],
+    nearbyAreas: ['Newmarket', 'Mission Bay', 'Meadowbank']
   }
 ];
