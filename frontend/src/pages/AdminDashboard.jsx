@@ -2685,6 +2685,47 @@ export const AdminDashboard = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <Dialog open={showBulkDeleteConfirm} onOpenChange={setShowBulkDeleteConfirm}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <Trash2 className="w-5 h-5" />
+              Delete {selectedBookings.size} Booking{selectedBookings.size > 1 ? 's' : ''}?
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+              <p className="text-sm text-yellow-800">
+                <strong>⚠️ No notifications will be sent</strong>
+              </p>
+              <p className="text-sm text-yellow-700 mt-1">
+                The selected bookings will be permanently deleted without sending any SMS or email notifications to customers.
+              </p>
+            </div>
+            <p className="text-gray-600 text-sm">
+              This action cannot be undone. Are you sure you want to delete these test/spam bookings?
+            </p>
+          </div>
+          <div className="flex justify-end gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setShowBulkDeleteConfirm(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleBulkDelete}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Delete {selectedBookings.size} Booking{selectedBookings.size > 1 ? 's' : ''}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
