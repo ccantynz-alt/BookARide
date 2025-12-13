@@ -1233,7 +1233,27 @@ export const AdminDashboard = () => {
                   </thead>
                   <tbody>
                     {filteredBookings.map((booking) => (
-                      <tr key={booking.id} className="border-b hover:bg-gray-50">
+                      <tr key={booking.id} className={`border-b hover:bg-gray-50 ${selectedBookings.has(booking.id) ? 'bg-gold/10' : ''}`}>
+                        <td className="p-4">
+                          <button
+                            onClick={() => {
+                              const newSelected = new Set(selectedBookings);
+                              if (newSelected.has(booking.id)) {
+                                newSelected.delete(booking.id);
+                              } else {
+                                newSelected.add(booking.id);
+                              }
+                              setSelectedBookings(newSelected);
+                            }}
+                            className="p-1 hover:bg-gray-200 rounded"
+                          >
+                            {selectedBookings.has(booking.id) ? (
+                              <CheckSquare className="w-5 h-5 text-gold" />
+                            ) : (
+                              <Square className="w-5 h-5 text-gray-400" />
+                            )}
+                          </button>
+                        </td>
                         <td className="p-4">
                           <div className="text-sm font-bold text-gold">
                             #{booking.referenceNumber || booking.id?.slice(0, 8).toUpperCase()}
