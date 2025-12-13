@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { Globe, ExternalLink, Eye, TrendingUp, Users, Flag } from 'lucide-react';
+import { Globe, ExternalLink, Eye, TrendingUp, Users, Flag, Search, FileText } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import { SEODashboardTab } from './SEODashboardTab';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
