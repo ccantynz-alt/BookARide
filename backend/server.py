@@ -2531,6 +2531,74 @@ async def import_bookings(request: ImportBookingsRequest, current_admin: dict = 
         raise HTTPException(status_code=500, detail=f"Error importing bookings: {str(e)}")
 
 
+
+class RestoreBookingData(BaseModel):
+    """Model for restoring bookings from backup"""
+    bookings: List[dict]
+
+@api_router.post("/bookings/restore-backup")
+async def restore_bookings_from_backup(request: RestoreBookingData, current_admin: dict = Depends(get_current_admin)):
+    """Restore bookings from a JSON backup file - preserves original IDs and data"""
+    try:
+        imported = []
+        errors = []
+        skipped = []
+        
+        for booking in request.bookings:
+            try:
+                # Check if booking already exists by ID
+                existing = await db.bookings.find_one({"id": booking.get("id")})
+                if existing:
+                    skipped.append({
+                        "id": booking.get("id"),
+                        "name": booking.get("name"),
+                        "reason": "Already exists"
+                    })
+                    continue
+                
+                # Also check by reference number if present
+                if booking.get("referenceNumber"):
+                    existing_ref = await db.bookings.find_one({"referenceNumber": booking.get("referenceNumber")})
+                    if existing_ref:
+                        skipped.append({
+                            "id": booking.get("id"),
+                            "name": booking.get("name"),
+                            "referenceNumber": booking.get("referenceNumber"),
+                            "reason": "Reference number already exists"
+                        })
+                        continue
+                
+                # Insert booking as-is (preserving all original data)
+                await db.bookings.insert_one(booking)
+                imported.append({
+                    "id": booking.get("id"),
+                    "name": booking.get("name"),
+                    "referenceNumber": booking.get("referenceNumber")
+                })
+                
+            except Exception as e:
+                errors.append({
+                    "id": booking.get("id"),
+                    "name": booking.get("name"),
+                    "error": str(e)
+                })
+        
+        return {
+            "success": True,
+            "imported_count": len(imported),
+            "skipped_count": len(skipped),
+            "error_count": len(errors),
+            "imported": imported,
+            "skipped": skipped,
+            "errors": errors
+        }
+        
+    except Exception as e:
+        logger.error(f"Error restoring bookings: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error restoring bookings: {str(e)}")
+
+
+
 # Google Calendar OAuth Endpoints
 
 @api_router.get("/auth/google/login")
