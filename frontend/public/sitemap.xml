@@ -71,6 +71,24 @@
   <url><loc>https://bookaride.co.nz/suburbs/gulf-harbour</loc><lastmod>2025-12-15</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
   <url><loc>https://bookaride.co.nz/suburbs/red-beach</loc><lastmod>2025-12-15</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
   
+  <!-- New Suburbs - South Auckland -->
+  <url><loc>https://bookaride.co.nz/suburbs/manukau</loc><lastmod>2025-12-15</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://bookaride.co.nz/suburbs/papakura</loc><lastmod>2025-12-15</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  
+  <!-- New Suburbs - East Auckland -->
+  <url><loc>https://bookaride.co.nz/suburbs/botany</loc><lastmod>2025-12-15</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://bookaride.co.nz/suburbs/howick</loc><lastmod>2025-12-15</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://bookaride.co.nz/suburbs/pakuranga</loc><lastmod>2025-12-15</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  
+  <!-- New Suburbs - West Auckland -->
+  <url><loc>https://bookaride.co.nz/suburbs/henderson</loc><lastmod>2025-12-15</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://bookaride.co.nz/suburbs/new-lynn</loc><lastmod>2025-12-15</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  
+  <!-- New Suburbs - Central Auckland -->
+  <url><loc>https://bookaride.co.nz/suburbs/mt-eden</loc><lastmod>2025-12-15</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://bookaride.co.nz/suburbs/ponsonby</loc><lastmod>2025-12-15</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://bookaride.co.nz/suburbs/remuera</loc><lastmod>2025-12-15</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  
   <!-- Hotels -->
   <url><loc>https://bookaride.co.nz/hotels</loc><lastmod>2025-12-15</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
   <url><loc>https://bookaride.co.nz/hotels/skycity-grand-hotel</loc><lastmod>2025-12-15</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
