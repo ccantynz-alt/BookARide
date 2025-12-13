@@ -98,6 +98,9 @@ export const AdminDashboard = () => {
   const [manualPriceOverride, setManualPriceOverride] = useState('');
   const [selectedPaymentStatus, setSelectedPaymentStatus] = useState('');
   const [showEditBookingModal, setShowEditBookingModal] = useState(false);
+  // Bulk delete state
+  const [selectedBookings, setSelectedBookings] = useState(new Set());
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const [editingBooking, setEditingBooking] = useState(null);
   const [calendarLoading, setCalendarLoading] = useState(false);
   
