@@ -4293,27 +4293,30 @@ async def scheduled_send_reminders():
 @app.on_event("startup")
 async def startup_event():
     """Start the scheduler when the app starts and ensure default admin exists"""
-    # Ensure default admin exists
+    # Ensure default admin exists with correct email for Google OAuth
     default_admin = await db.admin_users.find_one({"username": "admin"})
     if not default_admin:
         hashed_pw = pwd_context.hash("Kongkong2025!@")
         await db.admin_users.insert_one({
             "id": str(uuid.uuid4()),
             "username": "admin",
-            "email": "admin@bookaride.co.nz",
+            "email": "info@bookaride.co.nz",
             "hashed_password": hashed_pw,
             "created_at": datetime.now(timezone.utc).isoformat(),
             "is_active": True
         })
         logger.info("✅ Default admin user created")
     else:
-        # Update password to ensure it's correct
+        # Update password and email to ensure they're correct
         hashed_pw = pwd_context.hash("Kongkong2025!@")
         await db.admin_users.update_one(
             {"username": "admin"},
-            {"$set": {"hashed_password": hashed_pw}}
+            {"$set": {
+                "hashed_password": hashed_pw,
+                "email": "info@bookaride.co.nz"
+            }}
         )
-        logger.info("✅ Admin password reset to default")
+        logger.info("✅ Admin password reset and email updated to info@bookaride.co.nz")
     
     # Schedule reminders at 8:00 AM New Zealand time every day
     nz_tz = pytz.timezone('Pacific/Auckland')
