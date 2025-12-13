@@ -46,6 +46,7 @@ import DriverLogin from './pages/DriverLogin';
 import DriverPortal from './pages/DriverPortal';
 import { Toaster } from './components/ui/sonner';
 import BackToTop from './components/BackToTop';
+import AdminBackButton from './components/AdminBackButton';
 import InternationalBanner from './components/InternationalBanner';
 import LanguageRedirect from './components/LanguageRedirect';
 import { SUPPORTED_LANGUAGES } from './config/languages';
