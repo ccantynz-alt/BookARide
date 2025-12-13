@@ -100,6 +100,26 @@ const suggestedSuburbs = [
   { name: 'Pakuranga', region: 'East Auckland', population: '25,000+' },
 ];
 
+// PageCard Component - moved outside to prevent re-render issues
+const PageCard = ({ page, onOpenPage }) => (
+  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+    <div className="flex items-center gap-3">
+      <div className={`w-2 h-2 rounded-full ${page.hasSchema ? 'bg-green-500' : 'bg-yellow-500'}`} />
+      <div>
+        <p className="font-medium text-sm">{page.title}</p>
+        <p className="text-xs text-gray-500">{page.path}</p>
+      </div>
+    </div>
+    <div className="flex items-center gap-2">
+      <Badge variant="outline" className="text-xs">P: {page.priority}</Badge>
+      {page.lang && <Badge variant="secondary" className="text-xs">{page.lang}</Badge>}
+      <Button variant="ghost" size="sm" onClick={() => onOpenPage(page.path)}>
+        <ExternalLink className="w-3 h-3" />
+      </Button>
+    </div>
+  </div>
+);
+
 export const SEODashboardTab = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCategory, setActiveCategory] = useState('overview');
@@ -118,11 +138,6 @@ export const SEODashboardTab = () => {
   const openPage = (path) => {
     window.open(`https://bookaride.co.nz${path}`, '_blank');
   };
-
-  const PageCard = ({ page }) => (
-    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-      <div className="flex items-center gap-3">
-        <div className={`w-2 h-2 rounded-full ${page.hasSchema ? 'bg-green-500' : 'bg-yellow-500'}`} />
         <div>
           <p className="font-medium text-sm">{page.title}</p>
           <p className="text-xs text-gray-500">{page.path}</p>
