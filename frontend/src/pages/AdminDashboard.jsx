@@ -706,7 +706,11 @@ export const AdminDashboard = () => {
         flightArrivalNumber: editingBooking.flightArrivalNumber,
         flightArrivalTime: editingBooking.flightArrivalTime,
         flightDepartureNumber: editingBooking.flightDepartureNumber,
-        flightDepartureTime: editingBooking.flightDepartureTime
+        flightDepartureTime: editingBooking.flightDepartureTime,
+        // Return trip fields
+        bookReturn: editingBooking.bookReturn,
+        returnDate: editingBooking.returnDate,
+        returnTime: editingBooking.returnTime
       }, getAuthHeaders());
 
       toast.success('Booking updated successfully!');
