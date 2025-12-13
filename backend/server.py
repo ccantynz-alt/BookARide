@@ -2177,19 +2177,26 @@ async def sync_booking_to_calendar(booking_id: str, current_admin: dict = Depend
             raise HTTPException(status_code=404, detail="Booking not found")
         
         # Check if calendar event already exists
-        existing_event_id = booking.get('calendar_event_id')
+        existing_event_ids = booking.get('calendar_event_id', '')
         
-        if existing_event_id:
-            # Delete existing event first, then create new one (to update with latest data)
+        if existing_event_ids:
+            # Delete existing events first (could be multiple for return trips)
             try:
                 creds = await get_calendar_credentials()
                 if creds:
                     service = build('calendar', 'v3', credentials=creds)
                     calendar_id = os.environ.get('GOOGLE_CALENDAR_ID', 'primary')
-                    service.events().delete(calendarId=calendar_id, eventId=existing_event_id).execute()
-                    logger.info(f"Deleted existing calendar event {existing_event_id} for booking {booking_id}")
+                    # Handle comma-separated event IDs
+                    for event_id in existing_event_ids.split(','):
+                        event_id = event_id.strip()
+                        if event_id:
+                            try:
+                                service.events().delete(calendarId=calendar_id, eventId=event_id).execute()
+                                logger.info(f"Deleted existing calendar event {event_id} for booking {booking_id}")
+                            except Exception as del_single_error:
+                                logger.warning(f"Could not delete calendar event {event_id}: {str(del_single_error)}")
             except Exception as del_error:
-                logger.warning(f"Could not delete existing calendar event: {str(del_error)}")
+                logger.warning(f"Could not delete existing calendar events: {str(del_error)}")
         
         success = await create_calendar_event(booking)
         if success:
