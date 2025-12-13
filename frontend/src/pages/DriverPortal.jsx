@@ -138,7 +138,8 @@ export const DriverPortal = () => {
     }
     
     const parsedDriver = JSON.parse(driverData);
-    setDriver(parsedDriver);
+    // Use functional update to avoid synchronous setState warning
+    setDriver(() => parsedDriver);
     fetchAssignedBookings(parsedDriver.id);
   }, [navigate, fetchAssignedBookings]);
 
