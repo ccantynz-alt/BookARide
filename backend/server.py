@@ -3443,26 +3443,36 @@ async def delete_driver(driver_id: str):
 async def assign_driver_to_booking(driver_id: str, booking_id: str):
     """Assign a driver to a booking"""
     try:
-        # Update booking with driver assignment
+        # Get driver details first
+        driver = await db.drivers.find_one({"id": driver_id}, {"_id": 0})
+        if not driver:
+            raise HTTPException(status_code=404, detail="Driver not found")
+        
+        # Update booking with driver assignment including driver name
         result = await db.bookings.update_one(
             {"id": booking_id},
-            {"$set": {"driver_id": driver_id, "driver_assigned_at": datetime.now(timezone.utc)}}
+            {"$set": {
+                "driver_id": driver_id,
+                "driver_name": driver.get('name', ''),
+                "driver_phone": driver.get('phone', ''),
+                "driver_email": driver.get('email', ''),
+                "driver_assigned_at": datetime.now(timezone.utc)
+            }}
         )
         if result.matched_count == 0:
             raise HTTPException(status_code=404, detail="Booking not found")
         
-        # Get driver and booking details for notification
-        driver = await db.drivers.find_one({"id": driver_id}, {"_id": 0})
+        # Get booking details for notification
         booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
         
         if driver and booking:
             # Send notification to driver
             await send_driver_notification(booking, driver)
-            logger.info(f"Driver {driver_id} assigned to booking {booking_id} and notification sent")
+            logger.info(f"Driver {driver.get('name')} ({driver_id}) assigned to booking {booking_id} and notification sent")
         else:
-            logger.warning(f"Driver or booking not found for notification - Driver: {driver_id}, Booking: {booking_id}")
+            logger.warning(f"Booking not found for notification - Booking: {booking_id}")
         
-        return {"message": "Driver assigned successfully"}
+        return {"message": f"Driver {driver.get('name')} assigned successfully"}
     except HTTPException:
         raise
     except Exception as e:
