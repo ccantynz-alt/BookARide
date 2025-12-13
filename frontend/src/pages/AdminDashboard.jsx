@@ -1199,6 +1199,33 @@ export const AdminDashboard = () => {
               </div>
             ) : (
               <div className="overflow-x-auto">
+                {/* Bulk Action Bar */}
+                {selectedBookings.size > 0 && (
+                  <div className="bg-red-50 border-b border-red-200 px-4 py-3 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-medium text-red-800">
+                        {selectedBookings.size} booking{selectedBookings.size > 1 ? 's' : ''} selected
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedBookings(new Set())}
+                        className="text-gray-600 hover:text-gray-800"
+                      >
+                        Clear selection
+                      </Button>
+                    </div>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => setShowBulkDeleteConfirm(true)}
+                      className="bg-red-600 hover:bg-red-700"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Delete Selected (No Notifications)
+                    </Button>
+                  </div>
+                )}
                 <table className="w-full">
                   <thead className="bg-gray-100 border-b">
                     <tr>
