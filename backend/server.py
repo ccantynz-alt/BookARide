@@ -1785,7 +1785,8 @@ async def send_driver_notification(booking: dict, driver: dict):
         
         if mailgun_api_key and mailgun_domain:
             total_price = booking.get('pricing', {}).get('totalPrice', 0) if isinstance(booking.get('pricing'), dict) else 0
-            driver_commission = total_price * 0.15  # 15% commission
+            admin_commission = total_price * 0.15  # 15% admin commission
+            driver_earnings = total_price * 0.85  # 85% goes to driver
             
             html_content = f"""
             <html>
@@ -1812,7 +1813,8 @@ async def send_driver_notification(booking: dict, driver: dict):
                             <p><strong>Time:</strong> {booking.get('time', 'N/A')}</p>
                             <p><strong>Passengers:</strong> {booking.get('passengers', 'N/A')}</p>
                             <hr style="border: 0; border-top: 1px solid #e0e0e0; margin: 15px 0;">
-                            <p style="color: #D4AF37; font-size: 16px;"><strong>Your Commission (15%):</strong> ${driver_commission:.2f} NZD</p>
+                            <p style="color: #666; font-size: 14px;"><strong>Booking Total:</strong> ${total_price:.2f} NZD</p>
+                            <p style="color: #28a745; font-size: 18px;"><strong>💰 Your Earnings (85%):</strong> ${driver_earnings:.2f} NZD</p>
                         </div>
                         
                         <div style="background-color: #fff3cd; padding: 15px; border-radius: 8px; margin: 20px 0;">
