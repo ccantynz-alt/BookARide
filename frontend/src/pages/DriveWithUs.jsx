@@ -49,12 +49,12 @@ const DriveWithUs = () => {
   };
 
   const benefits = [
-    { icon: DollarSign, title: "Competitive Earnings", desc: "Earn top rates on every trip. Airport runs and corporate transfers pay premium." },
+    { icon: DollarSign, title: "Earn What You're Worth", desc: "Competitive rates on every trip. Airport runs and corporate transfers pay premium rates." },
     { icon: Clock, title: "Flexible Schedule", desc: "Work when you want. Morning, evening, weekends - you choose your hours." },
     { icon: Shield, title: "Reliable Bookings", desc: "Pre-booked jobs mean no waiting around. Know your schedule in advance." },
     { icon: MapPin, title: "Local Routes", desc: "Serve the Auckland region you know best. Hibiscus Coast to Airport and beyond." },
-    { icon: Users, title: "Premium Customers", desc: "Professional clientele. Tourists, business travelers, and families." },
-    { icon: Zap, title: "Quick Payments", desc: "Get paid promptly. No chasing payments or dealing with no-shows." }
+    { icon: Users, title: "Quality Customers", desc: "Professional clientele. Tourists, business travelers, and families." },
+    { icon: Zap, title: "Prompt Payments", desc: "Get paid on time. No chasing payments or dealing with no-shows." }
   ];
 
   const steps = [
