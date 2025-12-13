@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Calendar, MapPin, Clock, Users, Phone, Mail, LogOut, DollarSign, TrendingUp, CheckCircle, AlertCircle } from 'lucide-react';
 import { Button } from '../components/ui/button';
@@ -11,6 +11,94 @@ import axios from 'axios';
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
+const getStatusColor = (status) => {
+  switch (status) {
+    case 'confirmed': return 'bg-green-100 text-green-800 border-green-200';
+    case 'completed': return 'bg-blue-100 text-blue-800 border-blue-200';
+    case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+    case 'cancelled': return 'bg-red-100 text-red-800 border-red-200';
+    default: return 'bg-gray-100 text-gray-800 border-gray-200';
+  }
+};
+
+const BookingCard = ({ booking, showDate = false }) => (
+  <Card className="border-l-4 border-l-gold hover:shadow-lg transition-shadow">
+    <CardContent className="p-6">
+      <div className="flex justify-between items-start mb-4">
+        <div>
+          <h3 className="text-lg font-bold text-gray-900 mb-2">
+            {booking.serviceType?.replace('-', ' ').toUpperCase() || 'SHUTTLE'}
+          </h3>
+          <Badge className={`${getStatusColor(booking.status)} border`}>
+            {booking.status?.toUpperCase()}
+          </Badge>
+          {showDate && (
+            <p className="text-sm text-gray-600 mt-2">
+              <Calendar className="w-4 h-4 inline mr-1" />
+              {new Date(booking.date).toLocaleDateString('en-NZ', { weekday: 'short', day: 'numeric', month: 'short' })}
+            </p>
+          )}
+        </div>
+        <div className="text-right">
+          <p className="text-2xl font-bold text-green-600">${booking.driver_price?.toFixed(2) || '0.00'}</p>
+          <p className="text-xs text-gray-500">Your Earnings (85%)</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <div className="flex items-center text-sm text-gray-600">
+            <Clock className="w-4 h-4 mr-2 text-gold" />
+            <span className="font-medium">Time:</span>
+            <span className="ml-2">{booking.time}</span>
+          </div>
+          <div className="flex items-center text-sm text-gray-600">
+            <Users className="w-4 h-4 mr-2 text-gold" />
+            <span className="font-medium">Passengers:</span>
+            <span className="ml-2">{booking.passengers}</span>
+          </div>
+        </div>
+        <div className="space-y-2">
+          <div className="flex items-center text-sm text-gray-600">
+            <Phone className="w-4 h-4 mr-2 text-gold" />
+            <span className="font-medium">{booking.name}</span>
+          </div>
+          <div className="flex items-center text-sm text-gray-600">
+            <Mail className="w-4 h-4 mr-2 text-gold" />
+            <span className="ml-2">{booking.phone}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 pt-4 border-t space-y-3">
+        <div className="flex items-start">
+          <MapPin className="w-5 h-5 mr-2 text-green-600 flex-shrink-0 mt-1" />
+          <div>
+            <p className="text-xs text-gray-500 font-medium">PICKUP</p>
+            <p className="text-sm text-gray-900">{booking.pickupAddress}</p>
+          </div>
+        </div>
+        <div className="flex items-start">
+          <MapPin className="w-5 h-5 mr-2 text-red-600 flex-shrink-0 mt-1" />
+          <div>
+            <p className="text-xs text-gray-500 font-medium">DROP-OFF</p>
+            <p className="text-sm text-gray-900">{booking.dropoffAddress}</p>
+          </div>
+        </div>
+      </div>
+
+      {booking.notes && (
+        <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <p className="text-sm text-gray-900">
+            <span className="font-semibold">📝 Notes: </span>
+            {booking.notes}
+          </p>
+        </div>
+      )}
+    </CardContent>
+  </Card>
+);
+
 export const DriverPortal = () => {
   const navigate = useNavigate();
   const [bookings, setBookings] = useState([]);
@@ -18,14 +106,14 @@ export const DriverPortal = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('schedule');
 
-  const handleLogout = React.useCallback(() => {
+  const handleLogout = useCallback(() => {
     localStorage.removeItem('driverAuth');
     localStorage.removeItem('driverToken');
     navigate('/driver/login');
     toast.success('Logged out successfully');
   }, [navigate]);
 
-  const fetchAssignedBookings = React.useCallback(async (driverId) => {
+  const fetchAssignedBookings = useCallback(async (driverId) => {
     try {
       const token = localStorage.getItem('driverToken');
       const response = await axios.get(`${API}/drivers/${driverId}/bookings`, {
@@ -53,17 +141,6 @@ export const DriverPortal = () => {
     setDriver(parsedDriver);
     fetchAssignedBookings(parsedDriver.id);
   }, [navigate, fetchAssignedBookings]);
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'confirmed': return 'bg-green-100 text-green-800 border-green-200';
-      case 'completed': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'cancelled': return 'bg-red-100 text-red-800 border-red-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
@@ -75,99 +152,18 @@ export const DriverPortal = () => {
   const completedBookings = bookings.filter(b => b.status === 'completed');
   const confirmedBookings = bookings.filter(b => b.status === 'confirmed');
 
-  // Calculate earnings (driver gets 85% of each job)
   const totalEarnings = bookings.reduce((sum, b) => sum + (b.driver_price || 0), 0);
   const completedEarnings = completedBookings.reduce((sum, b) => sum + (b.driver_price || 0), 0);
   const pendingEarnings = confirmedBookings.reduce((sum, b) => sum + (b.driver_price || 0), 0);
   const todayEarnings = todayBookings.reduce((sum, b) => sum + (b.driver_price || 0), 0);
 
-  // Get this week's bookings
   const startOfWeek = new Date();
   startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
   const weekBookings = bookings.filter(b => new Date(b.date) >= startOfWeek);
   const weekEarnings = weekBookings.reduce((sum, b) => sum + (b.driver_price || 0), 0);
 
-  const BookingCard = ({ booking, showDate = false }) => (
-    <Card className="border-l-4 border-l-gold hover:shadow-lg transition-shadow">
-      <CardContent className="p-6">
-        <div className="flex justify-between items-start mb-4">
-          <div>
-            <h3 className="text-lg font-bold text-gray-900 mb-2">
-              {booking.serviceType?.replace('-', ' ').toUpperCase() || 'SHUTTLE'}
-            </h3>
-            <Badge className={`${getStatusColor(booking.status)} border`}>
-              {booking.status?.toUpperCase()}
-            </Badge>
-            {showDate && (
-              <p className="text-sm text-gray-600 mt-2">
-                <Calendar className="w-4 h-4 inline mr-1" />
-                {new Date(booking.date).toLocaleDateString('en-NZ', { weekday: 'short', day: 'numeric', month: 'short' })}
-              </p>
-            )}
-          </div>
-          <div className="text-right">
-            <p className="text-2xl font-bold text-green-600">${booking.driver_price?.toFixed(2) || '0.00'}</p>
-            <p className="text-xs text-gray-500">Your Earnings (85%)</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <div className="flex items-center text-sm text-gray-600">
-              <Clock className="w-4 h-4 mr-2 text-gold" />
-              <span className="font-medium">Time:</span>
-              <span className="ml-2">{booking.time}</span>
-            </div>
-            <div className="flex items-center text-sm text-gray-600">
-              <Users className="w-4 h-4 mr-2 text-gold" />
-              <span className="font-medium">Passengers:</span>
-              <span className="ml-2">{booking.passengers}</span>
-            </div>
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center text-sm text-gray-600">
-              <Phone className="w-4 h-4 mr-2 text-gold" />
-              <span className="font-medium">{booking.name}</span>
-            </div>
-            <div className="flex items-center text-sm text-gray-600">
-              <Mail className="w-4 h-4 mr-2 text-gold" />
-              <span className="ml-2">{booking.phone}</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-4 pt-4 border-t space-y-3">
-          <div className="flex items-start">
-            <MapPin className="w-5 h-5 mr-2 text-green-600 flex-shrink-0 mt-1" />
-            <div>
-              <p className="text-xs text-gray-500 font-medium">PICKUP</p>
-              <p className="text-sm text-gray-900">{booking.pickupAddress}</p>
-            </div>
-          </div>
-          <div className="flex items-start">
-            <MapPin className="w-5 h-5 mr-2 text-red-600 flex-shrink-0 mt-1" />
-            <div>
-              <p className="text-xs text-gray-500 font-medium">DROP-OFF</p>
-              <p className="text-sm text-gray-900">{booking.dropoffAddress}</p>
-            </div>
-          </div>
-        </div>
-
-        {booking.notes && (
-          <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <p className="text-sm text-gray-900">
-              <span className="font-semibold">📝 Notes: </span>
-              {booking.notes}
-            </p>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <div className="bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white py-6">
         <div className="container mx-auto px-4">
           <div className="flex justify-between items-center">
@@ -184,13 +180,12 @@ export const DriverPortal = () => {
       </div>
 
       <div className="container mx-auto px-4 py-8">
-        {/* Earnings Summary Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-white/80 mb-1">Today's Earnings</p>
+                  <p className="text-xs text-white/80 mb-1">Today&apos;s Earnings</p>
                   <p className="text-2xl font-bold">${todayEarnings.toFixed(2)}</p>
                 </div>
                 <DollarSign className="w-8 h-8 text-white/50" />
@@ -239,12 +234,11 @@ export const DriverPortal = () => {
           </Card>
         </div>
 
-        {/* Main Content Tabs */}
         <Tabs defaultValue="schedule" value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-3 mb-6">
             <TabsTrigger value="schedule" className="flex items-center gap-2">
               <Calendar className="w-4 h-4" />
-              Today's Schedule
+              Today&apos;s Schedule
             </TabsTrigger>
             <TabsTrigger value="upcoming" className="flex items-center gap-2">
               <Clock className="w-4 h-4" />
@@ -256,13 +250,12 @@ export const DriverPortal = () => {
             </TabsTrigger>
           </TabsList>
 
-          {/* Today's Schedule */}
           <TabsContent value="schedule">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Calendar className="w-5 h-5 text-gold" />
-                  Today's Jobs - {new Date().toLocaleDateString('en-NZ', { weekday: 'long', day: 'numeric', month: 'long' })}
+                  Today&apos;s Jobs - {new Date().toLocaleDateString('en-NZ', { weekday: 'long', day: 'numeric', month: 'long' })}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -283,7 +276,6 @@ export const DriverPortal = () => {
             </Card>
           </TabsContent>
 
-          {/* Upcoming Jobs */}
           <TabsContent value="upcoming">
             <Card>
               <CardHeader>
@@ -309,10 +301,8 @@ export const DriverPortal = () => {
             </Card>
           </TabsContent>
 
-          {/* Earnings Tab */}
           <TabsContent value="earnings">
             <div className="space-y-6">
-              {/* Earnings Breakdown */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -349,7 +339,6 @@ export const DriverPortal = () => {
                 </CardContent>
               </Card>
 
-              {/* Payment History */}
               <Card>
                 <CardHeader>
                   <CardTitle>Recent Completed Jobs</CardTitle>
@@ -378,7 +367,6 @@ export const DriverPortal = () => {
                 </CardContent>
               </Card>
 
-              {/* Commission Info */}
               <Card className="bg-amber-50 border-amber-200">
                 <CardContent className="p-6">
                   <div className="flex items-start gap-4">
