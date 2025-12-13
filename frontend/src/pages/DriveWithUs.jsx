@@ -65,42 +65,43 @@ const DriveWithUs = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-white">
       {/* Hero Section */}
-      <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
-        {/* Background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-black via-gray-900 to-black">
-          <div className="absolute inset-0 opacity-20">
-            <div className="absolute top-20 left-10 w-72 h-72 bg-gold/30 rounded-full filter blur-3xl"></div>
-            <div className="absolute bottom-20 right-10 w-96 h-96 bg-gold/20 rounded-full filter blur-3xl"></div>
-          </div>
+      <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden bg-gradient-to-br from-white via-amber-50/30 to-white">
+        {/* Gold decorative elements */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-400"></div>
+          <div className="absolute top-20 right-10 w-64 h-64 bg-amber-400/10 rounded-full filter blur-3xl"></div>
+          <div className="absolute bottom-20 left-10 w-96 h-96 bg-yellow-400/10 rounded-full filter blur-3xl"></div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] border border-amber-200/30 rounded-full"></div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] border border-amber-300/20 rounded-full"></div>
         </div>
         
         <div className="relative z-10 max-w-6xl mx-auto px-4 text-center">
-          <div className="inline-flex items-center gap-2 bg-gold/10 border border-gold/30 rounded-full px-4 py-2 mb-6">
-            <Car className="w-4 h-4 text-gold" />
-            <span className="text-gold text-sm font-medium">Now Recruiting Drivers</span>
+          <div className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-400 to-yellow-500 text-white rounded-full px-6 py-2 mb-8 shadow-lg">
+            <Car className="w-5 h-5" />
+            <span className="font-semibold">Now Recruiting Drivers</span>
           </div>
           
-          <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
+          <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight text-gray-900">
             Earn More.<br />
-            <span className="text-gold">Drive Premium.</span>
+            <span className="bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 bg-clip-text text-transparent">Drive Premium.</span>
           </h1>
           
-          <p className="text-xl md:text-2xl text-gray-300 mb-8 max-w-3xl mx-auto">
+          <p className="text-xl md:text-2xl text-gray-600 mb-10 max-w-3xl mx-auto">
             Join Auckland's premium shuttle service. Professional bookings, premium customers, and earnings that match your effort.
           </p>
           
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
             <Button 
               onClick={() => document.getElementById('apply-form').scrollIntoView({ behavior: 'smooth' })}
-              className="bg-gold hover:bg-gold/90 text-black font-bold text-lg px-8 py-6"
+              className="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white font-bold text-lg px-10 py-6 shadow-xl shadow-amber-500/30"
             >
               Apply Now <ArrowRight className="ml-2 w-5 h-5" />
             </Button>
             <Button 
               variant="outline"
-              className="border-white/30 text-white hover:bg-white/10 text-lg px-8 py-6"
+              className="border-2 border-amber-400 text-amber-600 hover:bg-amber-50 font-semibold text-lg px-10 py-6"
               onClick={() => document.getElementById('benefits').scrollIntoView({ behavior: 'smooth' })}
             >
               Learn More
@@ -108,36 +109,37 @@ const DriveWithUs = () => {
           </div>
           
           {/* Stats */}
-          <div className="grid grid-cols-3 gap-8 max-w-2xl mx-auto">
-            <div className="text-center">
-              <div className="text-4xl font-bold text-gold">$1000+</div>
-              <div className="text-gray-400 text-sm">Weekly Potential</div>
+          <div className="grid grid-cols-3 gap-8 max-w-3xl mx-auto">
+            <div className="text-center p-6 bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-amber-100">
+              <div className="text-4xl font-bold bg-gradient-to-r from-amber-500 to-yellow-500 bg-clip-text text-transparent">$1000+</div>
+              <div className="text-gray-500 text-sm mt-1">Weekly Potential</div>
             </div>
-            <div className="text-center">
-              <div className="text-4xl font-bold text-gold">100%</div>
-              <div className="text-gray-400 text-sm">Flexible Hours</div>
+            <div className="text-center p-6 bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-amber-100">
+              <div className="text-4xl font-bold bg-gradient-to-r from-amber-500 to-yellow-500 bg-clip-text text-transparent">100%</div>
+              <div className="text-gray-500 text-sm mt-1">Flexible Hours</div>
             </div>
-            <div className="text-center">
-              <div className="text-4xl font-bold text-gold">24hr</div>
-              <div className="text-gray-400 text-sm">Support</div>
+            <div className="text-center p-6 bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-amber-100">
+              <div className="text-4xl font-bold bg-gradient-to-r from-amber-500 to-yellow-500 bg-clip-text text-transparent">24hr</div>
+              <div className="text-gray-500 text-sm mt-1">Support</div>
             </div>
           </div>
         </div>
         
         {/* Scroll indicator */}
         <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 animate-bounce">
-          <div className="w-6 h-10 border-2 border-white/30 rounded-full flex justify-center pt-2">
-            <div className="w-1 h-3 bg-gold rounded-full"></div>
+          <div className="w-6 h-10 border-2 border-amber-400 rounded-full flex justify-center pt-2">
+            <div className="w-1 h-3 bg-gradient-to-b from-amber-400 to-yellow-500 rounded-full"></div>
           </div>
         </div>
       </section>
 
       {/* Benefits Section */}
-      <section id="benefits" className="py-20 bg-gradient-to-b from-black to-gray-900">
+      <section id="benefits" className="py-24 bg-white">
         <div className="max-w-6xl mx-auto px-4">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold mb-4">Why Drive With <span className="text-gold">BookaRide?</span></h2>
-            <p className="text-gray-400 text-lg max-w-2xl mx-auto">
+            <div className="inline-block px-4 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-medium mb-4">WHY CHOOSE US</div>
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">Why Drive With <span className="bg-gradient-to-r from-amber-500 to-yellow-500 bg-clip-text text-transparent">BookaRide?</span></h2>
+            <p className="text-gray-500 text-lg max-w-2xl mx-auto">
               We're not another rideshare app. We're a premium shuttle service that values our drivers.
             </p>
           </div>
@@ -146,13 +148,13 @@ const DriveWithUs = () => {
             {benefits.map((benefit, index) => (
               <div 
                 key={index}
-                className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:border-gold/50 transition-all duration-300 group"
+                className="bg-gradient-to-br from-white to-amber-50/50 border-2 border-amber-100 rounded-3xl p-8 hover:border-amber-300 hover:shadow-xl hover:shadow-amber-100 transition-all duration-300 group"
               >
-                <div className="w-12 h-12 bg-gold/10 rounded-xl flex items-center justify-center mb-4 group-hover:bg-gold/20 transition-colors">
-                  <benefit.icon className="w-6 h-6 text-gold" />
+                <div className="w-14 h-14 bg-gradient-to-br from-amber-400 to-yellow-500 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-amber-200 group-hover:scale-110 transition-transform">
+                  <benefit.icon className="w-7 h-7 text-white" />
                 </div>
-                <h3 className="text-xl font-semibold mb-2">{benefit.title}</h3>
-                <p className="text-gray-400">{benefit.desc}</p>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">{benefit.title}</h3>
+                <p className="text-gray-500">{benefit.desc}</p>
               </div>
             ))}
           </div>
@@ -160,24 +162,28 @@ const DriveWithUs = () => {
       </section>
 
       {/* How It Works */}
-      <section className="py-20 bg-gray-900">
+      <section className="py-24 bg-gradient-to-br from-amber-50 via-white to-yellow-50">
         <div className="max-w-6xl mx-auto px-4">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold mb-4">Get Started in <span className="text-gold">3 Simple Steps</span></h2>
-            <p className="text-gray-400 text-lg">No complicated processes. We make it easy to join the team.</p>
+            <div className="inline-block px-4 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-medium mb-4">GET STARTED</div>
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">Start in <span className="bg-gradient-to-r from-amber-500 to-yellow-500 bg-clip-text text-transparent">3 Simple Steps</span></h2>
+            <p className="text-gray-500 text-lg">No complicated processes. We make it easy to join the team.</p>
           </div>
           
           <div className="grid md:grid-cols-3 gap-8">
             {steps.map((step, index) => (
-              <div key={index} className="relative">
-                <div className="text-8xl font-bold text-gold/10 absolute -top-4 left-0">{step.num}</div>
-                <div className="relative z-10 pt-8">
-                  <h3 className="text-2xl font-semibold mb-2">{step.title}</h3>
-                  <p className="text-gray-400">{step.desc}</p>
+              <div key={index} className="relative text-center">
+                <div className="text-[120px] font-bold text-amber-100 absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-4 select-none">{step.num}</div>
+                <div className="relative z-10 pt-16">
+                  <div className="w-16 h-16 bg-gradient-to-br from-amber-400 to-yellow-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl shadow-amber-200">
+                    <span className="text-2xl font-bold text-white">{index + 1}</span>
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-3">{step.title}</h3>
+                  <p className="text-gray-500">{step.desc}</p>
                 </div>
                 {index < 2 && (
-                  <div className="hidden md:block absolute top-1/2 right-0 transform translate-x-1/2 -translate-y-1/2">
-                    <ArrowRight className="w-8 h-8 text-gold/30" />
+                  <div className="hidden md:block absolute top-32 right-0 transform translate-x-1/2">
+                    <ArrowRight className="w-8 h-8 text-amber-300" />
                   </div>
                 )}
               </div>
@@ -187,27 +193,28 @@ const DriveWithUs = () => {
       </section>
 
       {/* Testimonials */}
-      <section className="py-20 bg-black">
+      <section className="py-24 bg-white">
         <div className="max-w-6xl mx-auto px-4">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold mb-4">What Our <span className="text-gold">Drivers Say</span></h2>
+            <div className="inline-block px-4 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-medium mb-4">TESTIMONIALS</div>
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">What Our <span className="bg-gradient-to-r from-amber-500 to-yellow-500 bg-clip-text text-transparent">Drivers Say</span></h2>
           </div>
           
           <div className="grid md:grid-cols-3 gap-8">
             {testimonials.map((testimonial, index) => (
-              <div key={index} className="bg-gradient-to-br from-white/5 to-white/0 border border-white/10 rounded-2xl p-6">
-                <div className="flex gap-1 mb-4">
+              <div key={index} className="bg-gradient-to-br from-white to-amber-50/50 border-2 border-amber-100 rounded-3xl p-8 hover:shadow-xl transition-shadow">
+                <div className="flex gap-1 mb-6">
                   {[...Array(testimonial.rating)].map((_, i) => (
-                    <Star key={i} className="w-5 h-5 text-gold fill-gold" />
+                    <Star key={i} className="w-6 h-6 text-amber-400 fill-amber-400" />
                   ))}
                 </div>
-                <p className="text-gray-300 mb-4 italic">"{testimonial.quote}"</p>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gold/20 rounded-full flex items-center justify-center">
-                    <span className="text-gold font-bold">{testimonial.name[0]}</span>
+                <p className="text-gray-600 mb-6 text-lg italic">"{testimonial.quote}"</p>
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-gradient-to-br from-amber-400 to-yellow-500 rounded-full flex items-center justify-center shadow-lg">
+                    <span className="text-white font-bold text-lg">{testimonial.name[0]}</span>
                   </div>
                   <div>
-                    <div className="font-semibold">{testimonial.name}</div>
+                    <div className="font-bold text-gray-900">{testimonial.name}</div>
                     <div className="text-sm text-gray-500">{testimonial.location}</div>
                   </div>
                 </div>
@@ -218,113 +225,116 @@ const DriveWithUs = () => {
       </section>
 
       {/* Application Form */}
-      <section id="apply-form" className="py-20 bg-gradient-to-b from-gray-900 to-black">
+      <section id="apply-form" className="py-24 bg-gradient-to-br from-amber-50 via-white to-yellow-50">
         <div className="max-w-4xl mx-auto px-4">
           <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold mb-4">Ready to <span className="text-gold">Join Us?</span></h2>
-            <p className="text-gray-400 text-lg">Fill out the form below and we'll be in touch within 24 hours.</p>
+            <div className="inline-block px-4 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-medium mb-4">JOIN US</div>
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">Ready to <span className="bg-gradient-to-r from-amber-500 to-yellow-500 bg-clip-text text-transparent">Get Started?</span></h2>
+            <p className="text-gray-500 text-lg">Fill out the form below and we'll be in touch within 24 hours.</p>
           </div>
           
           {submitted ? (
-            <div className="bg-green-500/10 border border-green-500/30 rounded-2xl p-12 text-center">
-              <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-              <h3 className="text-2xl font-bold mb-2">Application Received!</h3>
-              <p className="text-gray-400 mb-6">Thanks for your interest in driving with BookaRide. We'll review your application and call you within 24 hours.</p>
+            <div className="bg-white border-2 border-green-200 rounded-3xl p-12 text-center shadow-xl">
+              <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <CheckCircle className="w-10 h-10 text-green-500" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-3">Application Received!</h3>
+              <p className="text-gray-500 mb-8">Thanks for your interest in driving with BookaRide. We'll review your application and call you within 24 hours.</p>
               <Link to="/">
-                <Button className="bg-gold hover:bg-gold/90 text-black">Back to Home</Button>
+                <Button className="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white px-8 py-3">Back to Home</Button>
               </Link>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-8">
+            <form onSubmit={handleSubmit} className="bg-white border-2 border-amber-100 rounded-3xl p-10 shadow-xl">
               <div className="grid md:grid-cols-2 gap-6">
                 <div>
-                  <Label className="text-white mb-2 block">Full Name *</Label>
+                  <Label className="text-gray-700 font-medium mb-2 block">Full Name *</Label>
                   <Input
                     required
                     placeholder="John Smith"
                     value={formData.name}
                     onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    className="bg-white/10 border-white/20 text-white placeholder:text-gray-500"
+                    className="border-2 border-gray-200 focus:border-amber-400 rounded-xl py-3"
                   />
                 </div>
                 <div>
-                  <Label className="text-white mb-2 block">Phone Number *</Label>
+                  <Label className="text-gray-700 font-medium mb-2 block">Phone Number *</Label>
                   <Input
                     required
                     type="tel"
                     placeholder="021 123 4567"
                     value={formData.phone}
                     onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                    className="bg-white/10 border-white/20 text-white placeholder:text-gray-500"
+                    className="border-2 border-gray-200 focus:border-amber-400 rounded-xl py-3"
                   />
                 </div>
                 <div>
-                  <Label className="text-white mb-2 block">Email Address *</Label>
+                  <Label className="text-gray-700 font-medium mb-2 block">Email Address *</Label>
                   <Input
                     required
                     type="email"
                     placeholder="john@example.com"
                     value={formData.email}
                     onChange={(e) => setFormData({...formData, email: e.target.value})}
-                    className="bg-white/10 border-white/20 text-white placeholder:text-gray-500"
+                    className="border-2 border-gray-200 focus:border-amber-400 rounded-xl py-3"
                   />
                 </div>
                 <div>
-                  <Label className="text-white mb-2 block">Your Suburb *</Label>
+                  <Label className="text-gray-700 font-medium mb-2 block">Your Suburb *</Label>
                   <Input
                     required
                     placeholder="e.g. Orewa, Albany, Whangaparaoa"
                     value={formData.suburb}
                     onChange={(e) => setFormData({...formData, suburb: e.target.value})}
-                    className="bg-white/10 border-white/20 text-white placeholder:text-gray-500"
+                    className="border-2 border-gray-200 focus:border-amber-400 rounded-xl py-3"
                   />
                 </div>
                 <div>
-                  <Label className="text-white mb-2 block">Vehicle Type *</Label>
+                  <Label className="text-gray-700 font-medium mb-2 block">Vehicle Type *</Label>
                   <Input
                     required
                     placeholder="e.g. Toyota Camry, SUV, Van"
                     value={formData.vehicleType}
                     onChange={(e) => setFormData({...formData, vehicleType: e.target.value})}
-                    className="bg-white/10 border-white/20 text-white placeholder:text-gray-500"
+                    className="border-2 border-gray-200 focus:border-amber-400 rounded-xl py-3"
                   />
                 </div>
                 <div>
-                  <Label className="text-white mb-2 block">Vehicle Year *</Label>
+                  <Label className="text-gray-700 font-medium mb-2 block">Vehicle Year *</Label>
                   <Input
                     required
                     placeholder="e.g. 2020"
                     value={formData.vehicleYear}
                     onChange={(e) => setFormData({...formData, vehicleYear: e.target.value})}
-                    className="bg-white/10 border-white/20 text-white placeholder:text-gray-500"
+                    className="border-2 border-gray-200 focus:border-amber-400 rounded-xl py-3"
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <Label className="text-white mb-2 block">Driving Experience</Label>
+                  <Label className="text-gray-700 font-medium mb-2 block">Driving Experience</Label>
                   <Input
                     placeholder="e.g. 5 years, previous rideshare experience"
                     value={formData.experience}
                     onChange={(e) => setFormData({...formData, experience: e.target.value})}
-                    className="bg-white/10 border-white/20 text-white placeholder:text-gray-500"
+                    className="border-2 border-gray-200 focus:border-amber-400 rounded-xl py-3"
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <Label className="text-white mb-2 block">Availability</Label>
+                  <Label className="text-gray-700 font-medium mb-2 block">Availability</Label>
                   <Input
                     placeholder="e.g. Weekdays, mornings, full-time"
                     value={formData.availability}
                     onChange={(e) => setFormData({...formData, availability: e.target.value})}
-                    className="bg-white/10 border-white/20 text-white placeholder:text-gray-500"
+                    className="border-2 border-gray-200 focus:border-amber-400 rounded-xl py-3"
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <Label className="text-white mb-2 block">Anything else you'd like us to know?</Label>
+                  <Label className="text-gray-700 font-medium mb-2 block">Anything else you'd like us to know?</Label>
                   <textarea
-                    rows={3}
+                    rows={4}
                     placeholder="Tell us about yourself..."
                     value={formData.message}
                     onChange={(e) => setFormData({...formData, message: e.target.value})}
-                    className="w-full bg-white/10 border border-white/20 text-white placeholder:text-gray-500 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-gold"
+                    className="w-full border-2 border-gray-200 focus:border-amber-400 rounded-xl p-4 focus:outline-none focus:ring-2 focus:ring-amber-200"
                   />
                 </div>
               </div>
@@ -333,12 +343,12 @@ const DriveWithUs = () => {
                 <Button 
                   type="submit" 
                   disabled={submitting}
-                  className="w-full bg-gold hover:bg-gold/90 text-black font-bold text-lg py-6"
+                  className="w-full bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white font-bold text-lg py-6 rounded-xl shadow-xl shadow-amber-200"
                 >
                   {submitting ? 'Submitting...' : 'Submit Application'} 
                   {!submitting && <ArrowRight className="ml-2 w-5 h-5" />}
                 </Button>
-                <p className="text-center text-gray-500 text-sm mt-4">
+                <p className="text-center text-gray-400 text-sm mt-4">
                   By submitting, you agree to be contacted about driving opportunities.
                 </p>
               </div>
@@ -348,19 +358,19 @@ const DriveWithUs = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="py-16 bg-gold">
+      <section className="py-20 bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-500">
         <div className="max-w-4xl mx-auto px-4 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-black mb-4">
+          <h2 className="text-3xl md:text-5xl font-bold text-white mb-4">
             Questions? Let's Talk.
           </h2>
-          <p className="text-black/70 text-lg mb-6">
+          <p className="text-white/90 text-lg mb-8">
             Not sure if driving with us is right for you? Give us a call.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <a href="tel:+64217433210" className="inline-flex items-center justify-center gap-2 bg-black text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-900 transition-colors">
+            <a href="tel:+64217433210" className="inline-flex items-center justify-center gap-2 bg-white text-amber-600 px-8 py-4 rounded-xl font-bold hover:bg-gray-100 transition-colors shadow-lg">
               <Phone className="w-5 h-5" /> +64 21 743 321
             </a>
-            <a href="mailto:info@bookaride.co.nz" className="inline-flex items-center justify-center gap-2 bg-black text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-900 transition-colors">
+            <a href="mailto:info@bookaride.co.nz" className="inline-flex items-center justify-center gap-2 bg-white/20 backdrop-blur text-white border-2 border-white/50 px-8 py-4 rounded-xl font-bold hover:bg-white/30 transition-colors">
               <Mail className="w-5 h-5" /> info@bookaride.co.nz
             </a>
           </div>
@@ -368,15 +378,21 @@ const DriveWithUs = () => {
       </section>
 
       {/* Footer */}
-      <footer className="py-8 bg-black border-t border-white/10">
+      <footer className="py-10 bg-white border-t border-gray-100">
         <div className="max-w-6xl mx-auto px-4 text-center text-gray-500">
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-yellow-500 rounded-xl flex items-center justify-center">
+              <Car className="w-6 h-6 text-white" />
+            </div>
+            <span className="text-xl font-bold text-gray-900">BookaRide</span>
+          </div>
           <p>&copy; {new Date().getFullYear()} BookaRide NZ. All rights reserved.</p>
-          <div className="mt-2">
-            <Link to="/" className="hover:text-gold transition-colors">Home</Link>
-            <span className="mx-2">|</span>
-            <Link to="/book-now" className="hover:text-gold transition-colors">Book a Ride</Link>
-            <span className="mx-2">|</span>
-            <Link to="/contact" className="hover:text-gold transition-colors">Contact</Link>
+          <div className="mt-3">
+            <Link to="/" className="text-amber-600 hover:text-amber-700 transition-colors">Home</Link>
+            <span className="mx-3 text-gray-300">|</span>
+            <Link to="/book-now" className="text-amber-600 hover:text-amber-700 transition-colors">Book a Ride</Link>
+            <span className="mx-3 text-gray-300">|</span>
+            <Link to="/contact" className="text-amber-600 hover:text-amber-700 transition-colors">Contact</Link>
           </div>
         </div>
       </footer>
