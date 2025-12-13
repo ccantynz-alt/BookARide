@@ -253,7 +253,7 @@ export const SEODashboardTab = () => {
               </CardHeader>
               <CardContent className="space-y-2">
                 {filterPages(seoPages.main).map((page, idx) => (
-                  <PageCard key={idx} page={page} />
+                  <PageCard key={idx} page={page} onOpenPage={openPage} />
                 ))}
               </CardContent>
             </Card>
@@ -263,7 +263,7 @@ export const SEODashboardTab = () => {
               </CardHeader>
               <CardContent className="space-y-2">
                 {filterPages(seoPages.compare).map((page, idx) => (
-                  <PageCard key={idx} page={page} />
+                  <PageCard key={idx} page={page} onOpenPage={openPage} />
                 ))}
               </CardContent>
             </Card>
