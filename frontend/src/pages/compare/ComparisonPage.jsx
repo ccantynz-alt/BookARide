@@ -23,7 +23,7 @@ const comparisons = {
     comparison: [
       { feature: 'Service Type', bookaride: 'Private door-to-door', competitor: 'Shared (2-3 stops)', winner: 'bookaride' },
       { feature: 'Wait Time', bookaride: 'Direct to your address', competitor: 'Stops at other addresses first', winner: 'bookaride' },
-      { feature: 'Price (North Shore)', bookaride: 'From $65', competitor: 'From $33', winner: 'competitor' },
+      { feature: 'Price (North Shore)', bookaride: 'From $100', competitor: 'From $33', winner: 'competitor' },
       { feature: 'Multi-Stop Booking', bookaride: 'Yes - pick up multiple addresses', competitor: 'No - single pickup only', winner: 'bookaride' },
       { feature: 'Flight Tracking', bookaride: 'Yes - we monitor your flight', competitor: 'Limited', winner: 'bookaride' },
       { feature: 'Child Seats', bookaride: 'Available on request', competitor: 'Not guaranteed', winner: 'bookaride' },
