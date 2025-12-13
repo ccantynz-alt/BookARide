@@ -61,6 +61,12 @@ import BlogPost from './pages/blog/BlogPost';
 import ComparisonPage from './pages/compare/ComparisonPage';
 import ComparisonDirectory from './pages/compare/ComparisonDirectory';
 import FacebookStrategy from './pages/FacebookStrategy';
+// SEO Battle Pages
+import HibiscusCoastShuttlePage from './pages/seo/HibiscusCoastShuttlePage';
+import BookarideVsHibiscusShuttles from './pages/seo/BookarideVsHibiscusShuttles';
+import BestHibiscusCoastShuttle from './pages/seo/BestHibiscusCoastShuttle';
+import OrewaToAirportPage from './pages/seo/OrewaToAirportPage';
+import WhangaparoaAirportPage from './pages/seo/WhangaparoaAirportPage';
 
 // Layout component with Header/Footer
 const MainLayout = () => (
