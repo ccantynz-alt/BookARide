@@ -78,7 +78,7 @@ const USALanding = () => {
         "name": "How far is Hobbiton from Auckland Airport?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Hobbiton Movie Set is approximately 2.5 hours drive from Auckland Airport. We offer direct transfers for $320 NZD, perfect for Lord of the Rings fans."
+          "text": "Hobbiton Movie Set is approximately 2.5 hours drive from Auckland Airport. We offer direct transfers - get an instant quote on our booking page. Perfect for Lord of the Rings fans."
         }
       },
       {
