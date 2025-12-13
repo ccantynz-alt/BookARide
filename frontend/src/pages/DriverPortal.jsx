@@ -149,6 +149,7 @@ export const DriverPortal = () => {
       return;
     }
     
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchAssignedBookings(driver.id);
   }, [driver, navigate, fetchAssignedBookings]);
 
