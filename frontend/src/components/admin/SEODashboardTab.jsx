@@ -144,7 +144,7 @@ export const SEODashboardTab = () => {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">SEO Dashboard</h2>
-          <p className="text-gray-600">Monitor and manage your site's SEO performance</p>
+          <p className="text-gray-600">Monitor and manage your site&apos;s SEO performance</p>
         </div>
         <Button variant="outline" onClick={() => window.open('https://bookaride.co.nz/sitemap.xml', '_blank')}>
           <FileText className="w-4 h-4 mr-2" />
