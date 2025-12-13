@@ -396,7 +396,8 @@ export const AdminDashboard = () => {
 
   const openDetailsModal = (booking) => {
     setSelectedBooking(booking);
-    setPriceOverride(booking.pricing.totalPrice.toString());
+    const totalPrice = booking.pricing?.totalPrice ?? booking.totalPrice ?? 0;
+    setPriceOverride(totalPrice.toString());
     setShowDetailsModal(true);
   };
 
