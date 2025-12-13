@@ -2200,8 +2200,10 @@ async def sync_booking_to_calendar(booking_id: str, current_admin: dict = Depend
         
         success = await create_calendar_event(booking)
         if success:
-            action = "updated" if existing_event_id else "created"
-            return {"success": True, "message": f"Booking {action} in Google Calendar successfully!"}
+            action = "updated" if existing_event_ids else "created"
+            has_return = booking.get('bookReturn', False)
+            event_count = "2 events (outbound + return)" if has_return else "1 event"
+            return {"success": True, "message": f"Booking {action} in Google Calendar successfully! ({event_count})"}
         else:
             raise HTTPException(status_code=500, detail="Failed to sync to calendar. Please check Google Calendar authorization.")
     except HTTPException:
