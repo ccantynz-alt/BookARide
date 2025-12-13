@@ -305,6 +305,7 @@ export const DriversTab = () => {
                 
                 {/* Driver Earnings Summary */}
                 <div className="pt-3 border-t">
+                  <p className="text-xs text-gray-500 mb-2">{driverBookings.length} assigned jobs</p>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="p-2 bg-green-50 rounded">
                       <p className="text-xs text-green-600">Driver Earnings (85%)</p>
