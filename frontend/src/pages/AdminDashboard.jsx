@@ -2588,6 +2588,49 @@ export const AdminDashboard = () => {
                     </div>
                   </div>
 
+                  {/* Return Trip Section */}
+                  <div className="bg-amber-50 p-4 rounded-lg border border-amber-200">
+                    <div className="flex items-center gap-3 mb-3">
+                      <input
+                        type="checkbox"
+                        id="editBookReturn"
+                        checked={editingBooking.bookReturn || false}
+                        onChange={(e) => setEditingBooking(prev => ({...prev, bookReturn: e.target.checked}))}
+                        className="w-4 h-4 rounded border-gray-300"
+                      />
+                      <Label htmlFor="editBookReturn" className="cursor-pointer font-semibold text-gray-900">
+                        🔄 Return Trip
+                      </Label>
+                    </div>
+                    {editingBooking.bookReturn && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                        <div>
+                          <Label>Return Date *</Label>
+                          <Input
+                            type="date"
+                            value={editingBooking.returnDate || ''}
+                            onChange={(e) => setEditingBooking(prev => ({...prev, returnDate: e.target.value}))}
+                            className="mt-1 bg-white"
+                          />
+                        </div>
+                        <div>
+                          <Label>Return Time *</Label>
+                          <Input
+                            type="time"
+                            value={editingBooking.returnTime || ''}
+                            onChange={(e) => setEditingBooking(prev => ({...prev, returnTime: e.target.value}))}
+                            className="mt-1 bg-white"
+                          />
+                        </div>
+                        <div className="md:col-span-2">
+                          <p className="text-xs text-gray-600 italic">
+                            Return route: {editingBooking.dropoffAddress?.split(',')[0]} → {editingBooking.pickupAddress?.split(',')[0]}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                   <div>
                     <Label>Special Notes</Label>
                     <Textarea
