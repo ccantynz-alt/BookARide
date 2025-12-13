@@ -1054,7 +1054,7 @@ export const AdminDashboard = () => {
       <div className="container mx-auto px-4 py-8">
         {/* Tabs Navigation */}
         <Tabs defaultValue="bookings" value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-8">
+          <TabsList className="grid w-full grid-cols-5 mb-8">
             <TabsTrigger value="bookings" className="flex items-center gap-2">
               <BookOpen className="w-4 h-4" />
               Bookings
@@ -1070,6 +1070,10 @@ export const AdminDashboard = () => {
             <TabsTrigger value="drivers" className="flex items-center gap-2">
               <Car className="w-4 h-4" />
               Drivers
+            </TabsTrigger>
+            <TabsTrigger value="marketing" className="flex items-center gap-2">
+              <Globe className="w-4 h-4" />
+              Marketing
             </TabsTrigger>
           </TabsList>
 
