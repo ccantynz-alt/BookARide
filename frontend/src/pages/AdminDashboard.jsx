@@ -1649,32 +1649,6 @@ export const AdminDashboard = () => {
                 </div>
               )}
 
-              {/* Return Trip Info */}
-              {selectedBooking.bookReturn && (
-                <div className="bg-amber-50 p-4 rounded-lg border border-amber-200">
-                  <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                    🔄 Return Trip
-                  </h3>
-                  <div className="text-sm space-y-2">
-                    <p className="text-gray-600 italic mb-3">
-                      Reverse route: {selectedBooking.dropoffAddress} → {selectedBooking.pickupAddresses?.length > 0 
-                        ? selectedBooking.pickupAddresses.slice().reverse().join(' → ') + ' → ' + selectedBooking.pickupAddress
-                        : selectedBooking.pickupAddress}
-                    </p>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <span className="text-gray-600">Return Date:</span>
-                        <p className="font-medium">{formatDate(selectedBooking.returnDate)}</p>
-                      </div>
-                      <div>
-                        <span className="text-gray-600">Return Time:</span>
-                        <p className="font-medium">{selectedBooking.returnTime}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
               {/* Pricing */}
               <div>
                 <h3 className="font-semibold text-gray-900 mb-3">Pricing Details</h3>
