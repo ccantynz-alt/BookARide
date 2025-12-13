@@ -130,18 +130,28 @@ export const DriverPortal = () => {
     }
   }, [handleLogout]);
 
-  useEffect(() => {
+  // Parse stored driver data
+  const storedDriver = React.useMemo(() => {
     const driverData = localStorage.getItem('driverAuth');
-    if (!driverData) {
+    if (driverData) {
+      try {
+        return JSON.parse(driverData);
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  }, []);
+
+  useEffect(() => {
+    if (!storedDriver) {
       navigate('/driver/login');
       return;
     }
     
-    const parsedDriver = JSON.parse(driverData);
-    // Use functional update to avoid synchronous setState warning
-    setDriver(() => parsedDriver);
-    fetchAssignedBookings(parsedDriver.id);
-  }, [navigate, fetchAssignedBookings]);
+    setDriver(storedDriver);
+    fetchAssignedBookings(storedDriver.id);
+  }, [storedDriver, navigate, fetchAssignedBookings]);
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
