@@ -16,22 +16,16 @@ export const DriverPortal = () => {
   const [bookings, setBookings] = useState([]);
   const [driver, setDriver] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [activeTab, setActiveTab] = useState('schedule');
 
-  useEffect(() => {
-    const driverData = localStorage.getItem('driverAuth');
-    if (!driverData) {
-      navigate('/driver/login');
-      return;
-    }
-    
-    const parsedDriver = JSON.parse(driverData);
-    setDriver(parsedDriver);
-    fetchAssignedBookings(parsedDriver.id);
+  const handleLogout = React.useCallback(() => {
+    localStorage.removeItem('driverAuth');
+    localStorage.removeItem('driverToken');
+    navigate('/driver/login');
+    toast.success('Logged out successfully');
   }, [navigate]);
 
-  const fetchAssignedBookings = async (driverId) => {
+  const fetchAssignedBookings = React.useCallback(async (driverId) => {
     try {
       const token = localStorage.getItem('driverToken');
       const response = await axios.get(`${API}/drivers/${driverId}/bookings`, {
@@ -46,13 +40,19 @@ export const DriverPortal = () => {
       }
       setLoading(false);
     }
-  };
+  }, [handleLogout]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('driverAuth');
-    localStorage.removeItem('driverToken');
-    navigate('/driver/login');
-    toast.success('Logged out successfully');
+  useEffect(() => {
+    const driverData = localStorage.getItem('driverAuth');
+    if (!driverData) {
+      navigate('/driver/login');
+      return;
+    }
+    
+    const parsedDriver = JSON.parse(driverData);
+    setDriver(parsedDriver);
+    fetchAssignedBookings(parsedDriver.id);
+  }, [navigate, fetchAssignedBookings]);
   };
 
   const getStatusColor = (status) => {
