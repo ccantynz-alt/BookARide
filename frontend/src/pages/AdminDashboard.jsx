@@ -453,6 +453,39 @@ export const AdminDashboard = () => {
     }
   };
 
+  // Bulk delete without notifications
+  const handleBulkDelete = async () => {
+    if (selectedBookings.size === 0) return;
+    
+    setShowBulkDeleteConfirm(false);
+    const count = selectedBookings.size;
+    let deleted = 0;
+    let failed = 0;
+
+    toast.loading(`Deleting ${count} bookings...`);
+
+    for (const bookingId of selectedBookings) {
+      try {
+        await axios.delete(`${API}/bookings/${bookingId}?send_notification=false`, getAuthHeaders());
+        deleted++;
+      } catch (error) {
+        console.error(`Failed to delete booking ${bookingId}:`, error);
+        failed++;
+      }
+    }
+
+    toast.dismiss();
+    
+    if (failed === 0) {
+      toast.success(`Successfully deleted ${deleted} booking${deleted > 1 ? 's' : ''} (no notifications sent)`);
+    } else {
+      toast.warning(`Deleted ${deleted} bookings, ${failed} failed`);
+    }
+    
+    setSelectedBookings(new Set());
+    fetchBookings();
+  };
+
   const handleSendToAdmin = async (bookingId) => {
     try {
       const response = await axios.post(`${API}/bookings/${bookingId}/send-to-admin`, {}, getAuthHeaders());
