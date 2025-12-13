@@ -49,6 +49,17 @@ const seoPages = {
     { path: '/suburbs/silverdale', title: 'Silverdale', priority: '0.8', hasSchema: true },
     { path: '/suburbs/gulf-harbour', title: 'Gulf Harbour', priority: '0.8', hasSchema: true },
     { path: '/suburbs/red-beach', title: 'Red Beach', priority: '0.8', hasSchema: true },
+    // New suburbs added
+    { path: '/suburbs/manukau', title: 'Manukau', priority: '0.8', hasSchema: true },
+    { path: '/suburbs/papakura', title: 'Papakura', priority: '0.8', hasSchema: true },
+    { path: '/suburbs/botany', title: 'Botany', priority: '0.8', hasSchema: true },
+    { path: '/suburbs/howick', title: 'Howick', priority: '0.8', hasSchema: true },
+    { path: '/suburbs/pakuranga', title: 'Pakuranga', priority: '0.8', hasSchema: true },
+    { path: '/suburbs/henderson', title: 'Henderson', priority: '0.8', hasSchema: true },
+    { path: '/suburbs/new-lynn', title: 'New Lynn', priority: '0.8', hasSchema: true },
+    { path: '/suburbs/mt-eden', title: 'Mt Eden', priority: '0.8', hasSchema: true },
+    { path: '/suburbs/ponsonby', title: 'Ponsonby', priority: '0.8', hasSchema: true },
+    { path: '/suburbs/remuera', title: 'Remuera', priority: '0.8', hasSchema: true },
   ],
   international: [
     { path: '/visitors', title: 'Visitors Hub', priority: '0.9', hasSchema: true, lang: 'en' },
