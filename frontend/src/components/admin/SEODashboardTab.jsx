@@ -138,20 +138,6 @@ export const SEODashboardTab = () => {
   const openPage = (path) => {
     window.open(`https://bookaride.co.nz${path}`, '_blank');
   };
-        <div>
-          <p className="font-medium text-sm">{page.title}</p>
-          <p className="text-xs text-gray-500">{page.path}</p>
-        </div>
-      </div>
-      <div className="flex items-center gap-2">
-        <Badge variant="outline" className="text-xs">P: {page.priority}</Badge>
-        {page.lang && <Badge variant="secondary" className="text-xs">{page.lang}</Badge>}
-        <Button variant="ghost" size="sm" onClick={() => openPage(page.path)}>
-          <ExternalLink className="w-3 h-3" />
-        </Button>
-      </div>
-    </div>
-  );
 
   return (
     <div className="space-y-6">
