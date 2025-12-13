@@ -143,28 +143,14 @@ export const DriverPortal = () => {
     }
   }, [handleLogout]);
 
-  // Parse stored driver data
-  const storedDriver = React.useMemo(() => {
-    const driverData = localStorage.getItem('driverAuth');
-    if (driverData) {
-      try {
-        return JSON.parse(driverData);
-      } catch {
-        return null;
-      }
-    }
-    return null;
-  }, []);
-
   useEffect(() => {
-    if (!storedDriver) {
+    if (!driver) {
       navigate('/driver/login');
       return;
     }
     
-    setDriver(storedDriver);
-    fetchAssignedBookings(storedDriver.id);
-  }, [storedDriver, navigate, fetchAssignedBookings]);
+    fetchAssignedBookings(driver.id);
+  }, [driver, navigate, fetchAssignedBookings]);
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
