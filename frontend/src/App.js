@@ -44,6 +44,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import SEODashboard from './pages/SEODashboard';
 import DriverLogin from './pages/DriverLogin';
 import DriverPortal from './pages/DriverPortal';
+import DriveWithUs from './pages/DriveWithUs';
 import { Toaster } from './components/ui/sonner';
 import BackToTop from './components/BackToTop';
 import AdminBackButton from './components/AdminBackButton';
