@@ -175,12 +175,12 @@ export const DriverApplicationsTab = () => {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-400">Rejected</p>
-                <p className="text-2xl font-bold text-red-500">
+                <p className="text-sm text-white/80">Rejected</p>
+                <p className="text-2xl font-bold text-white">
                   {applications.filter(a => a.status === 'rejected').length}
                 </p>
               </div>
-              <XCircle className="w-8 h-8 text-red-500" />
+              <XCircle className="w-8 h-8 text-white/60" />
             </div>
           </CardContent>
         </Card>
