@@ -239,7 +239,7 @@ const USALanding = () => {
                 <div className="bg-gold/20 p-4 rounded-lg inline-block">
                   <p className="text-gold text-sm font-semibold">Auckland Airport → Hobbiton</p>
                   <p className="text-3xl font-bold">Get a Quote</p>
-                  <p className="text-sm text-gray-400">~$195 USD</p>
+                  <p className="text-sm text-gray-400">Contact us for pricing</p>
                 </div>
               </div>
               <div className="relative">
