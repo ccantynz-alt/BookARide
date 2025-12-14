@@ -1150,47 +1150,47 @@ export const AdminDashboard = () => {
           <TabsContent value="bookings" className="space-y-6">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card>
+          <Card className="bg-gold border-none">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">Total Bookings</p>
-                  <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
+                  <p className="text-sm text-white/80 mb-1">Total Bookings</p>
+                  <p className="text-3xl font-bold text-white">{stats.total}</p>
                 </div>
-                <Clock className="w-10 h-10 text-gray-400" />
+                <BookOpen className="w-10 h-10 text-white/60" />
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="bg-gold border-none">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">Pending</p>
-                  <p className="text-3xl font-bold text-yellow-600">{stats.pending}</p>
+                  <p className="text-sm text-white/80 mb-1">Pending</p>
+                  <p className="text-3xl font-bold text-white">{stats.pending}</p>
                 </div>
-                <Clock className="w-10 h-10 text-yellow-400" />
+                <Clock className="w-10 h-10 text-white/60" />
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="bg-gold border-none">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">Confirmed</p>
-                  <p className="text-3xl font-bold text-green-600">{stats.confirmed}</p>
+                  <p className="text-sm text-white/80 mb-1">Confirmed</p>
+                  <p className="text-3xl font-bold text-white">{stats.confirmed}</p>
                 </div>
-                <CheckCircle className="w-10 h-10 text-green-400" />
+                <CheckCircle className="w-10 h-10 text-white/60" />
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="bg-gold border-none">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">Total Revenue</p>
-                  <p className="text-3xl font-bold text-gold">${stats.totalRevenue.toFixed(2)}</p>
+                  <p className="text-sm text-white/80 mb-1">Total Revenue</p>
+                  <p className="text-3xl font-bold text-white">${stats.totalRevenue.toFixed(2)}</p>
                 </div>
-                <DollarSign className="w-10 h-10 text-gold" />
+                <DollarSign className="w-10 h-10 text-white/60" />
               </div>
             </CardContent>
           </Card>
