@@ -16,6 +16,7 @@ import axios from 'axios';
 import { AnalyticsTab } from '../components/admin/AnalyticsTab';
 import { CustomersTab } from '../components/admin/CustomersTab';
 import { DriversTab } from '../components/admin/DriversTab';
+import { DriverApplicationsTab } from '../components/admin/DriverApplicationsTab';
 import { LandingPagesTab } from '../components/admin/LandingPagesTab';
 import { initAutocompleteWithFix } from '../utils/fixGoogleAutocomplete';
 
