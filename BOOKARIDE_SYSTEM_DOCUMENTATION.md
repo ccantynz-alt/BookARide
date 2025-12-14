@@ -30,30 +30,22 @@
 ```javascript
 {
   id: "uuid-string",
-  booking_ref: "ABC123",  // 6-char reference
+  booking_ref: "ABC123",
   name: "Customer Name",
   email: "customer@email.com",
   phone: "+64 21 123 4567",
-  
-  // Trip Details
   pickupAddress: "123 Main St, Auckland",
   dropoffAddress: "Auckland Airport",
-  pickupAddresses: ["Stop 1", "Stop 2"],  // Additional stops
-  date: "2025-12-15",  // YYYY-MM-DD
+  pickupAddresses: ["Stop 1", "Stop 2"],
+  date: "2025-12-15",
   time: "14:30",
   passengers: 2,
   luggage: 3,
-  
-  // Return Trip (optional)
   bookReturn: true,
   returnDate: "2025-12-20",
   returnTime: "10:00",
-  
-  // Flight Info
   flightNumber: "NZ123",
   flightTime: "16:00",
-  
-  // Pricing
   pricing: {
     basePrice: 80,
     additionalStops: 20,
@@ -61,24 +53,14 @@
     totalPrice: 180
   },
   totalPrice: 180,
-  
-  // Status
   status: "pending|confirmed|completed|cancelled",
   payment_status: "pending|paid|refunded",
-  
-  // Driver Assignment
   driver_id: "driver-uuid",
   driver_name: "John Smith",
-  
-  // Metadata
   created_at: "2025-12-14T10:30:00Z",
   reminderSentAt: "2025-12-14T08:00:00Z",
   calendar_event_ids: ["event1", "event2"],
-  
-  // Service Type
   serviceType: "private-transfer|shared-shuttle|cruise-transfer",
-  
-  // Special Requests
   specialRequests: "Child seat required",
   ccEmail: "copy@email.com"
 }
@@ -118,17 +100,6 @@
 }
 ```
 
-### Admins Collection
-```javascript
-{
-  id: "uuid-string",
-  username: "admin",
-  password_hash: "bcrypt-hashed",
-  email: "admin@bookaride.co.nz",
-  created_at: "2025-01-01T00:00:00Z"
-}
-```
-
 ---
 
 ## 3. API ENDPOINTS
@@ -136,57 +107,51 @@
 ### Authentication
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/admin/login` | Admin login (returns JWT) |
-| POST | `/api/driver/login` | Driver login |
-| POST | `/api/admin/change-password` | Change admin password |
+| POST | /api/admin/login | Admin login (returns JWT) |
+| POST | /api/driver/login | Driver login |
+| POST | /api/admin/change-password | Change admin password |
 
 ### Bookings
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/bookings` | Get all bookings (admin auth) |
-| POST | `/api/bookings` | Create new booking |
-| GET | `/api/bookings/{id}` | Get single booking |
-| PATCH | `/api/bookings/{id}` | Update booking |
-| DELETE | `/api/bookings/{id}?send_notification=true` | Cancel/delete booking |
-| PUT | `/api/bookings/{id}/payment-status` | Update payment status |
-| POST | `/api/bookings/{id}/sync-calendar` | Sync to Google Calendar |
-| POST | `/api/bookings/{id}/resend-confirmation` | Resend confirmation email |
-| GET | `/api/bookings/{id}/preview-confirmation` | Preview email HTML |
+| GET | /api/bookings | Get all bookings (admin auth) |
+| POST | /api/bookings | Create new booking |
+| GET | /api/bookings/{id} | Get single booking |
+| PATCH | /api/bookings/{id} | Update booking |
+| DELETE | /api/bookings/{id}?send_notification=true | Cancel/delete booking |
+| PUT | /api/bookings/{id}/payment-status | Update payment status |
+| POST | /api/bookings/{id}/sync-calendar | Sync to Google Calendar |
+| POST | /api/bookings/{id}/resend-confirmation | Resend confirmation email |
 
 ### Drivers
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/drivers` | Get all drivers |
-| POST | `/api/drivers` | Create driver |
-| PUT | `/api/drivers/{id}` | Update driver |
-| DELETE | `/api/drivers/{id}` | Delete driver |
-| PATCH | `/api/drivers/{id}/assign?booking_id=xxx` | Assign driver to booking |
-| POST | `/api/drivers/{id}/set-password` | Set driver portal password |
-| GET | `/api/drivers/{id}/schedule` | Get driver's schedule |
+| GET | /api/drivers | Get all drivers |
+| POST | /api/drivers | Create driver |
+| PUT | /api/drivers/{id} | Update driver |
+| DELETE | /api/drivers/{id} | Delete driver |
+| PATCH | /api/drivers/{id}/assign?booking_id=xxx | Assign driver to booking |
+| POST | /api/drivers/{id}/set-password | Set driver portal password |
 
 ### Driver Applications
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/driver-applications` | List all applications |
-| POST | `/api/driver-applications` | Submit application (public) |
-| PATCH | `/api/driver-applications/{id}?status=xxx` | Update status |
+| GET | /api/driver-applications | List all applications |
+| POST | /api/driver-applications | Submit application (public) |
+| PATCH | /api/driver-applications/{id}?status=xxx | Update status |
 
-### Pricing
+### Pricing & Payments
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/calculate-price` | Calculate trip price |
+| POST | /api/calculate-price | Calculate trip price |
+| POST | /api/create-payment-intent | Create Stripe payment |
+| POST | /api/stripe-webhook | Handle Stripe webhooks |
 
 ### Notifications
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/admin/send-reminders` | Manually send tomorrow's reminders |
-| POST | `/api/send-booking-email` | Send custom email to customer |
-
-### Stripe Payments
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/create-payment-intent` | Create Stripe payment |
-| POST | `/api/stripe-webhook` | Handle Stripe webhooks |
+| POST | /api/admin/send-reminders | Manually send tomorrow reminders |
+| POST | /api/send-booking-email | Send custom email to customer |
 
 ---
 
@@ -201,26 +166,17 @@
 6. **Marketing** - Landing pages management
 
 ### Booking Actions
-- View booking details (modal)
-- Edit booking (all fields editable)
-- Assign driver (dropdown selection)
+- View/Edit booking details
+- Assign driver
 - Update status (pending/confirmed/completed/cancelled)
 - Update payment status (pending/paid/refunded)
 - Sync to Google Calendar
 - Send/resend confirmation email
-- Send custom email
 - Delete with or without customer notification
-- Bulk delete selected bookings
-- Export to CSV
-
-### Stats Cards (Gold themed)
-- Total Bookings
-- Pending Bookings
-- Confirmed Bookings
-- Total Revenue
+- Bulk delete, Export to CSV
 
 ### Header Buttons
-- Driver Portal (link)
+- Driver Portal link
 - SEO Management
 - Facebook Strategy
 - Change Password
@@ -230,9 +186,8 @@
 
 ## 5. BOOKING FLOW
 
-### Customer Journey
-1. Customer visits `/book-now`
-2. Fills in pickup/dropoff addresses (Google Autocomplete)
+1. Customer visits /book-now
+2. Fills pickup/dropoff (Google Autocomplete)
 3. Adds optional stops
 4. Selects date, time, passengers
 5. Optional: Add return trip
@@ -243,172 +198,80 @@
 10. Receives reminder day before (8 AM automatic)
 
 ### Pricing Logic
-```python
-base_price = calculated_from_distance
-additional_stops = $20 per extra stop
-return_trip = base_price (if selected)
-total = base_price + additional_stops + return_trip
-```
-
-### Email Notifications
-- **Booking Confirmation** - Sent immediately after booking
-- **Day-Before Reminder** - Automatic at 8 AM NZ time
-- **Driver Assignment** - Sent to driver when assigned
-- **Cancellation** - Optional when admin cancels
+- base_price = calculated from distance
+- additional_stops = $20 per extra stop
+- return_trip = base_price (if selected)
+- total = base + stops + return
 
 ---
 
 ## 6. DRIVER MANAGEMENT
 
-### Driver Portal (`/driver/portal`)
+### Driver Portal (/driver/portal)
 - Login with email + password
 - View assigned bookings
 - See customer contact info
 - View pickup/dropoff details
-- Filter by date
 
-### Admin Driver Features
+### Admin Features
 - Add/edit/delete drivers
 - Set portal passwords (key icon)
 - Assign drivers to bookings
-- View driver's schedule
-
-### Driver Assignment Flow
-1. Admin opens booking
-2. Clicks "Assign Driver" 
-3. Selects driver from dropdown
-4. Driver receives email notification
-5. Booking shows driver name
-6. Driver sees job in portal
 
 ---
 
 ## 7. AUTOMATED SYSTEMS
 
-### Scheduled Tasks (APScheduler)
-- **Daily Reminders**: 8:00 AM NZ time
-  - Finds bookings for tomorrow
-  - Sends email reminder
-  - Sends SMS reminder
-  - Marks `reminderSentAt` to prevent duplicates
+### Daily Reminders (8:00 AM NZ time)
+- Finds bookings for tomorrow
+- Sends email + SMS reminder
+- Prevents duplicate sends
 
 ### Google Calendar Sync
-- Creates calendar event when booking synced
-- For return trips: Creates 2 separate events
-- Includes all trip details in event description
-- Uses service account authentication
+- Creates event when booking synced
+- Return trips: 2 separate events
+- Uses service account auth
 
 ---
 
 ## 8. INTEGRATIONS
 
-### Google Maps API
-- Address autocomplete
-- Distance calculation
-- Used in: BookNow page, Admin booking form
-
-### Stripe
-- Payment intents
-- Webhook handling for payment confirmation
-- Test mode available
-
-### Mailgun
-- Transactional emails
-- HTML templates with gold branding
-- Booking confirmations, reminders, notifications
-
-### Twilio
-- SMS notifications
-- Booking confirmations
-- Day-before reminders
-
-### Google Calendar
-- Service account authentication
-- Event creation for bookings
-- Separate events for outbound/return trips
+- **Google Maps API** - Address autocomplete, distance calc
+- **Stripe** - Payment processing
+- **Mailgun** - Email notifications
+- **Twilio** - SMS notifications
+- **Google Calendar** - Event sync
 
 ---
 
-## 9. KEY FRONTEND COMPONENTS
-
-### Pages
-- `BookNow.jsx` - Customer booking form
-- `AdminDashboard.jsx` - Main admin panel (~2600 lines)
-- `DriverPortal.jsx` - Driver login and schedule
-- `DriveWithUs.jsx` - Driver recruitment page
-
-### Admin Components (`/components/admin/`)
-- `DriversTab.jsx` - Driver management
-- `DriverApplicationsTab.jsx` - Application review
-- `AnalyticsTab.jsx` - Charts and stats
-- `CustomersTab.jsx` - Customer list
-- `AdminBreadcrumb.jsx` - Navigation breadcrumb
-
-### UI Components (`/components/ui/`)
-- Shadcn components: Button, Card, Dialog, Input, Select, Tabs, etc.
-- Custom: SEO component, BackToTop, AdminBackButton
-
----
-
-## 10. STYLING GUIDE
+## 9. STYLING GUIDE
 
 ### Brand Colors
-- **Gold**: `#D4AF37` (primary accent)
-- **Black**: `#1a1a1a` (headers, dark sections)
-- **White**: `#ffffff` (text on gold/dark)
-
-### Admin Panel Theme
-- Gold breadcrumb with white text
-- Gold stat cards with white text
-- Dark header gradient
-- Professional icons (no emojis in UI)
+- Gold: #D4AF37
+- Black: #1a1a1a
+- White: #ffffff
 
 ### Tailwind Classes
-```css
-bg-gold          /* Gold background */
-text-gold        /* Gold text */
-border-gold      /* Gold border */
-hover:bg-gold/90 /* Gold hover state */
-text-white/80    /* Semi-transparent white */
-```
+- bg-gold, text-gold, border-gold
+- hover:bg-gold/90
+- text-white/80
 
 ---
 
-## 11. ENVIRONMENT VARIABLES
+## 10. ENVIRONMENT VARIABLES
 
-### Backend (.env)
-```
-MONGO_URL=mongodb://...
-DB_NAME=bookaride
-STRIPE_SECRET_KEY=sk_...
-MAILGUN_API_KEY=...
-MAILGUN_DOMAIN=mg.bookaride.co.nz
-TWILIO_ACCOUNT_SID=...
-TWILIO_AUTH_TOKEN=...
-TWILIO_PHONE_NUMBER=+64...
-GOOGLE_MAPS_API_KEY=...
-GOOGLE_SERVICE_ACCOUNT={"type":"service_account",...}
-```
+### Backend
+- MONGO_URL, DB_NAME
+- STRIPE_SECRET_KEY
+- MAILGUN_API_KEY, MAILGUN_DOMAIN
+- TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER
+- GOOGLE_MAPS_API_KEY
+- GOOGLE_SERVICE_ACCOUNT (JSON)
 
-### Frontend (.env)
-```
-REACT_APP_BACKEND_URL=https://bookaride.co.nz
-REACT_APP_GOOGLE_MAPS_API_KEY=...
-REACT_APP_STRIPE_PUBLISHABLE_KEY=pk_...
-```
-
----
-
-## 12. QUICK START FOR NEW BUILD
-
-1. Set up MongoDB database
-2. Configure environment variables
-3. Install backend: `pip install -r requirements.txt`
-4. Install frontend: `yarn install`
-5. Create default admin: Auto-created on first run (admin/admin)
-6. Configure Stripe, Mailgun, Twilio, Google APIs
-7. Run backend: `uvicorn server:app --host 0.0.0.0 --port 8001`
-8. Run frontend: `yarn start`
+### Frontend
+- REACT_APP_BACKEND_URL
+- REACT_APP_GOOGLE_MAPS_API_KEY
+- REACT_APP_STRIPE_PUBLISHABLE_KEY
 
 ---
 
