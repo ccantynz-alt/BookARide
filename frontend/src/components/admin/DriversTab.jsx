@@ -151,9 +151,12 @@ export const DriversTab = () => {
       setShowPasswordModal(false);
       setNewPassword('');
       setSelectedDriverForPassword(null);
+      // Refresh drivers list
+      fetchDrivers();
     } catch (error) {
       console.error('Error setting password:', error);
-      toast.error('Failed to set password');
+      toast.error(error.response?.data?.detail || 'Failed to set password');
+      setShowPasswordModal(false);
     }
   };
 
