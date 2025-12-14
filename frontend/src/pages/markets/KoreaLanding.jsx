@@ -94,8 +94,8 @@ const KoreaLanding = () => {
           <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
             {[
               { name: '호비튼 Hobbiton', desc: '반지의 제왕 촬영지', price: '견적 문의' },
-              { name: '로토루아 Rotorua', desc: '마오리 문화와 온천', price: '$280 NZD부터' },
-              { name: '와이헤키 섬 Waiheke', desc: '와이너리와 해변', price: '$95 NZD부터' },
+              { name: '로토루아 Rotorua', desc: '마오리 문화와 온천', price: '견적 문의' },
+              { name: '와이헤키 섬 Waiheke', desc: '와이너리와 해변', price: '$120 NZD부터' },
             ].map((dest, idx) => (
               <div key={idx} className="bg-gray-50 p-6 rounded-xl hover:shadow-md transition-shadow">
                 <h3 className="text-xl font-semibold mb-2">{dest.name}</h3>
