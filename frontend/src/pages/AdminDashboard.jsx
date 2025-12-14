@@ -1133,7 +1133,7 @@ export const AdminDashboard = () => {
               Customers
             </TabsTrigger>
             <TabsTrigger value="drivers" className="flex items-center gap-2">
-              <Car className="w-4 h-4" />
+              <Users className="w-4 h-4" />
               Drivers
             </TabsTrigger>
             <TabsTrigger value="applications" className="flex items-center gap-2">
