@@ -1486,6 +1486,11 @@ export const AdminDashboard = () => {
             <DriversTab />
           </TabsContent>
 
+          {/* Driver Applications Tab */}
+          <TabsContent value="applications">
+            <DriverApplicationsTab />
+          </TabsContent>
+
           {/* Marketing Tab - Landing Pages & Social */}
           <TabsContent value="marketing">
             <LandingPagesTab />
