@@ -2425,6 +2425,38 @@ def generate_confirmation_email_html(booking: dict) -> str:
         
         return_route_html += '</div>'
         
+        # Check if return trip is TO Auckland Airport (Meet & Greet offer)
+        meet_greet_html = ""
+        airport_keywords = ['auckland airport', 'akl airport', 'international terminal', 'domestic terminal']
+        is_airport_return = any(kw in dropoff_address.lower() for kw in airport_keywords)
+        
+        if is_airport_return:
+            meet_greet_html = '''
+                    <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-radius: 10px; padding: 20px; margin-top: 20px; border: 2px solid #D4AF37;">
+                        <div style="text-align: center; margin-bottom: 15px;">
+                            <span style="font-size: 28px;">🤝</span>
+                            <h4 style="margin: 10px 0 5px 0; color: #D4AF37; font-size: 18px;">Meet & Greet Service Available</h4>
+                            <p style="margin: 0; color: #ccc; font-size: 13px;">For your return journey to Auckland Airport</p>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 15px; margin: 15px 0;">
+                            <p style="margin: 0 0 10px 0; color: #fff; font-size: 14px;"><strong>What's included:</strong></p>
+                            <ul style="margin: 0; padding-left: 20px; color: #ccc; font-size: 13px; line-height: 1.8;">
+                                <li>Personal greeter waiting at arrivals with your name sign</li>
+                                <li>Assistance with luggage to your vehicle</li>
+                                <li>Priority pickup - no waiting in queues</li>
+                                <li>Flight tracking - we adjust if your flight is delayed</li>
+                            </ul>
+                        </div>
+                        <div style="text-align: center; margin-top: 15px;">
+                            <p style="margin: 0 0 10px 0; color: #D4AF37; font-size: 16px; font-weight: 600;">Only +$20 NZD</p>
+                            <a href="mailto:bookings@bookaride.co.nz?subject=Meet%20%26%20Greet%20Request%20-%20''' + booking_ref + '''&body=Hi%2C%0A%0AI%20would%20like%20to%20add%20Meet%20%26%20Greet%20service%20to%20my%20booking%20''' + booking_ref + '''.%0A%0AThank%20you!" 
+                               style="display: inline-block; background: #D4AF37; color: #1a1a2e; padding: 12px 25px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 14px;">
+                                Add Meet & Greet to My Booking
+                            </a>
+                        </div>
+                    </div>
+            '''
+        
         return_trip_html = f'''
                 <!-- Return Trip Section -->
                 <div style="margin-top: 30px;">
@@ -2438,6 +2470,7 @@ def generate_confirmation_email_html(booking: dict) -> str:
                         </div>
                     </div>
                     {return_route_html}
+                    {meet_greet_html}
                 </div>
         '''
     
