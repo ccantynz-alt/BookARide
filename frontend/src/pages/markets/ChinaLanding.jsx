@@ -100,12 +100,12 @@ const ChinaLanding = () => {
           <p className="text-center text-gray-600 mb-12">Popular Destinations for Chinese Visitors</p>
           <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
             {[
-              { name: '霍比特村 Hobbiton', desc: '《指环王》外景地', price: '从 $320 NZD' },
-              { name: '罗托鲁瓦 Rotorua', desc: '毛利文化与温泉', price: '从 $280 NZD' },
-              { name: '奥克兰市中心 Auckland CBD', desc: '购物与美食天堂', price: '从 $65 NZD' },
-              { name: '怀希岛 Waiheke Island', desc: '葡萄酒与海滩', price: '从 $95 NZD' },
-              { name: '奥克兰机场 Auckland Airport', desc: '国际到达', price: '从 $65 NZD' },
-              { name: '哈密尔顿 Hamilton', desc: '怀卡托地区', price: '从 $180 NZD' },
+              { name: '霍比特村 Hobbiton', desc: '《指环王》外景地', price: '获取报价' },
+              { name: '罗托鲁瓦 Rotorua', desc: '毛利文化与温泉', price: '获取报价' },
+              { name: '奥克兰市中心 Auckland CBD', desc: '购物与美食天堂', price: '从 $95 NZD' },
+              { name: '怀希岛 Waiheke Island', desc: '葡萄酒与海滩', price: '从 $120 NZD' },
+              { name: '奥克兰机场 Auckland Airport', desc: '国际到达', price: '从 $95 NZD' },
+              { name: '哈密尔顿 Hamilton', desc: '怀卡托地区', price: '获取报价' },
             ].map((dest, idx) => (
               <div key={idx} className="bg-gray-50 p-6 rounded-xl hover:shadow-md transition-shadow">
                 <h3 className="text-xl font-semibold mb-2">{dest.name}</h3>
