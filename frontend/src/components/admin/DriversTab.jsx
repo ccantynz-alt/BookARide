@@ -227,10 +227,10 @@ export const DriversTab = () => {
             </p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="bg-gold border-none">
           <CardContent className="p-6">
-            <p className="text-sm text-gray-600 mb-1">Assigned Today</p>
-            <p className="text-3xl font-bold text-gold">
+            <p className="text-sm text-white/80 mb-1">Assigned Today</p>
+            <p className="text-3xl font-bold text-white">
               {drivers.filter(d => getDriverBookings(d.id).some(b => 
                 b.date === new Date().toISOString().split('T')[0]
               )).length}
