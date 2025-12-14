@@ -134,44 +134,44 @@ export const DriverApplicationsTab = () => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="bg-gray-800 border-gray-700">
+        <Card className="bg-gold border-none">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-400">Total</p>
+                <p className="text-sm text-white/80">Total</p>
                 <p className="text-2xl font-bold text-white">{applications.length}</p>
               </div>
-              <FileText className="w-8 h-8 text-gray-500" />
+              <FileText className="w-8 h-8 text-white/60" />
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-gray-800 border-gray-700">
+        <Card className="bg-gold border-none">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-400">Pending</p>
-                <p className="text-2xl font-bold text-yellow-500">
+                <p className="text-sm text-white/80">Pending</p>
+                <p className="text-2xl font-bold text-white">
                   {applications.filter(a => a.status === 'pending').length}
                 </p>
               </div>
-              <Clock className="w-8 h-8 text-yellow-500" />
+              <Clock className="w-8 h-8 text-white/60" />
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-gray-800 border-gray-700">
+        <Card className="bg-gold border-none">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-400">Approved</p>
-                <p className="text-2xl font-bold text-green-500">
+                <p className="text-sm text-white/80">Approved</p>
+                <p className="text-2xl font-bold text-white">
                   {applications.filter(a => a.status === 'approved').length}
                 </p>
               </div>
-              <CheckCircle className="w-8 h-8 text-green-500" />
+              <CheckCircle className="w-8 h-8 text-white/60" />
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-gray-800 border-gray-700">
+        <Card className="bg-gold border-none">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
