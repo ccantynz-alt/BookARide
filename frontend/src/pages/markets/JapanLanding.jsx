@@ -96,9 +96,9 @@ const JapanLanding = () => {
           <p className="text-center text-gray-600 mb-12">Popular Destinations</p>
           <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
             {[
-              { name: 'ホビットン村 Hobbiton', desc: '『ロード・オブ・ザ・リング』の世界へ', price: '$320 NZDから' },
-              { name: 'ロトルア Rotorua', desc: 'マオリ文化と温泉', price: '$280 NZDから' },
-              { name: 'ワイヘキ島 Waiheke', desc: 'ワイナリーとビーチ', price: '$95 NZDから' },
+              { name: 'ホビットン村 Hobbiton', desc: '『ロード・オブ・ザ・リング』の世界へ', price: '見積もりを取得' },
+              { name: 'ロトルア Rotorua', desc: 'マオリ文化と温泉', price: '見積もりを取得' },
+              { name: 'ワイヘキ島 Waiheke', desc: 'ワイナリーとビーチ', price: '$120 NZDから' },
             ].map((dest, idx) => (
               <div key={idx} className="bg-gray-50 p-6 rounded-xl hover:shadow-md transition-shadow">
                 <h3 className="text-xl font-semibold mb-2">{dest.name}</h3>
