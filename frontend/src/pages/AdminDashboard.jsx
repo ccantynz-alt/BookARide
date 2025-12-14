@@ -18,6 +18,7 @@ import { CustomersTab } from '../components/admin/CustomersTab';
 import { DriversTab } from '../components/admin/DriversTab';
 import { DriverApplicationsTab } from '../components/admin/DriverApplicationsTab';
 import { LandingPagesTab } from '../components/admin/LandingPagesTab';
+import { AdminBreadcrumb } from '../components/admin/AdminBreadcrumb';
 import { initAutocompleteWithFix } from '../utils/fixGoogleAutocomplete';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
