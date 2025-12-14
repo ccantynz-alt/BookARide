@@ -88,9 +88,9 @@ const GermanyLanding = () => {
           <p className="text-center text-gray-600 mb-12">Popular Destinations</p>
           <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
             {[
-              { name: 'Hobbiton', desc: 'Herr der Ringe Filmset', price: 'Ab $320 NZD' },
-              { name: 'Rotorua', desc: 'Geothermische Wunder', price: 'Ab $280 NZD' },
-              { name: 'Auckland CBD', desc: 'Stadtzentrum Hotels', price: 'Ab $65 NZD' },
+              { name: 'Hobbiton', desc: 'Herr der Ringe Filmset', price: 'Angebot anfordern' },
+              { name: 'Rotorua', desc: 'Geothermische Wunder', price: 'Angebot anfordern' },
+              { name: 'Auckland CBD', desc: 'Stadtzentrum Hotels', price: 'Ab $95 NZD' },
             ].map((dest, idx) => (
               <div key={idx} className="bg-gray-50 p-6 rounded-xl hover:shadow-md transition-shadow">
                 <h3 className="text-xl font-semibold mb-2">{dest.name}</h3>
