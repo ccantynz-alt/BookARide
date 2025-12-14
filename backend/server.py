@@ -3738,7 +3738,7 @@ class SetDriverPassword(BaseModel):
     password: str
 
 @api_router.post("/drivers/set-password")
-async def set_driver_password(data: SetDriverPassword):
+async def set_driver_password(data: SetDriverPassword, current_admin: dict = Depends(get_current_admin)):
     """Set password for a driver (admin only)"""
     try:
         hashed_password = get_password_hash(data.password)
