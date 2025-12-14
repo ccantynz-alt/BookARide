@@ -1109,9 +1109,17 @@ export const AdminDashboard = () => {
       </div>
 
       <div className="container mx-auto px-4 py-8">
+        {/* Breadcrumb Navigation */}
+        <AdminBreadcrumb 
+          activeTab={activeTab} 
+          selectedBooking={selectedBooking}
+          showDetailsModal={showDetailsModal}
+          showEditBookingModal={showEditBookingModal}
+        />
+
         {/* Tabs Navigation */}
         <Tabs defaultValue="bookings" value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-5 mb-8">
+          <TabsList className="grid w-full grid-cols-6 mb-8">
             <TabsTrigger value="bookings" className="flex items-center gap-2">
               <BookOpen className="w-4 h-4" />
               Bookings
