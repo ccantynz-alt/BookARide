@@ -213,16 +213,16 @@ export const DriversTab = () => {
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card>
+        <Card className="bg-gold border-none">
           <CardContent className="p-6">
-            <p className="text-sm text-gray-600 mb-1">Total Drivers</p>
-            <p className="text-3xl font-bold text-gray-900">{drivers.length}</p>
+            <p className="text-sm text-white/80 mb-1">Total Drivers</p>
+            <p className="text-3xl font-bold text-white">{drivers.length}</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="bg-gold border-none">
           <CardContent className="p-6">
-            <p className="text-sm text-gray-600 mb-1">Active Drivers</p>
-            <p className="text-3xl font-bold text-green-600">
+            <p className="text-sm text-white/80 mb-1">Active Drivers</p>
+            <p className="text-3xl font-bold text-white">
               {drivers.filter(d => d.status === 'active').length}
             </p>
           </CardContent>
