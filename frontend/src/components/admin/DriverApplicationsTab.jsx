@@ -31,10 +31,12 @@ export const DriverApplicationsTab = () => {
       const response = await axios.get(`${API}/driver-applications`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setApplications(response.data);
+      // Ensure we always have an array
+      setApplications(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error('Error fetching applications:', error);
       toast.error('Failed to load driver applications');
+      setApplications([]);
     } finally {
       setLoading(false);
     }
