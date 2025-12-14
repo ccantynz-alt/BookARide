@@ -77,9 +77,9 @@ const SingaporeLanding = () => {
           <h2 className="text-3xl font-bold text-center mb-12">Popular Destinations</h2>
           <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
             {[
-              { name: 'Hobbiton', desc: 'Lord of the Rings filming location', price: 'From $320 NZD' },
-              { name: 'Rotorua', desc: 'Geothermal wonders & Maori culture', price: 'From $280 NZD' },
-              { name: 'Auckland CBD', desc: 'City centre hotels', price: 'From $65 NZD' },
+              { name: 'Hobbiton', desc: 'Lord of the Rings filming location', price: 'Get a Quote' },
+              { name: 'Rotorua', desc: 'Geothermal wonders & Maori culture', price: 'Get a Quote' },
+              { name: 'Auckland CBD', desc: 'City centre hotels', price: 'From $95 NZD' },
             ].map((dest, idx) => (
               <div key={idx} className="bg-gray-50 p-6 rounded-xl hover:shadow-md transition-shadow">
                 <h3 className="text-xl font-semibold mb-2">{dest.name}</h3>
