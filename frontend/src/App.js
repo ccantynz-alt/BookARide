@@ -153,6 +153,7 @@ function App() {
     { path: "cruise-transfers", element: <CruiseTransfers /> },
     { path: "suburbs", element: <SuburbsDirectory /> },
     { path: "suburbs/:slug", element: <SuburbPage /> },
+    { path: "airport-transfer/:slug", element: <SuburbLandingAdvanced /> },
     { path: "hibiscus-coast", element: <HibiscusCoastPage /> },
     { path: "hotels", element: <HotelsDirectory /> },
     { path: "hotels/:slug", element: <HotelPage /> },
