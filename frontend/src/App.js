@@ -96,6 +96,7 @@ const MainLayout = () => (
     <RecentBookingsNotification />
     <ExitIntentPopup />
     <AIChatbot />
+    <MobileStickyButton />
   </>
 );
 
