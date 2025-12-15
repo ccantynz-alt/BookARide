@@ -3275,6 +3275,153 @@ async def export_csv():
         logger.error(f"Error exporting CSV: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# Payment Link Helper Functions
+async def generate_stripe_payment_link(booking: dict) -> str:
+    """Generate a Stripe payment link for a booking"""
+    try:
+        stripe_api_key = os.environ.get('STRIPE_API_KEY')
+        if not stripe_api_key:
+            logger.error("Stripe API key not configured")
+            return None
+        
+        public_url = os.environ.get('PUBLIC_URL', 'https://bookaride.co.nz')
+        webhook_url = f"{public_url}/api/webhook/stripe"
+        stripe_checkout = StripeCheckout(api_key=stripe_api_key, webhook_url=webhook_url)
+        
+        success_url = f"{public_url}/payment-success?session_id={{CHECKOUT_SESSION_ID}}"
+        cancel_url = f"{public_url}/book-now"
+        
+        amount = float(booking.get('totalPrice', 0))
+        if amount <= 0:
+            return None
+        
+        checkout_request = CheckoutSessionRequest(
+            amount=amount,
+            currency="nzd",
+            success_url=success_url,
+            cancel_url=cancel_url,
+            metadata={
+                "booking_id": booking.get('id', ''),
+                "customer_email": booking.get('email', ''),
+                "customer_name": booking.get('name', '')
+            }
+        )
+        
+        session = await stripe_checkout.create_checkout_session(checkout_request)
+        return session.checkout_url
+    except Exception as e:
+        logger.error(f"Error generating Stripe payment link: {str(e)}")
+        return None
+
+def generate_paypal_payment_link(booking: dict) -> str:
+    """Generate a PayPal.me payment link for a booking"""
+    try:
+        paypal_username = os.environ.get('PAYPAL_ME_USERNAME', 'bookaridenz')
+        amount = float(booking.get('totalPrice', 0))
+        if amount <= 0:
+            return None
+        
+        # PayPal.me link format: https://paypal.me/username/amount
+        return f"https://paypal.me/{paypal_username}/{amount:.2f}NZD"
+    except Exception as e:
+        logger.error(f"Error generating PayPal payment link: {str(e)}")
+        return None
+
+async def send_payment_link_email(booking: dict, payment_link: str, payment_type: str):
+    """Send payment link email to customer"""
+    try:
+        customer_email = booking.get('email', '')
+        customer_name = booking.get('name', '')
+        booking_ref = booking.get('booking_ref', booking.get('id', '')[:6])
+        total_price = booking.get('totalPrice', 0)
+        
+        payment_type_display = "Stripe" if payment_type == "stripe" else "PayPal"
+        
+        html_content = f'''
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
+            <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+                <!-- Header -->
+                <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 30px; text-align: center;">
+                    <h1 style="color: #D4AF37; margin: 0; font-size: 28px;">Payment Required</h1>
+                    <p style="color: #ffffff; margin: 10px 0 0 0;">Booking Reference: {booking_ref}</p>
+                </div>
+                
+                <!-- Content -->
+                <div style="padding: 30px;">
+                    <p style="font-size: 16px; color: #333;">Dear {customer_name},</p>
+                    
+                    <p style="font-size: 16px; color: #333;">
+                        Thank you for your booking with Book A Ride NZ. Please complete your payment using the link below.
+                    </p>
+                    
+                    <!-- Payment Amount Box -->
+                    <div style="background: #f9f9f9; border: 2px solid #D4AF37; border-radius: 10px; padding: 20px; text-align: center; margin: 25px 0;">
+                        <p style="margin: 0; color: #666; font-size: 14px;">Amount Due</p>
+                        <p style="margin: 10px 0; color: #1a1a2e; font-size: 36px; font-weight: bold;">${total_price:.2f} NZD</p>
+                        <p style="margin: 0; color: #666; font-size: 12px;">via {payment_type_display}</p>
+                    </div>
+                    
+                    <!-- Payment Button -->
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="{payment_link}" 
+                           style="display: inline-block; background: #D4AF37; color: #1a1a2e; padding: 15px 40px; 
+                                  border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 18px;">
+                            Pay Now with {payment_type_display}
+                        </a>
+                    </div>
+                    
+                    <p style="font-size: 14px; color: #666; text-align: center;">
+                        Or copy this link: <br>
+                        <a href="{payment_link}" style="color: #D4AF37; word-break: break-all;">{payment_link}</a>
+                    </p>
+                    
+                    <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+                    
+                    <p style="font-size: 14px; color: #666;">
+                        If you have any questions, please contact us at bookings@bookaride.co.nz
+                    </p>
+                </div>
+                
+                <!-- Footer -->
+                <div style="background: #1a1a2e; padding: 20px; text-align: center;">
+                    <p style="color: #888; font-size: 12px; margin: 0;">
+                        Book A Ride NZ | Premium Airport Transfers
+                    </p>
+                </div>
+            </div>
+        </body>
+        </html>
+        '''
+        
+        # Send via Mailgun
+        mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
+        mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
+        sender_email = os.environ.get('SENDER_EMAIL', 'noreply@bookaride.co.nz')
+        
+        if mailgun_api_key and mailgun_domain:
+            response = requests.post(
+                f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
+                auth=("api", mailgun_api_key),
+                data={
+                    "from": f"Book A Ride NZ <{sender_email}>",
+                    "to": customer_email,
+                    "subject": f"Payment Link - Booking {booking_ref} - ${total_price:.2f} NZD",
+                    "html": html_content
+                }
+            )
+            logger.info(f"Payment link email sent to {customer_email} - Status: {response.status_code}")
+        else:
+            logger.warning("Mailgun not configured - payment link email not sent")
+            
+    except Exception as e:
+        logger.error(f"Error sending payment link email: {str(e)}")
+
 # Manual Booking Creation
 class ManualBooking(BaseModel):
     name: str
