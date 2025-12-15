@@ -13,7 +13,6 @@ import { AnimatedCounter } from '../components/AnimatedCounter';
 import { VehicleGallery } from '../components/VehicleGallery';
 import { TestimonialsCarousel } from '../components/TestimonialsCarousel';
 import TrustBadges from '../components/TrustBadges';
-import { DarkModeToggle } from '../components/DarkModeToggle';
 import { motion } from 'framer-motion';
 import AOS from 'aos';
 import 'aos/dist/aos.css';
