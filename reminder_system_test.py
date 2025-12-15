@@ -156,9 +156,12 @@ class ReminderSystemTester:
             if response.status_code == 200:
                 data = response.json()
                 
-                # Check for success response with reminders_sent count
-                if 'reminders_sent' in data:
-                    reminders_sent = data.get('reminders_sent', 0)
+                # Check for success response with reminders_sent count (can be in root or details)
+                reminders_sent = data.get('reminders_sent')
+                if reminders_sent is None and 'details' in data:
+                    reminders_sent = data['details'].get('reminders_sent')
+                
+                if reminders_sent is not None:
                     self.log_result("Manual Send Reminders Endpoint", True, f"Manual reminders sent successfully: {reminders_sent} reminders", data)
                     return True
                 else:
