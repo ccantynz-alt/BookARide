@@ -259,20 +259,39 @@ export const BookNow = () => {
       const bookingResponse = await axios.post(`${API}/bookings`, bookingData);
       const booking = bookingResponse.data;
 
-      // Create Stripe checkout session
-      const paymentData = {
-        booking_id: booking.id,
-        origin_url: window.location.origin
-      };
+      // Check payment method
+      if (formData.paymentMethod === 'afterpay') {
+        // Create Afterpay checkout
+        const afterpayData = {
+          booking_id: booking.id,
+          redirect_confirm_url: `${window.location.origin}/payment-success?method=afterpay`,
+          redirect_cancel_url: `${window.location.origin}/book-now`
+        };
 
-      const checkoutResponse = await axios.post(`${API}/payment/create-checkout`, paymentData);
+        const afterpayResponse = await axios.post(`${API}/afterpay/create-checkout`, afterpayData);
 
-      // Redirect to Stripe Checkout
-      if (checkoutResponse.data.url) {
-        window.location.href = checkoutResponse.data.url;
+        if (afterpayResponse.data.redirect_url) {
+          window.location.href = afterpayResponse.data.redirect_url;
+        } else {
+          setIsProcessingPayment(false);
+          toast.error('Unable to redirect to Afterpay');
+        }
       } else {
-        setIsProcessingPayment(false);
-        toast.error('Unable to redirect to payment page');
+        // Create Stripe checkout session (default)
+        const paymentData = {
+          booking_id: booking.id,
+          origin_url: window.location.origin
+        };
+
+        const checkoutResponse = await axios.post(`${API}/payment/create-checkout`, paymentData);
+
+        // Redirect to Stripe Checkout
+        if (checkoutResponse.data.url) {
+          window.location.href = checkoutResponse.data.url;
+        } else {
+          setIsProcessingPayment(false);
+          toast.error('Unable to redirect to payment page');
+        }
       }
 
     } catch (error) {
