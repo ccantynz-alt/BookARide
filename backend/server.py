@@ -1669,6 +1669,83 @@ async def get_reminder_status(current_admin: dict = Depends(get_current_admin)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ============================================
+# AI CHATBOT ENDPOINT
+# ============================================
+
+class ChatbotMessageRequest(BaseModel):
+    message: str
+    conversationHistory: Optional[List[dict]] = []
+
+@api_router.post("/chatbot/message")
+async def chatbot_message(request: ChatbotMessageRequest):
+    """AI-powered chatbot for booking assistance"""
+    try:
+        from emergentintegrations.llm.openai import LlmChat, UserMessage
+        
+        # Build context from conversation history
+        history_context = ""
+        if request.conversationHistory:
+            for msg in request.conversationHistory[-6:]:  # Last 6 messages for context
+                role = "Customer" if msg.get('role') == 'user' else "Assistant"
+                history_context += f"{role}: {msg.get('content', '')}\n"
+        
+        # System prompt for the booking assistant
+        system_prompt = """You are a friendly and helpful booking assistant for BookaRide NZ, a premium airport transfer service in Auckland, New Zealand.
+
+KEY INFORMATION:
+- We offer airport shuttles to/from Auckland Airport, Hamilton Airport, and Whangarei
+- Popular services: Airport transfers, Hobbiton tours, Cruise terminal transfers, Wine tours
+- Payment options: Credit/Debit cards, Afterpay (pay in 4 instalments), PayPal
+- We offer Meet & Greet service where drivers hold a name sign at arrivals
+- Child seats available on request
+- 24/7 service available
+- Booking can be made online at bookaride.co.nz/book-now or by calling 0800 BOOK A RIDE
+
+PRICING GUIDANCE (approximate - direct them to get exact quote online):
+- Auckland CBD to Airport: ~$65-85
+- North Shore to Airport: ~$75-95  
+- Hibiscus Coast (Orewa, Whangaparaoa) to Airport: ~$90-120
+- Hamilton to Airport: ~$180-220
+- We price by distance, not surge pricing like Uber
+
+YOUR STYLE:
+- Be warm, friendly and professional
+- Keep responses concise (2-3 sentences when possible)
+- Use emojis sparingly but naturally 🚗
+- If they want a quote, encourage them to use our online booking form for exact pricing
+- If they want to book, direct them to bookaride.co.nz/book-now
+- For complex questions, offer to have a team member call them
+
+IMPORTANT: Never make up specific prices - always say "approximately" or direct them to get an exact quote online."""
+
+        llm = LlmChat(
+            api_key="sk-emergent-1221fFe2cB790B632B",
+            session_id=str(uuid.uuid4()),
+            system_message=system_prompt
+        )
+        
+        # Build the user message with context
+        full_message = f"""Previous conversation:
+{history_context}
+
+Customer's new message: {request.message}
+
+Respond helpfully and naturally as the BookaRide assistant:"""
+        
+        user_msg = UserMessage(text=full_message)
+        response = await llm.send_message(user_msg)
+        
+        return {"response": response.strip()}
+        
+    except Exception as e:
+        logger.error(f"Chatbot error: {str(e)}")
+        # Fallback response
+        return {
+            "response": "I apologize, I'm having a brief technical issue. For immediate assistance, please call us at 0800 BOOK A RIDE or visit bookaride.co.nz/book-now to make a booking. We're here to help! 🚗"
+        }
+
+
 # Core reminder sending logic - used by all reminder triggers
 async def send_daily_reminders_core(source: str = "unknown"):
     """
