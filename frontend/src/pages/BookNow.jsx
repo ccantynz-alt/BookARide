@@ -891,8 +891,34 @@ export const BookNow = () => {
                           
                           {/* Currency Converter */}
                           <div className="mt-6">
-                            <CurrencyConverter nzdAmount={finalTotal} />
+                            <CurrencyConverter nzdPrice={finalTotal} />
                           </div>
+
+                          {/* Trip Cost Splitter - for group bookings */}
+                          {formData.passengers > 1 && (
+                            <div className="mt-4">
+                              <TripCostSplitter 
+                                totalPrice={finalTotal} 
+                                passengers={parseInt(formData.passengers) || 2} 
+                              />
+                            </div>
+                          )}
+
+                          {/* Weather at Destination */}
+                          <div className="mt-4">
+                            <WeatherWidget location={formData.dropoffAddress || 'Auckland'} />
+                          </div>
+
+                          {/* Live Journey Visualizer */}
+                          {formData.pickupAddress && formData.dropoffAddress && (
+                            <div className="mt-4">
+                              <LiveJourneyVisualizer 
+                                pickupAddress={formData.pickupAddress}
+                                dropoffAddress={formData.dropoffAddress}
+                                distance={pricing.distance}
+                              />
+                            </div>
+                          )}
 
                           {/* Social Proof */}
                           <div className="mt-6">
