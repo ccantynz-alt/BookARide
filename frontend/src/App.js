@@ -73,6 +73,8 @@ import WhangaparoaAirportPage from './pages/seo/WhangaparoaAirportPage';
 import AfterpayPage from './pages/AfterpayPage';
 
 import RecentBookingsNotification from './components/RecentBookingsNotification';
+import ExitIntentPopup from './components/ExitIntentPopup';
+import WhatsAppButton from './components/WhatsAppButton';
 
 // Layout component with Header/Footer
 const MainLayout = () => (
@@ -86,6 +88,8 @@ const MainLayout = () => (
     <BackToTop />
     <AdminBackButton />
     <RecentBookingsNotification />
+    <ExitIntentPopup />
+    <WhatsAppButton />
   </>
 );
 
