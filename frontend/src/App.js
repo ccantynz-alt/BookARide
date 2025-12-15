@@ -75,7 +75,6 @@ import ReferralProgram from './pages/ReferralProgram';
 
 import RecentBookingsNotification from './components/RecentBookingsNotification';
 import ExitIntentPopup from './components/ExitIntentPopup';
-import WhatsAppButton from './components/WhatsAppButton';
 import AIChatbot from './components/AIChatbot';
 
 // Layout component with Header/Footer
@@ -91,7 +90,6 @@ const MainLayout = () => (
     <AdminBackButton />
     <RecentBookingsNotification />
     <ExitIntentPopup />
-    <WhatsAppButton />
     <AIChatbot />
   </>
 );
