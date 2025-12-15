@@ -889,8 +889,14 @@ async def calculate_price(request: PriceCalculationRequest):
         # Total price
         total_price = base_price + airport_fee + oversized_luggage_fee + passenger_fee
         
-        # Apply minimum fee of $100
-        if total_price < 100.0:
+        # Apply minimum fee
+        # Special event: Matakana Country Park concert = $550 minimum (return)
+        # Standard minimum = $100
+        if is_matakana_trip:
+            if total_price < matakana_concert_minimum:
+                logger.info(f"🎵 Applying Matakana concert minimum: ${matakana_concert_minimum} (was ${total_price:.2f})")
+                total_price = matakana_concert_minimum
+        elif total_price < 100.0:
             total_price = 100.0
         
         return PricingBreakdown(
