@@ -136,3 +136,5 @@ test_plan:
 agent_communication:
   - agent: "testing"
     message: "✅ ALL REVIEW REQUEST FEATURES WORKING CORRECTLY: 1) Pricing calculation (Orewa to Airport ~$150 for 60km ✓, Short trip $100 minimum ✓), 2) Flight tracker (EK448 with live data ✓), 3) Driver assignment with email/SMS notifications ✓, 4) AI email auto-responder ✓, 5) Payment checkout creation ✓. Backend APIs are fully functional. Only minor issue was Stripe webhook test expecting signature (expected behavior). System is production-ready."
+  - agent: "main"
+    message: "🔧 Fixed Barbara Walsh booking bug: 1) Email template now checks both bookReturn AND returnDate (fallback for legacy bookings), 2) Update endpoint auto-syncs bookReturn when returnDate is set/cleared, 3) Added ratePerKm to pricing breakdown for transparency. Please test: pricing calculation with ratePerKm, email generation for return trips, booking update endpoint."
