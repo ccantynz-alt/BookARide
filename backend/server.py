@@ -880,6 +880,14 @@ async def create_booking(booking: BookingCreate):
             logger.error(f"Failed to create calendar event for booking #{ref_number}: {str(calendar_error)}")
             # Don't fail the booking creation if calendar sync fails
         
+        # Sync contact to iCloud
+        try:
+            add_contact_to_icloud(booking_dict)
+            logger.info(f"Contact synced to iCloud for booking #{ref_number}")
+        except Exception as contact_error:
+            logger.error(f"Failed to sync contact to iCloud for booking #{ref_number}: {str(contact_error)}")
+            # Don't fail the booking creation if contact sync fails
+        
         return booking_obj
     except Exception as e:
         logger.error(f"Error creating booking: {str(e)}")
