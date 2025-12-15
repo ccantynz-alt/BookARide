@@ -64,7 +64,8 @@ export const BookNow = () => {
     name: '',
     email: '',
     phone: '',
-    notes: ''
+    notes: '',
+    paymentMethod: 'card'  // 'card' or 'afterpay'
   });
 
   // Date/Time picker states
