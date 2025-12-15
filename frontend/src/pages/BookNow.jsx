@@ -20,6 +20,7 @@ import BookingAddOns, { addOns } from '../components/BookingAddOns';
 import TrustBadges from '../components/TrustBadges';
 import GoogleReviewsWidget from '../components/GoogleReviewsWidget';
 import SocialProofCounter from '../components/SocialProofCounter';
+import FlightTracker from '../components/FlightTracker';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
