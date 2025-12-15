@@ -1208,12 +1208,13 @@ export const AdminDashboard = () => {
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-gold border-none">
+          <Card className="bg-green-600 border-none">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-white/80 mb-1">Total Revenue</p>
+                  <p className="text-sm text-white/80 mb-1">Revenue (Confirmed)</p>
                   <p className="text-3xl font-bold text-white">${stats.totalRevenue.toFixed(2)}</p>
+                  <p className="text-xs text-white/60 mt-1">{stats.confirmed + stats.completed} jobs</p>
                 </div>
                 <DollarSign className="w-10 h-10 text-white/60" />
               </div>
