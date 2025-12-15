@@ -1954,6 +1954,153 @@ async def get_email_logs(current_admin: dict = Depends(get_current_admin), limit
 
 
 # ============================================
+# ABANDONED BOOKING RECOVERY
+# ============================================
+
+class AbandonedBookingRequest(BaseModel):
+    email: str
+    name: Optional[str] = None
+    pickup: Optional[str] = None
+    dropoff: Optional[str] = None
+    date: Optional[str] = None
+    price: Optional[float] = None
+
+@api_router.post("/booking/abandoned")
+async def save_abandoned_booking(request: AbandonedBookingRequest):
+    """Save partial booking data for recovery email"""
+    try:
+        # Check if we already have a recent abandoned booking for this email
+        existing = await db.abandoned_bookings.find_one({
+            "email": request.email,
+            "recovered": False
+        })
+        
+        abandoned_data = {
+            "email": request.email,
+            "name": request.name,
+            "pickup": request.pickup,
+            "dropoff": request.dropoff,
+            "date": request.date,
+            "price": request.price,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "recovered": False,
+            "email_sent": False
+        }
+        
+        if existing:
+            # Update existing record
+            await db.abandoned_bookings.update_one(
+                {"email": request.email, "recovered": False},
+                {"$set": abandoned_data}
+            )
+        else:
+            # Create new record
+            abandoned_data["id"] = str(uuid.uuid4())
+            await db.abandoned_bookings.insert_one(abandoned_data)
+        
+        logger.info(f"Saved abandoned booking for {request.email}")
+        return {"status": "saved"}
+        
+    except Exception as e:
+        logger.error(f"Error saving abandoned booking: {str(e)}")
+        return {"status": "error", "message": str(e)}
+
+
+async def send_abandoned_booking_emails():
+    """Background task to send recovery emails for abandoned bookings"""
+    try:
+        # Find abandoned bookings from 30 mins - 24 hours ago that haven't been emailed
+        from datetime import timedelta
+        
+        now = datetime.now(timezone.utc)
+        min_age = now - timedelta(hours=24)
+        max_age = now - timedelta(minutes=30)
+        
+        abandoned = await db.abandoned_bookings.find({
+            "recovered": False,
+            "email_sent": False,
+            "created_at": {
+                "$gte": min_age.isoformat(),
+                "$lte": max_age.isoformat()
+            }
+        }, {"_id": 0}).to_list(50)
+        
+        mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
+        mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
+        
+        if not mailgun_api_key or not mailgun_domain:
+            return
+        
+        for booking in abandoned:
+            try:
+                email = booking.get('email')
+                name = booking.get('name', 'there')
+                pickup = booking.get('pickup', 'your location')
+                dropoff = booking.get('dropoff', 'your destination')
+                price = booking.get('price')
+                
+                subject = "Complete Your BookaRide Booking 🚗"
+                
+                price_text = f"Your quote was ${price:.2f}" if price else "Get your instant quote"
+                
+                html_content = f"""
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <div style="background: linear-gradient(135deg, #1a1a1a, #2d2d2d); padding: 30px; text-align: center;">
+                        <h1 style="color: #D4AF37; margin: 0;">BookaRide NZ</h1>
+                    </div>
+                    <div style="padding: 30px; background: #fff;">
+                        <h2 style="color: #333;">Hi {name},</h2>
+                        <p style="color: #666; font-size: 16px;">
+                            We noticed you started booking an airport transfer but didn't complete it. 
+                            No worries - your details are still saved!
+                        </p>
+                        <div style="background: #f5f5f5; padding: 20px; border-radius: 10px; margin: 20px 0;">
+                            <p style="margin: 5px 0; color: #333;"><strong>From:</strong> {pickup}</p>
+                            <p style="margin: 5px 0; color: #333;"><strong>To:</strong> {dropoff}</p>
+                            <p style="margin: 10px 0; color: #D4AF37; font-size: 18px;"><strong>{price_text}</strong></p>
+                        </div>
+                        <div style="text-align: center; margin: 30px 0;">
+                            <a href="https://bookaride.co.nz/book-now" 
+                               style="background: #D4AF37; color: #000; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
+                                Complete Your Booking →
+                            </a>
+                        </div>
+                        <p style="color: #999; font-size: 14px; text-align: center;">
+                            Questions? Just reply to this email or use our 24/7 AI chat on the website.
+                        </p>
+                    </div>
+                    <div style="background: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; color: #666;">
+                        <p>© BookaRide NZ | Auckland Airport Transfers</p>
+                    </div>
+                </div>
+                """
+                
+                response = requests.post(
+                    f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
+                    auth=("api", mailgun_api_key),
+                    data={
+                        "from": f"BookaRide NZ <bookings@{mailgun_domain}>",
+                        "to": email,
+                        "subject": subject,
+                        "html": html_content
+                    }
+                )
+                
+                if response.status_code == 200:
+                    await db.abandoned_bookings.update_one(
+                        {"email": email, "recovered": False},
+                        {"$set": {"email_sent": True, "email_sent_at": datetime.now(timezone.utc).isoformat()}}
+                    )
+                    logger.info(f"Sent abandoned booking recovery email to {email}")
+                    
+            except Exception as e:
+                logger.error(f"Error sending recovery email: {str(e)}")
+                
+    except Exception as e:
+        logger.error(f"Error in abandoned booking task: {str(e)}")
+
+
+# ============================================
 # AI CHATBOT ENDPOINT
 # ============================================
 
