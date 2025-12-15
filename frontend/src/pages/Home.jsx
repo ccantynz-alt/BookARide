@@ -51,13 +51,13 @@ export const Home = () => {
         
         {/* Cinematic Background */}
         <div className="absolute inset-0">
-          {/* High-quality background image - Our actual fleet vehicle */}
+          {/* High-quality background image - Happy travelers */}
           <div className="absolute inset-0">
             <img 
-              src="https://customer-assets.emergentagent.com/job_bookmyride-nz/artifacts/6fpsudnh_IMG_0158%20%281%29.jpeg" 
-              alt="Book A Ride premium white Toyota Hiace fleet vehicle" 
-              className="w-full h-full object-cover opacity-50"
-              style={{ objectPosition: 'center' }}
+              src="https://images.pexels.com/photos/11668205/pexels-photo-11668205.jpeg?auto=compress&cs=tinysrgb&w=1920" 
+              alt="Happy travelers smiling at Auckland airport - Book A Ride premium shuttle service" 
+              className="w-full h-full object-cover opacity-60"
+              style={{ objectPosition: 'center top' }}
             />
           </div>
           
