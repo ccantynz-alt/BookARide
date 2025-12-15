@@ -275,17 +275,23 @@ export const Home = () => {
 
       </section>
 
-      {/* Services Section */}
-      <section className="py-24 bg-white">
-        <div className="container mx-auto px-4">
+      {/* Services Section - Glassmorphism Design */}
+      <section className="py-24 bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
+        {/* Background decoration */}
+        <div className="absolute inset-0 opacity-30">
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-gold/20 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-gold/10 rounded-full blur-3xl"></div>
+        </div>
+        
+        <div className="container mx-auto px-4 relative z-10">
           <AnimatedSection className="text-center mb-16">
             <div className="inline-block mb-4" data-aos="zoom-in">
-              <span className="bg-gold text-black text-xs font-bold px-4 py-2 rounded-full uppercase tracking-wide">
+              <span className="bg-gold/20 backdrop-blur-sm text-gold text-xs font-bold px-4 py-2 rounded-full uppercase tracking-wide border border-gold/30">
                 ⚡ Instant Online Booking Available
               </span>
             </div>
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4" data-aos="fade-up">{t('services.title')}</h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto" data-aos="fade-up" data-aos-delay="100">
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4" data-aos="fade-up">{t('services.title')}</h2>
+            <p className="text-lg text-white/70 max-w-2xl mx-auto" data-aos="fade-up" data-aos-delay="100">
               {t('services.description')}
             </p>
           </AnimatedSection>
@@ -295,23 +301,22 @@ export const Home = () => {
               const Icon = iconMap[service.icon];
               return (
                 <div key={service.id} data-aos="fade-up" data-aos-delay={index * 100}>
-                  <Card className="border-2 border-gray-200 hover:border-gold transition-all-smooth group hover-lift h-full">
-                    <CardContent className="p-8">
-                      <div className="w-16 h-16 bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl flex items-center justify-center mb-6 group-hover:from-gold group-hover:to-yellow-500 transition-all-smooth shadow-lg">
-                        <Icon className="w-8 h-8 text-gold group-hover:text-black transition-colors duration-200" />
-                      </div>
-                      <h3 className="text-2xl font-semibold text-gray-900 mb-3">{service.title}</h3>
-                      <p className="text-gray-600 mb-6 text-sm leading-relaxed">{service.description}</p>
-                      <ul className="space-y-3">
-                        {service.features.map((feature, idx) => (
-                          <li key={idx} className="flex items-center text-sm text-gray-700">
-                            <Check className="w-4 h-4 text-gold mr-3 flex-shrink-0" />
-                            {feature}
-                          </li>
-                        ))}
-                      </ul>
-                    </CardContent>
-                  </Card>
+                  {/* Glassmorphism Card */}
+                  <div className="h-full bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8 transition-all duration-300 hover:bg-white/10 hover:border-gold/30 hover:shadow-[0_0_30px_rgba(212,175,55,0.15)] group hover:-translate-y-1">
+                    <div className="w-16 h-16 bg-gradient-to-br from-gold/20 to-gold/5 backdrop-blur-sm rounded-xl flex items-center justify-center mb-6 group-hover:from-gold group-hover:to-yellow-500 transition-all duration-300 border border-gold/20 group-hover:border-gold">
+                      <Icon className="w-8 h-8 text-gold group-hover:text-black transition-colors duration-200" />
+                    </div>
+                    <h3 className="text-2xl font-semibold text-white mb-3">{service.title}</h3>
+                    <p className="text-white/60 mb-6 text-sm leading-relaxed">{service.description}</p>
+                    <ul className="space-y-3">
+                      {service.features.map((feature, idx) => (
+                        <li key={idx} className="flex items-center text-sm text-white/70">
+                          <Check className="w-4 h-4 text-gold mr-3 flex-shrink-0" />
+                          {feature}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 </div>
               );
             })}
