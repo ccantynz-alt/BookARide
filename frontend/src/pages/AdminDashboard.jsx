@@ -2005,12 +2005,18 @@ export const AdminDashboard = () => {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="cash">Cash</SelectItem>
-                      <SelectItem value="card">Card (Paid)</SelectItem>
-                      <SelectItem value="pay-on-pickup">Pay on Pickup</SelectItem>
-                      <SelectItem value="bank-transfer">Bank Transfer</SelectItem>
+                      <SelectItem value="stripe">💳 Stripe - Send Payment Link</SelectItem>
+                      <SelectItem value="paypal">🅿️ PayPal - Send Payment Link</SelectItem>
+                      <SelectItem value="pay-on-pickup">💵 Pay on Pickup (Cash)</SelectItem>
+                      <SelectItem value="card">✅ Card (Already Paid)</SelectItem>
+                      <SelectItem value="bank-transfer">🏦 Bank Transfer</SelectItem>
                     </SelectContent>
                   </Select>
+                  {(newBooking.paymentMethod === 'stripe' || newBooking.paymentMethod === 'paypal') && (
+                    <p className="text-xs text-gold mt-1">
+                      A payment link will be sent to the customer's email after booking is created.
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
