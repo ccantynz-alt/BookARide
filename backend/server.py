@@ -3277,7 +3277,8 @@ def generate_confirmation_email_html(booking: dict) -> str:
     return_date = booking.get('returnDate', '')
     return_time = booking.get('returnTime', '')
     
-    if has_return and return_date:
+    # Also check if returnDate exists (fallback for legacy bookings where bookReturn might not be set)
+    if (has_return or return_date) and return_date:
         # Format return date
         formatted_return_date = format_date_ddmmyyyy(return_date)
         
