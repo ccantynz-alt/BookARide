@@ -4849,14 +4849,21 @@ If you didn't request this, please call us at 027-246-0201.
 
 To rebook: bookaride.co.nz"""
     
+    formatted_phone = format_nz_phone(to_phone)
+    if not formatted_phone:
+        logger.warning("No phone number for cancellation SMS")
+        return
+    
+    logger.info(f"📱 Sending cancellation SMS to: {formatted_phone}")
+    
     client = Client(account_sid, auth_token)
     message = client.messages.create(
         body=sms_body,
         from_=twilio_phone,
-        to=to_phone
+        to=formatted_phone
     )
     
-    logger.info(f"Cancellation SMS sent to {to_phone} - SID: {message.sid}")
+    logger.info(f"✅ Cancellation SMS sent to {formatted_phone} - SID: {message.sid}")
 
 @api_router.delete("/bookings/bulk-delete")
 async def bulk_delete(booking_ids: List[str], send_notifications: bool = False):
