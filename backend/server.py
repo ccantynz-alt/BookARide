@@ -4154,6 +4154,278 @@ def generate_paypal_payment_link(booking: dict) -> str:
         logger.error(f"Error generating PayPal payment link: {str(e)}")
         return None
 
+
+# ============================================
+# AFTERPAY DIRECT API INTEGRATION
+# ============================================
+
+class AfterpayCheckoutRequest(BaseModel):
+    booking_id: str
+    redirect_confirm_url: str
+    redirect_cancel_url: str
+
+class AfterpayCheckoutResponse(BaseModel):
+    token: str
+    redirect_url: str
+    expires: str
+
+@api_router.post("/afterpay/create-checkout")
+async def create_afterpay_checkout(request: AfterpayCheckoutRequest):
+    """Create an Afterpay checkout session"""
+    try:
+        # Get Afterpay credentials
+        merchant_id = os.environ.get('AFTERPAY_MERCHANT_ID')
+        secret_key = os.environ.get('AFTERPAY_SECRET_KEY')
+        afterpay_env = os.environ.get('AFTERPAY_ENV', 'sandbox')
+        
+        if not merchant_id or not secret_key:
+            raise HTTPException(status_code=500, detail="Afterpay credentials not configured")
+        
+        # Get booking from database
+        booking = await db.bookings.find_one({"id": request.booking_id}, {"_id": 0})
+        if not booking:
+            raise HTTPException(status_code=404, detail="Booking not found")
+        
+        amount = float(booking.get('totalPrice', 0))
+        if amount <= 0:
+            raise HTTPException(status_code=400, detail="Invalid booking amount")
+        
+        # Afterpay API endpoint
+        api_url = "https://api-sandbox.afterpay.com" if afterpay_env == "sandbox" else "https://api.afterpay.com"
+        
+        # Create Afterpay checkout payload
+        checkout_payload = {
+            "amount": {
+                "amount": f"{amount:.2f}",
+                "currency": "NZD"
+            },
+            "consumer": {
+                "givenNames": booking.get('name', 'Customer').split()[0] if booking.get('name') else "Customer",
+                "surname": " ".join(booking.get('name', 'Guest').split()[1:]) if len(booking.get('name', '').split()) > 1 else "Guest",
+                "email": booking.get('email', ''),
+                "phoneNumber": booking.get('phone', '')
+            },
+            "billing": {
+                "name": booking.get('name', ''),
+                "line1": booking.get('pickupAddress', ''),
+                "postcode": "0000",
+                "countryCode": "NZ"
+            },
+            "shipping": {
+                "name": booking.get('name', ''),
+                "line1": booking.get('dropoffAddress', ''),
+                "postcode": "0000",
+                "countryCode": "NZ"
+            },
+            "merchant": {
+                "redirectConfirmUrl": request.redirect_confirm_url,
+                "redirectCancelUrl": request.redirect_cancel_url
+            },
+            "merchantReference": booking.get('id', '')[:20],
+            "taxAmount": {
+                "amount": "0.00",
+                "currency": "NZD"
+            },
+            "shippingAmount": {
+                "amount": "0.00",
+                "currency": "NZD"
+            },
+            "items": [
+                {
+                    "name": f"Airport Transfer - {booking.get('serviceType', 'Shuttle')}",
+                    "sku": booking.get('id', '')[:10],
+                    "quantity": 1,
+                    "price": {
+                        "amount": f"{amount:.2f}",
+                        "currency": "NZD"
+                    }
+                }
+            ]
+        }
+        
+        # Make request to Afterpay API
+        import base64
+        auth_string = f"{merchant_id}:{secret_key}"
+        auth_bytes = base64.b64encode(auth_string.encode()).decode()
+        
+        headers = {
+            "Authorization": f"Basic {auth_bytes}",
+            "Content-Type": "application/json",
+            "User-Agent": "BookaRide/1.0 (NZ; https://bookaride.co.nz)"
+        }
+        
+        response = requests.post(
+            f"{api_url}/v2/checkouts",
+            json=checkout_payload,
+            headers=headers
+        )
+        
+        if response.status_code != 201 and response.status_code != 200:
+            logger.error(f"Afterpay checkout error: {response.status_code} - {response.text}")
+            raise HTTPException(status_code=500, detail=f"Afterpay checkout failed: {response.text}")
+        
+        checkout_data = response.json()
+        token = checkout_data.get('token')
+        
+        # Redirect URL for Afterpay
+        redirect_url = f"https://portal.sandbox.afterpay.com/nz/checkout/?token={token}" if afterpay_env == "sandbox" else f"https://portal.afterpay.com/nz/checkout/?token={token}"
+        
+        # Store Afterpay transaction
+        await db.afterpay_transactions.insert_one({
+            "token": token,
+            "booking_id": request.booking_id,
+            "amount": amount,
+            "currency": "NZD",
+            "status": "pending",
+            "created_at": datetime.now(timezone.utc)
+        })
+        
+        logger.info(f"✅ Afterpay checkout created: token={token}, booking={request.booking_id}")
+        
+        return {
+            "token": token,
+            "redirect_url": redirect_url,
+            "expires": checkout_data.get('expires', '')
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error creating Afterpay checkout: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error creating Afterpay checkout: {str(e)}")
+
+
+@api_router.post("/afterpay/capture")
+async def capture_afterpay_payment(token: str, order_id: str = None):
+    """Capture an Afterpay payment after customer approval"""
+    try:
+        merchant_id = os.environ.get('AFTERPAY_MERCHANT_ID')
+        secret_key = os.environ.get('AFTERPAY_SECRET_KEY')
+        afterpay_env = os.environ.get('AFTERPAY_ENV', 'sandbox')
+        
+        if not merchant_id or not secret_key:
+            raise HTTPException(status_code=500, detail="Afterpay credentials not configured")
+        
+        api_url = "https://api-sandbox.afterpay.com" if afterpay_env == "sandbox" else "https://api.afterpay.com"
+        
+        import base64
+        auth_string = f"{merchant_id}:{secret_key}"
+        auth_bytes = base64.b64encode(auth_string.encode()).decode()
+        
+        headers = {
+            "Authorization": f"Basic {auth_bytes}",
+            "Content-Type": "application/json",
+            "User-Agent": "BookaRide/1.0 (NZ; https://bookaride.co.nz)"
+        }
+        
+        # Capture the payment
+        capture_payload = {
+            "token": token
+        }
+        
+        if order_id:
+            capture_payload["merchantReference"] = order_id
+        
+        response = requests.post(
+            f"{api_url}/v2/payments/capture",
+            json=capture_payload,
+            headers=headers
+        )
+        
+        if response.status_code != 201 and response.status_code != 200:
+            logger.error(f"Afterpay capture error: {response.status_code} - {response.text}")
+            raise HTTPException(status_code=500, detail=f"Afterpay capture failed: {response.text}")
+        
+        payment_data = response.json()
+        afterpay_order_id = payment_data.get('id')
+        status = payment_data.get('status')
+        
+        # Update transaction in database
+        transaction = await db.afterpay_transactions.find_one({"token": token})
+        if transaction:
+            await db.afterpay_transactions.update_one(
+                {"token": token},
+                {"$set": {
+                    "afterpay_order_id": afterpay_order_id,
+                    "status": status,
+                    "captured_at": datetime.now(timezone.utc),
+                    "payment_response": payment_data
+                }}
+            )
+            
+            # Update booking status
+            if status == "APPROVED":
+                await db.bookings.update_one(
+                    {"id": transaction['booking_id']},
+                    {"$set": {
+                        "paymentStatus": "paid",
+                        "paymentMethod": "afterpay",
+                        "afterpayOrderId": afterpay_order_id,
+                        "paidAt": datetime.now(timezone.utc).isoformat()
+                    }}
+                )
+                
+                logger.info(f"✅ Afterpay payment captured: order_id={afterpay_order_id}, booking={transaction['booking_id']}")
+        
+        return {
+            "order_id": afterpay_order_id,
+            "status": status,
+            "payment_data": payment_data
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error capturing Afterpay payment: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error capturing Afterpay payment: {str(e)}")
+
+
+@api_router.get("/afterpay/configuration")
+async def get_afterpay_configuration():
+    """Get Afterpay merchant configuration (limits, etc.)"""
+    try:
+        merchant_id = os.environ.get('AFTERPAY_MERCHANT_ID')
+        secret_key = os.environ.get('AFTERPAY_SECRET_KEY')
+        afterpay_env = os.environ.get('AFTERPAY_ENV', 'sandbox')
+        
+        if not merchant_id or not secret_key:
+            return {"enabled": False, "message": "Afterpay not configured"}
+        
+        api_url = "https://api-sandbox.afterpay.com" if afterpay_env == "sandbox" else "https://api.afterpay.com"
+        
+        import base64
+        auth_string = f"{merchant_id}:{secret_key}"
+        auth_bytes = base64.b64encode(auth_string.encode()).decode()
+        
+        headers = {
+            "Authorization": f"Basic {auth_bytes}",
+            "User-Agent": "BookaRide/1.0 (NZ; https://bookaride.co.nz)"
+        }
+        
+        response = requests.get(
+            f"{api_url}/v2/configuration",
+            headers=headers
+        )
+        
+        if response.status_code != 200:
+            logger.error(f"Afterpay config error: {response.status_code} - {response.text}")
+            return {"enabled": False, "message": "Could not fetch Afterpay configuration"}
+        
+        config_data = response.json()
+        
+        return {
+            "enabled": True,
+            "minimumAmount": config_data.get('minimumAmount', {}).get('amount', '1.00'),
+            "maximumAmount": config_data.get('maximumAmount', {}).get('amount', '2000.00'),
+            "currency": "NZD",
+            "environment": afterpay_env
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting Afterpay configuration: {str(e)}")
+        return {"enabled": False, "message": str(e)}
+
+
 async def send_payment_link_email(booking: dict, payment_link: str, payment_type: str):
     """Send payment link email to customer"""
     try:
