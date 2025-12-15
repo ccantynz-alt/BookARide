@@ -15,6 +15,7 @@ export const Header = () => {
     { path: '/cruise-transfers', label: 'Cruise' },
     { path: '/about', label: 'About' },
     { path: '/contact', label: 'Contact' },
+    { path: '/afterpay', label: 'Afterpay' },
     { path: '/book-now', label: 'Book Now' }
   ];
 
