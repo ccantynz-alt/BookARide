@@ -74,7 +74,7 @@ export const AdminDashboard = () => {
     date: '',
     time: '',
     passengers: '1',
-    paymentMethod: 'cash',
+    paymentMethod: 'pay-on-pickup',
     notes: '',
     flightArrivalNumber: '',
     flightArrivalTime: '',
@@ -1029,7 +1029,7 @@ export const AdminDashboard = () => {
         date: '',
         time: '',
         passengers: '1',
-        paymentMethod: 'cash',
+        paymentMethod: 'pay-on-pickup',
         notes: '',
         flightArrivalNumber: '',
         flightArrivalTime: '',
@@ -2412,7 +2412,7 @@ export const AdminDashboard = () => {
                     date: '',
                     time: '',
                     passengers: '1',
-                    paymentMethod: 'cash',
+                    paymentMethod: 'pay-on-pickup',
                     notes: ''
                   });
                   setBookingPricing({
