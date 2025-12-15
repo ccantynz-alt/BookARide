@@ -4673,6 +4673,80 @@ def add_contact_to_icloud(booking: dict):
         logger.error(f"Error adding contact to iCloud: {str(e)}")
         return False
 
+
+@api_router.post("/admin/sync-contacts-to-icloud")
+async def sync_all_contacts_to_icloud(current_admin: dict = Depends(get_current_admin)):
+    """Bulk sync all existing booking contacts to iCloud"""
+    try:
+        icloud_email = os.environ.get('ICLOUD_EMAIL')
+        icloud_password = os.environ.get('ICLOUD_APP_PASSWORD')
+        
+        if not icloud_email or not icloud_password:
+            raise HTTPException(status_code=400, detail="iCloud credentials not configured")
+        
+        # Get all bookings
+        bookings = await db.bookings.find({}, {"_id": 0}).to_list(None)
+        
+        if not bookings:
+            return {"message": "No bookings found", "synced": 0, "failed": 0}
+        
+        synced = 0
+        failed = 0
+        skipped = 0
+        synced_contacts = []
+        
+        # Track unique customers by phone/email to avoid duplicates
+        seen_customers = set()
+        
+        for booking in bookings:
+            # Skip if no contact info
+            phone = booking.get('phone', '').strip()
+            email = booking.get('email', '').strip()
+            name = booking.get('name', '').strip()
+            
+            if not phone and not email:
+                skipped += 1
+                continue
+            
+            # Create unique identifier for this customer
+            customer_key = f"{phone}_{email}".lower()
+            
+            if customer_key in seen_customers:
+                skipped += 1
+                continue
+            
+            seen_customers.add(customer_key)
+            
+            # Try to sync this contact
+            try:
+                success = add_contact_to_icloud(booking)
+                if success:
+                    synced += 1
+                    synced_contacts.append({"name": name, "phone": phone})
+                else:
+                    failed += 1
+            except Exception as e:
+                logger.error(f"Failed to sync contact {name}: {str(e)}")
+                failed += 1
+        
+        logger.info(f"📱 iCloud bulk sync complete: {synced} synced, {failed} failed, {skipped} skipped")
+        
+        return {
+            "message": f"Bulk sync complete",
+            "total_bookings": len(bookings),
+            "synced": synced,
+            "failed": failed,
+            "skipped": skipped,
+            "synced_contacts": synced_contacts[:20]  # Return first 20 for reference
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in bulk contact sync: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # Manual Booking Creation
 class ManualBooking(BaseModel):
     name: str
