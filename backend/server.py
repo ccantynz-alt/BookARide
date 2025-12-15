@@ -832,6 +832,26 @@ async def calculate_price(request: PriceCalculationRequest):
         # Calculate pricing with tiered rates - FLAT RATE per bracket
         # The rate is determined by which distance bracket the trip falls into
         # Then that rate is applied to the ENTIRE distance
+        
+        # ===========================================
+        # SPECIAL EVENT PRICING - MATAKANA COUNTRY PARK CONCERT
+        # ===========================================
+        matakana_keywords = ['matakana country park', 'leigh road', 'rd5/1151', '1151 leigh', 'matakana 0985']
+        hibiscus_coast_keywords = ['orewa', 'whangaparaoa', 'silverdale', 'red beach', 'stanmore bay', 'army bay', 'gulf harbour', 'manly', 'hibiscus coast', 'millwater', 'milldale']
+        
+        is_matakana_destination = any(keyword in request.dropoffAddress.lower() for keyword in matakana_keywords)
+        is_matakana_pickup = any(keyword in request.pickupAddress.lower() for keyword in matakana_keywords)
+        is_hibiscus_coast = any(keyword in request.pickupAddress.lower() for keyword in hibiscus_coast_keywords) or \
+                           any(keyword in request.dropoffAddress.lower() for keyword in hibiscus_coast_keywords)
+        
+        # Special minimum for Matakana Country Park concert
+        matakana_concert_minimum = 550.0
+        is_matakana_trip = is_matakana_destination or is_matakana_pickup
+        
+        if is_matakana_trip:
+            logger.info(f"🎵 CONCERT PRICING: Matakana Country Park trip detected. Minimum ${matakana_concert_minimum} applies.")
+        
+        # Standard tiered pricing
         if distance_km <= 15.0:
             rate_per_km = 12.00  # $12.00 per km for 0-15km
         elif distance_km <= 15.8:
