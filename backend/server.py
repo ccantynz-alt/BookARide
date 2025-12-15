@@ -837,8 +837,8 @@ async def calculate_price(request: PriceCalculationRequest):
         # SPECIAL EVENT PRICING - MATAKANA COUNTRY PARK CONCERT
         # Only applies to the specific concert venue, NOT all of Matakana
         # ===========================================
-        # Specific keywords for the concert venue ONLY
-        matakana_concert_keywords = ['matakana country park', 'matakana country club', 'leigh road, matakana', 'rd5/1151', '1151 leigh']
+        # Specific keywords for the concert venue ONLY (must be precise)
+        matakana_concert_keywords = ['matakana country park', 'matakana country club', 'rd5/1151', '1151 leigh road']
         hibiscus_coast_keywords = ['orewa', 'whangaparaoa', 'silverdale', 'red beach', 'stanmore bay', 'army bay', 'gulf harbour', 'manly', 'hibiscus coast', 'millwater', 'milldale', 'hatfields beach', 'waiwera']
         
         # Check if this is specifically the concert venue (not general Matakana)
