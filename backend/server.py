@@ -4126,6 +4126,7 @@ async def generate_stripe_payment_link(booking: dict) -> str:
             currency="nzd",
             success_url=success_url,
             cancel_url=cancel_url,
+            payment_methods=["card", "afterpay_clearpay"],  # Enable Afterpay/Clearpay
             metadata={
                 "booking_id": booking.get('id', ''),
                 "customer_email": booking.get('email', ''),
