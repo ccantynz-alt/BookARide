@@ -907,7 +907,7 @@ async def calculate_price(request: PriceCalculationRequest):
         
         # Apply minimum fee / special pricing
         # Special event: Matakana Country Park concert
-        if is_matakana_trip:
+        if is_concert_trip:
             if is_from_hibiscus_coast or is_to_hibiscus_coast:
                 # From/to Hibiscus Coast - flat $550 minimum (return)
                 if total_price < matakana_concert_base:
