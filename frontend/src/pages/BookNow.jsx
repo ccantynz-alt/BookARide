@@ -15,6 +15,8 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import CurrencyConverter from '../components/CurrencyConverter';
 import { CustomDatePicker, CustomTimePicker } from '../components/DateTimePicker';
 import { initAutocompleteWithFix } from '../utils/fixGoogleAutocomplete';
+import PriceComparison from '../components/PriceComparison';
+import BookingAddOns, { addOns } from '../components/BookingAddOns';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
