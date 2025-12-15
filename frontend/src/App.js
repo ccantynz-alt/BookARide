@@ -70,6 +70,7 @@ import BookarideVsHibiscusShuttles from './pages/seo/BookarideVsHibiscusShuttles
 import BestHibiscusCoastShuttle from './pages/seo/BestHibiscusCoastShuttle';
 import OrewaToAirportPage from './pages/seo/OrewaToAirportPage';
 import WhangaparoaAirportPage from './pages/seo/WhangaparoaAirportPage';
+import AfterpayPage from './pages/AfterpayPage';
 
 // Layout component with Header/Footer
 const MainLayout = () => (
