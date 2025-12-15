@@ -1259,7 +1259,7 @@ EMAIL_TRANSLATIONS = {
     }
 }
 
-def send_booking_confirmation_email(booking: dict):
+def send_booking_confirmation_email(booking: dict, include_payment_link: bool = True):
     """Send booking confirmation email via Mailgun or SMTP fallback"""
     # Try Mailgun first
     mailgun_success = send_via_mailgun(booking)
