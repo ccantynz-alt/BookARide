@@ -152,7 +152,7 @@ metadata:
 
 test_plan:
   current_focus:
-    - "All review request features tested and working"
+    - "Barbara Walsh booking bug fixes tested and verified"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
@@ -162,3 +162,5 @@ agent_communication:
     message: "✅ ALL REVIEW REQUEST FEATURES WORKING CORRECTLY: 1) Pricing calculation (Orewa to Airport ~$150 for 60km ✓, Short trip $100 minimum ✓), 2) Flight tracker (EK448 with live data ✓), 3) Driver assignment with email/SMS notifications ✓, 4) AI email auto-responder ✓, 5) Payment checkout creation ✓. Backend APIs are fully functional. Only minor issue was Stripe webhook test expecting signature (expected behavior). System is production-ready."
   - agent: "main"
     message: "🔧 Fixed Barbara Walsh booking bug: 1) Email template now checks both bookReturn AND returnDate (fallback for legacy bookings), 2) Update endpoint auto-syncs bookReturn when returnDate is set/cleared, 3) Added ratePerKm to pricing breakdown for transparency. Please test: pricing calculation with ratePerKm, email generation for return trips, booking update endpoint."
+  - agent: "testing"
+    message: "✅ BARBARA WALSH BUG FIXES VERIFIED: All 3 requested fixes working correctly: 1) Pricing calculation now includes ratePerKm field (Long trip: $2.47/km ✓, Short trip: $12.00/km ✓), 2) Booking update auto-syncs bookReturn when returnDate is set/cleared ✓, 3) Email generation handles legacy bookings with return trip details ✓. Backend logs confirm email sent successfully. Test success rate: 95.7% (22/23 passed, only Stripe webhook signature validation failed as expected)."
