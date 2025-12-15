@@ -3473,7 +3473,7 @@ def add_contact_to_icloud(booking: dict):
         pickup = booking.get('pickupAddress', '')
         dropoff = booking.get('dropoffAddress', '')
         date = booking.get('date', '')
-        note = f"BookaRide Customer\\nRef: {booking_ref}\\nDate: {date}\\n{pickup} → {dropoff}"
+        note = f"BookaRide Customer - Ref: {booking_ref} - Date: {date} - {pickup} to {dropoff}"
         vcard.add('note').value = note
         
         # Add organization
@@ -3485,17 +3485,19 @@ def add_contact_to_icloud(booking: dict):
         
         vcard_data = vcard.serialize()
         
-        # iCloud CardDAV endpoint
-        carddav_url = f"https://contacts.icloud.com/{icloud_email}/carddavhome/card/{contact_uid}.vcf"
+        # iCloud CardDAV endpoint - using discovered path
+        # Principal ID: 11909617397, Server: p115-contacts.icloud.com
+        carddav_url = f"https://p115-contacts.icloud.com:443/11909617397/carddavhome/card/{contact_uid}.vcf"
         
         # Upload to iCloud
         response = requests.put(
             carddav_url,
             auth=(icloud_email, icloud_password),
-            data=vcard_data,
+            data=vcard_data.encode('utf-8'),
             headers={
                 'Content-Type': 'text/vcard; charset=utf-8',
-            }
+            },
+            timeout=30
         )
         
         if response.status_code in [200, 201, 204]:
