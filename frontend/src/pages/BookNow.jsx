@@ -17,6 +17,9 @@ import { CustomDatePicker, CustomTimePicker } from '../components/DateTimePicker
 import { initAutocompleteWithFix } from '../utils/fixGoogleAutocomplete';
 import PriceComparison from '../components/PriceComparison';
 import BookingAddOns, { addOns } from '../components/BookingAddOns';
+import TrustBadges from '../components/TrustBadges';
+import GoogleReviewsWidget from '../components/GoogleReviewsWidget';
+import SocialProofCounter from '../components/SocialProofCounter';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
