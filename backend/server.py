@@ -1759,6 +1759,191 @@ async def track_flight(flight_number: str):
 
 
 # ============================================
+# AI EMAIL AUTO-RESPONDER
+# ============================================
+
+@api_router.post("/email/incoming")
+async def handle_incoming_email(request: Request):
+    """
+    Webhook endpoint for Mailgun incoming emails.
+    Automatically generates AI response and sends it back.
+    """
+    try:
+        # Parse the incoming email from Mailgun webhook
+        form_data = await request.form()
+        
+        sender = form_data.get('sender', '')
+        from_email = form_data.get('from', sender)
+        subject = form_data.get('subject', 'No Subject')
+        body_plain = form_data.get('body-plain', '')
+        body_html = form_data.get('body-html', '')
+        recipient = form_data.get('recipient', '')
+        
+        # Extract email address from "Name <email>" format
+        import re
+        email_match = re.search(r'[\w\.-]+@[\w\.-]+', from_email)
+        reply_to_email = email_match.group(0) if email_match else from_email
+        
+        # Extract sender name
+        name_match = re.match(r'^([^<]+)', from_email)
+        sender_name = name_match.group(1).strip() if name_match else "there"
+        
+        logger.info(f"📧 Incoming email from: {reply_to_email}, Subject: {subject}")
+        
+        # Don't reply to our own emails or no-reply addresses
+        if 'bookaride' in reply_to_email.lower() or 'noreply' in reply_to_email.lower() or 'no-reply' in reply_to_email.lower():
+            logger.info("Skipping auto-reply to system/no-reply email")
+            return {"status": "skipped", "reason": "system email"}
+        
+        # Use the plain text body, or extract from HTML if not available
+        email_content = body_plain or body_html
+        if not email_content:
+            logger.warning("Empty email body received")
+            return {"status": "skipped", "reason": "empty body"}
+        
+        # Generate AI response
+        from emergentintegrations.llm.openai import LlmChat, UserMessage
+        
+        email_system_prompt = """You are an AI email assistant for BookaRide NZ, a premium airport transfer service in Auckland, New Zealand.
+
+You are responding to customer emails automatically. Be warm, professional, and helpful.
+
+KEY INFORMATION ABOUT BOOKARIDE:
+- Airport shuttles to/from Auckland Airport, Hamilton Airport, and Whangarei
+- Services: Airport transfers, Hobbiton tours, Cruise terminal transfers, Wine tours
+- Payment: Credit/Debit cards, Afterpay (pay in 4), coming soon PayPal
+- Meet & Greet service available (driver with name sign at arrivals)
+- Child seats available on request
+- 24/7 service
+
+PRICING (approximate):
+- Auckland CBD to Airport: ~$65-85
+- North Shore to Airport: ~$75-95
+- Hibiscus Coast (Orewa, Whangaparaoa) to Airport: ~$90-120
+- Hamilton to Airport: ~$180-220
+- Fixed pricing by distance (no surge pricing)
+
+YOUR RESPONSE GUIDELINES:
+1. Keep responses concise but helpful (3-5 paragraphs max)
+2. Always direct them to bookaride.co.nz/book-now for instant pricing and booking
+3. If they're asking about a booking, tell them to include their booking reference
+4. Be friendly and professional
+5. Sign off as "BookaRide Team"
+6. DO NOT make up specific prices - always say "approximately" or direct to website
+7. If they have a complaint or complex issue, assure them a team member will follow up
+
+FORMAT:
+- Start with "Hi [Name]," or "Hi there," if name unknown
+- Keep paragraphs short
+- End with a call to action (usually to book online)
+- Sign: "Best regards,\nBookaRide Team"
+"""
+        
+        llm = LlmChat(
+            api_key="sk-emergent-1221fFe2cB790B632B",
+            session_id=str(uuid.uuid4()),
+            system_message=email_system_prompt
+        )
+        
+        user_prompt = f"""Please write a helpful email response to this customer inquiry.
+
+FROM: {sender_name}
+SUBJECT: {subject}
+MESSAGE:
+{email_content[:2000]}
+
+Write a professional, helpful response:"""
+        
+        user_msg = UserMessage(text=user_prompt)
+        ai_response = await llm.send_message(user_msg)
+        
+        # Send the AI-generated response via Mailgun
+        mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
+        mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
+        
+        if not mailgun_api_key or not mailgun_domain:
+            logger.error("Mailgun not configured for auto-reply")
+            return {"status": "error", "reason": "email service not configured"}
+        
+        # Prepare the reply
+        reply_subject = f"Re: {subject}" if not subject.startswith('Re:') else subject
+        
+        # Create HTML version
+        html_response = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #1a1a1a, #2d2d2d); padding: 20px; text-align: center;">
+                <h1 style="color: #D4AF37; margin: 0;">BookaRide NZ</h1>
+                <p style="color: #888; margin: 5px 0 0 0;">Airport Transfers & Tours</p>
+            </div>
+            <div style="padding: 30px; background: #fff;">
+                {ai_response.replace(chr(10), '<br>')}
+            </div>
+            <div style="background: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; color: #666;">
+                <p><strong>Book Online:</strong> <a href="https://bookaride.co.nz/book-now" style="color: #D4AF37;">bookaride.co.nz/book-now</a></p>
+                <p>Get instant pricing - just enter your pickup and dropoff!</p>
+                <hr style="border: none; border-top: 1px solid #ddd; margin: 15px 0;">
+                <p style="font-size: 10px; color: #999;">
+                    This is an automated response. For complex inquiries, our team will follow up within 24 hours.
+                </p>
+            </div>
+        </div>
+        """
+        
+        # Send via Mailgun
+        response = requests.post(
+            f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
+            auth=("api", mailgun_api_key),
+            data={
+                "from": f"BookaRide NZ <bookings@{mailgun_domain}>",
+                "to": reply_to_email,
+                "subject": reply_subject,
+                "text": ai_response,
+                "html": html_response,
+                "h:Reply-To": "info@bookaride.co.nz"
+            }
+        )
+        
+        if response.status_code == 200:
+            logger.info(f"✅ AI auto-reply sent to {reply_to_email}")
+            
+            # Store the email interaction for admin review
+            await db.email_logs.insert_one({
+                "id": str(uuid.uuid4()),
+                "from": reply_to_email,
+                "sender_name": sender_name,
+                "subject": subject,
+                "original_message": email_content[:5000],
+                "ai_response": ai_response,
+                "status": "sent",
+                "created_at": datetime.now(timezone.utc).isoformat()
+            })
+            
+            return {"status": "success", "message": "AI response sent"}
+        else:
+            logger.error(f"Failed to send auto-reply: {response.text}")
+            return {"status": "error", "reason": response.text}
+        
+    except Exception as e:
+        logger.error(f"Email auto-responder error: {str(e)}")
+        return {"status": "error", "reason": str(e)}
+
+
+@api_router.get("/admin/email-logs")
+async def get_email_logs(current_admin: dict = Depends(get_current_admin), limit: int = 50):
+    """Get recent AI email auto-responses for admin review"""
+    try:
+        logs = await db.email_logs.find(
+            {}, 
+            {"_id": 0}
+        ).sort("created_at", -1).limit(limit).to_list(limit)
+        
+        return {"logs": logs, "count": len(logs)}
+    except Exception as e:
+        logger.error(f"Error fetching email logs: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================
 # AI CHATBOT ENDPOINT
 # ============================================
 
