@@ -1372,6 +1372,7 @@ export const AdminDashboard = () => {
                             #{booking.referenceNumber || booking.id?.slice(0, 8).toUpperCase()}
                           </div>
                           <div className="text-sm text-gray-900">{formatDate(booking.date)}</div>
+                          <div className="text-xs font-medium text-blue-600">{getDayOfWeek(booking.date)}</div>
                           <div className="text-xs text-gray-500">{booking.time}</div>
                         </td>
                         <td className="p-4">
