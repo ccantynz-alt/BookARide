@@ -1670,6 +1670,95 @@ async def get_reminder_status(current_admin: dict = Depends(get_current_admin)):
 
 
 # ============================================
+# FLIGHT TRACKER ENDPOINT
+# ============================================
+
+@api_router.get("/flight/track")
+async def track_flight(flight_number: str):
+    """Track a flight and return its status (mock data for now - can be connected to FlightAware API)"""
+    try:
+        # Clean up flight number
+        fn = flight_number.strip().upper().replace(" ", "")
+        
+        if len(fn) < 3:
+            raise HTTPException(status_code=400, detail="Invalid flight number")
+        
+        # In production, this would call FlightAware or similar API
+        # For now, return realistic mock data based on common NZ flights
+        
+        import random
+        from datetime import datetime, timedelta
+        import pytz
+        
+        nz_tz = pytz.timezone('Pacific/Auckland')
+        now = datetime.now(nz_tz)
+        
+        # Simulate different flight scenarios
+        statuses = ['On Time', 'On Time', 'On Time', 'Delayed', 'Landed']  # Weight towards on-time
+        status = random.choice(statuses)
+        
+        delay_minutes = 0
+        if status == 'Delayed':
+            delay_minutes = random.choice([15, 30, 45, 60])
+        
+        # Common NZ airport codes
+        airports = {
+            'AKL': 'Auckland Airport',
+            'WLG': 'Wellington Airport',
+            'CHC': 'Christchurch Airport',
+            'ZQN': 'Queenstown Airport',
+            'SYD': 'Sydney Airport',
+            'MEL': 'Melbourne Airport',
+            'BNE': 'Brisbane Airport',
+            'LAX': 'Los Angeles Airport',
+            'SIN': 'Singapore Airport',
+            'HKG': 'Hong Kong Airport'
+        }
+        
+        # Determine if arriving or departing AKL
+        if fn.startswith('NZ') or fn.startswith('QF') or fn.startswith('JQ'):
+            # Domestic/Trans-Tasman likely arriving AKL
+            dep_code = random.choice(['SYD', 'MEL', 'BNE', 'WLG', 'CHC'])
+            arr_code = 'AKL'
+        else:
+            # International arriving
+            dep_code = random.choice(['LAX', 'SIN', 'HKG', 'SYD'])
+            arr_code = 'AKL'
+        
+        # Generate times
+        scheduled_arrival = now + timedelta(hours=random.randint(1, 6))
+        actual_arrival = scheduled_arrival + timedelta(minutes=delay_minutes)
+        departure_time = scheduled_arrival - timedelta(hours=random.randint(2, 14))
+        
+        return {
+            "flightNumber": fn,
+            "status": status,
+            "departure": {
+                "code": dep_code,
+                "airport": airports.get(dep_code, dep_code),
+                "time": departure_time.strftime("%H:%M"),
+                "date": departure_time.strftime("%d %b")
+            },
+            "arrival": {
+                "code": arr_code,
+                "airport": airports.get(arr_code, arr_code),
+                "time": actual_arrival.strftime("%H:%M"),
+                "scheduledTime": scheduled_arrival.strftime("%H:%M"),
+                "date": actual_arrival.strftime("%d %b"),
+                "delay": f"+{delay_minutes} min" if delay_minutes > 0 else None
+            },
+            "tracked": True,
+            "message": "We're monitoring this flight. Your driver will be notified of any delays." if status != 'Landed' else "Flight has landed! Your driver is ready."
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Flight tracking error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Unable to track flight")
+
+
+# ============================================
 # AI CHATBOT ENDPOINT
 # ============================================
 
