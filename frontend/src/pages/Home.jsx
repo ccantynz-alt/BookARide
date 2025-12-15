@@ -588,9 +588,6 @@ export const Home = () => {
 
       {/* Testimonials Carousel */}
       <TestimonialsCarousel />
-
-      {/* Dark Mode Toggle */}
-      <DarkModeToggle />
     </div>
   );
 };
