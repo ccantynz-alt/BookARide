@@ -54,16 +54,16 @@ export const Home = () => {
           {/* Dark gradient on left for text readability */}
           <div className="absolute inset-0 bg-gradient-to-r from-black via-black/95 to-transparent z-10" />
           
-          {/* Happy travelers image - positioned on right */}
+          {/* Professional airport image - positioned on right */}
           <div className="absolute right-0 top-0 w-full lg:w-3/5 h-full">
             <img 
-              src="https://images.pexels.com/photos/11668205/pexels-photo-11668205.jpeg?auto=compress&cs=tinysrgb&w=1920" 
-              alt="Happy travelers smiling at Auckland airport - Book A Ride premium shuttle service" 
+              src="https://images.unsplash.com/photo-1522199873717-bc67b1a5e32b?auto=compress&cs=tinysrgb&w=1920&q=80" 
+              alt="Professional traveler at Auckland airport departure board - Book A Ride premium shuttle service" 
               className="w-full h-full object-cover"
               style={{ objectPosition: 'center center' }}
             />
             {/* Gradient fade from left */}
-            <div className="absolute inset-0 bg-gradient-to-r from-black via-black/50 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-r from-black via-black/40 to-transparent" />
           </div>
           
           {/* Subtle gold accent */}
