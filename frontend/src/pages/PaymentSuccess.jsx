@@ -13,15 +13,50 @@ export const PaymentSuccess = () => {
   const [paymentStatus, setPaymentStatus] = useState('checking');
   const [paymentDetails, setPaymentDetails] = useState(null);
   const sessionId = searchParams.get('session_id');
+  const orderToken = searchParams.get('orderToken');
+  const paymentMethod = searchParams.get('method');
+  const status = searchParams.get('status');
 
   useEffect(() => {
+    // Handle Afterpay callback
+    if (paymentMethod === 'afterpay' && orderToken) {
+      handleAfterpayCallback();
+      return;
+    }
+    
+    // Handle Stripe callback
     if (!sessionId) {
       navigate('/book-now');
       return;
     }
 
     pollPaymentStatus();
-  }, [sessionId]);
+  }, [sessionId, orderToken, paymentMethod]);
+
+  const handleAfterpayCallback = async () => {
+    try {
+      if (status === 'CANCELLED') {
+        setPaymentStatus('cancelled');
+        return;
+      }
+      
+      // Capture the Afterpay payment
+      const response = await axios.post(`${API}/afterpay/capture?token=${orderToken}`);
+      
+      if (response.data.status === 'APPROVED') {
+        setPaymentStatus('success');
+        setPaymentDetails({
+          payment_method: 'Afterpay',
+          order_id: response.data.order_id
+        });
+      } else {
+        setPaymentStatus('error');
+      }
+    } catch (error) {
+      console.error('Error capturing Afterpay payment:', error);
+      setPaymentStatus('error');
+    }
+  };
 
   const pollPaymentStatus = async (attempts = 0) => {
     const maxAttempts = 5;
