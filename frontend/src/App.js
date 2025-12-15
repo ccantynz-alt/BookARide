@@ -159,6 +159,8 @@ function App() {
     { path: "hotels", element: <HotelsDirectory /> },
     { path: "hotels/:slug", element: <HotelPage /> },
     { path: "payment-success", element: <PaymentSuccess /> },
+    // Payment Pages
+    { path: "afterpay", element: <AfterpayPage /> },
     // Legal Pages
     { path: "terms-and-conditions", element: <TermsAndConditions /> },
     { path: "website-usage-policy", element: <WebsiteUsagePolicy /> },
