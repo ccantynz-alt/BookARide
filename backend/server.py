@@ -2400,10 +2400,17 @@ async def send_booking_notification_to_admin(booking: dict):
 async def send_driver_notification(booking: dict, driver: dict):
     """Send email and SMS notification to driver about new booking assignment"""
     try:
+        # Log incoming data for debugging
+        logger.info(f"📧 send_driver_notification called")
+        logger.info(f"📧 Booking data: name={booking.get('name')}, phone={booking.get('phone')}, pickup={booking.get('pickupAddress')}, date={booking.get('date')}, time={booking.get('time')}")
+        logger.info(f"📧 Driver data: name={driver.get('name')}, email={driver.get('email')}")
+        
         # Format date and get references
         formatted_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
         booking_ref = get_booking_reference(booking)
         full_booking_id = get_full_booking_reference(booking)
+        
+        logger.info(f"📧 Formatted: date={formatted_date}, ref={booking_ref}")
         
         # Send Email to Driver
         mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
