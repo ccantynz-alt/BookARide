@@ -809,8 +809,13 @@ export const BookNow = () => {
                         <div className="space-y-4">
                           <div className="text-center py-6">
                             <p className="text-gray-600 mb-2">Your Quote</p>
-                            <span className="text-5xl font-bold text-gold">${pricing.totalPrice.toFixed(2)}</span>
+                            <span className="text-5xl font-bold text-gold">${finalTotal.toFixed(2)}</span>
                             <p className="text-gray-500 text-sm mt-2">NZD - Fixed Price, No Hidden Fees</p>
+                            {addOnsTotal > 0 && (
+                              <p className="text-xs text-gold mt-1">
+                                (Base: ${pricing.totalPrice.toFixed(2)} + Add-ons: ${addOnsTotal.toFixed(2)})
+                              </p>
+                            )}
                           </div>
                           
                           <div className="bg-gray-50 rounded-lg p-4 text-center">
@@ -819,10 +824,25 @@ export const BookNow = () => {
                               {formData.bookReturn && ' • Round trip (both ways)'}
                             </p>
                           </div>
+
+                          {/* Price Comparison - Show savings vs Uber/Taxi */}
+                          <PriceComparison 
+                            bookaridePrice={finalTotal} 
+                            distance={pricing.distance} 
+                          />
+
+                          {/* Booking Add-ons */}
+                          <div className="pt-4 border-t border-gray-200">
+                            <BookingAddOns
+                              selectedAddOns={selectedAddOns}
+                              onAddOnChange={setSelectedAddOns}
+                              showAll={false}
+                            />
+                          </div>
                           
                           {/* Currency Converter */}
                           <div className="mt-6">
-                            <CurrencyConverter nzdAmount={pricing.totalPrice} />
+                            <CurrencyConverter nzdAmount={finalTotal} />
                           </div>
                         </div>
                       ) : (
