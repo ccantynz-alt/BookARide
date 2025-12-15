@@ -710,6 +710,158 @@ class BookaRideBackendTester:
         except Exception as e:
             self.log_result("Payment Checkout Test", False, f"Checkout creation error: {str(e)}")
             return False
+
+    def test_booking_update_return_trip_sync(self):
+        """Test booking update with return trip sync (Barbara Walsh bug fix)"""
+        try:
+            # First get an existing booking ID
+            response = self.session.get(f"{BACKEND_URL}/bookings", timeout=10)
+            
+            if response.status_code != 200:
+                self.log_result("Booking Update: Return Trip Sync", False, "Could not fetch bookings list")
+                return False
+            
+            bookings = response.json()
+            if not bookings:
+                self.log_result("Booking Update: Return Trip Sync", False, "No existing bookings found")
+                return False
+            
+            booking_id = bookings[0].get('id')
+            
+            # Test 1: Set returnDate - should auto-set bookReturn to true
+            update_data = {
+                "returnDate": "2025-12-25"
+            }
+            
+            update_response = self.session.patch(f"{BACKEND_URL}/bookings/{booking_id}", json=update_data, timeout=10)
+            
+            if update_response.status_code != 200:
+                self.log_result("Booking Update: Return Trip Sync", False, f"Failed to update booking with returnDate: {update_response.status_code} - {update_response.text}")
+                return False
+            
+            # Verify the booking was updated correctly
+            get_response = self.session.get(f"{BACKEND_URL}/bookings", timeout=10)
+            if get_response.status_code == 200:
+                updated_bookings = get_response.json()
+                updated_booking = next((b for b in updated_bookings if b.get('id') == booking_id), None)
+                
+                if updated_booking:
+                    book_return = updated_booking.get('bookReturn')
+                    return_date = updated_booking.get('returnDate')
+                    
+                    if book_return is True and return_date == "2025-12-25":
+                        self.log_result("Booking Update: Return Trip Sync (Set)", True, f"bookReturn auto-synced to true when returnDate set to {return_date}")
+                    else:
+                        self.log_result("Booking Update: Return Trip Sync (Set)", False, f"bookReturn not synced correctly: bookReturn={book_return}, returnDate={return_date}")
+                        return False
+                else:
+                    self.log_result("Booking Update: Return Trip Sync (Set)", False, "Could not find updated booking")
+                    return False
+            
+            # Test 2: Clear returnDate - should auto-set bookReturn to false
+            clear_data = {
+                "returnDate": ""
+            }
+            
+            clear_response = self.session.patch(f"{BACKEND_URL}/bookings/{booking_id}", json=clear_data, timeout=10)
+            
+            if clear_response.status_code != 200:
+                self.log_result("Booking Update: Return Trip Sync", False, f"Failed to clear returnDate: {clear_response.status_code} - {clear_response.text}")
+                return False
+            
+            # Verify the booking was cleared correctly
+            get_response2 = self.session.get(f"{BACKEND_URL}/bookings", timeout=10)
+            if get_response2.status_code == 200:
+                cleared_bookings = get_response2.json()
+                cleared_booking = next((b for b in cleared_bookings if b.get('id') == booking_id), None)
+                
+                if cleared_booking:
+                    book_return = cleared_booking.get('bookReturn')
+                    return_date = cleared_booking.get('returnDate')
+                    
+                    if book_return is False and (return_date == "" or return_date is None):
+                        self.log_result("Booking Update: Return Trip Sync (Clear)", True, f"bookReturn auto-synced to false when returnDate cleared")
+                        return True
+                    else:
+                        self.log_result("Booking Update: Return Trip Sync (Clear)", False, f"bookReturn not synced correctly on clear: bookReturn={book_return}, returnDate={return_date}")
+                        return False
+                else:
+                    self.log_result("Booking Update: Return Trip Sync (Clear)", False, "Could not find cleared booking")
+                    return False
+            
+            return True
+            
+        except Exception as e:
+            self.log_result("Booking Update: Return Trip Sync", False, f"Booking update error: {str(e)}")
+            return False
+
+    def test_email_generation_return_trips(self):
+        """Test email generation for return trips (Barbara Walsh bug fix)"""
+        try:
+            # Create a manual booking with legacy bug scenario (bookReturn: false but returnDate set)
+            booking_data = {
+                "serviceType": "airport-shuttle",
+                "pickupAddress": "Auckland CBD, Auckland",
+                "dropoffAddress": "Auckland Airport, Auckland",
+                "date": "2025-12-25",
+                "time": "10:00",
+                "passengers": "2",
+                "name": "Barbara Walsh",
+                "email": "barbara.walsh@test.com",
+                "phone": "+64211234567",
+                "bookReturn": False,  # Legacy bug: false but has return details
+                "returnDate": "2025-12-25",
+                "returnTime": "15:00",
+                "pricing": {"totalPrice": 150.00}
+            }
+            
+            # Check if manual booking endpoint exists
+            manual_response = self.session.post(f"{BACKEND_URL}/bookings/manual", json=booking_data, timeout=10)
+            
+            booking_id = None
+            if manual_response.status_code == 200:
+                booking_id = manual_response.json().get('id')
+                self.log_result("Email Generation: Manual Booking", True, f"Manual booking created: {booking_id}")
+            elif manual_response.status_code == 404:
+                # Manual endpoint doesn't exist, use regular booking endpoint
+                regular_response = self.session.post(f"{BACKEND_URL}/bookings", json=booking_data, timeout=10)
+                if regular_response.status_code == 200:
+                    booking_id = regular_response.json().get('id')
+                    self.log_result("Email Generation: Regular Booking", True, f"Regular booking created for email test: {booking_id}")
+                else:
+                    self.log_result("Email Generation: Return Trips", False, f"Could not create test booking: {regular_response.status_code}")
+                    return False
+            else:
+                self.log_result("Email Generation: Return Trips", False, f"Manual booking failed: {manual_response.status_code} - {manual_response.text}")
+                return False
+            
+            if not booking_id:
+                self.log_result("Email Generation: Return Trips", False, "No booking ID obtained")
+                return False
+            
+            # Test resend confirmation email
+            resend_response = self.session.post(f"{BACKEND_URL}/bookings/{booking_id}/resend-confirmation", timeout=15)
+            
+            if resend_response.status_code == 200:
+                data = resend_response.json()
+                message = data.get('message', '')
+                
+                if 'sent' in message.lower() or 'success' in message.lower():
+                    self.log_result("Email Generation: Return Trips", True, f"Confirmation email resent successfully: {message}")
+                    return True
+                else:
+                    self.log_result("Email Generation: Return Trips", False, f"Unexpected resend response: {message}")
+                    return False
+            elif resend_response.status_code == 404:
+                self.log_result("Email Generation: Return Trips", False, "Resend confirmation endpoint not found")
+                return False
+            else:
+                self.log_result("Email Generation: Return Trips", False, f"Resend confirmation failed: {resend_response.status_code} - {resend_response.text}")
+                return False
+                
+        except Exception as e:
+            self.log_result("Email Generation: Return Trips", False, f"Email generation test error: {str(e)}")
+            return False
     
     def run_comprehensive_test(self):
         """Run all tests in sequence"""
