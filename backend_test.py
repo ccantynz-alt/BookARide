@@ -398,6 +398,250 @@ class BookaRideBackendTester:
         except Exception as e:
             self.log_result("Password Reset Confirm", False, f"Password reset confirm error: {str(e)}")
             return False
+
+    def test_pricing_calculation_orewa_to_airport(self):
+        """Test pricing calculation for Orewa to Auckland Airport (~60km, should be ~$150)"""
+        try:
+            price_request = {
+                "serviceType": "airport-shuttle",
+                "pickupAddress": "Orewa, Auckland, New Zealand",
+                "dropoffAddress": "Auckland Airport, Auckland, New Zealand",
+                "passengers": 1,
+                "vipAirportPickup": False,
+                "oversizedLuggage": False
+            }
+            
+            response = self.session.post(f"{BACKEND_URL}/calculate-price", json=price_request, timeout=15)
+            
+            if response.status_code == 200:
+                data = response.json()
+                total_price = data.get('totalPrice', 0)
+                distance = data.get('distance', 0)
+                
+                # Check if distance is around 60km and price around $150
+                if 50 <= distance <= 70 and 120 <= total_price <= 180:
+                    self.log_result("Pricing: Orewa to Airport", True, f"Correct pricing: ${total_price} for {distance}km (expected ~$150 for ~60km)")
+                    return True
+                else:
+                    self.log_result("Pricing: Orewa to Airport", False, f"Unexpected pricing: ${total_price} for {distance}km (expected ~$150 for ~60km)")
+                    return False
+            else:
+                self.log_result("Pricing: Orewa to Airport", False, f"Price calculation failed with status {response.status_code}", response.text)
+                return False
+        except Exception as e:
+            self.log_result("Pricing: Orewa to Airport", False, f"Price calculation error: {str(e)}")
+            return False
+
+    def test_pricing_calculation_short_trip(self):
+        """Test pricing calculation for short trip under 15km (should apply $100 minimum)"""
+        try:
+            price_request = {
+                "serviceType": "airport-shuttle",
+                "pickupAddress": "Auckland CBD, Auckland, New Zealand",
+                "dropoffAddress": "Parnell, Auckland, New Zealand",
+                "passengers": 1,
+                "vipAirportPickup": False,
+                "oversizedLuggage": False
+            }
+            
+            response = self.session.post(f"{BACKEND_URL}/calculate-price", json=price_request, timeout=15)
+            
+            if response.status_code == 200:
+                data = response.json()
+                total_price = data.get('totalPrice', 0)
+                distance = data.get('distance', 0)
+                
+                # Check if minimum $100 is applied for short trips
+                if distance < 15 and total_price >= 100:
+                    self.log_result("Pricing: Short Trip Minimum", True, f"Minimum pricing applied: ${total_price} for {distance}km (minimum $100)")
+                    return True
+                elif distance >= 15:
+                    self.log_result("Pricing: Short Trip Minimum", True, f"Trip longer than expected: ${total_price} for {distance}km (not a short trip)")
+                    return True
+                else:
+                    self.log_result("Pricing: Short Trip Minimum", False, f"Minimum not applied: ${total_price} for {distance}km (should be minimum $100)")
+                    return False
+            else:
+                self.log_result("Pricing: Short Trip Minimum", False, f"Price calculation failed with status {response.status_code}", response.text)
+                return False
+        except Exception as e:
+            self.log_result("Pricing: Short Trip Minimum", False, f"Price calculation error: {str(e)}")
+            return False
+
+    def test_flight_tracker(self):
+        """Test flight tracker with EK448"""
+        try:
+            response = self.session.get(f"{BACKEND_URL}/flight/track?flight_number=EK448", timeout=15)
+            
+            if response.status_code == 200:
+                data = response.json()
+                flight_number = data.get('flightNumber', '')
+                live = data.get('live', False)
+                status = data.get('status', '')
+                
+                if flight_number == 'EK448' and live and status:
+                    self.log_result("Flight Tracker", True, f"Flight tracking working: {flight_number}, Status: {status}, Live: {live}")
+                    return True
+                else:
+                    self.log_result("Flight Tracker", False, f"Incomplete flight data: Flight: {flight_number}, Live: {live}, Status: {status}")
+                    return False
+            else:
+                self.log_result("Flight Tracker", False, f"Flight tracking failed with status {response.status_code}", response.text)
+                return False
+        except Exception as e:
+            self.log_result("Flight Tracker", False, f"Flight tracking error: {str(e)}")
+            return False
+
+    def test_ai_email_auto_responder(self):
+        """Test AI email auto-responder endpoint"""
+        try:
+            # Simulate Mailgun webhook form data
+            form_data = {
+                'sender': 'test@customer.com',
+                'from': 'Test Customer <test@customer.com>',
+                'subject': 'Price question',
+                'body-plain': 'How much from Auckland CBD to airport?',
+                'recipient': 'info@bookaride.co.nz'
+            }
+            
+            response = self.session.post(f"{BACKEND_URL}/email/incoming", data=form_data, timeout=20)
+            
+            if response.status_code == 200:
+                data = response.json()
+                status = data.get('status', '')
+                message = data.get('message', '')
+                
+                if status == 'success' and 'AI response sent' in message:
+                    self.log_result("AI Email Auto-Responder", True, f"AI auto-responder working: {message}")
+                    return True
+                else:
+                    self.log_result("AI Email Auto-Responder", False, f"Unexpected response: Status: {status}, Message: {message}")
+                    return False
+            else:
+                self.log_result("AI Email Auto-Responder", False, f"AI auto-responder failed with status {response.status_code}", response.text)
+                return False
+        except Exception as e:
+            self.log_result("AI Email Auto-Responder", False, f"AI auto-responder error: {str(e)}")
+            return False
+
+    def test_driver_assignment_flow(self):
+        """Test driver assignment with notifications"""
+        try:
+            # First, create a test booking
+            booking_data = {
+                "serviceType": "airport-shuttle",
+                "pickupAddress": "Auckland CBD, Auckland",
+                "dropoffAddress": "Auckland Airport, Auckland",
+                "date": "2025-12-20",
+                "time": "10:00",
+                "passengers": "1",
+                "name": "Test Customer",
+                "email": "test@customer.com",
+                "phone": "+64211234567",
+                "pricing": {"totalPrice": 85.00}
+            }
+            
+            booking_response = self.session.post(f"{BACKEND_URL}/bookings", json=booking_data, timeout=10)
+            
+            if booking_response.status_code != 200:
+                self.log_result("Driver Assignment Flow", False, "Could not create test booking for driver assignment")
+                return False
+            
+            booking_id = booking_response.json().get('id')
+            
+            # Get available drivers
+            drivers_response = self.session.get(f"{BACKEND_URL}/drivers", timeout=10)
+            
+            if drivers_response.status_code != 200:
+                self.log_result("Driver Assignment Flow", False, "Could not fetch drivers list")
+                return False
+            
+            drivers_data = drivers_response.json()
+            drivers = drivers_data.get('drivers', [])
+            
+            if not drivers:
+                self.log_result("Driver Assignment Flow", False, "No drivers available for assignment test")
+                return False
+            
+            # Use the first available driver
+            driver_id = drivers[0].get('id')
+            driver_name = drivers[0].get('name', 'Unknown')
+            
+            # Assign driver to booking
+            assign_response = self.session.patch(
+                f"{BACKEND_URL}/drivers/{driver_id}/assign?booking_id={booking_id}", 
+                timeout=15
+            )
+            
+            if assign_response.status_code == 200:
+                data = assign_response.json()
+                message = data.get('message', '')
+                
+                if 'assigned successfully' in message:
+                    self.log_result("Driver Assignment Flow", True, f"Driver assignment successful: {driver_name} assigned to booking {booking_id}")
+                    return True
+                else:
+                    self.log_result("Driver Assignment Flow", False, f"Unexpected assignment response: {message}")
+                    return False
+            else:
+                self.log_result("Driver Assignment Flow", False, f"Driver assignment failed with status {assign_response.status_code}", assign_response.text)
+                return False
+                
+        except Exception as e:
+            self.log_result("Driver Assignment Flow", False, f"Driver assignment error: {str(e)}")
+            return False
+
+    def test_payment_create_checkout(self):
+        """Test payment checkout creation endpoint"""
+        try:
+            # First, create a test booking
+            booking_data = {
+                "serviceType": "airport-shuttle",
+                "pickupAddress": "Auckland CBD, Auckland",
+                "dropoffAddress": "Auckland Airport, Auckland",
+                "date": "2025-12-20",
+                "time": "14:00",
+                "passengers": "1",
+                "name": "Payment Test Customer",
+                "email": "payment@test.com",
+                "phone": "+64211234567",
+                "pricing": {"totalPrice": 85.00}
+            }
+            
+            booking_response = self.session.post(f"{BACKEND_URL}/bookings", json=booking_data, timeout=10)
+            
+            if booking_response.status_code != 200:
+                self.log_result("Payment Checkout Creation", False, "Could not create test booking for payment")
+                return False
+            
+            booking_id = booking_response.json().get('id')
+            
+            # Test payment checkout creation
+            checkout_data = {
+                "booking_id": booking_id,
+                "origin_url": "https://bookaride.co.nz"
+            }
+            
+            response = self.session.post(f"{BACKEND_URL}/payment/create-checkout", json=checkout_data, timeout=15)
+            
+            if response.status_code == 200:
+                data = response.json()
+                session_id = data.get('session_id')
+                checkout_url = data.get('checkout_url')
+                
+                if session_id and checkout_url:
+                    self.log_result("Payment Checkout Creation", True, f"Checkout session created successfully: {session_id}")
+                    return True
+                else:
+                    self.log_result("Payment Checkout Creation", False, f"Incomplete checkout response: session_id={session_id}, checkout_url={checkout_url}")
+                    return False
+            else:
+                self.log_result("Payment Checkout Creation", False, f"Payment checkout failed with status {response.status_code}", response.text)
+                return False
+                
+        except Exception as e:
+            self.log_result("Payment Checkout Creation", False, f"Payment checkout error: {str(e)}")
+            return False
     
     def test_admin_auth_me_endpoint(self):
         """Test admin auth/me endpoint for session-based authentication"""
