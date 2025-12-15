@@ -1662,6 +1662,71 @@ async def send_tomorrow_reminders(current_admin: dict = Depends(get_current_admi
         raise HTTPException(status_code=500, detail=f"Error sending reminders: {str(e)}")
 
 
+# Core reminder sending logic - used by all reminder triggers
+async def send_daily_reminders_core(source: str = "unknown"):
+    """
+    Core logic for sending day-before reminders.
+    Called by: startup check, APScheduler, cron endpoint, and interval check.
+    """
+    try:
+        # Get NZ timezone for accurate date calculation
+        nz_tz = pytz.timezone('Pacific/Auckland')
+        nz_now = datetime.now(nz_tz)
+        nz_today = nz_now.strftime('%Y-%m-%d')
+        nz_tomorrow = (nz_now + timedelta(days=1)).strftime('%Y-%m-%d')
+        
+        logger.info(f"🔔 [{source}] Checking reminders - NZ time: {nz_now.strftime('%Y-%m-%d %H:%M:%S')}, Tomorrow: {nz_tomorrow}")
+        
+        # Find all confirmed bookings for tomorrow that haven't received a reminder today
+        bookings = await db.bookings.find({
+            "status": "confirmed",
+            "date": nz_tomorrow
+        }, {"_id": 0}).to_list(100)
+        
+        logger.info(f"🔔 [{source}] Found {len(bookings)} confirmed bookings for {nz_tomorrow}")
+        
+        sent_count = 0
+        skipped_count = 0
+        
+        for booking in bookings:
+            # Check if reminder already sent today (using NZ date)
+            reminder_sent = booking.get('reminderSentAt', '')
+            
+            if reminder_sent and reminder_sent.startswith(nz_today):
+                skipped_count += 1
+                logger.debug(f"Skipping {booking.get('name')} - reminder already sent today")
+                continue
+            
+            # Send email reminder
+            email_sent = False
+            if booking.get('email'):
+                email_sent = send_reminder_email(booking)
+                if email_sent:
+                    logger.info(f"✉️ Reminder email sent to {booking.get('email')}")
+            
+            # Send SMS reminder
+            sms_sent = False
+            if booking.get('phone'):
+                sms_sent = send_reminder_sms(booking)
+                if sms_sent:
+                    logger.info(f"📱 Reminder SMS sent to {booking.get('phone')}")
+            
+            # Mark reminder as sent if at least one notification went out
+            if email_sent or sms_sent:
+                await db.bookings.update_one(
+                    {"id": booking.get('id')},
+                    {"$set": {"reminderSentAt": datetime.now(timezone.utc).isoformat()}}
+                )
+                sent_count += 1
+        
+        logger.info(f"✅ [{source}] Reminders complete: {sent_count} sent, {skipped_count} skipped (already sent today)")
+        return {"success": True, "reminders_sent": sent_count, "skipped": skipped_count, "source": source}
+        
+    except Exception as e:
+        logger.error(f"❌ [{source}] Reminder error: {str(e)}")
+        raise
+
+
 # Auto-run reminders endpoint (can be called by external cron service)
 @api_router.get("/cron/send-reminders")
 async def cron_send_reminders(api_key: str = None):
@@ -1672,39 +1737,8 @@ async def cron_send_reminders(api_key: str = None):
         if api_key != expected_key:
             raise HTTPException(status_code=401, detail="Invalid API key")
         
-        # Get tomorrow's date
-        tomorrow = datetime.now(timezone.utc) + timedelta(days=1)
-        tomorrow_str = tomorrow.strftime('%Y-%m-%d')
-        nz_tomorrow = (datetime.now(timezone.utc) + timedelta(hours=13) + timedelta(days=1)).strftime('%Y-%m-%d')
-        
-        bookings = await db.bookings.find({
-            "status": "confirmed",
-            "$or": [
-                {"date": tomorrow_str},
-                {"date": nz_tomorrow}
-            ]
-        }, {"_id": 0}).to_list(100)
-        
-        sent_count = 0
-        for booking in bookings:
-            reminder_sent = booking.get('reminderSentAt', '')
-            today_str = datetime.now(timezone.utc).strftime('%Y-%m-%d')
-            
-            if reminder_sent and reminder_sent.startswith(today_str):
-                continue
-            
-            if booking.get('email'):
-                send_reminder_email(booking)
-            if booking.get('phone'):
-                send_reminder_sms(booking)
-            
-            await db.bookings.update_one(
-                {"id": booking.get('id')},
-                {"$set": {"reminderSentAt": datetime.now(timezone.utc).isoformat()}}
-            )
-            sent_count += 1
-        
-        return {"success": True, "reminders_sent": sent_count}
+        result = await send_daily_reminders_core(source="cron_endpoint")
+        return result
         
     except HTTPException:
         raise
