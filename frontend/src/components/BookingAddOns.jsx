@@ -154,7 +154,8 @@ const BookingAddOns = ({ selectedAddOns = [], onAddOnChange, showAll = false }) 
               </div>
             </motion.button>
           );
-        })}n      </div>
+        })}
+      </div>
 
       {!showAll && addOns.length > 4 && (
         <button
