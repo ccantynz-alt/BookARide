@@ -28,9 +28,9 @@ const AfterpayPage = () => {
   return (
     <div className="min-h-screen bg-white">
       <SEO 
-        title="Pay with Afterpay - Buy Now, Pay Later | BookaRide NZ"
-        description="Book your airport transfer with Afterpay. Pay in 4 interest-free instalments over 6 weeks. No interest, no hidden fees when you pay on time. Book your ride today!"
-        keywords="afterpay, buy now pay later, airport shuttle payment, interest free, payment plan, BookaRide, Auckland airport"
+        title="Ride Today, Pay Over 6 Weeks | Afterpay at BookaRide"
+        description="Book your airport transfer now and spread the cost over 6 weeks with Afterpay. Pay in 4 interest-free instalments. No interest, no hidden fees when you pay on time. Book your ride today!"
+        keywords="afterpay, buy now pay later, airport shuttle payment, interest free, payment plan, BookaRide, Auckland airport, pay in 4"
         canonical="/afterpay"
       />
 
