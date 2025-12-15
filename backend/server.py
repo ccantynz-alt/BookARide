@@ -5529,11 +5529,21 @@ async def startup_event():
         replace_existing=True
     )
     
+    # Layer 4: Abandoned booking recovery emails (every 30 mins)
+    scheduler.add_job(
+        send_abandoned_booking_emails,
+        IntervalTrigger(minutes=30),
+        id='abandoned_booking_recovery',
+        name='Abandoned booking recovery emails',
+        replace_existing=True
+    )
+    
     scheduler.start()
-    logger.info("🚀 Reminder scheduler started with 3-layer reliability:")
-    logger.info("   Layer 1: 8:00 AM NZ daily (primary)")
-    logger.info("   Layer 2: Hourly backup check")
-    logger.info("   Layer 3: Startup check (running now...)")
+    logger.info("🚀 Scheduler started with all jobs:")
+    logger.info("   ✓ Reminder: 8:00 AM NZ daily (primary)")
+    logger.info("   ✓ Reminder: Hourly backup check")
+    logger.info("   ✓ Abandoned bookings: Every 30 mins")
+    logger.info("   ✓ Startup reminder check (running now...)")
     
     # Layer 3: Immediate startup check
     await startup_reminder_check()
