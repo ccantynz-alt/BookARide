@@ -79,7 +79,7 @@ const AIChatbot = () => {
       console.error('Chatbot error:', error);
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: "I apologize, but I'm having trouble connecting right now. Please try again or call us at 0800 BOOK A RIDE for immediate assistance!"
+        content: "I apologize, but I'm having trouble connecting right now. For instant pricing, visit our booking page at bookaride.co.nz/book-now - just enter your pickup and dropoff to see live prices!"
       }]);
     } finally {
       setIsLoading(false);
