@@ -4860,56 +4860,94 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Initialize the scheduler
-scheduler = AsyncIOScheduler()
+# Initialize the scheduler with timezone awareness
+scheduler = AsyncIOScheduler(timezone=pytz.timezone('Pacific/Auckland'))
+
+# Track last reminder check to prevent duplicate runs
+last_reminder_check_date = None
 
 async def scheduled_send_reminders():
-    """Scheduled task to send reminders for tomorrow's bookings at 8 AM NZ time"""
+    """Scheduled task wrapper - called by APScheduler"""
+    await send_daily_reminders_core(source="apscheduler_8am")
+
+async def interval_reminder_check():
+    """
+    Interval-based check that runs every hour.
+    Ensures reminders are sent even if the 8 AM job was missed.
+    Only sends reminders once per day (between 8 AM and 10 PM NZ time).
+    """
+    global last_reminder_check_date
+    
     try:
-        logger.info("🔔 Running scheduled reminder task...")
-        
-        # Get tomorrow's date in YYYY-MM-DD format (NZ timezone)
         nz_tz = pytz.timezone('Pacific/Auckland')
         nz_now = datetime.now(nz_tz)
+        nz_today = nz_now.strftime('%Y-%m-%d')
+        current_hour = nz_now.hour
+        
+        # Only run between 8 AM and 10 PM NZ time
+        if current_hour < 8 or current_hour > 22:
+            return
+        
+        # Skip if we already checked today
+        if last_reminder_check_date == nz_today:
+            return
+        
+        # Check if any reminders need to be sent for tomorrow
         nz_tomorrow = (nz_now + timedelta(days=1)).strftime('%Y-%m-%d')
         
-        # Find all confirmed bookings for tomorrow
-        bookings = await db.bookings.find({
+        pending_bookings = await db.bookings.find({
+            "status": "confirmed",
+            "date": nz_tomorrow,
+            "$or": [
+                {"reminderSentAt": {"$exists": False}},
+                {"reminderSentAt": None},
+                {"reminderSentAt": ""}
+            ]
+        }, {"_id": 0}).to_list(100)
+        
+        # Also check for bookings where reminder was sent on a different day
+        all_tomorrow_bookings = await db.bookings.find({
             "status": "confirmed",
             "date": nz_tomorrow
         }, {"_id": 0}).to_list(100)
         
-        sent_count = 0
-        for booking in bookings:
-            # Check if reminder already sent today
+        needs_reminder = []
+        for booking in all_tomorrow_bookings:
             reminder_sent = booking.get('reminderSentAt', '')
-            today_str = nz_now.strftime('%Y-%m-%d')
-            
-            if reminder_sent and reminder_sent.startswith(today_str):
-                logger.info(f"Skipping {booking.get('name')} - reminder already sent today")
-                continue
-            
-            # Send email reminder
-            if booking.get('email'):
-                send_reminder_email(booking)
-                logger.info(f"Sent reminder email to {booking.get('email')}")
-            
-            # Send SMS reminder
-            if booking.get('phone'):
-                send_reminder_sms(booking)
-                logger.info(f"Sent reminder SMS to {booking.get('phone')}")
-            
-            # Mark reminder as sent
-            await db.bookings.update_one(
-                {"id": booking.get('id')},
-                {"$set": {"reminderSentAt": datetime.now(timezone.utc).isoformat()}}
-            )
-            sent_count += 1
+            if not reminder_sent or not reminder_sent.startswith(nz_today):
+                needs_reminder.append(booking)
         
-        logger.info(f"✅ Scheduled reminders complete: {sent_count} bookings notified for {nz_tomorrow}")
+        if needs_reminder:
+            logger.info(f"🔔 [interval_check] Found {len(needs_reminder)} bookings needing reminders")
+            await send_daily_reminders_core(source="interval_check")
+        
+        # Mark today as checked
+        last_reminder_check_date = nz_today
         
     except Exception as e:
-        logger.error(f"❌ Scheduled reminder error: {str(e)}")
+        logger.error(f"❌ Interval reminder check error: {str(e)}")
+
+async def startup_reminder_check():
+    """
+    Check and send reminders on server startup.
+    This catches any missed reminders due to server restarts.
+    """
+    try:
+        nz_tz = pytz.timezone('Pacific/Auckland')
+        nz_now = datetime.now(nz_tz)
+        current_hour = nz_now.hour
+        
+        logger.info(f"🚀 Startup reminder check - NZ time: {nz_now.strftime('%Y-%m-%d %H:%M:%S')}")
+        
+        # Only run startup check if it's between 8 AM and 11 PM
+        if current_hour >= 8 and current_hour <= 23:
+            result = await send_daily_reminders_core(source="startup_check")
+            logger.info(f"🚀 Startup reminder check complete: {result}")
+        else:
+            logger.info(f"🚀 Startup reminder check skipped - outside reminder hours (current hour: {current_hour})")
+            
+    except Exception as e:
+        logger.error(f"❌ Startup reminder check error: {str(e)}")
 
 
 @app.on_event("startup")
@@ -4940,19 +4978,38 @@ async def startup_event():
         )
         logger.info("✅ Admin password reset and email updated to info@bookaride.co.nz")
     
-    # Schedule reminders at 8:00 AM New Zealand time every day
+    # ============================================
+    # RELIABLE REMINDER SYSTEM - 3 LAYERS
+    # ============================================
     nz_tz = pytz.timezone('Pacific/Auckland')
     
+    # Layer 1: Primary 8 AM daily job with misfire handling
     scheduler.add_job(
         scheduled_send_reminders,
         CronTrigger(hour=8, minute=0, timezone=nz_tz),
-        id='daily_reminders',
-        name='Send day-before reminders at 8 AM NZ time',
+        id='daily_reminders_8am',
+        name='Primary: Send reminders at 8 AM NZ',
+        replace_existing=True,
+        misfire_grace_time=3600 * 4  # Allow 4 hour grace period for missed jobs
+    )
+    
+    # Layer 2: Backup hourly check (runs every hour, only acts if reminders weren't sent)
+    scheduler.add_job(
+        interval_reminder_check,
+        IntervalTrigger(hours=1),
+        id='hourly_reminder_check',
+        name='Backup: Hourly reminder check',
         replace_existing=True
     )
     
     scheduler.start()
-    logger.info("🚀 Scheduler started - Reminders will be sent at 8:00 AM NZ time daily")
+    logger.info("🚀 Reminder scheduler started with 3-layer reliability:")
+    logger.info("   Layer 1: 8:00 AM NZ daily (primary)")
+    logger.info("   Layer 2: Hourly backup check")
+    logger.info("   Layer 3: Startup check (running now...)")
+    
+    # Layer 3: Immediate startup check
+    await startup_reminder_check()
 
 
 @app.on_event("shutdown")
