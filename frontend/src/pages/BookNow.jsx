@@ -937,12 +937,61 @@ export const BookNow = () => {
                         <TrustBadges variant="payment" />
                       </div>
 
+                      {/* Payment Method Selection */}
+                      <div className="mt-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                        <h4 className="font-semibold text-gray-800 mb-3">Payment Method</h4>
+                        <div className="grid grid-cols-2 gap-3">
+                          <button
+                            type="button"
+                            onClick={() => setFormData(prev => ({ ...prev, paymentMethod: 'card' }))}
+                            className={`p-4 rounded-lg border-2 transition-all flex flex-col items-center gap-2 ${
+                              formData.paymentMethod === 'card' || !formData.paymentMethod
+                                ? 'border-gold bg-gold/10'
+                                : 'border-gray-200 hover:border-gray-300'
+                            }`}
+                          >
+                            <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+                              <line x1="1" y1="10" x2="23" y2="10"/>
+                            </svg>
+                            <span className="text-sm font-medium">Credit/Debit Card</span>
+                          </button>
+                          
+                          <button
+                            type="button"
+                            onClick={() => setFormData(prev => ({ ...prev, paymentMethod: 'afterpay' }))}
+                            className={`p-4 rounded-lg border-2 transition-all flex flex-col items-center gap-2 ${
+                              formData.paymentMethod === 'afterpay'
+                                ? 'border-[#b2fce4] bg-[#b2fce4]/20'
+                                : 'border-gray-200 hover:border-gray-300'
+                            }`}
+                          >
+                            <svg className="w-8 h-8" viewBox="0 0 100 24" fill="currentColor">
+                              <text x="0" y="18" fontSize="14" fontWeight="bold" fill="#b2fce4" style={{fontFamily: 'Arial'}}>afterpay</text>
+                            </svg>
+                            <span className="text-sm font-medium">Pay in 4</span>
+                            <span className="text-xs text-gray-500">Interest-free</span>
+                          </button>
+                        </div>
+                        
+                        {formData.paymentMethod === 'afterpay' && pricing.totalPrice > 0 && (
+                          <div className="mt-3 p-3 bg-[#b2fce4]/20 rounded-lg border border-[#b2fce4]/40">
+                            <p className="text-sm text-gray-700">
+                              <strong>4 interest-free payments</strong> of <strong>${(finalTotal / 4).toFixed(2)}</strong>
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              Pay every 2 weeks. No interest, no fees when you pay on time.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
                       <Button 
                         type="submit" 
                         className="w-full mt-6 bg-gold hover:bg-gold/90 text-black font-semibold py-6 text-lg transition-colors duration-200"
                         disabled={pricing.calculating || pricing.totalPrice === 0}
                       >
-                        Book Now
+                        {formData.paymentMethod === 'afterpay' ? 'Continue with Afterpay' : 'Book Now'}
                       </Button>
                     </CardContent>
                   </Card>
