@@ -133,8 +133,6 @@ const FlightTrackerPage = () => {
           </a>
         </div>
       </section>
-
-      <Footer />
     </div>
   );
 };
