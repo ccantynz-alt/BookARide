@@ -2473,15 +2473,33 @@ async def send_driver_notification(booking: dict, driver: dict):
             else:
                 logger.error(f"Failed to send driver email: {response.status_code} - {response.text}")
         
-        # Send SMS to Driver
-        account_sid = os.environ.get('TWILIO_ACCOUNT_SID')
-        auth_token = os.environ.get('TWILIO_AUTH_TOKEN')
-        twilio_phone = os.environ.get('TWILIO_PHONE_NUMBER')
-        
-        if account_sid and auth_token and twilio_phone:
-            client = Client(account_sid, auth_token)
+        # Send SMS to Driver (separate try block so email failures don't block SMS)
+        try:
+            account_sid = os.environ.get('TWILIO_ACCOUNT_SID')
+            auth_token = os.environ.get('TWILIO_AUTH_TOKEN')
+            twilio_phone = os.environ.get('TWILIO_PHONE_NUMBER')
             
-            sms_body = f"""BookaRide - New Booking!
+            if account_sid and auth_token and twilio_phone:
+                driver_phone = driver.get('phone', '')
+                
+                # Format phone number to E.164 for Twilio (NZ format)
+                if driver_phone:
+                    # Remove spaces, dashes, and parentheses
+                    driver_phone = driver_phone.replace(' ', '').replace('-', '').replace('(', '').replace(')', '')
+                    
+                    # Handle NZ numbers: convert 02X to +642X
+                    if driver_phone.startswith('02'):
+                        driver_phone = '+64' + driver_phone[1:]  # 021... -> +6421...
+                    elif driver_phone.startswith('0'):
+                        driver_phone = '+64' + driver_phone[1:]  # Other NZ numbers
+                    elif not driver_phone.startswith('+'):
+                        driver_phone = '+64' + driver_phone  # Add +64 if no prefix
+                    
+                    logger.info(f"📱 Sending driver SMS to: {driver_phone} (original: {driver.get('phone')})")
+                    
+                    client = Client(account_sid, auth_token)
+                    
+                    sms_body = f"""BookaRide - New Booking!
 
 Ref: {booking_ref}
 Customer: {booking.get('name', 'N/A')}
@@ -2490,14 +2508,20 @@ Pickup: {booking.get('pickupAddress', 'N/A')}
 Date: {formatted_date} at {booking.get('time', 'N/A')}
 
 Check your email for full details."""
-            
-            message = client.messages.create(
-                body=sms_body,
-                from_=twilio_phone,
-                to=driver.get('phone')
-            )
-            
-            logger.info(f"Driver notification SMS sent to {driver.get('phone')} - SID: {message.sid}")
+                    
+                    message = client.messages.create(
+                        body=sms_body,
+                        from_=twilio_phone,
+                        to=driver_phone
+                    )
+                    
+                    logger.info(f"✅ Driver notification SMS sent to {driver_phone} - SID: {message.sid}")
+                else:
+                    logger.warning(f"⚠️ Driver {driver.get('name')} has no phone number - SMS not sent")
+            else:
+                logger.warning("⚠️ Twilio credentials not configured for driver SMS")
+        except Exception as sms_error:
+            logger.error(f"❌ Error sending driver SMS: {str(sms_error)}")
         
         return True
         
