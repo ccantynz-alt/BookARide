@@ -1,77 +1,100 @@
-import React, { useState } from 'react';
-import { DollarSign } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { DollarSign, RefreshCw } from 'lucide-react';
 
-const CurrencyConverter = ({ nzdAmount }) => {
-  const [selectedCurrency, setSelectedCurrency] = useState('NZD');
-
-  // Exchange rates (as of Dec 2024 - approximate)
+const CurrencyConverter = ({ nzdPrice }) => {
+  const [selectedCurrency, setSelectedCurrency] = useState('USD');
+  const [convertedPrice, setConvertedPrice] = useState(null);
+  
+  // Exchange rates (approximate - in production, use a real API)
   const exchangeRates = {
-    NZD: 1,
-    USD: 0.59,
-    EUR: 0.55,
-    GBP: 0.47,
-    AUD: 0.92,
-    CNY: 4.28,
-    JPY: 88.5
+    USD: 0.61,
+    AUD: 0.93,
+    GBP: 0.48,
+    EUR: 0.56,
+    CNY: 4.40,
+    JPY: 91.50,
+    KRW: 810.00,
+    INR: 50.80,
+    SGD: 0.82,
+    PHP: 34.50
+  };
+  
+  const currencyInfo = {
+    USD: { symbol: '$', name: 'US Dollar', flag: '🇺🇸' },
+    AUD: { symbol: 'A$', name: 'Australian Dollar', flag: '🇦🇺' },
+    GBP: { symbol: '£', name: 'British Pound', flag: '🇬🇧' },
+    EUR: { symbol: '€', name: 'Euro', flag: '🇪🇺' },
+    CNY: { symbol: '¥', name: 'Chinese Yuan', flag: '🇨🇳' },
+    JPY: { symbol: '¥', name: 'Japanese Yen', flag: '🇯🇵' },
+    KRW: { symbol: '₩', name: 'Korean Won', flag: '🇰🇷' },
+    INR: { symbol: '₹', name: 'Indian Rupee', flag: '🇮🇳' },
+    SGD: { symbol: 'S$', name: 'Singapore Dollar', flag: '🇸🇬' },
+    PHP: { symbol: '₱', name: 'Philippine Peso', flag: '🇵🇭' }
   };
 
-  const currencySymbols = {
-    NZD: 'NZ$',
-    USD: 'US$',
-    EUR: '€',
-    GBP: '£',
-    AUD: 'A$',
-    CNY: '¥',
-    JPY: '¥'
+  useEffect(() => {
+    if (nzdPrice && exchangeRates[selectedCurrency]) {
+      const converted = nzdPrice * exchangeRates[selectedCurrency];
+      setConvertedPrice(converted);
+    }
+  }, [nzdPrice, selectedCurrency]);
+
+  if (!nzdPrice || nzdPrice <= 0) return null;
+
+  const formatPrice = (price, currency) => {
+    const info = currencyInfo[currency];
+    if (currency === 'JPY' || currency === 'KRW') {
+      return `${info.symbol}${Math.round(price).toLocaleString()}`;
+    }
+    return `${info.symbol}${price.toFixed(2)}`;
   };
-
-  const currencies = [
-    { code: 'NZD', name: 'New Zealand Dollar' },
-    { code: 'USD', name: 'US Dollar' },
-    { code: 'EUR', name: 'Euro' },
-    { code: 'GBP', name: 'British Pound' },
-    { code: 'AUD', name: 'Australian Dollar' },
-    { code: 'CNY', name: 'Chinese Yuan' },
-    { code: 'JPY', name: 'Japanese Yen' }
-  ];
-
-  const convertedAmount = (nzdAmount * exchangeRates[selectedCurrency]).toFixed(2);
 
   return (
-    <div className="bg-gradient-to-r from-gold/10 to-yellow-100/50 border border-gold/30 rounded-lg p-4 mb-4">
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200"
+    >
       <div className="flex items-center gap-2 mb-3">
-        <DollarSign className="w-5 h-5 text-gold" />
-        <span className="text-sm font-semibold text-gray-700">View Price In:</span>
+        <DollarSign className="w-5 h-5 text-blue-600" />
+        <span className="font-semibold text-gray-800">Price in Your Currency</span>
       </div>
-      <div className="flex flex-wrap gap-2">
-        {currencies.map((currency) => (
+      
+      <div className="flex flex-wrap gap-2 mb-3">
+        {Object.keys(currencyInfo).map((currency) => (
           <button
-            key={currency.code}
-            onClick={() => setSelectedCurrency(currency.code)}
-            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ${
-              selectedCurrency === currency.code
-                ? 'bg-gold text-black shadow-md'
-                : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
+            key={currency}
+            onClick={() => setSelectedCurrency(currency)}
+            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+              selectedCurrency === currency
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'bg-white text-gray-600 hover:bg-blue-100 border border-gray-200'
             }`}
           >
-            {currency.code}
+            {currencyInfo[currency].flag} {currency}
           </button>
         ))}
       </div>
-      <div className="mt-4 pt-4 border-t border-gold/20">
-        <div className="flex justify-between items-center">
-          <span className="text-sm text-gray-600">Price in {selectedCurrency}:</span>
-          <span className="text-2xl font-bold text-gray-900">
-            {currencySymbols[selectedCurrency]}{convertedAmount}
-          </span>
+      
+      <div className="bg-white rounded-lg p-4 border border-blue-100">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm text-gray-500">{currencyInfo[selectedCurrency].name}</p>
+            <p className="text-2xl font-bold text-blue-600">
+              {convertedPrice ? formatPrice(convertedPrice, selectedCurrency) : '...'}
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-xs text-gray-400">Original (NZD)</p>
+            <p className="text-lg text-gray-600">${Math.round(nzdPrice)}</p>
+          </div>
         </div>
-        {selectedCurrency !== 'NZD' && (
-          <p className="text-xs text-gray-500 mt-2 text-right">
-            ≈ NZ${nzdAmount.toFixed(2)} • Approx. rate
-          </p>
-        )}
+        <p className="text-[10px] text-gray-400 mt-2 flex items-center gap-1">
+          <RefreshCw className="w-3 h-3" /> Rates are approximate. Final charge in NZD.
+        </p>
       </div>
-    </div>
+    </motion.div>
   );
 };
 
