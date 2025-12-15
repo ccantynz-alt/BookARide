@@ -169,6 +169,7 @@ function App() {
     { path: "payment-success", element: <PaymentSuccess /> },
     // Payment Pages
     { path: "afterpay", element: <AfterpayPage /> },
+    { path: "referral", element: <ReferralProgram /> },
     // Legal Pages
     { path: "terms-and-conditions", element: <TermsAndConditions /> },
     { path: "website-usage-policy", element: <WebsiteUsagePolicy /> },
