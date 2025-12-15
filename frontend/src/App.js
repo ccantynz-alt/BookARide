@@ -71,6 +71,7 @@ import BestHibiscusCoastShuttle from './pages/seo/BestHibiscusCoastShuttle';
 import OrewaToAirportPage from './pages/seo/OrewaToAirportPage';
 import WhangaparoaAirportPage from './pages/seo/WhangaparoaAirportPage';
 import AfterpayPage from './pages/AfterpayPage';
+import ReferralProgram from './pages/ReferralProgram';
 
 import RecentBookingsNotification from './components/RecentBookingsNotification';
 import ExitIntentPopup from './components/ExitIntentPopup';
