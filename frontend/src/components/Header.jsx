@@ -16,18 +16,15 @@ export const Header = () => {
     { path: '/flight-tracker', label: 'Flight Tracker' },
     { path: '/travel-guide', label: 'Travel Guide' },
     { path: '/about', label: 'About' },
-    { path: '/contact', label: 'Contact' },
-    { path: '/book-now', label: 'Book Now' }
+    { path: '/contact', label: 'Contact' }
   ];
 
   const isActive = (path) => location.pathname === path;
 
   return (
-    <header className="fixed top-10 left-0 right-0 z-50 backdrop-blur-2xl bg-black/40 border-b border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.3)]">
-      {/* Glass highlight effect */}
-      <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent pointer-events-none"></div>
+    <header className="fixed top-10 left-0 right-0 z-50 backdrop-blur-lg bg-gray-900/95 border-b border-gold/20 shadow-2xl">
       {/* Top accent line */}
-      <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-gold to-transparent opacity-70"></div>
+      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-gold to-transparent opacity-60"></div>
       
       <nav className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
