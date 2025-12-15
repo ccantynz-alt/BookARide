@@ -14,9 +14,9 @@ export const Header = () => {
     { path: '/hobbiton-transfers', label: 'Hobbiton' },
     { path: '/cruise-transfers', label: 'Cruise' },
     { path: '/flight-tracker', label: 'Flight Tracker' },
+    { path: '/travel-guide', label: 'Travel Guide' },
     { path: '/about', label: 'About' },
     { path: '/contact', label: 'Contact' },
-    { path: '/afterpay', label: 'Afterpay' },
     { path: '/book-now', label: 'Book Now' }
   ];
 
