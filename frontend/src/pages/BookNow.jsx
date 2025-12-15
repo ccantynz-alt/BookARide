@@ -80,7 +80,17 @@ export const BookNow = () => {
     calculating: false
   });
 
+  const [selectedAddOns, setSelectedAddOns] = useState([]);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+
+  // Calculate total add-ons price
+  const addOnsTotal = selectedAddOns.reduce((total, id) => {
+    const addOn = addOns.find(a => a.id === id);
+    return total + (addOn?.price || 0);
+  }, 0);
+
+  // Final total including add-ons
+  const finalTotal = pricing.totalPrice + addOnsTotal;
 
   const serviceOptions = [
     { value: 'airport-shuttle', label: 'Airport Shuttle' },
