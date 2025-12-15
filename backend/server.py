@@ -2509,9 +2509,10 @@ async def send_driver_notification(booking: dict, driver: dict):
             )
             
             if response.status_code == 200:
-                logger.info(f"Driver notification email sent to {driver.get('email')}")
+                logger.info(f"✅ Driver notification email sent to {driver.get('email')}")
+                logger.info(f"📧 Mailgun response: {response.text}")
             else:
-                logger.error(f"Failed to send driver email: {response.status_code} - {response.text}")
+                logger.error(f"❌ Failed to send driver email: {response.status_code} - {response.text}")
         
         # Send SMS to Driver (separate try block so email failures don't block SMS)
         try:
