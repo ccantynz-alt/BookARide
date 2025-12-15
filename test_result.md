@@ -1,5 +1,5 @@
 backend:
-  - task: "Pricing Calculation - Orewa to Airport"
+  - task: "Pricing Calculation with ratePerKm - Long Trip"
     implemented: true
     working: true
     file: "server.py"
@@ -9,9 +9,9 @@ backend:
     status_history:
       - working: true
         agent: "testing"
-        comment: "✅ Pricing calculation working correctly. Orewa to Auckland Airport calculated at $150.18 for 60.8km (expected ~$150 for ~60km). Distance and pricing logic functioning as expected."
+        comment: "✅ Barbara Walsh bug fix verified: Pricing calculation includes ratePerKm field. Orewa to Auckland Airport: $150.18 for 60.8km at $2.47/km (expected ~$2.47/km for long trips)."
 
-  - task: "Pricing Calculation - Short Trip Minimum"
+  - task: "Pricing Calculation with ratePerKm - Short Trip"
     implemented: true
     working: true
     file: "server.py"
@@ -21,7 +21,31 @@ backend:
     status_history:
       - working: true
         agent: "testing"
-        comment: "✅ Minimum pricing correctly applied. Short trip (2.86km) correctly charged $100 minimum as expected for trips under 15km."
+        comment: "✅ Barbara Walsh bug fix verified: Short trip pricing includes ratePerKm field. Takapuna to Auckland CBD: $110.52 for 9.21km at $12.00/km (expected $12.00/km for short trips)."
+
+  - task: "Booking Update with Return Trip Sync"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ Barbara Walsh bug fix verified: Booking update endpoint auto-syncs bookReturn flag. Setting returnDate='2025-12-25' auto-sets bookReturn=true. Clearing returnDate='' auto-sets bookReturn=false."
+
+  - task: "Email Generation for Return Trips"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ Barbara Walsh bug fix verified: Email generation handles legacy bookings with bookReturn=false but returnDate set. Manual booking created and resend confirmation successful. Backend logs confirm email sent with return trip details."
 
   - task: "Flight Tracker API"
     implemented: true
