@@ -8,7 +8,7 @@ import json
 import time
 from datetime import datetime
 
-BACKEND_URL = "https://deploy-fixes-1.preview.emergentagent.com/api"
+BACKEND_URL = "https://cabify-updates.preview.emergentagent.com/api"
 ADMIN_USERNAME = "admin"
 ADMIN_PASSWORD = "BookARide2024!"
 

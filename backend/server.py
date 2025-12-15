@@ -4804,7 +4804,7 @@ if cors_origins_env == '*':
     cors_origins = [
         "https://bookaride.co.nz",
         "https://www.bookaride.co.nz",
-        "https://deploy-fixes-1.preview.emergentagent.com",
+        "https://cabify-updates.preview.emergentagent.com",
         "http://localhost:3000"
     ]
 else:
