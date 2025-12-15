@@ -2497,6 +2497,41 @@ async def send_driver_notification(booking: dict, driver: dict):
             </html>
             """
             
+            # Create plain text version for email clients that don't render HTML
+            text_content = f"""BookaRide.co.nz - New Booking Assignment
+
+Hi {driver.get('name', 'Driver')},
+
+You have been assigned a new booking. Please review the details below:
+
+BOOKING DETAILS
+===============
+Booking Reference: {booking_ref}
+Full ID: {full_booking_id}
+
+Customer Name: {booking.get('name', 'N/A')}
+Customer Phone: {booking.get('phone', 'N/A')}
+Customer Email: {booking.get('email', 'N/A')}
+
+Service Type: {booking.get('serviceType', 'N/A').replace('-', ' ').title()}
+Pickup: {booking.get('pickupAddress', 'N/A')}
+Drop-off: {booking.get('dropoffAddress', 'N/A')}
+Date: {formatted_date}
+Time: {booking.get('time', 'N/A')}
+Passengers: {booking.get('passengers', 'N/A')}
+
+Job Total: ${total_price:.2f} NZD
+
+Special Notes: {booking.get('notes', 'None') or 'None'}
+
+Please confirm receipt and contact the customer if you have any questions.
+Login to your Driver Portal: https://bookaride.co.nz/driver/login
+
+---
+BookaRide NZ
+bookaride.co.nz | +64 21 743 321
+"""
+            
             response = requests.post(
                 f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
                 auth=("api", mailgun_api_key),
@@ -2504,6 +2539,7 @@ async def send_driver_notification(booking: dict, driver: dict):
                     "from": f"BookaRide <{sender_email}>",
                     "to": driver.get('email'),
                     "subject": f"New Booking Assignment - Ref: {booking_ref} - {formatted_date}",
+                    "text": text_content,
                     "html": html_content
                 }
             )
