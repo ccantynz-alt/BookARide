@@ -33,6 +33,22 @@ const formatDate = (dateString) => {
   return `${day}/${month}/${year}`;
 };
 
+// Helper function to get day of week from date string
+const getDayOfWeek = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  return days[date.getDay()];
+};
+
+// Helper function to get short day of week
+const getShortDayOfWeek = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  return days[date.getDay()];
+};
+
 export const AdminDashboard = () => {
   const navigate = useNavigate();
   const { isLoaded } = useLoadScript({
