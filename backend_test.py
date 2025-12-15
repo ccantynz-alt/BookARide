@@ -877,10 +877,16 @@ class BookaRideBackendTester:
             print("❌ Admin login failed - stopping tests")
             return False
         
-        # REVIEW REQUEST SPECIFIC TESTS
-        print("\n💰 Testing Pricing Calculation...")
-        self.test_pricing_calculation_orewa_to_airport()
-        self.test_pricing_calculation_short_trip()
+        # BARBARA WALSH BUG FIX TESTS (REVIEW REQUEST)
+        print("\n💰 Testing Pricing Calculation with ratePerKm (Barbara Walsh Bug Fix)...")
+        self.test_pricing_calculation_orewa_to_airport_with_rate_per_km()
+        self.test_pricing_calculation_short_trip_with_rate_per_km()
+        
+        print("\n🔄 Testing Booking Update with Return Trip Sync (Barbara Walsh Bug Fix)...")
+        self.test_booking_update_return_trip_sync()
+        
+        print("\n📧 Testing Email Generation for Return Trips (Barbara Walsh Bug Fix)...")
+        self.test_email_generation_return_trips()
         
         print("\n✈️ Testing Flight Tracker...")
         self.test_flight_tracker()
