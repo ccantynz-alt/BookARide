@@ -16,6 +16,7 @@ export const Header = () => {
     { path: '/about', label: 'About' },
     { path: '/contact', label: 'Contact' },
     { path: '/afterpay', label: 'Afterpay' },
+    { path: '/referral', label: 'Refer & Earn' },
     { path: '/book-now', label: 'Book Now' }
   ];
 
