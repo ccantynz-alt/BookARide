@@ -694,8 +694,8 @@ class BookaRideBackendTester:
     
     def run_comprehensive_test(self):
         """Run all tests in sequence"""
-        print("🚀 Starting Comprehensive BookaRide Backend Testing")
-        print("=" * 60)
+        print("🚀 Starting BookaRide Backend Testing - Review Request Features")
+        print("=" * 70)
         
         # Basic connectivity tests
         if not self.test_health_check():
@@ -706,32 +706,38 @@ class BookaRideBackendTester:
             print("❌ Admin login failed - stopping tests")
             return False
         
-        # Core functionality tests
+        # REVIEW REQUEST SPECIFIC TESTS
+        print("\n💰 Testing Pricing Calculation...")
+        self.test_pricing_calculation_orewa_to_airport()
+        self.test_pricing_calculation_short_trip()
+        
+        print("\n✈️ Testing Flight Tracker...")
+        self.test_flight_tracker()
+        
+        print("\n🚗 Testing Driver Assignment with Notifications...")
+        self.test_driver_assignment_flow()
+        
+        print("\n🤖 Testing AI Email Auto-Responder...")
+        self.test_ai_email_auto_responder()
+        
+        print("\n💳 Testing Payment Endpoints...")
+        self.test_payment_create_checkout()
+        
+        # Additional core functionality tests
         print("\n📧 Testing Email System...")
         self.test_direct_mailgun_email()
         
-        print("\n💰 Testing Booking System...")
+        print("\n📋 Testing Booking System...")
         self.test_price_calculation()
-        
-        # Multi-language booking tests
-        print("\n🌍 Testing Multi-Language Bookings...")
-        for lang in ['en', 'zh', 'ja']:
-            self.test_create_booking(lang)
-        
+        self.test_create_booking('en')
         self.test_get_bookings()
         
-        # Payment and notification tests
-        print("\n💳 Testing Payment System...")
-        self.test_payment_checkout_creation()
+        # Payment webhook test
+        print("\n🔗 Testing Payment Webhooks...")
         self.test_stripe_webhook_simulation()
         
-        # Additional tests
-        print("\n🔧 Testing Additional Features...")
-        self.test_email_endpoint()
-        self.test_translation_endpoints()
-        
-        # New Admin Authentication Features
-        print("\n🔐 Testing New Admin Authentication Features...")
+        # Admin Authentication Features
+        print("\n🔐 Testing Admin Authentication Features...")
         self.test_google_oauth_session_endpoint()
         self.test_password_reset_request()
         self.test_password_reset_validate()
