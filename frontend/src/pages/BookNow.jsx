@@ -847,6 +847,11 @@ export const BookNow = () => {
                           <div className="mt-6">
                             <CurrencyConverter nzdAmount={finalTotal} />
                           </div>
+
+                          {/* Social Proof */}
+                          <div className="mt-6">
+                            <SocialProofCounter variant="urgency" />
+                          </div>
                         </div>
                       ) : (
                         <div className="text-center py-8 text-gray-500">
@@ -855,9 +860,14 @@ export const BookNow = () => {
                         </div>
                       )}
 
+                      {/* Trust Badges */}
+                      <div className="mt-6">
+                        <TrustBadges variant="payment" />
+                      </div>
+
                       <Button 
                         type="submit" 
-                        className="w-full mt-8 bg-gold hover:bg-gold/90 text-black font-semibold py-6 text-lg transition-colors duration-200"
+                        className="w-full mt-6 bg-gold hover:bg-gold/90 text-black font-semibold py-6 text-lg transition-colors duration-200"
                         disabled={pricing.calculating || pricing.totalPrice === 0}
                       >
                         Book Now
