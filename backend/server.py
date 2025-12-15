@@ -3423,6 +3423,84 @@ async def send_payment_link_email(booking: dict, payment_link: str, payment_type
     except Exception as e:
         logger.error(f"Error sending payment link email: {str(e)}")
 
+# Apple iCloud Contacts Integration
+def add_contact_to_icloud(booking: dict):
+    """Add a booking customer as a contact to iCloud Contacts"""
+    try:
+        icloud_email = os.environ.get('ICLOUD_EMAIL')
+        icloud_password = os.environ.get('ICLOUD_APP_PASSWORD')
+        
+        if not icloud_email or not icloud_password:
+            logger.warning("iCloud credentials not configured - contact not synced")
+            return False
+        
+        # Create vCard
+        vcard = vobject.vCard()
+        
+        # Add name
+        customer_name = booking.get('name', 'Unknown')
+        name_parts = customer_name.split(' ', 1)
+        first_name = name_parts[0]
+        last_name = name_parts[1] if len(name_parts) > 1 else ''
+        
+        vcard.add('fn').value = customer_name
+        vcard.add('n').value = vobject.vcard.Name(family=last_name, given=first_name)
+        
+        # Add phone
+        phone = booking.get('phone', '')
+        if phone:
+            tel = vcard.add('tel')
+            tel.value = phone
+            tel.type_param = 'CELL'
+        
+        # Add email
+        email = booking.get('email', '')
+        if email:
+            email_field = vcard.add('email')
+            email_field.value = email
+            email_field.type_param = 'INTERNET'
+        
+        # Add note with booking details
+        booking_ref = booking.get('booking_ref', booking.get('id', '')[:6])
+        pickup = booking.get('pickupAddress', '')
+        dropoff = booking.get('dropoffAddress', '')
+        date = booking.get('date', '')
+        note = f"BookaRide Customer\\nRef: {booking_ref}\\nDate: {date}\\n{pickup} → {dropoff}"
+        vcard.add('note').value = note
+        
+        # Add organization
+        vcard.add('org').value = ['BookaRide Customer']
+        
+        # Generate unique UID
+        contact_uid = str(uuid.uuid4())
+        vcard.add('uid').value = contact_uid
+        
+        vcard_data = vcard.serialize()
+        
+        # iCloud CardDAV endpoint
+        carddav_url = f"https://contacts.icloud.com/{icloud_email}/carddavhome/card/{contact_uid}.vcf"
+        
+        # Upload to iCloud
+        response = requests.put(
+            carddav_url,
+            auth=(icloud_email, icloud_password),
+            data=vcard_data,
+            headers={
+                'Content-Type': 'text/vcard; charset=utf-8',
+            }
+        )
+        
+        if response.status_code in [200, 201, 204]:
+            logger.info(f"Contact added to iCloud: {customer_name} ({phone})")
+            return True
+        else:
+            logger.error(f"Failed to add contact to iCloud: {response.status_code} - {response.text}")
+            return False
+            
+    except Exception as e:
+        logger.error(f"Error adding contact to iCloud: {str(e)}")
+        return False
+
 # Manual Booking Creation
 class ManualBooking(BaseModel):
     name: str
