@@ -1,27 +1,27 @@
 {
-  "timestamp": "2025-12-15T05:38:03.926992",
-  "success": false,
+  "timestamp": "2025-12-15T05:38:16.008941",
+  "success": true,
   "results": [
     {
       "test": "Health Check",
       "status": "\u2705 PASS",
       "message": "API is healthy: {'status': 'healthy', 'service': 'bookaride-api'}",
       "details": {},
-      "timestamp": "2025-12-15T05:38:03.609547"
+      "timestamp": "2025-12-15T05:38:15.686617"
     },
     {
       "test": "Admin Authentication",
       "status": "\u2705 PASS",
       "message": "Admin login successful with credentials admin/Kongkong2025!@",
       "details": {},
-      "timestamp": "2025-12-15T05:38:03.845736"
+      "timestamp": "2025-12-15T05:38:15.920102"
     },
     {
       "test": "Reminder Status Endpoint",
       "status": "\u2705 PASS",
       "message": "All required fields present, scheduler running, 2 jobs scheduled",
       "details": {
-        "current_nz_time": "2025-12-15 18:38:03 NZDT",
+        "current_nz_time": "2025-12-15 18:38:15 NZDT",
         "checking_for_date": "2025-12-16",
         "total_bookings_tomorrow": 0,
         "reminders_sent_today": 0,
@@ -42,12 +42,12 @@
           }
         ]
       },
-      "timestamp": "2025-12-15T05:38:03.856416"
+      "timestamp": "2025-12-15T05:38:15.932610"
     },
     {
       "test": "Manual Send Reminders Endpoint",
-      "status": "\u274c FAIL",
-      "message": "Response missing 'reminders_sent' field",
+      "status": "\u2705 PASS",
+      "message": "Manual reminders sent successfully: 0 reminders",
       "details": {
         "success": true,
         "message": "Sent reminders for 0 bookings, skipped 0 (already sent today)",
@@ -58,7 +58,7 @@
           "source": "admin_manual"
         }
       },
-      "timestamp": "2025-12-15T05:38:03.871348"
+      "timestamp": "2025-12-15T05:38:15.985636"
     },
     {
       "test": "External Cron Endpoint",
@@ -70,7 +70,7 @@
         "skipped": 0,
         "source": "cron_endpoint"
       },
-      "timestamp": "2025-12-15T05:38:03.920887"
+      "timestamp": "2025-12-15T05:38:15.997954"
     },
     {
       "test": "Backend Logs Verification",
@@ -86,7 +86,7 @@
         ],
         "missing": []
       },
-      "timestamp": "2025-12-15T05:38:03.926845"
+      "timestamp": "2025-12-15T05:38:16.008722"
     }
   ]
 }
