@@ -1,6 +1,4 @@
 import React, { useState } from 'react';
-import { Header } from '../components/Header';
-import { Footer } from '../components/Footer';
 import FlightTracker from '../components/FlightTracker';
 import { Plane, Clock, Bell, MapPin } from 'lucide-react';
 import { Input } from '../components/ui/input';
@@ -18,7 +16,6 @@ const FlightTrackerPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-900">
-      <Header />
       
       {/* Hero Section */}
       <section className="pt-32 pb-16 bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900">
