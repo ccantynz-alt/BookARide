@@ -1128,7 +1128,11 @@ export const AdminDashboard = () => {
               <p className="text-white/70">Manage bookings and customer communications</p>
               <p className="text-white/50 text-xs mt-1">v2024.12.08</p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
+              <Button onClick={handleSyncContactsToiPhone} disabled={syncingContacts} variant="outline" className="border-blue-400 text-blue-400 hover:bg-blue-400 hover:text-white">
+                <Smartphone className="w-4 h-4 mr-2" />
+                {syncingContacts ? 'Syncing...' : 'Sync to iPhone'}
+              </Button>
               <Button onClick={() => navigate('/driver/portal')} variant="outline" className="border-green-500 text-green-500 hover:bg-green-500 hover:text-white">
                 <Users className="w-4 h-4 mr-2" />
                 Driver Portal
