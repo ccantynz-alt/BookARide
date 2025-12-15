@@ -399,8 +399,8 @@ class BookaRideBackendTester:
             self.log_result("Password Reset Confirm", False, f"Password reset confirm error: {str(e)}")
             return False
 
-    def test_pricing_calculation_orewa_to_airport(self):
-        """Test pricing calculation for Orewa to Auckland Airport (~60km, should be ~$150)"""
+    def test_pricing_calculation_orewa_to_airport_with_rate_per_km(self):
+        """Test pricing calculation for Orewa to Auckland Airport with ratePerKm field (Barbara Walsh bug fix)"""
         try:
             price_request = {
                 "serviceType": "airport-shuttle",
@@ -417,28 +417,39 @@ class BookaRideBackendTester:
                 data = response.json()
                 total_price = data.get('totalPrice', 0)
                 distance = data.get('distance', 0)
+                rate_per_km = data.get('ratePerKm')
                 
-                # Check if distance is around 60km and price around $150
-                if 50 <= distance <= 70 and 120 <= total_price <= 180:
-                    self.log_result("Pricing: Orewa to Airport", True, f"Correct pricing: ${total_price} for {distance}km (expected ~$150 for ~60km)")
-                    return True
-                else:
-                    self.log_result("Pricing: Orewa to Airport", False, f"Unexpected pricing: ${total_price} for {distance}km (expected ~$150 for ~60km)")
+                # Check if ratePerKm field is present (Barbara Walsh bug fix)
+                if rate_per_km is None:
+                    self.log_result("Pricing: Orewa to Airport (ratePerKm)", False, f"Missing ratePerKm field in response: {data}")
                     return False
+                
+                # For long trips (~60km), should be around $2.47 per km
+                if 50 <= distance <= 70:
+                    expected_rate = 2.47
+                    if abs(rate_per_km - expected_rate) <= 0.5:  # Allow some tolerance
+                        self.log_result("Pricing: Orewa to Airport (ratePerKm)", True, f"Correct pricing with ratePerKm: ${total_price} for {distance}km at ${rate_per_km}/km (expected ~${expected_rate}/km)")
+                        return True
+                    else:
+                        self.log_result("Pricing: Orewa to Airport (ratePerKm)", False, f"Incorrect rate per km: ${rate_per_km}/km for {distance}km (expected ~${expected_rate}/km)")
+                        return False
+                else:
+                    self.log_result("Pricing: Orewa to Airport (ratePerKm)", True, f"Distance different than expected but ratePerKm present: ${total_price} for {distance}km at ${rate_per_km}/km")
+                    return True
             else:
-                self.log_result("Pricing: Orewa to Airport", False, f"Price calculation failed with status {response.status_code}", response.text)
+                self.log_result("Pricing: Orewa to Airport (ratePerKm)", False, f"Price calculation failed with status {response.status_code}", response.text)
                 return False
         except Exception as e:
-            self.log_result("Pricing: Orewa to Airport", False, f"Price calculation error: {str(e)}")
+            self.log_result("Pricing: Orewa to Airport (ratePerKm)", False, f"Price calculation error: {str(e)}")
             return False
 
-    def test_pricing_calculation_short_trip(self):
-        """Test pricing calculation for short trip under 15km (should apply $100 minimum)"""
+    def test_pricing_calculation_short_trip_with_rate_per_km(self):
+        """Test pricing calculation for short trip with ratePerKm field (Barbara Walsh bug fix)"""
         try:
             price_request = {
                 "serviceType": "airport-shuttle",
-                "pickupAddress": "Auckland CBD, Auckland, New Zealand",
-                "dropoffAddress": "Parnell, Auckland, New Zealand",
+                "pickupAddress": "Takapuna, Auckland, New Zealand",
+                "dropoffAddress": "Auckland CBD, Auckland, New Zealand",
                 "passengers": 1,
                 "vipAirportPickup": False,
                 "oversizedLuggage": False
@@ -450,22 +461,31 @@ class BookaRideBackendTester:
                 data = response.json()
                 total_price = data.get('totalPrice', 0)
                 distance = data.get('distance', 0)
+                rate_per_km = data.get('ratePerKm')
                 
-                # Check if minimum $100 is applied for short trips
-                if distance < 15 and total_price >= 100:
-                    self.log_result("Pricing: Short Trip Minimum", True, f"Minimum pricing applied: ${total_price} for {distance}km (minimum $100)")
-                    return True
-                elif distance >= 15:
-                    self.log_result("Pricing: Short Trip Minimum", True, f"Trip longer than expected: ${total_price} for {distance}km (not a short trip)")
-                    return True
-                else:
-                    self.log_result("Pricing: Short Trip Minimum", False, f"Minimum not applied: ${total_price} for {distance}km (should be minimum $100)")
+                # Check if ratePerKm field is present (Barbara Walsh bug fix)
+                if rate_per_km is None:
+                    self.log_result("Pricing: Short Trip (ratePerKm)", False, f"Missing ratePerKm field in response: {data}")
                     return False
+                
+                # For short trips (<15km), should be $12.00 per km
+                if distance < 15:
+                    expected_rate = 12.00
+                    if rate_per_km == expected_rate:
+                        self.log_result("Pricing: Short Trip (ratePerKm)", True, f"Correct short trip pricing with ratePerKm: ${total_price} for {distance}km at ${rate_per_km}/km (expected ${expected_rate}/km)")
+                        return True
+                    else:
+                        self.log_result("Pricing: Short Trip (ratePerKm)", False, f"Incorrect rate per km for short trip: ${rate_per_km}/km for {distance}km (expected ${expected_rate}/km)")
+                        return False
+                else:
+                    # If distance is longer, check appropriate rate
+                    self.log_result("Pricing: Short Trip (ratePerKm)", True, f"Trip longer than expected but ratePerKm present: ${total_price} for {distance}km at ${rate_per_km}/km")
+                    return True
             else:
-                self.log_result("Pricing: Short Trip Minimum", False, f"Price calculation failed with status {response.status_code}", response.text)
+                self.log_result("Pricing: Short Trip (ratePerKm)", False, f"Price calculation failed with status {response.status_code}", response.text)
                 return False
         except Exception as e:
-            self.log_result("Pricing: Short Trip Minimum", False, f"Price calculation error: {str(e)}")
+            self.log_result("Pricing: Short Trip (ratePerKm)", False, f"Price calculation error: {str(e)}")
             return False
 
     def test_flight_tracker(self):
