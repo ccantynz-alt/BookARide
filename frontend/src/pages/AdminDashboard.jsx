@@ -885,6 +885,26 @@ export const AdminDashboard = () => {
     }
   };
 
+  // Sync contacts to iPhone
+  const [syncingContacts, setSyncingContacts] = useState(false);
+  const handleSyncContactsToiPhone = async () => {
+    if (!window.confirm('Sync all customer contacts to your iPhone? This will upload unique contacts from all bookings.')) {
+      return;
+    }
+    
+    setSyncingContacts(true);
+    try {
+      const response = await axios.post(`${API}/admin/sync-contacts-to-icloud`, {}, getAuthHeaders());
+      const data = response.data;
+      toast.success(`✅ Synced ${data.synced} contacts to iPhone! (${data.skipped} skipped, ${data.failed} failed)`);
+    } catch (error) {
+      console.error('Error syncing contacts:', error);
+      toast.error(error.response?.data?.detail || 'Failed to sync contacts to iPhone');
+    } finally {
+      setSyncingContacts(false);
+    }
+  };
+
   const handleChangePassword = async () => {
     try {
       // Validation
