@@ -49,31 +49,32 @@ export const HobbitonTransfers = () => {
         canonical="/hobbiton-transfers"
       />
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white py-20 overflow-hidden">
-        {/* Background Vehicle Image */}
-        <div className="absolute inset-0 opacity-15">
+      <section className="relative text-white py-20 overflow-hidden min-h-[600px] flex items-center">
+        {/* Beautiful Hobbiton Background Image */}
+        <div className="absolute inset-0">
           <img 
-            src="/shuttle-van.jpg" 
-            alt="" 
-            className="w-full h-full object-cover object-right"
-            style={{ filter: 'brightness(0.4) blur(1px)' }}
+            src="https://images.unsplash.com/photo-1584956861988-913b8c1c7270?auto=compress&cs=tinysrgb&w=1920&q=80" 
+            alt="Hobbiton Movie Set - iconic hobbit hole with round green door" 
+            className="w-full h-full object-cover"
           />
-        </div>
-        
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-0 left-0 w-full h-full bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzRjMC0yLjIxLTEuNzktNC00LTRzLTQgMS43OS00IDQgMS43OSA0IDQgNCA0LTEuNzkgNC00em0wLTEwYzAtMi4yMS0xLjc5LTQtNC00cy00IDEuNzktNCA0IDEuNzkgNCA0IDQgNC0xLjc5IDQtNHoiLz48L2c+PC9nPjwvc3ZnPg==')]"></div>
+          {/* Dark overlay for text readability */}
+          <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-black/40" />
         </div>
         
         <div className="container mx-auto px-4 relative z-10">
-          <div className="max-w-4xl mx-auto text-center">
+          <div className="max-w-4xl">
+            <div className="inline-flex items-center gap-2 bg-gold/20 border border-gold/40 rounded-full px-4 py-2 mb-6">
+              <Star className="w-4 h-4 text-gold" />
+              <span className="text-gold font-semibold text-sm">LORD OF THE RINGS EXPERIENCE</span>
+            </div>
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6">
               Hobbiton Movie Set
               <span className="block text-gold mt-2">Transfers from Auckland</span>
             </h1>
-            <p className="text-xl text-gray-300 mb-8">
-              Experience the magic of Middle-earth with our premium transfer service from Auckland to Hobbiton Movie Set in Matamata
+            <p className="text-xl text-gray-200 mb-8 max-w-2xl">
+              Step into Middle-earth with our premium transfer service. We'll take you from Auckland directly to the magical Hobbiton Movie Set in Matamata.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="flex flex-col sm:flex-row gap-4">
               <Link to="/book-now">
                 <Button className="bg-gold hover:bg-gold/90 text-black font-semibold px-8 py-6 text-lg">
                   Book Your Transfer
