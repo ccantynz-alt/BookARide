@@ -81,17 +81,6 @@ export const Contact = () => {
                   <div className="space-y-6">
                     <div className="flex items-start space-x-4">
                       <div className="w-12 h-12 bg-gray-900 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <Phone className="w-6 h-6 text-gold" />
-                      </div>
-                      <div>
-                        <div className="text-sm font-semibold text-gray-900 mb-2">Phone</div>
-                        <p className="text-sm text-gray-600">
-                          {companyInfo.phone}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-start space-x-4">
-                      <div className="w-12 h-12 bg-gray-900 rounded-lg flex items-center justify-center flex-shrink-0">
                         <Mail className="w-6 h-6 text-gold" />
                       </div>
                       <div>
@@ -125,10 +114,12 @@ export const Contact = () => {
 
               <Card className="border-2 border-gold/30 bg-gradient-to-br from-gray-50 to-white">
                 <CardContent className="p-8">
-                  <h4 className="font-semibold text-gray-900 mb-3">Need Help Right Away?</h4>
-                  <p className="text-sm text-gray-600 mb-4">Call us for instant booking and support.</p>
-                  <p className="text-lg font-bold text-gray-900 mb-6">{companyInfo.phone}</p>
-                  <p className="text-xs text-gray-500">Available 24/7</p>
+                  <h4 className="font-semibold text-gray-900 mb-3">Need a Quick Quote?</h4>
+                  <p className="text-sm text-gray-600 mb-4">Get instant pricing with our live price calculator.</p>
+                  <a href="/book-now" className="inline-block bg-gold hover:bg-yellow-500 text-black font-semibold px-6 py-3 rounded-lg transition-colors">
+                    Get Instant Quote →
+                  </a>
+                  <p className="text-xs text-gray-500 mt-4">Enter your pickup & dropoff for live pricing</p>
                 </CardContent>
               </Card>
             </div>
