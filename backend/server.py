@@ -4604,8 +4604,24 @@ async def send_payment_link_email(booking: dict, payment_link: str, payment_type
         logger.error(f"Error sending payment link email: {str(e)}")
 
 # Apple iCloud Contacts Integration
+def generate_contact_uid(phone: str, email: str) -> str:
+    """Generate a deterministic UID based on phone/email to prevent duplicates.
+    Same customer will always get the same UID, so re-uploads update instead of duplicate."""
+    import hashlib
+    # Normalize phone and email
+    normalized_phone = ''.join(filter(str.isdigit, phone or ''))
+    normalized_email = (email or '').lower().strip()
+    # Create a unique key from phone/email
+    unique_key = f"bookaride_{normalized_phone}_{normalized_email}"
+    # Generate a deterministic UUID-like string from the hash
+    hash_obj = hashlib.md5(unique_key.encode())
+    return f"{hash_obj.hexdigest()[:8]}-{hash_obj.hexdigest()[8:12]}-{hash_obj.hexdigest()[12:16]}-{hash_obj.hexdigest()[16:20]}-{hash_obj.hexdigest()[20:32]}"
+
+
 def add_contact_to_icloud(booking: dict):
-    """Add a booking customer as a contact to iCloud Contacts"""
+    """Add a booking customer as a contact to iCloud Contacts.
+    Uses deterministic UID based on phone/email to prevent duplicates - 
+    same customer will be updated instead of creating duplicate."""
     try:
         icloud_email = os.environ.get('ICLOUD_EMAIL')
         icloud_password = os.environ.get('ICLOUD_APP_PASSWORD')
@@ -4651,8 +4667,9 @@ def add_contact_to_icloud(booking: dict):
         # Add organization
         vcard.add('org').value = ['BookaRide Customer']
         
-        # Generate unique UID
-        contact_uid = str(uuid.uuid4())
+        # Generate DETERMINISTIC UID based on phone/email to prevent duplicates
+        # Same customer will always get the same UID, so CardDAV will UPDATE instead of CREATE
+        contact_uid = generate_contact_uid(phone, email)
         vcard.add('uid').value = contact_uid
         
         vcard_data = vcard.serialize()
@@ -4661,7 +4678,7 @@ def add_contact_to_icloud(booking: dict):
         # Principal ID: 11909617397, Server: p115-contacts.icloud.com
         carddav_url = f"https://p115-contacts.icloud.com:443/11909617397/carddavhome/card/{contact_uid}.vcf"
         
-        # Upload to iCloud
+        # Upload to iCloud (PUT with same UID will UPDATE existing contact)
         response = requests.put(
             carddav_url,
             auth=(icloud_email, icloud_password),
@@ -4673,7 +4690,7 @@ def add_contact_to_icloud(booking: dict):
         )
         
         if response.status_code in [200, 201, 204]:
-            logger.info(f"Contact added to iCloud: {customer_name} ({phone})")
+            logger.info(f"Contact synced to iCloud: {customer_name} ({phone}) - UID: {contact_uid[:8]}...")
             return True
         else:
             logger.error(f"Failed to add contact to iCloud: {response.status_code} - {response.text}")
