@@ -130,6 +130,7 @@ function App() {
     { path: "visitors", element: <VisitorsHub /> },
     { path: "visitors/:countrySlug", element: <GlobalLanding /> },
     { path: "auckland-airport-shuttle", element: <AucklandAirportShuttle /> },
+    { path: "flight-tracker", element: <FlightTrackerPage /> },
     // NEW: SEO Route Pages (Comprehensive)
     { path: "auckland-airport-to-whangaparaoa", element: <SEORoutePage /> },
     { path: "auckland-airport-to-orewa", element: <SEORoutePage /> },
