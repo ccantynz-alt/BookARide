@@ -1649,6 +1649,7 @@ export const AdminDashboard = () => {
                     <div>
                       <span className="text-gray-600">Date:</span>
                       <p className="font-medium">{formatDate(selectedBooking.date)}</p>
+                      <p className="text-sm text-blue-600 font-medium">{getDayOfWeek(selectedBooking.date)}</p>
                     </div>
                     <div>
                       <span className="text-gray-600">Time:</span>
@@ -1670,6 +1671,7 @@ export const AdminDashboard = () => {
                           <div>
                             <span className="text-gray-500 text-xs">Return Date:</span>
                             <p className="font-medium">{formatDate(selectedBooking.returnDate)}</p>
+                            <p className="text-xs text-blue-600 font-medium">{getDayOfWeek(selectedBooking.returnDate)}</p>
                           </div>
                           <div>
                             <span className="text-gray-500 text-xs">Return Time:</span>
