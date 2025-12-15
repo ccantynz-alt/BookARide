@@ -1598,68 +1598,75 @@ Questions? Call +64 21 743 321"""
 async def send_tomorrow_reminders(current_admin: dict = Depends(get_current_admin)):
     """Manually trigger sending reminders for tomorrow's bookings"""
     try:
-        # Get tomorrow's date in YYYY-MM-DD format
-        tomorrow = datetime.now(timezone.utc) + timedelta(days=1)
-        tomorrow_str = tomorrow.strftime('%Y-%m-%d')
-        
-        # Also check for NZ timezone (UTC+12/13)
-        nz_tomorrow = (datetime.now(timezone.utc) + timedelta(hours=13) + timedelta(days=1)).strftime('%Y-%m-%d')
-        
-        # Find all confirmed bookings for tomorrow
-        bookings = await db.bookings.find({
-            "status": "confirmed",
-            "$or": [
-                {"date": tomorrow_str},
-                {"date": nz_tomorrow}
-            ]
-        }, {"_id": 0}).to_list(100)
-        
-        results = {
-            "total_bookings": len(bookings),
-            "emails_sent": 0,
-            "sms_sent": 0,
-            "errors": []
-        }
-        
-        for booking in bookings:
-            # Check if reminder already sent today
-            reminder_sent = booking.get('reminderSentAt', '')
-            today_str = datetime.now(timezone.utc).strftime('%Y-%m-%d')
-            
-            if reminder_sent and reminder_sent.startswith(today_str):
-                continue  # Skip if already sent today
-            
-            # Send email reminder
-            if booking.get('email'):
-                if send_reminder_email(booking):
-                    results['emails_sent'] += 1
-                else:
-                    results['errors'].append(f"Email failed for {booking.get('name')}")
-            
-            # Send SMS reminder
-            if booking.get('phone'):
-                if send_reminder_sms(booking):
-                    results['sms_sent'] += 1
-                else:
-                    results['errors'].append(f"SMS failed for {booking.get('name')}")
-            
-            # Mark reminder as sent
-            await db.bookings.update_one(
-                {"id": booking.get('id')},
-                {"$set": {"reminderSentAt": datetime.now(timezone.utc).isoformat()}}
-            )
-        
-        logger.info(f"Reminders sent: {results['emails_sent']} emails, {results['sms_sent']} SMS for {results['total_bookings']} bookings")
-        
+        result = await send_daily_reminders_core(source="admin_manual")
         return {
             "success": True,
-            "message": f"Sent {results['emails_sent']} emails and {results['sms_sent']} SMS for {results['total_bookings']} bookings tomorrow",
-            "details": results
+            "message": f"Sent reminders for {result.get('reminders_sent', 0)} bookings, skipped {result.get('skipped', 0)} (already sent today)",
+            "details": result
         }
-        
     except Exception as e:
         logger.error(f"Error sending reminders: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error sending reminders: {str(e)}")
+
+
+@api_router.get("/admin/reminder-status")
+async def get_reminder_status(current_admin: dict = Depends(get_current_admin)):
+    """Get the status of today's reminders and scheduler health"""
+    try:
+        nz_tz = pytz.timezone('Pacific/Auckland')
+        nz_now = datetime.now(nz_tz)
+        nz_today = nz_now.strftime('%Y-%m-%d')
+        nz_tomorrow = (nz_now + timedelta(days=1)).strftime('%Y-%m-%d')
+        
+        # Get tomorrow's bookings
+        tomorrow_bookings = await db.bookings.find({
+            "status": "confirmed",
+            "date": nz_tomorrow
+        }, {"_id": 0, "id": 1, "name": 1, "email": 1, "phone": 1, "reminderSentAt": 1, "time": 1}).to_list(100)
+        
+        sent_today = []
+        pending = []
+        
+        for booking in tomorrow_bookings:
+            reminder_sent = booking.get('reminderSentAt', '')
+            if reminder_sent and reminder_sent.startswith(nz_today):
+                sent_today.append({
+                    "name": booking.get('name'),
+                    "email": booking.get('email'),
+                    "time": booking.get('time'),
+                    "reminderSentAt": reminder_sent
+                })
+            else:
+                pending.append({
+                    "name": booking.get('name'),
+                    "email": booking.get('email'),
+                    "time": booking.get('time')
+                })
+        
+        # Get scheduler status
+        scheduler_jobs = []
+        for job in scheduler.get_jobs():
+            scheduler_jobs.append({
+                "id": job.id,
+                "name": job.name,
+                "next_run": str(job.next_run_time) if job.next_run_time else "Not scheduled"
+            })
+        
+        return {
+            "current_nz_time": nz_now.strftime('%Y-%m-%d %H:%M:%S %Z'),
+            "checking_for_date": nz_tomorrow,
+            "total_bookings_tomorrow": len(tomorrow_bookings),
+            "reminders_sent_today": len(sent_today),
+            "reminders_pending": len(pending),
+            "sent_details": sent_today,
+            "pending_details": pending,
+            "scheduler_status": "running" if scheduler.running else "stopped",
+            "scheduled_jobs": scheduler_jobs
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting reminder status: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # Core reminder sending logic - used by all reminder triggers
