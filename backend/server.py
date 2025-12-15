@@ -911,7 +911,7 @@ async def calculate_price(request: PriceCalculationRequest):
             if is_from_hibiscus_coast or is_to_hibiscus_coast:
                 # From/to Hibiscus Coast - flat $550 minimum (return)
                 if total_price < matakana_concert_base:
-                    logger.info(f"🎵 Hibiscus Coast → Matakana: applying flat ${matakana_concert_base}")
+                    logger.info(f"🎵 Hibiscus Coast → Matakana Country Park: applying flat ${matakana_concert_base}")
                     total_price = matakana_concert_base
             else:
                 # From elsewhere in Auckland:
