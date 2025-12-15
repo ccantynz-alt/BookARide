@@ -159,6 +159,11 @@ function App() {
     { path: "best-hibiscus-coast-shuttle-service", element: <BestHibiscusCoastShuttle /> },
     { path: "orewa-to-auckland-airport", element: <OrewaToAirportPage /> },
     { path: "whangaparaoa-airport-transfer", element: <WhangaparoaAirportPage /> },
+    // NEW: High-Converting Landing Pages
+    { path: "takapuna-to-airport", element: <TakapunaAirportPage /> },
+    { path: "albany-to-airport", element: <AlbanyAirportPage /> },
+    { path: "north-shore-airport-shuttle", element: <NorthShoreAirportPage /> },
+    { path: "auckland-airport-to-city", element: <AirportToCityPage /> },
     // Standard Pages
     { path: "services", element: <Services /> },
     { path: "about", element: <About /> },
