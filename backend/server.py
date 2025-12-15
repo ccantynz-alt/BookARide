@@ -1020,6 +1020,13 @@ async def get_bookings(current_admin: dict = Depends(get_current_admin)):
 @api_router.patch("/bookings/{booking_id}")
 async def update_booking(booking_id: str, update_data: dict, current_admin: dict = Depends(get_current_admin)):
     try:
+        # Auto-sync bookReturn flag when returnDate is set/cleared
+        if 'returnDate' in update_data:
+            if update_data['returnDate'] and update_data['returnDate'].strip():
+                update_data['bookReturn'] = True
+            else:
+                update_data['bookReturn'] = False
+        
         result = await db.bookings.update_one(
             {"id": booking_id},
             {"$set": update_data}
