@@ -3351,8 +3351,31 @@ async def create_manual_booking(booking: ManualBooking):
         await db.bookings.insert_one(new_booking)
         logger.info(f"Manual booking created: #{ref_number} - Payment: {booking.paymentMethod}")
         
+        # Handle payment link sending based on payment method
+        payment_link_sent = False
+        if booking.paymentMethod == 'stripe':
+            # Send Stripe payment link
+            try:
+                payment_link = await generate_stripe_payment_link(new_booking)
+                if payment_link:
+                    await send_payment_link_email(new_booking, payment_link, 'stripe')
+                    payment_link_sent = True
+                    logger.info(f"Stripe payment link sent for booking {ref_number}")
+            except Exception as e:
+                logger.error(f"Error sending Stripe payment link: {str(e)}")
+        elif booking.paymentMethod == 'paypal':
+            # Send PayPal payment link
+            try:
+                payment_link = generate_paypal_payment_link(new_booking)
+                if payment_link:
+                    await send_payment_link_email(new_booking, payment_link, 'paypal')
+                    payment_link_sent = True
+                    logger.info(f"PayPal payment link sent for booking {ref_number}")
+            except Exception as e:
+                logger.error(f"Error sending PayPal payment link: {str(e)}")
+        
         # Send confirmation email (with CC if provided)
-        send_booking_confirmation_email(new_booking)
+        send_booking_confirmation_email(new_booking, include_payment_link=not payment_link_sent)
         
         # Send confirmation SMS
         send_booking_confirmation_sms(new_booking)
@@ -3363,7 +3386,7 @@ async def create_manual_booking(booking: ManualBooking):
         # Create calendar event
         await create_calendar_event(new_booking)
         
-        return {"message": "Booking created successfully", "id": new_booking['id'], "referenceNumber": ref_number}
+        return {"message": "Booking created successfully", "id": new_booking['id'], "referenceNumber": ref_number, "paymentLinkSent": payment_link_sent}
     except Exception as e:
         logger.error(f"Error creating manual booking: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
