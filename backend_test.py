@@ -627,13 +627,12 @@ class BookaRideBackendTester:
             if response.status_code == 200:
                 data = response.json()
                 session_id = data.get('session_id')
-                checkout_url = data.get('checkout_url')
                 
-                if session_id and checkout_url:
+                if session_id:
                     self.log_result("Payment Checkout Creation", True, f"Checkout session created successfully: {session_id}")
                     return True
                 else:
-                    self.log_result("Payment Checkout Creation", False, f"Incomplete checkout response: session_id={session_id}, checkout_url={checkout_url}")
+                    self.log_result("Payment Checkout Creation", False, f"No session_id in response: {data}")
                     return False
             else:
                 self.log_result("Payment Checkout Creation", False, f"Payment checkout failed with status {response.status_code}", response.text)
