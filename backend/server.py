@@ -2577,51 +2577,71 @@ async def send_driver_notification(booking: dict, driver: dict):
                     </div>
                     """
             
-            html_content = f"""
-            <html>
-                <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                    <div style="background-color: #D4AF37; color: #1a1a1a; padding: 20px; text-align: center;">
-                        <h1 style="margin: 0;">BookaRide.co.nz</h1>
-                    </div>
-                    <div style="padding: 20px; background-color: #f5f5f5;">
-                        <h2 style="color: #1a1a1a;">✅ New Booking Assignment</h2>
-                        <p>Hi {driver.get('name', 'Driver')},</p>
-                        <p>You have been assigned a new booking. Please review the details below:</p>
-                        
-                        <div style="background-color: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #D4AF37;">
-                            <p><strong>Booking Reference:</strong> {booking_ref}</p>
-                            <p style="font-size: 11px; color: #999;">Full ID: {full_booking_id}</p>
+            html_content = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Booking Assignment</title>
+</head>
+<body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 0; background-color: #ffffff;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto;">
+        <tr>
+            <td style="background-color: #D4AF37; color: #1a1a1a; padding: 20px; text-align: center;">
+                <h1 style="margin: 0; font-size: 24px;">BookaRide.co.nz</h1>
+            </td>
+        </tr>
+        <tr>
+            <td style="padding: 20px; background-color: #f5f5f5;">
+                <h2 style="color: #1a1a1a; margin-top: 0;">✅ New Booking Assignment</h2>
+                <p style="margin: 10px 0;">Hi {driver.get('name', 'Driver')},</p>
+                <p style="margin: 10px 0;">You have been assigned a new booking. Please review the details below:</p>
+                
+                <table width="100%" cellpadding="15" cellspacing="0" style="background-color: white; border-radius: 8px; margin: 20px 0; border-left: 4px solid #D4AF37;">
+                    <tr>
+                        <td>
+                            <p style="margin: 5px 0;"><strong>Booking Reference:</strong> {booking_ref}</p>
+                            <p style="margin: 5px 0; font-size: 11px; color: #999;">Full ID: {full_booking_id}</p>
                             <hr style="border: 0; border-top: 1px solid #e0e0e0; margin: 15px 0;">
-                            <p><strong>Customer Name:</strong> {booking.get('name', 'N/A')}</p>
-                            <p><strong>Customer Phone:</strong> {booking.get('phone', 'N/A')}</p>
-                            <p><strong>Customer Email:</strong> {booking.get('email', 'N/A')}</p>
+                            <p style="margin: 5px 0;"><strong>Customer Name:</strong> {booking.get('name', 'N/A')}</p>
+                            <p style="margin: 5px 0;"><strong>Customer Phone:</strong> {booking.get('phone', 'N/A')}</p>
+                            <p style="margin: 5px 0;"><strong>Customer Email:</strong> {booking.get('email', 'N/A')}</p>
                             <hr style="border: 0; border-top: 1px solid #e0e0e0; margin: 15px 0;">
-                            <p><strong>Service Type:</strong> {booking.get('serviceType', 'N/A').replace('-', ' ').title()}</p>
+                            <p style="margin: 5px 0;"><strong>Service Type:</strong> {booking.get('serviceType', 'N/A').replace('-', ' ').title()}</p>
                             {pickup_html}
-                            <p><strong>Drop-off:</strong> {booking.get('dropoffAddress', 'N/A')}</p>
-                            <p><strong>Date:</strong> {formatted_date}</p>
-                            <p><strong>Time:</strong> {booking.get('time', 'N/A')}</p>
-                            <p><strong>Passengers:</strong> {booking.get('passengers', 'N/A')}</p>
-                            <hr style="border: 0; border-top: 1px solid #e0e0e0; margin: 15px 0;">
-                            <p style="font-size: 18px;"><strong>💰 Job Total: ${total_price:.2f} NZD</strong></p>
-                        </div>
-                        {return_html}
-                        
-                        <div style="background-color: #fff3cd; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                            <p style="margin: 5px 0;"><strong>Drop-off:</strong> {booking.get('dropoffAddress', 'N/A')}</p>
+                            <p style="margin: 5px 0;"><strong>Date:</strong> {formatted_date}</p>
+                            <p style="margin: 5px 0;"><strong>Time:</strong> {booking.get('time', 'N/A')}</p>
+                            <p style="margin: 5px 0;"><strong>Passengers:</strong> {booking.get('passengers', 'N/A')}</p>
+                            <hr style="border: 0; border-top: 2px solid #D4AF37; margin: 15px 0;">
+                            <p style="margin: 5px 0; font-size: 18px;"><strong>💰 Job Total: ${total_price:.2f} NZD</strong></p>
+                        </td>
+                    </tr>
+                </table>
+                {return_html}
+                
+                <table width="100%" cellpadding="15" cellspacing="0" style="background-color: #fff3cd; border-radius: 8px; margin: 20px 0;">
+                    <tr>
+                        <td>
                             <p style="margin: 0;"><strong>Special Notes:</strong></p>
                             <p style="margin: 5px 0 0 0;">{booking.get('notes', 'None') or 'None'}</p>
-                        </div>
-                        
-                        <p style="margin-top: 30px;">Please confirm receipt and contact the customer if you have any questions.</p>
-                        <p>Login to your <a href="https://bookaride.co.nz/driver/login" style="color: #1a1a1a; text-decoration: underline; font-weight: bold;">Driver Portal</a> for more details.</p>
-                    </div>
-                    <div style="background-color: #f8f9fa; color: #6c757d; padding: 20px; text-align: center; font-size: 12px; border-top: 1px solid #dee2e6;">
-                        <p style="margin: 0;">BookaRide NZ</p>
-                        <p style="margin: 5px 0;">bookaride.co.nz | +64 21 743 321</p>
-                    </div>
-                </body>
-            </html>
-            """
+                        </td>
+                    </tr>
+                </table>
+                
+                <p style="margin-top: 30px;">Please confirm receipt and contact the customer if you have any questions.</p>
+                <p>Login to your <a href="https://bookaride.co.nz/driver/login" style="color: #D4AF37; text-decoration: underline; font-weight: bold;">Driver Portal</a> for more details.</p>
+            </td>
+        </tr>
+        <tr>
+            <td style="background-color: #f8f9fa; color: #6c757d; padding: 20px; text-align: center; font-size: 12px; border-top: 1px solid #dee2e6;">
+                <p style="margin: 0;">BookaRide NZ</p>
+                <p style="margin: 5px 0;">bookaride.co.nz | +64 21 743 321</p>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>"""
             
             # Create plain text version for email clients that don't render HTML
             text_content = f"""BookaRide.co.nz - New Booking Assignment
