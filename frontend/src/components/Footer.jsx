@@ -51,8 +51,13 @@ export const Footer = () => {
                 </Link>
               </li>
               <li>
-                <Link to="/contact" className="text-sm hover:text-gold transition-colors duration-200">
+                <Link to="/book-now" className="text-sm hover:text-gold transition-colors duration-200">
                   Book Now
+                </Link>
+              </li>
+              <li>
+                <Link to="/afterpay" className="text-sm hover:text-gold transition-colors duration-200 flex items-center gap-1">
+                  <span className="text-[#B2FCE4]">●</span> Pay with Afterpay
                 </Link>
               </li>
             </ul>
