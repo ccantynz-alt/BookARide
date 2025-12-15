@@ -468,6 +468,7 @@ export const BookNow = () => {
                       {/* Flight Information */}
                       <div className="bg-gray-50 p-6 rounded-lg mb-6">
                         <h3 className="text-lg font-semibold text-gray-900 mb-4">Flight Information (Optional)</h3>
+                        <p className="text-sm text-gray-600 mb-4">Enter your flight number and we'll track it for you - if your flight is delayed, we'll adjust your pickup time automatically.</p>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           <div className="space-y-2">
                             <Label htmlFor="departureFlightNumber">Departure Flight Number</Label>
@@ -497,14 +498,30 @@ export const BookNow = () => {
                           </div>
                           <div className="space-y-2">
                             <Label htmlFor="arrivalFlightNumber">Arrival Flight Number</Label>
-                            <Input
-                              id="arrivalFlightNumber"
-                              name="arrivalFlightNumber"
-                              value={formData.arrivalFlightNumber}
-                              onChange={handleChange}
-                              placeholder="e.g., NZ456"
-                              className="transition-all duration-200 focus:ring-2 focus:ring-gold"
-                            />
+                            <div className="flex gap-2">
+                              <Input
+                                id="arrivalFlightNumber"
+                                name="arrivalFlightNumber"
+                                value={formData.arrivalFlightNumber}
+                                onChange={(e) => {
+                                  handleChange(e);
+                                  setShowFlightTracker(e.target.value.length >= 3);
+                                }}
+                                placeholder="e.g., NZ456"
+                                className="transition-all duration-200 focus:ring-2 focus:ring-gold"
+                              />
+                              {formData.arrivalFlightNumber.length >= 3 && (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setShowFlightTracker(true)}
+                                  className="whitespace-nowrap"
+                                >
+                                  Track Flight
+                                </Button>
+                              )}
+                            </div>
                           </div>
                           <div className="space-y-2">
                             <Label>Arrival Time</Label>
@@ -522,6 +539,27 @@ export const BookNow = () => {
                             />
                           </div>
                         </div>
+                        
+                        {/* Flight Tracker Display */}
+                        {showFlightTracker && formData.arrivalFlightNumber.length >= 3 && (
+                          <div className="mt-4">
+                            <FlightTracker 
+                              flightNumber={formData.arrivalFlightNumber}
+                              onFlightData={(data) => {
+                                setArrivalFlightData(data);
+                                // Auto-fill arrival time if available
+                                if (data?.arrival?.time && data.arrival.time !== 'TBA') {
+                                  const [hours, minutes] = data.arrival.time.split(':');
+                                  const timeDate = new Date();
+                                  timeDate.setHours(parseInt(hours), parseInt(minutes));
+                                  setArrivalTimeDate(timeDate);
+                                  setFormData(prev => ({ ...prev, arrivalTime: data.arrival.time }));
+                                }
+                              }}
+                              showInline={true}
+                            />
+                          </div>
+                        )}
                       </div>
 
                       {/* Passengers */}
