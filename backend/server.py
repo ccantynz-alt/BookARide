@@ -29,6 +29,7 @@ import sys
 import pytz
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.interval import IntervalTrigger
 import vobject
 
 ROOT_DIR = Path(__file__).parent
