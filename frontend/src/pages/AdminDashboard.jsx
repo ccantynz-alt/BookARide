@@ -1089,7 +1089,12 @@ export const AdminDashboard = () => {
     total: bookings.length,
     pending: bookings.filter(b => b.status === 'pending').length,
     confirmed: bookings.filter(b => b.status === 'confirmed').length,
-    totalRevenue: bookings.reduce((sum, b) => sum + (b.pricing.totalPrice || 0), 0)
+    completed: bookings.filter(b => b.status === 'completed').length,
+    cancelled: bookings.filter(b => b.status === 'cancelled').length,
+    // Only count revenue from confirmed and completed bookings (not pending or cancelled)
+    totalRevenue: bookings
+      .filter(b => b.status === 'confirmed' || b.status === 'completed')
+      .reduce((sum, b) => sum + (b.pricing?.totalPrice || b.totalPrice || 0), 0)
   };
 
   return (
