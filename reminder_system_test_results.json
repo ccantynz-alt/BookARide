@@ -1,0 +1,92 @@
+{
+  "timestamp": "2025-12-15T05:38:03.926992",
+  "success": false,
+  "results": [
+    {
+      "test": "Health Check",
+      "status": "\u2705 PASS",
+      "message": "API is healthy: {'status': 'healthy', 'service': 'bookaride-api'}",
+      "details": {},
+      "timestamp": "2025-12-15T05:38:03.609547"
+    },
+    {
+      "test": "Admin Authentication",
+      "status": "\u2705 PASS",
+      "message": "Admin login successful with credentials admin/Kongkong2025!@",
+      "details": {},
+      "timestamp": "2025-12-15T05:38:03.845736"
+    },
+    {
+      "test": "Reminder Status Endpoint",
+      "status": "\u2705 PASS",
+      "message": "All required fields present, scheduler running, 2 jobs scheduled",
+      "details": {
+        "current_nz_time": "2025-12-15 18:38:03 NZDT",
+        "checking_for_date": "2025-12-16",
+        "total_bookings_tomorrow": 0,
+        "reminders_sent_today": 0,
+        "reminders_pending": 0,
+        "sent_details": [],
+        "pending_details": [],
+        "scheduler_status": "running",
+        "scheduled_jobs": [
+          {
+            "id": "hourly_reminder_check",
+            "name": "Backup: Hourly reminder check",
+            "next_run": "2025-12-15 06:35:33.631026+00:00"
+          },
+          {
+            "id": "daily_reminders_8am",
+            "name": "Primary: Send reminders at 8 AM NZ",
+            "next_run": "2025-12-16 08:00:00+13:00"
+          }
+        ]
+      },
+      "timestamp": "2025-12-15T05:38:03.856416"
+    },
+    {
+      "test": "Manual Send Reminders Endpoint",
+      "status": "\u274c FAIL",
+      "message": "Response missing 'reminders_sent' field",
+      "details": {
+        "success": true,
+        "message": "Sent reminders for 0 bookings, skipped 0 (already sent today)",
+        "details": {
+          "success": true,
+          "reminders_sent": 0,
+          "skipped": 0,
+          "source": "admin_manual"
+        }
+      },
+      "timestamp": "2025-12-15T05:38:03.871348"
+    },
+    {
+      "test": "External Cron Endpoint",
+      "status": "\u2705 PASS",
+      "message": "External cron reminders sent successfully: 0 reminders",
+      "details": {
+        "success": true,
+        "reminders_sent": 0,
+        "skipped": 0,
+        "source": "cron_endpoint"
+      },
+      "timestamp": "2025-12-15T05:38:03.920887"
+    },
+    {
+      "test": "Backend Logs Verification",
+      "status": "\u2705 PASS",
+      "message": "Found 5/5 expected scheduler messages in logs",
+      "details": {
+        "found": [
+          "\ud83d\ude80 Reminder scheduler started with 3-layer reliability",
+          "Layer 1: 8:00 AM NZ daily (primary)",
+          "Layer 2: Hourly backup check",
+          "Layer 3: Startup check",
+          "\ud83d\udd14 [startup_check] Checking reminders"
+        ],
+        "missing": []
+      },
+      "timestamp": "2025-12-15T05:38:03.926845"
+    }
+  ]
+}
