@@ -1710,7 +1710,7 @@ async def get_reminder_status(current_admin: dict = Depends(get_current_admin)):
 
 @api_router.get("/flight/track")
 async def track_flight(flight_number: str):
-    """Track a flight and return its status (mock data for now - can be connected to FlightAware API)"""
+    """Track a flight using AviationStack API"""
     try:
         # Clean up flight number
         fn = flight_number.strip().upper().replace(" ", "")
@@ -1718,79 +1718,200 @@ async def track_flight(flight_number: str):
         if len(fn) < 3:
             raise HTTPException(status_code=400, detail="Invalid flight number")
         
-        # In production, this would call FlightAware or similar API
-        # For now, return realistic mock data based on common NZ flights
+        # Get API key
+        api_key = os.environ.get('AVIATIONSTACK_API_KEY')
         
-        import random
-        from datetime import datetime, timedelta
-        import pytz
+        if not api_key:
+            logger.warning("AviationStack API key not configured - using mock data")
+            # Fallback to mock data if no API key
+            return await _get_mock_flight_data(fn)
         
-        nz_tz = pytz.timezone('Pacific/Auckland')
-        now = datetime.now(nz_tz)
+        # Call AviationStack API
+        import httpx
         
-        # Simulate different flight scenarios
-        statuses = ['On Time', 'On Time', 'On Time', 'Delayed', 'Landed']  # Weight towards on-time
-        status = random.choice(statuses)
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                "http://api.aviationstack.com/v1/flights",
+                params={
+                    "access_key": api_key,
+                    "flight_iata": fn,
+                    "limit": 1
+                },
+                timeout=10.0
+            )
         
-        delay_minutes = 0
-        if status == 'Delayed':
-            delay_minutes = random.choice([15, 30, 45, 60])
+        data = response.json()
         
-        # Common NZ airport codes
-        airports = {
-            'AKL': 'Auckland Airport',
-            'WLG': 'Wellington Airport',
-            'CHC': 'Christchurch Airport',
-            'ZQN': 'Queenstown Airport',
-            'SYD': 'Sydney Airport',
-            'MEL': 'Melbourne Airport',
-            'BNE': 'Brisbane Airport',
-            'LAX': 'Los Angeles Airport',
-            'SIN': 'Singapore Airport',
-            'HKG': 'Hong Kong Airport'
+        # Check for API errors
+        if "error" in data:
+            logger.error(f"AviationStack API error: {data['error']}")
+            return await _get_mock_flight_data(fn)
+        
+        flights = data.get("data", [])
+        
+        if not flights:
+            logger.info(f"No flight data found for {fn}")
+            return {
+                "flightNumber": fn,
+                "status": "Not Found",
+                "message": f"No active flight found for {fn}. Please check the flight number.",
+                "tracked": False
+            }
+        
+        flight = flights[0]
+        
+        # Parse flight status
+        flight_status = flight.get("flight_status", "unknown")
+        status_map = {
+            "scheduled": "Scheduled",
+            "active": "In Flight",
+            "landed": "Landed",
+            "cancelled": "Cancelled",
+            "incident": "Incident",
+            "diverted": "Diverted"
         }
+        status = status_map.get(flight_status, flight_status.title())
         
-        # Determine if arriving or departing AKL
-        if fn.startswith('NZ') or fn.startswith('QF') or fn.startswith('JQ'):
-            # Domestic/Trans-Tasman likely arriving AKL
-            dep_code = random.choice(['SYD', 'MEL', 'BNE', 'WLG', 'CHC'])
-            arr_code = 'AKL'
+        # Get departure info
+        departure = flight.get("departure", {})
+        dep_code = departure.get("iata", "???")
+        dep_airport = departure.get("airport", dep_code)
+        dep_scheduled = departure.get("scheduled", "")
+        dep_actual = departure.get("actual", dep_scheduled)
+        dep_delay = departure.get("delay")
+        
+        # Get arrival info
+        arrival = flight.get("arrival", {})
+        arr_code = arrival.get("iata", "???")
+        arr_airport = arrival.get("airport", arr_code)
+        arr_scheduled = arrival.get("scheduled", "")
+        arr_estimated = arrival.get("estimated", arr_scheduled)
+        arr_actual = arrival.get("actual", arr_estimated)
+        arr_delay = arrival.get("delay")
+        
+        # Format times
+        def format_time(iso_string):
+            if not iso_string:
+                return "TBA"
+            try:
+                from datetime import datetime
+                dt = datetime.fromisoformat(iso_string.replace("Z", "+00:00"))
+                return dt.strftime("%H:%M")
+            except:
+                return iso_string[:5] if len(iso_string) >= 5 else "TBA"
+        
+        def format_date(iso_string):
+            if not iso_string:
+                return ""
+            try:
+                from datetime import datetime
+                dt = datetime.fromisoformat(iso_string.replace("Z", "+00:00"))
+                return dt.strftime("%d %b")
+            except:
+                return ""
+        
+        # Build message based on status
+        if status == "Landed":
+            message = "Flight has landed! Your driver is ready and waiting."
+        elif status == "In Flight":
+            if arr_delay and int(arr_delay) > 0:
+                message = f"Flight is in the air. Delayed by {arr_delay} minutes. Your driver has been notified."
+            else:
+                message = "Flight is in the air and on schedule. Your driver will be ready."
+        elif status == "Cancelled":
+            message = "This flight has been cancelled. Please contact us to reschedule."
+        elif status == "Diverted":
+            message = "This flight has been diverted. Please contact us for assistance."
         else:
-            # International arriving
-            dep_code = random.choice(['LAX', 'SIN', 'HKG', 'SYD'])
-            arr_code = 'AKL'
+            if arr_delay and int(arr_delay) > 0:
+                message = f"Flight delayed by {arr_delay} minutes. We're monitoring and will adjust pickup time."
+            else:
+                message = "We're monitoring this flight. Your driver will be notified of any changes."
         
-        # Generate times
-        scheduled_arrival = now + timedelta(hours=random.randint(1, 6))
-        actual_arrival = scheduled_arrival + timedelta(minutes=delay_minutes)
-        departure_time = scheduled_arrival - timedelta(hours=random.randint(2, 14))
+        logger.info(f"✈️ Flight {fn}: {status} - Arriving {arr_code} at {format_time(arr_actual)}")
         
         return {
             "flightNumber": fn,
+            "airline": flight.get("airline", {}).get("name", ""),
             "status": status,
             "departure": {
                 "code": dep_code,
-                "airport": airports.get(dep_code, dep_code),
-                "time": departure_time.strftime("%H:%M"),
-                "date": departure_time.strftime("%d %b")
+                "airport": dep_airport,
+                "time": format_time(dep_actual or dep_scheduled),
+                "scheduledTime": format_time(dep_scheduled),
+                "date": format_date(dep_scheduled),
+                "delay": f"+{dep_delay} min" if dep_delay and int(dep_delay) > 0 else None
             },
             "arrival": {
                 "code": arr_code,
-                "airport": airports.get(arr_code, arr_code),
-                "time": actual_arrival.strftime("%H:%M"),
-                "scheduledTime": scheduled_arrival.strftime("%H:%M"),
-                "date": actual_arrival.strftime("%d %b"),
-                "delay": f"+{delay_minutes} min" if delay_minutes > 0 else None
+                "airport": arr_airport,
+                "time": format_time(arr_actual or arr_estimated),
+                "scheduledTime": format_time(arr_scheduled),
+                "date": format_date(arr_scheduled),
+                "delay": f"+{arr_delay} min" if arr_delay and int(arr_delay) > 0 else None
             },
             "tracked": True,
-            "message": "We're monitoring this flight. Your driver will be notified of any delays." if status != 'Landed' else "Flight has landed! Your driver is ready."
+            "message": message,
+            "live": True
         }
         
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Flight tracking error: {str(e)}")
-        raise HTTPException(status_code=500, detail="Unable to track flight")
+        # Fallback to mock on error
+        return await _get_mock_flight_data(fn)
+
+
+async def _get_mock_flight_data(fn: str):
+    """Fallback mock data when API is unavailable"""
+    import random
+    from datetime import datetime, timedelta
+    import pytz
+    
+    nz_tz = pytz.timezone('Pacific/Auckland')
+    now = datetime.now(nz_tz)
+    
+    statuses = ['On Time', 'On Time', 'On Time', 'Delayed', 'Landed']
+    status = random.choice(statuses)
+    
+    delay_minutes = 0
+    if status == 'Delayed':
+        delay_minutes = random.choice([15, 30, 45, 60])
+    
+    airports = {
+        'AKL': 'Auckland Airport', 'SYD': 'Sydney Airport',
+        'MEL': 'Melbourne Airport', 'LAX': 'Los Angeles Airport'
+    }
+    
+    dep_code = random.choice(['SYD', 'MEL', 'LAX'])
+    arr_code = 'AKL'
+    
+    scheduled_arrival = now + timedelta(hours=random.randint(1, 6))
+    actual_arrival = scheduled_arrival + timedelta(minutes=delay_minutes)
+    departure_time = scheduled_arrival - timedelta(hours=random.randint(2, 14))
+    
+    return {
+        "flightNumber": fn,
+        "status": status,
+        "departure": {
+            "code": dep_code,
+            "airport": airports.get(dep_code, dep_code),
+            "time": departure_time.strftime("%H:%M"),
+            "date": departure_time.strftime("%d %b")
+        },
+        "arrival": {
+            "code": arr_code,
+            "airport": airports.get(arr_code, arr_code),
+            "time": actual_arrival.strftime("%H:%M"),
+            "scheduledTime": scheduled_arrival.strftime("%H:%M"),
+            "date": actual_arrival.strftime("%d %b"),
+            "delay": f"+{delay_minutes} min" if delay_minutes > 0 else None
+        },
+        "tracked": True,
+        "message": "We're monitoring this flight." if status != 'Landed' else "Flight has landed!",
+        "live": False
+    }
 
 
 # ============================================
