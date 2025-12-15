@@ -482,3 +482,18 @@ agent_communication:
         - working: true
           agent: "testing"
           comment: "✅ ADMIN PASSWORD RESET FULLY WORKING - Comprehensive testing completed successfully: 1) ✅ Password Reset Request (POST /api/admin/password-reset/request): Successfully sends reset emails to bookings@bookaride.co.nz via Mailgun with professional HTML template, 2) ✅ Token Validation (GET /api/admin/password-reset/validate/{token}): Properly validates tokens and returns appropriate responses for invalid/expired tokens, 3) ✅ Password Reset Confirm (POST /api/admin/password-reset/confirm): Correctly handles password reset with proper validation (minimum 8 characters, token verification), 4) ✅ Frontend Components: AdminForgotPassword.jsx and AdminResetPassword.jsx working perfectly with proper error handling, loading states, and user feedback, 5) ✅ Security Features: Token expiry (1 hour), email verification, password strength validation all working correctly. All password reset functionality is production-ready."
+
+  - task: "Admin Dashboard Day of Week Display"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/AdminDashboard.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "testing"
+          comment: "Testing admin dashboard day of week display functionality as requested in review. Verifying: 1) Day of week appears in bookings table between date and time in blue color, 2) Day of week appears in booking details modal, 3) Correct day names displayed (Monday, Tuesday, etc.), 4) Proper blue styling applied (text-blue-600 class)"
+        - working: true
+          agent: "testing"
+          comment: "✅ ADMIN DASHBOARD DAY OF WEEK DISPLAY FULLY WORKING - Comprehensive testing completed successfully with 100% verification: 1) ✅ Admin Login: Successfully authenticated with admin/Kongkong2025!@ credentials, 2) ✅ Bookings Table Display: Found 46 bookings, each showing day of week in blue text (text-blue-600) positioned between date and time as specified, verified 'Saturday', 'Thursday', 'Thursday' for first 3 bookings, 3) ✅ Booking Details Modal: Day of week 'Saturday' correctly displayed in blue text within Trip Information section under Date field, 4) ✅ Implementation Details: getDayOfWeek() helper function working correctly, returning full day names, consistent blue styling (text-blue-600 class) applied throughout, 5) ✅ Screenshots: Captured evidence showing day of week functionality in both table view and modal view. The day of week feature is fully implemented and working exactly as requested - displaying day names in blue between date and time in both the bookings list and details modal."
