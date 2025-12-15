@@ -404,6 +404,8 @@ test_plan:
           comment: "Implemented 3-layer reliability system for day-before reminders: Layer 1: Primary 8 AM NZ daily cron job with 4-hour misfire grace period. Layer 2: Hourly backup check that only acts if reminders haven't been sent today. Layer 3: Startup check that runs immediately when server starts (if between 8 AM - 11 PM NZ). Also added: Core reminder logic centralized in send_daily_reminders_core() function, New admin endpoint GET /api/admin/reminder-status to check scheduler health and pending reminders, Updated POST /api/admin/send-reminders to use centralized logic, External cron endpoint GET /api/cron/send-reminders still available for external cron services."
 
 agent_communication:
+    - agent: "main"
+      message: "Fixed day-before reminder system with 3-layer reliability: 1) Primary 8 AM NZ cron, 2) Hourly backup check, 3) Startup check. New endpoints: GET /api/admin/reminder-status for monitoring. Please test: admin auth, reminder status endpoint, manual send-reminders endpoint, and verify scheduler is running."
     - agent: "testing"
       message: "Beginning comprehensive test of Google Places Autocomplete functionality on BookNow page. Will test both pickup and dropoff address fields with 'Auckland International' search term."
     - agent: "testing"
