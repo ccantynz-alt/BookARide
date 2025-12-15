@@ -835,35 +835,37 @@ async def calculate_price(request: PriceCalculationRequest):
         
         # ===========================================
         # SPECIAL EVENT PRICING - MATAKANA COUNTRY PARK CONCERT
+        # Only applies to the specific concert venue, NOT all of Matakana
         # ===========================================
-        matakana_keywords = ['matakana country park', 'leigh road', 'rd5/1151', '1151 leigh', 'matakana 0985']
+        # Specific keywords for the concert venue ONLY
+        matakana_concert_keywords = ['matakana country park', 'matakana country club', 'leigh road, matakana', 'rd5/1151', '1151 leigh']
         hibiscus_coast_keywords = ['orewa', 'whangaparaoa', 'silverdale', 'red beach', 'stanmore bay', 'army bay', 'gulf harbour', 'manly', 'hibiscus coast', 'millwater', 'milldale', 'hatfields beach', 'waiwera']
         
-        is_matakana_destination = any(keyword in request.dropoffAddress.lower() for keyword in matakana_keywords)
-        is_matakana_pickup = any(keyword in request.pickupAddress.lower() for keyword in matakana_keywords)
-        is_from_hibiscus_coast = any(keyword in request.pickupAddress.lower() for keyword in hibiscus_coast_keywords)
-        is_to_hibiscus_coast = any(keyword in request.dropoffAddress.lower() for keyword in hibiscus_coast_keywords)
+        # Check if this is specifically the concert venue (not general Matakana)
+        pickup_lower = request.pickupAddress.lower()
+        dropoff_lower = request.dropoffAddress.lower()
         
-        # Concert pricing structure:
-        # - From Hibiscus Coast to Matakana: Flat $550 (return)
-        # - From elsewhere in Auckland to Matakana: km rate to Hibiscus Coast + $550
+        is_concert_venue_destination = any(keyword in dropoff_lower for keyword in matakana_concert_keywords)
+        is_concert_venue_pickup = any(keyword in pickup_lower for keyword in matakana_concert_keywords)
+        is_from_hibiscus_coast = any(keyword in pickup_lower for keyword in hibiscus_coast_keywords)
+        is_to_hibiscus_coast = any(keyword in dropoff_lower for keyword in hibiscus_coast_keywords)
+        
+        # Concert pricing structure (ONLY for Matakana Country Park):
+        # - From Hibiscus Coast to concert venue: Flat $550 (return)
+        # - From elsewhere in Auckland to concert venue: km rate to Hibiscus Coast + $550
         matakana_concert_base = 550.0
-        is_matakana_trip = is_matakana_destination or is_matakana_pickup
+        is_concert_trip = is_concert_venue_destination or is_concert_venue_pickup
         
         # Approximate distance from Auckland CBD to Orewa (Hibiscus Coast boundary)
         hibiscus_coast_distance_km = 40.0  # ~40km from Auckland CBD to Orewa
         
-        if is_matakana_trip:
+        if is_concert_trip:
             if is_from_hibiscus_coast or is_to_hibiscus_coast:
-                # From Hibiscus Coast - flat $550
-                logger.info(f"🎵 CONCERT PRICING: Hibiscus Coast to Matakana - flat ${matakana_concert_base}")
+                # From/to Hibiscus Coast - flat $550
+                logger.info(f"🎵 CONCERT PRICING: Hibiscus Coast to Matakana Country Park - flat ${matakana_concert_base}")
             else:
                 # From elsewhere - calculate distance to Hibiscus Coast and add $550
-                # Distance to concert = distance beyond Hibiscus Coast is included in $550
-                # Customer pays: (km to Hibiscus Coast) + $550
-                if distance_km > hibiscus_coast_distance_km:
-                    extra_distance_km = distance_km - hibiscus_coast_distance_km
-                    logger.info(f"🎵 CONCERT PRICING: {distance_km}km total, {hibiscus_coast_distance_km}km to Hibiscus Coast + ${matakana_concert_base} concert transfer")
+                logger.info(f"🎵 CONCERT PRICING: {distance_km}km total, charging to Hibiscus Coast + ${matakana_concert_base} concert transfer")
         
         # Standard tiered pricing
         if distance_km <= 15.0:
