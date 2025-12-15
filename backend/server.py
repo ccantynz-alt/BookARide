@@ -1797,6 +1797,11 @@ async def track_flight(flight_number: str):
 # AI EMAIL AUTO-RESPONDER
 # ============================================
 
+@api_router.get("/email/incoming")
+async def verify_email_webhook():
+    """GET endpoint for Mailgun webhook verification"""
+    return {"status": "ok", "message": "BookaRide email webhook is active"}
+
 @api_router.post("/email/incoming")
 async def handle_incoming_email(request: Request):
     """
