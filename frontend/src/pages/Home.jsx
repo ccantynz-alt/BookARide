@@ -47,50 +47,27 @@ export const Home = () => {
       <StructuredData />
       <HomePageSchema />
       {/* ULTRA PROFESSIONAL LUXURY HERO SECTION */}
-      <section className="relative min-h-screen flex items-center overflow-hidden bg-black">
+      <section className="relative min-h-screen flex items-center overflow-hidden bg-gradient-to-br from-gray-900 via-black to-gray-900">
         
-        {/* Cinematic Background */}
+        {/* Split Background Design - Image on Right */}
         <div className="absolute inset-0">
-          {/* High-quality background image - Happy travelers */}
-          <div className="absolute inset-0">
+          {/* Dark gradient on left for text readability */}
+          <div className="absolute inset-0 bg-gradient-to-r from-black via-black/95 to-transparent z-10" />
+          
+          {/* Happy travelers image - positioned on right */}
+          <div className="absolute right-0 top-0 w-full lg:w-3/5 h-full">
             <img 
               src="https://images.pexels.com/photos/11668205/pexels-photo-11668205.jpeg?auto=compress&cs=tinysrgb&w=1920" 
               alt="Happy travelers smiling at Auckland airport - Book A Ride premium shuttle service" 
-              className="w-full h-full object-cover opacity-60"
-              style={{ objectPosition: 'center top' }}
+              className="w-full h-full object-cover"
+              style={{ objectPosition: 'center center' }}
             />
+            {/* Gradient fade from left */}
+            <div className="absolute inset-0 bg-gradient-to-r from-black via-black/50 to-transparent" />
           </div>
           
-          {/* Gold sparkly gradient on the left side */}
-          <div className="absolute inset-0 bg-gradient-to-r from-gold/20 via-transparent to-transparent" />
-          
-          {/* Professional gradient overlay - darker on left */}
-          <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/90 to-black/75" />
-          
-          {/* Elegant gold accent light on right */}
-          <div className="absolute inset-0 opacity-20">
-            <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-gold/30 via-transparent to-transparent" />
-          </div>
-          
-          {/* Gold sparkle particles on the left */}
-          <div className="absolute left-0 top-0 w-1/2 h-full overflow-hidden">
-            <div className="absolute top-10 left-10 w-2 h-2 bg-gold rounded-full animate-pulse opacity-60" />
-            <div className="absolute top-32 left-24 w-1 h-1 bg-gold rounded-full animate-pulse opacity-80" style={{ animationDelay: '0.5s' }} />
-            <div className="absolute top-64 left-16 w-3 h-3 bg-gold rounded-full animate-pulse opacity-40" style={{ animationDelay: '1s' }} />
-            <div className="absolute top-96 left-32 w-2 h-2 bg-gold rounded-full animate-pulse opacity-70" style={{ animationDelay: '1.5s' }} />
-            <div className="absolute top-1/4 left-1/4 w-1 h-1 bg-gold rounded-full animate-pulse opacity-90" style={{ animationDelay: '0.3s' }} />
-            <div className="absolute top-1/3 left-1/3 w-2 h-2 bg-gold rounded-full animate-pulse opacity-50" style={{ animationDelay: '0.8s' }} />
-            <div className="absolute top-1/2 left-1/5 w-1 h-1 bg-gold rounded-full animate-pulse opacity-75" style={{ animationDelay: '1.2s' }} />
-            <div className="absolute top-2/3 left-1/4 w-2 h-2 bg-gold rounded-full animate-pulse opacity-60" style={{ animationDelay: '0.6s' }} />
-            <div className="absolute bottom-32 left-20 w-3 h-3 bg-gold rounded-full animate-pulse opacity-40" style={{ animationDelay: '1.8s' }} />
-            <div className="absolute bottom-64 left-28 w-1 h-1 bg-gold rounded-full animate-pulse opacity-85" style={{ animationDelay: '0.4s' }} />
-          </div>
-          
-          {/* Subtle animated shine effect */}
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-gold/30 to-transparent animate-shine-slow" 
-                 style={{ transform: 'translateX(-100%)', animationDuration: '8s' }} />
-          </div>
+          {/* Subtle gold accent */}
+          <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-gold via-gold/50 to-transparent" />
         </div>
 
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10 py-20 sm:py-32">
