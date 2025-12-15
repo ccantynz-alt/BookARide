@@ -77,6 +77,7 @@ import AirportToCityPage from './pages/seo/AirportToCityPage';
 import AfterpayPage from './pages/AfterpayPage';
 import ReferralProgram from './pages/ReferralProgram';
 import FlightTrackerPage from './pages/FlightTrackerPage';
+import TravelResourcesPage from './pages/TravelResourcesPage';
 
 import RecentBookingsNotification from './components/RecentBookingsNotification';
 import ExitIntentPopup from './components/ExitIntentPopup';
