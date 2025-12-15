@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-12-12T18:57:15.282766",
+  "timestamp": "2025-12-15T10:24:07.563793",
   "success": false,
   "results": [
     {
@@ -7,140 +7,137 @@
       "status": "\u2705 PASS",
       "message": "API is healthy: {'status': 'healthy', 'service': 'bookaride-api'}",
       "details": {},
-      "timestamp": "2025-12-12T18:57:07.068901"
+      "timestamp": "2025-12-15T10:23:52.165109"
     },
     {
       "test": "Admin Login",
       "status": "\u2705 PASS",
       "message": "Admin authentication successful",
       "details": {},
-      "timestamp": "2025-12-12T18:57:07.356083"
+      "timestamp": "2025-12-15T10:23:52.420735"
+    },
+    {
+      "test": "Pricing: Orewa to Airport",
+      "status": "\u2705 PASS",
+      "message": "Correct pricing: $150.18 for 60.8km (expected ~$150 for ~60km)",
+      "details": {},
+      "timestamp": "2025-12-15T10:23:52.636652"
+    },
+    {
+      "test": "Pricing: Short Trip Minimum",
+      "status": "\u2705 PASS",
+      "message": "Minimum pricing applied: $100.0 for 2.86km (minimum $100)",
+      "details": {},
+      "timestamp": "2025-12-15T10:23:52.814035"
+    },
+    {
+      "test": "Flight Tracker",
+      "status": "\u2705 PASS",
+      "message": "Flight tracking working: EK448, Status: In Flight, Live: True",
+      "details": {},
+      "timestamp": "2025-12-15T10:23:53.040442"
+    },
+    {
+      "test": "Driver Assignment Flow",
+      "status": "\u2705 PASS",
+      "message": "Driver assignment successful: John Smith assigned to booking 177fedb5-64d9-4e1b-9e09-b68b28a3ecc0",
+      "details": {},
+      "timestamp": "2025-12-15T10:23:55.416856"
+    },
+    {
+      "test": "AI Email Auto-Responder",
+      "status": "\u2705 PASS",
+      "message": "AI auto-responder working: AI response sent",
+      "details": {},
+      "timestamp": "2025-12-15T10:24:01.722984"
+    },
+    {
+      "test": "Payment Checkout Creation",
+      "status": "\u274c FAIL",
+      "message": "Incomplete checkout response: session_id=cs_live_a1NxQsFlGEoLugfUf7b4C9oOAz0W4dLpmm7xqb4rwA7dNV41CCwr7qsOjI, checkout_url=None",
+      "details": {},
+      "timestamp": "2025-12-15T10:24:03.743415"
     },
     {
       "test": "Direct Mailgun Test",
       "status": "\u2705 PASS",
       "message": "Email sent successfully: Queued. Thank you.",
       "details": {},
-      "timestamp": "2025-12-12T18:57:07.555092"
+      "timestamp": "2025-12-15T10:24:03.974019"
     },
     {
       "test": "Price Calculation",
       "status": "\u2705 PASS",
-      "message": "Price calculated: $100.0 for 26.29km",
+      "message": "Price calculated: $136.45 for 26.29km",
       "details": {},
-      "timestamp": "2025-12-12T18:57:07.728871"
+      "timestamp": "2025-12-15T10:24:04.162412"
     },
     {
       "test": "Create Booking (EN)",
       "status": "\u2705 PASS",
-      "message": "Booking created: b0150c6d-ce4f-4084-83aa-80e480000a1e",
+      "message": "Booking created: d9b35761-343c-4ef5-a79c-adcdf0511688",
       "details": {},
-      "timestamp": "2025-12-12T18:57:09.156213"
-    },
-    {
-      "test": "Create Booking (ZH)",
-      "status": "\u2705 PASS",
-      "message": "Booking created: bb2b3358-b2d1-4c8e-a4a2-10b0c4ab0d2f",
-      "details": {},
-      "timestamp": "2025-12-12T18:57:10.406295"
-    },
-    {
-      "test": "Create Booking (JA)",
-      "status": "\u2705 PASS",
-      "message": "Booking created: cbe67b6a-ac62-46ee-8211-3b740e986b01",
-      "details": {},
-      "timestamp": "2025-12-12T18:57:11.718333"
+      "timestamp": "2025-12-15T10:24:05.723759"
     },
     {
       "test": "Get Bookings",
       "status": "\u2705 PASS",
-      "message": "Retrieved 41 bookings",
+      "message": "Retrieved 49 bookings",
       "details": {},
-      "timestamp": "2025-12-12T18:57:11.730958"
+      "timestamp": "2025-12-15T10:24:05.735551"
     },
     {
       "test": "Create Booking (EN)",
       "status": "\u2705 PASS",
-      "message": "Booking created: 62321d58-f3da-4577-9e89-95e7e90d1695",
+      "message": "Booking created: 2119a9b1-a479-4306-a66e-293d2694c8a5",
       "details": {},
-      "timestamp": "2025-12-12T18:57:13.070407"
-    },
-    {
-      "test": "Payment Checkout Test",
-      "status": "\u2705 PASS",
-      "message": "Checkout session created: cs_live_a1jPWxyJqSEXm4rYwquXqAXK63qwnw7xIAqUyy3LEI0u2M5ecf5bM9sOAT",
-      "details": {},
-      "timestamp": "2025-12-12T18:57:13.565913"
-    },
-    {
-      "test": "Create Booking (EN)",
-      "status": "\u2705 PASS",
-      "message": "Booking created: c09d9f02-dc87-459a-948e-1d84a7db9aa3",
-      "details": {},
-      "timestamp": "2025-12-12T18:57:14.869411"
+      "timestamp": "2025-12-15T10:24:07.341462"
     },
     {
       "test": "Stripe Webhook Test",
       "status": "\u274c FAIL",
       "message": "Webhook failed with status 400",
       "details": "{\"detail\":\"Missing Stripe signature\"}",
-      "timestamp": "2025-12-12T18:57:14.877797"
-    },
-    {
-      "test": "Email Endpoint Test",
-      "status": "\u2705 PASS",
-      "message": "Email endpoint not found (expected - using webhook flow)",
-      "details": {},
-      "timestamp": "2025-12-12T18:57:14.927192"
-    },
-    {
-      "test": "Translation Support",
-      "status": "\u2705 PASS",
-      "message": "Translation status: en: Not found (using hardcoded translations), zh: Not found (using hardcoded translations), ja: Not found (using hardcoded translations), ko: Not found (using hardcoded translations), fr: Not found (using hardcoded translations)",
-      "details": {},
-      "timestamp": "2025-12-12T18:57:15.053160"
+      "timestamp": "2025-12-15T10:24:07.351265"
     },
     {
       "test": "Google OAuth Endpoint",
       "status": "\u2705 PASS",
       "message": "Google OAuth endpoint exists and validates sessions correctly",
       "details": {},
-      "timestamp": "2025-12-12T18:57:15.164971"
+      "timestamp": "2025-12-15T10:24:07.447375"
     },
     {
       "test": "Password Reset Request",
       "status": "\u2705 PASS",
       "message": "Password reset request successful: If this email is registered, you will receive a password reset link.",
       "details": {},
-      "timestamp": "2025-12-12T18:57:15.174286"
+      "timestamp": "2025-12-15T10:24:07.496252"
     },
     {
       "test": "Password Reset Validate",
       "status": "\u2705 PASS",
       "message": "Password reset validation endpoint working correctly",
       "details": {},
-      "timestamp": "2025-12-12T18:57:15.223233"
+      "timestamp": "2025-12-15T10:24:07.503604"
     },
     {
       "test": "Password Reset Confirm",
       "status": "\u2705 PASS",
       "message": "Password reset confirm endpoint working correctly",
       "details": {},
-      "timestamp": "2025-12-12T18:57:15.232300"
+      "timestamp": "2025-12-15T10:24:07.554800"
     },
     {
       "test": "Admin Auth Me Endpoint",
       "status": "\u2705 PASS",
       "message": "Admin auth/me endpoint exists (status: 200)",
       "details": {},
-      "timestamp": "2025-12-12T18:57:15.282617"
+      "timestamp": "2025-12-15T10:24:07.563619"
     }
   ],
   "booking_ids": [
-    "b0150c6d-ce4f-4084-83aa-80e480000a1e",
-    "bb2b3358-b2d1-4c8e-a4a2-10b0c4ab0d2f",
-    "cbe67b6a-ac62-46ee-8211-3b740e986b01",
-    "62321d58-f3da-4577-9e89-95e7e90d1695",
-    "c09d9f02-dc87-459a-948e-1d84a7db9aa3"
+    "d9b35761-343c-4ef5-a79c-adcdf0511688",
+    "2119a9b1-a479-4306-a66e-293d2694c8a5"
   ]
 }
