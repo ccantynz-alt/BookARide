@@ -72,6 +72,8 @@ import OrewaToAirportPage from './pages/seo/OrewaToAirportPage';
 import WhangaparoaAirportPage from './pages/seo/WhangaparoaAirportPage';
 import AfterpayPage from './pages/AfterpayPage';
 
+import RecentBookingsNotification from './components/RecentBookingsNotification';
+
 // Layout component with Header/Footer
 const MainLayout = () => (
   <>
@@ -83,6 +85,7 @@ const MainLayout = () => (
     <Footer />
     <BackToTop />
     <AdminBackButton />
+    <RecentBookingsNotification />
   </>
 );
 
