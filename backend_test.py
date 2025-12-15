@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Comprehensive Backend Testing for BookaRide.co.nz
-Tests booking flow, multi-language email confirmations, and Mailgun integration
+Tests specific features requested in review: pricing, flight tracking, driver assignment, AI email auto-responder, and payment endpoints
 """
 
 import requests
@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 # Configuration
 BACKEND_URL = "https://ride-price-rescue.preview.emergentagent.com/api"
 ADMIN_USERNAME = "admin"
-ADMIN_PASSWORD = "Chico9620!@"
+ADMIN_PASSWORD = "Kongkong2025!@"
 
 # Test data for different languages
 TEST_BOOKINGS = {
