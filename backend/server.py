@@ -98,6 +98,25 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
+def format_nz_phone(phone: str) -> str:
+    """Format phone number to E.164 format for Twilio (NZ numbers)"""
+    if not phone:
+        return ""
+    
+    # Remove spaces, dashes, and parentheses
+    phone = phone.replace(' ', '').replace('-', '').replace('(', '').replace(')', '')
+    
+    # Handle NZ numbers: convert 02X to +642X, 0X to +64X
+    if phone.startswith('02'):
+        phone = '+64' + phone[1:]  # 021... -> +6421...
+    elif phone.startswith('0'):
+        phone = '+64' + phone[1:]  # Other NZ numbers
+    elif not phone.startswith('+'):
+        phone = '+64' + phone  # Add +64 if no prefix
+    
+    return phone
+
+
 async def get_current_admin(credentials: HTTPAuthorizationCredentials = Depends(security)):
     credentials_exception = HTTPException(
         status_code=401,
