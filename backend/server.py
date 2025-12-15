@@ -1608,13 +1608,20 @@ Pickup: {booking.get('pickupAddress', 'N/A')[:50]}...
 Please be ready 5 mins early.
 Questions? Call +64 21 743 321"""
         
+        formatted_phone = format_nz_phone(booking.get('phone', ''))
+        if not formatted_phone:
+            logger.warning("No phone number for reminder SMS")
+            return False
+        
+        logger.info(f"📱 Sending reminder SMS to: {formatted_phone}")
+        
         message = client.messages.create(
             body=message_body,
             from_=twilio_phone,
-            to=booking.get('phone')
+            to=formatted_phone
         )
         
-        logger.info(f"Reminder SMS sent to {booking.get('phone')} - SID: {message.sid}")
+        logger.info(f"✅ Reminder SMS sent to {formatted_phone} - SID: {message.sid}")
         return True
         
     except Exception as e:
