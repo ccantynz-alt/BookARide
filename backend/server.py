@@ -810,30 +810,32 @@ async def calculate_price(request: PriceCalculationRequest):
             distance_km = 25.0 * pickup_count  # Default estimate per stop
             logger.warning(f"Google Maps API key not found. Using default distance estimate: {distance_km}km for {pickup_count} stops")
         
-        # Calculate pricing with tiered rates (matching old booking system)
+        # Calculate pricing with tiered rates - FLAT RATE per bracket
+        # The rate is determined by which distance bracket the trip falls into
+        # Then that rate is applied to the ENTIRE distance
         if distance_km <= 15.0:
-            base_price = distance_km * 12.00  # $12.00 per km for 0-15km
+            rate_per_km = 12.00  # $12.00 per km for 0-15km
         elif distance_km <= 15.8:
-            base_price = 15.0 * 12.00 + (distance_km - 15.0) * 8.00  # $8.00 per km for 15-15.8km
+            rate_per_km = 8.00   # $8.00 per km for 15-15.8km
         elif distance_km <= 16.0:
-            base_price = 15.0 * 12.00 + 0.8 * 8.00 + (distance_km - 15.8) * 6.00  # $6.00 per km for 15.8-16km
+            rate_per_km = 6.00   # $6.00 per km for 15.8-16km
         elif distance_km <= 25.5:
-            base_price = 15.0 * 12.00 + 0.8 * 8.00 + 0.2 * 6.00 + (distance_km - 16.0) * 5.50  # $5.50 per km for 16-25.5km
+            rate_per_km = 5.50   # $5.50 per km for 16-25.5km
         elif distance_km <= 35.0:
-            base_price = 15.0 * 12.00 + 0.8 * 8.00 + 0.2 * 6.00 + 9.5 * 5.50 + (distance_km - 25.5) * 5.00  # $5.00 per km for 25.5-35km
+            rate_per_km = 5.00   # $5.00 per km for 25.5-35km
         elif distance_km <= 50.0:
-            base_price = 15.0 * 12.00 + 0.8 * 8.00 + 0.2 * 6.00 + 9.5 * 5.50 + 9.5 * 5.00 + (distance_km - 35.0) * 4.00  # $4.00 per km for 35-50km
+            rate_per_km = 4.00   # $4.00 per km for 35-50km
         elif distance_km <= 60.0:
-            base_price = 15.0 * 12.00 + 0.8 * 8.00 + 0.2 * 6.00 + 9.5 * 5.50 + 9.5 * 5.00 + 15.0 * 4.00 + (distance_km - 50.0) * 2.60  # $2.60 per km for 50-60km
+            rate_per_km = 2.60   # $2.60 per km for 50-60km
         elif distance_km <= 75.0:
-            base_price = 15.0 * 12.00 + 0.8 * 8.00 + 0.2 * 6.00 + 9.5 * 5.50 + 9.5 * 5.00 + 15.0 * 4.00 + 10.0 * 2.60 + (distance_km - 60.0) * 2.47  # $2.47 per km for 60-75km
+            rate_per_km = 2.47   # $2.47 per km for 60-75km
         elif distance_km <= 100.0:
-            base_price = 15.0 * 12.00 + 0.8 * 8.00 + 0.2 * 6.00 + 9.5 * 5.50 + 9.5 * 5.00 + 15.0 * 4.00 + 10.0 * 2.60 + 15.0 * 2.47 + (distance_km - 75.0) * 2.70  # $2.70 per km for 75-100km
-        elif distance_km <= 300.0:
-            base_price = 15.0 * 12.00 + 0.8 * 8.00 + 0.2 * 6.00 + 9.5 * 5.50 + 9.5 * 5.00 + 15.0 * 4.00 + 10.0 * 2.60 + 15.0 * 2.47 + 25.0 * 2.70 + (distance_km - 100.0) * 3.50  # $3.50 per km for 100-300km
+            rate_per_km = 2.70   # $2.70 per km for 75-100km
         else:
-            # For distances over 300km, use $3.50 rate
-            base_price = 15.0 * 12.00 + 0.8 * 8.00 + 0.2 * 6.00 + 9.5 * 5.50 + 9.5 * 5.00 + 15.0 * 4.00 + 10.0 * 2.60 + 15.0 * 2.47 + 25.0 * 2.70 + 200.0 * 3.50 + (distance_km - 300.0) * 3.50
+            rate_per_km = 3.50   # $3.50 per km for 100km+
+        
+        # Calculate base price: distance × rate for that bracket
+        base_price = distance_km * rate_per_km
         
         # VIP Airport Pickup fee: Optional $15 extra service
         airport_fee = 15.0 if request.vipAirportPickup else 0.0
