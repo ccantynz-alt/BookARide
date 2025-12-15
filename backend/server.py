@@ -3612,6 +3612,9 @@ async def create_manual_booking(booking: ManualBooking):
         # Create calendar event
         await create_calendar_event(new_booking)
         
+        # Sync contact to iCloud
+        add_contact_to_icloud(new_booking)
+        
         return {"message": "Booking created successfully", "id": new_booking['id'], "referenceNumber": ref_number, "paymentLinkSent": payment_link_sent}
     except Exception as e:
         logger.error(f"Error creating manual booking: {str(e)}")
