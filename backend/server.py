@@ -900,17 +900,47 @@ async def calculate_price(request: PriceCalculationRequest):
         extra_passengers = max(0, request.passengers - 1)
         passenger_fee = extra_passengers * 5.0
         
-        # Total price
+        # Total price calculation
         total_price = base_price + airport_fee + oversized_luggage_fee + passenger_fee
         
-        # Apply minimum fee
-        # Special event: Matakana Country Park concert = $550 minimum (return)
-        # Standard minimum = $100
+        # Apply minimum fee / special pricing
+        # Special event: Matakana Country Park concert
         if is_matakana_trip:
-            if total_price < matakana_concert_minimum:
-                logger.info(f"🎵 Applying Matakana concert minimum: ${matakana_concert_minimum} (was ${total_price:.2f})")
-                total_price = matakana_concert_minimum
+            if is_from_hibiscus_coast or is_to_hibiscus_coast:
+                # From/to Hibiscus Coast - flat $550 minimum (return)
+                if total_price < matakana_concert_base:
+                    logger.info(f"🎵 Hibiscus Coast → Matakana: applying flat ${matakana_concert_base}")
+                    total_price = matakana_concert_base
+            else:
+                # From elsewhere in Auckland:
+                # Calculate km rate to Hibiscus Coast boundary, then ADD $550
+                # Use the distance TO Hibiscus Coast (approx 40km from CBD)
+                distance_to_hibiscus = min(distance_km, hibiscus_coast_distance_km)
+                
+                # Calculate price for the distance to Hibiscus Coast using tiered rates
+                if distance_to_hibiscus <= 15.0:
+                    rate_to_hibiscus = 12.00
+                elif distance_to_hibiscus <= 15.8:
+                    rate_to_hibiscus = 8.00
+                elif distance_to_hibiscus <= 16.0:
+                    rate_to_hibiscus = 6.00
+                elif distance_to_hibiscus <= 25.5:
+                    rate_to_hibiscus = 5.50
+                elif distance_to_hibiscus <= 35.0:
+                    rate_to_hibiscus = 5.00
+                elif distance_to_hibiscus <= 50.0:
+                    rate_to_hibiscus = 4.00
+                else:
+                    rate_to_hibiscus = 3.50
+                
+                price_to_hibiscus = distance_to_hibiscus * rate_to_hibiscus
+                
+                # Total = km rate to Hibiscus Coast + $550 concert base + extras
+                total_price = price_to_hibiscus + matakana_concert_base + airport_fee + oversized_luggage_fee + passenger_fee
+                
+                logger.info(f"🎵 Auckland → Matakana: {distance_to_hibiscus}km @ ${rate_to_hibiscus}/km = ${price_to_hibiscus:.2f} + ${matakana_concert_base} = ${total_price:.2f}")
         elif total_price < 100.0:
+            # Standard minimum of $100 for regular trips
             total_price = 100.0
         
         return PricingBreakdown(
