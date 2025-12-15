@@ -1450,13 +1450,20 @@ Total: ${booking.get('totalPrice', 0):.2f} NZD
 
 Thank you for booking with us!"""
         
+        formatted_phone = format_nz_phone(booking.get('phone', ''))
+        if not formatted_phone:
+            logger.warning("No phone number provided for confirmation SMS")
+            return False
+        
+        logger.info(f"📱 Sending confirmation SMS to: {formatted_phone}")
+        
         message = client.messages.create(
             body=message_body,
             from_=twilio_phone,
-            to=booking.get('phone')
+            to=formatted_phone
         )
         
-        logger.info(f"Confirmation SMS sent to {booking.get('phone')} - SID: {message.sid}")
+        logger.info(f"✅ Confirmation SMS sent to {formatted_phone} - SID: {message.sid}")
         return True
         
     except Exception as e:
