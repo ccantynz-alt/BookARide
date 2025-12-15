@@ -166,6 +166,7 @@ class PricingBreakdown(BaseModel):
     oversizedLuggageFee: float
     passengerFee: float
     totalPrice: float
+    ratePerKm: Optional[float] = None  # Rate per km for transparency
 
 class BookingCreate(BaseModel):
     serviceType: str
@@ -951,7 +952,8 @@ async def calculate_price(request: PriceCalculationRequest):
             airportFee=round(airport_fee, 2),
             oversizedLuggageFee=round(oversized_luggage_fee, 2),
             passengerFee=round(passenger_fee, 2),
-            totalPrice=round(total_price, 2)
+            totalPrice=round(total_price, 2),
+            ratePerKm=round(rate_per_km, 2)
         )
     except Exception as e:
         logger.error(f"Error calculating price: {str(e)}")
