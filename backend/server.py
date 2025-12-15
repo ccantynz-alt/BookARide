@@ -2513,21 +2513,9 @@ async def send_driver_notification(booking: dict, driver: dict):
             twilio_phone = os.environ.get('TWILIO_PHONE_NUMBER')
             
             if account_sid and auth_token and twilio_phone:
-                driver_phone = driver.get('phone', '')
+                driver_phone = format_nz_phone(driver.get('phone', ''))
                 
-                # Format phone number to E.164 for Twilio (NZ format)
                 if driver_phone:
-                    # Remove spaces, dashes, and parentheses
-                    driver_phone = driver_phone.replace(' ', '').replace('-', '').replace('(', '').replace(')', '')
-                    
-                    # Handle NZ numbers: convert 02X to +642X
-                    if driver_phone.startswith('02'):
-                        driver_phone = '+64' + driver_phone[1:]  # 021... -> +6421...
-                    elif driver_phone.startswith('0'):
-                        driver_phone = '+64' + driver_phone[1:]  # Other NZ numbers
-                    elif not driver_phone.startswith('+'):
-                        driver_phone = '+64' + driver_phone  # Add +64 if no prefix
-                    
                     logger.info(f"📱 Sending driver SMS to: {driver_phone} (original: {driver.get('phone')})")
                     
                     client = Client(account_sid, auth_token)
