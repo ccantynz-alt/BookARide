@@ -7,7 +7,7 @@ const configs = {
     domain: 'bookaride.co.nz',
     siteUrl: 'https://bookaride.co.nz',
     email: 'info@bookaride.co.nz',
-    phone: '+64 21 743 321',
+    phone: '', // Removed - encourage online booking instead
     tagline: 'Airport Shuttles & Private Transfers Across New Zealand',
     description: 'Professional airport shuttle service in Auckland, Hamilton, and Whangarei. Book online for instant confirmation.',
     keywords: 'airport shuttle, Auckland airport transfer, private shuttle, airport transport',
@@ -28,7 +28,7 @@ const configs = {
     domain: 'bookaridenz.com',
     siteUrl: 'https://bookaridenz.com',
     email: 'international@bookaridenz.com',
-    phone: '+64 21 743 321',
+    phone: '', // Removed - encourage online booking instead
     tagline: 'New Zealand Airport Transfers for International Travelers',
     description: 'Premium airport shuttle service across New Zealand. Serving international visitors with transfers in Auckland, Hamilton, Whangarei, and beyond. Multi-currency payments accepted.',
     keywords: 'New Zealand airport transfer, Auckland airport shuttle international, NZ airport transport, New Zealand taxi service, airport pickup Auckland, New Zealand travel transport',
