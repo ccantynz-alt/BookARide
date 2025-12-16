@@ -1,6 +1,6 @@
 import React from 'react';
 import { useParams, Link, Navigate, useNavigate } from 'react-router-dom';
-import { MapPin, Clock, DollarSign, CheckCircle, ArrowRight, Star, Phone, Calendar } from 'lucide-react';
+import { MapPin, Clock, DollarSign, CheckCircle, ArrowRight, Star, Mail, Calendar } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import SEO from '../components/SEO';
