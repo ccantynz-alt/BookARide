@@ -23,13 +23,13 @@ const AdminBackButton = () => {
   }
 
   return (
-    <div className="fixed top-4 left-4 z-50">
+    <div className="fixed top-28 left-4 z-40">
       <button
         onClick={() => navigate('/admin/dashboard')}
-        className="flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-full shadow-lg hover:bg-gray-800 transition-all duration-200 text-sm font-medium"
+        className="flex items-center gap-2 bg-gold text-gray-900 px-4 py-2 rounded-full shadow-lg hover:bg-gold/90 transition-all duration-200 text-sm font-semibold border border-gold/50"
       >
         <Settings className="w-4 h-4" />
-        <span>Back to Admin</span>
+        <span>Admin Panel</span>
       </button>
     </div>
   );
