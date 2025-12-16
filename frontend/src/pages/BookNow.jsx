@@ -969,53 +969,23 @@ export const BookNow = () => {
                         <TrustBadges variant="payment" />
                       </div>
 
-                      {/* Payment Method Selection */}
+                      {/* Secure Payment Info */}
                       <div className="mt-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
-                        <h4 className="font-semibold text-gray-800 mb-3">Payment Method</h4>
-                        <div className="grid grid-cols-2 gap-3">
-                          <button
-                            type="button"
-                            onClick={() => setFormData(prev => ({ ...prev, paymentMethod: 'card' }))}
-                            className={`p-4 rounded-lg border-2 transition-all flex flex-col items-center gap-2 ${
-                              formData.paymentMethod === 'card' || !formData.paymentMethod
-                                ? 'border-gold bg-gold/10'
-                                : 'border-gray-200 hover:border-gray-300'
-                            }`}
-                          >
-                            <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
-                              <line x1="1" y1="10" x2="23" y2="10"/>
-                            </svg>
-                            <span className="text-sm font-medium">Credit/Debit Card</span>
-                          </button>
-                          
-                          <button
-                            type="button"
-                            onClick={() => setFormData(prev => ({ ...prev, paymentMethod: 'afterpay' }))}
-                            className={`p-4 rounded-lg border-2 transition-all flex flex-col items-center gap-2 ${
-                              formData.paymentMethod === 'afterpay'
-                                ? 'border-[#b2fce4] bg-[#b2fce4]/20'
-                                : 'border-gray-200 hover:border-gray-300'
-                            }`}
-                          >
-                            <svg className="w-8 h-8" viewBox="0 0 100 24" fill="currentColor">
-                              <text x="0" y="18" fontSize="14" fontWeight="bold" fill="#b2fce4" style={{fontFamily: 'Arial'}}>afterpay</text>
-                            </svg>
-                            <span className="text-sm font-medium">Pay in 4</span>
-                            <span className="text-xs text-gray-500">Interest-free</span>
-                          </button>
+                        <div className="flex items-center gap-3 mb-2">
+                          <svg className="w-5 h-5 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                            <path d="M9 12l2 2 4-4"/>
+                          </svg>
+                          <span className="font-semibold text-gray-800">Secure Payment</span>
                         </div>
-                        
-                        {formData.paymentMethod === 'afterpay' && pricing.totalPrice > 0 && (
-                          <div className="mt-3 p-3 bg-[#b2fce4]/20 rounded-lg border border-[#b2fce4]/40">
-                            <p className="text-sm text-gray-700">
-                              <strong>4 interest-free payments</strong> of <strong>${(finalTotal / 4).toFixed(2)}</strong>
-                            </p>
-                            <p className="text-xs text-gray-500 mt-1">
-                              Pay every 2 weeks. No interest, no fees when you pay on time.
-                            </p>
-                          </div>
-                        )}
+                        <p className="text-sm text-gray-600 mb-3">
+                          Pay securely with credit/debit card via Stripe
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Visa_Inc._logo.svg/100px-Visa_Inc._logo.svg.png" alt="Visa" className="h-6 object-contain" />
+                          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Mastercard-logo.svg/100px-Mastercard-logo.svg.png" alt="Mastercard" className="h-6 object-contain" />
+                          <span className="text-xs text-gray-400 ml-2">Powered by Stripe</span>
+                        </div>
                       </div>
 
                       <Button 
@@ -1023,7 +993,7 @@ export const BookNow = () => {
                         className="w-full mt-6 bg-gold hover:bg-gold/90 text-black font-semibold py-6 text-lg transition-colors duration-200"
                         disabled={pricing.calculating || pricing.totalPrice === 0}
                       >
-                        {formData.paymentMethod === 'afterpay' ? 'Continue with Afterpay' : 'Book Now'}
+                        Book Now
                       </Button>
                     </CardContent>
                   </Card>
