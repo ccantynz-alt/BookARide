@@ -17,9 +17,18 @@ const FlightTrackerPage = () => {
   return (
     <div className="min-h-screen bg-gray-900">
       
-      {/* Hero Section */}
-      <section className="pt-32 pb-16 bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900">
-        <div className="container mx-auto px-4">
+      {/* Hero Section with Air New Zealand Plane */}
+      <section className="pt-32 pb-16 relative overflow-hidden">
+        {/* Air New Zealand Plane Background */}
+        <div className="absolute inset-0">
+          <img 
+            src="https://images.unsplash.com/photo-1529074963764-98f45c47344b?auto=format&fit=crop&w=1920&q=80" 
+            alt="Air New Zealand aircraft in flight" 
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-gray-900/80 via-gray-900/70 to-gray-900" />
+        </div>
+        <div className="container mx-auto px-4 relative z-10">
           <div className="text-center max-w-3xl mx-auto">
             <div className="inline-flex items-center gap-2 bg-gold/10 border border-gold/30 rounded-full px-4 py-2 mb-6">
               <Plane className="w-4 h-4 text-gold" />
