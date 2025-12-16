@@ -861,25 +861,28 @@ export const BookNow = () => {
                 </div>
 
                 {/* Price Summary - Right Side */}
+                {/* Price Estimate Sidebar - GLASS CARD */}
                 <div className="lg:col-span-1">
-                  <Card className="border-2 border-gold/30 sticky top-24">
-                    <CardContent className="p-8">
+                  <div className="bg-white/10 backdrop-blur-2xl border border-gold/30 rounded-2xl shadow-[0_8px_32px_rgba(212,175,55,0.2),inset_0_1px_0_rgba(255,255,255,0.1)] sticky top-24 overflow-hidden">
+                    {/* Glass glow effect */}
+                    <div className="absolute -top-20 -right-20 w-40 h-40 bg-gold/20 rounded-full blur-3xl" />
+                    <div className="p-8 relative">
                       <div className="flex items-center space-x-2 mb-6">
                         <DollarSign className="w-6 h-6 text-gold" />
-                        <h2 className="text-2xl font-bold text-gray-900">Price Estimate</h2>
+                        <h2 className="text-2xl font-bold text-white">Price Estimate</h2>
                       </div>
 
                       {pricing.calculating ? (
                         <div className="text-center py-8">
                           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold mx-auto mb-4"></div>
-                          <p className="text-gray-600">Calculating your quote...</p>
+                          <p className="text-white/70">Calculating your quote...</p>
                         </div>
                       ) : pricing.totalPrice > 0 ? (
                         <div className="space-y-4">
                           <div className="text-center py-6">
-                            <p className="text-gray-600 mb-2">Your Quote</p>
-                            <span className="text-5xl font-bold text-gold">${finalTotal.toFixed(2)}</span>
-                            <p className="text-gray-500 text-sm mt-2">NZD - Fixed Price, No Hidden Fees</p>
+                            <p className="text-white/60 mb-2">Your Quote</p>
+                            <span className="text-5xl font-bold text-gold drop-shadow-[0_0_20px_rgba(212,175,55,0.5)]">${finalTotal.toFixed(2)}</span>
+                            <p className="text-white/50 text-sm mt-2">NZD - Fixed Price, No Hidden Fees</p>
                             {addOnsTotal > 0 && (
                               <p className="text-xs text-gold mt-1">
                                 (Base: ${pricing.totalPrice.toFixed(2)} + Add-ons: ${addOnsTotal.toFixed(2)})
@@ -887,8 +890,8 @@ export const BookNow = () => {
                             )}
                           </div>
                           
-                          <div className="bg-gray-50 rounded-lg p-4 text-center">
-                            <p className="text-sm text-gray-600">
+                          <div className="bg-white/5 backdrop-blur-sm rounded-lg p-4 text-center border border-white/10">
+                            <p className="text-sm text-white/70">
                               {formData.bookReturn ? `${pricing.distance / 2} km each way` : `${pricing.distance} km`} • {formData.passengers} passenger{parseInt(formData.passengers) > 1 ? 's' : ''}
                               {formData.bookReturn && ' • Round trip (both ways)'}
                             </p>
