@@ -22,7 +22,7 @@ export const Header = () => {
   const isActive = (path) => location.pathname === path;
 
   return (
-    <header className="fixed top-10 left-0 right-0 z-50 backdrop-blur-2xl bg-black/50 border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.4)] mx-4 rounded-2xl">
+    <header className="fixed top-4 left-0 right-0 z-50 backdrop-blur-2xl bg-black/50 border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.4)] mx-4 rounded-2xl">
       {/* Glass highlight effect */}
       <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-white/10 to-transparent pointer-events-none" />
       {/* Top accent line */}
