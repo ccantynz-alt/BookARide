@@ -779,18 +779,18 @@ export const BookNow = () => {
                             </div>
                           </div>
                           
-                          <p className="text-xs text-white/50 mt-4">
-                            Return trip will be from <strong className="text-white/70">{formData.dropoffAddress || 'drop-off location'}</strong> back to <strong className="text-white/70">{formData.pickupAddress || 'pickup location'}</strong>
+                          <p className="text-xs text-gray-600 mt-4">
+                            Return trip will be from <strong>{formData.dropoffAddress || 'drop-off location'}</strong> back to <strong>{formData.pickupAddress || 'pickup location'}</strong>
                           </p>
                         </div>
                       )}
-                    </div>
-                  </div>
+                    </CardContent>
+                  </Card>
 
-                  {/* Contact Information - GLASS CARD */}
-                  <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.1)] overflow-hidden">
-                    <div className="p-8">
-                      <h2 className="text-2xl font-bold text-white mb-6">Contact Information</h2>
+                  {/* Contact Information */}
+                  <Card className="border-2 border-gray-200 shadow-lg">
+                    <CardContent className="p-8">
+                      <h2 className="text-2xl font-bold text-gray-900 mb-6">Contact Information</h2>
 
                       <div className="space-y-6">
                         <div className="space-y-2">
