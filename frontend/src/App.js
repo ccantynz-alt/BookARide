@@ -95,7 +95,6 @@ const MainLayout = () => (
     </main>
     <Footer />
     <BackToTop />
-    <AdminBackButton />
     <RecentBookingsNotification />
     <ExitIntentPopup />
     <AIChatbot />
