@@ -246,7 +246,7 @@ export const SuburbLandingAdvanced = () => {
         "name": "Book A Ride NZ",
         "@id": "https://bookaride.co.nz/#business",
         "url": "https://bookaride.co.nz",
-        "telephone": "+64 21 000 000",
+        
         "priceRange": "$$$",
         "image": "https://bookaride.co.nz/logo.png",
         "address": {
