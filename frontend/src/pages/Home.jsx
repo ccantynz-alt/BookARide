@@ -36,7 +36,7 @@ export const Home = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-900">
+    <div className="min-h-screen bg-white">
       <SEO 
         title="Affordable Airport Shuttle Auckland - Best Value Transfers"
         description="Affordable airport shuttle service in Auckland. Best value airport transfers for Auckland, Hamilton, and Whangarei airports. Reliable, safe, and budget-friendly shuttle service available 24/7. Book online now!"
