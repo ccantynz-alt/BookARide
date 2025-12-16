@@ -10,6 +10,7 @@ import { Card, CardContent } from '../components/ui/card';
 import { toast } from 'sonner';
 import { companyInfo } from '../mock';
 import SEO from '../components/SEO';
+import PageBreadcrumb from '../components/PageBreadcrumb';
 
 export const Contact = () => {
   const [formData, setFormData] = useState({
@@ -52,6 +53,7 @@ export const Contact = () => {
         keywords="book airport shuttle, contact airport shuttle, airport shuttle booking, airport shuttle Auckland contact, shuttle service booking, airport transfer contact, book shuttle online"
         canonical="/contact"
       />
+      <PageBreadcrumb items={[{ label: 'Contact' }]} />
       {/* Hero Section with Professional Image */}
       <section className="pt-32 pb-20 bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
         {/* Background Image - Customer Service */}
