@@ -794,7 +794,7 @@ export const BookNow = () => {
 
                       <div className="space-y-6">
                         <div className="space-y-2">
-                          <Label htmlFor="name" className="flex items-center space-x-2 text-white/90">
+                          <Label htmlFor="name" className="flex items-center space-x-2">
                             <User className="w-4 h-4 text-gold" />
                             <span>Full Name *</span>
                           </Label>
@@ -805,13 +805,13 @@ export const BookNow = () => {
                             onChange={handleChange}
                             placeholder="John Doe"
                             required
-                            className="bg-white/5 border-white/20 text-white placeholder:text-white/40 transition-all duration-200 focus:ring-2 focus:ring-gold focus:border-gold"
+                            className="transition-all duration-200 focus:ring-2 focus:ring-gold"
                           />
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           <div className="space-y-2">
-                            <Label htmlFor="email" className="flex items-center space-x-2 text-white/90">
+                            <Label htmlFor="email" className="flex items-center space-x-2">
                               <Mail className="w-4 h-4 text-gold" />
                               <span>Email *</span>
                             </Label>
@@ -823,11 +823,11 @@ export const BookNow = () => {
                               onChange={handleChange}
                               placeholder="john@example.com"
                               required
-                              className="bg-white/5 border-white/20 text-white placeholder:text-white/40 transition-all duration-200 focus:ring-2 focus:ring-gold focus:border-gold"
+                              className="transition-all duration-200 focus:ring-2 focus:ring-gold"
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor="phone" className="flex items-center space-x-2 text-white/90">
+                            <Label htmlFor="phone" className="flex items-center space-x-2">
                               <Phone className="w-4 h-4 text-gold" />
                               <span>Phone *</span>
                             </Label>
@@ -839,13 +839,13 @@ export const BookNow = () => {
                               onChange={handleChange}
                               placeholder="+64 21 123 4567"
                               required
-                              className="bg-white/5 border-white/20 text-white placeholder:text-white/40 transition-all duration-200 focus:ring-2 focus:ring-gold focus:border-gold"
+                              className="transition-all duration-200 focus:ring-2 focus:ring-gold"
                             />
                           </div>
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="notes" className="text-white/90">Special Requests / Notes</Label>
+                          <Label htmlFor="notes">Special Requests / Notes</Label>
                           <Textarea
                             id="notes"
                             name="notes"
@@ -853,12 +853,12 @@ export const BookNow = () => {
                             onChange={handleChange}
                             placeholder="Any special requirements or notes..."
                             rows={3}
-                            className="bg-white/5 border-white/20 text-white placeholder:text-white/40 transition-all duration-200 focus:ring-2 focus:ring-gold focus:border-gold"
+                            className="transition-all duration-200 focus:ring-2 focus:ring-gold"
                           />
                         </div>
                       </div>
-                    </div>
-                  </div>
+                    </CardContent>
+                  </Card>
                 </div>
 
                 {/* Price Summary - Right Side */}
