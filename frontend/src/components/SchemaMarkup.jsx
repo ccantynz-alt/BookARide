@@ -113,8 +113,7 @@ export const ServiceSchema = ({ service }) => {
     "description": s.description,
     "provider": {
       "@type": "LocalBusiness",
-      "name": "BookaRide NZ",
-      "telephone": "+64 21 743 321"
+      "name": "BookaRide NZ"
     },
     "serviceType": s.serviceType,
     "areaServed": {
