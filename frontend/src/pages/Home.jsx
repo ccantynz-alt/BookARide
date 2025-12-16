@@ -498,8 +498,8 @@ export const Home = () => {
                   <div className="bg-gradient-to-br from-gold/20 to-gold/5 p-10 lg:p-12 flex items-center justify-center">
                     <div className="text-center">
                       <div className="text-8xl mb-6">🧙‍♂️</div>
-                      <p className="text-gold font-bold text-2xl mb-2">From $612.50</p>
-                      <p className="text-gray-400 text-sm">Based on distance</p>
+                      <p className="text-gold font-bold text-2xl mb-2">Get Instant Quote</p>
+                      <p className="text-gray-400 text-sm">Live pricing online</p>
                     </div>
                   </div>
                 </div>
