@@ -45,25 +45,36 @@ export const Contact = () => {
   };
 
   return (
-    <div className="min-h-screen pt-20 bg-white">
+    <div className="min-h-screen bg-white">
       <SEO 
         title="Contact Us - Book Your Airport Shuttle Today"
         description="Contact Book A Ride NZ for airport shuttle bookings and inquiries. Available 24/7 for Auckland, Hamilton, and Whangarei airport transfers. Quick online booking, instant quotes, professional service."
         keywords="book airport shuttle, contact airport shuttle, airport shuttle booking, airport shuttle Auckland contact, shuttle service booking, airport transfer contact, book shuttle online"
         canonical="/contact"
       />
-      {/* Hero Section */}
-      <section className="py-24 bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(212,175,55,0.15),transparent_50%)]" />
+      {/* Hero Section with Professional Image */}
+      <section className="pt-32 pb-20 bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
+        {/* Background Image - Customer Service */}
+        <div className="absolute inset-0">
+          <img 
+            src="https://images.unsplash.com/photo-1423666639041-f56000c27a9a?auto=format&fit=crop&w=1920&q=80" 
+            alt="Contact us - customer service" 
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-gray-900/80 via-gray-900/70 to-gray-900" />
         </div>
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-3xl mx-auto text-center">
+            <div className="inline-block mb-4">
+              <span className="bg-gold/20 text-gold text-sm font-semibold px-4 py-2 rounded-full border border-gold/30">
+                📞 24/7 SUPPORT AVAILABLE
+              </span>
+            </div>
             <h1 className="text-5xl md:text-6xl font-bold text-white mb-6">
-              Contact Us
+              Get in <span className="text-gold">Touch</span>
             </h1>
             <p className="text-xl text-white/80">
-              Get in touch for inquiries, quotes, or any questions about our services.
+              Questions? Need a custom quote? We're here to help!
             </p>
           </div>
         </div>
