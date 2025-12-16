@@ -5566,8 +5566,11 @@ async def restore_booking(booking_id: str, current_admin: dict = Depends(get_cur
         # Remove from deleted_bookings
         await db.deleted_bookings.delete_one({"id": booking_id})
         
+        # Remove _id before returning (MongoDB adds it during insert)
+        deleted_booking.pop('_id', None)
+        
         logger.info(f"Booking {booking_id} restored by {current_admin.get('username', 'admin')}")
-        return {"message": "Booking restored successfully", "booking": deleted_booking}
+        return {"message": "Booking restored successfully", "booking_id": booking_id}
     except HTTPException:
         raise
     except Exception as e:
