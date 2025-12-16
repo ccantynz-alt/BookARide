@@ -2,6 +2,7 @@ import React from 'react';
 import { Shield, Users, Clock, Award, Target, Heart } from 'lucide-react';
 import { Card, CardContent } from '../components/ui/card';
 import SEO from '../components/SEO';
+import PageBreadcrumb from '../components/PageBreadcrumb';
 
 export const About = () => {
   return (
@@ -12,6 +13,7 @@ export const About = () => {
         keywords="airport shuttle company, shuttle service New Zealand, Auckland airport transfer company, professional shuttle service, reliable airport shuttle, NZ transportation service, safe shuttle service"
         canonical="/about"
       />
+      <PageBreadcrumb items={[{ label: 'About Us' }]} />
       {/* Hero Section with Beautiful NZ Landscape */}
       <section className="pt-32 pb-24 bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
         {/* New Zealand Landscape Background */}
