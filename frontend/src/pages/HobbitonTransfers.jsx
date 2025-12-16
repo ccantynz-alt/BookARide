@@ -192,20 +192,20 @@ export const HobbitonTransfers = () => {
               Transparent Pricing
             </h2>
             <p className="text-lg text-gray-700 mb-8">
-              Auckland to Hobbiton is approximately 175km. Based on our distance-based pricing:
+              Get an instant quote for your Hobbiton adventure using our live pricing calculator:
             </p>
             <Card className="border-2 border-gold/30 mb-8">
               <CardContent className="p-8">
                 <div className="text-center">
-                  <p className="text-gray-600 mb-2">Estimated Base Price</p>
-                  <p className="text-5xl font-bold text-gold mb-2">Get Quote</p>
-                  <p className="text-sm text-gray-600">175km × $3.50/km (100-300km rate)</p>
+                  <p className="text-gray-600 mb-2">Your Price</p>
+                  <p className="text-4xl font-bold text-gold mb-2">Instant Online Quote</p>
+                  <p className="text-sm text-gray-600">Fair distance-based pricing • No hidden fees</p>
                   <div className="mt-6 pt-6 border-t border-gray-200">
-                    <p className="text-sm text-gray-600 mb-3">Additional Options:</p>
+                    <p className="text-sm text-gray-600 mb-3">What's Included:</p>
                     <div className="space-y-2 text-gray-700">
-                      <p>• Extra passengers: $5 per person (1st included)</p>
-                      <p>• VIP Airport Pickup: +$15 (parking close to door eleven)</p>
-                      <p>• Return trip: 2× one-way price</p>
+                      <p>• Door-to-door service</p>
+                      <p>• Professional driver</p>
+                      <p>• Return trip available</p>
                     </div>
                   </div>
                 </div>
