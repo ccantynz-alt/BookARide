@@ -304,7 +304,6 @@ const TermsAndConditions = () => {
             <div className="bg-gray-50 p-6 rounded-lg">
               <p className="mb-2"><strong>Book A Ride NZ</strong></p>
               <p className="mb-2">Email: info@bookaride.co.nz</p>
-              <p className="mb-2">Phone: +64 9 555 0123</p>
               <p>Address: Auckland, New Zealand</p>
             </div>
           </section>
