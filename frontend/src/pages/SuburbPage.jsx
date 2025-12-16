@@ -36,8 +36,8 @@ export const SuburbPage = () => {
   return (
     <div className="min-h-screen pt-20 bg-white">
       <SEO 
-        title={`Airport Shuttle ${suburb.name} Auckland - From $${suburb.estimatedPrice} | Book A Ride NZ`}
-        description={`Affordable airport shuttle from ${suburb.name} to Auckland Airport. Professional drivers, fixed prices from $${suburb.estimatedPrice}. ${suburb.distanceToAirport}km, 24/7 service. Book online now!`}
+        title={`Airport Shuttle ${suburb.name} Auckland | Book A Ride NZ`}
+        description={`Affordable airport shuttle from ${suburb.name} to Auckland Airport. Professional drivers, instant online quotes. 24/7 service. Book online now!`}
         keywords={`${suburb.name} airport shuttle, ${suburb.name} to airport, airport transfer ${suburb.name}, shuttle service ${suburb.name}, ${suburb.name} airport transport, cheap shuttle ${suburb.name}, Auckland airport ${suburb.name}}`}
         canonical={`/suburbs/${slug}`}
       />
@@ -115,9 +115,9 @@ export const SuburbPage = () => {
             <Card className="border-2 border-gold/30 hover:border-gold transition-colors duration-200">
               <CardContent className="p-6 text-center">
                 <DollarSign className="w-12 h-12 mx-auto mb-4 text-gold" />
-                <h3 className="text-lg font-bold text-gray-900 mb-2">From Only</h3>
-                <p className="text-3xl font-bold text-gold mb-2">${suburb.estimatedPrice}</p>
-                <p className="text-sm text-gray-600">Fixed price, no surprises</p>
+                <h3 className="text-lg font-bold text-gray-900 mb-2">Your Price</h3>
+                <p className="text-2xl font-bold text-gold mb-2">Instant Quote</p>
+                <p className="text-sm text-gray-600">Get accurate pricing online</p>
               </CardContent>
             </Card>
           </div>
