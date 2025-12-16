@@ -93,7 +93,7 @@ export const SuburbsDirectory = () => {
                             <p className="text-sm text-gray-600 mb-4">{area.city} • {area.region}</p>
                             <div className="space-y-2 text-sm text-gray-700">
                               <p><span className="font-semibold">Distance:</span> {area.distanceToAirport}km</p>
-                              <p><span className="font-semibold">From:</span> <span className="text-gold font-bold">${area.estimatedPrice}</span></p>
+                              <p><span className="text-gold font-bold">Get Instant Quote →</span></p>
                             </div>
                           </CardContent>
                         </Card>
@@ -125,7 +125,7 @@ export const SuburbsDirectory = () => {
                               <div className="space-y-2 text-sm text-gray-700">
                                 <p><span className="font-semibold">Distance:</span> {area.distanceToAirport}km</p>
                                 <p><span className="font-semibold">Time:</span> {area.estimatedTime}</p>
-                                <p><span className="font-semibold">From:</span> <span className="text-gold font-bold">${area.estimatedPrice}</span></p>
+                                <p><span className="text-gold font-bold">Get Instant Quote →</span></p>
                               </div>
                             </CardContent>
                           </Card>
