@@ -17,7 +17,7 @@ const routes = {
     to: 'Auckland Airport',
     distance: '21 km',
     duration: '25-35 minutes',
-    price: 'From $85',
+    price: 'Get Quote',
     description: 'The most popular airport transfer route in Auckland. From the city center including Sky Tower, Viaduct Harbour, and Queen Street direct to Auckland Airport.',
     highlights: ['Sky Tower pickup', 'Viaduct Harbour', 'Queen Street', 'Britomart Transport Centre'],
     tips: 'Peak hour traffic can add 15-20 minutes. We recommend allowing extra time for morning flights.'
@@ -27,7 +27,7 @@ const routes = {
     to: 'Auckland Airport',
     distance: '28-35 km',
     duration: '35-50 minutes',
-    price: 'From $95',
+    price: 'Get Quote',
     description: 'Covering all North Shore suburbs including Takapuna, Albany, Browns Bay, and the Hibiscus Coast. Door-to-door service across the Harbour Bridge.',
     highlights: ['Takapuna', 'Albany', 'Browns Bay', 'Milford', 'Devonport', 'Glenfield'],
     tips: 'Harbour Bridge traffic varies. Early morning flights may require earlier pickup times.'
@@ -37,7 +37,7 @@ const routes = {
     to: 'Auckland Airport',
     distance: '8-15 km',
     duration: '10-20 minutes',
-    price: 'From $55',
+    price: 'Get Quote',
     description: 'The quickest route to the airport. Covering Manukau, Papatoetoe, Otahuhu, and surrounding areas. Perfect for last-minute bookings.',
     highlights: ['Manukau', 'Papatoetoe', 'Otahuhu', 'Mangere', 'Otara'],
     tips: 'Closest suburbs to the airport with the shortest transfer times.'
@@ -47,7 +47,7 @@ const routes = {
     to: 'Auckland Airport',
     distance: '25-35 km',
     duration: '30-45 minutes',
-    price: 'From $90',
+    price: 'Get Quote',
     description: 'Serving Henderson, New Lynn, Te Atatu, and all Western suburbs. Scenic route with reliable service.',
     highlights: ['Henderson', 'New Lynn', 'Te Atatu', 'Glen Eden', 'Titirangi', 'Waitakere'],
     tips: 'Northwestern motorway provides quick access. Evening pickups are often faster.'
@@ -57,7 +57,7 @@ const routes = {
     to: 'Auckland Airport',
     distance: '20-30 km',
     duration: '25-40 minutes',
-    price: 'From $85',
+    price: 'Get Quote',
     description: 'Covering Howick, Pakuranga, Botany, and Eastern Beaches. Beautiful coastal suburbs with direct airport access.',
     highlights: ['Howick', 'Pakuranga', 'Botany', 'Half Moon Bay', 'Bucklands Beach', 'Flat Bush'],
     tips: 'Southern motorway access makes this a reliable route with consistent times.'
@@ -67,7 +67,7 @@ const routes = {
     to: 'Auckland Airport',
     distance: '45-55 km',
     duration: '50-70 minutes',
-    price: 'From $120',
+    price: 'Get Quote',
     description: 'Serving Orewa, Whangaparaoa, Silverdale, and Gulf Harbour. The scenic northern gateway to Auckland.',
     highlights: ['Orewa', 'Whangaparaoa', 'Silverdale', 'Gulf Harbour', 'Red Beach', 'Stanmore Bay'],
     tips: 'Allow extra time for this longer journey. Popular for early morning international flights.'
