@@ -1208,11 +1208,18 @@ export const AdminDashboard = () => {
         />
 
         {/* Tabs Navigation */}
-        <Tabs defaultValue="bookings" value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-6 mb-8">
+        <Tabs defaultValue="bookings" value={activeTab} onValueChange={(val) => {
+          setActiveTab(val);
+          if (val === 'deleted') fetchDeletedBookings();
+        }} className="w-full">
+          <TabsList className="grid w-full grid-cols-7 mb-8">
             <TabsTrigger value="bookings" className="flex items-center gap-2">
               <BookOpen className="w-4 h-4" />
               Bookings
+            </TabsTrigger>
+            <TabsTrigger value="deleted" className="flex items-center gap-2 text-red-600">
+              <Trash2 className="w-4 h-4" />
+              Deleted {deletedBookings.length > 0 && `(${deletedBookings.length})`}
             </TabsTrigger>
             <TabsTrigger value="analytics" className="flex items-center gap-2">
               <BarChart3 className="w-4 h-4" />
