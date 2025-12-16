@@ -128,33 +128,48 @@ export const CruiseTransfers = () => {
             See our professional shuttle service in action at Auckland's cruise terminal
           </p>
           
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-6xl mx-auto">
-            {/* Image 1 - Van with Cruise Ship */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            {/* Image 1 - Luxury Cruise Ship */}
             <Card className="border-2 border-gold/30 overflow-hidden hover:border-gold transition-colors duration-200">
-              <div className="relative h-80 overflow-hidden">
+              <div className="relative h-72 overflow-hidden">
                 <img 
-                  src="/cruise-van-ship.jpg" 
-                  alt="Book A Ride shuttle van at Auckland cruise terminal with cruise ship in background" 
+                  src="https://images.unsplash.com/photo-1599640842225-85d111c60e6b?auto=format&fit=crop&w=800&q=80" 
+                  alt="Luxury cruise ship at port" 
                   className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                 />
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-6">
-                  <h3 className="text-white font-bold text-xl mb-1">Our Fleet at Your Service</h3>
-                  <p className="text-gray-200 text-sm">Professional shuttle service ready at the cruise terminal</p>
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6">
+                  <h3 className="text-white font-bold text-lg mb-1">Luxury Cruise Ships</h3>
+                  <p className="text-gray-200 text-sm">We serve all major cruise lines</p>
                 </div>
               </div>
             </Card>
 
-            {/* Image 2 - Pacific Aria Cruise Ship */}
+            {/* Image 2 - Cruise at Sea */}
             <Card className="border-2 border-gold/30 overflow-hidden hover:border-gold transition-colors duration-200">
-              <div className="relative h-80 overflow-hidden">
+              <div className="relative h-72 overflow-hidden">
                 <img 
-                  src="/cruise-ship-pacific-aria.jpg" 
-                  alt="Pacific Aria cruise ship docked at Auckland port" 
+                  src="https://images.unsplash.com/photo-1580541631950-7282082b53ce?auto=format&fit=crop&w=800&q=80" 
+                  alt="Cruise ship sailing at sunset" 
                   className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                 />
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-6">
-                  <h3 className="text-white font-bold text-xl mb-1">Auckland Cruise Terminal</h3>
-                  <p className="text-gray-200 text-sm">Serving major cruise lines including P&O, Royal Caribbean, and more</p>
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6">
+                  <h3 className="text-white font-bold text-lg mb-1">Seamless Transfers</h3>
+                  <p className="text-gray-200 text-sm">Airport to port, hassle-free</p>
+                </div>
+              </div>
+            </Card>
+
+            {/* Image 3 - Cruise Deck */}
+            <Card className="border-2 border-gold/30 overflow-hidden hover:border-gold transition-colors duration-200">
+              <div className="relative h-72 overflow-hidden">
+                <img 
+                  src="https://images.unsplash.com/photo-1519046904884-53103b34b206?auto=format&fit=crop&w=800&q=80" 
+                  alt="Tropical cruise destination" 
+                  className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                />
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6">
+                  <h3 className="text-white font-bold text-lg mb-1">Start Your Adventure</h3>
+                  <p className="text-gray-200 text-sm">We get you there on time</p>
                 </div>
               </div>
             </Card>
