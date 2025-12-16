@@ -19,7 +19,7 @@ const AlbanyAirportPage = () => {
     <div className="min-h-screen bg-white">
       <SEO
         title="Albany to Auckland Airport Transfer | Get Instant Quote | BookaRide NZ"
-        description="Book your Albany to Auckland Airport shuttle. Fixed prices from ~$80-95, professional drivers, flight tracking included. Get instant quote online!"
+        description="Book your Albany to Auckland Airport shuttle. Instant online quotes, professional drivers, flight tracking included. Get instant quote online!"
         keywords="Albany airport transfer, Albany to Auckland Airport, North Shore airport shuttle, Albany taxi airport, Albany airport shuttle"
         canonical="/albany-to-airport"
       />

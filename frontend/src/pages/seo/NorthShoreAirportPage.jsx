@@ -9,14 +9,14 @@ import GoogleReviewsWidget from '../../components/GoogleReviewsWidget';
 
 const NorthShoreAirportPage = () => {
   const suburbs = [
-    { name: 'Takapuna', price: '$75-85', link: '/takapuna-to-airport' },
-    { name: 'Albany', price: '$80-95', link: '/albany-to-airport' },
-    { name: 'Browns Bay', price: '$85-100', link: '/book-now' },
-    { name: 'Devonport', price: '$70-80', link: '/book-now' },
-    { name: 'Milford', price: '$75-85', link: '/book-now' },
-    { name: 'Northcote', price: '$65-75', link: '/book-now' },
-    { name: 'Birkenhead', price: '$65-75', link: '/book-now' },
-    { name: 'Glenfield', price: '$70-85', link: '/book-now' },
+    { name: 'Takapuna', price: 'Get Quote', link: '/takapuna-to-airport' },
+    { name: 'Albany', price: 'Get Quote', link: '/albany-to-airport' },
+    { name: 'Browns Bay', price: 'Get Quote', link: '/book-now' },
+    { name: 'Devonport', price: 'Get Quote', link: '/book-now' },
+    { name: 'Milford', price: 'Get Quote', link: '/book-now' },
+    { name: 'Northcote', price: 'Get Quote', link: '/book-now' },
+    { name: 'Birkenhead', price: 'Get Quote', link: '/book-now' },
+    { name: 'Glenfield', price: 'Get Quote', link: '/book-now' },
   ];
 
   return (
