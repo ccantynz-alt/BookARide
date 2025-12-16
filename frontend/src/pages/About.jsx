@@ -5,27 +5,23 @@ import SEO from '../components/SEO';
 
 export const About = () => {
   return (
-    <div className="min-h-screen pt-20 bg-white">
+    <div className="min-h-screen bg-white">
       <SEO 
         title="About Us - Professional Airport Shuttle Service in New Zealand"
         description="Learn about Book A Ride NZ - your trusted airport shuttle service provider. Serving Auckland, Hamilton, and Whangarei airports with safe, reliable, and professional transportation. Over 10,000 happy customers, 24/7 available."
         keywords="airport shuttle company, shuttle service New Zealand, Auckland airport transfer company, professional shuttle service, reliable airport shuttle, NZ transportation service, safe shuttle service"
         canonical="/about"
       />
-      {/* Hero Section */}
-      <section className="py-24 bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
-        {/* Background Vehicle Image */}
-        <div className="absolute inset-0 opacity-15">
+      {/* Hero Section with Beautiful NZ Landscape */}
+      <section className="pt-32 pb-24 bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
+        {/* New Zealand Landscape Background */}
+        <div className="absolute inset-0">
           <img 
-            src="/shuttle-van.jpg" 
-            alt="" 
-            className="w-full h-full object-cover object-center"
-            style={{ filter: 'brightness(0.4) blur(1px)' }}
+            src="https://images.unsplash.com/photo-1507699622108-4be3abd695ad?auto=format&fit=crop&w=1920&q=80" 
+            alt="Beautiful New Zealand landscape" 
+            className="w-full h-full object-cover"
           />
-        </div>
-        
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(212,175,55,0.15),transparent_50%)]" />
+          <div className="absolute inset-0 bg-black/50" />
         </div>
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-3xl mx-auto text-center">
