@@ -1170,6 +1170,10 @@ export const AdminDashboard = () => {
               <p className="text-white/50 text-xs mt-1">v2024.12.08</p>
             </div>
             <div className="flex gap-2 flex-wrap">
+              <Button onClick={() => window.open('/', '_blank')} variant="outline" className="border-white text-white hover:bg-white hover:text-gray-900">
+                <Home className="w-4 h-4 mr-2" />
+                View Site
+              </Button>
               <Button onClick={handleSyncContactsToiPhone} disabled={syncingContacts} variant="outline" className="border-blue-400 text-blue-400 hover:bg-blue-400 hover:text-white">
                 <Smartphone className="w-4 h-4 mr-2" />
                 {syncingContacts ? 'Syncing...' : 'Sync to iPhone'}
