@@ -364,6 +364,45 @@ export const AdminDashboard = () => {
     }
   };
 
+  const fetchDeletedBookings = async () => {
+    setLoadingDeleted(true);
+    try {
+      const response = await axios.get(`${API}/bookings/deleted`, getAuthHeaders());
+      setDeletedBookings(response.data || []);
+    } catch (error) {
+      console.error('Error fetching deleted bookings:', error);
+      toast.error('Failed to load deleted bookings');
+    } finally {
+      setLoadingDeleted(false);
+    }
+  };
+
+  const handleRestoreBooking = async (bookingId) => {
+    try {
+      await axios.post(`${API}/bookings/restore/${bookingId}`, {}, getAuthHeaders());
+      toast.success('Booking restored successfully!');
+      fetchDeletedBookings();
+      fetchBookings();
+    } catch (error) {
+      console.error('Error restoring booking:', error);
+      toast.error('Failed to restore booking');
+    }
+  };
+
+  const handlePermanentDelete = async (bookingId) => {
+    if (!window.confirm('This will PERMANENTLY delete this booking with NO way to recover. Are you sure?')) {
+      return;
+    }
+    try {
+      await axios.delete(`${API}/bookings/permanent/${bookingId}`, getAuthHeaders());
+      toast.success('Booking permanently deleted');
+      fetchDeletedBookings();
+    } catch (error) {
+      console.error('Error permanently deleting booking:', error);
+      toast.error('Failed to permanently delete booking');
+    }
+  };
+
   const handleAssignDriver = async () => {
     if (!selectedDriver) {
       toast.error('Please select a driver');
