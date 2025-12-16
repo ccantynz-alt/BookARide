@@ -95,12 +95,12 @@ const AucklandAirportInternational = () => {
                 <div className="bg-white p-4 rounded-lg shadow-sm">
                   <h4 className="font-semibold text-lg mb-2">Auckland City Center</h4>
                   <p className="text-gray-600 text-sm mb-2">Distance: ~21 km | Time: 25-35 minutes</p>
-                  <p className="text-gold font-semibold">From $3.50/km</p>
+                  <p className="text-gold font-semibold">Instant Quote</p>
                 </div>
                 <div className="bg-white p-4 rounded-lg shadow-sm">
                   <h4 className="font-semibold text-lg mb-2">North Shore (Takapuna)</h4>
                   <p className="text-gray-600 text-sm mb-2">Distance: ~35 km | Time: 35-45 minutes</p>
-                  <p className="text-gold font-semibold">From $3.50/km</p>
+                  <p className="text-gold font-semibold">Instant Quote</p>
                 </div>
                 <div className="bg-white p-4 rounded-lg shadow-sm">
                   <h4 className="font-semibold text-lg mb-2">Airport Hotels</h4>
@@ -122,8 +122,8 @@ const AucklandAirportInternational = () => {
               <h3 className="text-xl font-semibold mb-3">Airport Shuttle Service</h3>
               <p className="text-gray-600 mb-4">Shared shuttle service to major destinations. Economical option for solo travelers and small groups.</p>
               <ul className="space-y-2 text-gray-700">
-                <li>✓ Per-kilometer pricing starting from $3.50/km</li>
-                <li>✓ Minimum fare $100 NZD</li>
+                <li>✓ Per-kilometer pricing starting from distance-based</li>
+                <li>✓ Competitive rates</li>
                 <li>✓ Comfortable shared ride</li>
                 <li>✓ Meet & greet included</li>
               </ul>
@@ -132,8 +132,8 @@ const AucklandAirportInternational = () => {
               <h3 className="text-xl font-semibold mb-3">Private Transfer Service</h3>
               <p className="text-gray-600 mb-4">Exclusive private vehicle for your group. Direct transfer to your destination with no stops.</p>
               <ul className="space-y-2 text-gray-700">
-                <li>✓ Per-kilometer pricing starting from $3.50/km</li>
-                <li>✓ Minimum fare $100 NZD</li>
+                <li>✓ Per-kilometer pricing starting from distance-based</li>
+                <li>✓ Competitive rates</li>
                 <li>✓ Private vehicle, no sharing</li>
                 <li>✓ Direct to destination</li>
               </ul>

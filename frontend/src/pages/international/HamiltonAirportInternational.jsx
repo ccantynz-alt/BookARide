@@ -88,17 +88,17 @@ const HamiltonAirportInternational = () => {
                 <div className="bg-white p-4 rounded-lg shadow-sm">
                   <h4 className="font-semibold text-lg mb-2">Hamilton City Center</h4>
                   <p className="text-gray-600 text-sm mb-2">Distance: ~15 km | Time: 15-20 minutes</p>
-                  <p className="text-gold font-semibold">From $3.50/km</p>
+                  <p className="text-gold font-semibold">Instant Quote</p>
                 </div>
                 <div className="bg-white p-4 rounded-lg shadow-sm">
                   <h4 className="font-semibold text-lg mb-2">Cambridge</h4>
                   <p className="text-gray-600 text-sm mb-2">Distance: ~25 km | Time: 25-30 minutes</p>
-                  <p className="text-gold font-semibold">From $3.50/km</p>
+                  <p className="text-gold font-semibold">Instant Quote</p>
                 </div>
                 <div className="bg-white p-4 rounded-lg shadow-sm">
                   <h4 className="font-semibold text-lg mb-2">Matamata (Hobbiton)</h4>
                   <p className="text-gray-600 text-sm mb-2">Distance: ~45 km | Time: 40-50 minutes</p>
-                  <p className="text-gold font-semibold">From $3.50/km</p>
+                  <p className="text-gold font-semibold">Instant Quote</p>
                 </div>
               </div>
             </div>
@@ -115,8 +115,8 @@ const HamiltonAirportInternational = () => {
               <h3 className="text-xl font-semibold mb-3">Airport Shuttle</h3>
               <p className="text-gray-600 mb-4">Shared shuttle service to Hamilton and surrounding areas. Economical and reliable.</p>
               <ul className="space-y-2 text-gray-700">
-                <li>✓ Per-kilometer pricing from $3.50/km</li>
-                <li>✓ Minimum fare $100 NZD</li>
+                <li>✓ Per-kilometer pricing from distance-based</li>
+                <li>✓ Competitive rates</li>
                 <li>✓ Meet & greet included</li>
                 <li>✓ Luggage assistance</li>
               </ul>
@@ -125,8 +125,8 @@ const HamiltonAirportInternational = () => {
               <h3 className="text-xl font-semibold mb-3">Private Transfer</h3>
               <p className="text-gray-600 mb-4">Exclusive vehicle for your group. Direct transfer with no stops.</p>
               <ul className="space-y-2 text-gray-700">
-                <li>✓ Per-kilometer pricing from $3.50/km</li>
-                <li>✓ Minimum fare $100 NZD</li>
+                <li>✓ Per-kilometer pricing from distance-based</li>
+                <li>✓ Competitive rates</li>
                 <li>✓ Private vehicle</li>
                 <li>✓ Direct to destination</li>
               </ul>
