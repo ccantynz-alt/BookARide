@@ -190,11 +190,14 @@ export const Home = () => {
               className="hidden lg:block"
             >
               <div className="relative">
-                {/* Glowing card effect */}
-                <div className="absolute inset-0 bg-gradient-to-br from-gold/20 to-yellow-600/20 rounded-3xl blur-3xl" />
+                {/* Glowing card effect - enhanced glow */}
+                <div className="absolute -inset-4 bg-gradient-to-br from-gold/30 to-yellow-500/20 rounded-[2rem] blur-2xl animate-pulse" />
+                <div className="absolute inset-0 bg-gradient-to-br from-gold/20 to-transparent rounded-3xl blur-xl" />
                 
-                {/* Premium value proposition card */}
-                <div className="relative bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl border border-white/20 rounded-3xl p-8 shadow-2xl">
+                {/* Premium value proposition card - MORE GLASSY */}
+                <div className="relative bg-white/10 backdrop-blur-2xl border border-white/30 rounded-3xl p-8 shadow-[0_8px_32px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.1)]">
+                  {/* Inner glass highlight */}
+                  <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-white/20 via-transparent to-transparent pointer-events-none" />
                   {/* Main value prop */}
                   <div className="mb-8">
                     <h3 className="text-3xl font-bold text-white mb-4">Why Thousands Choose Us</h3>
@@ -236,8 +239,8 @@ export const Home = () => {
                     </div>
                   </div>
 
-                  {/* Social proof */}
-                  <div className="bg-white/5 backdrop-blur-sm rounded-xl p-5 border border-white/10">
+                  {/* Social proof - glass card */}
+                  <div className="bg-white/10 backdrop-blur-xl rounded-xl p-5 border border-white/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-1">
                         {[...Array(5)].map((_, i) => (
