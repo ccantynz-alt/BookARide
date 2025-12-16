@@ -342,17 +342,17 @@ export const BookNow = () => {
 
                       {/* Service Type */}
                       <div className="space-y-2 mb-6">
-                        <Label htmlFor="serviceType" className="flex items-center space-x-2">
+                        <Label htmlFor="serviceType" className="flex items-center space-x-2 text-white/90">
                           <MapPin className="w-4 h-4 text-gold" />
                           <span>Service Type *</span>
                         </Label>
                         <Select onValueChange={(value) => handleSelectChange('serviceType', value)} required>
-                          <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-gold">
+                          <SelectTrigger className="bg-white/5 border-white/20 text-white transition-all duration-200 focus:ring-2 focus:ring-gold focus:border-gold">
                             <SelectValue placeholder="Select service" />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="bg-gray-900 border-white/20">
                             {serviceOptions.map(option => (
-                              <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                              <SelectItem key={option.value} value={option.value} className="text-white hover:bg-white/10">{option.label}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -360,7 +360,7 @@ export const BookNow = () => {
 
                       {/* Pickup Address */}
                       <div className="space-y-2 mb-6">
-                        <Label htmlFor="pickupAddress" className="flex items-center space-x-2">
+                        <Label htmlFor="pickupAddress" className="flex items-center space-x-2 text-white/90">
                           <MapPin className="w-4 h-4 text-gold" />
                           <span>Pickup Location 1 *</span>
                         </Label>
@@ -372,9 +372,9 @@ export const BookNow = () => {
                           onChange={handleChange}
                           placeholder="Start typing address..."
                           required
-                          className="transition-all duration-200 focus:ring-2 focus:ring-gold"
+                          className="bg-white/5 border-white/20 text-white placeholder:text-white/40 transition-all duration-200 focus:ring-2 focus:ring-gold focus:border-gold"
                         />
-                        <p className="text-xs text-gray-500">Google will suggest addresses as you type</p>
+                        <p className="text-xs text-white/50">Google will suggest addresses as you type</p>
                       </div>
 
                       {/* Additional Pickup Addresses */}
