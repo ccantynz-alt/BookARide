@@ -1603,6 +1603,92 @@ export const AdminDashboard = () => {
           <TabsContent value="marketing">
             <LandingPagesTab />
           </TabsContent>
+
+          {/* Deleted Bookings Tab */}
+          <TabsContent value="deleted" className="space-y-6">
+            <Card className="border-red-200 bg-red-50">
+              <CardContent className="p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <AlertTriangle className="w-6 h-6 text-red-600" />
+                  <h3 className="text-lg font-semibold text-red-800">Recently Deleted Bookings</h3>
+                </div>
+                <p className="text-sm text-red-700 mb-4">
+                  These bookings have been deleted but can be restored. They will be kept for 30 days before permanent deletion.
+                </p>
+                
+                {loadingDeleted ? (
+                  <div className="text-center py-8">
+                    <RefreshCw className="w-8 h-8 animate-spin mx-auto text-gray-400" />
+                    <p className="text-gray-500 mt-2">Loading deleted bookings...</p>
+                  </div>
+                ) : deletedBookings.length === 0 ? (
+                  <div className="text-center py-8 bg-white rounded-lg border border-red-100">
+                    <Trash2 className="w-12 h-12 mx-auto text-gray-300 mb-3" />
+                    <p className="text-gray-500">No deleted bookings</p>
+                    <p className="text-sm text-gray-400">Bookings you delete will appear here for recovery</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {deletedBookings.map((booking) => (
+                      <div key={booking.id} className="bg-white p-4 rounded-lg border border-red-200 shadow-sm">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <h4 className="font-semibold text-gray-900">{booking.customerName || booking.name}</h4>
+                              <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded">DELETED</span>
+                            </div>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm text-gray-600">
+                              <div>
+                                <span className="text-gray-400">Date:</span> {formatDate(booking.date)} {booking.time}
+                              </div>
+                              <div>
+                                <span className="text-gray-400">Phone:</span> {booking.phone}
+                              </div>
+                              <div>
+                                <span className="text-gray-400">Total:</span> ${booking.totalPrice || booking.total_price}
+                              </div>
+                              <div>
+                                <span className="text-gray-400">Deleted:</span> {new Date(booking.deletedAt).toLocaleDateString()}
+                              </div>
+                            </div>
+                            <div className="mt-2 text-sm">
+                              <span className="text-gray-400">Pickup:</span> <span className="text-gray-600">{booking.pickup || booking.pickupAddress}</span>
+                            </div>
+                            <div className="text-sm">
+                              <span className="text-gray-400">Dropoff:</span> <span className="text-gray-600">{booking.dropoff || booking.dropoffAddress}</span>
+                            </div>
+                            {booking.deletedBy && (
+                              <div className="mt-1 text-xs text-gray-400">
+                                Deleted by: {booking.deletedBy}
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex gap-2 ml-4">
+                            <Button
+                              onClick={() => handleRestoreBooking(booking.id)}
+                              className="bg-green-600 hover:bg-green-700 text-white"
+                              size="sm"
+                            >
+                              <RotateCcw className="w-4 h-4 mr-1" />
+                              Restore
+                            </Button>
+                            <Button
+                              onClick={() => handlePermanentDelete(booking.id)}
+                              variant="destructive"
+                              size="sm"
+                            >
+                              <Trash2 className="w-4 h-4 mr-1" />
+                              Delete Forever
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       </div>
 
