@@ -313,11 +313,11 @@ export const BookNow = () => {
       />
       {/* Hero Section with Professional Image */}
       <section className="pt-32 pb-16 bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
-        {/* Background Image - Professional Airport Transfer */}
+        {/* Background Image - Airport Terminal */}
         <div className="absolute inset-0">
           <img 
-            src="https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=1920&q=80" 
-            alt="Professional shuttle service" 
+            src="https://images.unsplash.com/photo-1556388158-158ea5ccacbd?auto=format&fit=crop&w=1920&q=80" 
+            alt="Modern airport terminal" 
             className="w-full h-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-b from-gray-900/70 via-gray-900/60 to-gray-900" />
