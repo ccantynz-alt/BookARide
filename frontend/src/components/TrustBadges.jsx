@@ -21,12 +21,9 @@ const TrustBadges = ({ variant = 'default' }) => {
           </svg>
           <span className="text-xs text-gray-500">Mastercard</span>
         </div>
-        <div className="flex items-center gap-2 bg-[#B2FCE4]/20 rounded-lg px-3 py-2">
-          <span className="font-bold text-sm text-black">afterpay</span>
-        </div>
         <div className="flex items-center gap-1 text-gray-400 text-xs">
           <Lock className="w-3 h-3" />
-          <span>Secure checkout</span>
+          <span>Secure checkout via Stripe</span>
         </div>
       </div>
     );
