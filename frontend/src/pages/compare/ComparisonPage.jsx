@@ -282,11 +282,11 @@ const ComparisonPage = () => {
                 Book Now <ArrowRight className="ml-2 w-5 h-5" />
               </Button>
             </Link>
-            <a href="tel:+6421743321">
+            <Link to="/contact">
               <Button variant="outline" className="border-black text-black hover:bg-black/10 px-8 py-4 text-lg">
-                <Phone className="mr-2 w-5 h-5" /> +64 21 743 321
+                <Mail className="mr-2 w-5 h-5" /> Contact Us
               </Button>
-            </a>
+            </Link>
           </div>
         </div>
       </section>
