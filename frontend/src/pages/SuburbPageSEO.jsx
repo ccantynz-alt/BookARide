@@ -125,7 +125,7 @@ export const SuburbPageSEO = () => {
             </p>
 
             <p className="text-lg leading-relaxed mb-4">
-              Our <strong>{suburb.name} airport shuttle service</strong> is designed specifically for the {suburb.distance}km journey from {suburb.name} to Auckland Airport. We offer transparent, distance-based pricing starting from <strong>${suburb.price} NZD</strong> for this route, with rates calculated fairly based on the actual distance traveled.
+              Our <strong>{suburb.name} airport shuttle service</strong> is designed specifically for the journey from {suburb.name} to Auckland Airport. We offer transparent, distance-based pricing with rates calculated fairly based on the actual distance traveled. Get an instant quote online!
             </p>
 
             <h3 className="text-2xl font-bold mt-8 mb-4">
@@ -141,7 +141,7 @@ export const SuburbPageSEO = () => {
               <ul className="space-y-2">
                 <li className="flex items-start gap-2">
                   <CheckCircle className="w-5 h-5 text-green-600 mt-1 flex-shrink-0" />
-                  <span><strong>Transparent Pricing:</strong> Fair distance-based rates from ${suburb.price} for {suburb.name} to Auckland Airport</span>
+                  <span><strong>Transparent Pricing:</strong> Fair distance-based rates for {suburb.name} to Auckland Airport - get instant quote online</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle className="w-5 h-5 text-green-600 mt-1 flex-shrink-0" />
@@ -214,7 +214,7 @@ export const SuburbPageSEO = () => {
             <div className="space-y-6">
               <div>
                 <h4 className="font-bold text-lg mb-2">Q: How much does an airport shuttle from {suburb.name} to Auckland Airport cost?</h4>
-                <p className="text-gray-700">A: Pricing for a shuttle from {suburb.name} to Auckland Airport starts from ${suburb.price} NZD based on the {suburb.distance}km distance. Your exact price is calculated based on your specific pickup and dropoff locations.</p>
+                <p className="text-gray-700">A: Pricing for a shuttle from {suburb.name} to Auckland Airport is calculated based on your specific pickup and dropoff locations. Use our instant quote calculator for accurate pricing.</p>
               </div>
 
               <div>
@@ -245,7 +245,7 @@ export const SuburbPageSEO = () => {
 
             <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-8 rounded-lg my-12 text-center">
               <h3 className="text-2xl font-bold mb-4">Ready to Book Your {suburb.name} Airport Shuttle?</h3>
-              <p className="text-lg mb-6">From ${suburb.price} • {suburb.distance}km to airport • 24/7 service</p>
+              <p className="text-lg mb-6">Instant Online Quotes • 24/7 service • Professional Drivers</p>
               <Button 
                 size="lg"
                 onClick={() => navigate('/book-now')}
@@ -262,7 +262,7 @@ export const SuburbPageSEO = () => {
             <div className="grid md:grid-cols-2 gap-6 my-6">
               <div className="border-l-4 border-green-500 pl-4">
                 <h4 className="font-bold mb-2">✓ Us - Transparent Pricing</h4>
-                <p className="text-sm text-gray-600">Distance-based rates, from ${suburb.price}</p>
+                <p className="text-sm text-gray-600">Distance-based rates, instant quotes</p>
               </div>
               <div className="border-l-4 border-red-500 pl-4">
                 <h4 className="font-bold mb-2">✗ Rideshare - Surge Pricing</h4>
