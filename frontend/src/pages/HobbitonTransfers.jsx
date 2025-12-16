@@ -49,6 +49,7 @@ export const HobbitonTransfers = () => {
         keywords="Hobbiton transfers, Auckland to Hobbiton shuttle, Hobbiton Movie Set transfer, Matamata shuttle, Lord of the Rings tour transport, Hobbiton tour transfer, shuttle to Hobbiton, Auckland Hobbiton transport"
         canonical="/hobbiton-transfers"
       />
+      <PageBreadcrumb items={[{ label: 'Services', href: '/services' }, { label: 'Hobbiton Transfers' }]} />
       {/* Hero Section */}
       <section className="relative text-white py-20 overflow-hidden min-h-[600px] flex items-center">
         {/* Beautiful Hobbiton Background Image */}
