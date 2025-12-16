@@ -147,7 +147,7 @@ const InternationalHomePage = () => {
               <CardContent className="p-6">
                 <MapPin className="w-10 h-10 text-blue-600 mb-3" />
                 <h3 className="font-bold text-xl mb-2">Auckland Airport → City Center</h3>
-                <p className="text-gray-600 mb-3">21km • From $95 NZD</p>
+                <p className="text-gray-600 mb-3">21km • Get Quote</p>
                 <p className="text-sm text-gray-600 mb-4">
                   Perfect for hotels in CBD, Viaduct Harbour, or Britomart area.
                 </p>
@@ -165,7 +165,7 @@ const InternationalHomePage = () => {
               <CardContent className="p-6">
                 <MapPin className="w-10 h-10 text-blue-600 mb-3" />
                 <h3 className="font-bold text-xl mb-2">Auckland → Rotorua</h3>
-                <p className="text-gray-600 mb-3">235km • From $380 NZD</p>
+                <p className="text-gray-600 mb-3">235km • Get Quote</p>
                 <p className="text-sm text-gray-600 mb-4">
                   Direct transfer to the thermal wonderland and Māori cultural center.
                 </p>
@@ -183,7 +183,7 @@ const InternationalHomePage = () => {
               <CardContent className="p-6">
                 <MapPin className="w-10 h-10 text-blue-600 mb-3" />
                 <h3 className="font-bold text-xl mb-2">Auckland → Bay of Islands</h3>
-                <p className="text-gray-600 mb-3">245km • From $400 NZD</p>
+                <p className="text-gray-600 mb-3">245km • Get Quote</p>
                 <p className="text-sm text-gray-600 mb-4">
                   Visit the stunning 144-island maritime park in Northland.
                 </p>
