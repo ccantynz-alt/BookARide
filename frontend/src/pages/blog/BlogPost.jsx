@@ -21,7 +21,7 @@ const blogContent = {
       <h2>Transport Options Compared</h2>
       
       <h3>1. Airport Shuttle (Recommended)</h3>
-      <p><strong>Cost:</strong> From $85 (door-to-door)</p>
+      <p><strong>Cost:</strong> Get instant quote online</p>
       <p><strong>Time:</strong> 25-35 minutes</p>
       <p><strong>Best for:</strong> Families, groups, travelers with luggage</p>
       <p>Airport shuttles like BookaRide offer door-to-door service at fixed prices. You're picked up from the airport and dropped directly at your accommodation. This is the most convenient option, especially if you have luggage or are traveling with family.</p>
