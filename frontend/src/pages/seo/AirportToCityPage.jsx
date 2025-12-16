@@ -48,10 +48,10 @@ const AirportToCityPage = () => {
             </h1>
             
             <p className="text-xl text-gray-300 mb-4">
-              From approximately <span className="text-gold font-bold text-2xl">$65-75</span> to CBD
+              Get your <span className="text-gold font-bold text-2xl">Instant Quote</span> online
             </p>
             <p className="text-gray-400 mb-8">
-              Fixed pricing to your exact address • Meet & greet at arrivals • Flight tracking included
+              Live pricing calculator • Meet & greet at arrivals • Flight tracking included
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
