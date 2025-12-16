@@ -62,6 +62,8 @@ export const AdminDashboard = () => {
   const [bookings, setBookings] = useState([]);
   const [filteredBookings, setFilteredBookings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [deletedBookings, setDeletedBookings] = useState([]);
+  const [loadingDeleted, setLoadingDeleted] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedBooking, setSelectedBooking] = useState(null);
