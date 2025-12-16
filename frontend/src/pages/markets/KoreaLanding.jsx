@@ -15,8 +15,17 @@ const KoreaLanding = () => {
         currentLang="ko"
       />
 
-      {/* Hero Section */}
-      <section className="relative py-20 bg-gradient-to-br from-blue-900 via-blue-800 to-gray-900 overflow-hidden">
+      {/* Hero Section with Beautiful Korea Image */}
+      <section className="relative pt-32 pb-20 bg-gradient-to-br from-blue-900 via-blue-800 to-gray-900 overflow-hidden">
+        {/* Korean Palace Background */}
+        <div className="absolute inset-0">
+          <img 
+            src="https://images.unsplash.com/photo-1538485399081-7191377e8241?auto=format&fit=crop&w=1920&q=80" 
+            alt="Traditional Korean palace" 
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-900/80 via-blue-800/60 to-black/70" />
+        </div>
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-4xl mx-auto text-center">
             <div className="inline-flex items-center gap-2 bg-white/20 px-4 py-2 rounded-full mb-6">
