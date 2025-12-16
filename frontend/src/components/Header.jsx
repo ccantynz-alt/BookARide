@@ -13,6 +13,7 @@ export const Header = () => {
     { path: '/services', label: 'Services' },
     { path: '/hobbiton-transfers', label: 'Hobbiton' },
     { path: '/cruise-transfers', label: 'Cruise' },
+    { path: '/international-visitors', label: '🌍 International' },
     { path: '/flight-tracker', label: 'Flight Tracker' },
     { path: '/travel-guide', label: 'Travel Guide' },
     { path: '/about', label: 'About' },
