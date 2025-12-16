@@ -121,7 +121,7 @@ const AirportTerminalGuide = () => {
       {/* Quick Contact */}
       <div className="mt-4 p-4 bg-gold/10 rounded-lg border border-gold/20">
         <p className="text-sm text-gray-700">
-          <strong>📞 Can't find your driver?</strong> Call us at <a href="tel:+6421743321" className="text-gold font-semibold">021 743 321</a> and we'll guide you.
+          <strong>📧 Can't find your driver?</strong> Email us at <a href="mailto:info@bookaride.co.nz" className="text-gold font-semibold">info@bookaride.co.nz</a> and we'll help you.
         </p>
       </div>
     </motion.div>
