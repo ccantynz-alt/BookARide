@@ -23,7 +23,7 @@ const comparisons = {
     comparison: [
       { feature: 'Service Type', bookaride: 'Private door-to-door', competitor: 'Shared (2-3 stops)', winner: 'bookaride' },
       { feature: 'Wait Time', bookaride: 'Direct to your address', competitor: 'Stops at other addresses first', winner: 'bookaride' },
-      { feature: 'Price (North Shore)', bookaride: 'From $100', competitor: 'From $33', winner: 'competitor' },
+      { feature: 'Price (North Shore)', bookaride: 'Get Quote', competitor: 'Get Quote', winner: 'competitor' },
       { feature: 'Multi-Stop Booking', bookaride: 'Yes - pick up multiple addresses', competitor: 'No - single pickup only', winner: 'bookaride' },
       { feature: 'Flight Tracking', bookaride: 'Yes - we monitor your flight', competitor: 'Limited', winner: 'bookaride' },
       { feature: 'Child Seats', bookaride: 'Available on request', competitor: 'Not guaranteed', winner: 'bookaride' },
@@ -92,7 +92,7 @@ const comparisons = {
       { feature: 'Price Type', bookaride: 'Fixed - know before you go', competitor: 'Metered - varies with traffic', winner: 'bookaride' },
       { feature: 'Availability', bookaride: 'Pre-booked guarantee', competitor: 'Queue at taxi rank', winner: 'bookaride' },
       { feature: 'Peak Hour Cost', bookaride: 'Same price always', competitor: 'Higher during traffic', winner: 'bookaride' },
-      { feature: 'To North Shore', bookaride: 'From $100 fixed', competitor: '$80-120+ metered', winner: 'bookaride' },
+      { feature: 'To North Shore', bookaride: 'Get Quote fixed', competitor: '$80-120+ metered', winner: 'bookaride' },
       { feature: 'Local Knowledge', bookaride: 'North Shore specialists', competitor: 'Variable', winner: 'bookaride' },
       { feature: 'No Pre-booking', bookaride: 'Pre-booking required', competitor: 'Just show up', winner: 'competitor' },
       { feature: 'Vehicle Quality', bookaride: 'Modern fleet', competitor: 'Varies', winner: 'bookaride' },

@@ -198,7 +198,7 @@ export const HobbitonTransfers = () => {
               <CardContent className="p-8">
                 <div className="text-center">
                   <p className="text-gray-600 mb-2">Estimated Base Price</p>
-                  <p className="text-5xl font-bold text-gold mb-2">$612.50</p>
+                  <p className="text-5xl font-bold text-gold mb-2">Get Quote</p>
                   <p className="text-sm text-gray-600">175km × $3.50/km (100-300km rate)</p>
                   <div className="mt-6 pt-6 border-t border-gray-200">
                     <p className="text-sm text-gray-600 mb-3">Additional Options:</p>

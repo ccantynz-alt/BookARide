@@ -104,7 +104,7 @@ const JapanLanding = () => {
             {[
               { name: 'ホビットン村 Hobbiton', desc: '『ロード・オブ・ザ・リング』の世界へ', price: '見積もりを取得' },
               { name: 'ロトルア Rotorua', desc: 'マオリ文化と温泉', price: '見積もりを取得' },
-              { name: 'ワイヘキ島 Waiheke', desc: 'ワイナリーとビーチ', price: '$120 NZDから' },
+              { name: 'ワイヘキ島 Waiheke', desc: 'ワイナリーとビーチ', price: '即時見積もり' },
             ].map((dest, idx) => (
               <div key={idx} className="bg-gray-50 p-6 rounded-xl hover:shadow-md transition-shadow">
                 <h3 className="text-xl font-semibold mb-2">{dest.name}</h3>
