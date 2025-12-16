@@ -5,6 +5,7 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { services, fleet } from '../mock';
 import SEO from '../components/SEO';
+import PageBreadcrumb from '../components/PageBreadcrumb';
 
 const iconMap = {
   plane: Plane,
@@ -22,6 +23,7 @@ export const Services = () => {
         keywords="airport shuttle service, Auckland shuttles, shuttle service, Auckland airport shuttle, Hamilton airport shuttle, Whangarei airport transfer, private shuttle service, airport transportation, corporate shuttle, cruise transfers, Hobbiton transfers, airport pickup service, shuttle service Auckland"
         canonical="/services"
       />
+      <PageBreadcrumb items={[{ label: 'Services' }]} />
       {/* Professional Hero Section */}
       <section className="pt-32 pb-20 bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
         {/* Background - Professional Airport/Travel Service */}
