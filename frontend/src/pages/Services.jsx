@@ -23,15 +23,15 @@ export const Services = () => {
         canonical="/services"
       />
       {/* Professional Hero Section */}
-      <section className="py-32 bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
-        {/* Background Vehicle Image - Our Actual Fleet */}
-        <div className="absolute inset-0 opacity-20">
+      <section className="pt-32 pb-20 bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
+        {/* Background - Professional Chauffeur Service */}
+        <div className="absolute inset-0">
           <img 
-            src="https://customer-assets.emergentagent.com/job_bookmyride-nz/artifacts/6fpsudnh_IMG_0158%20%281%29.jpeg" 
-            alt="Book A Ride fleet vehicle" 
-            className="w-full h-full object-cover"
-            style={{ filter: 'brightness(0.4) blur(1px)' }}
+            src="https://images.unsplash.com/photo-1449965408869-ebd3fee56fd8?auto=format&fit=crop&w=1920&q=80" 
+            alt="Professional chauffeur service" 
+            className="w-full h-full object-cover opacity-30"
           />
+          <div className="absolute inset-0 bg-gradient-to-r from-black via-black/80 to-black/60" />
         </div>
         
         {/* Gold accent gradients */}
