@@ -4,10 +4,12 @@ import NZTravelTips from '../components/NZTravelTips';
 import { Plane, MapPin, Lightbulb } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Link } from 'react-router-dom';
+import PageBreadcrumb from '../components/PageBreadcrumb';
 
 const TravelResourcesPage = () => {
   return (
     <div className="min-h-screen bg-gray-50">
+      <PageBreadcrumb items={[{ label: 'Travel Guide' }]} />
       {/* Hero Section */}
       <section className="pt-32 pb-16 bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900">
         <div className="container mx-auto px-4">

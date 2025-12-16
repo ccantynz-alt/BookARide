@@ -3,6 +3,7 @@ import FlightTracker from '../components/FlightTracker';
 import { Plane, Clock, Bell, MapPin } from 'lucide-react';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
+import PageBreadcrumb from '../components/PageBreadcrumb';
 
 const FlightTrackerPage = () => {
   const [flightNumber, setFlightNumber] = useState('');
@@ -16,6 +17,7 @@ const FlightTrackerPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-900">
+      <PageBreadcrumb items={[{ label: 'Flight Tracker' }]} />
       
       {/* Hero Section with Air New Zealand Plane */}
       <section className="pt-32 pb-16 relative overflow-hidden">
