@@ -303,7 +303,7 @@ export const BookNow = () => {
   };
 
   return (
-    <div className="min-h-screen pt-20 bg-white">
+    <div className="min-h-screen bg-white">
       {isProcessingPayment && <LoadingSpinner message="Processing your booking..." />}
       <SEO 
         title="Book Your Airport Shuttle Now - Instant Quote & Online Booking"
@@ -311,18 +311,29 @@ export const BookNow = () => {
         keywords="book airport shuttle, book airport transfer, online shuttle booking, airport shuttle booking online, instant quote shuttle, book shuttle Auckland, airport transfer booking, shuttle service booking"
         canonical="/book-now"
       />
-      {/* Hero Section */}
-      <section className="py-16 bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(212,175,55,0.15),transparent_50%)]" />
+      {/* Hero Section with Professional Image */}
+      <section className="pt-32 pb-16 bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
+        {/* Background Image - Professional Airport/Travel */}
+        <div className="absolute inset-0">
+          <img 
+            src="https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=1920&q=80" 
+            alt="Airplane wing view above clouds" 
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-gray-900/80 via-gray-900/70 to-gray-900" />
         </div>
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-3xl mx-auto text-center">
+            <div className="inline-block mb-4">
+              <span className="bg-gold/20 text-gold text-sm font-semibold px-4 py-2 rounded-full border border-gold/30">
+                ✨ INSTANT ONLINE BOOKING
+              </span>
+            </div>
             <h1 className="text-5xl md:text-6xl font-bold text-white mb-4">
-              Book Your Ride
+              Book Your <span className="text-gold">Ride</span>
             </h1>
             <p className="text-xl text-white/80">
-              Get instant pricing with our live calculator
+              Get instant pricing with our live calculator • No hidden fees
             </p>
           </div>
         </div>
