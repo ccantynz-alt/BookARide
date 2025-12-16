@@ -14,7 +14,6 @@ export const facebookPosts = {
 🚐 Thank you for choosing BookaRide!
 
 Book your airport transfer: bookaride.co.nz
-📞 021 743 321
 
 #AucklandAirport #AirportShuttle #CustomerReview #BookaRide`,
       tips: 'Use real reviews. Ask permission to use customer names. Add a photo of the happy customer if available.'
@@ -34,7 +33,6 @@ Book your airport transfer: bookaride.co.nz
 👨‍👩‍👧‍👦 Perfect for families & groups
 
 Book now: bookaride.co.nz
-📞 021 743 321
 
 #Auckland #AirportTransfer #SpecialOffer #BookaRide`,
       tips: 'Use sparingly. Best for holidays, school holidays, or special events.'
