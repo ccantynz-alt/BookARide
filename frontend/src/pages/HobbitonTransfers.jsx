@@ -4,6 +4,7 @@ import { MapPin, Clock, Users, Star, CheckCircle, ArrowRight } from 'lucide-reac
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import SEO from '../components/SEO';
+import PageBreadcrumb from '../components/PageBreadcrumb';
 
 export const HobbitonTransfers = () => {
   const features = [
