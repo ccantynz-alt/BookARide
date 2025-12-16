@@ -92,7 +92,7 @@ const comparisons = {
       { feature: 'Price Type', bookaride: 'Fixed - know before you go', competitor: 'Metered - varies with traffic', winner: 'bookaride' },
       { feature: 'Availability', bookaride: 'Pre-booked guarantee', competitor: 'Queue at taxi rank', winner: 'bookaride' },
       { feature: 'Peak Hour Cost', bookaride: 'Same price always', competitor: 'Higher during traffic', winner: 'bookaride' },
-      { feature: 'To North Shore', bookaride: 'Get Quote fixed', competitor: '$80-120+ metered', winner: 'bookaride' },
+      { feature: 'To North Shore', bookaride: 'Get Quote fixed', competitor: 'Variable pricing', winner: 'bookaride' },
       { feature: 'Local Knowledge', bookaride: 'North Shore specialists', competitor: 'Variable', winner: 'bookaride' },
       { feature: 'No Pre-booking', bookaride: 'Pre-booking required', competitor: 'Just show up', winner: 'competitor' },
       { feature: 'Vehicle Quality', bookaride: 'Modern fleet', competitor: 'Varies', winner: 'bookaride' },
