@@ -303,7 +303,7 @@ export const BookNow = () => {
   };
 
   return (
-    <div className="min-h-screen pt-20 bg-white">
+    <div className="min-h-screen pt-20 bg-gradient-to-br from-gray-900 via-black to-gray-800">
       {isProcessingPayment && <LoadingSpinner message="Processing your booking..." />}
       <SEO 
         title="Book Your Airport Shuttle Now - Instant Quote & Online Booking"
@@ -311,34 +311,34 @@ export const BookNow = () => {
         keywords="book airport shuttle, book airport transfer, online shuttle booking, airport shuttle booking online, instant quote shuttle, book shuttle Auckland, airport transfer booking, shuttle service booking"
         canonical="/book-now"
       />
-      {/* Hero Section */}
-      <section className="py-16 bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(212,175,55,0.15),transparent_50%)]" />
-        </div>
+      {/* Hero Section - Glass Style */}
+      <section className="py-16 relative overflow-hidden">
+        {/* Background blobs */}
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-gold/20 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-gold/10 rounded-full blur-3xl" />
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-3xl mx-auto text-center">
             <h1 className="text-5xl md:text-6xl font-bold text-white mb-4">
               Book Your Ride
             </h1>
-            <p className="text-xl text-white/80">
+            <p className="text-xl text-white/70">
               Get instant pricing with our live calculator
             </p>
           </div>
         </div>
       </section>
 
-      {/* Booking Form */}
-      <section className="py-16 bg-white">
+      {/* Booking Form - Glass Style */}
+      <section className="py-16 relative">
         <div className="container mx-auto px-4">
           <div className="max-w-5xl mx-auto">
             <form onSubmit={handleSubmit}>
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Main Form - Left Side */}
+                {/* Main Form - Left Side - GLASS CARD */}
                 <div className="lg:col-span-2 space-y-6">
-                  <Card className="border-2 border-gray-200">
-                    <CardContent className="p-8">
-                      <h2 className="text-2xl font-bold text-gray-900 mb-6">Trip Details</h2>
+                  <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.1)] overflow-hidden">
+                    <div className="p-8">
+                      <h2 className="text-2xl font-bold text-white mb-6">Trip Details</h2>
 
                       {/* Service Type */}
                       <div className="space-y-2 mb-6">
