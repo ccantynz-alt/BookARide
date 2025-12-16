@@ -65,19 +65,19 @@ export const CruiseTransfers = () => {
   ];
 
   return (
-    <div className="min-h-screen pt-20">
+    <div className="min-h-screen">
       <SEO 
         title="Cruise Ship Transfers Auckland - Port & Airport Shuttle Service"
         description="Professional cruise ship transfer service in Auckland. Shuttle between cruise terminals, airport, and hotels. Reliable transport for cruise passengers. Luggage assistance, on-time guarantee. Book your cruise transfer today!"
         keywords="cruise ship transfers Auckland, cruise terminal shuttle, port transfer Auckland, cruise ship airport shuttle, Auckland cruise transfer, ferry terminal shuttle, cruise passenger transport, ship to airport shuttle"
         canonical="/cruise-transfers"
       />
-      {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white py-20 overflow-hidden">
-        {/* Background Vehicle Image */}
-        <div className="absolute inset-0 opacity-15">
+      {/* Hero Section with Stunning Cruise Ship */}
+      <section className="relative bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white pt-32 pb-20 overflow-hidden">
+        {/* Beautiful Cruise Ship Background */}
+        <div className="absolute inset-0">
           <img 
-            src="/shuttle-van.jpg" 
+            src="https://images.unsplash.com/photo-1548574505-5e239809ee19?auto=format&fit=crop&w=1920&q=80" 
             alt="" 
             className="w-full h-full object-cover object-center"
             style={{ filter: 'brightness(0.4) blur(1px)' }}
