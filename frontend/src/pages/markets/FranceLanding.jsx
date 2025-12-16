@@ -15,9 +15,17 @@ const FranceLanding = () => {
         currentLang="fr"
       />
 
-      {/* Hero Section */}
-      <section className="relative py-20 bg-gradient-to-br from-blue-900 via-white to-red-700 overflow-hidden">
-        <div className="absolute inset-0 bg-black/40"></div>
+      {/* Hero Section with Beautiful France Image */}
+      <section className="relative pt-32 pb-20 bg-gradient-to-br from-blue-900 via-white to-red-700 overflow-hidden">
+        {/* Eiffel Tower Background */}
+        <div className="absolute inset-0">
+          <img 
+            src="https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=1920&q=80" 
+            alt="Paris Eiffel Tower" 
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-900/70 via-black/50 to-red-900/60" />
+        </div>
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-4xl mx-auto text-center">
             <div className="inline-flex items-center gap-2 bg-white/20 px-4 py-2 rounded-full mb-6">
