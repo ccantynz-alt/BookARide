@@ -15,10 +15,16 @@ const ChinaLanding = () => {
         currentLang="zh"
       />
 
-      {/* Hero Section */}
-      <section className="relative py-20 bg-gradient-to-br from-red-900 via-red-800 to-gray-900 overflow-hidden">
-        <div className="absolute inset-0 opacity-20">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(212,175,55,0.2),transparent_50%)]" />
+      {/* Hero Section with Beautiful China Image */}
+      <section className="relative pt-32 pb-20 bg-gradient-to-br from-red-900 via-red-800 to-gray-900 overflow-hidden">
+        {/* Great Wall of China Background */}
+        <div className="absolute inset-0">
+          <img 
+            src="https://images.unsplash.com/photo-1508804185872-d7badad00f7d?auto=format&fit=crop&w=1920&q=80" 
+            alt="Great Wall of China" 
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-red-900/80 via-red-900/60 to-black/70" />
         </div>
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-4xl mx-auto text-center">
