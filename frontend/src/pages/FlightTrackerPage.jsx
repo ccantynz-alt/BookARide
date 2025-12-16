@@ -19,11 +19,11 @@ const FlightTrackerPage = () => {
       
       {/* Hero Section with Air New Zealand Plane */}
       <section className="pt-32 pb-16 relative overflow-hidden">
-        {/* Air New Zealand Plane Background - Black livery with silver fern */}
+        {/* Stunning Aircraft Background */}
         <div className="absolute inset-0">
           <img 
-            src="https://images.unsplash.com/photo-1570710891163-6d3b5c47248b?auto=format&fit=crop&w=1920&q=80" 
-            alt="Commercial aircraft flying above clouds" 
+            src="https://images.unsplash.com/photo-1529074963764-98f45c47344b?auto=format&fit=crop&w=1920&q=80" 
+            alt="Commercial aircraft in flight" 
             className="w-full h-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-b from-gray-900/70 via-gray-900/60 to-gray-900" />
