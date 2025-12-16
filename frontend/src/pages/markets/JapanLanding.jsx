@@ -15,10 +15,16 @@ const JapanLanding = () => {
         currentLang="ja"
       />
 
-      {/* Hero Section */}
-      <section className="relative py-20 bg-gradient-to-br from-red-700 via-red-600 to-gray-900 overflow-hidden">
-        <div className="absolute inset-0 opacity-20">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.2),transparent_50%)]" />
+      {/* Hero Section with Beautiful Japan Image */}
+      <section className="relative pt-32 pb-20 bg-gradient-to-br from-red-700 via-red-600 to-gray-900 overflow-hidden">
+        {/* Mount Fuji & Cherry Blossoms Background */}
+        <div className="absolute inset-0">
+          <img 
+            src="https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=1920&q=80" 
+            alt="Mount Fuji with cherry blossoms" 
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-red-900/70 via-red-800/50 to-black/60" />
         </div>
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-4xl mx-auto text-center">
