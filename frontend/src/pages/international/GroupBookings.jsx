@@ -67,7 +67,7 @@ const GroupBookings = () => {
                 <li>✓ 8-11 passenger capacity</li>
                 <li>✓ Air conditioning</li>
                 <li>✓ Luggage space</li>
-                <li>✓ From $3.50/km</li>
+                <li>✓ Instant Quote</li>
               </ul>
             </div>
             <div className="bg-white p-6 rounded-lg shadow-sm border-2 border-gold">
