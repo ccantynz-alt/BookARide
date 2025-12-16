@@ -240,7 +240,7 @@ export const HotelPage = () => {
             </Button>
           </Link>
           <p className="text-sm text-gray-400 mt-6">
-            Or call us: +64 21 745 327
+            Book online for instant confirmation
           </p>
         </div>
       </section>
