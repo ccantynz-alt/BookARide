@@ -21,12 +21,12 @@ const AucklandAirportShuttle = () => {
   ];
 
   const serviceAreas = [
-    { name: 'Auckland CBD', time: '25-30 min', price: 'From $85' },
-    { name: 'North Shore', time: '35-45 min', price: 'From $95' },
-    { name: 'South Auckland', time: '15-20 min', price: 'From $65' },
-    { name: 'West Auckland', time: '30-40 min', price: 'From $90' },
-    { name: 'East Auckland', time: '25-35 min', price: 'From $85' },
-    { name: 'Hibiscus Coast', time: '50-60 min', price: 'From $120' }
+    { name: 'Auckland CBD', time: '25-30 min', price: 'Get Instant Quote' },
+    { name: 'North Shore', time: '35-45 min', price: 'Get Instant Quote' },
+    { name: 'South Auckland', time: '15-20 min', price: 'Get Instant Quote' },
+    { name: 'West Auckland', time: '30-40 min', price: 'Get Instant Quote' },
+    { name: 'East Auckland', time: '25-35 min', price: 'Get Instant Quote' },
+    { name: 'Hibiscus Coast', time: '50-60 min', price: 'Get Instant Quote' }
   ];
 
   const faqs = [

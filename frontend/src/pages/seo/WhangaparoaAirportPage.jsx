@@ -32,7 +32,7 @@ export const WhangaparoaAirportPage = () => {
   return (
     <div className="min-h-screen bg-white">
       <Helmet>
-        <title>Whangaparaoa Airport Shuttle | From $100 | Gulf Harbour, Stanmore Bay | BookaRide</title>
+        <title>Whangaparaoa Airport Shuttle | Get Instant Quote | Gulf Harbour, Stanmore Bay | BookaRide</title>
         <meta name="description" content="Whangaparaoa to Auckland Airport shuttle from $100. Serving Gulf Harbour, Stanmore Bay, Army Bay, Manly & all peninsula areas. Private door-to-door transfers 24/7." />
         <meta name="keywords" content="whangaparaoa airport shuttle, whangaparaoa airport transfer, gulf harbour airport shuttle, stanmore bay airport transfer, whangaparaoa to auckland airport" />
         <link rel="canonical" href="https://bookaride.co.nz/whangaparaoa-airport-transfer" />
@@ -57,12 +57,12 @@ export const WhangaparoaAirportPage = () => {
             <div className="flex items-center gap-6 mb-8 text-lg">
               <span className="flex items-center"><Navigation className="w-5 h-5 mr-2 text-gold" /> 50km</span>
               <span className="flex items-center"><Clock className="w-5 h-5 mr-2 text-gold" /> 45-55 min</span>
-              <span className="flex items-center text-gold font-bold">From $100</span>
+              <span className="flex items-center text-gold font-bold">Get Instant Quote</span>
             </div>
             <div className="flex flex-wrap gap-4">
               <Link to="/book-now">
                 <Button size="lg" className="bg-gold hover:bg-yellow-500 text-black font-bold text-lg px-8">
-                  Book Now - From $100
+                  Book Now - Get Instant Quote
                   <ArrowRight className="ml-2 w-5 h-5" />
                 </Button>
               </Link>
@@ -203,7 +203,7 @@ export const WhangaparoaAirportPage = () => {
       <section className="py-16 bg-teal-600 text-white">
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl font-bold mb-4">Book Your Whangaparaoa Transfer Today</h2>
-          <p className="text-teal-100 mb-8">From $100 • Door-to-door • Flight tracking included</p>
+          <p className="text-teal-100 mb-8">Get Instant Quote • Door-to-door • Flight tracking included</p>
           <div className="flex flex-wrap justify-center gap-4">
             <Link to="/book-now">
               <Button size="lg" className="bg-gold hover:bg-yellow-500 text-black font-bold">

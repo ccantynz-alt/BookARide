@@ -22,7 +22,7 @@ export const OrewaToAirportPage = () => {
   return (
     <div className="min-h-screen bg-white">
       <Helmet>
-        <title>Orewa to Auckland Airport Shuttle | From $95 | Private Transfers | BookaRide</title>
+        <title>Orewa to Auckland Airport Shuttle | Get Instant Quote | Private Transfers | BookaRide</title>
         <meta name="description" content="Private shuttle from Orewa to Auckland Airport from $95. Door-to-door service, flight tracking, 24/7 availability. Book your Orewa airport transfer online instantly." />
         <meta name="keywords" content="orewa to auckland airport, orewa airport shuttle, orewa airport transfer, orewa to airport taxi" />
         <link rel="canonical" href="https://bookaride.co.nz/orewa-to-auckland-airport" />
@@ -47,7 +47,7 @@ export const OrewaToAirportPage = () => {
             <div className="flex items-center gap-6 mb-8 text-lg">
               <span className="flex items-center"><Navigation className="w-5 h-5 mr-2 text-gold" /> 45km</span>
               <span className="flex items-center"><Clock className="w-5 h-5 mr-2 text-gold" /> 40-50 min</span>
-              <span className="flex items-center text-gold font-bold">From $95</span>
+              <span className="flex items-center text-gold font-bold">Get Instant Quote</span>
             </div>
             <div className="flex flex-wrap gap-4">
               <Link to="/book-now">
@@ -136,7 +136,7 @@ export const OrewaToAirportPage = () => {
             {[
               { icon: Clock, title: 'On-Time Guarantee', desc: 'We monitor your flight and adjust pickup times automatically' },
               { icon: Car, title: 'Private Vehicle', desc: 'No sharing - just you and your group in a clean, comfortable vehicle' },
-              { icon: Shield, title: 'Fixed Pricing', desc: '$95 from Orewa. No surge pricing, ever.' },
+              { icon: Shield, title: 'Fixed Pricing', desc: 'Instant quote for Orewa. No surge pricing, ever.' },
               { icon: Star, title: '4.9★ Rated', desc: 'Trusted by hundreds of Orewa residents' },
             ].map((item, idx) => (
               <Card key={idx}>
@@ -169,7 +169,7 @@ export const OrewaToAirportPage = () => {
       <section className="py-16 bg-gold">
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl font-bold mb-4">Book Your Orewa Airport Transfer</h2>
-          <p className="mb-8">From $95 • 40-50 minutes • Door-to-door service</p>
+          <p className="mb-8">Get Instant Quote • 40-50 minutes • Door-to-door service</p>
           <Link to="/book-now">
             <Button size="lg" className="bg-black hover:bg-gray-800 text-white font-bold">
               Book Now

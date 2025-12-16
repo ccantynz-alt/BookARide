@@ -20,7 +20,7 @@ const AirportToCityPage = () => {
   return (
     <div className="min-h-screen bg-white">
       <SEO
-        title="Auckland Airport to City Centre Transfer | From $65 | BookaRide NZ"
+        title="Auckland Airport to City Centre Transfer | Get Instant Quote | BookaRide NZ"
         description="Fixed-price transfers from Auckland Airport to CBD, Ponsonby, Newmarket & more. Meet & greet available. Get instant quote with exact pricing!"
         keywords="Auckland Airport to city, airport to CBD transfer, Auckland Airport shuttle city, airport to Ponsonby, airport to Newmarket"
         canonical="/auckland-airport-to-city"

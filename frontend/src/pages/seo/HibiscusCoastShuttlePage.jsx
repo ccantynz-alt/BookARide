@@ -47,7 +47,7 @@ export const HibiscusCoastShuttlePage = () => {
   return (
     <div className="min-h-screen bg-white">
       <Helmet>
-        <title>Hibiscus Coast Airport Shuttle | #1 Rated Service | From $90 | BookaRide</title>
+        <title>Hibiscus Coast Airport Shuttle | #1 Rated Service | Get Instant Quote | BookaRide</title>
         <meta name="description" content="Best Hibiscus Coast airport shuttle service. Private door-to-door transfers to Auckland Airport from Orewa, Whangaparaoa, Silverdale & more. Fixed prices from $90. Book online 24/7." />
         <meta name="keywords" content="hibiscus coast airport shuttle, hibiscus coast to auckland airport, orewa airport shuttle, whangaparaoa airport transfer, silverdale airport shuttle" />
         <link rel="canonical" href="https://bookaride.co.nz/hibiscus-coast-airport-shuttle" />
@@ -73,7 +73,7 @@ export const HibiscusCoastShuttlePage = () => {
             <div className="flex flex-wrap gap-4">
               <Link to="/book-now">
                 <Button size="lg" className="bg-gold hover:bg-yellow-500 text-black font-bold text-lg px-8">
-                  Book Now - From $90
+                  Book Now - Get Instant Quote
                   <ArrowRight className="ml-2 w-5 h-5" />
                 </Button>
               </Link>

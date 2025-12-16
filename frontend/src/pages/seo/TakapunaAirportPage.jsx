@@ -18,7 +18,7 @@ const TakapunaAirportPage = () => {
   return (
     <div className="min-h-screen bg-white">
       <SEO
-        title="Takapuna to Auckland Airport Transfer | From $75 | BookaRide NZ"
+        title="Takapuna to Auckland Airport Transfer | Get Instant Quote | BookaRide NZ"
         description="Book your Takapuna to Auckland Airport shuttle. Fixed prices from ~$75-85, professional drivers, flight tracking included. Get instant quote online!"
         keywords="Takapuna airport transfer, Takapuna to Auckland Airport, North Shore airport shuttle, Takapuna taxi airport"
         canonical="/takapuna-to-airport"
