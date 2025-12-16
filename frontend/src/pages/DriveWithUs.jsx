@@ -394,9 +394,9 @@ const DriveWithUs = () => {
             Not sure if driving with us is right for you? Give us a call.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <a href="tel:+64217433210" className="inline-flex items-center justify-center gap-2 bg-white px-8 py-4 rounded-xl font-bold hover:bg-gray-100 transition-colors shadow-lg" style={{color: goldDark}}>
-              <Phone className="w-5 h-5" /> +64 21 743 321
-            </a>
+            <Link to="/contact" className="inline-flex items-center justify-center gap-2 bg-white px-8 py-4 rounded-xl font-bold hover:bg-gray-100 transition-colors shadow-lg" style={{color: goldDark}}>
+              <Mail className="w-5 h-5" /> Contact Us
+            </Link>
             <a href="mailto:info@bookaride.co.nz" className="inline-flex items-center justify-center gap-2 bg-white/20 backdrop-blur text-white border-2 border-white/50 px-8 py-4 rounded-xl font-bold hover:bg-white/30 transition-colors">
               <Mail className="w-5 h-5" /> info@bookaride.co.nz
             </a>
