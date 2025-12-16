@@ -576,6 +576,83 @@ export const Services = () => {
         </div>
       </section>
 
+      {/* International Visitors Section */}
+      <section className="py-20 bg-gradient-to-br from-gray-900 via-black to-gray-800 relative overflow-hidden">
+        <div className="absolute inset-0">
+          <img 
+            src="https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1920&q=80" 
+            alt="Connected world" 
+            className="w-full h-full object-cover opacity-20"
+          />
+        </div>
+        <div className="container mx-auto px-4 relative z-10">
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center gap-2 bg-gold/20 px-4 py-2 rounded-full mb-6">
+              <Globe className="w-5 h-5 text-gold" />
+              <span className="text-gold font-medium">WELCOME INTERNATIONAL VISITORS</span>
+            </div>
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
+              Serving Visitors from <span className="text-gold">Around the World</span>
+            </h2>
+            <p className="text-xl text-white/70 max-w-3xl mx-auto">
+              Multilingual support, international payment options, and personalized service for travelers from every corner of the globe
+            </p>
+          </div>
+
+          {/* Country Flags Grid */}
+          <div className="flex flex-wrap justify-center gap-4 mb-10">
+            {[
+              { flag: '🇨🇳', name: 'China', link: '/visitors/china' },
+              { flag: '🇯🇵', name: 'Japan', link: '/visitors/japan' },
+              { flag: '🇰🇷', name: 'Korea', link: '/visitors/korea' },
+              { flag: '🇦🇺', name: 'Australia', link: '/visitors/australia' },
+              { flag: '🇺🇸', name: 'USA', link: '/visitors/usa' },
+              { flag: '🇬🇧', name: 'UK', link: '/visitors/uk' },
+              { flag: '🇩🇪', name: 'Germany', link: '/visitors/germany' },
+              { flag: '🇫🇷', name: 'France', link: '/visitors/france' },
+              { flag: '🇸🇬', name: 'Singapore', link: '/visitors/singapore' }
+            ].map((country, index) => (
+              <Link 
+                key={index} 
+                to={country.link}
+                className="bg-white/10 backdrop-blur-sm px-5 py-3 rounded-xl border border-white/20 hover:border-gold hover:bg-white/20 transition-all duration-300 flex items-center gap-2 group"
+              >
+                <span className="text-2xl">{country.flag}</span>
+                <span className="text-white group-hover:text-gold transition-colors">{country.name}</span>
+              </Link>
+            ))}
+          </div>
+
+          {/* Features */}
+          <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto mb-10">
+            <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 text-center border border-white/10">
+              <div className="text-3xl mb-2">💬</div>
+              <h3 className="text-white font-semibold mb-1">9+ Languages</h3>
+              <p className="text-white/60 text-sm">Multilingual customer support</p>
+            </div>
+            <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 text-center border border-white/10">
+              <div className="text-3xl mb-2">💳</div>
+              <h3 className="text-white font-semibold mb-1">Global Payments</h3>
+              <p className="text-white/60 text-sm">Alipay, WeChat, PayPal & more</p>
+            </div>
+            <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 text-center border border-white/10">
+              <div className="text-3xl mb-2">✈️</div>
+              <h3 className="text-white font-semibold mb-1">Flight Tracking</h3>
+              <p className="text-white/60 text-sm">We monitor your arrival</p>
+            </div>
+          </div>
+
+          <div className="text-center">
+            <Link to="/international-visitors">
+              <Button className="bg-gold hover:bg-gold/90 text-black font-semibold px-8 py-6 text-lg">
+                View All International Services
+                <ArrowRight className="ml-2 w-5 h-5" />
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* CTA */}
       <section className="py-24 bg-gradient-to-r from-gray-900 via-black to-gray-900 relative overflow-hidden">
         <div className="absolute inset-0 opacity-10">
@@ -588,7 +665,7 @@ export const Services = () => {
           <p className="text-xl text-white/80 mb-12 max-w-2xl mx-auto">
             Get in touch today for a quote or to make a booking.
           </p>
-          <Link to="/contact">
+          <Link to="/book-now">
             <Button size="lg" className="bg-gold hover:bg-gold/90 text-black font-semibold px-10 py-6 text-base transition-all duration-200 shadow-lg">
               Book Now
               <ArrowRight className="ml-2 w-5 h-5" />
