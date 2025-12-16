@@ -24,14 +24,14 @@ export const Services = () => {
       />
       {/* Professional Hero Section */}
       <section className="pt-32 pb-20 bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
-        {/* Background - Professional Chauffeur Service */}
+        {/* Background - Professional Airport/Travel Service */}
         <div className="absolute inset-0">
           <img 
-            src="https://images.unsplash.com/photo-1449965408869-ebd3fee56fd8?auto=format&fit=crop&w=1920&q=80" 
-            alt="Professional chauffeur service" 
-            className="w-full h-full object-cover opacity-30"
+            src="https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=1920&q=80" 
+            alt="Professional shuttle bus service" 
+            className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-black via-black/80 to-black/60" />
+          <div className="absolute inset-0 bg-black/60" />
         </div>
         
         {/* Gold accent gradients */}
