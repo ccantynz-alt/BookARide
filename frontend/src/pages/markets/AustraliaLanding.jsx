@@ -15,10 +15,16 @@ const AustraliaLanding = () => {
         currentLang="en"
       />
 
-      {/* Hero Section */}
-      <section className="relative py-20 bg-gradient-to-br from-gray-900 via-black to-gray-800 overflow-hidden">
-        <div className="absolute inset-0 opacity-20">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(212,175,55,0.2),transparent_50%)]" />
+      {/* Hero Section with Beautiful Australia Image */}
+      <section className="relative pt-32 pb-20 bg-gradient-to-br from-gray-900 via-black to-gray-800 overflow-hidden">
+        {/* Sydney Opera House Background */}
+        <div className="absolute inset-0">
+          <img 
+            src="https://images.unsplash.com/photo-1506973035872-a4ec16b8e8d9?auto=format&fit=crop&w=1920&q=80" 
+            alt="Sydney Opera House and Harbour Bridge" 
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-black/70" />
         </div>
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-4xl mx-auto text-center">
