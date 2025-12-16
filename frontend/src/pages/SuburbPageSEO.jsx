@@ -36,8 +36,8 @@ export const SuburbPageSEO = () => {
   return (
     <div className="min-h-screen bg-white">
       <SEO 
-        title={`${suburb.name} Airport Shuttle to Auckland Airport - From $${suburb.price} | Book A Ride`}
-        description={`Professional airport shuttle service from ${suburb.name} to Auckland Airport. From $${suburb.price}, ${suburb.distance}km journey, 24/7 availability. Book online for instant confirmation. Reliable, safe, affordable.`}
+        title={`${suburb.name} Airport Shuttle to Auckland Airport | Book A Ride`}
+        description={`Professional airport shuttle service from ${suburb.name} to Auckland Airport. 24/7 availability, instant online quotes. Book online for instant confirmation. Reliable, safe, affordable.`}
         keywords={`${suburb.name} airport shuttle, ${suburb.name} to Auckland Airport, airport transfer ${suburb.name}, shuttle service ${suburb.name}, ${suburb.name} airport transport, ${suburb.name} to airport taxi, book airport shuttle ${suburb.name}, cheap airport shuttle ${suburb.name}, ${cityName} airport shuttle`}
         canonical={`/suburbs/${slug}`}
       />
@@ -53,7 +53,7 @@ export const SuburbPageSEO = () => {
                 {suburb.name} Airport Shuttle Service
               </h1>
               <p className="text-2xl md:text-3xl text-blue-100 font-semibold mb-4">
-                From ${suburb.price} to Auckland Airport
+                Fast & Reliable Transfers to Auckland Airport
               </p>
               <p className="text-xl text-blue-200">
                 {suburb.distance}km • Professional Drivers • 24/7 Available • Instant Booking
@@ -88,8 +88,8 @@ export const SuburbPageSEO = () => {
               <CardContent className="p-6 text-center">
                 <DollarSign className="w-12 h-12 mx-auto mb-3 text-green-600" />
                 <h3 className="font-bold text-xl mb-2">Competitive Pricing</h3>
-                <p className="text-3xl font-bold text-green-600 mb-2">From ${suburb.price}</p>
-                <p className="text-gray-600">Based on distance traveled</p>
+                <p className="text-2xl font-bold text-green-600 mb-2">Get Instant Quote</p>
+                <p className="text-gray-600">Live pricing calculator</p>
               </CardContent>
             </Card>
             <Card>
