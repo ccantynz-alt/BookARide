@@ -23,7 +23,7 @@ export const OrewaToAirportPage = () => {
     <div className="min-h-screen bg-white">
       <Helmet>
         <title>Orewa to Auckland Airport Shuttle | Get Instant Quote | Private Transfers | BookaRide</title>
-        <meta name="description" content="Private shuttle from Orewa to Auckland Airport from $95. Door-to-door service, flight tracking, 24/7 availability. Book your Orewa airport transfer online instantly." />
+        <meta name="description" content="Private shuttle from Orewa to Auckland Airport with instant online quotes. Door-to-door service, flight tracking, 24/7 availability. Book your Orewa airport transfer online instantly." />
         <meta name="keywords" content="orewa to auckland airport, orewa airport shuttle, orewa airport transfer, orewa to airport taxi" />
         <link rel="canonical" href="https://bookaride.co.nz/orewa-to-auckland-airport" />
         <script type="application/ld+json">{JSON.stringify(schema)}</script>
@@ -109,7 +109,7 @@ export const OrewaToAirportPage = () => {
                   </div>
                   <div className="flex justify-between items-center pb-4 border-b">
                     <span>Return Trip (both ways)</span>
-                    <span className="text-2xl font-bold text-gold">$180</span>
+                    <span className="text-2xl font-bold text-gold">Instant Quote</span>
                   </div>
                   <p className="text-sm text-gray-500">
                     * Prices include GST, no hidden fees

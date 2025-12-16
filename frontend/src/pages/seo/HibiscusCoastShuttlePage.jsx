@@ -48,7 +48,7 @@ export const HibiscusCoastShuttlePage = () => {
     <div className="min-h-screen bg-white">
       <Helmet>
         <title>Hibiscus Coast Airport Shuttle | #1 Rated Service | Get Instant Quote | BookaRide</title>
-        <meta name="description" content="Best Hibiscus Coast airport shuttle service. Private door-to-door transfers to Auckland Airport from Orewa, Whangaparaoa, Silverdale & more. Fixed prices from $90. Book online 24/7." />
+        <meta name="description" content="Best Hibiscus Coast airport shuttle service. Private door-to-door transfers to Auckland Airport from Orewa, Whangaparaoa, Silverdale & more. Fixed prices with instant online quotes. Book online 24/7." />
         <meta name="keywords" content="hibiscus coast airport shuttle, hibiscus coast to auckland airport, orewa airport shuttle, whangaparaoa airport transfer, silverdale airport shuttle" />
         <link rel="canonical" href="https://bookaride.co.nz/hibiscus-coast-airport-shuttle" />
         <script type="application/ld+json">{JSON.stringify(schema)}</script>
@@ -270,7 +270,7 @@ export const HibiscusCoastShuttlePage = () => {
             {[
               {
                 q: 'How much is a shuttle from Hibiscus Coast to Auckland Airport?',
-                a: 'Our prices start from $90 for Silverdale and range up to $120 for Gulf Harbour. All prices are fixed with no surge charges or hidden fees.'
+                a: 'Our prices start with instant online quotes for Silverdale and range up to $120 for Gulf Harbour. All prices are fixed with no surge charges or hidden fees.'
               },
               {
                 q: 'How long does it take to get from Hibiscus Coast to Auckland Airport?',

@@ -36,7 +36,7 @@ const AucklandAirportShuttle = () => {
     },
     {
       q: 'How much does an Auckland Airport shuttle cost?',
-      a: 'Prices start from $65 for South Auckland and vary based on distance. We offer fixed pricing with no hidden fees or surge pricing.'
+      a: 'Prices start with instant online quotes for South Auckland and vary based on distance. We offer fixed pricing with no hidden fees or surge pricing.'
     },
     {
       q: 'Do you offer private airport transfers?',
@@ -96,7 +96,7 @@ const AucklandAirportShuttle = () => {
       { '@type': 'City', 'name': 'Manukau' },
       { '@type': 'City', 'name': 'Waitakere' }
     ],
-    'priceRange': '$65-$200',
+    'priceRange': 'Get instant quote online',
     'openingHoursSpecification': {
       '@type': 'OpeningHoursSpecification',
       'dayOfWeek': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
