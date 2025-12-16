@@ -15,8 +15,17 @@ const UKLanding = () => {
         currentLang="en"
       />
 
-      {/* Hero Section */}
-      <section className="relative py-20 bg-gradient-to-br from-blue-900 via-red-800 to-blue-900 overflow-hidden">
+      {/* Hero Section with Beautiful UK Image */}
+      <section className="relative pt-32 pb-20 bg-gradient-to-br from-blue-900 via-red-800 to-blue-900 overflow-hidden">
+        {/* London Big Ben Background */}
+        <div className="absolute inset-0">
+          <img 
+            src="https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=1920&q=80" 
+            alt="London Big Ben and Parliament" 
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-900/80 via-red-900/50 to-blue-900/70" />
+        </div>
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-4xl mx-auto text-center">
             <div className="inline-flex items-center gap-2 bg-white/20 px-4 py-2 rounded-full mb-6">
