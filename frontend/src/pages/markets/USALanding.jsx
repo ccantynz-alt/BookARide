@@ -19,7 +19,7 @@ const USALanding = () => {
     "provider": {
       "@type": "LocalBusiness",
       "name": "BookaRide NZ",
-      "telephone": "+64 21 743 321",
+      
       "url": "https://bookaride.co.nz"
     },
     "itinerary": {
@@ -139,9 +139,9 @@ const USALanding = () => {
                   Book Your Transfer
                 </Button>
               </Link>
-              <a href="tel:+6421743321">
+              <Link to="/book-now">
                 <Button variant="outline" className="border-white text-white hover:bg-white/10 px-8 py-6 text-lg">
-                  Call +64 21 743 321
+                  Book Online Now
                 </Button>
               </a>
             </div>
