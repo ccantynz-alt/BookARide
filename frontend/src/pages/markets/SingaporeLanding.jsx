@@ -88,7 +88,7 @@ const SingaporeLanding = () => {
             {[
               { name: 'Hobbiton', desc: 'Lord of the Rings filming location', price: 'Get a Quote' },
               { name: 'Rotorua', desc: 'Geothermal wonders & Maori culture', price: 'Get a Quote' },
-              { name: 'Auckland CBD', desc: 'City centre hotels', price: 'From $95 NZD' },
+              { name: 'Auckland CBD', desc: 'City centre hotels', price: 'Get Instant Quote NZD' },
             ].map((dest, idx) => (
               <div key={idx} className="bg-gray-50 p-6 rounded-xl hover:shadow-md transition-shadow">
                 <h3 className="text-xl font-semibold mb-2">{dest.name}</h3>
