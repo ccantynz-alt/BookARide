@@ -11,7 +11,6 @@ export const LocalBusinessSchema = () => {
     "alternateName": "Book A Ride New Zealand",
     "description": "Premium private airport shuttle service in Auckland and Hamilton, New Zealand. Door-to-door transfers, flight tracking, 24/7 availability.",
     "url": "https://bookaride.co.nz",
-    "telephone": "+64 21 743 321",
     "email": "info@bookaride.co.nz",
     "logo": "https://bookaride.co.nz/bookaride-logo.png",
     "image": "https://bookaride.co.nz/bookaride-logo.png",
