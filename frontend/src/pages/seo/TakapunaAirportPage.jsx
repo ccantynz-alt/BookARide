@@ -46,10 +46,10 @@ const TakapunaAirportPage = () => {
             </h1>
             
             <p className="text-xl text-gray-300 mb-4">
-              From approximately <span className="text-gold font-bold text-2xl">$75-85</span>
+              Get your <span className="text-gold font-bold text-2xl">Instant Quote</span> online
             </p>
             <p className="text-gray-400 mb-8">
-              Fixed pricing based on your exact address • No surge pricing • Professional service
+              Live pricing calculator • No hidden fees • Professional service
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
