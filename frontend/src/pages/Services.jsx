@@ -475,29 +475,29 @@ export const Services = () => {
               <Card className="border-2 border-gold/30 bg-gradient-to-br from-gold/20 to-gold/5 backdrop-blur">
                 <CardContent className="p-10 text-center">
                   <div className="mb-6">
-                    <p className="text-gray-300 text-sm mb-2">Estimated Price</p>
-                    <p className="text-5xl font-bold text-gold mb-2">$612.50</p>
-                    <p className="text-gray-400 text-sm">Base one-way fare</p>
+                    <p className="text-gray-300 text-sm mb-2">Get Your Price</p>
+                    <p className="text-4xl font-bold text-gold mb-2">Instant Quote</p>
+                    <p className="text-gray-400 text-sm">Live pricing calculator</p>
                   </div>
                   
                   <div className="space-y-3 mb-8 text-left">
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-300">Distance:</span>
-                      <span className="text-white font-semibold">175km</span>
+                      <span className="text-gray-300">Pricing:</span>
+                      <span className="text-white font-semibold">Distance-based</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-300">Travel Time:</span>
-                      <span className="text-white font-semibold">~2.5 hours</span>
+                      <span className="text-gray-300">Quotes:</span>
+                      <span className="text-white font-semibold">Instant online</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-300">Rate:</span>
-                      <span className="text-white font-semibold">$3.50/km</span>
+                      <span className="text-gray-300">Guarantee:</span>
+                      <span className="text-white font-semibold">No hidden fees</span>
                     </div>
                   </div>
 
                   <Link to="/book-now">
                     <Button variant="outline" className="border-gold text-gold hover:bg-gold hover:text-black w-full py-4">
-                      Book Now
+                      Get Quote
                     </Button>
                   </Link>
                 </CardContent>
