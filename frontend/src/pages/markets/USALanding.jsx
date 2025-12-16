@@ -267,8 +267,8 @@ const USALanding = () => {
           <p className="text-center text-gray-600 mb-12">Fixed prices, no surge pricing - get an instant quote</p>
           <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
             {[
-              { from: 'Auckland Airport', to: 'Auckland CBD', price: 'From $100', time: '25-35 min' },
-              { from: 'Auckland Airport', to: 'North Shore', price: 'From $100', time: '35-50 min' },
+              { from: 'Auckland Airport', to: 'Auckland CBD', price: 'Get Instant Quote', time: '25-35 min' },
+              { from: 'Auckland Airport', to: 'North Shore', price: 'Get Instant Quote', time: '35-50 min' },
               { from: 'Auckland Airport', to: 'Hobbiton', price: 'Get Quote', time: '2.5 hours' },
               { from: 'Auckland Airport', to: 'Rotorua', price: 'Get Quote', time: '3 hours' },
               { from: 'Auckland Airport', to: 'Waitomo Caves', price: 'Get Quote', time: '2.5 hours' },
