@@ -33,7 +33,7 @@ export const WhangaparoaAirportPage = () => {
     <div className="min-h-screen bg-white">
       <Helmet>
         <title>Whangaparaoa Airport Shuttle | Get Instant Quote | Gulf Harbour, Stanmore Bay | BookaRide</title>
-        <meta name="description" content="Whangaparaoa to Auckland Airport shuttle from $100. Serving Gulf Harbour, Stanmore Bay, Army Bay, Manly & all peninsula areas. Private door-to-door transfers 24/7." />
+        <meta name="description" content="Whangaparaoa to Auckland Airport shuttle with instant online quotes. Serving Gulf Harbour, Stanmore Bay, Army Bay, Manly & all peninsula areas. Private door-to-door transfers 24/7." />
         <meta name="keywords" content="whangaparaoa airport shuttle, whangaparaoa airport transfer, gulf harbour airport shuttle, stanmore bay airport transfer, whangaparaoa to auckland airport" />
         <link rel="canonical" href="https://bookaride.co.nz/whangaparaoa-airport-transfer" />
         <script type="application/ld+json">{JSON.stringify(schema)}</script>
