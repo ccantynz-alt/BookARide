@@ -99,7 +99,7 @@ const FranceLanding = () => {
             {[
               { name: 'Hobbiton', desc: 'Lieu de tournage du Seigneur des Anneaux', price: 'Demander un devis' },
               { name: 'Rotorua', desc: 'Merveilles géothermiques', price: 'Demander un devis' },
-              { name: 'Auckland CBD', desc: 'Hôtels du centre-ville', price: 'À partir de $95 NZD' },
+              { name: 'Auckland CBD', desc: 'Hôtels du centre-ville', price: 'Devis gratuit' },
             ].map((dest, idx) => (
               <div key={idx} className="bg-gray-50 p-6 rounded-xl hover:shadow-md transition-shadow">
                 <h3 className="text-xl font-semibold mb-2">{dest.name}</h3>

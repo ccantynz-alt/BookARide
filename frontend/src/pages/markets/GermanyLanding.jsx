@@ -99,7 +99,7 @@ const GermanyLanding = () => {
             {[
               { name: 'Hobbiton', desc: 'Herr der Ringe Filmset', price: 'Angebot anfordern' },
               { name: 'Rotorua', desc: 'Geothermische Wunder', price: 'Angebot anfordern' },
-              { name: 'Auckland CBD', desc: 'Stadtzentrum Hotels', price: 'Ab $95 NZD' },
+              { name: 'Auckland CBD', desc: 'Stadtzentrum Hotels', price: 'Angebot holen' },
             ].map((dest, idx) => (
               <div key={idx} className="bg-gray-50 p-6 rounded-xl hover:shadow-md transition-shadow">
                 <h3 className="text-xl font-semibold mb-2">{dest.name}</h3>
