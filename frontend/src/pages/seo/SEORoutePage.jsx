@@ -38,7 +38,7 @@ const SEORoutePage = () => {
     "provider": {
       "@type": "LocalBusiness",
       "name": "BookaRide NZ",
-      "telephone": "+64 21 743 321",
+      
       "url": "https://bookaride.co.nz",
       "address": {
         "@type": "PostalAddress",
@@ -138,10 +138,10 @@ const SEORoutePage = () => {
                     <ArrowRight className="ml-2 w-5 h-5" />
                   </Button>
                 </Link>
-                <a href="tel:+6421743321">
+                <a href="/book-now">
                   <Button variant="outline" className="border-white text-white hover:bg-white/10 px-8 py-6 text-lg">
                     <Phone className="mr-2 w-5 h-5" />
-                    Call +64 21 743 321
+                    Book Online
                   </Button>
                 </a>
               </div>
@@ -305,10 +305,10 @@ const SEORoutePage = () => {
                 Book Online Now
               </Button>
             </Link>
-            <a href="tel:+6421743321">
+            <a href="/book-now">
               <Button variant="outline" className="border-black text-black hover:bg-black/10 px-8 py-4 text-lg">
                 <Phone className="mr-2 w-5 h-5" />
-                +64 21 743 321
+                Book Online
               </Button>
             </a>
           </div>

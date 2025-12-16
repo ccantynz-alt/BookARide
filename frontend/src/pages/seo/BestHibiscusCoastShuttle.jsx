@@ -267,10 +267,10 @@ export const BestHibiscusCoastShuttle = () => {
                 <Plane className="ml-2 w-5 h-5" />
               </Button>
             </Link>
-            <a href="tel:+6421339030">
+            <a href="/book-now">
               <Button size="lg" variant="outline" className="border-black text-black hover:bg-black hover:text-white">
                 <Phone className="mr-2 w-5 h-5" />
-                021 339 030
+                Book Online
               </Button>
             </a>
           </div>
