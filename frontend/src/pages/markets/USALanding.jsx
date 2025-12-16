@@ -143,7 +143,7 @@ const USALanding = () => {
                 <Button variant="outline" className="border-white text-white hover:bg-white/10 px-8 py-6 text-lg">
                   Book Online Now
                 </Button>
-              </a>
+              </Link>
             </div>
           </div>
         </div>
