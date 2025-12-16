@@ -4,6 +4,7 @@ import { MapPin, Clock, Users, Ship, CheckCircle, ArrowRight, Plane, Navigation,
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import SEO from '../components/SEO';
+import PageBreadcrumb from '../components/PageBreadcrumb';
 
 export const CruiseTransfers = () => {
   const pickupLocations = [
@@ -72,6 +73,7 @@ export const CruiseTransfers = () => {
         keywords="cruise ship transfers Auckland, cruise terminal shuttle, port transfer Auckland, cruise ship airport shuttle, Auckland cruise transfer, ferry terminal shuttle, cruise passenger transport, ship to airport shuttle"
         canonical="/cruise-transfers"
       />
+      <PageBreadcrumb items={[{ label: 'Services', href: '/services' }, { label: 'Cruise Transfers' }]} />
       {/* Hero Section with Stunning Cruise Ship */}
       <section className="relative bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white pt-32 pb-20 overflow-hidden">
         {/* Beautiful Cruise Ship Background */}

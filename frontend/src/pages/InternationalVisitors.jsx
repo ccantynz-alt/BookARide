@@ -4,6 +4,7 @@ import { Globe, Plane, CreditCard, MessageCircle, Clock, Shield, Heart, Star, Ma
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import SEO from '../components/SEO';
+import PageBreadcrumb from '../components/PageBreadcrumb';
 
 const InternationalVisitors = () => {
   const countries = [
@@ -148,6 +149,7 @@ const InternationalVisitors = () => {
         keywords="international visitors New Zealand, NZ airport transfer tourists, Chinese tourists NZ, Japanese visitors New Zealand, Korean tourists Auckland, international airport shuttle, multilingual shuttle service, 新西兰机场接送, ニュージーランド空港送迎, 뉴질랜드 공항 픽업"
         canonical="/international-visitors"
       />
+      <PageBreadcrumb items={[{ label: 'International Visitors' }]} />
 
       {/* Epic Hero Section */}
       <section className="relative pt-32 pb-24 overflow-hidden">
