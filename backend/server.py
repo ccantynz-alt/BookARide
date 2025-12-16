@@ -5302,7 +5302,7 @@ async def get_driver_schedule(driver_id: str, date: Optional[str] = None):
 
 @api_router.delete("/bookings/{booking_id}")
 async def delete_booking(booking_id: str, send_notification: bool = True, current_admin: dict = Depends(get_current_admin)):
-    """Delete a single booking and optionally send cancellation notifications"""
+    """Soft-delete a single booking (moves to deleted_bookings collection)"""
     try:
         # First, get the booking details before deleting (for notifications)
         booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
@@ -5317,12 +5317,20 @@ async def delete_booking(booking_id: str, send_notification: bool = True, curren
                 logger.error(f"Error sending cancellation notifications: {str(e)}")
                 # Continue with deletion even if notifications fail
         
-        # Delete the booking
+        # SOFT DELETE: Move to deleted_bookings collection instead of permanent delete
+        booking['deletedAt'] = datetime.now(timezone.utc).isoformat()
+        booking['deletedBy'] = current_admin.get('username', 'admin')
+        booking['notificationSent'] = send_notification
+        await db.deleted_bookings.insert_one(booking)
+        
+        # Remove from active bookings
         result = await db.bookings.delete_one({"id": booking_id})
         if result.deleted_count == 0:
+            # Rollback the soft delete if original wasn't found
+            await db.deleted_bookings.delete_one({"id": booking_id})
             raise HTTPException(status_code=404, detail="Booking not found")
         
-        logger.info(f"Booking {booking_id} deleted by admin, notifications sent: {send_notification}")
+        logger.info(f"Booking {booking_id} soft-deleted by {current_admin.get('username', 'admin')}, notifications sent: {send_notification}")
         return {"message": "Booking cancelled successfully", "notifications_sent": send_notification}
     except HTTPException:
         raise
@@ -5491,21 +5499,95 @@ To rebook: bookaride.co.nz"""
     logger.info(f"✅ Cancellation SMS sent to {formatted_phone} - SID: {message.sid}")
 
 @api_router.delete("/bookings/bulk-delete")
-async def bulk_delete(booking_ids: List[str], send_notifications: bool = False):
-    """Delete multiple bookings (notifications optional for bulk)"""
+async def bulk_delete(booking_ids: List[str], send_notifications: bool = False, current_admin: dict = Depends(get_current_admin)):
+    """Soft-delete multiple bookings (moves to deleted_bookings collection)"""
     try:
+        # Get all bookings first
+        bookings = await db.bookings.find({"id": {"$in": booking_ids}}, {"_id": 0}).to_list(1000)
+        
         if send_notifications:
-            # Get all bookings first to send notifications
-            bookings = await db.bookings.find({"id": {"$in": booking_ids}}, {"_id": 0}).to_list(1000)
             for booking in bookings:
                 try:
                     await send_cancellation_notifications(booking)
                 except Exception as e:
                     logger.error(f"Error sending cancellation for booking {booking.get('id')}: {str(e)}")
         
+        # SOFT DELETE: Move all to deleted_bookings collection
+        deleted_count = 0
+        for booking in bookings:
+            booking['deletedAt'] = datetime.now(timezone.utc).isoformat()
+            booking['deletedBy'] = current_admin.get('username', 'admin')
+            booking['notificationSent'] = send_notifications
+            await db.deleted_bookings.insert_one(booking)
+            deleted_count += 1
+        
+        # Remove from active bookings
         result = await db.bookings.delete_many({"id": {"$in": booking_ids}})
+        
+        logger.info(f"Bulk soft-deleted {deleted_count} bookings by {current_admin.get('username', 'admin')}")
         return {"message": "Bookings deleted", "count": result.deleted_count, "notifications_sent": send_notifications}
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================
+# DELETED BOOKINGS RECOVERY ENDPOINTS
+# ============================================
+
+@api_router.get("/bookings/deleted")
+async def get_deleted_bookings(current_admin: dict = Depends(get_current_admin)):
+    """Get all soft-deleted bookings for recovery"""
+    try:
+        deleted_bookings = await db.deleted_bookings.find({}, {"_id": 0}).sort("deletedAt", -1).to_list(1000)
+        return deleted_bookings
+    except Exception as e:
+        logger.error(f"Error fetching deleted bookings: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/bookings/restore/{booking_id}")
+async def restore_booking(booking_id: str, current_admin: dict = Depends(get_current_admin)):
+    """Restore a soft-deleted booking back to active bookings"""
+    try:
+        # Find the deleted booking
+        deleted_booking = await db.deleted_bookings.find_one({"id": booking_id}, {"_id": 0})
+        if not deleted_booking:
+            raise HTTPException(status_code=404, detail="Deleted booking not found")
+        
+        # Remove deletion metadata
+        deleted_booking.pop('deletedAt', None)
+        deleted_booking.pop('deletedBy', None)
+        deleted_booking.pop('notificationSent', None)
+        deleted_booking['restoredAt'] = datetime.now(timezone.utc).isoformat()
+        deleted_booking['restoredBy'] = current_admin.get('username', 'admin')
+        
+        # Insert back into active bookings
+        await db.bookings.insert_one(deleted_booking)
+        
+        # Remove from deleted_bookings
+        await db.deleted_bookings.delete_one({"id": booking_id})
+        
+        logger.info(f"Booking {booking_id} restored by {current_admin.get('username', 'admin')}")
+        return {"message": "Booking restored successfully", "booking": deleted_booking}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error restoring booking: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.delete("/bookings/permanent/{booking_id}")
+async def permanent_delete_booking(booking_id: str, current_admin: dict = Depends(get_current_admin)):
+    """Permanently delete a booking from deleted_bookings (no recovery possible)"""
+    try:
+        result = await db.deleted_bookings.delete_one({"id": booking_id})
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Deleted booking not found")
+        
+        logger.info(f"Booking {booking_id} permanently deleted by {current_admin.get('username', 'admin')}")
+        return {"message": "Booking permanently deleted"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error permanently deleting booking: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
