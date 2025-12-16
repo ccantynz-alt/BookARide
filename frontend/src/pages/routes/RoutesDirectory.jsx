@@ -13,7 +13,7 @@ const routes = [
     from: 'Auckland CBD',
     to: 'Auckland Airport',
     duration: '25-35 min',
-    price: 'From $85',
+    price: 'Get Quote',
     popular: true
   },
   {
@@ -21,7 +21,7 @@ const routes = [
     from: 'North Shore',
     to: 'Auckland Airport',
     duration: '35-50 min',
-    price: 'From $95',
+    price: 'Get Quote',
     popular: true
   },
   {
@@ -29,7 +29,7 @@ const routes = [
     from: 'South Auckland',
     to: 'Auckland Airport',
     duration: '10-20 min',
-    price: 'From $55',
+    price: 'Get Quote',
     popular: false
   },
   {
@@ -37,7 +37,7 @@ const routes = [
     from: 'West Auckland',
     to: 'Auckland Airport',
     duration: '30-45 min',
-    price: 'From $90',
+    price: 'Get Quote',
     popular: false
   },
   {
@@ -45,7 +45,7 @@ const routes = [
     from: 'East Auckland',
     to: 'Auckland Airport',
     duration: '25-40 min',
-    price: 'From $85',
+    price: 'Get Quote',
     popular: false
   },
   {
@@ -53,7 +53,7 @@ const routes = [
     from: 'Hibiscus Coast',
     to: 'Auckland Airport',
     duration: '50-70 min',
-    price: 'From $120',
+    price: 'Get Quote',
     popular: true
   }
 ];
