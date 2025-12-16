@@ -101,7 +101,7 @@ const RoutePage = () => {
     'provider': {
       '@type': 'LocalBusiness',
       'name': 'BookaRide NZ',
-      'telephone': '+64 21 743 321'
+      
     },
     'areaServed': {
       '@type': 'City',
@@ -164,10 +164,10 @@ const RoutePage = () => {
                   Book This Route
                 </Button>
               </Link>
-              <a href="tel:+6421743321">
+              <a href="/book-now">
                 <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10">
                   <Phone className="w-5 h-5 mr-2" />
-                  021 743 321
+                  Book Online
                 </Button>
               </a>
             </div>
