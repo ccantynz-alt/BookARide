@@ -15,7 +15,7 @@ const iconMap = {
 
 export const Services = () => {
   return (
-    <div className="min-h-screen pt-20 bg-white">
+    <div className="min-h-screen bg-white">
       <SEO 
         title="Airport Shuttle Services - Auckland, Hamilton & Whangarei"
         description="Comprehensive airport shuttle services across New Zealand. Auckland airport shuttle, Hamilton airport transfers, Whangarei shuttles, private transfers, cruise ship pickups, and Hobbiton tours. Professional, safe, and reliable shuttle service. Book now!"
