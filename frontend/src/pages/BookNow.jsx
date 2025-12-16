@@ -853,12 +853,12 @@ export const BookNow = () => {
                             onChange={handleChange}
                             placeholder="Any special requirements or notes..."
                             rows={3}
-                            className="transition-all duration-200 focus:ring-2 focus:ring-gold"
+                            className="bg-white/5 border-white/20 text-white placeholder:text-white/40 transition-all duration-200 focus:ring-2 focus:ring-gold focus:border-gold"
                           />
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Price Summary - Right Side */}
