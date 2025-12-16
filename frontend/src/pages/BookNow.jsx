@@ -1012,13 +1012,13 @@ export const BookNow = () => {
 
                       <Button 
                         type="submit" 
-                        className="w-full mt-6 bg-gold hover:bg-gold/90 text-black font-semibold py-6 text-lg transition-colors duration-200"
+                        className="w-full mt-6 bg-gold hover:bg-gold/90 text-black font-semibold py-6 text-lg transition-colors duration-200 shadow-[0_0_20px_rgba(212,175,55,0.3)]"
                         disabled={pricing.calculating || pricing.totalPrice === 0}
                       >
                         {formData.paymentMethod === 'afterpay' ? 'Continue with Afterpay' : 'Book Now'}
                       </Button>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </div>
                 </div>
               </div>
             </form>
