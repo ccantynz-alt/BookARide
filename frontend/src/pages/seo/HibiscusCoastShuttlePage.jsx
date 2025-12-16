@@ -40,7 +40,7 @@ export const HibiscusCoastShuttlePage = () => {
     "description": "Premium private airport shuttle service from Hibiscus Coast to Auckland Airport. Door-to-door transfers with professional drivers.",
     "offers": {
       "@type": "Offer",
-      "priceRange": "$90-$120"
+      "priceRange": "Get instant quote online"
     }
   };
 
@@ -270,7 +270,7 @@ export const HibiscusCoastShuttlePage = () => {
             {[
               {
                 q: 'How much is a shuttle from Hibiscus Coast to Auckland Airport?',
-                a: 'Our prices start with instant online quotes for Silverdale and range up to $120 for Gulf Harbour. All prices are fixed with no surge charges or hidden fees.'
+                a: 'Our prices are calculated based on distance for Gulf Harbour. All prices are fixed with no surge charges or hidden fees.'
               },
               {
                 q: 'How long does it take to get from Hibiscus Coast to Auckland Airport?',

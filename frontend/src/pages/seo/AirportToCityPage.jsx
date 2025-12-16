@@ -9,12 +9,12 @@ import GoogleReviewsWidget from '../../components/GoogleReviewsWidget';
 
 const AirportToCityPage = () => {
   const popularDestinations = [
-    { name: 'Auckland CBD', price: '$65-75' },
-    { name: 'Ponsonby', price: '$65-75' },
-    { name: 'Newmarket', price: '$60-70' },
-    { name: 'Parnell', price: '$60-70' },
-    { name: 'Grey Lynn', price: '$65-75' },
-    { name: 'Mt Eden', price: '$60-70' },
+    { name: 'Auckland CBD', price: 'Get Quote' },
+    { name: 'Ponsonby', price: 'Get Quote' },
+    { name: 'Newmarket', price: 'Get Quote' },
+    { name: 'Parnell', price: 'Get Quote' },
+    { name: 'Grey Lynn', price: 'Get Quote' },
+    { name: 'Mt Eden', price: 'Get Quote' },
   ];
 
   return (
