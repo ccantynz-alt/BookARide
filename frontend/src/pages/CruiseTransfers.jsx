@@ -78,9 +78,10 @@ export const CruiseTransfers = () => {
         <div className="absolute inset-0">
           <img 
             src="https://images.unsplash.com/photo-1548574505-5e239809ee19?auto=format&fit=crop&w=1920&q=80" 
-            alt="" 
+            alt="Luxury cruise ship at sea" 
             className="w-full h-full object-cover object-center"
-            style={{ filter: 'brightness(0.4) blur(1px)' }}
+          />
+          <div className="absolute inset-0 bg-black/50"
           />
         </div>
         
