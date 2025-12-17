@@ -1751,28 +1751,35 @@ async def get_reminder_status(current_admin: dict = Depends(get_current_admin)):
         nz_today = nz_now.strftime('%Y-%m-%d')
         nz_tomorrow = (nz_now + timedelta(days=1)).strftime('%Y-%m-%d')
         
-        # Get tomorrow's bookings
+        # Get tomorrow's bookings with all reminder fields
         tomorrow_bookings = await db.bookings.find({
             "status": "confirmed",
             "date": nz_tomorrow
-        }, {"_id": 0, "id": 1, "name": 1, "email": 1, "phone": 1, "reminderSentAt": 1, "time": 1}).to_list(100)
+        }, {"_id": 0, "id": 1, "name": 1, "email": 1, "phone": 1, "time": 1,
+            "reminderSentAt": 1, "reminderSentForDate": 1, "reminderSource": 1,
+            "reminderEmailSent": 1, "reminderSmsSent": 1, "reminderCompleted": 1}).to_list(100)
         
-        sent_today = []
+        sent = []
         pending = []
         
         for booking in tomorrow_bookings:
-            reminder_sent = booking.get('reminderSentAt', '')
-            if reminder_sent and reminder_sent.startswith(nz_today):
-                sent_today.append({
+            reminder_sent_for = booking.get('reminderSentForDate', '')
+            if reminder_sent_for == nz_tomorrow:
+                sent.append({
                     "name": booking.get('name'),
                     "email": booking.get('email'),
+                    "phone": booking.get('phone'),
                     "time": booking.get('time'),
-                    "reminderSentAt": reminder_sent
+                    "reminderSentAt": booking.get('reminderSentAt'),
+                    "reminderSource": booking.get('reminderSource'),
+                    "emailSent": booking.get('reminderEmailSent', False),
+                    "smsSent": booking.get('reminderSmsSent', False)
                 })
             else:
                 pending.append({
                     "name": booking.get('name'),
                     "email": booking.get('email'),
+                    "phone": booking.get('phone'),
                     "time": booking.get('time')
                 })
         
@@ -1785,15 +1792,19 @@ async def get_reminder_status(current_admin: dict = Depends(get_current_admin)):
                 "next_run": str(job.next_run_time) if job.next_run_time else "Not scheduled"
             })
         
+        # Check lock status
+        lock_status = "locked" if reminder_lock.locked() else "available"
+        
         return {
             "current_nz_time": nz_now.strftime('%Y-%m-%d %H:%M:%S %Z'),
             "checking_for_date": nz_tomorrow,
             "total_bookings_tomorrow": len(tomorrow_bookings),
-            "reminders_sent_today": len(sent_today),
+            "reminders_sent": len(sent),
             "reminders_pending": len(pending),
-            "sent_details": sent_today,
+            "sent_details": sent,
             "pending_details": pending,
             "scheduler_status": "running" if scheduler.running else "stopped",
+            "reminder_lock_status": lock_status,
             "scheduled_jobs": scheduler_jobs
         }
         
