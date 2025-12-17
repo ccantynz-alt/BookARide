@@ -1992,6 +1992,63 @@ export const AdminDashboard = () => {
                 )}
               </div>
 
+              {/* Driver Assignment - RETURN (only if return trip booked) */}
+              {selectedBooking.bookReturn && (
+                <div className="mt-4 pt-4 border-t border-dashed">
+                  <h3 className="font-semibold text-gray-900 mb-3">
+                    🔄 Return Driver <span className="text-sm font-normal text-gray-500">(Return on {selectedBooking.returnDate} at {selectedBooking.returnTime})</span>
+                  </h3>
+                  {selectedBooking.return_driver_id ? (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-gray-600">Return Trip Driver</p>
+                          <p className="font-medium text-gray-900">
+                            {drivers.find(d => d.id === selectedBooking.return_driver_id)?.name || selectedBooking.return_driver_name || 'Unknown Driver'}
+                          </p>
+                          <p className="text-xs text-gray-500">{selectedBooking.return_driver_phone}</p>
+                        </div>
+                        <Button 
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setSelectedDriver('')}
+                          className="text-red-600 hover:bg-red-50"
+                        >
+                          Change Driver
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <p className="text-sm text-orange-600 bg-orange-50 p-2 rounded">
+                        ⚠️ No return driver assigned yet - assign closer to return date
+                      </p>
+                      <div className="flex gap-2">
+                        <Select value={selectedDriver} onValueChange={setSelectedDriver}>
+                          <SelectTrigger className="flex-1">
+                            <SelectValue placeholder="Select return driver..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {drivers.filter(d => d.status === 'active').map((driver) => (
+                              <SelectItem key={driver.id} value={driver.id}>
+                                {driver.name} - {driver.phone}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button 
+                          onClick={() => handleAssignDriver('return')}
+                          disabled={!selectedDriver}
+                          className="bg-blue-600 hover:bg-blue-700 text-white"
+                        >
+                          Assign Return
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Notes */}
               {selectedBooking.notes && (
                 <div>
