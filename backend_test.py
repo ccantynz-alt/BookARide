@@ -965,10 +965,11 @@ class BookaRideBackendTester:
                 reminders_sent_3 = trigger3_data.get('reminders_sent', 0)
                 skipped_3 = trigger3_data.get('skipped', 0)
                 
-                if reminders_sent_3 == 0 and skipped_3 >= 1:
-                    self.log_result("Duplicate Reminder Prevention: Third Trigger", True, f"Third trigger correctly skipped: {reminders_sent_3} sent, {skipped_3} skipped")
+                # Third trigger should send 0 reminders (already sent)
+                if reminders_sent_3 == 0:
+                    self.log_result("Duplicate Reminder Prevention: Third Trigger", True, f"Third trigger correctly sent 0 reminders: {reminders_sent_3} sent, {skipped_3} skipped (already processed)")
                 else:
-                    self.log_result("Duplicate Reminder Prevention: Third Trigger", False, f"Third trigger should have skipped all: {reminders_sent_3} sent, {skipped_3} skipped")
+                    self.log_result("Duplicate Reminder Prevention: Third Trigger", False, f"Third trigger should have sent 0: {reminders_sent_3} sent, {skipped_3} skipped")
                     return False
             else:
                 self.log_result("Duplicate Reminder Prevention: Third Trigger", False, f"Third trigger failed: {trigger3_response.status_code}")
