@@ -6265,8 +6265,7 @@ async def generate_sitemap():
 # APP CONFIGURATION
 # ============================================
 
-# Include the router in the main app
-app.include_router(api_router)
+# NOTE: Router is included AFTER all routes are defined (see end of Xero section)
 
 # Configure CORS with specific origins for credentials support
 cors_origins_env = os.environ.get('CORS_ORIGINS', '*')
