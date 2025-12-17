@@ -554,6 +554,8 @@ export const AdminDashboard = () => {
     setSelectedBooking(booking);
     const totalPrice = booking.pricing?.totalPrice ?? booking.totalPrice ?? 0;
     setPriceOverride(totalPrice.toString());
+    // Reset Xero invoice date to booking date
+    setXeroInvoiceDate(booking.date ? new Date(booking.date + 'T00:00:00') : new Date());
     setShowDetailsModal(true);
   };
 
