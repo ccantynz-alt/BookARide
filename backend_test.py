@@ -976,16 +976,15 @@ class BookaRideBackendTester:
                 return False
             
             # Validation: Check that only ONE reminder was sent total
-            total_sent = reminders_sent_1 + reminders_sent_2
-            total_skipped = skipped_1 + skipped_2 + skipped_3
+            total_sent = reminders_sent_1 + reminders_sent_2 + reminders_sent_3
             
             # Expected results:
-            # - First trigger should send 1 reminder
-            # - Second concurrent trigger should be skipped (lock) OR send 0 (already marked)
-            # - Third trigger should skip 1 (already sent)
+            # - First trigger should send 1 reminder (or second if first was locked)
+            # - Subsequent triggers should send 0 (already processed)
+            # - Total should be exactly 1 reminder sent
             
             if total_sent == 1:
-                self.log_result("Duplicate Reminder Prevention: Validation", True, f"✅ SUCCESS: Only 1 reminder sent total (expected), {total_skipped} skipped")
+                self.log_result("Duplicate Reminder Prevention: Validation", True, f"✅ SUCCESS: Only 1 reminder sent total (expected), duplicate prevention working correctly")
                 
                 # Check if reminderSentForDate field is set correctly
                 if sent_bookings:
