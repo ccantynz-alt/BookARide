@@ -2183,6 +2183,8 @@ export const AdminDashboard = () => {
                             type="date"
                             id="xeroInvoiceDate"
                             defaultValue={selectedBooking.date || new Date().toISOString().split('T')[0]}
+                            min="2020-01-01"
+                            max="2030-12-31"
                             className="mt-1"
                           />
                         </div>
@@ -2198,7 +2200,7 @@ export const AdminDashboard = () => {
                         </Button>
                       </div>
                       <p className="text-xs text-gray-500">
-                        💡 Use the booking date or select an earlier date to backdate the invoice
+                        💡 Select any date from 2020 onwards to backdate the invoice
                       </p>
                     </div>
                   )}
