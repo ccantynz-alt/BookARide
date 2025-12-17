@@ -2680,9 +2680,9 @@ async def send_driver_notification(booking: dict, driver: dict, trip_type: str =
         </tr>
         <tr>
             <td style="padding: 20px; background-color: #f5f5f5;">
-                <h2 style="color: #1a1a1a; margin-top: 0;">✅ New Booking Assignment</h2>
+                <h2 style="color: #1a1a1a; margin-top: 0;">✅ New Booking Assignment - {trip_type} TRIP</h2>
                 <p style="margin: 10px 0;">Hi {driver.get('name', 'Driver')},</p>
-                <p style="margin: 10px 0;">You have been assigned a new booking. Please review the details below:</p>
+                <p style="margin: 10px 0;">You have been assigned {'a new' if trip_type == 'OUTBOUND' else 'the RETURN leg of a'} booking. Please review the details below:</p>
                 
                 <table width="100%" cellpadding="15" cellspacing="0" style="background-color: white; border-radius: 8px; margin: 20px 0; border-left: 4px solid #D4AF37;">
                     <tr>
