@@ -44,13 +44,17 @@ const CustomTimeInput = forwardRef(({ value, onClick, placeholder }, ref) => (
 CustomTimeInput.displayName = 'CustomTimeInput';
 
 // Custom Date Picker Component
-export const CustomDatePicker = ({ selected, onChange, placeholder = "Select date", minDate, ...props }) => {
+export const CustomDatePicker = ({ selected, onChange, placeholder = "Select date", minDate, allowPastDates = false, ...props }) => {
+  // If allowPastDates is true or minDate is explicitly provided, use that
+  // Otherwise default to today (for booking forms that shouldn't allow past dates)
+  const effectiveMinDate = minDate !== undefined ? minDate : (allowPastDates ? null : new Date());
+  
   return (
     <DatePicker
       selected={selected}
       onChange={onChange}
       dateFormat="dd/MM/yyyy"
-      minDate={minDate || new Date()}
+      minDate={effectiveMinDate}
       customInput={<CustomDateInput placeholder={placeholder} />}
       calendarClassName="custom-calendar"
       popperClassName="custom-popper"
