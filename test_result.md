@@ -219,6 +219,18 @@ frontend:
         agent: "testing"
         comment: "✅ HARDCODED PRICING REMOVAL VERIFIED: All 4 tested pages successfully show 'Get Instant Quote' or 'Get Quote' messaging instead of hardcoded prices. 1) Orewa to Airport page: Hero shows 'Get Instant Quote', pricing cards show 'Get Quote' ✓, 2) Hibiscus Coast page: 14 suburb cards show 'Get Quote' in gold text ✓, 3) SEO Route page (Whangaparaoa): Hero shows 'Get Instant Quote', pricing badge shows 'Instant Quote' ✓, 4) Suburb page (Orewa): CTA shows 'Get Instant Quote', pricing card shows 'Get Instant Quote' ✓. No hardcoded prices like '$95', '$85', 'From $XX' found on any tested pages. Screenshots captured for verification."
 
+  - task: "Xero Invoice Date Picker Backdating"
+    implemented: true
+    working: "NA"
+    file: "src/pages/AdminDashboard.jsx, src/components/DateTimePicker.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "⚠️ XERO INVOICE DATE PICKER - IMPLEMENTATION VERIFIED BUT REQUIRES XERO CONNECTION: Code analysis confirms correct implementation: 1) CustomDatePicker configured with minDate=2020-01-01, maxDate=2030-12-31 ✓, 2) showMonthDropdown and showYearDropdown enabled ✓, 3) Help text 'Use month/year dropdowns to easily select past dates for backdating' present ✓, 4) Create Invoice button implemented ✓. However, Xero section is conditionally rendered only when xeroConnected=true. Found 'Connect Xero' button in dashboard header confirming integration is available but not activated. To fully test functionality, Xero needs to be connected first. Implementation matches all requirements from review request."
+
 metadata:
   created_by: "testing_agent"
   version: "1.0"
