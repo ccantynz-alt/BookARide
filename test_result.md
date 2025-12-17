@@ -182,15 +182,18 @@ frontend:
 
   - task: "Hardcoded Pricing Removal"
     implemented: true
-    working: pending
+    working: true
     file: "src/pages/seo/*.jsx, src/data/seoRouteData.js"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: pending
         agent: "main"
         comment: "Removed all hardcoded prices from SEO pages, suburb pages, and route pages. Replaced with 'Get Instant Quote' or 'Get Quote' messaging. Fixed schema markup to use AggregateOffer instead of specific prices."
+      - working: true
+        agent: "testing"
+        comment: "✅ HARDCODED PRICING REMOVAL VERIFIED: All 4 tested pages successfully show 'Get Instant Quote' or 'Get Quote' messaging instead of hardcoded prices. 1) Orewa to Airport page: Hero shows 'Get Instant Quote', pricing cards show 'Get Quote' ✓, 2) Hibiscus Coast page: 14 suburb cards show 'Get Quote' in gold text ✓, 3) SEO Route page (Whangaparaoa): Hero shows 'Get Instant Quote', pricing badge shows 'Instant Quote' ✓, 4) Suburb page (Orewa): CTA shows 'Get Instant Quote', pricing card shows 'Get Instant Quote' ✓. No hardcoded prices like '$95', '$85', 'From $XX' found on any tested pages. Screenshots captured for verification."
 
 metadata:
   created_by: "testing_agent"
