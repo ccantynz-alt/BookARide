@@ -131,6 +131,18 @@ backend:
         agent: "testing"
         comment: "✅ Mailgun email integration working perfectly. Direct Mailgun test successful with 'Queued. Thank you.' response. Email notifications for bookings and driver assignments confirmed working."
 
+  - task: "Duplicate Reminder Prevention Fix"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ DUPLICATE REMINDER PREVENTION FIX VERIFIED: Comprehensive testing confirms the fix is working correctly. Created unique test booking (Test User 4aeaa576) and verified: 1) Global asyncio lock prevents concurrent reminder jobs ✓, 2) Atomic database updates mark booking as 'in progress' BEFORE sending ✓, 3) Pre-filtered queries only get bookings that need reminders ✓, 4) Only ONE email and ONE SMS sent per booking ✓. First trigger sent 1 reminder, subsequent triggers sent 0 (correctly skipped). Customers will no longer receive multiple SMS notifications for the same booking."
+
 frontend:
   - task: "Blue Left-Side Marker for Today's Bookings"
     implemented: true
