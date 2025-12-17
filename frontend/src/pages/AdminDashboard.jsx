@@ -2681,7 +2681,11 @@ export const AdminDashboard = () => {
                                 }
                               }}
                               placeholder="Select return date"
-                              minDate={adminPickupDate || new Date()}
+                              minDate={new Date('2020-01-01')}
+                              maxDate={new Date('2030-12-31')}
+                              showMonthDropdown
+                              showYearDropdown
+                              dropdownMode="select"
                             />
                           </div>
                         </div>
