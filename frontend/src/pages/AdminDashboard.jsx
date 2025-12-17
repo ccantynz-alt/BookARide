@@ -1485,8 +1485,20 @@ export const AdminDashboard = () => {
                           </button>
                         </td>
                         <td className="p-4">
-                          <div className="text-sm font-bold text-gold">
-                            #{booking.referenceNumber || booking.id?.slice(0, 8).toUpperCase()}
+                          <div className="flex items-center gap-2">
+                            <div className="text-sm font-bold text-gold">
+                              #{booking.referenceNumber || booking.id?.slice(0, 8).toUpperCase()}
+                            </div>
+                            {isToday(booking.date) && (
+                              <span className="px-2 py-0.5 text-xs font-bold bg-blue-600 text-white rounded-full animate-pulse">
+                                TODAY
+                              </span>
+                            )}
+                            {isTomorrow(booking.date) && (
+                              <span className="px-2 py-0.5 text-xs font-bold bg-orange-500 text-white rounded-full">
+                                TOMORROW
+                              </span>
+                            )}
                           </div>
                           <div className="text-sm text-gray-900">{formatDate(booking.date)}</div>
                           <div className="text-xs font-medium text-blue-600">{getDayOfWeek(booking.date)}</div>
