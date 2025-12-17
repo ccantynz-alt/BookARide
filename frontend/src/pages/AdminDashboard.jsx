@@ -2182,19 +2182,22 @@ export const AdminDashboard = () => {
                       <div className="flex gap-2 items-end">
                         <div className="flex-1">
                           <Label className="text-xs text-gray-500">Invoice Date (backdate if needed)</Label>
-                          <Input
-                            type="date"
-                            id="xeroInvoiceDate"
-                            defaultValue={selectedBooking.date || new Date().toISOString().split('T')[0]}
-                            min="2020-01-01"
-                            max="2030-12-31"
-                            className="mt-1"
+                          <CustomDatePicker
+                            selected={xeroInvoiceDate || (selectedBooking.date ? new Date(selectedBooking.date + 'T00:00:00') : new Date())}
+                            onChange={(date) => setXeroInvoiceDate(date)}
+                            minDate={new Date('2020-01-01')}
+                            maxDate={new Date('2030-12-31')}
+                            showMonthDropdown
+                            showYearDropdown
+                            dropdownMode="select"
+                            placeholder="Select invoice date"
                           />
                         </div>
                         <Button
                           onClick={() => {
-                            const invoiceDate = document.getElementById('xeroInvoiceDate')?.value;
-                            createXeroInvoice(selectedBooking.id, invoiceDate);
+                            const dateToUse = xeroInvoiceDate || (selectedBooking.date ? new Date(selectedBooking.date + 'T00:00:00') : new Date());
+                            const formattedDate = dateToUse.toISOString().split('T')[0];
+                            createXeroInvoice(selectedBooking.id, formattedDate);
                           }}
                           className="bg-purple-600 hover:bg-purple-700 text-white"
                         >
@@ -2203,7 +2206,7 @@ export const AdminDashboard = () => {
                         </Button>
                       </div>
                       <p className="text-xs text-gray-500">
-                        💡 Select any date from 2020 onwards to backdate the invoice
+                        💡 Use month/year dropdowns to easily select past dates for backdating
                       </p>
                     </div>
                   )}
