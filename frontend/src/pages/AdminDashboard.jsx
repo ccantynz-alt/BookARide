@@ -49,6 +49,31 @@ const getShortDayOfWeek = (dateString) => {
   return days[date.getDay()];
 };
 
+// Helper function to check if date is today
+const isToday = (dateString) => {
+  if (!dateString) return false;
+  const today = new Date();
+  const bookingDate = new Date(dateString);
+  return (
+    today.getFullYear() === bookingDate.getFullYear() &&
+    today.getMonth() === bookingDate.getMonth() &&
+    today.getDate() === bookingDate.getDate()
+  );
+};
+
+// Helper function to check if date is tomorrow
+const isTomorrow = (dateString) => {
+  if (!dateString) return false;
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const bookingDate = new Date(dateString);
+  return (
+    tomorrow.getFullYear() === bookingDate.getFullYear() &&
+    tomorrow.getMonth() === bookingDate.getMonth() &&
+    tomorrow.getDate() === bookingDate.getDate()
+  );
+};
+
 export const AdminDashboard = () => {
   const navigate = useNavigate();
   const { isLoaded } = useLoadScript({
