@@ -6215,6 +6215,374 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# ============================================
+# XERO ACCOUNTING INTEGRATION
+# ============================================
+
+XERO_CLIENT_ID = os.environ.get('XERO_CLIENT_ID', '')
+XERO_CLIENT_SECRET = os.environ.get('XERO_CLIENT_SECRET', '')
+XERO_REDIRECT_URI = os.environ.get('XERO_REDIRECT_URI', '')
+
+@api_router.get("/xero/login")
+async def xero_login():
+    """Redirect to Xero OAuth2 authorization"""
+    if not XERO_CLIENT_ID:
+        raise HTTPException(status_code=500, detail="Xero not configured")
+    
+    from urllib.parse import urlencode
+    auth_url = "https://login.xero.com/identity/connect/authorize"
+    params = {
+        "response_type": "code",
+        "client_id": XERO_CLIENT_ID,
+        "redirect_uri": XERO_REDIRECT_URI,
+        "scope": "openid profile email accounting.transactions accounting.contacts offline_access",
+        "state": "xero_auth_state"
+    }
+    return {"authorization_url": f"{auth_url}?{urlencode(params)}"}
+
+@api_router.get("/xero/callback")
+async def xero_callback(code: str, state: str = None):
+    """Handle Xero OAuth2 callback and store tokens"""
+    try:
+        # Exchange code for tokens
+        token_url = "https://identity.xero.com/connect/token"
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                token_url,
+                data={
+                    "grant_type": "authorization_code",
+                    "code": code,
+                    "redirect_uri": XERO_REDIRECT_URI,
+                    "client_id": XERO_CLIENT_ID,
+                    "client_secret": XERO_CLIENT_SECRET,
+                },
+                headers={"Content-Type": "application/x-www-form-urlencoded"}
+            )
+        
+        if response.status_code != 200:
+            logger.error(f"Xero token exchange failed: {response.text}")
+            raise HTTPException(status_code=400, detail="Failed to get Xero access token")
+        
+        tokens = response.json()
+        
+        # Get tenant ID (organization)
+        async with httpx.AsyncClient() as client:
+            connections = await client.get(
+                "https://api.xero.com/connections",
+                headers={"Authorization": f"Bearer {tokens['access_token']}"}
+            )
+        
+        tenant_id = None
+        org_name = None
+        if connections.status_code == 200:
+            orgs = connections.json()
+            if orgs:
+                tenant_id = orgs[0].get('tenantId')
+                org_name = orgs[0].get('tenantName')
+        
+        # Store tokens in database
+        token_doc = {
+            "user_id": "admin",
+            "access_token": tokens["access_token"],
+            "refresh_token": tokens.get("refresh_token"),
+            "expires_in": tokens.get("expires_in", 1800),
+            "token_type": tokens.get("token_type", "Bearer"),
+            "tenant_id": tenant_id,
+            "org_name": org_name,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "expires_at": (datetime.now(timezone.utc) + timedelta(seconds=tokens.get("expires_in", 1800))).isoformat()
+        }
+        
+        await db.xero_tokens.replace_one(
+            {"user_id": "admin"},
+            token_doc,
+            upsert=True
+        )
+        
+        logger.info(f"Xero connected successfully to organization: {org_name}")
+        
+        # Redirect to admin dashboard with success message
+        return {"message": "Xero connected successfully!", "organization": org_name, "redirect": "/admin/dashboard"}
+        
+    except Exception as e:
+        logger.error(f"Xero callback error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+async def get_xero_access_token():
+    """Get valid Xero access token, refreshing if needed"""
+    token_doc = await db.xero_tokens.find_one({"user_id": "admin"})
+    
+    if not token_doc:
+        return None, None
+    
+    # Check if token is expired
+    expires_at = datetime.fromisoformat(token_doc["expires_at"].replace('Z', '+00:00'))
+    if datetime.now(timezone.utc) >= expires_at:
+        # Refresh the token
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    "https://identity.xero.com/connect/token",
+                    data={
+                        "grant_type": "refresh_token",
+                        "refresh_token": token_doc["refresh_token"],
+                        "client_id": XERO_CLIENT_ID,
+                        "client_secret": XERO_CLIENT_SECRET,
+                    },
+                    headers={"Content-Type": "application/x-www-form-urlencoded"}
+                )
+            
+            if response.status_code == 200:
+                new_tokens = response.json()
+                await db.xero_tokens.update_one(
+                    {"user_id": "admin"},
+                    {"$set": {
+                        "access_token": new_tokens["access_token"],
+                        "refresh_token": new_tokens.get("refresh_token", token_doc["refresh_token"]),
+                        "expires_at": (datetime.now(timezone.utc) + timedelta(seconds=new_tokens.get("expires_in", 1800))).isoformat()
+                    }}
+                )
+                return new_tokens["access_token"], token_doc["tenant_id"]
+            else:
+                logger.error(f"Failed to refresh Xero token: {response.text}")
+                return None, None
+        except Exception as e:
+            logger.error(f"Error refreshing Xero token: {str(e)}")
+            return None, None
+    
+    return token_doc["access_token"], token_doc["tenant_id"]
+
+@api_router.get("/xero/status")
+async def xero_status(current_admin: dict = Depends(get_current_admin)):
+    """Check Xero connection status"""
+    token_doc = await db.xero_tokens.find_one({"user_id": "admin"})
+    
+    if not token_doc:
+        return {"connected": False, "message": "Xero not connected"}
+    
+    return {
+        "connected": True,
+        "organization": token_doc.get("org_name"),
+        "connected_at": token_doc.get("created_at")
+    }
+
+@api_router.post("/xero/create-invoice/{booking_id}")
+async def create_xero_invoice(booking_id: str, current_admin: dict = Depends(get_current_admin)):
+    """Create an invoice in Xero for a booking"""
+    try:
+        # Get booking
+        booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+        if not booking:
+            raise HTTPException(status_code=404, detail="Booking not found")
+        
+        # Check if invoice already exists
+        if booking.get("xero_invoice_id"):
+            return {"message": "Invoice already exists", "invoice_id": booking["xero_invoice_id"]}
+        
+        # Get Xero token
+        access_token, tenant_id = await get_xero_access_token()
+        if not access_token:
+            raise HTTPException(status_code=401, detail="Xero not connected. Please connect your Xero account first.")
+        
+        # Get or create contact in Xero
+        customer_name = booking.get('customerName') or booking.get('name', 'Unknown Customer')
+        customer_email = booking.get('email', '')
+        
+        # Create invoice payload
+        total_price = booking.get('totalPrice') or booking.get('pricing', {}).get('totalPrice', 0)
+        
+        invoice_data = {
+            "Invoices": [{
+                "Type": "ACCREC",
+                "Contact": {
+                    "Name": customer_name,
+                    "EmailAddress": customer_email
+                },
+                "Date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+                "DueDate": (datetime.now(timezone.utc) + timedelta(days=7)).strftime("%Y-%m-%d"),
+                "Reference": f"Booking #{booking.get('referenceNumber', booking_id[:8])}",
+                "Status": "AUTHORISED",
+                "LineItems": [{
+                    "Description": f"Airport Transfer - {booking.get('pickupAddress', '')[:50]} to {booking.get('dropoffAddress', '')[:50]}",
+                    "Quantity": 1,
+                    "UnitAmount": float(total_price),
+                    "AccountCode": "200"  # Sales account
+                }]
+            }]
+        }
+        
+        # Add return trip as separate line item if applicable
+        if booking.get('bookReturn'):
+            invoice_data["Invoices"][0]["LineItems"].append({
+                "Description": f"Return Transfer - {booking.get('dropoffAddress', '')[:50]} to {booking.get('pickupAddress', '')[:50]}",
+                "Quantity": 1,
+                "UnitAmount": float(total_price),
+                "AccountCode": "200"
+            })
+        
+        # Create invoice in Xero
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://api.xero.com/api.xro/2.0/Invoices",
+                json=invoice_data,
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                    "Xero-Tenant-Id": tenant_id,
+                    "Content-Type": "application/json"
+                }
+            )
+        
+        if response.status_code in [200, 201]:
+            result = response.json()
+            invoice_id = result.get("Invoices", [{}])[0].get("InvoiceID")
+            invoice_number = result.get("Invoices", [{}])[0].get("InvoiceNumber")
+            
+            # Update booking with Xero invoice ID
+            await db.bookings.update_one(
+                {"id": booking_id},
+                {"$set": {
+                    "xero_invoice_id": invoice_id,
+                    "xero_invoice_number": invoice_number,
+                    "xero_status": "AUTHORISED"
+                }}
+            )
+            
+            logger.info(f"Created Xero invoice {invoice_number} for booking {booking_id}")
+            return {
+                "message": "Invoice created successfully",
+                "invoice_id": invoice_id,
+                "invoice_number": invoice_number
+            }
+        else:
+            logger.error(f"Failed to create Xero invoice: {response.text}")
+            raise HTTPException(status_code=500, detail=f"Failed to create invoice: {response.text}")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error creating Xero invoice: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/xero/record-payment/{booking_id}")
+async def record_xero_payment(booking_id: str, current_admin: dict = Depends(get_current_admin)):
+    """Record a payment against an invoice in Xero"""
+    try:
+        # Get booking
+        booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+        if not booking:
+            raise HTTPException(status_code=404, detail="Booking not found")
+        
+        if not booking.get("xero_invoice_id"):
+            raise HTTPException(status_code=400, detail="No Xero invoice found for this booking")
+        
+        # Get Xero token
+        access_token, tenant_id = await get_xero_access_token()
+        if not access_token:
+            raise HTTPException(status_code=401, detail="Xero not connected")
+        
+        total_price = booking.get('totalPrice') or booking.get('pricing', {}).get('totalPrice', 0)
+        if booking.get('bookReturn'):
+            total_price = total_price * 2
+        
+        # Get bank account for payment
+        async with httpx.AsyncClient() as client:
+            accounts_response = await client.get(
+                "https://api.xero.com/api.xro/2.0/Accounts?where=Type==%22BANK%22",
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                    "Xero-Tenant-Id": tenant_id
+                }
+            )
+        
+        bank_account_id = None
+        if accounts_response.status_code == 200:
+            accounts = accounts_response.json().get("Accounts", [])
+            if accounts:
+                bank_account_id = accounts[0].get("AccountID")
+        
+        if not bank_account_id:
+            raise HTTPException(status_code=400, detail="No bank account found in Xero")
+        
+        # Create payment
+        payment_data = {
+            "Payments": [{
+                "Invoice": {"InvoiceID": booking["xero_invoice_id"]},
+                "Account": {"AccountID": bank_account_id},
+                "Amount": float(total_price),
+                "Date": datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            }]
+        }
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://api.xero.com/api.xro/2.0/Payments",
+                json=payment_data,
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                    "Xero-Tenant-Id": tenant_id,
+                    "Content-Type": "application/json"
+                }
+            )
+        
+        if response.status_code in [200, 201]:
+            # Update booking
+            await db.bookings.update_one(
+                {"id": booking_id},
+                {"$set": {
+                    "xero_status": "PAID",
+                    "payment_status": "paid"
+                }}
+            )
+            
+            logger.info(f"Recorded payment in Xero for booking {booking_id}")
+            return {"message": "Payment recorded successfully"}
+        else:
+            logger.error(f"Failed to record Xero payment: {response.text}")
+            raise HTTPException(status_code=500, detail=f"Failed to record payment: {response.text}")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error recording Xero payment: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/xero/sync-all-bookings")
+async def sync_all_bookings_to_xero(current_admin: dict = Depends(get_current_admin)):
+    """Sync all confirmed bookings to Xero (create invoices for bookings without one)"""
+    try:
+        access_token, tenant_id = await get_xero_access_token()
+        if not access_token:
+            raise HTTPException(status_code=401, detail="Xero not connected")
+        
+        # Find bookings without Xero invoice
+        bookings = await db.bookings.find({
+            "status": "confirmed",
+            "xero_invoice_id": {"$exists": False}
+        }, {"_id": 0}).to_list(100)
+        
+        created_count = 0
+        errors = []
+        
+        for booking in bookings:
+            try:
+                # Create invoice for each booking
+                result = await create_xero_invoice(booking["id"], current_admin)
+                created_count += 1
+            except Exception as e:
+                errors.append({"booking_id": booking["id"], "error": str(e)})
+        
+        return {
+            "message": f"Synced {created_count} bookings to Xero",
+            "created": created_count,
+            "errors": errors
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error syncing to Xero: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Initialize the scheduler with timezone awareness
 scheduler = AsyncIOScheduler(timezone=pytz.timezone('Pacific/Auckland'))
 
