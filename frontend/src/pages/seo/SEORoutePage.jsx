@@ -127,20 +127,19 @@ const SEORoutePage = () => {
                 </div>
                 <div className="flex items-center bg-white/10 rounded-full px-4 py-2">
                   <DollarSign className="w-5 h-5 text-gold mr-2" />
-                  <span>From ${route.priceFrom}</span>
+                  <span>Instant Quote</span>
                 </div>
               </div>
 
               <div className="flex flex-col sm:flex-row gap-4">
-                <Link to="/book">
+                <Link to="/book-now">
                   <Button className="bg-gold hover:bg-gold/90 text-black font-bold px-8 py-6 text-lg">
-                    Book Now - From ${route.priceFrom}
+                    Get Instant Quote
                     <ArrowRight className="ml-2 w-5 h-5" />
                   </Button>
                 </Link>
                 <a href="/book-now">
                   <Button variant="outline" className="border-white text-white hover:bg-white/10 px-8 py-6 text-lg">
-                    <Phone className="mr-2 w-5 h-5" />
                     Book Online
                   </Button>
                 </a>
@@ -165,8 +164,8 @@ const SEORoutePage = () => {
                 
                 <div className="grid grid-cols-3 gap-4 text-center">
                   <div className="p-3 bg-gold/10 rounded-lg">
-                    <p className="text-2xl font-bold text-gold">${route.priceFrom}+</p>
-                    <p className="text-sm text-gray-600">Private Transfer</p>
+                    <p className="text-2xl font-bold text-gold">Quote</p>
+                    <p className="text-sm text-gray-600">Instant Price</p>
                   </div>
                   <div className="p-3 bg-gray-50 rounded-lg">
                     <p className="text-2xl font-bold">{route.duration.split('-')[0]}</p>
@@ -338,7 +337,7 @@ const SEORoutePage = () => {
                         {relatedRoute.suburb} Airport Shuttle
                       </h3>
                       <p className="text-gray-600 text-sm mb-4">
-                        From ${relatedRoute.priceFrom} • {relatedRoute.duration}
+                        Get Quote • {relatedRoute.duration}
                       </p>
                       <span className="text-gold font-semibold flex items-center">
                         View Route <ArrowRight className="ml-2 w-4 h-4" />
