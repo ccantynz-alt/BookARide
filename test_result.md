@@ -215,6 +215,7 @@ metadata:
 
 test_plan:
   current_focus:
+    - "Blue left-side marker for today's bookings - COMPLETED ✅"
     - "Frontend UI testing completed successfully"
     - "Barbara Walsh booking bug fixes tested and verified"
   stuck_tasks: []
