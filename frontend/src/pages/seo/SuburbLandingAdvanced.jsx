@@ -22,7 +22,7 @@ const FAQSection = ({ suburb }) => {
   const faqs = [
     {
       question: `How much does a shuttle from ${suburb.name} to Auckland Airport cost?`,
-      answer: `Our airport shuttle service from ${suburb.name} to Auckland Airport starts from $${suburb.price} NZD. The final price depends on the number of passengers, luggage, and any additional stops. We offer fixed pricing with no hidden fees or surge charges.`
+      answer: `Our airport shuttle pricing from ${suburb.name} to Auckland Airport is calculated based on exact distance. Get an instant quote online - the final price depends on your specific address, number of passengers, and any additional stops. We offer transparent per-kilometer pricing with no hidden fees or surge charges.`
     },
     {
       question: `How long does it take to get from ${suburb.name} to Auckland Airport?`,
