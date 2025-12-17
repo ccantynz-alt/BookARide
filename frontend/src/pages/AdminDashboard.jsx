@@ -179,6 +179,7 @@ export const AdminDashboard = () => {
     }
     fetchBookings();
     fetchDrivers();
+    checkXeroStatus();
   }, [navigate]);
 
   useEffect(() => {
