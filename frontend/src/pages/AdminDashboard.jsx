@@ -1848,6 +1848,7 @@ export const AdminDashboard = () => {
                             <SelectItem value="paid">✓ Paid</SelectItem>
                             <SelectItem value="cash">💵 Cash</SelectItem>
                             <SelectItem value="pay-on-pickup">🚗 Pay on Pickup</SelectItem>
+                            <SelectItem value="xero-invoiced">📄 Xero Invoiced</SelectItem>
                             <SelectItem value="unpaid">✗ Unpaid</SelectItem>
                           </SelectContent>
                         </Select>
