@@ -2151,6 +2151,40 @@ export const AdminDashboard = () => {
                 </div>
               )}
 
+              {/* Xero Accounting */}
+              {xeroConnected && (
+                <div className="pt-4 border-t">
+                  <h3 className="font-semibold text-gray-900 mb-3">💰 Xero Accounting</h3>
+                  {selectedBooking.xero_invoice_id ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between bg-green-50 p-3 rounded-lg">
+                        <div>
+                          <p className="text-sm font-medium text-green-800">Invoice #{selectedBooking.xero_invoice_number}</p>
+                          <p className="text-xs text-green-600">Status: {selectedBooking.xero_status || 'Created'}</p>
+                        </div>
+                        {selectedBooking.xero_status !== 'PAID' && (
+                          <Button
+                            onClick={() => recordXeroPayment(selectedBooking.id)}
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700 text-white"
+                          >
+                            Mark as Paid
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <Button
+                      onClick={() => createXeroInvoice(selectedBooking.id)}
+                      className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+                    >
+                      <DollarSign className="w-4 h-4 mr-2" />
+                      Create Invoice in Xero
+                    </Button>
+                  )}
+                </div>
+              )}
+
               {/* Admin Actions */}
               <div className="pt-4 border-t">
                 <Button
