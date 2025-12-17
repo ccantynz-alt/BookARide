@@ -862,6 +862,148 @@ class BookaRideBackendTester:
         except Exception as e:
             self.log_result("Email Generation: Return Trips", False, f"Email generation test error: {str(e)}")
             return False
+
+    def test_duplicate_reminder_prevention(self):
+        """Test duplicate reminder prevention fix - comprehensive test"""
+        try:
+            from datetime import datetime, timedelta
+            import pytz
+            
+            # Get NZ tomorrow date
+            nz_tz = pytz.timezone('Pacific/Auckland')
+            nz_tomorrow = (datetime.now(nz_tz) + timedelta(days=1)).strftime('%Y-%m-%d')
+            
+            print(f"\n🔔 Testing Duplicate Reminder Prevention for date: {nz_tomorrow}")
+            
+            # Step 1: Create a test booking for tomorrow
+            booking_data = {
+                "serviceType": "Airport Drop-off",
+                "name": "Reminder Test User",
+                "email": "test@example.com",
+                "phone": "+64211234567",
+                "pickupAddress": "123 Test Street, Auckland",
+                "dropoffAddress": "Auckland Airport",
+                "date": nz_tomorrow,
+                "time": "10:00 AM",
+                "passengers": "2",
+                "status": "confirmed",
+                "pricing": {"totalPrice": 85.00}
+            }
+            
+            booking_response = self.session.post(f"{BACKEND_URL}/bookings", json=booking_data, timeout=10)
+            
+            if booking_response.status_code != 200:
+                self.log_result("Duplicate Reminder Prevention: Create Booking", False, f"Could not create test booking: {booking_response.status_code}")
+                return False
+            
+            booking_id = booking_response.json().get('id')
+            self.log_result("Duplicate Reminder Prevention: Create Booking", True, f"Test booking created: {booking_id}")
+            
+            # Step 2: Check initial reminder status (should show pending)
+            status_response = self.session.get(f"{BACKEND_URL}/admin/reminder-status", timeout=10)
+            
+            if status_response.status_code != 200:
+                self.log_result("Duplicate Reminder Prevention: Initial Status", False, f"Could not get reminder status: {status_response.status_code}")
+                return False
+            
+            initial_status = status_response.json()
+            pending_count = initial_status.get('reminders_pending', 0)
+            self.log_result("Duplicate Reminder Prevention: Initial Status", True, f"Initial pending reminders: {pending_count}")
+            
+            # Step 3: Trigger reminders twice rapidly (test concurrent execution)
+            print("🔄 Triggering reminders twice in quick succession...")
+            
+            # First trigger
+            trigger1_response = self.session.post(f"{BACKEND_URL}/admin/send-reminders", timeout=20)
+            
+            # Second trigger immediately (should be blocked by lock)
+            trigger2_response = self.session.post(f"{BACKEND_URL}/admin/send-reminders", timeout=20)
+            
+            # Check both responses
+            trigger1_success = trigger1_response.status_code == 200
+            trigger2_success = trigger2_response.status_code == 200
+            
+            if trigger1_success:
+                trigger1_data = trigger1_response.json()
+                reminders_sent_1 = trigger1_data.get('reminders_sent', 0)
+                skipped_1 = trigger1_data.get('skipped', 0)
+                self.log_result("Duplicate Reminder Prevention: First Trigger", True, f"First trigger: {reminders_sent_1} sent, {skipped_1} skipped")
+            else:
+                self.log_result("Duplicate Reminder Prevention: First Trigger", False, f"First trigger failed: {trigger1_response.status_code}")
+                return False
+            
+            if trigger2_success:
+                trigger2_data = trigger2_response.json()
+                reminders_sent_2 = trigger2_data.get('reminders_sent', 0)
+                skipped_2 = trigger2_data.get('skipped', 0)
+                self.log_result("Duplicate Reminder Prevention: Second Trigger", True, f"Second trigger: {reminders_sent_2} sent, {skipped_2} skipped")
+            else:
+                self.log_result("Duplicate Reminder Prevention: Second Trigger", False, f"Second trigger failed: {trigger2_response.status_code}")
+                return False
+            
+            # Step 4: Check final reminder status (should show sent with details)
+            time.sleep(2)  # Wait a moment for processing
+            final_status_response = self.session.get(f"{BACKEND_URL}/admin/reminder-status", timeout=10)
+            
+            if final_status_response.status_code != 200:
+                self.log_result("Duplicate Reminder Prevention: Final Status", False, f"Could not get final reminder status: {final_status_response.status_code}")
+                return False
+            
+            final_status = final_status_response.json()
+            sent_count = final_status.get('reminders_sent', 0)
+            pending_final = final_status.get('reminders_pending', 0)
+            sent_bookings = final_status.get('sent_bookings', [])
+            
+            self.log_result("Duplicate Reminder Prevention: Final Status", True, f"Final status: {sent_count} sent, {pending_final} pending")
+            
+            # Step 5: Try triggering again - should skip (already sent)
+            print("🔄 Triggering reminders again (should skip already sent)...")
+            trigger3_response = self.session.post(f"{BACKEND_URL}/admin/send-reminders", timeout=15)
+            
+            if trigger3_response.status_code == 200:
+                trigger3_data = trigger3_response.json()
+                reminders_sent_3 = trigger3_data.get('reminders_sent', 0)
+                skipped_3 = trigger3_data.get('skipped', 0)
+                
+                if reminders_sent_3 == 0 and skipped_3 >= 1:
+                    self.log_result("Duplicate Reminder Prevention: Third Trigger", True, f"Third trigger correctly skipped: {reminders_sent_3} sent, {skipped_3} skipped")
+                else:
+                    self.log_result("Duplicate Reminder Prevention: Third Trigger", False, f"Third trigger should have skipped all: {reminders_sent_3} sent, {skipped_3} skipped")
+                    return False
+            else:
+                self.log_result("Duplicate Reminder Prevention: Third Trigger", False, f"Third trigger failed: {trigger3_response.status_code}")
+                return False
+            
+            # Validation: Check that only ONE reminder was sent total
+            total_sent = reminders_sent_1 + reminders_sent_2
+            total_skipped = skipped_1 + skipped_2 + skipped_3
+            
+            # Expected results:
+            # - First trigger should send 1 reminder
+            # - Second concurrent trigger should be skipped (lock) OR send 0 (already marked)
+            # - Third trigger should skip 1 (already sent)
+            
+            if total_sent == 1:
+                self.log_result("Duplicate Reminder Prevention: Validation", True, f"✅ SUCCESS: Only 1 reminder sent total (expected), {total_skipped} skipped")
+                
+                # Check if reminderSentForDate field is set correctly
+                if sent_bookings:
+                    for sent_booking in sent_bookings:
+                        reminder_date = sent_booking.get('reminderSentForDate', '')
+                        if reminder_date == nz_tomorrow:
+                            self.log_result("Duplicate Reminder Prevention: Date Field", True, f"reminderSentForDate correctly set to {reminder_date}")
+                        else:
+                            self.log_result("Duplicate Reminder Prevention: Date Field", False, f"reminderSentForDate incorrect: {reminder_date} (expected {nz_tomorrow})")
+                            return False
+                
+                return True
+            else:
+                self.log_result("Duplicate Reminder Prevention: Validation", False, f"❌ FAILED: {total_sent} reminders sent (expected 1), duplicate prevention not working")
+                return False
+                
+        except Exception as e:
+            self.log_result("Duplicate Reminder Prevention", False, f"Test error: {str(e)}")
+            return False
     
     def run_comprehensive_test(self):
         """Run all tests in sequence"""
