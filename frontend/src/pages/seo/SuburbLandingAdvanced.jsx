@@ -292,8 +292,8 @@ export const SuburbLandingAdvanced = () => {
   return (
     <div className="min-h-screen bg-white">
       <SEO 
-        title={`${suburb.name} to Auckland Airport Shuttle | From $${suburb.price} | Book A Ride NZ`}
-        description={`Book your ${suburb.name} to Auckland Airport shuttle from $${suburb.price}. ${suburb.distance}km, ${suburb.estimatedTime || '25-35 min'} journey. Professional drivers, flight tracking, 24/7 service. Instant online booking!`}
+        title={`${suburb.name} to Auckland Airport Shuttle | Get Instant Quote | Book A Ride NZ`}
+        description={`Book your ${suburb.name} to Auckland Airport shuttle. ${suburb.distance}km, ${suburb.estimatedTime || '25-35 min'} journey. Professional drivers, flight tracking, 24/7 service. Get instant online quote!`}
         keywords={`${suburb.name} airport shuttle, ${suburb.name} to Auckland Airport, airport transfer ${suburb.name}, ${suburb.name} airport taxi, shuttle service ${suburb.name}, ${suburb.name} Auckland Airport transport, cheap airport shuttle ${suburb.name}, best ${suburb.name} airport transfer, ${cityName} airport shuttle`}
         canonical={`/airport-transfer/${slug}`}
       />
@@ -339,7 +339,7 @@ export const SuburbLandingAdvanced = () => {
               <div className="flex flex-wrap justify-center gap-4 text-lg text-gray-400 mb-8">
                 <span className="flex items-center gap-1">
                   <DollarSign className="w-5 h-5 text-gold" />
-                  From ${suburb.price} NZD
+                  Instant Quote
                 </span>
                 <span className="flex items-center gap-1">
                   <Navigation className="w-5 h-5 text-gold" />
@@ -358,7 +358,7 @@ export const SuburbLandingAdvanced = () => {
                 onClick={() => navigate('/book-now')}
                 className="bg-gold hover:bg-gold/90 text-black font-bold text-lg px-8 py-6"
               >
-                Book Now - From ${suburb.price}
+                Get Instant Quote
                 <ArrowRight className="ml-2 w-5 h-5" />
               </Button>
               <Button 
@@ -488,7 +488,7 @@ export const SuburbLandingAdvanced = () => {
             Ready to Book Your {suburb.name} Airport Transfer?
           </h2>
           <p className="text-black/80 mb-8 text-lg">
-            From ${suburb.price} • {suburb.distance}km • {suburb.estimatedTime || '25-35 minutes'}
+            Instant Quote • {suburb.distance}km • {suburb.estimatedTime || '25-35 minutes'}
           </p>
           <Button 
             size="lg"
