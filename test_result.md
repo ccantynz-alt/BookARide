@@ -132,6 +132,18 @@ backend:
         comment: "✅ Mailgun email integration working perfectly. Direct Mailgun test successful with 'Queued. Thank you.' response. Email notifications for bookings and driver assignments confirmed working."
 
 frontend:
+  - task: "Blue Left-Side Marker for Today's Bookings"
+    implemented: true
+    working: true
+    file: "src/pages/AdminDashboard.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ BLUE LEFT-SIDE MARKER FEATURE WORKING PERFECTLY: Successfully tested admin dashboard with credentials admin/Kongkong2025!@. Found 61 total bookings with 2 TODAY bookings and 1 TOMORROW booking. All TODAY bookings display correct blue left border (4px border-l-blue-600) and light blue background (bg-blue-50/50) as specified. TOMORROW booking shows correct orange left border (border-l-orange-400). Visual distinction is immediately apparent and makes current-day bookings easy to spot. Implementation verified on line 1523 of AdminDashboard.jsx with proper conditional styling."
+
   - task: "Homepage UI Components"
     implemented: true
     working: true
