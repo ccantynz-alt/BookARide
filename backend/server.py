@@ -1001,6 +1001,19 @@ async def create_booking(booking: BookingCreate):
             logger.error(f"Failed to sync contact to iCloud for booking #{ref_number}: {str(contact_error)}")
             # Don't fail the booking creation if contact sync fails
         
+        # If payment method is 'xero', create and send Xero invoice automatically
+        if booking_dict.get('paymentMethod') == 'xero':
+            try:
+                xero_result = await create_and_send_xero_invoice(booking_dict)
+                if xero_result:
+                    logger.info(f"Xero invoice {xero_result.get('invoice_number')} created and sent for booking #{ref_number}")
+                    # Update the returned booking object with Xero info
+                    booking_obj.xero_invoice_id = xero_result.get('invoice_id')
+                    booking_obj.xero_invoice_number = xero_result.get('invoice_number')
+            except Exception as xero_error:
+                logger.error(f"Failed to create Xero invoice for booking #{ref_number}: {str(xero_error)}")
+                # Don't fail the booking creation if Xero fails
+        
         return booking_obj
     except Exception as e:
         logger.error(f"Error creating booking: {str(e)}")
