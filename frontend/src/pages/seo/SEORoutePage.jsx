@@ -52,9 +52,10 @@ const SEORoutePage = () => {
       "name": route.suburb
     },
     "offers": {
-      "@type": "Offer",
-      "price": route.priceFrom,
-      "priceCurrency": "NZD"
+      "@type": "AggregateOffer",
+      "priceCurrency": "NZD",
+      "availability": "https://schema.org/InStock",
+      "url": "https://bookaride.co.nz/book-now"
     }
   };
 
