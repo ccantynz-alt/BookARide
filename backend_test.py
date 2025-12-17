@@ -1042,6 +1042,10 @@ class BookaRideBackendTester:
         print("\n💳 Testing Payment Endpoints...")
         self.test_payment_create_checkout()
         
+        # DUPLICATE REMINDER PREVENTION TEST (REVIEW REQUEST)
+        print("\n🔔 Testing Duplicate Reminder Prevention Fix...")
+        self.test_duplicate_reminder_prevention()
+        
         # Additional core functionality tests
         print("\n📧 Testing Email System...")
         self.test_direct_mailgun_email()
