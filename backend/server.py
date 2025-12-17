@@ -2454,90 +2454,116 @@ async def send_daily_reminders_core(source: str = "unknown"):
     Core logic for sending day-before reminders.
     Called by: startup check, APScheduler, cron endpoint, and interval check.
     
-    IMPORTANT: Uses NZ timezone consistently to prevent duplicate notifications.
+    IMPORTANT: Uses global lock to prevent race conditions and duplicate notifications.
     """
-    try:
-        # Get NZ timezone for accurate date calculation
-        nz_tz = pytz.timezone('Pacific/Auckland')
-        nz_now = datetime.now(nz_tz)
-        nz_today = nz_now.strftime('%Y-%m-%d')
-        nz_tomorrow = (nz_now + timedelta(days=1)).strftime('%Y-%m-%d')
-        
-        logger.info(f"🔔 [{source}] Checking reminders - NZ time: {nz_now.strftime('%Y-%m-%d %H:%M:%S')}, Tomorrow: {nz_tomorrow}")
-        
-        # Find all confirmed bookings for tomorrow
-        bookings = await db.bookings.find({
-            "status": "confirmed",
-            "date": nz_tomorrow
-        }, {"_id": 0}).to_list(100)
-        
-        logger.info(f"🔔 [{source}] Found {len(bookings)} confirmed bookings for {nz_tomorrow}")
-        
-        sent_count = 0
-        skipped_count = 0
-        
-        for booking in bookings:
-            # Check if reminder already sent for this booking's date (more robust check)
-            # Store reminder date in NZ timezone format to avoid confusion
-            reminder_sent_date = booking.get('reminderSentForDate', '')
-            reminder_sent_at = booking.get('reminderSentAt', '')
+    global reminder_lock
+    
+    # Use lock to prevent multiple concurrent reminder runs
+    if reminder_lock.locked():
+        logger.info(f"🔒 [{source}] Reminder job already running, skipping to prevent duplicates")
+        return {"success": True, "reminders_sent": 0, "skipped": 0, "source": source, "status": "skipped_locked"}
+    
+    async with reminder_lock:
+        try:
+            # Get NZ timezone for accurate date calculation
+            nz_tz = pytz.timezone('Pacific/Auckland')
+            nz_now = datetime.now(nz_tz)
+            nz_today = nz_now.strftime('%Y-%m-%d')
+            nz_tomorrow = (nz_now + timedelta(days=1)).strftime('%Y-%m-%d')
             
-            # Skip if we already sent a reminder specifically for tomorrow's date
-            if reminder_sent_date == nz_tomorrow:
-                skipped_count += 1
-                logger.debug(f"Skipping {booking.get('name')} - reminder already sent for {nz_tomorrow}")
-                continue
+            logger.info(f"🔔 [{source}] Checking reminders - NZ time: {nz_now.strftime('%Y-%m-%d %H:%M:%S')}, Tomorrow: {nz_tomorrow}")
             
-            # Also check the old reminderSentAt field for backward compatibility
-            # Convert UTC reminderSentAt to NZ date for comparison
-            if reminder_sent_at:
-                try:
-                    # Parse the UTC timestamp and convert to NZ date
-                    sent_utc = datetime.fromisoformat(reminder_sent_at.replace('Z', '+00:00'))
-                    sent_nz = sent_utc.astimezone(nz_tz)
-                    sent_nz_date = sent_nz.strftime('%Y-%m-%d')
-                    
-                    if sent_nz_date == nz_today:
-                        skipped_count += 1
-                        logger.debug(f"Skipping {booking.get('name')} - reminder already sent today (NZ)")
-                        continue
-                except Exception as parse_error:
-                    logger.warning(f"Could not parse reminderSentAt: {reminder_sent_at}")
+            # Find all confirmed bookings for tomorrow that HAVEN'T been marked yet
+            # Use atomic query to only get bookings that need reminders
+            bookings = await db.bookings.find({
+                "status": "confirmed",
+                "date": nz_tomorrow,
+                "reminderSentForDate": {"$ne": nz_tomorrow}  # Not already sent for tomorrow
+            }, {"_id": 0}).to_list(100)
             
-            # Send email reminder
-            email_sent = False
-            if booking.get('email'):
-                email_sent = send_reminder_email(booking)
-                if email_sent:
-                    logger.info(f"✉️ Reminder email sent to {booking.get('email')}")
+            logger.info(f"🔔 [{source}] Found {len(bookings)} bookings needing reminders for {nz_tomorrow}")
             
-            # Send SMS reminder
-            sms_sent = False
-            if booking.get('phone'):
-                sms_sent = send_reminder_sms(booking)
-                if sms_sent:
-                    logger.info(f"📱 Reminder SMS sent to {booking.get('phone')}")
+            sent_count = 0
+            skipped_count = 0
             
-            # Mark reminder as sent if at least one notification went out
-            if email_sent or sms_sent:
-                await db.bookings.update_one(
-                    {"id": booking.get('id')},
+            for booking in bookings:
+                booking_id = booking.get('id')
+                booking_name = booking.get('name', 'Unknown')
+                
+                # ATOMIC: Mark as "in progress" BEFORE sending to prevent race conditions
+                # Use findOneAndUpdate with condition to ensure we only process once
+                update_result = await db.bookings.update_one(
+                    {
+                        "id": booking_id,
+                        "reminderSentForDate": {"$ne": nz_tomorrow}  # Double-check it wasn't just marked
+                    },
                     {"$set": {
-                        "reminderSentAt": datetime.now(nz_tz).isoformat(),  # Store in NZ timezone
-                        "reminderSentForDate": nz_tomorrow,  # Store which date we sent reminder for
-                        "reminderSource": source  # Track which source sent the reminder
+                        "reminderSentForDate": nz_tomorrow,
+                        "reminderInProgress": True,
+                        "reminderStartedAt": datetime.now(nz_tz).isoformat()
                     }}
                 )
-                sent_count += 1
-            else:
-                skipped_count += 1
-        
-        logger.info(f"✅ [{source}] Reminders complete: {sent_count} sent, {skipped_count} skipped")
-        return {"success": True, "reminders_sent": sent_count, "skipped": skipped_count, "source": source}
-        
-    except Exception as e:
-        logger.error(f"❌ [{source}] Reminder error: {str(e)}")
-        raise
+                
+                # If no document was updated, another process got there first
+                if update_result.modified_count == 0:
+                    skipped_count += 1
+                    logger.debug(f"⏭️ Skipping {booking_name} - already being processed by another job")
+                    continue
+                
+                # Now send the notifications
+                email_sent = False
+                sms_sent = False
+                
+                try:
+                    # Send email reminder
+                    if booking.get('email'):
+                        email_sent = send_reminder_email(booking)
+                        if email_sent:
+                            logger.info(f"✉️ Reminder email sent to {booking.get('email')}")
+                    
+                    # Send SMS reminder
+                    if booking.get('phone'):
+                        sms_sent = send_reminder_sms(booking)
+                        if sms_sent:
+                            logger.info(f"📱 Reminder SMS sent to {booking.get('phone')}")
+                    
+                    # Update with completion status
+                    await db.bookings.update_one(
+                        {"id": booking_id},
+                        {"$set": {
+                            "reminderSentAt": datetime.now(nz_tz).isoformat(),
+                            "reminderInProgress": False,
+                            "reminderCompleted": True,
+                            "reminderSource": source,
+                            "reminderEmailSent": email_sent,
+                            "reminderSmsSent": sms_sent
+                        }}
+                    )
+                    
+                    if email_sent or sms_sent:
+                        sent_count += 1
+                    else:
+                        skipped_count += 1
+                        
+                except Exception as send_error:
+                    logger.error(f"❌ Error sending reminder to {booking_name}: {str(send_error)}")
+                    # Mark as failed but keep the date so we don't retry indefinitely
+                    await db.bookings.update_one(
+                        {"id": booking_id},
+                        {"$set": {
+                            "reminderInProgress": False,
+                            "reminderFailed": True,
+                            "reminderError": str(send_error)
+                        }}
+                    )
+                    skipped_count += 1
+            
+            logger.info(f"✅ [{source}] Reminders complete: {sent_count} sent, {skipped_count} skipped")
+            return {"success": True, "reminders_sent": sent_count, "skipped": skipped_count, "source": source}
+            
+        except Exception as e:
+            logger.error(f"❌ [{source}] Reminder error: {str(e)}")
+            raise
 
 
 # Auto-run reminders endpoint (can be called by external cron service)
