@@ -1271,6 +1271,17 @@ export const AdminDashboard = () => {
                 <Facebook className="w-4 h-4 mr-2" />
                 Facebook Strategy
               </Button>
+              {xeroConnected ? (
+                <Button variant="outline" className="border-green-500 text-green-500 hover:bg-green-500 hover:text-white">
+                  <DollarSign className="w-4 h-4 mr-2" />
+                  Xero: {xeroOrg || 'Connected'}
+                </Button>
+              ) : (
+                <Button onClick={connectXero} variant="outline" className="border-purple-500 text-purple-500 hover:bg-purple-500 hover:text-white">
+                  <DollarSign className="w-4 h-4 mr-2" />
+                  Connect Xero
+                </Button>
+              )}
               <Button onClick={() => setShowPasswordModal(true)} variant="outline" className="border-gold text-gold hover:bg-gold hover:text-black">
                 Change Password
               </Button>
