@@ -1520,7 +1520,7 @@ export const AdminDashboard = () => {
                   </thead>
                   <tbody>
                     {filteredBookings.map((booking) => (
-                      <tr key={booking.id} className={`border-b hover:bg-gray-50 ${selectedBookings.has(booking.id) ? 'bg-gold/10' : ''}`}>
+                      <tr key={booking.id} className={`border-b hover:bg-gray-50 ${selectedBookings.has(booking.id) ? 'bg-gold/10' : ''} ${isToday(booking.date) ? 'border-l-4 border-l-blue-600 bg-blue-50/50' : ''} ${isTomorrow(booking.date) ? 'border-l-4 border-l-orange-400' : ''}`}>
                         <td className="p-4">
                           <button
                             onClick={() => {
