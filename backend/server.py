@@ -2449,6 +2449,8 @@ async def send_daily_reminders_core(source: str = "unknown"):
     """
     Core logic for sending day-before reminders.
     Called by: startup check, APScheduler, cron endpoint, and interval check.
+    
+    IMPORTANT: Uses NZ timezone consistently to prevent duplicate notifications.
     """
     try:
         # Get NZ timezone for accurate date calculation
@@ -2459,7 +2461,7 @@ async def send_daily_reminders_core(source: str = "unknown"):
         
         logger.info(f"🔔 [{source}] Checking reminders - NZ time: {nz_now.strftime('%Y-%m-%d %H:%M:%S')}, Tomorrow: {nz_tomorrow}")
         
-        # Find all confirmed bookings for tomorrow that haven't received a reminder today
+        # Find all confirmed bookings for tomorrow
         bookings = await db.bookings.find({
             "status": "confirmed",
             "date": nz_tomorrow
@@ -2471,13 +2473,32 @@ async def send_daily_reminders_core(source: str = "unknown"):
         skipped_count = 0
         
         for booking in bookings:
-            # Check if reminder already sent today (using NZ date)
-            reminder_sent = booking.get('reminderSentAt', '')
+            # Check if reminder already sent for this booking's date (more robust check)
+            # Store reminder date in NZ timezone format to avoid confusion
+            reminder_sent_date = booking.get('reminderSentForDate', '')
+            reminder_sent_at = booking.get('reminderSentAt', '')
             
-            if reminder_sent and reminder_sent.startswith(nz_today):
+            # Skip if we already sent a reminder specifically for tomorrow's date
+            if reminder_sent_date == nz_tomorrow:
                 skipped_count += 1
-                logger.debug(f"Skipping {booking.get('name')} - reminder already sent today")
+                logger.debug(f"Skipping {booking.get('name')} - reminder already sent for {nz_tomorrow}")
                 continue
+            
+            # Also check the old reminderSentAt field for backward compatibility
+            # Convert UTC reminderSentAt to NZ date for comparison
+            if reminder_sent_at:
+                try:
+                    # Parse the UTC timestamp and convert to NZ date
+                    sent_utc = datetime.fromisoformat(reminder_sent_at.replace('Z', '+00:00'))
+                    sent_nz = sent_utc.astimezone(nz_tz)
+                    sent_nz_date = sent_nz.strftime('%Y-%m-%d')
+                    
+                    if sent_nz_date == nz_today:
+                        skipped_count += 1
+                        logger.debug(f"Skipping {booking.get('name')} - reminder already sent today (NZ)")
+                        continue
+                except Exception as parse_error:
+                    logger.warning(f"Could not parse reminderSentAt: {reminder_sent_at}")
             
             # Send email reminder
             email_sent = False
@@ -2497,11 +2518,17 @@ async def send_daily_reminders_core(source: str = "unknown"):
             if email_sent or sms_sent:
                 await db.bookings.update_one(
                     {"id": booking.get('id')},
-                    {"$set": {"reminderSentAt": datetime.now(timezone.utc).isoformat()}}
+                    {"$set": {
+                        "reminderSentAt": datetime.now(nz_tz).isoformat(),  # Store in NZ timezone
+                        "reminderSentForDate": nz_tomorrow,  # Store which date we sent reminder for
+                        "reminderSource": source  # Track which source sent the reminder
+                    }}
                 )
                 sent_count += 1
+            else:
+                skipped_count += 1
         
-        logger.info(f"✅ [{source}] Reminders complete: {sent_count} sent, {skipped_count} skipped (already sent today)")
+        logger.info(f"✅ [{source}] Reminders complete: {sent_count} sent, {skipped_count} skipped")
         return {"success": True, "reminders_sent": sent_count, "skipped": skipped_count, "source": source}
         
     except Exception as e:
