@@ -2604,11 +2604,17 @@ async def send_booking_notification_to_admin(booking: dict):
         return False
 
 
-async def send_driver_notification(booking: dict, driver: dict):
-    """Send email and SMS notification to driver about new booking assignment"""
+async def send_driver_notification(booking: dict, driver: dict, trip_type: str = "OUTBOUND"):
+    """Send email and SMS notification to driver about new booking assignment
+    
+    Args:
+        booking: Booking details dict
+        driver: Driver details dict
+        trip_type: "OUTBOUND" or "RETURN" - which leg of the trip
+    """
     try:
         # Log incoming data for debugging
-        logger.info(f"📧 send_driver_notification called")
+        logger.info(f"📧 send_driver_notification called for {trip_type} trip")
         logger.info(f"📧 Booking data: name={booking.get('name')}, phone={booking.get('phone')}, pickup={booking.get('pickupAddress')}, date={booking.get('date')}, time={booking.get('time')}")
         logger.info(f"📧 Driver data: name={driver.get('name')}, email={driver.get('email')}")
         
