@@ -6775,58 +6775,21 @@ async def interval_reminder_check():
     """
     Interval-based check that runs every hour.
     Ensures reminders are sent even if the 8 AM job was missed.
-    Only sends reminders once per day (between 8 AM and 10 PM NZ time).
+    Only runs between 8 AM and 10 PM NZ time.
+    The core function handles deduplication via locks and atomic updates.
     """
-    global last_reminder_check_date
-    
     try:
         nz_tz = pytz.timezone('Pacific/Auckland')
         nz_now = datetime.now(nz_tz)
-        nz_today = nz_now.strftime('%Y-%m-%d')
         current_hour = nz_now.hour
         
         # Only run between 8 AM and 10 PM NZ time
         if current_hour < 8 or current_hour > 22:
+            logger.debug(f"🔔 [interval_check] Outside reminder hours ({current_hour}:00 NZ), skipping")
             return
         
-        # Skip if we already checked today
-        if last_reminder_check_date == nz_today:
-            return
-        
-        # Check if any reminders need to be sent for tomorrow
-        nz_tomorrow = (nz_now + timedelta(days=1)).strftime('%Y-%m-%d')
-        
-        pending_bookings = await db.bookings.find({
-            "status": "confirmed",
-            "date": nz_tomorrow,
-            "$or": [
-                {"reminderSentAt": {"$exists": False}},
-                {"reminderSentAt": None},
-                {"reminderSentAt": ""}
-            ]
-        }, {"_id": 0}).to_list(100)
-        
-        # Check for bookings where reminder hasn't been sent for tomorrow specifically
-        all_tomorrow_bookings = await db.bookings.find({
-            "status": "confirmed",
-            "date": nz_tomorrow
-        }, {"_id": 0}).to_list(100)
-        
-        needs_reminder = []
-        for booking in all_tomorrow_bookings:
-            # Use the new reminderSentForDate field for accurate tracking
-            reminder_sent_for_date = booking.get('reminderSentForDate', '')
-            if reminder_sent_for_date != nz_tomorrow:
-                needs_reminder.append(booking)
-        
-        if needs_reminder:
-            logger.info(f"🔔 [interval_check] Found {len(needs_reminder)} bookings needing reminders for {nz_tomorrow}")
-            await send_daily_reminders_core(source="interval_check")
-        else:
-            logger.debug(f"🔔 [interval_check] All bookings for {nz_tomorrow} already have reminders sent")
-        
-        # Mark today as checked
-        last_reminder_check_date = nz_today
+        # Let the core function handle everything - it has proper locking
+        await send_daily_reminders_core(source="interval_check")
         
     except Exception as e:
         logger.error(f"❌ Interval reminder check error: {str(e)}")
