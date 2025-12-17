@@ -404,6 +404,49 @@ export const AdminDashboard = () => {
     }
   };
 
+  const checkXeroStatus = async () => {
+    try {
+      const response = await axios.get(`${API}/xero/status`, getAuthHeaders());
+      setXeroConnected(response.data.connected);
+      setXeroOrg(response.data.organization || '');
+    } catch (error) {
+      console.error('Error checking Xero status:', error);
+    }
+  };
+
+  const connectXero = async () => {
+    try {
+      const response = await axios.get(`${API}/xero/login`, getAuthHeaders());
+      window.open(response.data.authorization_url, '_blank');
+      toast.info('Complete Xero authorization in the new window');
+    } catch (error) {
+      console.error('Error connecting Xero:', error);
+      toast.error('Failed to connect Xero');
+    }
+  };
+
+  const createXeroInvoice = async (bookingId) => {
+    try {
+      const response = await axios.post(`${API}/xero/create-invoice/${bookingId}`, {}, getAuthHeaders());
+      toast.success(response.data.message);
+      fetchBookings();
+    } catch (error) {
+      console.error('Error creating Xero invoice:', error);
+      toast.error(error.response?.data?.detail || 'Failed to create invoice');
+    }
+  };
+
+  const recordXeroPayment = async (bookingId) => {
+    try {
+      const response = await axios.post(`${API}/xero/record-payment/${bookingId}`, {}, getAuthHeaders());
+      toast.success(response.data.message);
+      fetchBookings();
+    } catch (error) {
+      console.error('Error recording payment:', error);
+      toast.error(error.response?.data?.detail || 'Failed to record payment');
+    }
+  };
+
   const handleRestoreBooking = async (bookingId) => {
     try {
       await axios.post(`${API}/bookings/restore/${bookingId}`, {}, getAuthHeaders());
