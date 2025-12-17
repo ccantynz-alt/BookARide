@@ -230,6 +230,7 @@ test_plan:
     - "Blue left-side marker for today's bookings - COMPLETED ✅"
     - "Frontend UI testing completed successfully"
     - "Barbara Walsh booking bug fixes tested and verified"
+    - "Duplicate reminder prevention fix tested and verified ✅"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
