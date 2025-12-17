@@ -403,7 +403,7 @@ export const AdminDashboard = () => {
     }
   };
 
-  const handleAssignDriver = async () => {
+  const handleAssignDriver = async (tripType = 'outbound') => {
     if (!selectedDriver) {
       toast.error('Please select a driver');
       return;
@@ -411,7 +411,7 @@ export const AdminDashboard = () => {
     
     try {
       const response = await axios.patch(
-        `${API}/drivers/${selectedDriver}/assign?booking_id=${selectedBooking.id}`,
+        `${API}/drivers/${selectedDriver}/assign?booking_id=${selectedBooking.id}&trip_type=${tripType}`,
         {},
         getAuthHeaders()
       );
@@ -419,14 +419,24 @@ export const AdminDashboard = () => {
       // Get the driver details to update selectedBooking
       const assignedDriver = drivers.find(d => d.id === selectedDriver);
       
-      // Update the selectedBooking with driver info
-      setSelectedBooking(prev => ({
-        ...prev,
-        driver_id: selectedDriver,
-        driver_name: assignedDriver?.name || '',
-        driver_phone: assignedDriver?.phone || '',
-        driver_email: assignedDriver?.email || ''
-      }));
+      // Update the selectedBooking with driver info based on trip type
+      if (tripType === 'return') {
+        setSelectedBooking(prev => ({
+          ...prev,
+          return_driver_id: selectedDriver,
+          return_driver_name: assignedDriver?.name || '',
+          return_driver_phone: assignedDriver?.phone || '',
+          return_driver_email: assignedDriver?.email || ''
+        }));
+      } else {
+        setSelectedBooking(prev => ({
+          ...prev,
+          driver_id: selectedDriver,
+          driver_name: assignedDriver?.name || '',
+          driver_phone: assignedDriver?.phone || '',
+          driver_email: assignedDriver?.email || ''
+        }));
+      }
       
       toast.success(response.data?.message || 'Driver assigned successfully!');
       setSelectedDriver('');
