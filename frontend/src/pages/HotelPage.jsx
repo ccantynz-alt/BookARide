@@ -30,8 +30,8 @@ export const HotelPage = () => {
   return (
     <div className="min-h-screen pt-20 bg-white">
       <SEO 
-        title={`Airport Shuttle ${hotel.name} - Auckland Airport Transfer | From $${hotel.estimatedPrice}`}
-        description={`Reliable airport shuttle from ${hotel.name} to Auckland Airport. Professional door-to-door service from ${hotel.address}. Fixed price $${hotel.estimatedPrice}. Book online 24/7.`}
+        title={`Airport Shuttle ${hotel.name} - Auckland Airport Transfer | Get Instant Quote`}
+        description={`Reliable airport shuttle from ${hotel.name} to Auckland Airport. Professional door-to-door service from ${hotel.address}. Get instant quote online. Book 24/7.`}
         keywords={`${hotel.name} airport shuttle, ${hotel.name} to airport, airport transfer ${hotel.name}, shuttle from ${hotel.name}, ${hotel.name} Auckland airport, ${hotel.area} hotel shuttle`}
         canonical={`/hotels/${slug}`}
       />
