@@ -221,7 +221,7 @@ export const adTemplates = {
     headline: 'Auckland Airport Transfers Made Easy',
     primaryText: `Skip the taxi queue. Forget surge pricing.
 
-BookaRide offers private door-to-door airport transfers from just $55.
+BookaRide offers private door-to-door airport transfers at competitive fixed prices.
 
 ✅ Fixed prices (no surprises)
 ✅ Flight tracking included
@@ -238,7 +238,7 @@ Book online in 2 minutes.`,
 Book with BookaRide and get:
 🚐 Private transfer (no sharing)
 ✈️ We track your flight
-💰 Fixed price from $55
+💰 Transparent fixed pricing
 
 Don't leave it to chance - book now!`,
     callToAction: 'Book Now',
