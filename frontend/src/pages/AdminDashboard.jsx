@@ -2175,13 +2175,32 @@ export const AdminDashboard = () => {
                       </div>
                     </div>
                   ) : (
-                    <Button
-                      onClick={() => createXeroInvoice(selectedBooking.id)}
-                      className="w-full bg-purple-600 hover:bg-purple-700 text-white"
-                    >
-                      <DollarSign className="w-4 h-4 mr-2" />
-                      Create Invoice in Xero
-                    </Button>
+                    <div className="space-y-3">
+                      <div className="flex gap-2 items-end">
+                        <div className="flex-1">
+                          <Label className="text-xs text-gray-500">Invoice Date (backdate if needed)</Label>
+                          <Input
+                            type="date"
+                            id="xeroInvoiceDate"
+                            defaultValue={selectedBooking.date || new Date().toISOString().split('T')[0]}
+                            className="mt-1"
+                          />
+                        </div>
+                        <Button
+                          onClick={() => {
+                            const invoiceDate = document.getElementById('xeroInvoiceDate')?.value;
+                            createXeroInvoice(selectedBooking.id, invoiceDate);
+                          }}
+                          className="bg-purple-600 hover:bg-purple-700 text-white"
+                        >
+                          <DollarSign className="w-4 h-4 mr-2" />
+                          Create Invoice
+                        </Button>
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        💡 Use the booking date or select an earlier date to backdate the invoice
+                      </p>
+                    </div>
                   )}
                 </div>
               )}
