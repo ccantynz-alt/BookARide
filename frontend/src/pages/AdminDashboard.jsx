@@ -157,6 +157,9 @@ export const AdminDashboard = () => {
   const [previewBookingInfo, setPreviewBookingInfo] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   
+  // Xero invoice date state (for backdating)
+  const [xeroInvoiceDate, setXeroInvoiceDate] = useState(null);
+  
   // Refs for edit modal autocomplete
   const editPickupInputRef = useRef(null);
   const editDropoffInputRef = useRef(null);
