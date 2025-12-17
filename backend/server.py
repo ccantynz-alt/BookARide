@@ -2797,7 +2797,7 @@ bookaride.co.nz | +64 21 743 321
                     
                     client = Client(account_sid, auth_token)
                     
-                    sms_body = f"""BookaRide - New Booking!
+                    sms_body = f"""BookaRide - {trip_type} Trip Assignment!
 
 Ref: {booking_ref}
 Customer: {booking.get('name', 'N/A')}
