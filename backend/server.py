@@ -6546,6 +6546,114 @@ async def record_xero_payment(booking_id: str, current_admin: dict = Depends(get
         logger.error(f"Error recording Xero payment: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+async def create_and_send_xero_invoice(booking: dict):
+    """Create and email a Xero invoice for a booking (called automatically when payment method is 'xero')"""
+    try:
+        booking_id = booking.get('id')
+        
+        # Get Xero token
+        access_token, tenant_id = await get_xero_access_token()
+        if not access_token:
+            logger.error("Xero not connected - cannot create invoice")
+            return None
+        
+        # Get or create contact in Xero
+        customer_name = booking.get('customerName') or booking.get('name', 'Unknown Customer')
+        customer_email = booking.get('email', '')
+        
+        # Create invoice payload
+        total_price = booking.get('totalPrice') or booking.get('pricing', {}).get('totalPrice', 0)
+        
+        line_items = [{
+            "Description": f"Airport Transfer - {booking.get('pickupAddress', '')[:50]} to {booking.get('dropoffAddress', '')[:50]} on {booking.get('date')} at {booking.get('time')}",
+            "Quantity": 1,
+            "UnitAmount": float(total_price),
+            "AccountCode": "200"  # Sales account
+        }]
+        
+        # Add return trip as separate line item if applicable
+        if booking.get('bookReturn'):
+            line_items.append({
+                "Description": f"Return Transfer - {booking.get('dropoffAddress', '')[:50]} to {booking.get('pickupAddress', '')[:50]} on {booking.get('returnDate')} at {booking.get('returnTime')}",
+                "Quantity": 1,
+                "UnitAmount": float(total_price),
+                "AccountCode": "200"
+            })
+        
+        invoice_data = {
+            "Invoices": [{
+                "Type": "ACCREC",
+                "Contact": {
+                    "Name": customer_name,
+                    "EmailAddress": customer_email
+                },
+                "Date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+                "DueDate": (datetime.now(timezone.utc) + timedelta(days=7)).strftime("%Y-%m-%d"),
+                "Reference": f"Booking #{booking.get('referenceNumber', booking_id[:8])}",
+                "Status": "AUTHORISED",
+                "LineItems": line_items
+            }]
+        }
+        
+        # Create invoice in Xero
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://api.xero.com/api.xro/2.0/Invoices",
+                json=invoice_data,
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                    "Xero-Tenant-Id": tenant_id,
+                    "Content-Type": "application/json"
+                }
+            )
+        
+        if response.status_code not in [200, 201]:
+            logger.error(f"Failed to create Xero invoice: {response.text}")
+            return None
+        
+        result = response.json()
+        invoice_id = result.get("Invoices", [{}])[0].get("InvoiceID")
+        invoice_number = result.get("Invoices", [{}])[0].get("InvoiceNumber")
+        
+        # Update booking with Xero invoice ID
+        await db.bookings.update_one(
+            {"id": booking_id},
+            {"$set": {
+                "xero_invoice_id": invoice_id,
+                "xero_invoice_number": invoice_number,
+                "xero_status": "AUTHORISED",
+                "payment_status": "xero-invoiced"
+            }}
+        )
+        
+        # Now send the invoice via email using Xero's email endpoint
+        if customer_email:
+            async with httpx.AsyncClient() as client:
+                email_response = await client.post(
+                    f"https://api.xero.com/api.xro/2.0/Invoices/{invoice_id}/Email",
+                    headers={
+                        "Authorization": f"Bearer {access_token}",
+                        "Xero-Tenant-Id": tenant_id,
+                        "Content-Type": "application/json"
+                    }
+                )
+            
+            if email_response.status_code in [200, 204]:
+                logger.info(f"Xero invoice {invoice_number} emailed to {customer_email}")
+                await db.bookings.update_one(
+                    {"id": booking_id},
+                    {"$set": {"xero_invoice_emailed": True}}
+                )
+            else:
+                logger.warning(f"Failed to email Xero invoice: {email_response.text}")
+        
+        logger.info(f"Created Xero invoice {invoice_number} for booking {booking_id}")
+        return {"invoice_id": invoice_id, "invoice_number": invoice_number}
+        
+    except Exception as e:
+        logger.error(f"Error creating Xero invoice: {str(e)}")
+        return None
+
 @api_router.post("/xero/sync-all-bookings")
 async def sync_all_bookings_to_xero(current_admin: dict = Depends(get_current_admin)):
     """Sync all confirmed bookings to Xero (create invoices for bookings without one)"""
