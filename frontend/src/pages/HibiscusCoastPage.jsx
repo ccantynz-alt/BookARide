@@ -86,7 +86,7 @@ const HibiscusCoastPage = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     <DollarSign className="w-4 h-4 text-green-600" />
-                    <span className="font-semibold text-gray-900">From ${suburb.price}</span>
+                    <span className="font-semibold text-gold">Get Quote</span>
                   </div>
                 </div>
                 <p className="text-sm text-gray-600 mb-4 line-clamp-2">
