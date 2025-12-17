@@ -2392,6 +2392,7 @@ export const AdminDashboard = () => {
                     <SelectContent>
                       <SelectItem value="stripe">💳 Stripe - Send Payment Link</SelectItem>
                       <SelectItem value="paypal">🅿️ PayPal - Send Payment Link</SelectItem>
+                      <SelectItem value="xero">📄 Xero - Send Invoice</SelectItem>
                       <SelectItem value="pay-on-pickup">💵 Pay on Pickup (Cash)</SelectItem>
                       <SelectItem value="card">✅ Card (Already Paid)</SelectItem>
                       <SelectItem value="bank-transfer">🏦 Bank Transfer</SelectItem>
@@ -2400,6 +2401,11 @@ export const AdminDashboard = () => {
                   {(newBooking.paymentMethod === 'stripe' || newBooking.paymentMethod === 'paypal') && (
                     <p className="text-xs text-gold mt-1">
                       A payment link will be sent to the customer's email after booking is created.
+                    </p>
+                  )}
+                  {newBooking.paymentMethod === 'xero' && (
+                    <p className="text-xs text-purple-600 mt-1">
+                      📄 An invoice will be created in Xero and emailed to the customer automatically.
                     </p>
                   )}
                 </div>
