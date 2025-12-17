@@ -5138,39 +5138,85 @@ async def delete_driver(driver_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.patch("/drivers/{driver_id}/assign")
-async def assign_driver_to_booking(driver_id: str, booking_id: str):
-    """Assign a driver to a booking"""
+async def assign_driver_to_booking(driver_id: str, booking_id: str, trip_type: str = "outbound"):
+    """Assign a driver to a booking - supports separate outbound and return trip assignments
+    
+    Args:
+        driver_id: The driver's ID
+        booking_id: The booking ID
+        trip_type: "outbound" (default) or "return" - which leg of the trip
+    """
     try:
         # Get driver details first
         driver = await db.drivers.find_one({"id": driver_id}, {"_id": 0})
         if not driver:
             raise HTTPException(status_code=404, detail="Driver not found")
         
-        # Update booking with driver assignment including driver name
-        result = await db.bookings.update_one(
-            {"id": booking_id},
-            {"$set": {
+        # Get booking to check if it has a return trip
+        booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+        if not booking:
+            raise HTTPException(status_code=404, detail="Booking not found")
+        
+        # Determine which fields to update based on trip type
+        if trip_type == "return":
+            # Return trip driver assignment
+            if not booking.get('bookReturn'):
+                raise HTTPException(status_code=400, detail="This booking doesn't have a return trip")
+            
+            update_fields = {
+                "return_driver_id": driver_id,
+                "return_driver_name": driver.get('name', ''),
+                "return_driver_phone": driver.get('phone', ''),
+                "return_driver_email": driver.get('email', ''),
+                "return_driver_assigned_at": datetime.now(timezone.utc)
+            }
+            trip_label = "RETURN"
+            trip_date = booking.get('returnDate', booking.get('date'))
+            trip_time = booking.get('returnTime', '')
+            # For return trip, pickup and dropoff are swapped
+            pickup = booking.get('dropoffAddress', booking.get('dropoff', ''))
+            dropoff = booking.get('pickupAddress', booking.get('pickup', ''))
+        else:
+            # Outbound trip driver assignment (default)
+            update_fields = {
                 "driver_id": driver_id,
                 "driver_name": driver.get('name', ''),
                 "driver_phone": driver.get('phone', ''),
                 "driver_email": driver.get('email', ''),
                 "driver_assigned_at": datetime.now(timezone.utc)
-            }}
+            }
+            trip_label = "OUTBOUND"
+            trip_date = booking.get('date', '')
+            trip_time = booking.get('time', '')
+            pickup = booking.get('pickupAddress', booking.get('pickup', ''))
+            dropoff = booking.get('dropoffAddress', booking.get('dropoff', ''))
+        
+        # Update booking with driver assignment
+        result = await db.bookings.update_one(
+            {"id": booking_id},
+            {"$set": update_fields}
         )
+        
         if result.matched_count == 0:
             raise HTTPException(status_code=404, detail="Booking not found")
         
-        # Get booking details for notification
-        booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+        # Send notification to driver with trip-specific details
+        if driver:
+            # Create a modified booking object for the notification
+            notification_booking = {
+                **booking,
+                'trip_type': trip_label,
+                'date': trip_date,
+                'time': trip_time,
+                'pickupAddress': pickup,
+                'dropoffAddress': dropoff,
+                'pickup': pickup,
+                'dropoff': dropoff
+            }
+            await send_driver_notification(notification_booking, driver, trip_type=trip_label)
+            logger.info(f"Driver {driver.get('name')} ({driver_id}) assigned to {trip_label} trip for booking {booking_id}")
         
-        if driver and booking:
-            # Send notification to driver
-            await send_driver_notification(booking, driver)
-            logger.info(f"Driver {driver.get('name')} ({driver_id}) assigned to booking {booking_id} and notification sent")
-        else:
-            logger.warning(f"Booking not found for notification - Booking: {booking_id}")
-        
-        return {"message": f"Driver {driver.get('name')} assigned successfully"}
+        return {"message": f"Driver {driver.get('name')} assigned to {trip_label} trip successfully"}
     except HTTPException:
         raise
     except Exception as e:
