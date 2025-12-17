@@ -243,7 +243,7 @@ export const SuburbPage = () => {
           </p>
           <Link to="/book-now">
             <Button className="bg-gold hover:bg-gold/90 text-black font-semibold px-10 py-6 text-lg">
-              Book Now - From ${suburb.estimatedPrice}
+              Get Instant Quote
               <ArrowRight className="ml-2 w-5 h-5" />
             </Button>
           </Link>
