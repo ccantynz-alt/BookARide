@@ -2518,7 +2518,7 @@ export const AdminDashboard = () => {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <Label>Date *</Label>
+                    <Label>Date * (can backdate for invoicing)</Label>
                     <div className="mt-1">
                       <CustomDatePicker
                         selected={adminPickupDate}
@@ -2534,6 +2534,11 @@ export const AdminDashboard = () => {
                           }
                         }}
                         placeholder="Select date"
+                        minDate={new Date('2020-01-01')}
+                        maxDate={new Date('2030-12-31')}
+                        showMonthDropdown
+                        showYearDropdown
+                        dropdownMode="select"
                       />
                     </div>
                   </div>
