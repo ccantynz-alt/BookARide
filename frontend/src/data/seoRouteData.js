@@ -5,7 +5,7 @@ export const routeData = {
     slug: 'auckland-airport-to-whangaparaoa',
     title: 'Auckland Airport to Whangaparaoa Shuttle | Private Transfer',
     h1: 'Auckland Airport to Whangaparaoa Shuttle Service',
-    metaDescription: 'Book reliable door-to-door shuttle from Auckland Airport to Whangaparaoa. Private transfers, no sharing, flight tracking included. From $85. Book online now!',
+    metaDescription: 'Book reliable door-to-door shuttle from Auckland Airport to Whangaparaoa. Private transfers, no sharing, flight tracking included. Get instant quote online!',
     suburb: 'Whangaparaoa',
     region: 'Hibiscus Coast',
     distance: '45 km',
@@ -46,7 +46,7 @@ export const routeData = {
     slug: 'auckland-airport-to-orewa',
     title: 'Auckland Airport to Orewa Shuttle | Door-to-Door Transfer',
     h1: 'Auckland Airport to Orewa Private Shuttle',
-    metaDescription: 'Private shuttle service from Auckland Airport to Orewa beach. Direct door-to-door transfer, no stops. From $95. Flight monitoring included.',
+    metaDescription: 'Private shuttle service from Auckland Airport to Orewa beach. Direct door-to-door transfer, no stops. Get instant quote. Flight monitoring included.',
     suburb: 'Orewa',
     region: 'Hibiscus Coast',
     distance: '50 km',
@@ -73,7 +73,7 @@ export const routeData = {
       },
       {
         q: 'How much does a shuttle from Auckland Airport to Orewa cost?',
-        a: 'Our private shuttles to Orewa start from $95. The exact price depends on your specific address and number of passengers.'
+        a: 'Our private shuttles to Orewa are priced based on exact distance. Get an instant quote online - the price depends on your specific address and number of passengers.'
       }
     ]
   },
@@ -82,7 +82,7 @@ export const routeData = {
     slug: 'auckland-airport-to-north-shore',
     title: 'Auckland Airport to North Shore Shuttle | All Suburbs',
     h1: 'North Shore Airport Shuttle Service',
-    metaDescription: 'Reliable airport shuttle covering all North Shore suburbs. Takapuna, Albany, Browns Bay, Devonport & more. Private door-to-door service from $65.',
+    metaDescription: 'Reliable airport shuttle covering all North Shore suburbs. Takapuna, Albany, Browns Bay, Devonport & more. Private door-to-door service. Get instant quote.',
     suburb: 'North Shore',
     region: 'Auckland',
     distance: '25-50 km',
@@ -119,7 +119,7 @@ export const routeData = {
     slug: 'auckland-airport-to-hibiscus-coast',
     title: 'Auckland Airport to Hibiscus Coast Shuttle Transfer',
     h1: 'Hibiscus Coast Airport Shuttle Service',
-    metaDescription: 'Door-to-door airport shuttle for all Hibiscus Coast areas. Orewa, Whangaparaoa, Silverdale, Red Beach covered. From $85. Book your private transfer.',
+    metaDescription: 'Door-to-door airport shuttle for all Hibiscus Coast areas. Orewa, Whangaparaoa, Silverdale, Red Beach covered. Get instant quote online.',
     suburb: 'Hibiscus Coast',
     region: 'Auckland',
     distance: '40-55 km',
@@ -155,7 +155,7 @@ export const routeData = {
     slug: 'auckland-airport-to-silverdale',
     title: 'Auckland Airport to Silverdale Shuttle | Private Transfer',
     h1: 'Auckland Airport to Silverdale Shuttle',
-    metaDescription: 'Private shuttle from Auckland Airport to Silverdale. Door-to-door service, no sharing. Millwater, Stillwater areas included. From $80.',
+    metaDescription: 'Private shuttle from Auckland Airport to Silverdale. Door-to-door service, no sharing. Millwater, Stillwater areas included. Get instant quote.',
     suburb: 'Silverdale',
     region: 'Hibiscus Coast',
     distance: '42 km',
