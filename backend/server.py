@@ -6776,7 +6776,7 @@ async def interval_reminder_check():
             ]
         }, {"_id": 0}).to_list(100)
         
-        # Also check for bookings where reminder was sent on a different day
+        # Check for bookings where reminder hasn't been sent for tomorrow specifically
         all_tomorrow_bookings = await db.bookings.find({
             "status": "confirmed",
             "date": nz_tomorrow
@@ -6784,13 +6784,16 @@ async def interval_reminder_check():
         
         needs_reminder = []
         for booking in all_tomorrow_bookings:
-            reminder_sent = booking.get('reminderSentAt', '')
-            if not reminder_sent or not reminder_sent.startswith(nz_today):
+            # Use the new reminderSentForDate field for accurate tracking
+            reminder_sent_for_date = booking.get('reminderSentForDate', '')
+            if reminder_sent_for_date != nz_tomorrow:
                 needs_reminder.append(booking)
         
         if needs_reminder:
-            logger.info(f"🔔 [interval_check] Found {len(needs_reminder)} bookings needing reminders")
+            logger.info(f"🔔 [interval_check] Found {len(needs_reminder)} bookings needing reminders for {nz_tomorrow}")
             await send_daily_reminders_core(source="interval_check")
+        else:
+            logger.debug(f"🔔 [interval_check] All bookings for {nz_tomorrow} already have reminders sent")
         
         # Mark today as checked
         last_reminder_check_date = nz_today
