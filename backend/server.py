@@ -31,6 +31,10 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 import vobject
+import asyncio
+
+# Global lock to prevent concurrent reminder sending
+reminder_lock = asyncio.Lock()
 
 ROOT_DIR = Path(__file__).parent
 sys.path.insert(0, str(ROOT_DIR))
