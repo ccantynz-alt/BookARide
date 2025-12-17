@@ -136,7 +136,7 @@ export const OrewaToAirportPage = () => {
             {[
               { icon: Clock, title: 'On-Time Guarantee', desc: 'We monitor your flight and adjust pickup times automatically' },
               { icon: Car, title: 'Private Vehicle', desc: 'No sharing - just you and your group in a clean, comfortable vehicle' },
-              { icon: Shield, title: 'Fixed Pricing', desc: 'Instant quote for Orewa. No surge pricing, ever.' },
+              { icon: Shield, title: 'Transparent Pricing', desc: 'Instant quote based on distance. No surge pricing, ever.' },
               { icon: Star, title: '4.9★ Rated', desc: 'Trusted by hundreds of Orewa residents' },
             ].map((item, idx) => (
               <Card key={idx}>
@@ -169,7 +169,7 @@ export const OrewaToAirportPage = () => {
       <section className="py-16 bg-gold">
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl font-bold mb-4">Book Your Orewa Airport Transfer</h2>
-          <p className="mb-8">Get Instant Quote • 40-50 minutes • Door-to-door service</p>
+          <p className="mb-8">Instant Online Quotes • 40-50 minutes • Door-to-door service</p>
           <Link to="/book-now">
             <Button size="lg" className="bg-black hover:bg-gray-800 text-white font-bold">
               Book Now
