@@ -6771,6 +6771,9 @@ async def sync_all_bookings_to_xero(current_admin: dict = Depends(get_current_ad
         logger.error(f"Error syncing to Xero: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# Include the router in the main app (MUST be after all routes are defined)
+app.include_router(api_router)
+
 # Initialize the scheduler with timezone awareness
 scheduler = AsyncIOScheduler(timezone=pytz.timezone('Pacific/Auckland'))
 
