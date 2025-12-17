@@ -108,9 +108,10 @@ const RoutePage = () => {
       'name': route.from
     },
     'offers': {
-      '@type': 'Offer',
-      'price': route.price.replace('From $', ''),
-      'priceCurrency': 'NZD'
+      '@type': 'AggregateOffer',
+      'priceCurrency': 'NZD',
+      'availability': 'https://schema.org/InStock',
+      'url': 'https://bookaride.co.nz/book-now'
     }
   };
 
