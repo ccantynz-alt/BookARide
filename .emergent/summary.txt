@@ -1,262 +1,256 @@
 <analysis>**original_problem_statement:**
-The user initially reported that automated day-before booking reminders were not working. This was fixed, and the user then requested a massive expansion of the website's features to make it massive and increase booking conversions.
+The user initiated this session with a critical alert: a customer's booking for Tamer had vanished from the admin panel. This immediate crisis spiraled into a broad set of requests covering data integrity, feature development, UI/UX enhancements, and bug fixes.
 
-In this session, the user reported several critical new issues and requested numerous features and design changes:
-1.  **Critical Bugs:**
-    *   Drivers not receiving SMS notifications for new assignments.
-    *   Driver assignment emails arriving empty.
-    *   A price comparison widget showing broken numbers (floating point errors).
-    *   A new booking for Barbara Walsh has an incorrect kilometer rate and is missing return details in the confirmation email.
-2.  **Feature/Integration Requests:**
-    *   Finalize and test the AI Email Auto-Responder.
-    *   Integrate a real Flight Tracker API.
-    *   Implement a direct Afterpay integration using provided merchant credentials.
-    *   Add a bulk-sync feature to upload all past booking contacts to the user's iCloud.
-    *   Add a list of cool gadgets to the booking page: Currency Converter, Trip Cost Splitter, Weather Widget, Countdown to Your Ride, Airport Terminal Guide, and NZ Travel Tips.
-    *   Add a WhatsApp bot (clarified to be a click-to-chat button for now).
-3.  **Design & UX Changes:**
-    *   Find and implement a new, professional hero image for the homepage.
-    *   Remove the dark mode toggle button.
-    *   Add the Flight Tracker to the main navigation menu.
-    *   Fix a double-footer issue on the new Flight Tracker page.
-    *   Find and implement a new hero image for the Hobbiton transfers page.
-    *   Implement a glassmorphism aesthetic across the website.
-4.  **Business Logic Changes:**
-    *   Implement a complex special pricing rule for concert transfers to Matakana Country Park.
+**Key requests from the user in this session:**
+1.  **Critical Issue:** Restore the missing Tamer booking.
+2.  **Data Integrity:**
+    *   Implement a soft-delete feature to prevent accidental permanent deletion of bookings.
+    *   Investigate database security and set up backups (postponed by user).
+    *   Resolve data discrepancies between the preview environment and the live production site.
+3.  **Feature Development:**
+    *   Integrate with Xero accounting software, including automatically creating and sending invoices.
+    *   Implement separate driver assignments for outbound and return trips.
+    *   Begin work on a WhatsApp bot.
+4.  **Bug Fixes:**
+    *   Fix an issue where customers were receiving multiple (up to 5) reminder notifications for the same booking.
+    *   Address incorrect revenue and driver job counts on the admin dashboard.
+5.  **UI/UX & Content:**
+    *   Remove an intrusive floating back button that overlapped with other UI elements.
+    *   Add breadcrumbs to all major pages for better navigation.
+    *   Add a visual marker for Todays" and "Tomorrows bookings in the admin panel.
+    *   Remove all phone numbers from the entire website.
 
 **User's preferred language**: English
 
 **what currently exists?**
-The application is a full-stack React and FastAPI web app for a ride-booking service. In this session, several critical bugs were fixed, including the Barbara Walsh booking issue (incorrect kilometer rate and missing return details in email) and duplicate contact prevention for iCloud sync. Significant design updates were made across numerous pages, including fixing white space issues, updating hero images to be country/page-specific and more professional (e.g., Services, Cruise, Flight Tracker, About, Contact, International Landing Pages, Book Now). A new International Visitors hub page was created and integrated into the main navigation. Hardcoded pricing information was removed from most pages, though the user still reports some exist. The AI Email Auto-Responder backend is complete but blocked on user's external Mailgun configuration. A comprehensive build guide was generated.
+The application is a full-stack booking platform. In this session, the agent resolved the critical missing booking issue by implementing a robust soft-delete and recovery system. A new Deleted tab now exists in the admin panel, allowing the user to restore or permanently delete bookings. A major bug causing multiple reminder notifications has been fixed by overhauling the scheduling logic to be timezone-aware and prevent duplicate job runs.
+
+The system now supports separate driver assignments for outbound and return trips, a key business logic change requested by the user. A foundational integration with Xero has been built, allowing the user to connect their account and automatically generate invoices when creating bookings. Numerous UI/UX improvements were made, including adding breadcrumbs to all pages, replacing a floating admin button with a more practical View Site link in the dashboard, and adding TODAY/TOMORROW badges for at-a-glance visibility. As per a high-priority request, all phone numbers have been scrubbed from the frontend. Finally, a new, comprehensive handbook was created to assist in replicating the site's setup.
 
 **Last working item**:
-    - Last item agent was working: Removing all phone numbers from the website's pages, as requested by the user, due to them being incorrect and encouraging calls instead of bookings.
-    - Status: IN PROGRESS
-    - Agent Testing Done: N
-    - Which testing method agent to use? Manual testing via  and screenshots of affected pages.
+    - Last item agent was working: Fixing a critical bug where customers received multiple (up to 5) day-before booking reminder notifications. The agent identified a timezone mismatch and race conditions in the scheduler as the root cause.
+    - Status: COMPLETED
+    - Agent Testing Done: Y
+    - Which testing method agent to use? Backend testing agent. The agent should create a test booking for the next day, manually trigger the reminder job, and verify it's sent only once by checking logs and the database for the  flag.
     - User Testing Done: N
 
 **All Pending/In progress Issue list**:
-  Issue 1: Remove all phone numbers from the website (P0)
-  Issue 2: Hardcoded pricing still exists on some pages (P0)
-  Issue 3: AI Email Auto-Responder Not Receiving Live Emails (P1)
-  Issue 4: Driver password-setting crash (P1)
-  Issue 5: Potentially incorrect duplicate driver cleanup (P2)
+  Issue 1: Hardcoded pricing still exists on some pages (P0)
+  Issue 2: AI Email Auto-Responder Not Receiving Live Emails (P1)
+  Issue 3: Driver password-setting crash (P1)
+  Issue 4: Potentially incorrect duplicate driver cleanup (P2)
   
   Issues Detail:
-  - Issue 1: Remove all phone numbers from the website (P0)
-     - Attempted fixes: None yet, this is the very next action.
-     - Next debug checklist:  to find phone numbers, then use  to remove them from relevant components and pages, especially in , , , and any other pages found.
-     - Why fix this issue and what will be achieved with the fix? Incorrect phone numbers are misleading and the user prefers bookings via the website, not calls. Removing them will improve user experience and streamline booking process.
-     - Status: NOT STARTED
-     - Is recurring issue? N
-     - Should Test frontend/backend/both after fix? frontend
-     - Blocked on other issue: None
-  - Issue 2: Hardcoded pricing still exists on some pages (P0)
-     - Attempted fixes: Agent performed bulk replacements in , ,  and other misc files (, ). Directly edited , , , , , , , , .
-     - Next debug checklist: Re-verify all pages for any remaining hardcoded pricing as per user's repeated request. Focus on all SEO, market, and main content pages. Use  to find any instances of From  or specific price values.
-     - Why fix this issue and what will be achieved with the fix? Hardcoded prices are often inaccurate or outdated, leading to customer dissatisfaction and potential revenue loss. Removing them ensures customers rely on the live pricing calculator.
-     - Status: IN PROGRESS
+  - Issue 1: Hardcoded pricing still exists on some pages (P0)
+     - Attempted fixes: Agent has performed multiple bulk replacements in previous sessions, but the user reports some instances remain.
+     - Next debug checklist: Perform a comprehensive  to identify any remaining hardcoded prices. Systematically go through each result and replace it with a call to the dynamic pricing component or remove it.
+     - Why fix this issue and what will be achieved with the fix? Hardcoded prices are misleading and can cause revenue loss or customer disputes. This fix ensures price consistency and accuracy.
+     - Status:  NOT STARTED
      - Is recurring issue? Y
      - Should Test frontend/backend/both after fix? frontend
      - Blocked on other issue: None
-  - Issue 3: AI Email Auto-Responder Not Receiving Live Emails (P1)
-    - Attempted fixes: The agent created a webhook endpoint () that responds to both GET and POST requests. The agent successfully guided the user to create a forwarding route in Mailgun. The endpoint works when tested via .
-    - Next debug checklist: User needs to verify their domain's MX records are correctly pointing to Mailgun for email receiving. This is likely an external configuration issue outside the codebase. The agent should guide the user on how to check their DNS settings.
-    - Why fix this issue and what will be achieved with the fix? This will make the AI Email Auto-responder fully functional, automating customer support.
-    - Status: BLOCKED (on user's external DNS/Mailgun configuration)
-    - Is recurring issue? Y
-    - Should Test frontend/backend/both after fix? Backend (integration)
-    - Blocked on other issue: None
-  - Issue 4: Driver password-setting crash (P1)
-    - Attempted fixes: Admin authentication was added to the endpoint.
-    - Next debug checklist: User needs to deploy and test the flow of setting a driver's password from the admin panel to confirm the crash is resolved.
-    - Why fix this issue and what will be achieved with the fix? This is a core admin function for managing driver accounts.
-    - Status: USER VERIFICATION PENDING
-    - Is recurring issue? Y
-    - Should Test frontend/backend/both after fix? Frontend (user flow)
-    - Blocked on other issue: None
-  - Issue 5: Potentially incorrect duplicate driver cleanup (P2)
-    - Attempted fixes: None.
-    - Next debug checklist: Ask the user to review the driver list and confirm if the driver Craig Canty should be re-added with a unique email.
-    - Why fix this issue and what will be achieved with the fix? Ensures data integrity in the driver database.
-    - Status: NOT STARTED
-    - Is recurring issue? N
-    - Should Test frontend/backend/both after fix? N/A
-    - Blocked on other issue: None
+  - Issue 2: AI Email Auto-Responder Not Receiving Live Emails (P1)
+     - Attempted fixes: Agent verified the webhook endpoint () and confirmed the user's Mailgun MX records and forwarding routes are correctly configured.
+     - Next debug checklist: The issue is external to the codebase. The user needs to send a test email to an address on their  domain (e.g., ) from their live, deployed site to confirm if the webhook is triggered.
+     - Why fix this issue and what will be achieved with the fix? This will enable the fully automated AI email response feature, reducing manual support work.
+     - Status:  BLOCKED (on user's external configuration and testing)
+     - Is recurring issue? Y
+     - Should Test frontend/backend/both after fix? Backend (integration)
+     - Blocked on other issue: None
+  - Issue 3: Driver password-setting crash (P1)
+     - Attempted fixes: Admin authentication was added to the endpoint in a previous session.
+     - Next debug checklist: User needs to test the password setting flow in the admin panel on their deployed site.
+     - Why fix this issue and what will be achieved with the fix? Fixes a core administrative function for managing driver accounts.
+     - Status:  USER VERIFICATION PENDING
+     - Is recurring issue? Y
+     - Should Test frontend/backend/both after fix? Frontend (user flow)
+     - Blocked on other issue: None
+  - Issue 4: Potentially incorrect duplicate driver cleanup (P2)
+     - Attempted fixes: None.
+     - Next debug checklist: Ask the user to confirm if the driver Craig Canty is a test account and if any associated data should be cleaned up.
+     - Why fix this issue and what will be achieved with the fix? Ensures driver data integrity.
+     - Status:  NOT STARTED
+     - Is recurring issue? N
+     - Should Test frontend/backend/both after fix? N/A
+     - Blocked on other issue: None
 
 **In progress Task List**:
-  Task 1: Glassmorphism Design Implementation (P2)
-  Task 2: Add CSV Import feature to BUILD_GUIDE.md (P2)
+  Task 1: Finalize Database Sync (P0)
+  Task 2: Complete Xero Integration (P1)
+  Task 3: Implement WhatsApp AI Bot (P2)
+  Task 4: Glassmorphism Design Implementation (P2)
 
  Task Detail:
-  - Task 1: Glassmorphism Design Implementation (P2)
-     - Where to resume: The agent has updated  with glassmorphism utilities and created a new component file . ,  (hero and services),  and  were updated with glassmorphism effects. However, some changes on  were reverted due to user feedback (Looks too dark and broken), and the user requested more glassmorphism but then pivoted to other tasks. The current state is a mix of glass and clean light design.
-     - What will be achieved with this? A modern, premium glassy look and feel across the website, applied consistently and without breaking readability or functionality.
-     - Status: IN PROGRESS
+  - Task 1: Finalize Database Sync (P0)
+     - Where to resume: The agent has identified that the preview and production environments use different databases, which is the root cause of data discrepancies. The user has been provided with a template to request their production MongoDB connection string from support.
+     - What will be achieved with this? Unifying the development and production data sources will resolve issues like missing bookings and incorrect driver assignment statuses, ensuring what the agent works on is reflected in production.
+     - Status:  BLOCKED (waiting for user to provide production MongoDB connection string)
+     - Should Test frontend/backend/both after fix? both
+     - Blocked on something: User providing the connection string.
+  - Task 2: Complete Xero Integration (P1)
+     - Where to resume: The initial integration is complete. A Connect Xero button is on the admin dash, and Xero Invoice is a payment option that triggers invoice creation. The user needs to test this flow on their deployed site.
+     - What will be achieved with this? A fully functional accounting integration that automates invoicing.
+     - Status:  USER VERIFICATION PENDING
+     - Should Test frontend/backend/both after fix? both
+     - Blocked on something: User needs to connect their Xero account and test the end-to-end flow.
+  - Task 3: Implement WhatsApp AI Bot (P2)
+     - Where to resume: The user has requested this and confirmed they use Twilio. The agent has fetched a generic playbook. The next step is to design and implement the specific conversational AI logic for the chatbot.
+     - What will be achieved with this? A new customer communication and support channel.
+     - Status:  NOT STARTED
+     - Should Test frontend/backend/both after fix? Backend (integration)
+     - Blocked on something: None.
+  - Task 4: Glassmorphism Design Implementation (P2)
+     - Where to resume: This task is carried over from a previous session. Implementation is partial and has received mixed feedback.
+     - What will be achieved with this? A modern, consistent glassy design across the website.
+     - Status:  BLOCKED
      - Should Test frontend/backend/both after fix? Frontend
-     - Blocked on something: User feedback was mixed; needs clear direction on intensity and specific areas for application.
-  - Task 2: Add CSV Import feature to BUILD_GUIDE.md (P2)
-     - Where to resume: The agent provided a summary of the CSV import feature, but hasn't yet added the details to the .
-     - What will be achieved with this? Comprehensive documentation of the CSV Import feature in the build guide for future reference and replication on other sites.
-     - Status: NOT STARTED
-     - Should Test frontend/backend/both after fix? N/A (documentation task)
-     - Blocked on something: None
+     - Blocked on something: Needs clear direction and consensus from the user on the design.
 
 **Upcoming and Future Tasks**
     Upcoming Tasks:
-    - P1: Add Schema.org SEO to main pages (Home, Services, About, Cruise, Hobbiton, International) - boosts Google rankings.
-    - P2: Connect Google Reviews Widget - Hook it up to the user's real Google Place ID (currently using mock data).
-    - P2: Add FAQ sections with schema markup to boost Google rich snippets.
-    - P2: Check Contact page (apart from hero image and white gap which was already fixed) for any other issues or enhancements.
+    - P1: Add Schema.org SEO to main pages to improve search engine rankings.
+    - P2: Connect the Google Reviews Widget to the user's actual Google Place ID.
+    - P2: Add FAQ sections with schema markup to pages to capture Google rich snippets.
+    - P2: Set up automated database backups to Google Drive.
     Future Tasks:
-    - Implement a full WhatsApp Business Bot with AI capabilities.
-    - Implement other genius ideas suggested by the user: Klarna/other BNPL, subscription packages, corporate accounts, etc.
-    - Build Admin UI for full user management.
-    - Refactor the large  component.
-    - Create a  endpoint.
+    - Implement other payment options like Klarna.
+    - Add features for subscription packages and corporate accounts.
+    - Build a dedicated UI for full user management in the admin panel.
+    - Refactor the large  component for better maintainability.
 
 **Completed work in this session**
--   **Bug Fixes & Logic Improvements:**
-    -   **Barbara Walsh Booking Bug:** Fixed logic for price calculation and email generation to correctly handle return trips and display  in the pricing breakdown. ()
-    -   **iCloud Contact Sync Duplicate Prevention:** Implemented deterministic UID generation for contacts, ensuring existing contacts are updated instead of duplicated during bulk sync or new bookings. ()
--   **Design & UX Enhancements:**
-    -   **Header Fixes:** Reverted header to original dark color and removed duplicate Book Now menu item. ()
-    -   **Hero Image & White Space Fixes (across multiple pages):**
-        -   Services page: Removed white space, updated hero image with professional shuttle bus. ()
-        -   Cruise page: Removed white space, added cruise ship hero image and updated gallery images. ()
-        -   Flight Tracker page: Removed white space, added an impactful aircraft image to hero (Air Canada plane, as per user's choice). ()
-        -   About page: Removed white space, added Auckland city waterfront night image to hero. ()
-        -   International Landing Pages (China, Japan, Korea, Singapore, Australia, UK, USA, France, Germany): Removed white space, added country-specific hero images. ()
-        -   Book Now page: Removed white space, updated hero image multiple times to a scenic road trip view. Removed Afterpay payment option from UI. (, )
-        -   Contact page: Removed white space, added customer service themed hero image. ()
-    -   **Glassmorphism (Partial Implementation):** Applied glassmorphism effects to Header, Home page hero section & services, and Book Now page form cards/sidebar (partially reverted on Book Now page after user feedback, needs re-evaluation). (, , , , , )
+-   **Data Integrity & Recovery:**
+    -   **Missing Booking Resolved:** Manually restored the critical Tamer Abdellatif booking.
+    -   **Booking Recovery Feature:** Implemented a full soft-delete feature. Deleted bookings now go to a Deleted tab in the admin panel for recovery or permanent deletion.
+-   **Critical Bug Fixes:**
+    -   **Duplicate Reminders Fixed:** Overhauled the reminder notification logic to prevent customers from receiving multiple SMS/emails. The new system is timezone-aware and uses a locking mechanism.
 -   **Feature Implementation:**
-    -   **International Visitors Hub Page:** Created a dedicated  page with a globe hero, multilingual badges, country selection grid, payment methods, and travel tips. Integrated into . (, )
-    -   **Services Page International Section:** Added a new section to the Services page promoting international visitors with flags and feature cards, linking to the International Visitors hub. ()
--   **Content Updates:**
-    -   **Removed Hardcoded Pricing:** Removed From  pricing and specific price values from most  pages,  landing pages, , , , , and various other frontend components, replacing them with calls to Get Instant Quote. (, , , , , , , , etc.)
+    -   **Separate Driver Assignment:** The system now supports assigning different drivers for the outbound and return legs of a journey, a key business logic update.
+    -   **Xero Integration (Phase 1):** Set up the connection flow and implemented a feature to automatically create and send a Xero invoice when selected as a payment method during booking creation.
+-   **UI/UX and Content:**
+    -   **Breadcrumbs Added:** Implemented breadcrumb navigation on all major public-facing pages.
+    -   **Admin Button Fixed:** Removed an intrusive floating admin button and replaced it with a View Site link in the dashboard header.
+    -   **Booking Highlighting:** Added TODAY and TOMORROW badges to the admin booking list for easy identification.
+    -   **Phone Number Removal:** Completed a site-wide removal of all phone numbers.
 -   **Documentation:**
-    -   **Comprehensive Build Guide:** Created  and  to document the entire project's tech stack, APIs, configurations, features, and integrations for other agents.
+    -   Created a new, comprehensive .
+    -   Provided a detailed breakdown of the site's pricing rules for the user to share.
 
 - Recently completed:
   # Reference only, no re-explanation
-  - Barbara Walsh booking bug fix (DONE)
-  - iCloud Contact Sync Duplicate Prevention (DONE)
-  - Header fixes (DONE)
-  - Hero image and white space fixes on Services, Cruise, Flight Tracker, About, International pages, Book Now, Contact pages (DONE)
-  - New International Visitors Hub Page (DONE)
-  - International section on Services page (DONE)
-  - Removal of most hardcoded pricing (DONE - but user reports some still exist)
-  - Comprehensive Build Guide creation (DONE)
-  - Removed Afterpay UI elements on Book Now page (DONE)
+  - Tamer's booking restored and soft-delete feature implemented (DONE)
+  - Duplicate reminder notifications bug (DONE)
+  - Separate driver assignment for return trips (DONE)
+  - Xero integration (Phase 1: Connect & Auto-Invoice) (DONE)
+  - Breadcrumbs added to all pages (DONE)
+  - Floating admin button removed/replaced (DONE)
+  - TODAY/TOMORROW badges for bookings (DONE)
+  - All phone numbers removed from website (DONE)
+  - New comprehensive handbook created (DONE)
 
 **Earlier issues found/mentioned but not fixed**
-   - Issue 1: Driver password-setting crash (USER VERIFICATION PENDING)
-   - Issue 2: Potentially incorrect duplicate driver cleanup (NOT STARTED)
+   - None from this session, all are tracked in the pending list.
 
 **Known issue recurrence from previous fork**
-  - None.
+  - **Hardcoded Pricing:** This issue was present in the previous fork and persists, as the user continues to find instances.
+  - **AI Email Auto-Responder:** The blocker (external user configuration) remains the same from the previous fork.
+  - **Driver Password Crash:** Remains pending user verification from the previous fork.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
--   **E.164 Phone Number Formatting:** Crucial for ensuring Twilio SMS reliability.
--   **Direct 3rd Party API Integration:** Implemented for Afterpay, involving storing credentials in , creating dedicated API endpoints for config and checkout, and updating the frontend UI.
--   **Complex Conditional Pricing:** The pricing engine now has multiple layers of logic: distance-based tiers, a global minimum, and a highly specific, location-based rule for the Matakana concert venue.
--   **Bulk Data Processing:** Created an admin endpoint to iterate through all existing database documents () and perform an action (sync to iCloud).
--   **Glassmorphism:** A new design aesthetic being implemented via Tailwind CSS utilities and custom components, currently in progress and refined based on user feedback.
--   **Deterministic Duplicate Prevention:** For iCloud contacts, unique IDs are generated based on customer data to prevent duplicates during sync.
--   **Comprehensive Documentation:** Creation of a detailed build guide for replication on other websites.
+-   **Soft Deletion:** Implemented by moving deleted records to a separate  collection instead of permanently removing them, preserving data integrity.
+-   **OAuth 2.0 Flow:** Implemented for the Xero integration, handling the redirect, token exchange, and secure storage of refresh tokens.
+-   **Background Job/Scheduler Integrity:** Refactored an  job to prevent race conditions and timezone-related bugs by using a persistent flag () and a temporary lock.
+-   **Conditional UI Rendering:** The frontend was updated to conditionally render UI elements based on booking data (e.g., showing the Return Driver section only if  is true).
+-   **Database Environment Discrepancy:** A critical concept identified is the separation of preview/development databases from the production database, which explained several data-related bugs reported by the user.
 
 **key DB schema**
--   No schema changes were made in this session.
+-   **bookings:**
+    -   : Now stores the ID for the outbound driver.
+    -   : (New) Stores the ID for the return trip driver.
+    -   : (New) String field storing the  date for which a reminder was last sent, to prevent duplicates.
+-   **deleted_bookings:** (New Collection) Stores the full document of deleted bookings, plus a  timestamp and  field.
 
 **changes in tech stack**
--   No changes to the core tech stack.
+-   **xero-python:** New dependency added to the backend for Xero integration.
 
 **All files of reference**
--   **/app/backend/server.py**: Contains fixes for SMS/email, new pricing rules for concerts, new endpoints for Afterpay and bulk contact sync, and logic for return trip email display and  storage.
--   **/app/frontend/src/pages/BookNow.jsx**: The main booking form, heavily modified to include the payment selector, new widgets, hero image updates, and glassmorphism.
--   **/app/frontend/src/pages/AdminDashboard.jsx**: Where the new Sync to iPhone button was added.
--   **/app/frontend/src/pages/Home.jsx**: Contains the new split-screen hero section design, and glassmorphism.
--   **/app/frontend/src/pages/FlightTrackerPage.jsx**: New page for the flight tracker feature, with updated hero image.
--   **/app/frontend/tailwind.config.js**: Contains the new glassmorphism theme extensions.
--   **/app/frontend/src/pages/Services.jsx**: Updated hero image, added international section, removed hardcoded pricing.
--   **/app/frontend/src/pages/CruiseTransfers.jsx**: Updated hero images, removed white space.
--   **/app/frontend/src/pages/About.jsx**: Updated hero image, removed white space.
--   **/app/frontend/src/pages/Contact.jsx**: Updated hero image, removed white space.
--   **/app/frontend/src/pages/InternationalVisitors.jsx**: New page for international visitors hub.
--   **/app/frontend/src/pages/markets/*.jsx**: All international landing pages were modified for hero images and hardcoded pricing.
--   **/app/frontend/src/pages/seo/*.jsx**: Multiple SEO pages were modified to remove hardcoded pricing.
--   **/app/frontend/src/pages/SuburbPage.jsx**: Modified to remove hardcoded pricing.
--   **/app/frontend/src/pages/SuburbsDirectory.jsx**: Modified to remove hardcoded pricing.
--   **/app/frontend/src/components/Header.jsx**: Modified for navigation, color, and duplicate Book Now button.
--   **/app/frontend/src/components/TrustBadges.jsx**: Modified to remove Afterpay icons.
--   **/app/BUILD_GUIDE.md**: New comprehensive build guide.
--   **/app/BUILD_GUIDE_SECRETS_TEMPLATE.env**: New template for environment variables.
+-   **/app/backend/server.py**: The core of all new features and bug fixes in this session (Soft-delete, Xero, Driver Assignment, Reminder Fix).
+-   **/app/frontend/src/pages/AdminDashboard.jsx**: The central hub for all new frontend UI/UX changes.
+-   **/app/frontend/src/components/PageBreadcrumb.jsx**: New reusable component for navigation.
+-   **/app/BOOKARIDE_COMPLETE_HANDBOOK.md**: New primary documentation file for project replication.
+-   Files modified for phone number removal: , , , , , , , , and various files in  and .
 
 **Areas that need refactoring**:
--   ****: Remains very large.
--   ****: Is becoming very large and complex with the addition of many new widgets and state handlers.
+-    continues to grow in complexity and is a prime candidate for being broken down into smaller, more manageable components (e.g., , ).
 
 **key api endpoints**
--   : (New) Triggers a bulk sync of all booking contacts to the user's iCloud.
--   : (New) Provides Afterpay configuration details to the frontend.
--   : (New) Creates a direct Afterpay checkout session.
--   : (New) Endpoint for Afterpay to send payment capture confirmation.
--   : (Modified) Updated to use the live AviationStack API instead of mock data.
--   : (Modified) Updated with complex pricing rules for the Matakana concert venue, and to return .
--    / : (New) Webhook for incoming emails for the AI auto-responder.
--   : (Modified) Ensures  is set if  is present.
+-   : (Modified) Now performs a soft-delete.
+-   : (New) Fetches all soft-deleted bookings.
+-   : (New) Restores a soft-deleted booking.
+-   : (New) Permanently deletes a booking from the  collection.
+-   : (Modified) Now accepts a  query parameter to assign to  or .
+-   : (New) Initiates the Xero OAuth 2.0 flow.
+-   : (New) Handles the callback from Xero to complete authentication.
+-   : (New) Creates and sends a Xero invoice for a given booking.
+-   : (Modified) Logic added to automatically call the Xero invoice creation endpoint if  is 'xero'.
 
 **Critical Info for New Agent**
--   **TOP PRIORITY:** The user's most recent and explicit request is to **remove all phone numbers** from the website as they are incorrect and encourage calls over bookings. This should be addressed immediately.
--   **Hardcoded Pricing:** Despite significant effort, the user indicates that some hardcoded pricing still exists and explicitly requested its removal again. This remains a high priority.
--   **AI Email Auto-Responder:** The backend is complete and tested, but its full functionality is blocked on the user's external Mailgun DNS/MX record setup. The agent provided detailed instructions.
--   **Glassmorphism:** The implementation is in progress and has received mixed user feedback. The next agent should re-evaluate the overall design goal with the user before applying more glassmorphism to additional pages.
--   **User Feedback Loop:** The user provides rapid, iterative feedback and new ideas. Be prepared to pivot quickly and implement features/changes in small, testable chunks.
+-   **Database Discrepancy is KEY:** The biggest source of confusion has been the difference between the agent's preview database and the user's production database. Do not assume data is in sync. The next agent's first priority should be to get the production  and use it to avoid further confusion.
+-   **User Verification is Crucial:** Several features (Xero, driver password reset) are implemented but are now waiting for the user to test them on their live site. Do not mark these as complete until the user confirms they work.
+-   **Check the Handbook:** A new, detailed handbook () was created. Refer to it before asking the user for information that might already be documented.
+-   **Prioritize User-Reported Bugs:** The user is actively using the platform and provides real-time feedback. Bugs they report, like the multi-reminders, should be treated with the highest priority.
 
 **documents created in this job**
--   /app/BUILD_GUIDE.md
--   /app/BUILD_GUIDE_SECRETS_TEMPLATE.env
+  - /app/BOOKARIDE_COMPLETE_HANDBOOK.md
+  - /app/BOOKARIDE_QUICK_REFERENCE.md
 
 **Last 10 User Messages and any pending user messages**
-- This is not good if you run the kilometer rate to Manly or just Manly village it’s not going to be that price we’re gonna be losing money and go out of business. I don’t even know if it’s 47 km it might even be more but please remove all from pricing from all the pages. I’ve already asked us a few times. (PENDING - Hardcoded prices need full removal)
-- Can you also remove all the phone numbers from the pages you’ve created because we don’t want people to call me we want people to book and the phone numbers are incorrect anyway? (PENDING - Remove all phone numbers, P0)
+1.  **Request:** Create a clearer handbook for another agent. (COMPLETED)
+2.  **Request:** Prepare a support message to ask for the MongoDB connection string. (COMPLETED)
+3.  **Request:** Remove all phone numbers from the website. (COMPLETED)
+4.  **Request:** Provide all API keys for the other agent. (COMPLETED)
+5.  **Request:** Explain the pricing rules. (COMPLETED)
+6.  **Request:** Start working on the WhatsApp bot. (IN PROGRESS - NOT STARTED)
+7.  **Request:** Handle separate driver assignments for return trips. (COMPLETED)
+8.  **Request:** Add a blue marker for today's bookings. (COMPLETED - expanded to include tomorrow)
+9.  **Request:** Integrate with Xero. (COMPLETED - Phase 1)
+10. **Request:** Allow selecting Xero as a payment method to auto-create an invoice. (COMPLETED)
+11. **Bug Report:** Customers are receiving multiple (up to 5) reminder notifications. (COMPLETED)
+12. **Request:** Add a date picker to backdate Xero invoices. (COMPLETED)
 
 **Project Health Check:**
--   **Broken:** Some hardcoded pricing still appears on pages, as reported by the user, leading to potential misquotes. Incorrect phone numbers are present.
+-   **Broken:**
+    -   Data sync between preview and production is broken until the production  is used. This causes a disconnect in what the user sees vs. what the agent tests.
+    -   Some hardcoded pricing may still exist.
 -   **Mocked:**
-    *   The AI Email Auto-responder is functionally mocked as it's not yet receiving live emails from Mailgun due to a suspected external configuration issue.
-    *   Google Reviews widget is still using mock data.
+    -   AI Email Auto-responder is functionally mocked, as it is not yet confirmed to be receiving live emails.
+    -   Google Reviews widget is still using mock data (from previous fork).
 
 **3rd Party Integrations**
--   **emergentintegrations (OpenAI GPT):** Powers the AI Chatbot and AI Email Auto-Responder. Uses Emergent LLM Key.
--   **Twilio:** Used for sending SMS notifications. (Fixed in this session).
+-   **Xero:** (New) Integrated for accounting. Uses user-provided OAuth 2.0 credentials (, ).
+-   **Twilio:** Used for SMS. Now also intended for the upcoming WhatsApp bot integration.
 -   **Google Maps API:** Used for distance calculation.
--   **Stripe:** Existing payment gateway. Now configured to accept Afterpay/Clearpay.
--   **Mailgun:** Used for sending all transactional emails and configured for receiving emails for the AI auto-responder.
--   **iCloud Contacts (CardDAV):** Existing integration. A new bulk-sync feature was added with duplicate prevention.
--   **Afterpay:** **(New)** Direct API integration implemented in sandbox mode with user-provided credentials. UI elements removed as user requested to not promote it yet.
--   **AviationStack:** **(New)** Live integration for the flight tracker feature. Uses a user-provided API key.
+-   **Stripe:** Primary payment gateway.
+-   **Mailgun:** Used for transactional emails and as the webhook source for the AI Email Auto-Responder.
+-   **iCloud Contacts (CardDAV):** For contact syncing.
+-   **AviationStack:** For the flight tracker feature.
+-   **OpenAI GPT (via emergentintegrations):** Powers the AI Chatbot and AI Email Auto-Responder. Uses Emergent LLM Key.
 
 **Testing status**
-  - Testing agent used after significant changes: YES (Used to verify backend changes after fixing Barbara Walsh bug, and for frontend UI).
+  - Testing agent used after significant changes: NO (Agent self-tested features using curl, scripts, and screenshots).
   - Troubleshoot agent used after agent stuck in loop: NO
-  - Test files created: None. Testing was performed via , screenshots, and the testing agent.
-  - Known regressions: Remaining hardcoded pricing on certain pages, and phone numbers still present.
+  - Test files created: []
+  - Known regressions: None from this session, but the hardcoded pricing issue from a previous session remains.
 
 **Credentials to test flow:**
--   **Admin Login:**
-    -   **Username:** 
-    -   **Password:** 
--   **Afterpay (Sandbox):**
-    -   **Merchant ID:** 
-    -   **Secret Key:** Stored in  as 
+-   **Admin Login:**  / 
+-   **Xero (App Credentials):**
+    -   **Client ID:** 
+    -   **Client Secret:** Stored in  as .
 
 **What agent forgot to execute**
-- The Glassmorphism task is still an in-progress design task that needs clearer direction from the user.
-- The  needs to be updated with the CSV Import feature details.
-- Adding Schema.org SEO to main pages was discussed but not implemented.</analysis>
+- The user's request to set up Google Drive backups and get guidance on MongoDB Atlas was postponed by the user, but it's still an open task that was not re-addressed.
+- The agent successfully removed phone numbers from code but did not check or modify image assets that might contain phone numbers. This could be a potential oversight.</analysis>
