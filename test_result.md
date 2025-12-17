@@ -180,6 +180,18 @@ frontend:
         agent: "testing"
         comment: "✅ Responsive design working: Mobile viewport (375px) renders correctly. Minor: Mobile menu button detection had issues but overall mobile layout adapts properly. Screenshots confirm responsive behavior."
 
+  - task: "Hardcoded Pricing Removal"
+    implemented: true
+    working: pending
+    file: "src/pages/seo/*.jsx, src/data/seoRouteData.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: pending
+        agent: "main"
+        comment: "Removed all hardcoded prices from SEO pages, suburb pages, and route pages. Replaced with 'Get Instant Quote' or 'Get Quote' messaging. Fixed schema markup to use AggregateOffer instead of specific prices."
+
 metadata:
   created_by: "testing_agent"
   version: "1.0"
