@@ -13,9 +13,10 @@ export const OrewaToAirportPage = () => {
     "description": "Private shuttle service from Orewa to Auckland Airport",
     "touristType": "Airport Transfer",
     "offers": {
-      "@type": "Offer",
-      "price": "95",
-      "priceCurrency": "NZD"
+      "@type": "AggregateOffer",
+      "priceCurrency": "NZD",
+      "availability": "https://schema.org/InStock",
+      "url": "https://bookaride.co.nz/book-now"
     }
   };
 
@@ -52,13 +53,12 @@ export const OrewaToAirportPage = () => {
             <div className="flex flex-wrap gap-4">
               <Link to="/book-now">
                 <Button size="lg" className="bg-gold hover:bg-yellow-500 text-black font-bold text-lg px-8">
-                  Book Now - $95
+                  Get Instant Quote
                   <ArrowRight className="ml-2 w-5 h-5" />
                 </Button>
               </Link>
               <a href="/book-now">
                 <Button size="lg" variant="outline" className="border-white text-white hover:bg-white hover:text-black">
-                  <Phone className="mr-2 w-5 h-5" />
                   Book Online
                 </Button>
               </a>
@@ -101,23 +101,23 @@ export const OrewaToAirportPage = () => {
                 <div className="space-y-4">
                   <div className="flex justify-between items-center pb-4 border-b">
                     <span>Orewa Beach to Airport</span>
-                    <span className="text-2xl font-bold text-gold">$95</span>
+                    <span className="text-2xl font-bold text-gold">Get Quote</span>
                   </div>
                   <div className="flex justify-between items-center pb-4 border-b">
                     <span>Orewa Town Centre to Airport</span>
-                    <span className="text-2xl font-bold text-gold">$95</span>
+                    <span className="text-2xl font-bold text-gold">Get Quote</span>
                   </div>
                   <div className="flex justify-between items-center pb-4 border-b">
                     <span>Return Trip (both ways)</span>
-                    <span className="text-2xl font-bold text-gold">Instant Quote</span>
+                    <span className="text-2xl font-bold text-gold">Get Quote</span>
                   </div>
                   <p className="text-sm text-gray-500">
-                    * Prices include GST, no hidden fees
+                    * Prices calculated by distance, include GST, no hidden fees
                   </p>
                 </div>
                 <Link to="/book-now" className="block mt-6">
                   <Button className="w-full bg-gold hover:bg-yellow-500 text-black font-bold">
-                    Book Orewa Transfer
+                    Get Instant Quote
                   </Button>
                 </Link>
               </CardContent>
