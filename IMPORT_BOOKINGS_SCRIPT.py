@@ -399,3 +399,31 @@ async def import_bookings():
 
 if __name__ == "__main__":
     asyncio.run(import_bookings())
+
+# ADDITIONAL BOOKING - Tamer Abdellatif (missing from production)
+TAMER_BOOKING = {
+    "referenceNumber": 61,
+    "serviceType": "Airport Drop-off",
+    "name": "Tamer Abdellatif",
+    "email": "TAMERMAHER_ICT@YAHOO.COM",
+    "phone": "+64211876654",
+    "pickupAddress": "39 Chivalry Road, Glenfield, Auckland 0629",
+    "dropoffAddress": "Ray Emery Drive, Māngere, Auckland 2022",
+    "pickupAddresses": [],
+    "date": "2025-12-18",
+    "time": "06:15",
+    "passengers": "1",
+    "totalPrice": 95.00,
+    "distance": 35,
+    "duration": "00:35",
+    "departureFlightNumber": "",
+    "departureTime": "",
+    "arrivalFlightNumber": "",
+    "arrivalTime": "",
+    "driverName": "",
+    "bookReturn": False,
+    "comment": ""
+}
+
+# Add to BOOKINGS list
+BOOKINGS.append(TAMER_BOOKING)
