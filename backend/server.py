@@ -200,6 +200,9 @@ class BookingCreate(BaseModel):
 class Booking(BookingCreate):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     referenceNumber: Optional[int] = None  # Sequential reference number starting from 10
+    
+    class Config:
+        extra = 'allow'  # Allow extra fields from database (importedFrom, notificationsSent, etc.)
 
 async def get_next_reference_number():
     """Get the next sequential reference number for bookings, starting from 10"""
