@@ -151,7 +151,7 @@ With so many options for getting to and from Auckland Airport, how do you choose
 **Best for:** Families, groups, North Shore residents
 
 - Private door-to-door service
-- From $55 to CBD, $65+ to North Shore
+- Fixed price - get instant quote online
 - Flight tracking included
 - Multi-stop bookings available
 - Child seats on request
@@ -180,7 +180,7 @@ With so many options for getting to and from Auckland Airport, how do you choose
 
 | Service | Type | CBD Price | North Shore | Door-to-Door | Multi-Stop |
 |---------|------|-----------|-------------|--------------|------------|
-| BookaRide | Private | $55 | $65+ | ✅ | ✅ |
+| BookaRide | Private | Get Quote | Get Quote | ✅ | ✅ |
 | SuperShuttle | Shared | $33 | $40+ | ✅ | ❌ |
 | SkyBus | Bus | $18 | N/A | ❌ | ❌ |
 
