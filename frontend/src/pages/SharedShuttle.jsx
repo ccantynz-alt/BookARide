@@ -363,6 +363,108 @@ const SharedShuttle = () => {
             </div>
           </div>
         </section>
+
+        {/* HOW PAYMENT WORKS - Clear Explanation */}
+        <section className="py-16 bg-gradient-to-b from-gray-900 via-blue-900/20 to-gray-900">
+          <div className="container mx-auto px-4">
+            <div className="max-w-4xl mx-auto">
+              <div className="text-center mb-10">
+                <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+                  How Payment Works
+                </h2>
+                <p className="text-xl text-blue-300">
+                  Your card is <span className="font-bold underline">HELD</span>, not charged — until we arrive at the airport!
+                </p>
+              </div>
+              
+              <div className="bg-gray-800/80 backdrop-blur-sm rounded-3xl p-8 border border-blue-500/30">
+                <div className="grid md:grid-cols-3 gap-8">
+                  {/* Step 1 */}
+                  <div className="text-center">
+                    <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4 ring-4 ring-blue-500/30">
+                      <CreditCard className="w-8 h-8 text-blue-400" />
+                    </div>
+                    <div className="bg-blue-900/30 text-blue-400 text-xs font-bold px-3 py-1 rounded-full inline-block mb-3">WHEN YOU BOOK</div>
+                    <h3 className="text-xl font-bold text-white mb-2">$100 Hold</h3>
+                    <p className="text-gray-400 text-sm">
+                      We place a <span className="text-blue-300 font-semibold">temporary hold</span> of $100 on your card. 
+                      <span className="text-yellow-400"> This is NOT a charge!</span>
+                    </p>
+                  </div>
+                  
+                  {/* Arrow */}
+                  <div className="hidden md:flex items-center justify-center">
+                    <div className="flex flex-col items-center">
+                      <div className="text-4xl text-yellow-400">→</div>
+                      <div className="text-gray-500 text-xs mt-2">More people book...</div>
+                      <div className="text-green-400 text-xs">Price drops!</div>
+                    </div>
+                  </div>
+                  <div className="md:hidden flex justify-center my-4">
+                    <div className="text-3xl text-yellow-400">↓</div>
+                  </div>
+                  
+                  {/* Step 2 */}
+                  <div className="text-center">
+                    <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4 ring-4 ring-green-500/30">
+                      <Plane className="w-8 h-8 text-green-400" />
+                    </div>
+                    <div className="bg-green-900/30 text-green-400 text-xs font-bold px-3 py-1 rounded-full inline-block mb-3">AT THE AIRPORT</div>
+                    <h3 className="text-xl font-bold text-white mb-2">Pay Final Price</h3>
+                    <p className="text-gray-400 text-sm">
+                      When we arrive, we count total passengers and 
+                      <span className="text-green-300 font-semibold"> charge everyone the LOWER price!</span>
+                    </p>
+                  </div>
+                </div>
+                
+                {/* Example Scenario */}
+                <div className="mt-8 p-6 bg-gradient-to-r from-yellow-900/30 to-green-900/30 rounded-2xl border border-yellow-500/30">
+                  <h4 className="text-lg font-bold text-yellow-400 mb-4 flex items-center gap-2">
+                    <Sparkles className="w-5 h-5" />
+                    Real-World Example
+                  </h4>
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div>
+                      <p className="text-gray-300 mb-3">
+                        <span className="text-white font-semibold">Sarah</span> books the 10:00 AM shuttle first:
+                      </p>
+                      <ul className="space-y-2 text-sm">
+                        <li className="flex items-center gap-2 text-gray-400">
+                          <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
+                          $100 hold placed on her card
+                        </li>
+                        <li className="flex items-center gap-2 text-gray-400">
+                          <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>
+                          5 more people book the same shuttle
+                        </li>
+                        <li className="flex items-center gap-2 text-gray-400">
+                          <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                          Now 6 passengers total = $40/person
+                        </li>
+                      </ul>
+                    </div>
+                    <div className="bg-gray-900/50 rounded-xl p-4">
+                      <p className="text-gray-400 text-sm mb-2">When shuttle reaches airport:</p>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="text-gray-500 text-xs line-through">Hold: $100</div>
+                          <div className="text-green-400 font-bold text-2xl">Charged: $40</div>
+                        </div>
+                        <div className="bg-green-500/20 text-green-400 px-3 py-2 rounded-lg text-sm font-bold">
+                          SAVED $60!
+                        </div>
+                      </div>
+                      <p className="text-gray-500 text-xs mt-3">
+                        * The $100 hold is released and only $40 is actually charged
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
         
         {/* HOW IT WORKS */}
         <section id="how-it-works" className="py-16 bg-gray-900">
