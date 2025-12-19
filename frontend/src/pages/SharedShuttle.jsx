@@ -24,8 +24,8 @@ import {
   Phone,
   Mail
 } from 'lucide-react';
-import Header from '../components/Header';
-import Footer from '../components/Footer';
+import { Header } from '../components/Header';
+import { Footer } from '../components/Footer';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
