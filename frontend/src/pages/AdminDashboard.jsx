@@ -1896,6 +1896,9 @@ export const AdminDashboard = () => {
                                 <div className="font-medium">{booking.name} ({booking.passengers})</div>
                                 <div className="text-gray-500 truncate">{booking.pickupAddress}</div>
                                 <div className="text-gray-400">{booking.phone}</div>
+                                {booking.arrivingSoonSent && (
+                                  <div className="text-green-600 text-xs mt-1">✓ Notified</div>
+                                )}
                               </div>
                             ))}
                           </div>
@@ -1903,23 +1906,34 @@ export const AdminDashboard = () => {
                             <span className="text-gray-600">Est. Revenue:</span>
                             <span className="font-bold text-green-600">${data.totalRevenue || 0}</span>
                           </div>
-                          <div className="flex gap-2">
+                          <div className="flex flex-col gap-2">
+                            {/* Start Shuttle - schedules auto SMS notifications */}
                             <Button 
                               size="sm" 
-                              className="flex-1 bg-blue-600 hover:bg-blue-700"
-                              onClick={() => getShuttleRoute(shuttleDate, time)}
+                              className="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-bold"
+                              onClick={() => startShuttleRun(shuttleDate, time)}
                             >
-                              <Navigation className="w-3 h-3 mr-1" />
-                              Route
+                              <Bus className="w-4 h-4 mr-2" />
+                              Start Shuttle (Auto-SMS)
                             </Button>
-                            <Button 
-                              size="sm" 
-                              className="flex-1 bg-green-600 hover:bg-green-700"
-                              onClick={() => captureShuttlePayments(shuttleDate, time)}
-                            >
-                              <DollarSign className="w-3 h-3 mr-1" />
-                              Charge All
-                            </Button>
+                            <div className="flex gap-2">
+                              <Button 
+                                size="sm" 
+                                className="flex-1 bg-blue-600 hover:bg-blue-700"
+                                onClick={() => getShuttleRoute(shuttleDate, time)}
+                              >
+                                <Navigation className="w-3 h-3 mr-1" />
+                                Route
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                className="flex-1 bg-green-600 hover:bg-green-700"
+                                onClick={() => captureShuttlePayments(shuttleDate, time)}
+                              >
+                                <DollarSign className="w-3 h-3 mr-1" />
+                                Charge All
+                              </Button>
+                            </div>
                           </div>
                         </>
                       ) : (
