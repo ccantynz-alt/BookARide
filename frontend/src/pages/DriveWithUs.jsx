@@ -20,6 +20,7 @@ const goldLight = '#E8D48A';
 const goldDark = '#B8972E';
 
 const DriveWithUs = () => {
+  // SEO Component added in return statement
   const [formData, setFormData] = useState({
     name: '',
     email: '',
