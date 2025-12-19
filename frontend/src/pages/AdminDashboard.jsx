@@ -1692,8 +1692,8 @@ export const AdminDashboard = () => {
                   </thead>
                   <tbody>
                     {filteredBookings.map((booking) => (
-                      <tr key={booking.id} className={`border-b hover:bg-gray-50 ${selectedBookings.has(booking.id) ? 'bg-gold/10' : ''} ${isToday(booking.date) ? 'border-l-4 border-l-blue-600 bg-blue-50/50' : ''} ${isTomorrow(booking.date) ? 'border-l-4 border-l-orange-400' : ''}`}>
-                        <td className="p-2 md:p-4">
+                      <tr key={booking.id} className={`border-b hover:bg-gray-50 ${selectedBookings.has(booking.id) ? 'bg-gold/10' : ''} ${isToday(booking.date) ? 'border-l-2 border-l-blue-600 bg-blue-50/30' : ''} ${isTomorrow(booking.date) ? 'border-l-2 border-l-orange-400' : ''}`}>
+                        <td className="px-1 py-1">
                           <button
                             onClick={() => {
                               const newSelected = new Set(selectedBookings);
@@ -1704,59 +1704,42 @@ export const AdminDashboard = () => {
                               }
                               setSelectedBookings(newSelected);
                             }}
-                            className="p-1 hover:bg-gray-200 rounded"
+                            className="p-0.5 hover:bg-gray-200 rounded"
                           >
                             {selectedBookings.has(booking.id) ? (
-                              <CheckSquare className="w-5 h-5 text-gold" />
+                              <CheckSquare className="w-4 h-4 text-gold" />
                             ) : (
-                              <Square className="w-5 h-5 text-gray-400" />
+                              <Square className="w-4 h-4 text-gray-400" />
                             )}
                           </button>
                         </td>
-                        <td className="p-2 md:p-4">
-                          <div className="flex items-center gap-1 flex-wrap">
-                            <div className="text-xs md:text-sm font-bold text-gold">
-                              #{booking.referenceNumber || booking.id?.slice(0, 6).toUpperCase()}
-                            </div>
-                            {isToday(booking.date) && (
-                              <span className="px-1.5 py-0.5 text-[10px] font-bold bg-blue-600 text-white rounded-full animate-pulse">
-                                TODAY
-                              </span>
-                            )}
-                            {isTomorrow(booking.date) && (
-                              <span className="px-1.5 py-0.5 text-[10px] font-bold bg-orange-500 text-white rounded-full">
-                                TMR
-                              </span>
-                            )}
+                        <td className="px-2 py-1">
+                          <div className="flex items-center gap-1">
+                            <span className="text-[11px] font-bold text-gold">#{booking.referenceNumber || booking.id?.slice(0, 5)}</span>
+                            {isToday(booking.date) && <span className="px-1 text-[8px] font-bold bg-blue-600 text-white rounded">TODAY</span>}
+                            {isTomorrow(booking.date) && <span className="px-1 text-[8px] font-bold bg-orange-500 text-white rounded">TMR</span>}
                           </div>
-                          <div className="text-xs text-gray-900">{formatDate(booking.date)}</div>
-                          <div className="text-[10px] text-gray-500">{booking.time}</div>
+                          <div className="text-[10px] text-gray-600">{formatDate(booking.date)} • {booking.time}</div>
                         </td>
-                        <td className="p-2 md:p-4">
-                          <div className="text-xs md:text-sm font-medium text-gray-900 truncate max-w-[100px] md:max-w-none">{booking.name}</div>
-                          <div className="text-[10px] md:text-xs text-gray-500 truncate max-w-[100px] md:max-w-none">{booking.phone}</div>
+                        <td className="px-2 py-1">
+                          <div className="text-[11px] font-medium text-gray-900 truncate max-w-[80px] md:max-w-[120px]">{booking.name}</div>
+                          <div className="text-[9px] text-gray-500">{booking.phone}</div>
                         </td>
-                        <td className="p-2 md:p-4 hidden lg:table-cell">
-                          <span className="text-xs text-gray-700">{booking.serviceType}</span>
+                        <td className="px-2 py-1 hidden lg:table-cell">
+                          <span className="text-[10px] text-gray-600">{booking.serviceType?.slice(0, 10)}</span>
                         </td>
-                        <td className="p-2 md:p-4 hidden xl:table-cell">
-                          <div className="text-[10px] text-gray-600 max-w-[150px]">
-                            <div className="truncate">From: {booking.pickupAddress}</div>
-                            <div className="truncate">To: {booking.dropoffAddress}</div>
-                          </div>
+                        <td className="px-2 py-1 hidden xl:table-cell">
+                          <div className="text-[9px] text-gray-500 max-w-[120px] truncate" title={booking.pickupAddress}>{booking.pickupAddress?.slice(0, 25)}...</div>
                         </td>
-                        <td className="p-2 md:p-4">
-                          <div className="text-xs md:text-sm font-semibold text-gray-900">${booking.pricing?.totalPrice?.toFixed(0) || '0'}</div>
+                        <td className="px-2 py-1">
+                          <span className="text-[11px] font-semibold">${booking.pricing?.totalPrice?.toFixed(0) || '0'}</span>
                         </td>
-                        <td className="p-2 md:p-4 hidden md:table-cell">
-                          <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${
-                            booking.payment_status === 'paid' 
-                              ? 'bg-green-100 text-green-700' 
-                              : booking.payment_status === 'cash'
-                              ? 'bg-yellow-100 text-yellow-700'
-                              : 'bg-red-100 text-red-700'
+                        <td className="px-2 py-1 hidden md:table-cell">
+                          <span className={`px-1 py-0.5 rounded text-[9px] font-medium ${
+                            booking.payment_status === 'paid' ? 'bg-green-100 text-green-700' : 
+                            booking.payment_status === 'cash' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
                           }`}>
-                            {booking.payment_status === 'paid' ? '✓ Paid' : booking.payment_status === 'cash' ? '💵 Cash' : '✗'}
+                            {booking.payment_status === 'paid' ? '✓' : booking.payment_status === 'cash' ? '💵' : '✗'}
                           </span>
                         </td>
                         <td className="p-2 md:p-4">
