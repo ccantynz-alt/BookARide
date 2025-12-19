@@ -79,6 +79,17 @@ import ReferralProgram from './pages/ReferralProgram';
 import FlightTrackerPage from './pages/FlightTrackerPage';
 import TravelResourcesPage from './pages/TravelResourcesPage';
 import InternationalVisitors from './pages/InternationalVisitors';
+// Auckland CBD SEO Pages
+import CBDHubPage from './pages/seo/auckland-cbd/CBDHubPage';
+import PonsonbyAirportPage from './pages/seo/auckland-cbd/PonsonbyAirportPage';
+import ParnellAirportPage from './pages/seo/auckland-cbd/ParnellAirportPage';
+import NewmarketAirportPage from './pages/seo/auckland-cbd/NewmarketAirportPage';
+import RemueraAirportPage from './pages/seo/auckland-cbd/RemueraAirportPage';
+import MtEdenAirportPage from './pages/seo/auckland-cbd/MtEdenAirportPage';
+import GreyLynnAirportPage from './pages/seo/auckland-cbd/GreyLynnAirportPage';
+import EpsomAirportPage from './pages/seo/auckland-cbd/EpsomAirportPage';
+import MissionBayAirportPage from './pages/seo/auckland-cbd/MissionBayAirportPage';
+import ViaductAirportPage from './pages/seo/auckland-cbd/ViaductAirportPage';
 
 import RecentBookingsNotification from './components/RecentBookingsNotification';
 import ExitIntentPopup from './components/ExitIntentPopup';
