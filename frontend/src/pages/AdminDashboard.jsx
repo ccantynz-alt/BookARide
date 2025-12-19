@@ -455,29 +455,53 @@ export const AdminDashboard = () => {
   };
 
   // Start shuttle run - calculates ETAs and schedules "arriving soon" SMS for all customers
-  const startShuttleRun = async (date, time) => {
+  const startShuttleRun = async (date, time, driverId = null, driverName = null) => {
     try {
       toast.loading('Starting shuttle and scheduling notifications...');
-      const response = await axios.post(`${API}/shuttle/start/${date}/${time}`, {}, getAuthHeaders());
+      const response = await axios.post(`${API}/shuttle/start/${date}/${time}`, {
+        driverId,
+        driverName
+      }, getAuthHeaders());
       toast.dismiss();
       
       if (response.data.success) {
         toast.success(`Shuttle started! ${response.data.scheduledNotifications} "Arriving Soon" SMS scheduled automatically.`);
-        
-        // Show the scheduled times
-        if (response.data.schedule && response.data.schedule.length > 0) {
-          const scheduleInfo = response.data.schedule.map(s => 
-            `${s.name}: SMS at ${s.notifyAt}`
-          ).join('\n');
-          console.log('SMS Schedule:', scheduleInfo);
-        }
-        
         fetchShuttleData(date);
       }
     } catch (error) {
       toast.dismiss();
       console.error('Error starting shuttle:', error);
       toast.error(error.response?.data?.detail || 'Failed to start shuttle');
+    }
+  };
+
+  // Assign driver to shuttle - automatically starts the shuttle and schedules SMS
+  const assignShuttleDriver = async (date, time, driverId) => {
+    if (!driverId) return;
+    
+    const driver = drivers.find(d => d.id === driverId);
+    if (!driver) return;
+    
+    try {
+      toast.loading(`Assigning ${driver.name} and scheduling notifications...`);
+      
+      // Call the assign endpoint which handles everything
+      const response = await axios.post(`${API}/shuttle/assign-driver/${date}/${time}`, {
+        driverId: driverId,
+        driverName: driver.name,
+        driverPhone: driver.phone
+      }, getAuthHeaders());
+      
+      toast.dismiss();
+      
+      if (response.data.success) {
+        toast.success(`${driver.name} assigned! Route sent to driver, ${response.data.scheduledNotifications} customer SMS scheduled.`);
+        fetchShuttleData(date);
+      }
+    } catch (error) {
+      toast.dismiss();
+      console.error('Error assigning driver:', error);
+      toast.error(error.response?.data?.detail || 'Failed to assign driver');
     }
   };
 
