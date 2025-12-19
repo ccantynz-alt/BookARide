@@ -275,10 +275,11 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Blue left-side marker for today's bookings - COMPLETED ✅"
-    - "Frontend UI testing completed successfully"
-    - "Barbara Walsh booking bug fixes tested and verified"
-    - "Duplicate reminder prevention fix tested and verified ✅"
+    - "24-Hour Booking Approval Rule - BACKEND TESTING COMPLETED ✅"
+    - "Admin Dashboard Alert Banner - BACKEND DATA VERIFIED ✅"
+    - "Auckland CBD SEO Pages - BACKEND SUPPORT VERIFIED ✅"
+    - "All Barbara Walsh bug fixes re-verified ✅"
+    - "New features backend testing completed successfully"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
