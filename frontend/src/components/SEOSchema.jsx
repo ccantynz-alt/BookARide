@@ -94,11 +94,9 @@ export const ServiceSchema = ({ serviceName, description, areaServed, priceRange
       "name": areaServed
     },
     "offers": {
-      "@type": "AggregateOffer",
+      "@type": "Offer",
       "priceCurrency": "NZD",
-      "lowPrice": priceRange?.low || "85",
-      "highPrice": priceRange?.high || "250",
-      "offerCount": "1000+"
+      "availability": "https://schema.org/InStock"
     },
     "termsOfService": "https://bookaride.co.nz/terms-and-conditions"
   };
