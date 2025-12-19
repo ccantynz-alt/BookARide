@@ -57,7 +57,7 @@ const CompetitorComparisonPage = () => {
     },
     {
       question: `How much cheaper is BookaRide compared to ${competitorData.name}?`,
-      answer: `BookaRide offers competitive fixed prices. While ${competitorData.name} charges ${competitorData.priceRange}, BookaRide provides private service from $85. For groups of 2+, the per-person cost is often comparable or better, with superior service.`
+      answer: `BookaRide offers competitive fixed prices with private door-to-door service. Get an instant quote online - prices vary by distance. For groups of 2+, the per-person cost is often comparable or better than ${competitorData.name}, with superior private service.`
     },
     {
       question: `What makes BookaRide different from ${competitorData.name}?`,

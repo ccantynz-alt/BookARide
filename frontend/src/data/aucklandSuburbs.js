@@ -93,7 +93,7 @@ export const competitors = [
 export const commonFAQs = [
   {
     question: 'How much does an Auckland Airport transfer cost?',
-    answer: 'BookaRide offers fixed-price transfers starting from $85 for central Auckland. Prices vary by distance - use our instant quote tool for exact pricing. Unlike taxis, our prices are fixed with no surge pricing.'
+    answer: 'BookaRide offers fixed-price transfers - use our instant quote tool for exact pricing based on your pickup location. Unlike taxis, our prices are fixed with no surge pricing. Get a quote in seconds!'
   },
   {
     question: 'How do I book an Auckland Airport shuttle?',
