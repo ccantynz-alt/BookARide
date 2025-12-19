@@ -4292,27 +4292,92 @@ async def stripe_webhook(request: Request):
             # If payment successful, update booking and send confirmations
             if webhook_response.payment_status == "paid":
                 booking_id = webhook_response.metadata.get('booking_id')
+                booking_type = webhook_response.metadata.get('booking_type', 'regular')
+                
                 if booking_id:
-                    await db.bookings.update_one(
-                        {"id": booking_id},
-                        {"$set": {"payment_status": "paid", "status": "confirmed"}}
-                    )
-                    logger.info(f"Booking {booking_id} confirmed via webhook")
-                    
-                    # Get booking details for notifications
-                    booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
-                    if booking:
-                        # Send email confirmation
-                        send_booking_confirmation_email(booking)
+                    # Handle shuttle bookings differently
+                    if booking_type == 'shuttle':
+                        # For shuttle: update to authorized (not charged yet)
+                        # Also save the payment_intent_id for later capture
+                        import stripe
+                        stripe.api_key = stripe_api_key
                         
-                        # Send SMS confirmation
-                        send_booking_confirmation_sms(booking)
+                        # Get the session to retrieve payment_intent
+                        session = stripe.checkout.Session.retrieve(webhook_response.session_id)
+                        payment_intent_id = session.payment_intent
                         
-                        # Send admin notification
-                        await send_booking_notification_to_admin(booking)
+                        await db.shuttle_bookings.update_one(
+                            {"id": booking_id},
+                            {"$set": {
+                                "paymentStatus": "authorized",
+                                "status": "authorized",
+                                "stripePaymentIntentId": payment_intent_id,
+                                "stripeCheckoutSessionId": webhook_response.session_id
+                            }}
+                        )
+                        logger.info(f"Shuttle booking {booking_id} authorized - PaymentIntent: {payment_intent_id}")
                         
-                        # Create Google Calendar event
-                        await create_calendar_event(booking)
+                        # Send confirmation to customer
+                        shuttle_booking = await db.shuttle_bookings.find_one({"id": booking_id}, {"_id": 0})
+                        if shuttle_booking:
+                            # Send email confirmation for shuttle
+                            try:
+                                mailgun_key = os.environ.get('MAILGUN_API_KEY')
+                                mailgun_domain = os.environ.get('MAILGUN_DOMAIN', 'mg.bookaride.co.nz')
+                                if mailgun_key:
+                                    requests.post(
+                                        f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
+                                        auth=("api", mailgun_key),
+                                        data={
+                                            "from": f"Book A Ride NZ <bookings@{mailgun_domain}>",
+                                            "to": shuttle_booking['email'],
+                                            "subject": f"🚐 Shuttle Booking Confirmed - {shuttle_booking['date']} {shuttle_booking['departureTime']}",
+                                            "html": f"""
+                                            <h2>Your Shuttle Seat is Reserved!</h2>
+                                            <p>Hi {shuttle_booking['name']},</p>
+                                            <p>Great news! Your seat on the shared shuttle is confirmed.</p>
+                                            <h3>Booking Details:</h3>
+                                            <ul>
+                                                <li><strong>Date:</strong> {shuttle_booking['date']}</li>
+                                                <li><strong>Departure Time:</strong> {shuttle_booking['departureTime']}</li>
+                                                <li><strong>Pickup:</strong> {shuttle_booking['pickupAddress']}</li>
+                                                <li><strong>Destination:</strong> Auckland International Airport</li>
+                                                <li><strong>Passengers:</strong> {shuttle_booking['passengers']}</li>
+                                            </ul>
+                                            <h3>Payment Info:</h3>
+                                            <p>💳 A hold of <strong>${shuttle_booking.get('totalEstimated', 100)}</strong> has been placed on your card.</p>
+                                            <p>✅ You will only be charged the <strong>final price</strong> when the shuttle arrives at the airport.</p>
+                                            <p>💰 The more passengers on your shuttle, the cheaper everyone pays!</p>
+                                            <p>We'll be in touch closer to your departure date with pickup details.</p>
+                                            <p>Thank you for choosing Book A Ride!</p>
+                                            """
+                                        }
+                                    )
+                                    logger.info(f"Shuttle confirmation email sent to {shuttle_booking['email']}")
+                            except Exception as email_error:
+                                logger.error(f"Failed to send shuttle confirmation email: {email_error}")
+                    else:
+                        # Regular booking - charge immediately
+                        await db.bookings.update_one(
+                            {"id": booking_id},
+                            {"$set": {"payment_status": "paid", "status": "confirmed"}}
+                        )
+                        logger.info(f"Booking {booking_id} confirmed via webhook")
+                        
+                        # Get booking details for notifications
+                        booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+                        if booking:
+                            # Send email confirmation
+                            send_booking_confirmation_email(booking)
+                            
+                            # Send SMS confirmation
+                            send_booking_confirmation_sms(booking)
+                            
+                            # Send admin notification
+                            await send_booking_notification_to_admin(booking)
+                            
+                            # Create Google Calendar event
+                            await create_calendar_event(booking)
         
         return {"status": "success", "event_type": webhook_response.event_type}
     
