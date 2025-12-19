@@ -9,9 +9,13 @@ import { internationalMarkets } from '../../data/internationalMarkets';
 
 const CountryLandingPage = () => {
   const { countrySlug } = useParams();
+  const location = window.location.pathname;
+  
+  // Extract country from URL (e.g., /visitors/usa -> usa)
+  const slug = countrySlug || location.split('/visitors/')[1]?.split('/')[0] || 'usa';
   
   // Get country from URL or find by slug
-  const country = internationalMarkets.find(c => c.slug === countrySlug) || internationalMarkets[0];
+  const country = internationalMarkets.find(c => c.slug === slug) || internationalMarkets[0];
   
   const schemaMarkup = {
     "@context": "https://schema.org",
