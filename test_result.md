@@ -264,3 +264,37 @@ agent_communication:
     message: "✅ DUPLICATE REMINDER PREVENTION FIX TESTING COMPLETED: Comprehensive testing confirms the fix is working correctly. The system implements: 1) Global asyncio lock to prevent concurrent reminder jobs, 2) Atomic database updates that mark bookings as 'in progress' BEFORE sending, 3) Pre-filtered queries that only get bookings needing reminders. Test results: Created unique booking, first trigger sent 1 reminder (email + SMS), subsequent triggers sent 0 (correctly prevented duplicates). Backend logs confirm proper operation. Customers will no longer receive multiple SMS notifications for the same booking. The duplicate reminder bug has been successfully resolved."
   - agent: "testing"
     message: "⚠️ XERO INVOICE DATE PICKER TESTING RESULTS: Successfully logged into admin dashboard and opened booking details modal. However, the Xero Invoice section is not visible because Xero is not connected to the system. Found 'Connect Xero' button in dashboard header, confirming Xero integration is available but not activated. CODE ANALYSIS CONFIRMS IMPLEMENTATION IS CORRECT: 1) CustomDatePicker component configured with minDate=2020-01-01, maxDate=2030-12-31 ✓, 2) showMonthDropdown and showYearDropdown enabled ✓, 3) Help text 'Use month/year dropdowns to easily select past dates for backdating' present ✓, 4) Create Invoice button implemented ✓. The Xero section is conditionally rendered only when xeroConnected=true. To test functionality, Xero needs to be connected first via the 'Connect Xero' button in dashboard header."
+## Latest Updates (Session 2)
+
+### Completed Tasks:
+1. **Auckland CBD SEO Pages Routed** - 10 new SEO pages wired into App.js
+   - /auckland-cbd-airport (Hub page)
+   - /ponsonby-to-airport
+   - /parnell-to-airport  
+   - /newmarket-to-airport
+   - /remuera-to-airport
+   - /mt-eden-to-airport
+   - /grey-lynn-to-airport
+   - /epsom-to-airport
+   - /mission-bay-to-airport
+   - /viaduct-to-airport
+
+2. **24-Hour Booking Approval Rule Implemented**
+   - Bookings within 24 hours → status='pending_approval'
+   - Bookings more than 24 hours away → status='pending' (normal)
+   - Urgent email notification sent to admin for pending_approval bookings
+   - Red alert banner in Admin Dashboard showing count of bookings needing approval
+   - "View Now" button to filter pending_approval bookings
+   - New filter option "🚨 Needs Approval" in status dropdown
+
+### Test Results:
+- SEO pages: Ponsonby page ✅, CBD Hub page ✅
+- 24-hour rule: Tomorrow booking → pending_approval ✅
+- 24-hour rule: 5-day future booking → pending ✅
+- Admin banner: Shows "1 Booking Need Approval!" ✅
+
+### Pending Tests:
+- Full frontend testing of all 10 SEO routes
+- Verify urgent email notification is sent
+- Test approval workflow (approve/reject booking)
+
