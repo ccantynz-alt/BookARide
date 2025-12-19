@@ -1343,6 +1343,13 @@ class BookaRideBackendTester:
         print("\n🌐 Testing SEO Pages Backend Support...")
         self.test_seo_pages_backend_support()
         
+        # SHARED SHUTTLE SERVICE TESTING (NEW FEATURE)
+        print("\n🚐 Testing Shared Shuttle Service API (NEW FEATURE)...")
+        self.test_shuttle_availability()
+        shuttle_booking_id = self.test_shuttle_booking()
+        self.test_shuttle_departures_admin()
+        self.test_shuttle_route_optimization()
+        
         # BARBARA WALSH BUG FIX TESTS (REVIEW REQUEST)
         print("\n💰 Testing Pricing Calculation with ratePerKm (Barbara Walsh Bug Fix)...")
         self.test_pricing_calculation_orewa_to_airport_with_rate_per_km()
