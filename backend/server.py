@@ -2738,6 +2738,119 @@ async def send_booking_notification_to_admin(booking: dict):
         return False
 
 
+async def send_urgent_approval_notification(booking: dict):
+    """Send urgent notification for bookings requiring manual approval (within 24 hours)"""
+    try:
+        admin_email = os.environ.get('ADMIN_EMAIL', 'bookings@bookaride.co.nz')
+        mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
+        mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
+        sender_email = os.environ.get('SENDER_EMAIL', 'noreply@mg.bookaride.co.nz')
+        
+        if not mailgun_api_key or not mailgun_domain:
+            logger.warning("Mailgun not configured - cannot send urgent approval notification")
+            return False
+        
+        # Format booking details
+        total_price = booking.get('totalPrice', 0)
+        formatted_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
+        booking_ref = get_booking_reference(booking)
+        full_booking_id = get_full_booking_reference(booking)
+        
+        # Create URGENT email for bookings within 24 hours
+        html_content = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <div style="background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%); color: white; padding: 20px; text-align: center; border-radius: 10px 10px 0 0;">
+                    <h1 style="margin: 0;">🚨 URGENT APPROVAL REQUIRED</h1>
+                    <p style="margin: 5px 0; font-size: 16px; color: rgba(255,255,255,0.9);">Last-Minute Booking - Pickup Within 24 Hours!</p>
+                </div>
+                
+                <div style="padding: 20px; background-color: #ffffff; border: 1px solid #fca5a5; border-top: none;">
+                    <div style="background-color: #fef2f2; padding: 15px; border-radius: 8px; border-left: 4px solid #DC2626; margin-bottom: 20px;">
+                        <p style="margin: 0; font-size: 18px; font-weight: bold; color: #991B1B;">⚠️ This booking requires your manual approval</p>
+                        <p style="margin: 5px 0 0 0; font-size: 14px; color: #7F1D1D;">Customer: {booking.get('name', 'Customer')} | Ref: {booking_ref}</p>
+                        <p style="margin: 5px 0 0 0; font-size: 11px; color: #999;">Full ID: {full_booking_id}</p>
+                    </div>
+                    
+                    <div style="background-color: #fff7ed; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f97316;">
+                        <h3 style="margin-top: 0; color: #c2410c;">📅 Pickup Details</h3>
+                        <p style="margin: 5px 0; font-size: 16px;"><strong>Date:</strong> <span style="color: #DC2626; font-weight: bold;">{formatted_date}</span></p>
+                        <p style="margin: 5px 0; font-size: 16px;"><strong>Time:</strong> <span style="color: #DC2626; font-weight: bold;">{booking.get('time', 'N/A')}</span></p>
+                        <hr style="border: 0; border-top: 1px solid #fed7aa; margin: 15px 0;">
+                        <p style="margin: 5px 0;"><strong>Customer:</strong> {booking.get('name', 'N/A')}</p>
+                        <p style="margin: 5px 0;"><strong>Phone:</strong> <a href="tel:{booking.get('phone', '')}" style="color: #c2410c;">{booking.get('phone', 'N/A')}</a></p>
+                        <p style="margin: 5px 0;"><strong>Email:</strong> {booking.get('email', 'N/A')}</p>
+                        <hr style="border: 0; border-top: 1px solid #fed7aa; margin: 15px 0;">
+                        <p style="margin: 5px 0;"><strong>Service:</strong> {booking.get('serviceType', 'N/A').replace('-', ' ').title()}</p>
+                        <p style="margin: 5px 0;"><strong>Passengers:</strong> {booking.get('passengers', 'N/A')}</p>
+                        <p style="margin: 5px 0;"><strong>Pickup:</strong> {booking.get('pickupAddress', 'N/A')}</p>
+                        <p style="margin: 5px 0;"><strong>Drop-off:</strong> {booking.get('dropoffAddress', 'N/A')}</p>
+                        <hr style="border: 0; border-top: 2px solid #f97316; margin: 15px 0;">
+                        <p style="margin: 5px 0; font-size: 18px;"><strong>Total:</strong> <span style="color: #c2410c;">${total_price:.2f} NZD</span></p>
+                    </div>
+                    
+                    <div style="margin-top: 20px; padding: 20px; background-color: #fef2f2; border-radius: 8px; border: 2px solid #DC2626; text-align: center;">
+                        <p style="margin: 0; font-weight: bold; font-size: 16px; color: #991B1B;">🔔 ACTION REQUIRED</p>
+                        <p style="margin: 10px 0 0 0; font-size: 14px; color: #7F1D1D;">Please review and approve/reject this booking ASAP:</p>
+                        <a href="https://bookaride.co.nz/admin/dashboard" style="display: inline-block; margin-top: 15px; padding: 12px 30px; background-color: #DC2626; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">Open Admin Dashboard</a>
+                    </div>
+                </div>
+                
+                <div style="background: #fef2f2; color: #7F1D1D; padding: 15px; text-align: center; font-size: 12px; border-radius: 0 0 10px 10px; border: 1px solid #fca5a5; border-top: none;">
+                    <p style="margin: 0;"><span style="color: #DC2626; font-weight: bold;">BookaRide NZ</span> Urgent Approval System</p>
+                    <p style="margin: 5px 0;">This booking is pending until you approve it</p>
+                </div>
+            </body>
+        </html>
+        """
+        
+        # Send email via Mailgun API
+        response = requests.post(
+            f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
+            auth=("api", mailgun_api_key),
+            data={
+                "from": f"BookaRide URGENT <{sender_email}>",
+                "to": admin_email,
+                "subject": f"🚨 URGENT APPROVAL - {booking.get('name', 'Customer')} - {formatted_date} {booking.get('time', '')} - Ref: {booking_ref}",
+                "html": html_content
+            }
+        )
+        
+        if response.status_code == 200:
+            logger.info(f"Urgent approval notification sent to admin: {admin_email} for booking: {booking_ref}")
+            return True
+        else:
+            logger.error(f"Failed to send urgent approval notification: {response.status_code} - {response.text}")
+            return False
+            
+    except Exception as e:
+        logger.error(f"Error sending urgent approval notification: {str(e)}")
+        return False
+
+    # Also send SMS to admin for urgent bookings
+    try:
+        admin_phone = os.environ.get('ADMIN_PHONE', '+64212345678')
+        twilio_sid = os.environ.get('TWILIO_ACCOUNT_SID')
+        twilio_token = os.environ.get('TWILIO_AUTH_TOKEN')
+        twilio_from = os.environ.get('TWILIO_PHONE_NUMBER')
+        
+        if twilio_sid and twilio_token and twilio_from:
+            client = Client(twilio_sid, twilio_token)
+            booking_ref = get_booking_reference(booking)
+            formatted_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
+            
+            sms_body = f"🚨 URGENT BookaRide: {booking.get('name')} needs approval for {formatted_date} {booking.get('time')} pickup. Ref: {booking_ref}. Check admin dashboard NOW!"
+            
+            client.messages.create(
+                body=sms_body,
+                from_=twilio_from,
+                to=admin_phone
+            )
+            logger.info(f"Urgent SMS sent to admin for booking: {booking_ref}")
+    except Exception as sms_error:
+        logger.error(f"Failed to send urgent SMS: {str(sms_error)}")
+
+
 async def send_driver_notification(booking: dict, driver: dict, trip_type: str = "OUTBOUND"):
     """Send email and SMS notification to driver about new booking assignment
     
