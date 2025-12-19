@@ -4856,6 +4856,15 @@ async def get_shuttle_departures(date: str, current_admin: dict = Depends(get_cu
                 "canRun": total_passengers >= 1
             }
         
+        # Get assigned driver info from shuttle_runs collection
+        shuttle_runs = await db.shuttle_runs.find({"date": date}, {"_id": 0}).to_list(100)
+        for run in shuttle_runs:
+            dep_time = run.get("departureTime")
+            if dep_time in departures:
+                departures[dep_time]["assignedDriverId"] = run.get("driverId")
+                departures[dep_time]["assignedDriverName"] = run.get("driverName")
+                departures[dep_time]["shuttleStatus"] = run.get("status")
+        
         return {
             "date": date,
             "departures": departures
