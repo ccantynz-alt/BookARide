@@ -48,7 +48,7 @@ A private shuttle offers the best balance of convenience, comfort, and value. Yo
 
 ## 2. Shared Shuttle
 
-**Price:** From $33
+**Price:** Varies by provider
 **Time:** 45-60 minutes (multiple stops)
 
 Services like SuperShuttle offer cheaper fares by filling the van with multiple passengers heading in the same direction.
