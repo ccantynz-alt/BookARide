@@ -1710,72 +1710,61 @@ export const AdminDashboard = () => {
                             )}
                           </button>
                         </td>
-                        <td className="p-4">
-                          <div className="flex items-center gap-2">
-                            <div className="text-sm font-bold text-gold">
-                              #{booking.referenceNumber || booking.id?.slice(0, 8).toUpperCase()}
+                        <td className="p-2 md:p-4">
+                          <div className="flex items-center gap-1 flex-wrap">
+                            <div className="text-xs md:text-sm font-bold text-gold">
+                              #{booking.referenceNumber || booking.id?.slice(0, 6).toUpperCase()}
                             </div>
                             {isToday(booking.date) && (
-                              <span className="px-2 py-0.5 text-xs font-bold bg-blue-600 text-white rounded-full animate-pulse">
+                              <span className="px-1.5 py-0.5 text-[10px] font-bold bg-blue-600 text-white rounded-full animate-pulse">
                                 TODAY
                               </span>
                             )}
                             {isTomorrow(booking.date) && (
-                              <span className="px-2 py-0.5 text-xs font-bold bg-orange-500 text-white rounded-full">
-                                TOMORROW
+                              <span className="px-1.5 py-0.5 text-[10px] font-bold bg-orange-500 text-white rounded-full">
+                                TMR
                               </span>
                             )}
                           </div>
-                          <div className="text-sm text-gray-900">{formatDate(booking.date)}</div>
-                          <div className="text-xs font-medium text-blue-600">{getDayOfWeek(booking.date)}</div>
-                          <div className="text-xs text-gray-500">{booking.time}</div>
+                          <div className="text-xs text-gray-900">{formatDate(booking.date)}</div>
+                          <div className="text-[10px] text-gray-500">{booking.time}</div>
                         </td>
-                        <td className="p-4">
-                          <div className="text-sm font-medium text-gray-900">{booking.name}</div>
-                          <div className="text-xs text-gray-500">{booking.email}</div>
-                          <div className="text-xs text-gray-500">{booking.phone}</div>
+                        <td className="p-2 md:p-4">
+                          <div className="text-xs md:text-sm font-medium text-gray-900 truncate max-w-[100px] md:max-w-none">{booking.name}</div>
+                          <div className="text-[10px] md:text-xs text-gray-500 truncate max-w-[100px] md:max-w-none">{booking.phone}</div>
                         </td>
-                        <td className="p-4">
-                          <span className="text-sm text-gray-700">{booking.serviceType}</span>
+                        <td className="p-2 md:p-4 hidden lg:table-cell">
+                          <span className="text-xs text-gray-700">{booking.serviceType}</span>
                         </td>
-                        <td className="p-4">
-                          <div className="text-xs text-gray-600 max-w-xs">
+                        <td className="p-2 md:p-4 hidden xl:table-cell">
+                          <div className="text-[10px] text-gray-600 max-w-[150px]">
                             <div className="truncate">From: {booking.pickupAddress}</div>
                             <div className="truncate">To: {booking.dropoffAddress}</div>
                           </div>
                         </td>
-                        <td className="p-4">
-                          <div className="text-sm font-semibold text-gray-900">${booking.pricing?.totalPrice?.toFixed(2) || '0.00'}</div>
-                          <div className="text-xs text-gray-500">{booking.pricing?.distance || 0}km</div>
+                        <td className="p-2 md:p-4">
+                          <div className="text-xs md:text-sm font-semibold text-gray-900">${booking.pricing?.totalPrice?.toFixed(0) || '0'}</div>
                         </td>
-                        <td className="p-4">
-                          <div className="flex flex-col gap-1">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium inline-flex items-center gap-1 w-fit ${
-                              booking.payment_status === 'paid' 
-                                ? 'bg-green-100 text-green-700' 
-                                : booking.payment_status === 'cash'
-                                ? 'bg-yellow-100 text-yellow-700'
-                                : booking.payment_status === 'pay-on-pickup'
-                                ? 'bg-blue-100 text-blue-700'
-                                : 'bg-red-100 text-red-700'
-                            }`}>
-                              {booking.payment_status === 'paid' && '✓'}
-                              {booking.payment_status === 'cash' && '💵'}
-                              {booking.payment_status === 'pay-on-pickup' && '🚗'}
-                              {booking.payment_status === 'unpaid' && '✗'}
-                              <span className="capitalize">{booking.payment_status?.replace('-', ' ') || 'unpaid'}</span>
-                            </span>
-                          </div>
+                        <td className="p-2 md:p-4 hidden md:table-cell">
+                          <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${
+                            booking.payment_status === 'paid' 
+                              ? 'bg-green-100 text-green-700' 
+                              : booking.payment_status === 'cash'
+                              ? 'bg-yellow-100 text-yellow-700'
+                              : 'bg-red-100 text-red-700'
+                          }`}>
+                            {booking.payment_status === 'paid' ? '✓ Paid' : booking.payment_status === 'cash' ? '💵 Cash' : '✗'}
+                          </span>
                         </td>
-                        <td className="p-4">
+                        <td className="p-2 md:p-4">
                           <Select
                             value={booking.status}
                             onValueChange={(value) => handleStatusUpdate(booking.id, value)}
                           >
-                            <SelectTrigger className="w-32">
+                            <SelectTrigger className="w-20 md:w-28 h-7 text-[10px] md:text-xs">
                               <SelectValue>
-                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(booking.status)}`}>
-                                  {booking.status}
+                                <span className={`px-1 py-0.5 rounded text-[10px] font-medium ${getStatusColor(booking.status)}`}>
+                                  {booking.status?.slice(0,8)}
                                 </span>
                               </SelectValue>
                             </SelectTrigger>
@@ -1788,24 +1777,24 @@ export const AdminDashboard = () => {
                             </SelectContent>
                           </Select>
                         </td>
-                        <td className="p-4">
-                          {booking.driver_id ? (
+                        <td className="p-2 md:p-4 hidden lg:table-cell">
+                          {booking.driver_id || booking.driver_name ? (
                             <div className="flex items-center gap-1">
-                              <span className="text-xs text-gray-700 truncate max-w-[80px]" title={booking.driver_name}>
+                              <span className="text-[10px] text-gray-700 truncate max-w-[60px]" title={booking.driver_name}>
                                 {booking.driver_name?.split(' ')[0] || 'Assigned'}
                               </span>
                               {booking.driverAcknowledged ? (
-                                <CheckCircle className="w-4 h-4 text-green-500" title="Driver confirmed" />
+                                <CheckCircle className="w-3 h-3 text-green-500" title="Driver confirmed" />
                               ) : (
-                                <Clock className="w-4 h-4 text-orange-500 animate-pulse" title="Awaiting confirmation" />
+                                <Clock className="w-3 h-3 text-orange-500 animate-pulse" title="Awaiting confirmation" />
                               )}
                             </div>
                           ) : (
-                            <span className="text-xs text-gray-400">Not assigned</span>
+                            <span className="text-[10px] text-gray-400">-</span>
                           )}
                         </td>
-                        <td className="p-4">
-                          <div className="flex flex-wrap gap-1">
+                        <td className="p-2 md:p-4">
+                          <div className="flex gap-1">
                             <Button
                               size="sm"
                               variant="outline"
