@@ -93,6 +93,8 @@ import ViaductAirportPage from './pages/seo/auckland-cbd/ViaductAirportPage';
 // Programmatic SEO Pages
 import SuburbTransferPage from './pages/seo/SuburbTransferPage';
 import CompetitorComparisonPage from './pages/seo/CompetitorComparisonPage';
+// International Market Landing Pages
+import CountryLandingPage from './pages/international/CountryLandingPage';
 
 import RecentBookingsNotification from './components/RecentBookingsNotification';
 import ExitIntentPopup from './components/ExitIntentPopup';
