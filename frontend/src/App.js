@@ -149,7 +149,8 @@ function App() {
     { path: "visitors/uae", element: <CountryLandingPage /> },
     // NEW: Global SEO Pages
     { path: "visitors", element: <VisitorsHub /> },
-    { path: "visitors/:countrySlug", element: <GlobalLanding /> },
+    // Catch-all for other countries
+    { path: "visitors/:countrySlug", element: <CountryLandingPage /> },
     { path: "auckland-airport-shuttle", element: <AucklandAirportShuttle /> },
     { path: "flight-tracker", element: <FlightTrackerPage /> },
     { path: "travel-guide", element: <TravelResourcesPage /> },
