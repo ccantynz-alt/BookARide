@@ -5259,6 +5259,221 @@ See you soon! 🙂"""
         return False
 
 
+@api_router.post("/shuttle/start/{date}/{time}")
+async def start_shuttle_run(date: str, time: str, current_admin: dict = Depends(get_current_admin)):
+    """
+    Start a shuttle run - calculates optimized route and schedules 
+    'arriving soon' SMS for each customer 5 minutes before their pickup.
+    
+    No driver GPS needed - uses estimated journey times from Google Maps.
+    """
+    try:
+        # Get all bookings for this departure
+        bookings = await db.shuttle_bookings.find({
+            "date": date,
+            "departureTime": time,
+            "status": {"$nin": ["deleted", "cancelled"]}
+        }, {"_id": 0}).to_list(100)
+        
+        if not bookings:
+            raise HTTPException(status_code=404, detail="No bookings for this departure")
+        
+        # Get pickup addresses in order
+        pickup_addresses = [b["pickupAddress"] for b in bookings]
+        destination = "Auckland International Airport, New Zealand"
+        
+        google_api_key = os.environ.get('GOOGLE_MAPS_API_KEY', '')
+        
+        schedule = []
+        cumulative_time = 0  # Minutes from start
+        
+        # Parse departure time
+        dep_hour, dep_min = map(int, time.split(':'))
+        from datetime import datetime, timedelta, timezone
+        
+        # Get NZ timezone
+        import pytz
+        nz_tz = pytz.timezone('Pacific/Auckland')
+        
+        # Build the departure datetime
+        year, month, day = map(int, date.split('-'))
+        departure_dt = nz_tz.localize(datetime(year, month, day, dep_hour, dep_min, 0))
+        
+        # Calculate ETAs using Google Maps Directions API with optimized route
+        if google_api_key and len(pickup_addresses) > 0:
+            # Get optimized route
+            url = "https://maps.googleapis.com/maps/api/directions/json"
+            
+            origin = pickup_addresses[0]
+            waypoints = "|".join(pickup_addresses[1:]) if len(pickup_addresses) > 1 else ""
+            
+            params = {
+                'origin': origin,
+                'destination': destination,
+                'waypoints': f"optimize:true|{waypoints}" if waypoints else "",
+                'key': google_api_key,
+                'departure_time': 'now'
+            }
+            
+            response = requests.get(url, params=params)
+            data = response.json()
+            
+            if data['status'] == 'OK' and data['routes']:
+                route = data['routes'][0]
+                legs = route['legs']
+                optimized_order = route.get('waypoint_order', list(range(len(pickup_addresses) - 1)))
+                
+                # Reorder bookings based on optimized route
+                if len(pickup_addresses) > 1:
+                    first_booking = bookings[0]
+                    reordered_bookings = [first_booking]
+                    for idx in optimized_order:
+                        reordered_bookings.append(bookings[idx + 1])
+                    bookings = reordered_bookings
+                
+                # Calculate notification times for each pickup
+                cumulative_minutes = 0
+                
+                for idx, booking in enumerate(bookings):
+                    # Time to reach this pickup from previous point
+                    if idx < len(legs):
+                        leg_duration = legs[idx]['duration']['value'] // 60  # Convert to minutes
+                    else:
+                        leg_duration = 0
+                    
+                    cumulative_minutes += leg_duration
+                    
+                    # Notify 5 minutes before arrival
+                    notify_minutes_before = max(0, cumulative_minutes - 5)
+                    notify_dt = departure_dt + timedelta(minutes=notify_minutes_before)
+                    
+                    # Schedule the notification
+                    schedule.append({
+                        'bookingId': booking['id'],
+                        'name': booking['name'],
+                        'phone': booking['phone'],
+                        'address': booking['pickupAddress'],
+                        'etaMinutes': cumulative_minutes,
+                        'notifyAt': notify_dt.strftime('%H:%M'),
+                        'notifyTimestamp': notify_dt.isoformat()
+                    })
+                    
+                    # Store schedule in database
+                    await db.shuttle_bookings.update_one(
+                        {"id": booking['id']},
+                        {"$set": {
+                            "scheduledNotifyAt": notify_dt.isoformat(),
+                            "etaFromStart": cumulative_minutes,
+                            "shuttleStarted": True,
+                            "shuttleStartedAt": datetime.now(timezone.utc).isoformat()
+                        }}
+                    )
+        else:
+            # Fallback: estimate 5 minutes between each pickup
+            for idx, booking in enumerate(bookings):
+                cumulative_minutes = idx * 5
+                notify_minutes = max(0, cumulative_minutes - 5) if idx > 0 else 0
+                notify_dt = departure_dt + timedelta(minutes=notify_minutes)
+                
+                schedule.append({
+                    'bookingId': booking['id'],
+                    'name': booking['name'],
+                    'etaMinutes': cumulative_minutes,
+                    'notifyAt': notify_dt.strftime('%H:%M')
+                })
+        
+        # Schedule the SMS notifications using APScheduler
+        from apscheduler.triggers.date import DateTrigger
+        
+        scheduled_count = 0
+        for item in schedule:
+            try:
+                notify_dt = datetime.fromisoformat(item.get('notifyTimestamp', ''))
+                
+                # Only schedule if notification time is in the future
+                now = datetime.now(nz_tz)
+                if notify_dt > now:
+                    # Get booking for SMS
+                    booking = await db.shuttle_bookings.find_one({"id": item['bookingId']}, {"_id": 0})
+                    if booking and not booking.get('arrivingSoonSent'):
+                        # Add job to scheduler
+                        scheduler.add_job(
+                            send_scheduled_arriving_sms,
+                            trigger=DateTrigger(run_date=notify_dt),
+                            args=[item['bookingId']],
+                            id=f"shuttle_sms_{item['bookingId']}",
+                            replace_existing=True
+                        )
+                        scheduled_count += 1
+                        logger.info(f"📅 Scheduled SMS for {item['name']} at {notify_dt.strftime('%H:%M')}")
+                else:
+                    # If notification time has passed, send immediately (they're first pickup)
+                    booking = await db.shuttle_bookings.find_one({"id": item['bookingId']}, {"_id": 0})
+                    if booking and not booking.get('arrivingSoonSent'):
+                        send_arriving_soon_sms(booking, 5, "Your driver")
+                        await db.shuttle_bookings.update_one(
+                            {"id": item['bookingId']},
+                            {"$set": {"arrivingSoonSent": True, "arrivingSoonSentAt": datetime.now(timezone.utc).isoformat()}}
+                        )
+                        scheduled_count += 1
+                        
+            except Exception as sched_error:
+                logger.error(f"Error scheduling SMS for {item.get('name')}: {sched_error}")
+        
+        # Mark shuttle as started in database
+        await db.shuttle_runs.update_one(
+            {"date": date, "departureTime": time},
+            {"$set": {
+                "date": date,
+                "departureTime": time,
+                "startedAt": datetime.now(timezone.utc).isoformat(),
+                "schedule": schedule,
+                "status": "in_progress"
+            }},
+            upsert=True
+        )
+        
+        logger.info(f"🚐 Shuttle started: {date} {time} - {scheduled_count} notifications scheduled")
+        
+        return {
+            "success": True,
+            "message": f"Shuttle started! {scheduled_count} 'Arriving Soon' SMS scheduled.",
+            "scheduledNotifications": scheduled_count,
+            "schedule": schedule
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error starting shuttle: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+async def send_scheduled_arriving_sms(booking_id: str):
+    """Called by scheduler to send arriving soon SMS"""
+    try:
+        booking = await db.shuttle_bookings.find_one({"id": booking_id}, {"_id": 0})
+        if not booking:
+            return
+        
+        if booking.get('arrivingSoonSent'):
+            logger.info(f"SMS already sent for {booking.get('name')} - skipping")
+            return
+        
+        # Send the SMS
+        success = send_arriving_soon_sms(booking, 5, "Your driver")
+        
+        if success:
+            # Mark as sent
+            await db.shuttle_bookings.update_one(
+                {"id": booking_id},
+                {"$set": {"arrivingSoonSent": True, "arrivingSoonSentAt": datetime.now(timezone.utc).isoformat()}}
+            )
+            logger.info(f"📱 Scheduled SMS sent to {booking.get('name')}")
+    except Exception as e:
+        logger.error(f"Error sending scheduled SMS: {str(e)}")
+
+
 # ==================== ENHANCED ADMIN FEATURES ====================
 
 # Production Database Sync Endpoint
