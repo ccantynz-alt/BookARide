@@ -4444,10 +4444,13 @@ async def twilio_sms_webhook(request: Request):
                 driver_name = driver.get('name', 'Unknown')
                 
                 # Find the most recent booking assigned to this driver that hasn't been acknowledged
+                # Match by driver ID OR driver name (some bookings use name instead of ID)
                 booking = await db.bookings.find_one({
                     "$or": [
                         {"assignedDriver": driver_id, "driverAcknowledged": {"$ne": True}},
-                        {"returnDriver": driver_id, "returnDriverAcknowledged": {"$ne": True}}
+                        {"returnDriver": driver_id, "returnDriverAcknowledged": {"$ne": True}},
+                        {"driver_name": driver_name, "driverAcknowledged": {"$ne": True}},
+                        {"return_driver_name": driver_name, "returnDriverAcknowledged": {"$ne": True}}
                     ]
                 }, {"_id": 0}, sort=[("createdAt", -1)])
                 
@@ -4456,10 +4459,10 @@ async def twilio_sms_webhook(request: Request):
                     update_fields = {"driverAcknowledgedAt": datetime.now(timezone.utc).isoformat()}
                     
                     # Determine which trip (outbound or return) was acknowledged
-                    if booking.get('assignedDriver') == driver_id and not booking.get('driverAcknowledged'):
+                    if (booking.get('assignedDriver') == driver_id or booking.get('driver_name') == driver_name) and not booking.get('driverAcknowledged'):
                         update_fields["driverAcknowledged"] = True
                         trip_type = "OUTBOUND"
-                    elif booking.get('returnDriver') == driver_id and not booking.get('returnDriverAcknowledged'):
+                    elif (booking.get('returnDriver') == driver_id or booking.get('return_driver_name') == driver_name) and not booking.get('returnDriverAcknowledged'):
                         update_fields["returnDriverAcknowledged"] = True
                         trip_type = "RETURN"
                     else:
