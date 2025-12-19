@@ -5,6 +5,8 @@ import { Plane, MapPin, Lightbulb } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Link } from 'react-router-dom';
 import PageBreadcrumb from '../components/PageBreadcrumb';
+import SEO from '../components/SEO';
+import { FAQSchema } from '../components/SchemaMarkup';
 
 const TravelResourcesPage = () => {
   return (
