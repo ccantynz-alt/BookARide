@@ -180,6 +180,17 @@ function App() {
     { path: "albany-to-airport", element: <AlbanyAirportPage /> },
     { path: "north-shore-airport-shuttle", element: <NorthShoreAirportPage /> },
     { path: "auckland-airport-to-city", element: <AirportToCityPage /> },
+    // Auckland CBD SEO Pages
+    { path: "auckland-cbd-airport", element: <CBDHubPage /> },
+    { path: "ponsonby-to-airport", element: <PonsonbyAirportPage /> },
+    { path: "parnell-to-airport", element: <ParnellAirportPage /> },
+    { path: "newmarket-to-airport", element: <NewmarketAirportPage /> },
+    { path: "remuera-to-airport", element: <RemueraAirportPage /> },
+    { path: "mt-eden-to-airport", element: <MtEdenAirportPage /> },
+    { path: "grey-lynn-to-airport", element: <GreyLynnAirportPage /> },
+    { path: "epsom-to-airport", element: <EpsomAirportPage /> },
+    { path: "mission-bay-to-airport", element: <MissionBayAirportPage /> },
+    { path: "viaduct-to-airport", element: <ViaductAirportPage /> },
     // Standard Pages
     { path: "services", element: <Services /> },
     { path: "about", element: <About /> },
