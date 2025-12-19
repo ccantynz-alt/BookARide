@@ -5460,8 +5460,15 @@ async def send_scheduled_arriving_sms(booking_id: str):
             logger.info(f"SMS already sent for {booking.get('name')} - skipping")
             return
         
+        # Get the driver name from the shuttle run
+        shuttle_run = await db.shuttle_runs.find_one({
+            "date": booking.get("date"),
+            "departureTime": booking.get("departureTime")
+        }, {"_id": 0})
+        driver_name = shuttle_run.get("driverName", "Your driver") if shuttle_run else "Your driver"
+        
         # Send the SMS
-        success = send_arriving_soon_sms(booking, 5, "Your driver")
+        success = send_arriving_soon_sms(booking, 5, driver_name)
         
         if success:
             # Mark as sent
@@ -5472,6 +5479,221 @@ async def send_scheduled_arriving_sms(booking_id: str):
             logger.info(f"📱 Scheduled SMS sent to {booking.get('name')}")
     except Exception as e:
         logger.error(f"Error sending scheduled SMS: {str(e)}")
+
+
+class AssignDriverRequest(BaseModel):
+    driverId: str
+    driverName: str
+    driverPhone: Optional[str] = None
+
+
+@api_router.post("/shuttle/assign-driver/{date}/{time}")
+async def assign_shuttle_driver(
+    date: str, 
+    time: str, 
+    request: AssignDriverRequest,
+    current_admin: dict = Depends(get_current_admin)
+):
+    """
+    Assign a driver to a shuttle departure.
+    This automatically:
+    1. Sends the optimized route to the driver's phone
+    2. Schedules 'arriving soon' SMS for all customers 5 mins before pickup
+    
+    One action - everything automated!
+    """
+    try:
+        # Get all bookings for this departure
+        bookings = await db.shuttle_bookings.find({
+            "date": date,
+            "departureTime": time,
+            "status": {"$nin": ["deleted", "cancelled"]}
+        }, {"_id": 0}).to_list(100)
+        
+        if not bookings:
+            raise HTTPException(status_code=404, detail="No bookings for this departure")
+        
+        # Get driver info
+        driver = await db.drivers.find_one({"id": request.driverId}, {"_id": 0})
+        driver_phone = request.driverPhone or (driver.get("phone") if driver else None)
+        driver_name = request.driverName
+        
+        # ===== STEP 1: Calculate optimized route and send to driver =====
+        pickup_addresses = [b["pickupAddress"] for b in bookings]
+        destination = "Auckland International Airport, New Zealand"
+        google_api_key = os.environ.get('GOOGLE_MAPS_API_KEY', '')
+        
+        # Build Google Maps URL with optimized waypoints
+        if len(pickup_addresses) > 1:
+            waypoints_encoded = "|".join(pickup_addresses[1:])
+            maps_url = f"https://www.google.com/maps/dir/?api=1&origin={requests.utils.quote(pickup_addresses[0])}&destination={requests.utils.quote(destination)}&waypoints={requests.utils.quote(waypoints_encoded)}&travelmode=driving"
+        else:
+            maps_url = f"https://www.google.com/maps/dir/?api=1&origin={requests.utils.quote(pickup_addresses[0])}&destination={requests.utils.quote(destination)}&travelmode=driving"
+        
+        # Send route to driver via SMS
+        if driver_phone:
+            twilio_sid = os.environ.get('TWILIO_ACCOUNT_SID')
+            twilio_token = os.environ.get('TWILIO_AUTH_TOKEN')
+            twilio_phone = os.environ.get('TWILIO_PHONE_NUMBER')
+            
+            if twilio_sid and twilio_token and twilio_phone:
+                pickup_summary = "\n".join([
+                    f"• {b['name']} ({b['passengers']}pax)"
+                    for b in bookings[:5]
+                ])
+                
+                route_message = f"""🚐 SHUTTLE ASSIGNED - {date} {time}
+
+{len(bookings)} pickups, {sum(b['passengers'] for b in bookings)} passengers
+
+{pickup_summary}
+
+📍 OPEN ROUTE IN MAPS:
+{maps_url}
+
+Customers will be auto-notified 5 mins before their pickup. Drive safe! 🙂"""
+                
+                try:
+                    twilio_client = Client(twilio_sid, twilio_token)
+                    formatted_driver_phone = format_nz_phone(driver_phone)
+                    twilio_client.messages.create(
+                        body=route_message,
+                        from_=twilio_phone,
+                        to=formatted_driver_phone
+                    )
+                    logger.info(f"📱 Route sent to driver {driver_name} at {formatted_driver_phone}")
+                except Exception as sms_error:
+                    logger.error(f"Error sending route to driver: {sms_error}")
+        
+        # ===== STEP 2: Schedule customer notifications =====
+        schedule = []
+        scheduled_count = 0
+        
+        # Parse departure time
+        dep_hour, dep_min = map(int, time.split(':'))
+        import pytz
+        nz_tz = pytz.timezone('Pacific/Auckland')
+        year, month, day = map(int, date.split('-'))
+        departure_dt = nz_tz.localize(datetime(year, month, day, dep_hour, dep_min, 0))
+        
+        # Calculate ETAs using Google Maps
+        if google_api_key and len(pickup_addresses) > 0:
+            url = "https://maps.googleapis.com/maps/api/directions/json"
+            origin = pickup_addresses[0]
+            waypoints = "|".join(pickup_addresses[1:]) if len(pickup_addresses) > 1 else ""
+            
+            params = {
+                'origin': origin,
+                'destination': destination,
+                'waypoints': f"optimize:true|{waypoints}" if waypoints else "",
+                'key': google_api_key,
+                'departure_time': 'now'
+            }
+            
+            response = requests.get(url, params=params)
+            data = response.json()
+            
+            if data['status'] == 'OK' and data['routes']:
+                route = data['routes'][0]
+                legs = route['legs']
+                optimized_order = route.get('waypoint_order', list(range(len(pickup_addresses) - 1)))
+                
+                # Reorder bookings based on optimized route
+                if len(pickup_addresses) > 1:
+                    first_booking = bookings[0]
+                    reordered_bookings = [first_booking]
+                    for idx in optimized_order:
+                        reordered_bookings.append(bookings[idx + 1])
+                    bookings = reordered_bookings
+                
+                # Calculate and schedule notifications
+                cumulative_minutes = 0
+                from apscheduler.triggers.date import DateTrigger
+                
+                for idx, booking in enumerate(bookings):
+                    if idx < len(legs):
+                        leg_duration = legs[idx]['duration']['value'] // 60
+                    else:
+                        leg_duration = 0
+                    
+                    cumulative_minutes += leg_duration
+                    notify_minutes_before = max(0, cumulative_minutes - 5)
+                    notify_dt = departure_dt + timedelta(minutes=notify_minutes_before)
+                    
+                    schedule.append({
+                        'bookingId': booking['id'],
+                        'name': booking['name'],
+                        'etaMinutes': cumulative_minutes,
+                        'notifyAt': notify_dt.strftime('%H:%M')
+                    })
+                    
+                    # Update booking with schedule info
+                    await db.shuttle_bookings.update_one(
+                        {"id": booking['id']},
+                        {"$set": {
+                            "scheduledNotifyAt": notify_dt.isoformat(),
+                            "etaFromStart": cumulative_minutes,
+                            "assignedDriver": driver_name,
+                            "assignedDriverId": request.driverId
+                        }}
+                    )
+                    
+                    # Schedule the SMS
+                    now = datetime.now(nz_tz)
+                    if notify_dt > now:
+                        if not booking.get('arrivingSoonSent'):
+                            scheduler.add_job(
+                                send_scheduled_arriving_sms,
+                                trigger=DateTrigger(run_date=notify_dt),
+                                args=[booking['id']],
+                                id=f"shuttle_sms_{booking['id']}",
+                                replace_existing=True
+                            )
+                            scheduled_count += 1
+                            logger.info(f"📅 Scheduled SMS for {booking['name']} at {notify_dt.strftime('%H:%M')}")
+                    else:
+                        # First pickup - send immediately
+                        if not booking.get('arrivingSoonSent'):
+                            send_arriving_soon_sms(booking, 5, driver_name)
+                            await db.shuttle_bookings.update_one(
+                                {"id": booking['id']},
+                                {"$set": {"arrivingSoonSent": True}}
+                            )
+                            scheduled_count += 1
+        
+        # ===== STEP 3: Save shuttle run info =====
+        await db.shuttle_runs.update_one(
+            {"date": date, "departureTime": time},
+            {"$set": {
+                "date": date,
+                "departureTime": time,
+                "driverId": request.driverId,
+                "driverName": driver_name,
+                "driverPhone": driver_phone,
+                "assignedAt": datetime.now(timezone.utc).isoformat(),
+                "schedule": schedule,
+                "status": "assigned",
+                "mapsUrl": maps_url
+            }},
+            upsert=True
+        )
+        
+        logger.info(f"🚐 Driver {driver_name} assigned to shuttle {date} {time} - {scheduled_count} SMS scheduled")
+        
+        return {
+            "success": True,
+            "message": f"Driver assigned! Route sent to {driver_name}, {scheduled_count} customer notifications scheduled.",
+            "scheduledNotifications": scheduled_count,
+            "driverName": driver_name,
+            "mapsUrl": maps_url,
+            "schedule": schedule
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error assigning driver: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ==================== ENHANCED ADMIN FEATURES ====================
