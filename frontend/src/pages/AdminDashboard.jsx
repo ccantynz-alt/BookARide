@@ -413,6 +413,47 @@ export const AdminDashboard = () => {
     }
   };
 
+  // Fetch shuttle data for admin
+  const fetchShuttleData = async (date = shuttleDate) => {
+    setLoadingShuttle(true);
+    try {
+      const response = await axios.get(`${API}/shuttle/departures?date=${date}`, getAuthHeaders());
+      setShuttleData(response.data || {});
+    } catch (error) {
+      console.error('Error fetching shuttle data:', error);
+      // Don't show error for 401 (might not have shuttle feature)
+    } finally {
+      setLoadingShuttle(false);
+    }
+  };
+
+  // Get optimized shuttle route
+  const getShuttleRoute = async (date, time) => {
+    try {
+      const response = await axios.get(`${API}/shuttle/route/${date}/${time}`, getAuthHeaders());
+      if (response.data.googleMapsUrl) {
+        window.open(response.data.googleMapsUrl, '_blank');
+        toast.success('Route opened in Google Maps');
+      }
+      return response.data;
+    } catch (error) {
+      console.error('Error getting shuttle route:', error);
+      toast.error('Failed to get route');
+    }
+  };
+
+  // Capture all shuttle payments for a departure
+  const captureShuttlePayments = async (date, time) => {
+    try {
+      const response = await axios.post(`${API}/shuttle/capture-all/${date}/${time}`, {}, getAuthHeaders());
+      toast.success(`Captured payments for ${response.data.totalPassengers} passengers at $${response.data.finalPricePerPerson}/person`);
+      fetchShuttleData(date);
+    } catch (error) {
+      console.error('Error capturing shuttle payments:', error);
+      toast.error('Failed to capture payments');
+    }
+  };
+
   const checkXeroStatus = async () => {
     try {
       const response = await axios.get(`${API}/xero/status`, getAuthHeaders());
