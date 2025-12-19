@@ -54,6 +54,14 @@ export const Contact = () => {
         keywords="book airport shuttle, contact airport shuttle, airport shuttle booking, airport shuttle Auckland contact, shuttle service booking, airport transfer contact, book shuttle online"
         canonical="/contact"
       />
+      <LocalBusinessSchema />
+      <FAQSchema faqs={[
+        { question: "How do I book an airport shuttle?", answer: "You can book online at bookaride.co.nz in under 2 minutes, call us, or send an enquiry through this contact form. We provide instant quotes for all Auckland, Hamilton, and Whangarei transfers." },
+        { question: "What are your operating hours?", answer: "We operate 24/7, 365 days a year. Whether you have an early morning flight at 4am or a late-night arrival, we're available to get you there safely." },
+        { question: "How quickly will you respond to my enquiry?", answer: "We aim to respond to all enquiries within 1 hour during business hours and within 4 hours outside business hours. For urgent bookings, please call us directly." },
+        { question: "Can I modify my booking after confirmation?", answer: "Yes! You can modify your booking up to 24 hours before pickup at no charge. Contact us via phone, email, or through your booking confirmation link." }
+      ]}
+      />
       <PageBreadcrumb items={[{ label: 'Contact' }]} />
       {/* Hero Section with Professional Image */}
       <section className="pt-32 pb-20 bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
