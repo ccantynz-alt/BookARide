@@ -4448,6 +4448,28 @@ async def twilio_sms_webhook(request: Request):
 
 # Production Database Sync Endpoint
 PRODUCTION_API_URL = "https://bookaride.co.nz/api"
+SYNC_SECRET_KEY = os.environ.get("SYNC_SECRET_KEY", "bookaride-sync-2024-secret")
+
+# Endpoint to EXPORT data (called by other environments to fetch data)
+@api_router.get("/sync/export")
+async def export_data_for_sync(secret: str = ""):
+    """Export bookings and drivers for sync - requires secret key"""
+    if secret != SYNC_SECRET_KEY:
+        raise HTTPException(status_code=403, detail="Invalid sync key")
+    
+    try:
+        bookings = await db.bookings.find({}, {"_id": 0}).to_list(10000)
+        drivers = await db.drivers.find({}, {"_id": 0}).to_list(1000)
+        
+        return {
+            "bookings": bookings,
+            "drivers": drivers,
+            "exported_at": datetime.now(timezone.utc).isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Export failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @api_router.post("/admin/sync")
 async def sync_from_production():
@@ -4461,44 +4483,40 @@ async def sync_from_production():
             "errors": []
         }
         
-        # Sync Bookings
+        # Call the production sync export endpoint with secret key
         try:
             logger.info("Starting sync from production...")
-            response = requests.get(f"{PRODUCTION_API_URL}/bookings", timeout=30)
+            response = requests.get(
+                f"{PRODUCTION_API_URL}/sync/export",
+                params={"secret": SYNC_SECRET_KEY},
+                timeout=60
+            )
+            
             if response.status_code == 200:
-                production_bookings = response.json()
-                logger.info(f"Fetched {len(production_bookings)} bookings from production")
+                data = response.json()
+                production_bookings = data.get("bookings", [])
+                production_drivers = data.get("drivers", [])
                 
+                logger.info(f"Fetched {len(production_bookings)} bookings and {len(production_drivers)} drivers from production")
+                
+                # Sync Bookings
                 for booking in production_bookings:
                     try:
-                        # Check if booking exists locally
                         existing = await db.bookings.find_one({"id": booking.get("id")}, {"_id": 0})
                         
                         if existing:
-                            # Update existing booking
                             await db.bookings.update_one(
                                 {"id": booking.get("id")},
                                 {"$set": booking}
                             )
                             sync_results["bookings_updated"] += 1
                         else:
-                            # Insert new booking
                             await db.bookings.insert_one(booking)
                             sync_results["bookings_synced"] += 1
                     except Exception as e:
                         sync_results["errors"].append(f"Booking {booking.get('id', 'unknown')}: {str(e)}")
-            else:
-                sync_results["errors"].append(f"Failed to fetch bookings: {response.status_code}")
-        except Exception as e:
-            sync_results["errors"].append(f"Bookings sync error: {str(e)}")
-        
-        # Sync Drivers
-        try:
-            response = requests.get(f"{PRODUCTION_API_URL}/drivers", timeout=30)
-            if response.status_code == 200:
-                production_drivers = response.json()
-                logger.info(f"Fetched {len(production_drivers)} drivers from production")
                 
+                # Sync Drivers
                 for driver in production_drivers:
                     try:
                         existing = await db.drivers.find_one({"id": driver.get("id")}, {"_id": 0})
@@ -4514,15 +4532,23 @@ async def sync_from_production():
                             sync_results["drivers_synced"] += 1
                     except Exception as e:
                         sync_results["errors"].append(f"Driver {driver.get('id', 'unknown')}: {str(e)}")
+            
+            elif response.status_code == 403:
+                sync_results["errors"].append("Sync not yet deployed to production. Please deploy first, then sync will work.")
             else:
-                sync_results["errors"].append(f"Failed to fetch drivers: {response.status_code}")
+                sync_results["errors"].append(f"Failed to fetch from production: {response.status_code}")
+                
+        except requests.exceptions.Timeout:
+            sync_results["errors"].append("Connection to production timed out")
         except Exception as e:
-            sync_results["errors"].append(f"Drivers sync error: {str(e)}")
+            sync_results["errors"].append(f"Sync error: {str(e)}")
         
         logger.info(f"Sync completed: {sync_results}")
         
+        success = len(sync_results["errors"]) == 0 or sync_results["bookings_synced"] > 0 or sync_results["bookings_updated"] > 0
+        
         return {
-            "success": True,
+            "success": success,
             "message": f"Synced {sync_results['bookings_synced']} new bookings, updated {sync_results['bookings_updated']}. Synced {sync_results['drivers_synced']} new drivers, updated {sync_results['drivers_updated']}.",
             "details": sync_results
         }
