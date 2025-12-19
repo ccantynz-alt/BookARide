@@ -52,7 +52,7 @@ export const internationalMarkets = [
     whyChooseUs: 'Fellow Commonwealth travelers! We offer the friendly, professional service Canadians expect with transparent pricing and no surprises.',
     popularDestinations: [
       { name: 'Auckland CBD', desc: 'Hotels & City Centre' },
-      { name: 'Milford Sound', desc: 'Stunning fiordland' },
+      { name: 'South Auckland', desc: 'Manukau, Botany' },
       { name: 'West Auckland', desc: 'Henderson, Titirangi' },
       { name: 'Auckland CBD', desc: 'Vibrant city centre' }
     ],
@@ -85,7 +85,7 @@ export const internationalMarkets = [
     popularDestinations: [
       { name: 'Auckland CBD', desc: 'Hotels & City Centre' },
       { name: 'North Shore', desc: 'Beaches & Suburbs' },
-      { name: 'Bay of Islands', desc: 'Historic Waitangi' },
+      { name: 'Airport Hotels', desc: 'Near the airport' },
       { name: 'Auckland CBD', desc: 'Waterfront city' }
     ],
     faqs: [
@@ -114,7 +114,7 @@ export const internationalMarkets = [
     popularDestinations: [
       { name: 'Auckland CBD', desc: 'Hotels & Stadtzentrum' },
       { name: 'North Shore', desc: 'Strände & Vororte' },
-      { name: 'Rotorua', desc: 'Geothermale Wunder' },
+      { name: 'Hibiscus Coast', desc: 'Geothermale Wunder' },
       { name: 'Auckland', desc: 'Stadt der Segel' }
     ],
     faqs: [
@@ -141,9 +141,9 @@ export const internationalMarkets = [
     paymentNote: 'EUR Cards Accepted',
     whyChooseUs: 'Nous comprenons l\'importance du confort et du service de qualité. Détendez-vous et profitez du paysage.',
     popularDestinations: [
-      { name: 'Hobbiton', desc: 'Le Seigneur des Anneaux' },
-      { name: 'Queenstown', desc: 'Paradis de l\'aventure' },
-      { name: 'Rotorua', desc: 'Merveilles géothermiques' },
+      { name: 'Auckland CBD', desc: 'Le Seigneur des Anneaux' },
+      { name: 'North Shore', desc: 'Paradis de l\'aventure' },
+      { name: 'Hibiscus Coast', desc: 'Merveilles géothermiques' },
       { name: 'Auckland', desc: 'Cité des voiles' }
     ],
     faqs: [
@@ -257,9 +257,9 @@ export const internationalMarkets = [
     paymentNote: 'SGD Cards Accepted',
     whyChooseUs: 'Singaporeans appreciate efficiency and quality - exactly what we deliver. Premium service, no fuss.',
     popularDestinations: [
-      { name: 'Hobbiton', desc: 'LOTR film location' },
-      { name: 'Queenstown', desc: 'Adventure capital' },
-      { name: 'Rotorua', desc: 'Geothermal springs' },
+      { name: 'Auckland CBD', desc: 'City centre hotels' },
+      { name: 'North Shore', desc: 'Beaches & dining' },
+      { name: 'Hibiscus Coast', desc: 'Orewa, Silverdale' },
       { name: 'Auckland CBD', desc: 'City centre' }
     ],
     faqs: [
@@ -287,8 +287,8 @@ export const internationalMarkets = [
     paymentNote: 'AUD Cards Accepted',
     whyChooseUs: 'Quick service for our neighbors across the Tasman. No fuss, no drama - just reliable transfers.',
     popularDestinations: [
-      { name: 'Hobbiton', desc: 'Better than Uluru for hobbits' },
-      { name: 'Queenstown', desc: 'Even more extreme than the Gold Coast' },
+      { name: 'Auckland CBD', desc: 'Better than Uluru for hobbits' },
+      { name: 'North Shore', desc: 'Even more extreme than the Gold Coast' },
       { name: 'West Auckland', desc: 'Henderson, Titirangi' },
       { name: 'Auckland CBD', desc: 'Almost as good as Sydney' }
     ],
@@ -317,9 +317,9 @@ export const internationalMarkets = [
     paymentNote: 'Indian Cards Accepted',
     whyChooseUs: 'We welcome the growing number of Indian visitors to NZ with warm hospitality and excellent service.',
     popularDestinations: [
-      { name: 'Hobbiton', desc: 'Lord of the Rings location' },
-      { name: 'Rotorua', desc: 'Geothermal hot springs' },
-      { name: 'Queenstown', desc: 'Adventure activities' },
+      { name: 'Auckland CBD', desc: 'Lord of the Rings location' },
+      { name: 'Hibiscus Coast', desc: 'Geothermal hot springs' },
+      { name: 'North Shore', desc: 'Adventure activities' },
       { name: 'Auckland', desc: 'Vibrant city life' }
     ],
     faqs: [
@@ -345,10 +345,10 @@ export const internationalMarkets = [
     paymentNote: 'AED Cards Accepted',
     whyChooseUs: 'We understand that UAE travelers expect premium quality. Our service delivers luxury and reliability.',
     popularDestinations: [
-      { name: 'Queenstown', desc: 'Luxury lodges & adventure' },
+      { name: 'North Shore', desc: 'Luxury lodges & adventure' },
       { name: 'Auckland', desc: 'Waterfront dining' },
-      { name: 'Rotorua', desc: 'Natural hot springs' },
-      { name: 'Hobbiton', desc: 'Movie magic' }
+      { name: 'Hibiscus Coast', desc: 'Natural hot springs' },
+      { name: 'Auckland CBD', desc: 'Movie magic' }
     ],
     faqs: [
       { q: 'Do you offer luxury vehicle options?', a: 'Yes! We have premium vehicles available for discerning travelers. Request a luxury upgrade when booking.' },
