@@ -254,6 +254,7 @@ function App() {
     { path: "contact", element: <Contact /> },
     { path: "book-now", element: <BookNow /> },
     { path: "shared-shuttle", element: <SharedShuttle /> },
+    { path: "shuttle-driver", element: <ShuttleDriverPortal /> },
     { path: "hobbiton-transfers", element: <HobbitonTransfers /> },
     { path: "cruise-transfers", element: <CruiseTransfers /> },
     { path: "suburbs", element: <SuburbsDirectory /> },
