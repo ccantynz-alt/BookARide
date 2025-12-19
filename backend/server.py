@@ -4450,6 +4450,59 @@ async def twilio_sms_webhook(request: Request):
 PRODUCTION_API_URL = "https://bookaride.co.nz/api"
 SYNC_SECRET_KEY = os.environ.get("SYNC_SECRET_KEY", "bookaride-sync-2024-secret")
 
+# Background auto-sync function
+async def auto_sync_from_production():
+    """Automatically sync data from production every 5 minutes"""
+    try:
+        logger.info("🔄 Auto-sync: Starting sync from production...")
+        
+        response = requests.get(
+            f"{PRODUCTION_API_URL}/sync/export",
+            params={"secret": SYNC_SECRET_KEY},
+            timeout=60
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            bookings = data.get("bookings", [])
+            drivers = data.get("drivers", [])
+            
+            bookings_synced = 0
+            drivers_synced = 0
+            
+            for booking in bookings:
+                try:
+                    await db.bookings.update_one(
+                        {"id": booking.get("id")},
+                        {"$set": booking},
+                        upsert=True
+                    )
+                    bookings_synced += 1
+                except Exception:
+                    pass
+            
+            for driver in drivers:
+                try:
+                    await db.drivers.update_one(
+                        {"id": driver.get("id")},
+                        {"$set": driver},
+                        upsert=True
+                    )
+                    drivers_synced += 1
+                except Exception:
+                    pass
+            
+            logger.info(f"🔄 Auto-sync complete: {bookings_synced} bookings, {drivers_synced} drivers")
+        elif response.status_code == 404:
+            logger.debug("Auto-sync: Export endpoint not deployed yet")
+        else:
+            logger.warning(f"Auto-sync failed: {response.status_code}")
+            
+    except requests.exceptions.Timeout:
+        logger.warning("Auto-sync: Connection timeout")
+    except Exception as e:
+        logger.error(f"Auto-sync error: {str(e)}")
+
 # Endpoint to EXPORT data (called by other environments to fetch data)
 @api_router.get("/sync/export")
 async def export_data_for_sync(secret: str = ""):
