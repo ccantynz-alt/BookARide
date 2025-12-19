@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-12-17T22:07:27.253010",
+  "timestamp": "2025-12-19T02:54:23.890972",
   "success": false,
   "results": [
     {
@@ -7,207 +7,249 @@
       "status": "\u2705 PASS",
       "message": "API is healthy: {'status': 'healthy', 'service': 'bookaride-api'}",
       "details": {},
-      "timestamp": "2025-12-17T22:07:01.067934"
+      "timestamp": "2025-12-19T02:53:56.763618"
     },
     {
       "test": "Admin Login",
       "status": "\u2705 PASS",
       "message": "Admin authentication successful",
       "details": {},
-      "timestamp": "2025-12-17T22:07:01.311603"
+      "timestamp": "2025-12-19T02:53:57.000256"
+    },
+    {
+      "test": "24-Hour Rule: Within 24h",
+      "status": "\u2705 PASS",
+      "message": "Booking within 24h correctly set to 'pending_approval': 6a78f17e-f5b6-4965-869f-0c1e8f474b5c",
+      "details": {},
+      "timestamp": "2025-12-19T02:53:58.728911"
+    },
+    {
+      "test": "24-Hour Rule: Beyond 24h",
+      "status": "\u2705 PASS",
+      "message": "Booking beyond 24h correctly set to 'pending': 24a57400-467b-4acc-a32c-a7806fa0243e",
+      "details": {},
+      "timestamp": "2025-12-19T02:54:00.318302"
+    },
+    {
+      "test": "Admin Dashboard: Pending Approval Count",
+      "status": "\u2705 PASS",
+      "message": "Found 2 bookings with status 'pending_approval'",
+      "details": {},
+      "timestamp": "2025-12-19T02:54:00.333667"
+    },
+    {
+      "test": "Admin Dashboard: Alert Banner Data",
+      "status": "\u2705 PASS",
+      "message": "Admin dashboard should show alert banner with 2 booking(s) needing approval",
+      "details": {},
+      "timestamp": "2025-12-19T02:54:00.333701"
+    },
+    {
+      "test": "SEO Pages: Backend Support",
+      "status": "\u2705 PASS",
+      "message": "SEO routes accessible: ['/auckland-cbd-airport', '/ponsonby-to-airport', '/parnell-to-airport', '/newmarket-to-airport']",
+      "details": {},
+      "timestamp": "2025-12-19T02:54:00.377201"
     },
     {
       "test": "Pricing: Orewa to Airport (ratePerKm)",
       "status": "\u2705 PASS",
-      "message": "Correct pricing with ratePerKm: $150.18 for 60.8km at $2.47/km (expected ~$2.47/km)",
+      "message": "Correct pricing with ratePerKm: $151.29 for 61.25km at $2.47/km (expected ~$2.47/km)",
       "details": {},
-      "timestamp": "2025-12-17T22:07:01.500170"
+      "timestamp": "2025-12-19T02:54:00.582532"
     },
     {
       "test": "Pricing: Short Trip (ratePerKm)",
       "status": "\u2705 PASS",
       "message": "Correct short trip pricing with ratePerKm: $110.52 for 9.21km at $12.0/km (expected $12.0/km)",
       "details": {},
-      "timestamp": "2025-12-17T22:07:01.671212"
+      "timestamp": "2025-12-19T02:54:00.764312"
     },
     {
       "test": "Booking Update: Return Trip Sync (Set)",
       "status": "\u2705 PASS",
       "message": "bookReturn auto-synced to true when returnDate set to 2025-12-25",
       "details": {},
-      "timestamp": "2025-12-17T22:07:01.715517"
+      "timestamp": "2025-12-19T02:54:00.799504"
     },
     {
       "test": "Booking Update: Return Trip Sync (Clear)",
       "status": "\u2705 PASS",
       "message": "bookReturn auto-synced to false when returnDate cleared",
       "details": {},
-      "timestamp": "2025-12-17T22:07:01.784455"
+      "timestamp": "2025-12-19T02:54:00.821070"
     },
     {
       "test": "Email Generation: Manual Booking",
       "status": "\u2705 PASS",
-      "message": "Manual booking created: 75d02ff8-8a3b-4cad-890d-57ea92fa961b",
+      "message": "Manual booking created: c3c5aa00-edb6-403d-b73d-4f86e958e2d5",
       "details": {},
-      "timestamp": "2025-12-17T22:07:04.195929"
+      "timestamp": "2025-12-19T02:54:03.080318"
     },
     {
       "test": "Email Generation: Return Trips",
       "status": "\u2705 PASS",
       "message": "Confirmation email resent successfully: Confirmation email and SMS resent successfully!",
       "details": {},
-      "timestamp": "2025-12-17T22:07:04.599538"
+      "timestamp": "2025-12-19T02:54:03.547066"
     },
     {
       "test": "Flight Tracker",
       "status": "\u2705 PASS",
-      "message": "Flight tracking working: EK448, Status: In Flight, Live: True",
+      "message": "Flight tracking working: EK448, Status: Scheduled, Live: True",
       "details": {},
-      "timestamp": "2025-12-17T22:07:04.950041"
+      "timestamp": "2025-12-19T02:54:03.810605"
     },
     {
       "test": "Driver Assignment Flow",
       "status": "\u274c FAIL",
       "message": "Unexpected assignment response: Driver John Smith assigned to OUTBOUND trip successfully",
       "details": {},
-      "timestamp": "2025-12-17T22:07:07.104778"
+      "timestamp": "2025-12-19T02:54:06.014408"
     },
     {
       "test": "AI Email Auto-Responder",
       "status": "\u2705 PASS",
       "message": "AI auto-responder working: AI response sent",
       "details": {},
-      "timestamp": "2025-12-17T22:07:18.266385"
+      "timestamp": "2025-12-19T02:54:15.104092"
     },
     {
       "test": "Payment Checkout Creation",
       "status": "\u2705 PASS",
-      "message": "Checkout session created successfully: cs_live_a1CBLQpnWse7Ix9U7xf2EQ61a0LpkqrlfP5ikjm5e0QcmM1q8FHwIZ25jN",
+      "message": "Checkout session created successfully: cs_live_a11Q0HWRWzLwI4f04NptRy76bdW97zquvSUkNl19WTfgDXNHVIKjMsMtQJ",
       "details": {},
-      "timestamp": "2025-12-17T22:07:20.297520"
+      "timestamp": "2025-12-19T02:54:17.333002"
     },
     {
       "test": "Duplicate Reminder Prevention: Create Booking",
       "status": "\u2705 PASS",
-      "message": "Test booking created: 6dbe7e09-8ced-4eb3-8c87-c2f441549200",
+      "message": "Test booking created: 4c920107-a3f3-471a-b52c-64560de54971",
       "details": {},
-      "timestamp": "2025-12-17T22:07:20.885034"
+      "timestamp": "2025-12-19T02:54:17.974833"
     },
     {
       "test": "Duplicate Reminder Prevention: Initial Status",
       "status": "\u2705 PASS",
-      "message": "Initial pending reminders: 1",
+      "message": "Initial pending reminders: 0",
       "details": {},
-      "timestamp": "2025-12-17T22:07:20.896320"
+      "timestamp": "2025-12-19T02:54:17.986681"
     },
     {
       "test": "Duplicate Reminder Prevention: First Trigger",
       "status": "\u2705 PASS",
       "message": "First trigger: 0 sent, 0 skipped",
       "details": {},
-      "timestamp": "2025-12-17T22:07:21.305462"
+      "timestamp": "2025-12-19T02:54:18.009751"
     },
     {
       "test": "Duplicate Reminder Prevention: Second Trigger",
       "status": "\u2705 PASS",
       "message": "Second trigger: 0 sent, 0 skipped",
       "details": {},
-      "timestamp": "2025-12-17T22:07:21.305497"
+      "timestamp": "2025-12-19T02:54:18.009783"
     },
     {
       "test": "Duplicate Reminder Prevention: Final Status",
       "status": "\u2705 PASS",
       "message": "Final status: 1 sent, 0 pending",
       "details": {},
-      "timestamp": "2025-12-17T22:07:23.316565"
+      "timestamp": "2025-12-19T02:54:20.019550"
     },
     {
       "test": "Duplicate Reminder Prevention: Third Trigger",
-      "status": "\u274c FAIL",
-      "message": "Third trigger should have skipped all: 0 sent, 0 skipped",
+      "status": "\u2705 PASS",
+      "message": "Third trigger correctly sent 0 reminders: 0 sent, 0 skipped (already processed)",
       "details": {},
-      "timestamp": "2025-12-17T22:07:23.329719"
+      "timestamp": "2025-12-19T02:54:20.028733"
+    },
+    {
+      "test": "Duplicate Reminder Prevention: Validation",
+      "status": "\u274c FAIL",
+      "message": "\u274c FAILED: 0 reminders sent (expected 1), duplicate prevention not working",
+      "details": {},
+      "timestamp": "2025-12-19T02:54:20.028755"
     },
     {
       "test": "Direct Mailgun Test",
       "status": "\u2705 PASS",
       "message": "Email sent successfully: Queued. Thank you.",
       "details": {},
-      "timestamp": "2025-12-17T22:07:23.544662"
+      "timestamp": "2025-12-19T02:54:20.254233"
     },
     {
       "test": "Price Calculation",
       "status": "\u2705 PASS",
       "message": "Price calculated: $136.45 for 26.29km",
       "details": {},
-      "timestamp": "2025-12-17T22:07:23.732412"
+      "timestamp": "2025-12-19T02:54:20.484237"
     },
     {
       "test": "Create Booking (EN)",
       "status": "\u2705 PASS",
-      "message": "Booking created: 04d165f9-2d1d-4826-90c1-c364772c5271",
+      "message": "Booking created: d98f969f-ecf4-4c0d-b78b-eeadae473812",
       "details": {},
-      "timestamp": "2025-12-17T22:07:25.327444"
+      "timestamp": "2025-12-19T02:54:22.066508"
     },
     {
       "test": "Get Bookings",
       "status": "\u2705 PASS",
-      "message": "Retrieved 66 bookings",
+      "message": "Retrieved 91 bookings",
       "details": {},
-      "timestamp": "2025-12-17T22:07:25.343766"
+      "timestamp": "2025-12-19T02:54:22.080692"
     },
     {
       "test": "Create Booking (EN)",
       "status": "\u2705 PASS",
-      "message": "Booking created: c3717bfa-9535-4795-8c26-26d1354444b3",
+      "message": "Booking created: 6f96f745-9bfc-4e16-b5dd-71035b4cc9eb",
       "details": {},
-      "timestamp": "2025-12-17T22:07:27.014961"
+      "timestamp": "2025-12-19T02:54:23.713335"
     },
     {
       "test": "Stripe Webhook Test",
       "status": "\u274c FAIL",
       "message": "Webhook failed with status 400",
       "details": "{\"detail\":\"Missing Stripe signature\"}",
-      "timestamp": "2025-12-17T22:07:27.026324"
+      "timestamp": "2025-12-19T02:54:23.761125"
     },
     {
       "test": "Google OAuth Endpoint",
       "status": "\u2705 PASS",
       "message": "Google OAuth endpoint exists and validates sessions correctly",
       "details": {},
-      "timestamp": "2025-12-17T22:07:27.168099"
+      "timestamp": "2025-12-19T02:54:23.857999"
     },
     {
       "test": "Password Reset Request",
       "status": "\u2705 PASS",
       "message": "Password reset request successful: If this email is registered, you will receive a password reset link.",
       "details": {},
-      "timestamp": "2025-12-17T22:07:27.177667"
+      "timestamp": "2025-12-19T02:54:23.869375"
     },
     {
       "test": "Password Reset Validate",
       "status": "\u2705 PASS",
       "message": "Password reset validation endpoint working correctly",
       "details": {},
-      "timestamp": "2025-12-17T22:07:27.189809"
+      "timestamp": "2025-12-19T02:54:23.876027"
     },
     {
       "test": "Password Reset Confirm",
       "status": "\u2705 PASS",
       "message": "Password reset confirm endpoint working correctly",
       "details": {},
-      "timestamp": "2025-12-17T22:07:27.242533"
+      "timestamp": "2025-12-19T02:54:23.882550"
     },
     {
       "test": "Admin Auth Me Endpoint",
       "status": "\u2705 PASS",
       "message": "Admin auth/me endpoint exists (status: 200)",
       "details": {},
-      "timestamp": "2025-12-17T22:07:27.252794"
+      "timestamp": "2025-12-19T02:54:23.890778"
     }
   ],
   "booking_ids": [
-    "04d165f9-2d1d-4826-90c1-c364772c5271",
-    "c3717bfa-9535-4795-8c26-26d1354444b3"
+    "d98f969f-ecf4-4c0d-b78b-eeadae473812",
+    "6f96f745-9bfc-4e16-b5dd-71035b4cc9eb"
   ]
 }
