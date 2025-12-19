@@ -74,6 +74,17 @@ const DriveWithUs = () => {
 
   return (
     <div className="min-h-screen bg-white">
+      <SEO
+        title="Drive With BookaRide | Airport Transfer Driver Jobs Auckland"
+        description="Join Auckland's premium airport transfer service. Flexible hours, great earnings, professional customers. Now recruiting drivers in Auckland, North Shore, and Hibiscus Coast."
+        keywords="driver jobs Auckland, airport transfer driver, shuttle driver jobs NZ, BookaRide driver, flexible driving jobs, earn money driving Auckland"
+        canonical="/drive-with-us"
+      />
+      <FAQSchema faqs={[
+        { question: "How much can I earn as a BookaRide driver?", answer: "Drivers typically earn $30-50+ per hour depending on trips. Airport runs pay premium rates and you keep more of the fare than rideshare apps." },
+        { question: "What do I need to become a BookaRide driver?", answer: "You need a valid NZ driver's license, a reliable vehicle (2015 or newer preferred), and a passion for customer service. We handle bookings - you focus on driving." },
+        { question: "Is this better than Uber or rideshare?", answer: "Yes! BookaRide offers pre-booked trips (no waiting for rides), premium fares, professional customers, and flexible scheduling. Many drivers switch from rideshare for better earnings." }
+      ]} />
       {/* Hero Section */}
       <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden bg-white">
         {/* Gold decorative elements */}
