@@ -142,6 +142,28 @@ async def get_current_admin(credentials: HTTPAuthorizationCredentials = Depends(
         raise credentials_exception
     return admin
 
+
+async def get_current_driver(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Authenticate driver from JWT token"""
+    credentials_exception = HTTPException(
+        status_code=401,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        token = credentials.credentials
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        driver_id: str = payload.get("driver_id")
+        if driver_id is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+    
+    driver = await db.drivers.find_one({"id": driver_id}, {"_id": 0})
+    if driver is None:
+        raise credentials_exception
+    return driver
+
 # Define Models
 class StatusCheck(BaseModel):
     model_config = ConfigDict(extra="ignore")  # Ignore MongoDB's _id field
