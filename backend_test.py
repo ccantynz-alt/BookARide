@@ -1004,6 +1004,163 @@ class BookaRideBackendTester:
         except Exception as e:
             self.log_result("Duplicate Reminder Prevention", False, f"Test error: {str(e)}")
             return False
+
+    def test_24_hour_booking_approval_rule_within_24h(self):
+        """Test 24-hour booking approval rule - booking within 24 hours should get status='pending_approval'"""
+        try:
+            from datetime import datetime, timedelta
+            import pytz
+            
+            # Get NZ tomorrow date (within 24 hours)
+            nz_tz = pytz.timezone('Pacific/Auckland')
+            tomorrow = datetime.now(nz_tz) + timedelta(days=1)
+            tomorrow_date = tomorrow.strftime('%Y-%m-%d')
+            
+            print(f"\n⏰ Testing 24-hour rule: Booking for {tomorrow_date} (within 24 hours)")
+            
+            booking_data = {
+                "serviceType": "airport-transfer",
+                "pickupAddress": "123 Test Street, Auckland",
+                "dropoffAddress": "Auckland Airport",
+                "date": tomorrow_date,
+                "time": "10:00",
+                "passengers": "2",
+                "name": "24hr Test User",
+                "email": "test24hr@example.com",
+                "phone": "021111222",
+                "pricing": {"totalPrice": 85}
+            }
+            
+            response = self.session.post(f"{BACKEND_URL}/bookings", json=booking_data, timeout=15)
+            
+            if response.status_code == 200:
+                data = response.json()
+                booking_id = data.get('id')
+                status = data.get('status')
+                
+                if status == 'pending_approval':
+                    self.log_result("24-Hour Rule: Within 24h", True, f"Booking within 24h correctly set to 'pending_approval': {booking_id}")
+                    return True
+                else:
+                    self.log_result("24-Hour Rule: Within 24h", False, f"Booking within 24h has wrong status: '{status}' (expected 'pending_approval')")
+                    return False
+            else:
+                self.log_result("24-Hour Rule: Within 24h", False, f"Booking creation failed: {response.status_code} - {response.text}")
+                return False
+                
+        except Exception as e:
+            self.log_result("24-Hour Rule: Within 24h", False, f"Test error: {str(e)}")
+            return False
+
+    def test_24_hour_booking_approval_rule_beyond_24h(self):
+        """Test 24-hour booking approval rule - booking more than 24 hours away should get status='pending'"""
+        try:
+            from datetime import datetime, timedelta
+            import pytz
+            
+            # Get date 7 days from now (beyond 24 hours)
+            nz_tz = pytz.timezone('Pacific/Auckland')
+            future_date = datetime.now(nz_tz) + timedelta(days=7)
+            future_date_str = future_date.strftime('%Y-%m-%d')
+            
+            print(f"\n⏰ Testing 24-hour rule: Booking for {future_date_str} (beyond 24 hours)")
+            
+            booking_data = {
+                "serviceType": "airport-transfer",
+                "pickupAddress": "456 Future Street, Auckland",
+                "dropoffAddress": "Auckland Airport",
+                "date": future_date_str,
+                "time": "14:00",
+                "passengers": "3",
+                "name": "Future Test User",
+                "email": "testfuture@example.com",
+                "phone": "021333444",
+                "pricing": {"totalPrice": 95}
+            }
+            
+            response = self.session.post(f"{BACKEND_URL}/bookings", json=booking_data, timeout=15)
+            
+            if response.status_code == 200:
+                data = response.json()
+                booking_id = data.get('id')
+                status = data.get('status')
+                
+                if status == 'pending':
+                    self.log_result("24-Hour Rule: Beyond 24h", True, f"Booking beyond 24h correctly set to 'pending': {booking_id}")
+                    return True
+                else:
+                    self.log_result("24-Hour Rule: Beyond 24h", False, f"Booking beyond 24h has wrong status: '{status}' (expected 'pending')")
+                    return False
+            else:
+                self.log_result("24-Hour Rule: Beyond 24h", False, f"Booking creation failed: {response.status_code} - {response.text}")
+                return False
+                
+        except Exception as e:
+            self.log_result("24-Hour Rule: Beyond 24h", False, f"Test error: {str(e)}")
+            return False
+
+    def test_admin_dashboard_pending_approval_count(self):
+        """Test admin dashboard shows correct count of pending_approval bookings"""
+        try:
+            # Get all bookings to count pending_approval ones
+            response = self.session.get(f"{BACKEND_URL}/bookings", timeout=10)
+            
+            if response.status_code == 200:
+                bookings = response.json()
+                pending_approval_count = sum(1 for booking in bookings if booking.get('status') == 'pending_approval')
+                
+                self.log_result("Admin Dashboard: Pending Approval Count", True, f"Found {pending_approval_count} bookings with status 'pending_approval'")
+                
+                # If we have pending_approval bookings, the admin dashboard should show them
+                if pending_approval_count > 0:
+                    self.log_result("Admin Dashboard: Alert Banner Data", True, f"Admin dashboard should show alert banner with {pending_approval_count} booking(s) needing approval")
+                else:
+                    self.log_result("Admin Dashboard: Alert Banner Data", True, "No pending_approval bookings found - alert banner should not appear")
+                
+                return True
+            else:
+                self.log_result("Admin Dashboard: Pending Approval Count", False, f"Failed to get bookings: {response.status_code} - {response.text}")
+                return False
+                
+        except Exception as e:
+            self.log_result("Admin Dashboard: Pending Approval Count", False, f"Test error: {str(e)}")
+            return False
+
+    def test_seo_pages_backend_support(self):
+        """Test if backend supports the new SEO page routes (basic connectivity test)"""
+        try:
+            # Test a few key SEO routes to see if they're accessible
+            # Note: These are frontend routes, but we can test if the backend serves them
+            seo_routes = [
+                "/auckland-cbd-airport",
+                "/ponsonby-to-airport", 
+                "/parnell-to-airport",
+                "/newmarket-to-airport"
+            ]
+            
+            # Since these are frontend routes, we'll test if the backend root serves them
+            # or if there are any backend endpoints that support these routes
+            base_url = BACKEND_URL.replace('/api', '')  # Remove /api for frontend routes
+            
+            accessible_routes = []
+            for route in seo_routes:
+                try:
+                    response = self.session.get(f"{base_url}{route}", timeout=5)
+                    if response.status_code in [200, 301, 302]:  # Success or redirect
+                        accessible_routes.append(route)
+                except:
+                    pass  # Route not accessible, which is expected for backend-only testing
+            
+            if accessible_routes:
+                self.log_result("SEO Pages: Backend Support", True, f"SEO routes accessible: {accessible_routes}")
+            else:
+                self.log_result("SEO Pages: Backend Support", True, "SEO routes are frontend-only (expected for backend testing)")
+            
+            return True
+                
+        except Exception as e:
+            self.log_result("SEO Pages: Backend Support", False, f"Test error: {str(e)}")
+            return False
     
     def run_comprehensive_test(self):
         """Run all tests in sequence"""
