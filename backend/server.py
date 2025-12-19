@@ -4446,6 +4446,92 @@ async def twilio_sms_webhook(request: Request):
 
 # ==================== ENHANCED ADMIN FEATURES ====================
 
+# Production Database Sync Endpoint
+PRODUCTION_API_URL = "https://bookaride.co.nz/api"
+
+@api_router.post("/admin/sync")
+async def sync_from_production():
+    """Sync bookings and drivers from production database via deployed API"""
+    try:
+        sync_results = {
+            "bookings_synced": 0,
+            "bookings_updated": 0,
+            "drivers_synced": 0,
+            "drivers_updated": 0,
+            "errors": []
+        }
+        
+        # Sync Bookings
+        try:
+            logger.info("Starting sync from production...")
+            response = requests.get(f"{PRODUCTION_API_URL}/bookings", timeout=30)
+            if response.status_code == 200:
+                production_bookings = response.json()
+                logger.info(f"Fetched {len(production_bookings)} bookings from production")
+                
+                for booking in production_bookings:
+                    try:
+                        # Check if booking exists locally
+                        existing = await db.bookings.find_one({"id": booking.get("id")}, {"_id": 0})
+                        
+                        if existing:
+                            # Update existing booking
+                            await db.bookings.update_one(
+                                {"id": booking.get("id")},
+                                {"$set": booking}
+                            )
+                            sync_results["bookings_updated"] += 1
+                        else:
+                            # Insert new booking
+                            await db.bookings.insert_one(booking)
+                            sync_results["bookings_synced"] += 1
+                    except Exception as e:
+                        sync_results["errors"].append(f"Booking {booking.get('id', 'unknown')}: {str(e)}")
+            else:
+                sync_results["errors"].append(f"Failed to fetch bookings: {response.status_code}")
+        except Exception as e:
+            sync_results["errors"].append(f"Bookings sync error: {str(e)}")
+        
+        # Sync Drivers
+        try:
+            response = requests.get(f"{PRODUCTION_API_URL}/drivers", timeout=30)
+            if response.status_code == 200:
+                production_drivers = response.json()
+                logger.info(f"Fetched {len(production_drivers)} drivers from production")
+                
+                for driver in production_drivers:
+                    try:
+                        existing = await db.drivers.find_one({"id": driver.get("id")}, {"_id": 0})
+                        
+                        if existing:
+                            await db.drivers.update_one(
+                                {"id": driver.get("id")},
+                                {"$set": driver}
+                            )
+                            sync_results["drivers_updated"] += 1
+                        else:
+                            await db.drivers.insert_one(driver)
+                            sync_results["drivers_synced"] += 1
+                    except Exception as e:
+                        sync_results["errors"].append(f"Driver {driver.get('id', 'unknown')}: {str(e)}")
+            else:
+                sync_results["errors"].append(f"Failed to fetch drivers: {response.status_code}")
+        except Exception as e:
+            sync_results["errors"].append(f"Drivers sync error: {str(e)}")
+        
+        logger.info(f"Sync completed: {sync_results}")
+        
+        return {
+            "success": True,
+            "message": f"Synced {sync_results['bookings_synced']} new bookings, updated {sync_results['bookings_updated']}. Synced {sync_results['drivers_synced']} new drivers, updated {sync_results['drivers_updated']}.",
+            "details": sync_results
+        }
+        
+    except Exception as e:
+        logger.error(f"Sync failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Sync failed: {str(e)}")
+
+
 # Analytics Endpoints
 @api_router.get("/analytics/stats")
 async def get_analytics_stats(start_date: Optional[str] = None, end_date: Optional[str] = None):
