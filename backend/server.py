@@ -7452,6 +7452,15 @@ async def startup_event():
         replace_existing=True
     )
     
+    # Also run sync immediately on startup
+    scheduler.add_job(
+        auto_sync_from_production,
+        'date',  # Run once immediately
+        id='startup_sync',
+        name='Startup sync from production',
+        replace_existing=True
+    )
+    
     scheduler.start()
     logger.info("🚀 Scheduler started with all jobs:")
     logger.info("   ✓ Reminder: 8:00 AM NZ daily (primary)")
