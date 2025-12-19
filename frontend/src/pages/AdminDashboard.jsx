@@ -1300,6 +1300,15 @@ export const AdminDashboard = () => {
                 <Facebook className="w-4 h-4 mr-2" />
                 Facebook Strategy
               </Button>
+              <Button 
+                onClick={handleSync} 
+                disabled={syncing}
+                variant="outline" 
+                className="border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white"
+              >
+                <RefreshCw className={`w-4 h-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
+                {syncing ? 'Syncing...' : 'Sync'}
+              </Button>
               {xeroConnected ? (
                 <Button variant="outline" className="border-green-500 text-green-500 hover:bg-green-500 hover:text-white">
                   <DollarSign className="w-4 h-4 mr-2" />
