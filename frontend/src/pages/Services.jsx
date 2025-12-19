@@ -6,6 +6,7 @@ import { Card, CardContent } from '../components/ui/card';
 import { services, fleet } from '../mock';
 import SEO from '../components/SEO';
 import PageBreadcrumb from '../components/PageBreadcrumb';
+import { FAQSchema, ServiceSchema } from '../components/SchemaMarkup';
 
 const iconMap = {
   plane: Plane,
