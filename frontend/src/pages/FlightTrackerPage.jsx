@@ -4,6 +4,8 @@ import { Plane, Clock, Bell, MapPin } from 'lucide-react';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
 import PageBreadcrumb from '../components/PageBreadcrumb';
+import SEO from '../components/SEO';
+import { FAQSchema } from '../components/SchemaMarkup';
 
 const FlightTrackerPage = () => {
   const [flightNumber, setFlightNumber] = useState('');
