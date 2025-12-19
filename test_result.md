@@ -355,3 +355,27 @@ agent_communication:
 - Full frontend testing of all 10 SEO routes
 - Test approval workflow (approve/reject booking)
 
+
+## Driver Acknowledgment Feature (Session 2 Continued)
+
+### Implementation Complete:
+1. **SMS Message Updated** - Drivers now receive: "⚠️ REPLY YES to confirm you received this job"
+2. **Twilio Webhook Created** - `/api/webhook/twilio/sms` endpoint to receive driver replies
+3. **Acknowledgment Tracking** - Fields `driverAcknowledged` and `returnDriverAcknowledged` added to bookings
+4. **Admin Dashboard Updates**:
+   - New "Driver" column in booking table showing assignment + acknowledgment status
+   - Green checkmark ✅ when driver confirmed
+   - Orange pulsing clock ⏱️ when awaiting confirmation
+   - Detailed acknowledgment status in booking details modal
+5. **Notifications** - Admin receives email when driver acknowledges job
+
+### Test Results:
+- Twilio webhook endpoint: ✅ Working (returns valid TwiML)
+- SMS parsing: ✅ Correctly parses "YES" responses
+- Driver lookup: ✅ Searches by multiple phone formats
+- Admin dashboard: ✅ Driver column visible with status indicators
+
+### Important Setup Note:
+For the webhook to work in production, configure Twilio to send incoming SMS to:
+`https://bookaride.co.nz/api/webhook/twilio/sms`
+
