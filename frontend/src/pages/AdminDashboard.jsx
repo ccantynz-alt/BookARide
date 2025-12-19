@@ -1808,47 +1808,28 @@ export const AdminDashboard = () => {
                               size="sm"
                               variant="outline"
                               onClick={() => openEditBookingModal(booking)}
-                              className="hover:bg-blue-100 hover:text-blue-600"
+                              className="hover:bg-blue-100 hover:text-blue-600 h-7 w-7 p-0"
                               title="Edit Booking"
                             >
-                              <Edit2 className="w-4 h-4" />
+                              <Edit2 className="w-3 h-3" />
                             </Button>
                             <Button
                               size="sm"
                               variant="outline"
                               onClick={() => openEmailModal(booking)}
-                              className="hover:bg-gold hover:text-black"
+                              className="hover:bg-gold hover:text-black h-7 w-7 p-0 hidden md:flex"
                               title="Send Email"
                             >
-                              <Mail className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleManualCalendarSync(booking.id)}
-                              className="hover:bg-green-100 hover:text-green-600"
-                              title="Sync to Google Calendar"
-                              disabled={calendarLoading}
-                            >
-                              <Calendar className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleResendConfirmation(booking.id)}
-                              className="hover:bg-purple-100 hover:text-purple-600"
-                              title="Resend Confirmation (Email & SMS)"
-                            >
-                              <RefreshCw className="w-4 h-4" />
+                              <Mail className="w-3 h-3" />
                             </Button>
                             <Button
                               size="sm"
                               variant="outline"
                               onClick={() => handleDeleteBooking(booking.id, booking.name, true)}
-                              className="hover:bg-red-100 hover:text-red-600"
-                              title="Cancel Booking (notify customer)"
+                              className="hover:bg-red-100 hover:text-red-600 h-7 w-7 p-0"
+                              title="Cancel Booking"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Trash2 className="w-3 h-3" />
                             </Button>
                           </div>
                         </td>
@@ -1865,9 +1846,10 @@ export const AdminDashboard = () => {
           {/* Shuttle Service Tab */}
           <TabsContent value="shuttle" className="space-y-6">
             <Card className="border-yellow-200 bg-yellow-50">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-6">
+              <CardContent className="p-4 md:p-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                   <div className="flex items-center gap-3">
+
                     <Bus className="w-8 h-8 text-yellow-600" />
                     <div>
                       <h3 className="text-xl font-bold text-gray-800">Shared Shuttle Service</h3>
