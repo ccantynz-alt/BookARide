@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { companyInfo } from '../mock';
 import SEO from '../components/SEO';
 import PageBreadcrumb from '../components/PageBreadcrumb';
+import { FAQSchema, LocalBusinessSchema } from '../components/SchemaMarkup';
 
 export const Contact = () => {
   const [formData, setFormData] = useState({
