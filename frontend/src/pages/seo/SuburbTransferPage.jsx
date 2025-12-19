@@ -10,11 +10,11 @@ import { FAQSchema, ServiceSchema, BreadcrumbSchema } from '../../components/SEO
 import { aucklandSuburbs, commonFAQs } from '../../data/aucklandSuburbs';
 
 const SuburbTransferPage = () => {
-  const { suburbSlug } = useParams();
+  const location = window.location.pathname;
   
-  // Extract suburb from URL pattern (e.g., "devonport-to-auckland-airport" -> "devonport")
-  // The route pattern captures everything before "-to-auckland-airport"
-  const suburb = suburbSlug || '';
+  // Extract suburb from URL pattern (e.g., "/devonport-to-auckland-airport" -> "devonport")
+  const pathMatch = location.match(/\/([a-z-]+)-to-auckland-airport/i);
+  const suburb = pathMatch ? pathMatch[1] : '';
   
   // Find suburb data
   const suburbData = aucklandSuburbs.find(s => s.slug === suburb) || {
