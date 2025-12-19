@@ -1443,38 +1443,41 @@ export const AdminDashboard = () => {
           if (val === 'deleted') fetchDeletedBookings();
           if (val === 'shuttle') fetchShuttleData();
         }} className="w-full">
-          <TabsList className="grid w-full grid-cols-8 mb-8">
-            <TabsTrigger value="bookings" className="flex items-center gap-2">
-              <BookOpen className="w-4 h-4" />
-              Bookings
+          <TabsList className="flex flex-wrap w-full gap-1 mb-4 md:mb-8 bg-transparent">
+            <TabsTrigger value="bookings" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4">
+              <BookOpen className="w-3 h-3 md:w-4 md:h-4" />
+              <span className="hidden sm:inline">Bookings</span>
+              <span className="sm:hidden">Book</span>
             </TabsTrigger>
-            <TabsTrigger value="shuttle" className="flex items-center gap-2 text-yellow-600">
-              <Bus className="w-4 h-4" />
-              Shuttle
+            <TabsTrigger value="shuttle" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 text-yellow-600">
+              <Bus className="w-3 h-3 md:w-4 md:h-4" />
+              <span>Shuttle</span>
             </TabsTrigger>
-            <TabsTrigger value="deleted" className="flex items-center gap-2 text-red-600">
-              <Trash2 className="w-4 h-4" />
-              Deleted {deletedBookings.length > 0 && `(${deletedBookings.length})`}
+            <TabsTrigger value="deleted" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 text-red-600">
+              <Trash2 className="w-3 h-3 md:w-4 md:h-4" />
+              <span className="hidden md:inline">Deleted</span>
+              <span className="md:hidden">Del</span>
+              {deletedBookings.length > 0 && <span className="text-[10px]">({deletedBookings.length})</span>}
             </TabsTrigger>
-            <TabsTrigger value="analytics" className="flex items-center gap-2">
-              <BarChart3 className="w-4 h-4" />
-              Analytics
+            <TabsTrigger value="analytics" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 hidden lg:flex">
+              <BarChart3 className="w-3 h-3 md:w-4 md:h-4" />
+              <span>Analytics</span>
             </TabsTrigger>
-            <TabsTrigger value="customers" className="flex items-center gap-2">
-              <Users className="w-4 h-4" />
-              Customers
+            <TabsTrigger value="customers" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 hidden lg:flex">
+              <Users className="w-3 h-3 md:w-4 md:h-4" />
+              <span>Customers</span>
             </TabsTrigger>
-            <TabsTrigger value="drivers" className="flex items-center gap-2">
-              <Users className="w-4 h-4" />
-              Drivers
+            <TabsTrigger value="drivers" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4">
+              <Users className="w-3 h-3 md:w-4 md:h-4" />
+              <span>Drivers</span>
             </TabsTrigger>
-            <TabsTrigger value="applications" className="flex items-center gap-2">
-              <FileText className="w-4 h-4" />
-              Applications
+            <TabsTrigger value="applications" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 hidden xl:flex">
+              <FileText className="w-3 h-3 md:w-4 md:h-4" />
+              <span>Apps</span>
             </TabsTrigger>
-            <TabsTrigger value="marketing" className="flex items-center gap-2">
-              <Globe className="w-4 h-4" />
-              Marketing
+            <TabsTrigger value="marketing" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 hidden xl:flex">
+              <Globe className="w-3 h-3 md:w-4 md:h-4" />
+              <span>Marketing</span>
             </TabsTrigger>
           </TabsList>
 
