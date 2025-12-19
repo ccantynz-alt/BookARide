@@ -204,6 +204,56 @@ class Booking(BookingCreate):
     class Config:
         extra = 'allow'  # Allow extra fields from database (importedFrom, notificationsSent, etc.)
 
+def is_booking_within_24_hours(date_str: str, time_str: str) -> bool:
+    """Check if the booking pickup datetime is within 24 hours from now"""
+    try:
+        nz_tz = pytz.timezone('Pacific/Auckland')
+        now_nz = datetime.now(nz_tz)
+        
+        # Parse the booking date and time
+        # Try multiple date formats
+        booking_date = None
+        for fmt in ['%Y-%m-%d', '%d/%m/%Y', '%d-%m-%Y']:
+            try:
+                booking_date = datetime.strptime(date_str, fmt).date()
+                break
+            except ValueError:
+                continue
+        
+        if not booking_date:
+            logger.warning(f"Could not parse booking date: {date_str}")
+            return False
+        
+        # Parse time (e.g., "14:30" or "2:30 PM")
+        booking_time = None
+        for fmt in ['%H:%M', '%I:%M %p', '%I:%M%p']:
+            try:
+                booking_time = datetime.strptime(time_str.strip(), fmt).time()
+                break
+            except ValueError:
+                continue
+        
+        if not booking_time:
+            logger.warning(f"Could not parse booking time: {time_str}")
+            return False
+        
+        # Combine date and time and localize to NZ timezone
+        booking_datetime = datetime.combine(booking_date, booking_time)
+        booking_datetime_nz = nz_tz.localize(booking_datetime)
+        
+        # Check if within 24 hours
+        time_until_pickup = booking_datetime_nz - now_nz
+        is_within_24h = time_until_pickup.total_seconds() < 24 * 60 * 60
+        
+        if is_within_24h:
+            logger.info(f"Booking is within 24 hours: pickup at {booking_datetime_nz}, now is {now_nz}")
+        
+        return is_within_24h
+    except Exception as e:
+        logger.error(f"Error checking 24-hour window: {str(e)}")
+        return False
+
+
 async def get_next_reference_number():
     """Get the next sequential reference number for bookings, starting from 10"""
     # Use a counter collection to maintain sequential numbers
