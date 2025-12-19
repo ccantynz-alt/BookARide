@@ -194,8 +194,8 @@ function App() {
     { path: "epsom-to-airport", element: <EpsomAirportPage /> },
     { path: "mission-bay-to-airport", element: <MissionBayAirportPage /> },
     { path: "viaduct-to-airport", element: <ViaductAirportPage /> },
-    // Dynamic Programmatic SEO Pages - 50+ Auckland Suburbs
-    { path: ":suburb-to-auckland-airport", element: <SuburbTransferPage /> },
+    // Dynamic Programmatic SEO Pages - 50+ Auckland Suburbs (pattern: suburb-to-auckland-airport)
+    { path: ":suburbSlug-to-auckland-airport", element: <SuburbTransferPage /> },
     // Competitor Comparison Pages
     { path: "bookaride-vs-:competitor", element: <CompetitorComparisonPage /> },
     // Standard Pages
