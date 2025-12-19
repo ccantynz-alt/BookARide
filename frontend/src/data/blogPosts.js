@@ -162,7 +162,7 @@ With so many options for getting to and from Auckland Airport, how do you choose
 **Best for:** Solo budget travelers
 
 - Shared shuttle service
-- From $33 to CBD
+- Check SuperShuttle website for current rates
 - Multiple stops en route
 - Well-established brand
 
