@@ -1176,6 +1176,17 @@ class BookaRideBackendTester:
             print("❌ Admin login failed - stopping tests")
             return False
         
+        # NEW REVIEW REQUEST FEATURES TESTING
+        print("\n🚨 Testing 24-Hour Booking Approval Rule (NEW FEATURE)...")
+        self.test_24_hour_booking_approval_rule_within_24h()
+        self.test_24_hour_booking_approval_rule_beyond_24h()
+        
+        print("\n📊 Testing Admin Dashboard Pending Approval Count...")
+        self.test_admin_dashboard_pending_approval_count()
+        
+        print("\n🌐 Testing SEO Pages Backend Support...")
+        self.test_seo_pages_backend_support()
+        
         # BARBARA WALSH BUG FIX TESTS (REVIEW REQUEST)
         print("\n💰 Testing Pricing Calculation with ratePerKm (Barbara Walsh Bug Fix)...")
         self.test_pricing_calculation_orewa_to_airport_with_rate_per_km()
