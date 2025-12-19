@@ -1228,6 +1228,7 @@ export const AdminDashboard = () => {
       case 'confirmed': return 'text-green-600 bg-green-100';
       case 'completed': return 'text-blue-600 bg-blue-100';
       case 'cancelled': return 'text-red-600 bg-red-100';
+      case 'pending_approval': return 'text-orange-600 bg-orange-100 animate-pulse';
       default: return 'text-yellow-600 bg-yellow-100';
     }
   };
@@ -1235,6 +1236,7 @@ export const AdminDashboard = () => {
   const stats = {
     total: bookings.length,
     pending: bookings.filter(b => b.status === 'pending').length,
+    pendingApproval: bookings.filter(b => b.status === 'pending_approval').length,
     confirmed: bookings.filter(b => b.status === 'confirmed').length,
     completed: bookings.filter(b => b.status === 'completed').length,
     cancelled: bookings.filter(b => b.status === 'cancelled').length,
