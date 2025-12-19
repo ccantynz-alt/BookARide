@@ -1638,6 +1638,27 @@ Thank you for booking with us!"""
         return False
 
 
+def send_customer_confirmation(booking: dict):
+    """Send confirmation based on customer's notification preference"""
+    preference = booking.get('notificationPreference', 'both')
+    results = {'email': False, 'sms': False}
+    
+    if preference in ['email', 'both']:
+        results['email'] = send_booking_confirmation_email(booking)
+        logger.info(f"Email confirmation {'sent' if results['email'] else 'failed'} for booking {get_booking_reference(booking)}")
+    
+    if preference in ['sms', 'both']:
+        results['sms'] = send_booking_confirmation_sms(booking)
+        logger.info(f"SMS confirmation {'sent' if results['sms'] else 'failed'} for booking {get_booking_reference(booking)}")
+    
+    if preference == 'email':
+        logger.info(f"Customer prefers EMAIL only - skipping SMS for booking {get_booking_reference(booking)}")
+    elif preference == 'sms':
+        logger.info(f"Customer prefers SMS only - skipping email for booking {get_booking_reference(booking)}")
+    
+    return results
+
+
 def send_reminder_email(booking: dict):
     """Send day-before reminder email to customer"""
     try:
