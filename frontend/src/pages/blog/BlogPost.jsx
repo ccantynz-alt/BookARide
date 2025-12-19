@@ -39,7 +39,7 @@ const blogContent = {
       <p>The SkyBus runs every 10-15 minutes between the airport and the city center. It stops at key locations including Britomart and SkyCity.</p>
       
       <h3>4. Rental Car</h3>
-      <p><strong>Cost:</strong> From $40/day</p>
+      <p><strong>Cost:</strong> Varies by provider and vehicle</p>
       <p><strong>Best for:</strong> Extended stays, exploring beyond Auckland</p>
       <p>Multiple rental car companies operate at Auckland Airport. However, parking in the CBD can be expensive.</p>
       
