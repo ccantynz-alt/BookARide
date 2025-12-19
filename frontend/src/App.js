@@ -95,6 +95,8 @@ import SuburbTransferPage from './pages/seo/SuburbTransferPage';
 import CompetitorComparisonPage from './pages/seo/CompetitorComparisonPage';
 // International Market Landing Pages
 import CountryLandingPage from './pages/international/CountryLandingPage';
+// Shared Shuttle Service
+import SharedShuttle from './pages/SharedShuttle';
 
 import RecentBookingsNotification from './components/RecentBookingsNotification';
 import ExitIntentPopup from './components/ExitIntentPopup';
