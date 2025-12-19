@@ -1994,9 +1994,8 @@ export const AdminDashboard = () => {
                               onClick={() => captureShuttlePayments(shuttleDate, time)}
                             >
                               <DollarSign className="w-3 h-3 mr-1" />
-                                Charge All
-                              </Button>
-                            </div>
+                              Charge All
+                            </Button>
                           </div>
                         </>
                       ) : (
