@@ -10,7 +10,6 @@ export const routeData = {
     region: 'Hibiscus Coast',
     distance: '45 km',
     duration: '40-50 minutes',
-    priceFrom: 85,
     highlights: [
       'Door-to-door private service',
       'No sharing with strangers',
@@ -51,7 +50,6 @@ export const routeData = {
     region: 'Hibiscus Coast',
     distance: '50 km',
     duration: '45-55 minutes',
-    priceFrom: 95,
     highlights: [
       'Direct to Orewa beach area',
       'Private vehicle - no sharing',
@@ -87,7 +85,6 @@ export const routeData = {
     region: 'Auckland',
     distance: '25-50 km',
     duration: '30-55 minutes',
-    priceFrom: 65,
     highlights: [
       'All North Shore suburbs covered',
       'Private or shared options',
@@ -124,7 +121,6 @@ export const routeData = {
     region: 'Auckland',
     distance: '40-55 km',
     duration: '40-60 minutes',
-    priceFrom: 85,
     highlights: [
       'All Hibiscus Coast suburbs',
       'Multi-stop pickups available',
@@ -160,7 +156,6 @@ export const routeData = {
     region: 'Hibiscus Coast',
     distance: '42 km',
     duration: '35-45 minutes',
-    priceFrom: 80,
     highlights: [
       'Direct to Silverdale',
       'Millwater & Stillwater included',
@@ -192,7 +187,6 @@ export const routeData = {
     region: 'Hibiscus Coast',
     distance: '50 km',
     duration: '50-60 minutes',
-    priceFrom: 90,
     highlights: [
       'Direct to Gulf Harbour marina',
       'Ferry connection timing',
@@ -224,7 +218,6 @@ export const routeData = {
     region: 'North Shore',
     distance: '35 km',
     duration: '30-40 minutes',
-    priceFrom: 70,
     highlights: [
       'Albany business district',
       'Massey University transfers',
@@ -256,7 +249,6 @@ export const routeData = {
     region: 'North Shore',
     distance: '28 km',
     duration: '25-35 minutes',
-    priceFrom: 65,
     highlights: [
       'Takapuna beach access',
       'Shore City mall transfers',
@@ -288,7 +280,6 @@ export const routeData = {
     region: 'North Shore',
     distance: '30 km',
     duration: '30-40 minutes',
-    priceFrom: 65,
     highlights: [
       'Historic village transfers',
       'Ferry terminal timing',
@@ -320,7 +311,6 @@ export const routeData = {
     region: 'Rodney',
     distance: '65 km',
     duration: '55-70 minutes',
-    priceFrom: 120,
     highlights: [
       'Wine country specialist',
       'Winery tour connections',
@@ -353,7 +343,6 @@ export const routeData = {
     region: 'Auckland Central',
     distance: '21 km',
     duration: '25-35 minutes',
-    priceFrom: 55,
     highlights: [
       'All CBD hotels covered',
       'Sky Tower & SkyCity',
@@ -391,7 +380,6 @@ export const routeData = {
     region: 'Auckland CBD',
     distance: '21 km',
     duration: '25-35 minutes',
-    priceFrom: 55,
     highlights: [
       'Direct to cruise ship',
       'Ship departure timing',
