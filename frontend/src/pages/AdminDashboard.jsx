@@ -89,6 +89,10 @@ export const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [deletedBookings, setDeletedBookings] = useState([]);
+  // Shuttle state
+  const [shuttleDate, setShuttleDate] = useState(new Date().toISOString().split('T')[0]);
+  const [shuttleData, setShuttleData] = useState({});
+  const [loadingShuttle, setLoadingShuttle] = useState(false);
   const [loadingDeleted, setLoadingDeleted] = useState(false);
   const [xeroConnected, setXeroConnected] = useState(false);
   const [xeroOrg, setXeroOrg] = useState('');
