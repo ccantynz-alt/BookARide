@@ -90,6 +90,9 @@ import GreyLynnAirportPage from './pages/seo/auckland-cbd/GreyLynnAirportPage';
 import EpsomAirportPage from './pages/seo/auckland-cbd/EpsomAirportPage';
 import MissionBayAirportPage from './pages/seo/auckland-cbd/MissionBayAirportPage';
 import ViaductAirportPage from './pages/seo/auckland-cbd/ViaductAirportPage';
+// Programmatic SEO Pages
+import SuburbTransferPage from './pages/seo/SuburbTransferPage';
+import CompetitorComparisonPage from './pages/seo/CompetitorComparisonPage';
 
 import RecentBookingsNotification from './components/RecentBookingsNotification';
 import ExitIntentPopup from './components/ExitIntentPopup';
