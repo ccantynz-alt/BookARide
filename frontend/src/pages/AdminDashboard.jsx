@@ -1755,7 +1755,7 @@ export const AdminDashboard = () => {
                               </SelectValue>
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="pending_approval">🚨 Needs Approval</SelectItem>
+                              <SelectItem value="pending_approval">🚨 Approval</SelectItem>
                               <SelectItem value="pending">Pending</SelectItem>
                               <SelectItem value="confirmed">Confirmed</SelectItem>
                               <SelectItem value="completed">Completed</SelectItem>
@@ -1763,60 +1763,43 @@ export const AdminDashboard = () => {
                             </SelectContent>
                           </Select>
                         </td>
-                        <td className="p-2 md:p-4 hidden lg:table-cell">
+                        <td className="px-2 py-1 hidden lg:table-cell">
                           {booking.driver_id || booking.driver_name ? (
-                            <div className="flex items-center gap-1">
-                              <span className="text-[10px] text-gray-700 truncate max-w-[60px]" title={booking.driver_name}>
-                                {booking.driver_name?.split(' ')[0] || 'Assigned'}
-                              </span>
+                            <div className="flex items-center gap-0.5">
+                              <span className="text-[9px] text-gray-600 truncate max-w-[50px]">{booking.driver_name?.split(' ')[0]}</span>
                               {booking.driverAcknowledged ? (
-                                <CheckCircle className="w-3 h-3 text-green-500" title="Driver confirmed" />
+                                <CheckCircle className="w-3 h-3 text-green-500" />
                               ) : (
-                                <Clock className="w-3 h-3 text-orange-500 animate-pulse" title="Awaiting confirmation" />
+                                <Clock className="w-3 h-3 text-orange-500" />
                               )}
                             </div>
                           ) : (
-                            <span className="text-[10px] text-gray-400">-</span>
+                            <span className="text-[9px] text-gray-300">-</span>
                           )}
                         </td>
-                        <td className="p-2 md:p-4">
-                          <div className="flex gap-1">
-                            <Button
-                              size="sm"
-                              variant="outline"
+                        <td className="px-1 py-1">
+                          <div className="flex gap-0.5">
+                            <button
                               onClick={() => openDetailsModal(booking)}
-                              className="hover:bg-gray-100"
-                              title="View Details"
+                              className="p-1 hover:bg-gray-100 rounded"
+                              title="View"
                             >
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
+                              <Eye className="w-3.5 h-3.5 text-gray-500" />
+                            </button>
+                            <button
                               onClick={() => openEditBookingModal(booking)}
-                              className="hover:bg-blue-100 hover:text-blue-600 h-7 w-7 p-0"
-                              title="Edit Booking"
+                              className="p-1 hover:bg-blue-100 rounded"
+                              title="Edit"
                             >
-                              <Edit2 className="w-3 h-3" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => openEmailModal(booking)}
-                              className="hover:bg-gold hover:text-black h-7 w-7 p-0 hidden md:flex"
-                              title="Send Email"
-                            >
-                              <Mail className="w-3 h-3" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
+                              <Edit2 className="w-3.5 h-3.5 text-blue-500" />
+                            </button>
+                            <button
                               onClick={() => handleDeleteBooking(booking.id, booking.name, true)}
-                              className="hover:bg-red-100 hover:text-red-600 h-7 w-7 p-0"
-                              title="Cancel Booking"
+                              className="p-1 hover:bg-red-100 rounded"
+                              title="Delete"
                             >
-                              <Trash2 className="w-3 h-3" />
-                            </Button>
+                              <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                            </button>
                           </div>
                         </td>
                       </tr>
