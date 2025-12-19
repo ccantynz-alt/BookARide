@@ -1348,6 +1348,34 @@ export const AdminDashboard = () => {
 
           {/* Bookings Tab */}
           <TabsContent value="bookings" className="space-y-6">
+        
+        {/* Urgent Approval Alert Banner */}
+        {stats.pendingApproval > 0 && (
+          <div className="bg-red-50 border-2 border-red-500 rounded-lg p-4 mb-6 animate-pulse">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="bg-red-500 text-white p-2 rounded-full">
+                  <AlertCircle className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="font-bold text-red-800 text-lg">
+                    🚨 {stats.pendingApproval} Booking{stats.pendingApproval > 1 ? 's' : ''} Need Approval!
+                  </p>
+                  <p className="text-red-600 text-sm">
+                    Last-minute booking{stats.pendingApproval > 1 ? 's' : ''} (within 24 hours) - requires manual approval
+                  </p>
+                </div>
+              </div>
+              <Button 
+                onClick={() => setStatusFilter('pending_approval')}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                View Now
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card className="bg-gold border-none">
