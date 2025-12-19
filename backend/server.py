@@ -3068,6 +3068,8 @@ Phone: {booking.get('phone', 'N/A')}
 Pickup: {booking.get('pickupAddress', 'N/A')}
 Date: {formatted_date} at {booking.get('time', 'N/A')}
 
+⚠️ REPLY YES to confirm you received this job.
+
 Check your email for full details."""
                     
                     message = client.messages.create(
