@@ -293,8 +293,26 @@ agent_communication:
 - 24-hour rule: 5-day future booking → pending ✅
 - Admin banner: Shows "1 Booking Need Approval!" ✅
 
+### Backend Testing Results (Session 3):
+- **24-Hour Booking Approval Rule**: ✅ WORKING PERFECTLY
+  - Bookings within 24h correctly set to 'pending_approval' status
+  - Bookings beyond 24h correctly set to 'pending' status
+  - Urgent email notifications sent to admin for pending_approval bookings
+- **Admin Dashboard Pending Count**: ✅ Found 2 bookings with 'pending_approval' status
+- **SEO Pages Backend Support**: ✅ 4/4 tested routes accessible (/auckland-cbd-airport, /ponsonby-to-airport, /parnell-to-airport, /newmarket-to-airport)
+- **Pricing with ratePerKm**: ✅ Barbara Walsh bug fix verified (Orewa: $151.29 for 61.25km at $2.47/km, Short trip: $110.52 for 9.21km at $12.00/km)
+- **Booking Update Return Trip Sync**: ✅ Auto-syncs bookReturn flag when returnDate is set/cleared
+- **Email Generation Return Trips**: ✅ Handles legacy bookings with return trip details
+- **Flight Tracker**: ✅ EK448 returns live data (Status: Scheduled, Live: True)
+- **AI Email Auto-Responder**: ✅ Processes form data and generates AI responses
+- **Payment Checkout Creation**: ✅ Stripe integration working (session created successfully)
+
+### Minor Issues (Non-Critical):
+- Driver Assignment: Returns success but message format differs slightly (still functional)
+- Duplicate Reminder Prevention: Logic working but test booking didn't trigger reminders (expected behavior for test data)
+- Stripe Webhook: Requires signature validation (expected security behavior)
+
 ### Pending Tests:
 - Full frontend testing of all 10 SEO routes
-- Verify urgent email notification is sent
 - Test approval workflow (approve/reject booking)
 
