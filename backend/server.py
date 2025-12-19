@@ -4465,6 +4465,520 @@ async def twilio_sms_webhook(request: Request):
         )
 
 
+# ==================== SHARED SHUTTLE SERVICE ====================
+
+# Shuttle pricing tiers - $200 minimum per run
+SHUTTLE_PRICING = {
+    1: 100, 2: 100,  # $100 each = $100-200 total
+    3: 70,           # $70 each = $210 total
+    4: 55,           # $55 each = $220 total
+    5: 45,           # $45 each = $225 total
+    6: 40,           # $40 each = $240 total
+    7: 35,           # $35 each = $245 total
+    8: 32,           # $32 each = $256 total
+    9: 30,           # $30 each = $270 total
+    10: 28,          # $28 each = $280 total
+    11: 25,          # $25 each = $275+ total
+}
+
+# Departure times (6am - 10pm, every 2 hours)
+SHUTTLE_TIMES = ['06:00', '08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00']
+
+def get_shuttle_price(total_passengers: int) -> int:
+    """Get price per person based on total passengers"""
+    if total_passengers >= 11:
+        return 25
+    return SHUTTLE_PRICING.get(total_passengers, 100)
+
+
+class ShuttleBookingCreate(BaseModel):
+    date: str
+    departureTime: str
+    pickupAddress: str
+    passengers: int
+    name: str
+    email: str
+    phone: str
+    notes: Optional[str] = ""
+    flightNumber: Optional[str] = ""
+    estimatedPrice: Optional[int] = 100
+    needsApproval: Optional[bool] = False
+
+
+@api_router.get("/shuttle/availability")
+async def get_shuttle_availability(date: str, time: str = None):
+    """Get shuttle availability and current bookings for a date"""
+    try:
+        # Get all shuttle bookings for this date
+        query = {"date": date, "bookingType": "shuttle", "status": {"$nin": ["cancelled", "deleted"]}}
+        bookings = await db.shuttle_bookings.find(query, {"_id": 0}).to_list(100)
+        
+        # Build availability by departure time
+        departures = {}
+        for dep_time in SHUTTLE_TIMES:
+            time_bookings = [b for b in bookings if b.get("departureTime") == dep_time]
+            total_passengers = sum(b.get("passengers", 0) for b in time_bookings)
+            departures[dep_time] = {
+                "passengers": total_passengers,
+                "bookings": len(time_bookings),
+                "available": total_passengers < 11,
+                "pricePerPerson": get_shuttle_price(total_passengers + 1) if total_passengers < 11 else None
+            }
+        
+        # If specific time requested, return details for that
+        current_passengers = 0
+        if time and time in departures:
+            current_passengers = departures[time]["passengers"]
+        
+        return {
+            "date": date,
+            "departures": departures,
+            "currentPassengers": current_passengers
+        }
+    except Exception as e:
+        logger.error(f"Error getting shuttle availability: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/shuttle/book")
+async def create_shuttle_booking(booking: ShuttleBookingCreate):
+    """Create a new shuttle booking with card authorization (not charge)"""
+    try:
+        # Validate departure time
+        if booking.departureTime not in SHUTTLE_TIMES:
+            raise HTTPException(status_code=400, detail="Invalid departure time")
+        
+        # Check availability
+        existing = await db.shuttle_bookings.find({
+            "date": booking.date,
+            "departureTime": booking.departureTime,
+            "status": {"$nin": ["cancelled", "deleted"]}
+        }, {"_id": 0}).to_list(100)
+        
+        current_passengers = sum(b.get("passengers", 0) for b in existing)
+        if current_passengers + booking.passengers > 11:
+            raise HTTPException(status_code=400, detail="Not enough seats available for this departure")
+        
+        # Calculate price based on total passengers after this booking
+        total_after = current_passengers + booking.passengers
+        price_per_person = get_shuttle_price(total_after)
+        total_price = price_per_person * booking.passengers
+        
+        # Create booking record
+        booking_id = str(uuid.uuid4())
+        shuttle_booking = {
+            "id": booking_id,
+            "bookingType": "shuttle",
+            "date": booking.date,
+            "departureTime": booking.departureTime,
+            "pickupAddress": booking.pickupAddress,
+            "dropoffAddress": "Auckland International Airport",
+            "passengers": booking.passengers,
+            "name": booking.name,
+            "email": booking.email,
+            "phone": booking.phone,
+            "notes": booking.notes,
+            "flightNumber": booking.flightNumber,
+            "estimatedPrice": price_per_person,
+            "finalPrice": None,  # Set when charged at airport
+            "totalEstimated": total_price,
+            "status": "pending_approval" if booking.needsApproval else "authorized",
+            "paymentStatus": "pending_authorization",
+            "stripePaymentIntentId": None,
+            "createdAt": datetime.now(timezone.utc).isoformat(),
+            "chargedAt": None,
+            "needsApproval": booking.needsApproval
+        }
+        
+        # Create Stripe Payment Intent with manual capture (authorize but don't charge)
+        stripe_api_key = os.environ.get('STRIPE_API_KEY')
+        if stripe_api_key:
+            import stripe
+            stripe.api_key = stripe_api_key
+            
+            # Create a Checkout Session for card authorization
+            public_domain = os.environ.get('PUBLIC_DOMAIN', 'https://bookaride.co.nz')
+            
+            checkout_session = stripe.checkout.Session.create(
+                payment_method_types=['card'],
+                mode='payment',
+                payment_intent_data={
+                    'capture_method': 'manual',  # Authorize but don't charge
+                    'metadata': {
+                        'booking_id': booking_id,
+                        'booking_type': 'shuttle',
+                        'passengers': str(booking.passengers),
+                        'date': booking.date,
+                        'time': booking.departureTime
+                    }
+                },
+                line_items=[{
+                    'price_data': {
+                        'currency': 'nzd',
+                        'product_data': {
+                            'name': f'Shared Shuttle - {booking.date} {booking.departureTime}',
+                            'description': f'{booking.passengers} passenger(s) - CBD to Auckland Airport. Card authorized, charged on arrival.',
+                        },
+                        'unit_amount': int(total_price * 100),  # Amount in cents
+                    },
+                    'quantity': 1,
+                }],
+                customer_email=booking.email,
+                success_url=f"{public_domain}/payment-success?type=shuttle&booking_id={booking_id}",
+                cancel_url=f"{public_domain}/shared-shuttle?cancelled=true",
+                metadata={
+                    'booking_id': booking_id,
+                    'booking_type': 'shuttle'
+                }
+            )
+            
+            shuttle_booking["stripeCheckoutSessionId"] = checkout_session.id
+            
+            # Save booking
+            await db.shuttle_bookings.insert_one(shuttle_booking)
+            
+            logger.info(f"Shuttle booking created: {booking_id} for {booking.date} {booking.departureTime}")
+            
+            return {
+                "success": True,
+                "bookingId": booking_id,
+                "checkoutUrl": checkout_session.url,
+                "estimatedPrice": price_per_person,
+                "totalEstimated": total_price
+            }
+        else:
+            # No Stripe - just save the booking
+            await db.shuttle_bookings.insert_one(shuttle_booking)
+            return {
+                "success": True,
+                "bookingId": booking_id,
+                "message": "Booking created - payment will be collected on arrival"
+            }
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error creating shuttle booking: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/shuttle/capture/{booking_id}")
+async def capture_shuttle_payment(booking_id: str, current_admin: dict = Depends(get_current_admin)):
+    """Capture (charge) the authorized payment when shuttle reaches airport"""
+    try:
+        booking = await db.shuttle_bookings.find_one({"id": booking_id}, {"_id": 0})
+        if not booking:
+            raise HTTPException(status_code=404, detail="Booking not found")
+        
+        if booking.get("paymentStatus") == "captured":
+            raise HTTPException(status_code=400, detail="Payment already captured")
+        
+        # Get current total passengers for this departure to calculate final price
+        all_bookings = await db.shuttle_bookings.find({
+            "date": booking["date"],
+            "departureTime": booking["departureTime"],
+            "status": {"$nin": ["cancelled", "deleted"]}
+        }, {"_id": 0}).to_list(100)
+        
+        total_passengers = sum(b.get("passengers", 0) for b in all_bookings)
+        final_price_per_person = get_shuttle_price(total_passengers)
+        final_total = final_price_per_person * booking["passengers"]
+        
+        # Capture the Stripe payment
+        stripe_api_key = os.environ.get('STRIPE_API_KEY')
+        if stripe_api_key and booking.get("stripePaymentIntentId"):
+            import stripe
+            stripe.api_key = stripe_api_key
+            
+            # Get the payment intent
+            payment_intent = stripe.PaymentIntent.retrieve(booking["stripePaymentIntentId"])
+            
+            # Capture with the final amount (may be different from authorized amount)
+            captured = stripe.PaymentIntent.capture(
+                booking["stripePaymentIntentId"],
+                amount_to_capture=int(final_total * 100)  # In cents
+            )
+            
+            # Update booking
+            await db.shuttle_bookings.update_one(
+                {"id": booking_id},
+                {"$set": {
+                    "paymentStatus": "captured",
+                    "finalPrice": final_price_per_person,
+                    "totalCharged": final_total,
+                    "chargedAt": datetime.now(timezone.utc).isoformat(),
+                    "status": "completed"
+                }}
+            )
+            
+            logger.info(f"Shuttle payment captured: {booking_id} - ${final_total}")
+            
+            return {
+                "success": True,
+                "finalPricePerPerson": final_price_per_person,
+                "totalCharged": final_total,
+                "totalPassengers": total_passengers
+            }
+        else:
+            # Manual capture (no Stripe)
+            await db.shuttle_bookings.update_one(
+                {"id": booking_id},
+                {"$set": {
+                    "paymentStatus": "manual",
+                    "finalPrice": final_price_per_person,
+                    "totalCharged": final_total,
+                    "chargedAt": datetime.now(timezone.utc).isoformat(),
+                    "status": "completed"
+                }}
+            )
+            return {
+                "success": True,
+                "finalPricePerPerson": final_price_per_person,
+                "totalCharged": final_total,
+                "message": "Marked as manually captured"
+            }
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error capturing shuttle payment: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/shuttle/departures")
+async def get_shuttle_departures(date: str, current_admin: dict = Depends(get_current_admin)):
+    """Get all shuttle departures for a date (admin view)"""
+    try:
+        bookings = await db.shuttle_bookings.find({
+            "date": date,
+            "status": {"$nin": ["deleted"]}
+        }, {"_id": 0}).to_list(100)
+        
+        # Group by departure time
+        departures = {}
+        for dep_time in SHUTTLE_TIMES:
+            time_bookings = [b for b in bookings if b.get("departureTime") == dep_time]
+            total_passengers = sum(b.get("passengers", 0) for b in time_bookings)
+            
+            departures[dep_time] = {
+                "time": dep_time,
+                "bookings": time_bookings,
+                "totalPassengers": total_passengers,
+                "pricePerPerson": get_shuttle_price(total_passengers) if total_passengers > 0 else 100,
+                "totalRevenue": sum(b.get("totalEstimated", 0) for b in time_bookings),
+                "canRun": total_passengers >= 1
+            }
+        
+        return {
+            "date": date,
+            "departures": departures
+        }
+    except Exception as e:
+        logger.error(f"Error getting shuttle departures: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/shuttle/capture-all/{date}/{time}")
+async def capture_all_shuttle_payments(date: str, time: str, current_admin: dict = Depends(get_current_admin)):
+    """Capture all payments for a shuttle departure (when arriving at airport)"""
+    try:
+        bookings = await db.shuttle_bookings.find({
+            "date": date,
+            "departureTime": time,
+            "status": {"$nin": ["cancelled", "deleted"]},
+            "paymentStatus": {"$ne": "captured"}
+        }, {"_id": 0}).to_list(100)
+        
+        total_passengers = sum(b.get("passengers", 0) for b in bookings)
+        final_price = get_shuttle_price(total_passengers)
+        
+        results = []
+        for booking in bookings:
+            try:
+                # Capture each booking
+                result = await capture_shuttle_payment(booking["id"], current_admin)
+                results.append({"id": booking["id"], "success": True, **result})
+            except Exception as e:
+                results.append({"id": booking["id"], "success": False, "error": str(e)})
+        
+        return {
+            "date": date,
+            "time": time,
+            "totalPassengers": total_passengers,
+            "finalPricePerPerson": final_price,
+            "results": results
+        }
+    except Exception as e:
+        logger.error(f"Error capturing all shuttle payments: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/shuttle/route/{date}/{time}")
+async def get_optimized_shuttle_route(date: str, time: str, current_admin: dict = Depends(get_current_admin)):
+    """Get optimized pickup route for a shuttle departure with Google Maps link"""
+    try:
+        bookings = await db.shuttle_bookings.find({
+            "date": date,
+            "departureTime": time,
+            "status": {"$nin": ["cancelled", "deleted"]}
+        }, {"_id": 0}).to_list(100)
+        
+        if not bookings:
+            raise HTTPException(status_code=404, detail="No bookings for this departure")
+        
+        # Get all pickup addresses
+        pickup_addresses = [b["pickupAddress"] for b in bookings if b.get("pickupAddress")]
+        
+        if not pickup_addresses:
+            raise HTTPException(status_code=400, detail="No pickup addresses found")
+        
+        # Use Google Maps Directions API to optimize route
+        google_api_key = os.environ.get('GOOGLE_MAPS_API_KEY', '')
+        
+        # Destination is Auckland Airport
+        destination = "Auckland International Airport, New Zealand"
+        
+        if google_api_key and len(pickup_addresses) > 1:
+            # Use Directions API with waypoint optimization
+            url = "https://maps.googleapis.com/maps/api/directions/json"
+            
+            # First pickup as origin, rest as waypoints, optimize order
+            origin = pickup_addresses[0]
+            waypoints = "|".join(pickup_addresses[1:]) if len(pickup_addresses) > 1 else ""
+            
+            params = {
+                'origin': origin,
+                'destination': destination,
+                'waypoints': f"optimize:true|{waypoints}" if waypoints else "",
+                'key': google_api_key
+            }
+            
+            response = requests.get(url, params=params)
+            data = response.json()
+            
+            if data['status'] == 'OK' and data['routes']:
+                route = data['routes'][0]
+                optimized_order = route.get('waypoint_order', [])
+                
+                # Reorder pickups based on optimization
+                if optimized_order:
+                    reordered = [pickup_addresses[0]]  # Keep first as origin
+                    for idx in optimized_order:
+                        reordered.append(pickup_addresses[idx + 1])
+                    pickup_addresses = reordered
+                
+                # Calculate total distance and duration
+                total_distance = sum(leg['distance']['value'] for leg in route['legs'])
+                total_duration = sum(leg['duration']['value'] for leg in route['legs'])
+                
+                route_info = {
+                    "totalDistanceKm": round(total_distance / 1000, 1),
+                    "totalDurationMins": round(total_duration / 60),
+                    "legs": [{
+                        "from": leg['start_address'],
+                        "to": leg['end_address'],
+                        "distance": leg['distance']['text'],
+                        "duration": leg['duration']['text']
+                    } for leg in route['legs']]
+                }
+            else:
+                route_info = {"error": "Could not optimize route"}
+        else:
+            route_info = {"note": "Single pickup - no optimization needed"}
+        
+        # Build Google Maps URL for driver's phone
+        waypoints_encoded = "|".join(pickup_addresses[1:]) if len(pickup_addresses) > 1 else ""
+        if waypoints_encoded:
+            maps_url = f"https://www.google.com/maps/dir/?api=1&origin={requests.utils.quote(pickup_addresses[0])}&destination={requests.utils.quote(destination)}&waypoints={requests.utils.quote(waypoints_encoded)}&travelmode=driving"
+        else:
+            maps_url = f"https://www.google.com/maps/dir/?api=1&origin={requests.utils.quote(pickup_addresses[0])}&destination={requests.utils.quote(destination)}&travelmode=driving"
+        
+        # Build pickup list with passenger details
+        pickup_list = []
+        for booking in bookings:
+            pickup_list.append({
+                "address": booking["pickupAddress"],
+                "name": booking["name"],
+                "phone": booking["phone"],
+                "passengers": booking["passengers"],
+                "notes": booking.get("notes", ""),
+                "flightNumber": booking.get("flightNumber", "")
+            })
+        
+        return {
+            "date": date,
+            "departureTime": time,
+            "totalPassengers": sum(b["passengers"] for b in bookings),
+            "totalBookings": len(bookings),
+            "optimizedPickups": pickup_addresses,
+            "pickupDetails": pickup_list,
+            "routeInfo": route_info,
+            "googleMapsUrl": maps_url,
+            "destination": destination
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting shuttle route: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/shuttle/send-route/{date}/{time}")
+async def send_shuttle_route_to_driver(
+    date: str, 
+    time: str, 
+    driver_phone: str = None,
+    current_admin: dict = Depends(get_current_admin)
+):
+    """Send the optimized route to driver's phone via SMS"""
+    try:
+        # Get the route
+        route_data = await get_optimized_shuttle_route(date, time, current_admin)
+        
+        # Build SMS message
+        pickup_summary = "\n".join([
+            f"• {p['name']} ({p['passengers']}pax) - {p['address'][:30]}..."
+            for p in route_data["pickupDetails"][:5]
+        ])
+        
+        message = f"""🚐 SHUTTLE {date} {time}
+{route_data['totalPassengers']} passengers, {route_data['totalBookings']} pickups
+
+{pickup_summary}
+
+📍 ROUTE: {route_data['googleMapsUrl']}"""
+        
+        # Send SMS if phone provided
+        if driver_phone:
+            twilio_sid = os.environ.get('TWILIO_ACCOUNT_SID')
+            twilio_token = os.environ.get('TWILIO_AUTH_TOKEN')
+            twilio_phone = os.environ.get('TWILIO_PHONE_NUMBER')
+            
+            if twilio_sid and twilio_token and twilio_phone:
+                twilio_client = Client(twilio_sid, twilio_token)
+                formatted_phone = format_nz_phone(driver_phone)
+                
+                twilio_client.messages.create(
+                    body=message,
+                    from_=twilio_phone,
+                    to=formatted_phone
+                )
+                
+                logger.info(f"Shuttle route sent to driver: {formatted_phone}")
+                return {"success": True, "message": "Route sent to driver", "googleMapsUrl": route_data['googleMapsUrl']}
+        
+        return {
+            "success": True,
+            "message": message,
+            "googleMapsUrl": route_data['googleMapsUrl']
+        }
+        
+    except Exception as e:
+        logger.error(f"Error sending shuttle route: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ==================== ENHANCED ADMIN FEATURES ====================
 
 # Production Database Sync Endpoint
