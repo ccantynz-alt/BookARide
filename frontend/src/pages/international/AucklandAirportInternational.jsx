@@ -105,7 +105,7 @@ const AucklandAirportInternational = () => {
                 <div className="bg-white p-4 rounded-lg shadow-sm">
                   <h4 className="font-semibold text-lg mb-2">Airport Hotels</h4>
                   <p className="text-gray-600 text-sm mb-2">Distance: 2-5 km | Time: 5-10 minutes</p>
-                  <p className="text-gold font-semibold">Minimum fare $100</p>
+                  <p className="text-gold font-semibold">Get instant quote</p>
                 </div>
               </div>
             </div>
