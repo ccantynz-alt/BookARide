@@ -1656,6 +1656,22 @@ export const AdminDashboard = () => {
                           </Select>
                         </td>
                         <td className="p-4">
+                          {booking.driver_id ? (
+                            <div className="flex items-center gap-1">
+                              <span className="text-xs text-gray-700 truncate max-w-[80px]" title={booking.driver_name}>
+                                {booking.driver_name?.split(' ')[0] || 'Assigned'}
+                              </span>
+                              {booking.driverAcknowledged ? (
+                                <CheckCircle className="w-4 h-4 text-green-500" title="Driver confirmed" />
+                              ) : (
+                                <Clock className="w-4 h-4 text-orange-500 animate-pulse" title="Awaiting confirmation" />
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-gray-400">Not assigned</span>
+                          )}
+                        </td>
+                        <td className="p-4">
                           <div className="flex flex-wrap gap-1">
                             <Button
                               size="sm"
