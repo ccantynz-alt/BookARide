@@ -1551,6 +1551,7 @@ export const AdminDashboard = () => {
                       <th className="text-left p-4 font-semibold text-gray-700">Price</th>
                       <th className="text-left p-4 font-semibold text-gray-700">Payment</th>
                       <th className="text-left p-4 font-semibold text-gray-700">Status</th>
+                      <th className="text-left p-4 font-semibold text-gray-700">Driver</th>
                       <th className="text-left p-4 font-semibold text-gray-700">Actions</th>
                     </tr>
                   </thead>
