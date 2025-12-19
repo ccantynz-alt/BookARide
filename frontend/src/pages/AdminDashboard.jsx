@@ -1345,11 +1345,16 @@ export const AdminDashboard = () => {
         <Tabs defaultValue="bookings" value={activeTab} onValueChange={(val) => {
           setActiveTab(val);
           if (val === 'deleted') fetchDeletedBookings();
+          if (val === 'shuttle') fetchShuttleData();
         }} className="w-full">
-          <TabsList className="grid w-full grid-cols-7 mb-8">
+          <TabsList className="grid w-full grid-cols-8 mb-8">
             <TabsTrigger value="bookings" className="flex items-center gap-2">
               <BookOpen className="w-4 h-4" />
               Bookings
+            </TabsTrigger>
+            <TabsTrigger value="shuttle" className="flex items-center gap-2 text-yellow-600">
+              <Bus className="w-4 h-4" />
+              Shuttle
             </TabsTrigger>
             <TabsTrigger value="deleted" className="flex items-center gap-2 text-red-600">
               <Trash2 className="w-4 h-4" />
