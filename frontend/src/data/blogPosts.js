@@ -20,16 +20,16 @@ Auckland Airport (AKL) is located about 21 kilometers south of the city centre. 
 
 | Option | Price | Time | Best For |
 |--------|-------|------|----------|
-| Private Shuttle | From $55 | 25-35 min | Families, groups, convenience |
-| Shared Shuttle | From $33 | 45-60 min | Budget solo travelers |
-| Taxi | $70-90 | 25-35 min | Immediate availability |
-| Uber/Rideshare | $45-80 | 25-35 min | App users, variable demand |
-| SkyBus | $18 | 45-60 min | Budget, CBD-only |
-| Public Bus | $10 | 60-90 min | Very tight budgets |
+| Private Shuttle | Get Quote | 25-35 min | Families, groups, convenience |
+| Shared Shuttle | Varies | 45-60 min | Budget solo travelers |
+| Taxi | Metered | 25-35 min | Immediate availability |
+| Uber/Rideshare | Variable | 25-35 min | App users, variable demand |
+| SkyBus | Fixed | 45-60 min | Budget, CBD-only |
+| Public Bus | AT Fares | 60-90 min | Very tight budgets |
 
 ## 1. Private Shuttle (Recommended)
 
-**Price:** From $55-85 depending on destination
+**Price:** Get instant quote - fixed price, no surprises
 **Time:** 25-35 minutes
 
 A private shuttle offers the best balance of convenience, comfort, and value. You're not sharing with strangers, and the driver takes you directly to your accommodation.
