@@ -342,11 +342,11 @@ Both Uber and pre-booked shuttles can get you to Auckland Airport. But which is 
 
 | Destination | Pre-booked Shuttle | Uber (typical) | Uber (surge) |
 |-------------|-------------------|----------------|---------------|
-| CBD | $55 | $45-55 | $70-100 |
-| North Shore | $65-85 | $60-80 | $90-140 |
-| Hibiscus Coast | $85-110 | $80-100 | $120-180 |
+| CBD | Fixed quote | Variable | Higher |
+| North Shore | Fixed quote | Variable | Higher |
+| Hibiscus Coast | Fixed quote | Variable | Higher |
 
-**Key difference:** Shuttle prices are fixed. Uber prices vary with demand.
+**Key difference:** Shuttle prices are fixed at time of booking. Uber prices vary with demand and surge pricing.
 
 ## When Shuttle Wins
 
