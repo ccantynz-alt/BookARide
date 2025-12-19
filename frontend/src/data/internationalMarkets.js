@@ -20,10 +20,10 @@ export const internationalMarkets = [
     paymentNote: 'USD Cards Accepted',
     whyChooseUs: 'We understand American travelers expect reliable, professional service. Our private transfers offer the comfort and convenience you deserve after a long transpacific flight.',
     popularDestinations: [
-      { name: 'Hobbiton', desc: 'Lord of the Rings film set' },
-      { name: 'Rotorua', desc: 'Geothermal wonders & Maori culture' },
-      { name: 'Queenstown', desc: 'Adventure capital of NZ' },
-      { name: 'Auckland CBD', desc: 'City of Sails' }
+      { name: 'Auckland CBD Hotels', desc: 'Viaduct, Sky Tower area' },
+      { name: 'North Shore', desc: 'Takapuna, Albany, Browns Bay' },
+      { name: 'Hibiscus Coast', desc: 'Orewa, Whangaparaoa' },
+      { name: 'Airport Hotels', desc: 'Novotel, Sudima, Naumi' }
     ],
     faqs: [
       { q: 'Do you accept US credit cards?', a: 'Yes! We accept all major US credit cards including Visa, Mastercard, and American Express. Payments are processed securely in NZD.' },
