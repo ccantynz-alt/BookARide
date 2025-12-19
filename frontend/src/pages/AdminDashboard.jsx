@@ -2148,6 +2148,16 @@ export const AdminDashboard = () => {
                             {drivers.find(d => d.id === selectedBooking.return_driver_id)?.name || selectedBooking.return_driver_name || 'Unknown Driver'}
                           </p>
                           <p className="text-xs text-gray-500">{selectedBooking.return_driver_phone}</p>
+                          {/* Return Driver Acknowledgment Status */}
+                          {selectedBooking.returnDriverAcknowledged ? (
+                            <p className="text-xs text-green-600 font-semibold mt-1 flex items-center gap-1">
+                              <CheckCircle className="w-3 h-3" /> Driver confirmed receipt
+                            </p>
+                          ) : (
+                            <p className="text-xs text-orange-600 mt-1 flex items-center gap-1 animate-pulse">
+                              <Clock className="w-3 h-3" /> Awaiting driver confirmation...
+                            </p>
+                          )}
                         </div>
                         <Button 
                           size="sm"
