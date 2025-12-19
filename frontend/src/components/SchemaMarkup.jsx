@@ -99,7 +99,6 @@ export const ServiceSchema = ({ service }) => {
   const defaultService = {
     name: "Airport Shuttle Service",
     description: "Private door-to-door airport transfer service in Auckland",
-    priceFrom: 55,
     areaServed: "Auckland",
     serviceType: "Airport Transfer"
   };
@@ -122,13 +121,11 @@ export const ServiceSchema = ({ service }) => {
     },
     "offers": {
       "@type": "Offer",
+      "availability": "https://schema.org/InStock",
       "priceSpecification": {
         "@type": "PriceSpecification",
-        "price": s.priceFrom,
-        "priceCurrency": "NZD",
-        "minPrice": s.priceFrom
-      },
-      "availability": "https://schema.org/InStock"
+        "priceCurrency": "NZD"
+      }
     },
     "termsOfService": "https://bookaride.co.nz/terms-and-conditions"
   };
