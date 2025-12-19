@@ -3,6 +3,7 @@ import { Shield, Users, Clock, Award, Target, Heart } from 'lucide-react';
 import { Card, CardContent } from '../components/ui/card';
 import SEO from '../components/SEO';
 import PageBreadcrumb from '../components/PageBreadcrumb';
+import { FAQSchema, LocalBusinessSchema } from '../components/SchemaMarkup';
 
 export const About = () => {
   return (
@@ -13,6 +14,13 @@ export const About = () => {
         keywords="airport shuttle company, shuttle service New Zealand, Auckland airport transfer company, professional shuttle service, reliable airport shuttle, NZ transportation service, safe shuttle service"
         canonical="/about"
       />
+      <LocalBusinessSchema />
+      <FAQSchema faqs={[
+        { question: "How long has BookaRide been operating?", answer: "BookaRide has been providing premium airport transfer services in Auckland and throughout New Zealand, building a reputation for reliability, safety, and exceptional customer service." },
+        { question: "Are your drivers licensed and vetted?", answer: "Yes, all our drivers are fully licensed P-endorsement holders, background checked, and undergo regular vehicle inspections. Safety is our top priority." },
+        { question: "What makes BookaRide different from other shuttles?", answer: "We offer private door-to-door transfers (no shared rides), real-time flight tracking, fixed pricing with no surge, and 24/7 availability. Plus, we're locally owned and operated in New Zealand." },
+        { question: "Do you have insurance?", answer: "Absolutely. All our vehicles and drivers are fully insured with comprehensive commercial passenger transport insurance, giving you complete peace of mind." }
+      ]} />
       <PageBreadcrumb items={[{ label: 'About Us' }]} />
       {/* Hero Section with Beautiful NZ Landscape */}
       <section className="pt-32 pb-24 bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
