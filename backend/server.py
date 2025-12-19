@@ -5044,6 +5044,199 @@ async def send_shuttle_route_to_driver(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ==================== DRIVER GPS TRACKING FOR SHUTTLE ====================
+
+# Craig Canty's driver ID (testing phase only)
+ALLOWED_SHUTTLE_DRIVER_ID = "5a78ccb4-a2cb-4bcb-80a7-eb6a4364cee8"
+
+class DriverLocationUpdate(BaseModel):
+    driverId: str
+    latitude: float
+    longitude: float
+    date: str
+    departureTime: str
+    notifiedPickups: Optional[List[str]] = []
+
+
+@api_router.get("/shuttle/driver/departures")
+async def get_driver_shuttle_departures(date: str, current_driver: dict = Depends(get_current_driver)):
+    """Get shuttle departures for a driver (same as admin but accessible to driver)"""
+    try:
+        # Only allow Craig Canty during testing
+        if current_driver.get("id") != ALLOWED_SHUTTLE_DRIVER_ID:
+            raise HTTPException(status_code=403, detail="Shuttle tracking not enabled for this driver")
+        
+        bookings = await db.shuttle_bookings.find({
+            "date": date,
+            "status": {"$nin": ["deleted", "cancelled"]}
+        }, {"_id": 0}).to_list(100)
+        
+        # Group by departure time
+        departures = {}
+        for dep_time in SHUTTLE_TIMES:
+            time_bookings = [b for b in bookings if b.get("departureTime") == dep_time]
+            total_passengers = sum(b.get("passengers", 0) for b in time_bookings)
+            
+            departures[dep_time] = {
+                "time": dep_time,
+                "bookings": time_bookings,
+                "totalPassengers": total_passengers
+            }
+        
+        return {"date": date, "departures": departures}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting driver shuttles: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/shuttle/driver/location")
+async def update_driver_location(location: DriverLocationUpdate, current_driver: dict = Depends(get_current_driver)):
+    """
+    Update driver's GPS location and calculate ETAs to pickups.
+    Auto-sends SMS to customers when driver is ~5 minutes away.
+    """
+    try:
+        # Only allow Craig Canty during testing
+        if current_driver.get("id") != ALLOWED_SHUTTLE_DRIVER_ID:
+            raise HTTPException(status_code=403, detail="Shuttle tracking not enabled for this driver")
+        
+        # Get bookings for this departure
+        bookings = await db.shuttle_bookings.find({
+            "date": location.date,
+            "departureTime": location.departureTime,
+            "status": {"$nin": ["deleted", "cancelled"]}
+        }, {"_id": 0}).to_list(100)
+        
+        if not bookings:
+            return {"etas": {}, "newlyNotified": []}
+        
+        # Use Google Maps Distance Matrix API to calculate ETAs
+        google_api_key = os.environ.get('GOOGLE_MAPS_API_KEY', '')
+        etas = {}
+        newly_notified = []
+        
+        driver_location = f"{location.latitude},{location.longitude}"
+        
+        # Get all pickup addresses
+        destinations = [b["pickupAddress"] for b in bookings]
+        
+        if google_api_key and destinations:
+            try:
+                # Call Distance Matrix API
+                url = "https://maps.googleapis.com/maps/api/distancematrix/json"
+                params = {
+                    'origins': driver_location,
+                    'destinations': '|'.join(destinations),
+                    'mode': 'driving',
+                    'key': google_api_key
+                }
+                
+                response = requests.get(url, params=params)
+                data = response.json()
+                
+                if data['status'] == 'OK' and data['rows']:
+                    elements = data['rows'][0]['elements']
+                    
+                    for idx, (booking, element) in enumerate(zip(bookings, elements)):
+                        if element['status'] == 'OK':
+                            duration_seconds = element['duration']['value']
+                            duration_minutes = round(duration_seconds / 60)
+                            
+                            etas[booking['id']] = {
+                                'minutes': duration_minutes,
+                                'text': element['duration']['text'],
+                                'distance': element['distance']['text']
+                            }
+                            
+                            # Check if we should send "arriving soon" SMS (5 mins or less)
+                            if duration_minutes <= 5 and booking['id'] not in location.notifiedPickups:
+                                # Send SMS to customer
+                                send_arriving_soon_sms(booking, duration_minutes, current_driver.get("name", "Your driver"))
+                                newly_notified.append(booking['id'])
+                                
+                                # Mark as notified in database
+                                await db.shuttle_bookings.update_one(
+                                    {"id": booking['id']},
+                                    {"$set": {"arrivingSoonSent": True, "arrivingSoonSentAt": datetime.now(timezone.utc).isoformat()}}
+                                )
+                                logger.info(f"📱 Arriving soon SMS sent to {booking['name']} at {booking['phone']}")
+                        else:
+                            etas[booking['id']] = {'minutes': None, 'error': element['status']}
+                            
+            except Exception as api_error:
+                logger.error(f"Google Maps API error: {str(api_error)}")
+        
+        # Store driver's last known location
+        await db.driver_locations.update_one(
+            {"driverId": location.driverId, "date": location.date, "departureTime": location.departureTime},
+            {"$set": {
+                "latitude": location.latitude,
+                "longitude": location.longitude,
+                "updatedAt": datetime.now(timezone.utc).isoformat()
+            }},
+            upsert=True
+        )
+        
+        return {
+            "etas": etas,
+            "newlyNotified": newly_notified,
+            "trackingActive": True
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating driver location: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+def send_arriving_soon_sms(booking: dict, eta_minutes: int, driver_name: str):
+    """Send 'arriving soon' SMS to customer"""
+    try:
+        twilio_sid = os.environ.get('TWILIO_ACCOUNT_SID')
+        twilio_token = os.environ.get('TWILIO_AUTH_TOKEN')
+        twilio_phone = os.environ.get('TWILIO_PHONE_NUMBER')
+        
+        if not all([twilio_sid, twilio_token, twilio_phone]):
+            logger.warning("Twilio not configured - skipping arriving soon SMS")
+            return False
+        
+        customer_phone = booking.get('phone', '')
+        if not customer_phone:
+            return False
+        
+        # Format phone number
+        formatted_phone = format_nz_phone(customer_phone)
+        
+        # Build message
+        message = f"""🚐 Your Book A Ride shuttle is arriving in ~{eta_minutes} minutes!
+
+Please be ready at:
+📍 {booking.get('pickupAddress', 'your pickup location')}
+
+Driver: {driver_name}
+Passengers: {booking.get('passengers', 1)}
+
+See you soon! 🙂"""
+        
+        # Send SMS
+        twilio_client = Client(twilio_sid, twilio_token)
+        twilio_client.messages.create(
+            body=message,
+            from_=twilio_phone,
+            to=formatted_phone
+        )
+        
+        logger.info(f"✅ Arriving soon SMS sent to {booking.get('name')} at {formatted_phone}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error sending arriving soon SMS: {str(e)}")
+        return False
+
+
 # ==================== ENHANCED ADMIN FEATURES ====================
 
 # Production Database Sync Endpoint
