@@ -51,9 +51,9 @@ export const internationalMarkets = [
     paymentNote: 'CAD Cards Accepted',
     whyChooseUs: 'Fellow Commonwealth travelers! We offer the friendly, professional service Canadians expect with transparent pricing and no surprises.',
     popularDestinations: [
-      { name: 'Hobbiton', desc: 'Lord of the Rings film set' },
+      { name: 'Auckland CBD', desc: 'Hotels & City Centre' },
       { name: 'Milford Sound', desc: 'Stunning fiordland' },
-      { name: 'Rotorua', desc: 'Geothermal wonderland' },
+      { name: 'West Auckland', desc: 'Henderson, Titirangi' },
       { name: 'Auckland CBD', desc: 'Vibrant city centre' }
     ],
     faqs: [
@@ -83,8 +83,8 @@ export const internationalMarkets = [
     paymentNote: 'GBP Cards Accepted',
     whyChooseUs: 'We share your appreciation for punctuality and professionalism. Our service matches the standards you expect back home.',
     popularDestinations: [
-      { name: 'Hobbiton', desc: 'The Shire awaits' },
-      { name: 'Queenstown', desc: 'Adventure paradise' },
+      { name: 'Auckland CBD', desc: 'Hotels & City Centre' },
+      { name: 'North Shore', desc: 'Beaches & Suburbs' },
       { name: 'Bay of Islands', desc: 'Historic Waitangi' },
       { name: 'Auckland CBD', desc: 'Waterfront city' }
     ],
@@ -112,8 +112,8 @@ export const internationalMarkets = [
     paymentNote: 'EUR Cards Accepted',
     whyChooseUs: 'Deutsche Reisende schätzen Pünktlichkeit und Zuverlässigkeit. Genau das bieten wir - garantiert.',
     popularDestinations: [
-      { name: 'Hobbiton', desc: 'Herr der Ringe Filmset' },
-      { name: 'Queenstown', desc: 'Abenteuerhauptstadt' },
+      { name: 'Auckland CBD', desc: 'Hotels & Stadtzentrum' },
+      { name: 'North Shore', desc: 'Strände & Vororte' },
       { name: 'Rotorua', desc: 'Geothermale Wunder' },
       { name: 'Auckland', desc: 'Stadt der Segel' }
     ],
@@ -289,7 +289,7 @@ export const internationalMarkets = [
     popularDestinations: [
       { name: 'Hobbiton', desc: 'Better than Uluru for hobbits' },
       { name: 'Queenstown', desc: 'Even more extreme than the Gold Coast' },
-      { name: 'Rotorua', desc: 'Geothermal wonderland' },
+      { name: 'West Auckland', desc: 'Henderson, Titirangi' },
       { name: 'Auckland CBD', desc: 'Almost as good as Sydney' }
     ],
     faqs: [
