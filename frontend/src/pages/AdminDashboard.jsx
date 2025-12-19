@@ -87,6 +87,7 @@ export const AdminDashboard = () => {
   const [bookings, setBookings] = useState([]);
   const [filteredBookings, setFilteredBookings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [deletedBookings, setDeletedBookings] = useState([]);
   const [loadingDeleted, setLoadingDeleted] = useState(false);
   const [xeroConnected, setXeroConnected] = useState(false);
