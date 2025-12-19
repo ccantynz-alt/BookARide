@@ -7443,11 +7443,21 @@ async def startup_event():
         replace_existing=True
     )
     
+    # Auto-sync from production every 5 minutes
+    scheduler.add_job(
+        auto_sync_from_production,
+        IntervalTrigger(minutes=5),
+        id='auto_sync_production',
+        name='Auto-sync from production database',
+        replace_existing=True
+    )
+    
     scheduler.start()
     logger.info("🚀 Scheduler started with all jobs:")
     logger.info("   ✓ Reminder: 8:00 AM NZ daily (primary)")
     logger.info("   ✓ Reminder: Hourly backup check")
     logger.info("   ✓ Abandoned bookings: Every 30 mins")
+    logger.info("   ✓ Auto-sync: Every 5 minutes")
     logger.info("   ✓ Startup reminder check (running now...)")
     
     # Layer 3: Immediate startup check
