@@ -1933,31 +1933,43 @@ export const AdminDashboard = () => {
                             <span className="text-gray-600">Est. Revenue:</span>
                             <span className="font-bold text-green-600">${data.totalRevenue || 0}</span>
                           </div>
-                          <div className="flex flex-col gap-2">
-                            {/* Start Shuttle - schedules auto SMS notifications */}
+                          
+                          {/* Driver Assignment - triggers auto SMS when assigned */}
+                          <div className="mb-3">
+                            <label className="text-xs text-gray-600 mb-1 block">Assign Driver:</label>
+                            <select
+                              className="w-full text-sm border border-gray-300 rounded px-2 py-2 bg-white"
+                              value={data.assignedDriverId || ''}
+                              onChange={(e) => assignShuttleDriver(shuttleDate, time, e.target.value)}
+                            >
+                              <option value="">Select driver...</option>
+                              {drivers.map(driver => (
+                                <option key={driver.id} value={driver.id}>{driver.name}</option>
+                              ))}
+                            </select>
+                            {data.assignedDriverName && (
+                              <div className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                                <CheckCircle className="w-3 h-3" />
+                                {data.assignedDriverName} assigned - SMS scheduled!
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex gap-2">
                             <Button 
                               size="sm" 
-                              className="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-bold"
-                              onClick={() => startShuttleRun(shuttleDate, time)}
+                              className="flex-1 bg-blue-600 hover:bg-blue-700"
+                              onClick={() => getShuttleRoute(shuttleDate, time)}
                             >
-                              <Bus className="w-4 h-4 mr-2" />
-                              Start Shuttle (Auto-SMS)
+                              <Navigation className="w-3 h-3 mr-1" />
+                              Route
                             </Button>
-                            <div className="flex gap-2">
-                              <Button 
-                                size="sm" 
-                                className="flex-1 bg-blue-600 hover:bg-blue-700"
-                                onClick={() => getShuttleRoute(shuttleDate, time)}
-                              >
-                                <Navigation className="w-3 h-3 mr-1" />
-                                Route
-                              </Button>
-                              <Button 
-                                size="sm" 
-                                className="flex-1 bg-green-600 hover:bg-green-700"
-                                onClick={() => captureShuttlePayments(shuttleDate, time)}
-                              >
-                                <DollarSign className="w-3 h-3 mr-1" />
+                            <Button 
+                              size="sm" 
+                              className="flex-1 bg-green-600 hover:bg-green-700"
+                              onClick={() => captureShuttlePayments(shuttleDate, time)}
+                            >
+                              <DollarSign className="w-3 h-3 mr-1" />
                                 Charge All
                               </Button>
                             </div>
