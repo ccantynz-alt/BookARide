@@ -1175,20 +1175,21 @@ class BookaRideBackendTester:
             
             if response.status_code == 200:
                 data = response.json()
-                departures = data.get('departures', [])
+                departures = data.get('departures', {})
                 
-                # Check if we get departure times with pricing
-                if isinstance(departures, list):
-                    self.log_result("Shuttle Availability", True, f"Shuttle availability returned {len(departures)} departure times with pricing")
+                # Check if we get departure times with pricing (it's a dict, not list)
+                if isinstance(departures, dict):
+                    departure_count = len(departures)
+                    self.log_result("Shuttle Availability", True, f"Shuttle availability returned {departure_count} departure times with pricing")
                     
                     # Verify pricing structure
-                    for departure in departures:
-                        if 'time' in departure and 'pricePerPerson' in departure:
+                    for time_slot, departure in departures.items():
+                        if 'pricePerPerson' in departure:
                             price = departure.get('pricePerPerson')
                             if price and isinstance(price, (int, float)):
                                 continue
                             else:
-                                self.log_result("Shuttle Availability: Pricing", False, f"Invalid pricing in departure: {departure}")
+                                self.log_result("Shuttle Availability: Pricing", False, f"Invalid pricing in departure {time_slot}: {departure}")
                                 return False
                     
                     return True
@@ -1222,14 +1223,15 @@ class BookaRideBackendTester:
             
             if response.status_code == 200:
                 data = response.json()
-                booking_id = data.get('id')
-                status = data.get('status')
+                booking_id = data.get('bookingId')  # Note: API returns 'bookingId', not 'id'
+                success = data.get('success')
+                checkout_url = data.get('checkoutUrl')
                 
-                if booking_id:
-                    self.log_result("Shuttle Booking", True, f"Shuttle booking created successfully: {booking_id}, status: {status}")
+                if booking_id and success:
+                    self.log_result("Shuttle Booking", True, f"Shuttle booking created successfully: {booking_id}, checkout URL provided")
                     return booking_id
                 else:
-                    self.log_result("Shuttle Booking", False, f"No booking ID in response: {data}")
+                    self.log_result("Shuttle Booking", False, f"Missing required fields in response: {data}")
                     return None
             else:
                 self.log_result("Shuttle Booking", False, f"Shuttle booking failed with status {response.status_code}", response.text)
@@ -1250,13 +1252,15 @@ class BookaRideBackendTester:
             
             if response.status_code == 200:
                 data = response.json()
-                departures = data.get('departures', [])
+                departures = data.get('departures', {})
                 
-                if isinstance(departures, list):
-                    self.log_result("Shuttle Departures (Admin)", True, f"Admin shuttle departures returned {len(departures)} departure slots")
+                # Check if we get departure times (it's a dict, not list)
+                if isinstance(departures, dict):
+                    departure_count = len(departures)
+                    self.log_result("Shuttle Departures (Admin)", True, f"Admin shuttle departures returned {departure_count} departure slots")
                     
                     # Check if any departures have bookings
-                    total_bookings = sum(len(dep.get('bookings', [])) for dep in departures)
+                    total_bookings = sum(len(dep.get('bookings', [])) for dep in departures.values())
                     if total_bookings > 0:
                         self.log_result("Shuttle Departures: Bookings", True, f"Found {total_bookings} shuttle bookings in departure grid")
                     else:
