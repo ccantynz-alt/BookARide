@@ -856,6 +856,38 @@ export const BookNow = () => {
                           </div>
                         </div>
 
+                        {/* Notification Preference */}
+                        <div className="space-y-3">
+                          <Label className="text-base font-medium">How would you like to receive confirmations?</Label>
+                          <div className="flex flex-wrap gap-3">
+                            {[
+                              { value: 'both', label: '📧 Email & SMS', desc: 'Get both' },
+                              { value: 'sms', label: '📱 SMS Only', desc: 'Text messages only' },
+                              { value: 'email', label: '✉️ Email Only', desc: 'No text messages' }
+                            ].map((option) => (
+                              <label
+                                key={option.value}
+                                className={`flex-1 min-w-[140px] cursor-pointer rounded-lg border-2 p-3 transition-all ${
+                                  formData.notificationPreference === option.value
+                                    ? 'border-gold bg-gold/10'
+                                    : 'border-gray-200 hover:border-gold/50'
+                                }`}
+                              >
+                                <input
+                                  type="radio"
+                                  name="notificationPreference"
+                                  value={option.value}
+                                  checked={formData.notificationPreference === option.value}
+                                  onChange={handleChange}
+                                  className="sr-only"
+                                />
+                                <span className="block text-sm font-medium">{option.label}</span>
+                                <span className="block text-xs text-gray-500">{option.desc}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+
                         <div className="space-y-2">
                           <Label htmlFor="notes">Special Requests / Notes</Label>
                           <Textarea
