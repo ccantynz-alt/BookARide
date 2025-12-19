@@ -124,8 +124,8 @@ const AirportToCityPage = () => {
                 </div>
                 <div className="md:w-1/2">
                   <div className="bg-white rounded-xl p-6 shadow-lg text-center">
-                    <p className="text-gray-500 text-sm mb-2">Add Meet & Greet for just</p>
-                    <p className="text-4xl font-bold text-gold">$15</p>
+                    <p className="text-gray-500 text-sm mb-2">Add Meet & Greet Service</p>
+                    <p className="text-2xl font-bold text-gold">Available</p>
                     <p className="text-gray-600 mt-4 text-sm">
                       Select this option when booking online
                     </p>
