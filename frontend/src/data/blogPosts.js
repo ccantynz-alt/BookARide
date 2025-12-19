@@ -294,22 +294,22 @@ The North Shore presents unique challenges for airport transfers - you need to c
 
 ### Private Shuttle (Best Option)
 - Door-to-door from any North Shore address
-- Fixed pricing from $65
+- Fixed pricing - get instant quote online
 - No bridge tolls to worry about
 - Early morning specialists
 
 ### SuperShuttle
-- From around $40-50
 - Shared service (longer journey)
 - May need to book day before
+- Check their website for current rates
 
 ### Uber/Taxi
-- Variable pricing ($70-120)
+- Variable pricing depending on demand
 - Surge pricing common at peak times
 - Limited early morning availability
 
 ### Driving Yourself
-- Parking costs $25-35/day
+- Parking costs vary by lot
 - Bridge toll (if using toll lane)
 - Car sitting while you're away
 
