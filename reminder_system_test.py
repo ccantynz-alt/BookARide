@@ -11,7 +11,7 @@ import sys
 from datetime import datetime, timedelta
 
 # Configuration from review request
-BACKEND_URL = "https://bookride-fix.preview.emergentagent.com/api"
+BACKEND_URL = "https://sync-db.preview.emergentagent.com/api"
 ADMIN_USERNAME = "admin"
 ADMIN_PASSWORD = "Kongkong2025!@"
 CRON_API_KEY = "bookaride-cron-secret-2024"
