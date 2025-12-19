@@ -870,23 +870,51 @@ const SharedShuttle = () => {
                             <div className="flex justify-between"><span className="text-gray-400">Pickup</span><span className="text-white text-right max-w-[60%]">{pickupAddress}</span></div>
                             <div className="flex justify-between"><span className="text-gray-400">Passengers</span><span className="text-white">{passengers}</span></div>
                             <div className="flex justify-between"><span className="text-gray-400">Contact</span><span className="text-white">{name}</span></div>
-                            <hr className="border-gray-700" />
-                            <div className="flex justify-between items-center">
-                              <span className="text-gray-400">Price/person</span>
-                              <span className="text-yellow-400 font-bold text-xl">${pricePerPerson}</span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                              <span className="text-white font-bold">Total</span>
-                              <span className="text-yellow-400 font-bold text-2xl">${totalPrice}</span>
+                          </div>
+                          
+                          {/* Clear Payment Explanation */}
+                          <div className="bg-gradient-to-r from-blue-900/40 to-green-900/40 rounded-xl p-5 border border-blue-500/30">
+                            <h4 className="text-white font-bold mb-4 flex items-center gap-2">
+                              <CreditCard className="w-5 h-5 text-blue-400" />
+                              Payment Summary
+                            </h4>
+                            <div className="space-y-4">
+                              {/* Hold amount */}
+                              <div className="flex justify-between items-center p-3 bg-blue-900/30 rounded-lg">
+                                <div>
+                                  <div className="text-blue-300 font-medium">Card Hold (Not Charged)</div>
+                                  <div className="text-blue-400/70 text-xs">Temporary authorization</div>
+                                </div>
+                                <div className="text-blue-300 font-bold text-xl">${100 * passengers}</div>
+                              </div>
+                              
+                              {/* Estimated final */}
+                              <div className="flex justify-between items-center p-3 bg-green-900/30 rounded-lg">
+                                <div>
+                                  <div className="text-green-300 font-medium">Estimated Final Charge</div>
+                                  <div className="text-green-400/70 text-xs">Based on {currentBookings + passengers} passengers currently booked</div>
+                                </div>
+                                <div className="text-green-400 font-bold text-xl">${totalPrice}</div>
+                              </div>
+                              
+                              {/* Potential savings */}
+                              {savings > 0 && (
+                                <div className="text-center p-2 bg-yellow-900/30 rounded-lg">
+                                  <span className="text-yellow-400 font-semibold">
+                                    💰 Already saving ${savings} from group discount!
+                                  </span>
+                                </div>
+                              )}
                             </div>
                           </div>
                           
-                          <div className="bg-blue-900/30 border border-blue-500/30 rounded-xl p-4 flex gap-3">
-                            <Shield className="w-6 h-6 text-blue-400 flex-shrink-0" />
-                            <div>
-                              <p className="text-white font-medium">Pay on Arrival Guarantee</p>
-                              <p className="text-gray-400 text-sm">Your card is authorized but NOT charged until we reach the airport. You only pay the final price based on total passengers!</p>
-                            </div>
+                          {/* How it works reminder */}
+                          <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
+                            <p className="text-gray-300 text-sm">
+                              <span className="text-yellow-400 font-semibold">📌 Remember:</span> We'll hold ${100 * passengers} on your card now. 
+                              When we arrive at the airport, we count all passengers and <span className="text-green-400 font-semibold">only charge you the final lower price</span>. 
+                              The more people on your shuttle = the more you save!
+                            </p>
                           </div>
                           
                           <div className="flex gap-4">
