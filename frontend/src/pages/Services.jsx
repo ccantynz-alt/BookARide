@@ -30,7 +30,7 @@ export const Services = () => {
         { question: "Do you offer corporate shuttle services?", answer: "Yes! We provide corporate accounts with priority booking, invoice billing, and dedicated account management. Perfect for businesses with regular airport transfer needs." },
         { question: "Can you arrange group shuttles?", answer: "Absolutely! We have vehicles for 1-11 passengers and can arrange multiple vehicles for larger groups. Contact us for group booking rates." }
       ]} />
-      <ServiceSchema service={{ name: "Airport Shuttle Services", description: "Professional airport transfer services in New Zealand", priceFrom: 55, areaServed: "New Zealand", serviceType: "Airport Transfer" }} />
+      <ServiceSchema service={{ name: "Airport Shuttle Services", description: "Professional airport transfer services in New Zealand", areaServed: "New Zealand", serviceType: "Airport Transfer" }} />
       <PageBreadcrumb items={[{ label: 'Services' }]} />
       {/* Professional Hero Section */}
       <section className="pt-32 pb-20 bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
