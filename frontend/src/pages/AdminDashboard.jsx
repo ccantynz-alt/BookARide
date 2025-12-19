@@ -551,6 +551,27 @@ export const AdminDashboard = () => {
     toast.success('Logged out successfully');
   };
 
+  // Sync from production database
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      const response = await axios.post(`${API}/admin/sync`);
+      if (response.data.success) {
+        toast.success(response.data.message);
+        // Refresh bookings after sync
+        await fetchBookings();
+        await fetchDrivers();
+      } else {
+        toast.error('Sync failed');
+      }
+    } catch (error) {
+      console.error('Sync error:', error);
+      toast.error(error.response?.data?.detail || 'Failed to sync from production');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const openDetailsModal = (booking) => {
     setSelectedBooking(booking);
     const totalPrice = booking.pricing?.totalPrice ?? booking.totalPrice ?? 0;
