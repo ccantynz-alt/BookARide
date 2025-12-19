@@ -97,6 +97,7 @@ import CompetitorComparisonPage from './pages/seo/CompetitorComparisonPage';
 import CountryLandingPage from './pages/international/CountryLandingPage';
 // Shared Shuttle Service
 import SharedShuttle from './pages/SharedShuttle';
+import ShuttleDriverPortal from './pages/ShuttleDriverPortal';
 
 import RecentBookingsNotification from './components/RecentBookingsNotification';
 import ExitIntentPopup from './components/ExitIntentPopup';
