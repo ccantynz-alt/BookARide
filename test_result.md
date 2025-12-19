@@ -379,3 +379,40 @@ agent_communication:
 For the webhook to work in production, configure Twilio to send incoming SMS to:
 `https://bookaride.co.nz/api/webhook/twilio/sms`
 
+
+  - task: "Shared Shuttle Service API"
+    implemented: true
+    working: needs_testing
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: needs_testing
+        agent: "main"
+        comment: "New shared shuttle service implemented. Test endpoints: GET /api/shuttle/availability, POST /api/shuttle/book, GET /api/shuttle/departures, POST /api/shuttle/capture-all/{date}/{time}, GET /api/shuttle/route/{date}/{time}"
+
+frontend:
+  - task: "Shared Shuttle Booking Page"
+    implemented: true
+    working: needs_testing
+    file: "pages/SharedShuttle.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: needs_testing
+        agent: "main"
+        comment: "New /shared-shuttle page with dynamic pricing display, 4-step booking flow, departure time selection"
+
+  - task: "Admin Shuttle Management Tab"
+    implemented: true
+    working: needs_testing
+    file: "pages/AdminDashboard.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: needs_testing
+        agent: "main"
+        comment: "New Shuttle tab in admin dashboard with departure grid, route optimization button, capture payments button"
