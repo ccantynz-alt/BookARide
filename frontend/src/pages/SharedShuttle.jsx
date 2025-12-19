@@ -204,7 +204,7 @@ const SharedShuttle = () => {
       <main className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 pt-20">
         {/* Hero Section */}
         <section className="relative py-16 overflow-hidden">
-          <div className="absolute inset-0 bg-[url('/shuttle-hero.jpg')] bg-cover bg-center opacity-20" />
+          <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/10 via-gray-900 to-gray-900" />
           <div className="container mx-auto px-4 relative z-10">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
