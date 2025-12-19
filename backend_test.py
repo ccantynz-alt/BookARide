@@ -1161,6 +1161,162 @@ class BookaRideBackendTester:
         except Exception as e:
             self.log_result("SEO Pages: Backend Support", False, f"Test error: {str(e)}")
             return False
+
+    def test_shuttle_availability(self):
+        """Test GET /api/shuttle/availability endpoint"""
+        try:
+            # Test shuttle availability for a specific date and time
+            params = {
+                "date": "2025-12-20",
+                "time": "10:00"
+            }
+            
+            response = self.session.get(f"{BACKEND_URL}/shuttle/availability", params=params, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                departures = data.get('departures', [])
+                
+                # Check if we get departure times with pricing
+                if isinstance(departures, list):
+                    self.log_result("Shuttle Availability", True, f"Shuttle availability returned {len(departures)} departure times with pricing")
+                    
+                    # Verify pricing structure
+                    for departure in departures:
+                        if 'time' in departure and 'pricePerPerson' in departure:
+                            price = departure.get('pricePerPerson')
+                            if price and isinstance(price, (int, float)):
+                                continue
+                            else:
+                                self.log_result("Shuttle Availability: Pricing", False, f"Invalid pricing in departure: {departure}")
+                                return False
+                    
+                    return True
+                else:
+                    self.log_result("Shuttle Availability", False, f"Invalid departures format: {data}")
+                    return False
+            else:
+                self.log_result("Shuttle Availability", False, f"Shuttle availability failed with status {response.status_code}", response.text)
+                return False
+                
+        except Exception as e:
+            self.log_result("Shuttle Availability", False, f"Shuttle availability error: {str(e)}")
+            return False
+
+    def test_shuttle_booking(self):
+        """Test POST /api/shuttle/book endpoint"""
+        try:
+            booking_data = {
+                "date": "2025-12-20",
+                "departureTime": "10:00",
+                "pickupAddress": "Sofitel Auckland Viaduct Harbour",
+                "passengers": 2,
+                "name": "Test Customer",
+                "email": "test@example.com",
+                "phone": "021 123 4567",
+                "notes": "Test booking",
+                "needsApproval": False
+            }
+            
+            response = self.session.post(f"{BACKEND_URL}/shuttle/book", json=booking_data, timeout=15)
+            
+            if response.status_code == 200:
+                data = response.json()
+                booking_id = data.get('id')
+                status = data.get('status')
+                
+                if booking_id:
+                    self.log_result("Shuttle Booking", True, f"Shuttle booking created successfully: {booking_id}, status: {status}")
+                    return booking_id
+                else:
+                    self.log_result("Shuttle Booking", False, f"No booking ID in response: {data}")
+                    return None
+            else:
+                self.log_result("Shuttle Booking", False, f"Shuttle booking failed with status {response.status_code}", response.text)
+                return None
+                
+        except Exception as e:
+            self.log_result("Shuttle Booking", False, f"Shuttle booking error: {str(e)}")
+            return None
+
+    def test_shuttle_departures_admin(self):
+        """Test GET /api/shuttle/departures endpoint (admin auth required)"""
+        try:
+            params = {
+                "date": "2025-12-20"
+            }
+            
+            response = self.session.get(f"{BACKEND_URL}/shuttle/departures", params=params, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                departures = data.get('departures', [])
+                
+                if isinstance(departures, list):
+                    self.log_result("Shuttle Departures (Admin)", True, f"Admin shuttle departures returned {len(departures)} departure slots")
+                    
+                    # Check if any departures have bookings
+                    total_bookings = sum(len(dep.get('bookings', [])) for dep in departures)
+                    if total_bookings > 0:
+                        self.log_result("Shuttle Departures: Bookings", True, f"Found {total_bookings} shuttle bookings in departure grid")
+                    else:
+                        self.log_result("Shuttle Departures: Bookings", True, "No shuttle bookings found (expected for test data)")
+                    
+                    return True
+                else:
+                    self.log_result("Shuttle Departures (Admin)", False, f"Invalid departures format: {data}")
+                    return False
+            elif response.status_code == 401:
+                self.log_result("Shuttle Departures (Admin)", False, "Admin authentication required but failed")
+                return False
+            else:
+                self.log_result("Shuttle Departures (Admin)", False, f"Shuttle departures failed with status {response.status_code}", response.text)
+                return False
+                
+        except Exception as e:
+            self.log_result("Shuttle Departures (Admin)", False, f"Shuttle departures error: {str(e)}")
+            return False
+
+    def test_shuttle_route_optimization(self):
+        """Test GET /api/shuttle/route/{date}/{time} endpoint (admin auth required)"""
+        try:
+            date = "2025-12-20"
+            time = "10:00"
+            
+            response = self.session.get(f"{BACKEND_URL}/shuttle/route/{date}/{time}", timeout=15)
+            
+            if response.status_code == 200:
+                data = response.json()
+                route = data.get('route', [])
+                google_maps_url = data.get('googleMapsUrl', '')
+                
+                if isinstance(route, list) and google_maps_url:
+                    self.log_result("Shuttle Route Optimization", True, f"Route optimization returned {len(route)} stops with Google Maps URL")
+                    
+                    # Verify Google Maps URL format
+                    if 'maps.google.com' in google_maps_url or 'google.com/maps' in google_maps_url:
+                        self.log_result("Shuttle Route: Google Maps URL", True, f"Valid Google Maps URL generated: {google_maps_url[:100]}...")
+                    else:
+                        self.log_result("Shuttle Route: Google Maps URL", False, f"Invalid Google Maps URL: {google_maps_url}")
+                        return False
+                    
+                    return True
+                elif len(route) == 0:
+                    self.log_result("Shuttle Route Optimization", True, "No bookings for this departure time (expected for test data)")
+                    return True
+                else:
+                    self.log_result("Shuttle Route Optimization", False, f"Invalid route data: {data}")
+                    return False
+            elif response.status_code == 401:
+                self.log_result("Shuttle Route Optimization", False, "Admin authentication required but failed")
+                return False
+            else:
+                self.log_result("Shuttle Route Optimization", False, f"Route optimization failed with status {response.status_code}", response.text)
+                return False
+                
+        except Exception as e:
+            self.log_result("Shuttle Route Optimization", False, f"Route optimization error: {str(e)}")
+            return False
     
     def run_comprehensive_test(self):
         """Run all tests in sequence"""
