@@ -1028,6 +1028,13 @@ async def create_booking(booking: BookingCreate):
         booking_dict['referenceNumber'] = ref_number
         booking_obj.referenceNumber = ref_number
         
+        # Check if booking is within 24 hours - requires manual approval
+        requires_approval = is_booking_within_24_hours(booking.date, booking.time)
+        if requires_approval:
+            booking_dict['status'] = 'pending_approval'
+            booking_obj.status = 'pending_approval'
+            logger.info(f"Booking #{ref_number} requires manual approval (within 24 hours)")
+        
         # Extract totalPrice from pricing for payment processing
         booking_dict['totalPrice'] = booking.pricing.get('totalPrice', 0)
         booking_dict['payment_status'] = 'unpaid'
@@ -1035,11 +1042,20 @@ async def create_booking(booking: BookingCreate):
         logger.info(f"Booking created: {booking_obj.id} with reference #{ref_number}")
         
         # Send admin notification email for new booking
-        try:
-            await send_booking_notification_to_admin(booking_dict)
-            logger.info(f"Admin notification sent for booking #{ref_number}")
-        except Exception as email_error:
-            logger.error(f"Failed to send admin notification for booking #{ref_number}: {str(email_error)}")
+        if requires_approval:
+            # Send URGENT approval notification for bookings within 24 hours
+            try:
+                await send_urgent_approval_notification(booking_dict)
+                logger.info(f"Urgent approval notification sent for booking #{ref_number}")
+            except Exception as email_error:
+                logger.error(f"Failed to send urgent approval notification for booking #{ref_number}: {str(email_error)}")
+        else:
+            # Send regular admin notification
+            try:
+                await send_booking_notification_to_admin(booking_dict)
+                logger.info(f"Admin notification sent for booking #{ref_number}")
+            except Exception as email_error:
+                logger.error(f"Failed to send admin notification for booking #{ref_number}: {str(email_error)}")
             # Don't fail the booking creation if email fails
         
         # Sync to Google Calendar
