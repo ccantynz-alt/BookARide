@@ -6726,6 +6726,20 @@ async def generate_sitemap():
         {"path": "/bookaride-vs-skybus", "priority": "1.0", "changefreq": "weekly"},
         {"path": "/bookaride-vs-uber", "priority": "1.0", "changefreq": "weekly"},
         {"path": "/bookaride-vs-taxi", "priority": "1.0", "changefreq": "weekly"},
+        
+        # International Market Landing Pages (HIGH PRIORITY)
+        {"path": "/visitors/usa", "priority": "1.0", "changefreq": "weekly"},
+        {"path": "/visitors/canada", "priority": "1.0", "changefreq": "weekly"},
+        {"path": "/visitors/uk", "priority": "1.0", "changefreq": "weekly"},
+        {"path": "/visitors/germany", "priority": "1.0", "changefreq": "weekly"},
+        {"path": "/visitors/france", "priority": "1.0", "changefreq": "weekly"},
+        {"path": "/visitors/china", "priority": "1.0", "changefreq": "weekly"},
+        {"path": "/visitors/japan", "priority": "1.0", "changefreq": "weekly"},
+        {"path": "/visitors/korea", "priority": "1.0", "changefreq": "weekly"},
+        {"path": "/visitors/singapore", "priority": "1.0", "changefreq": "weekly"},
+        {"path": "/visitors/australia", "priority": "1.0", "changefreq": "weekly"},
+        {"path": "/visitors/india", "priority": "1.0", "changefreq": "weekly"},
+        {"path": "/visitors/uae", "priority": "1.0", "changefreq": "weekly"},
     ]
     
     # Create XML structure with xhtml namespace for hreflang
