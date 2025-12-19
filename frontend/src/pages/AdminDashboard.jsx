@@ -1629,7 +1629,7 @@ export const AdminDashboard = () => {
               <div className="overflow-x-auto">
                 {/* Bulk Action Bar */}
                 {selectedBookings.size > 0 && (
-                  <div className="bg-red-50 border-b border-red-200 px-4 py-3 flex items-center justify-between">
+                  <div className="bg-red-50 border-b border-red-200 px-4 py-3 flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-3">
                       <span className="text-sm font-medium text-red-800">
                         {selectedBookings.size} booking{selectedBookings.size > 1 ? 's' : ''} selected
@@ -1640,7 +1640,7 @@ export const AdminDashboard = () => {
                         onClick={() => setSelectedBookings(new Set())}
                         className="text-gray-600 hover:text-gray-800"
                       >
-                        Clear selection
+                        Clear
                       </Button>
                     </div>
                     <Button
@@ -1649,15 +1649,15 @@ export const AdminDashboard = () => {
                       onClick={() => setShowBulkDeleteConfirm(true)}
                       className="bg-red-600 hover:bg-red-700"
                     >
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Delete Selected (No Notifications)
+                      <Trash2 className="w-4 h-4 mr-1" />
+                      Delete
                     </Button>
                   </div>
                 )}
-                <table className="w-full">
+                <table className="w-full text-sm">
                   <thead className="bg-gray-100 border-b">
                     <tr>
-                      <th className="p-4 w-10">
+                      <th className="p-2 md:p-4 w-8">
                         <button
                           onClick={() => {
                             if (selectedBookings.size === filteredBookings.length) {
@@ -1670,27 +1670,27 @@ export const AdminDashboard = () => {
                           title="Select all"
                         >
                           {selectedBookings.size === filteredBookings.length && filteredBookings.length > 0 ? (
-                            <CheckSquare className="w-5 h-5 text-gold" />
+                            <CheckSquare className="w-4 h-4 text-gold" />
                           ) : (
-                            <Square className="w-5 h-5 text-gray-400" />
+                            <Square className="w-4 h-4 text-gray-400" />
                           )}
                         </button>
                       </th>
-                      <th className="text-left p-4 font-semibold text-gray-700">Ref # / Date</th>
-                      <th className="text-left p-4 font-semibold text-gray-700">Customer</th>
-                      <th className="text-left p-4 font-semibold text-gray-700">Service</th>
-                      <th className="text-left p-4 font-semibold text-gray-700">Route</th>
-                      <th className="text-left p-4 font-semibold text-gray-700">Price</th>
-                      <th className="text-left p-4 font-semibold text-gray-700">Payment</th>
-                      <th className="text-left p-4 font-semibold text-gray-700">Status</th>
-                      <th className="text-left p-4 font-semibold text-gray-700">Driver</th>
-                      <th className="text-left p-4 font-semibold text-gray-700">Actions</th>
+                      <th className="text-left p-2 md:p-4 font-semibold text-gray-700 text-xs md:text-sm">Date</th>
+                      <th className="text-left p-2 md:p-4 font-semibold text-gray-700 text-xs md:text-sm">Customer</th>
+                      <th className="text-left p-2 md:p-4 font-semibold text-gray-700 text-xs md:text-sm hidden lg:table-cell">Service</th>
+                      <th className="text-left p-2 md:p-4 font-semibold text-gray-700 text-xs md:text-sm hidden xl:table-cell">Route</th>
+                      <th className="text-left p-2 md:p-4 font-semibold text-gray-700 text-xs md:text-sm">Price</th>
+                      <th className="text-left p-2 md:p-4 font-semibold text-gray-700 text-xs md:text-sm hidden md:table-cell">Payment</th>
+                      <th className="text-left p-2 md:p-4 font-semibold text-gray-700 text-xs md:text-sm">Status</th>
+                      <th className="text-left p-2 md:p-4 font-semibold text-gray-700 text-xs md:text-sm hidden lg:table-cell">Driver</th>
+                      <th className="text-left p-2 md:p-4 font-semibold text-gray-700 text-xs md:text-sm">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredBookings.map((booking) => (
                       <tr key={booking.id} className={`border-b hover:bg-gray-50 ${selectedBookings.has(booking.id) ? 'bg-gold/10' : ''} ${isToday(booking.date) ? 'border-l-4 border-l-blue-600 bg-blue-50/50' : ''} ${isTomorrow(booking.date) ? 'border-l-4 border-l-orange-400' : ''}`}>
-                        <td className="p-4">
+                        <td className="p-2 md:p-4">
                           <button
                             onClick={() => {
                               const newSelected = new Set(selectedBookings);
