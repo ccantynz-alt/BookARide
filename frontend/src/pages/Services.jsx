@@ -24,6 +24,13 @@ export const Services = () => {
         keywords="airport shuttle service, Auckland shuttles, shuttle service, Auckland airport shuttle, Hamilton airport shuttle, Whangarei airport transfer, private shuttle service, airport transportation, corporate shuttle, cruise transfers, Hobbiton transfers, airport pickup service, shuttle service Auckland"
         canonical="/services"
       />
+      <FAQSchema faqs={[
+        { question: "What airport shuttle services do you offer?", answer: "We offer private airport transfers, cruise ship transfers, corporate transport, Hobbiton tours, and inter-city shuttles. All services include door-to-door pickup and professional drivers." },
+        { question: "Which airports do you service?", answer: "We service Auckland International Airport, Hamilton Airport, and Whangarei Airport with private shuttle transfers from anywhere in the greater Auckland, Waikato, and Northland regions." },
+        { question: "Do you offer corporate shuttle services?", answer: "Yes! We provide corporate accounts with priority booking, invoice billing, and dedicated account management. Perfect for businesses with regular airport transfer needs." },
+        { question: "Can you arrange group shuttles?", answer: "Absolutely! We have vehicles for 1-11 passengers and can arrange multiple vehicles for larger groups. Contact us for group booking rates." }
+      ]} />
+      <ServiceSchema service={{ name: "Airport Shuttle Services", description: "Professional airport transfer services in New Zealand", priceFrom: 55, areaServed: "New Zealand", serviceType: "Airport Transfer" }} />
       <PageBreadcrumb items={[{ label: 'Services' }]} />
       {/* Professional Hero Section */}
       <section className="pt-32 pb-20 bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
