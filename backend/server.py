@@ -4302,6 +4302,147 @@ async def stripe_webhook(request: Request):
         raise HTTPException(status_code=500, detail=f"Error processing webhook: {str(e)}")
 
 
+# Twilio SMS Webhook - Driver Acknowledgment
+@api_router.post("/webhook/twilio/sms")
+async def twilio_sms_webhook(request: Request):
+    """Handle incoming SMS replies from drivers for job acknowledgment"""
+    try:
+        # Parse the form data from Twilio
+        form_data = await request.form()
+        from_number = form_data.get('From', '')
+        message_body = form_data.get('Body', '').strip().upper()
+        
+        logger.info(f"📱 Incoming SMS from {from_number}: {message_body}")
+        
+        # Check if this is a "YES" acknowledgment
+        if message_body in ['YES', 'Y', 'YEP', 'CONFIRM', 'CONFIRMED', 'OK', 'OKAY', 'ACCEPTED']:
+            # Normalize the phone number for matching
+            normalized_phone = from_number.replace('+64', '0').replace(' ', '')
+            if normalized_phone.startswith('64'):
+                normalized_phone = '0' + normalized_phone[2:]
+            
+            # Find the driver by phone number
+            driver = await db.drivers.find_one({
+                "$or": [
+                    {"phone": from_number},
+                    {"phone": normalized_phone},
+                    {"phone": from_number.replace('+64', '0')},
+                    {"phone": {"$regex": normalized_phone[-9:] + "$"}}  # Match last 9 digits
+                ]
+            }, {"_id": 0})
+            
+            if driver:
+                driver_id = driver.get('id')
+                driver_name = driver.get('name', 'Unknown')
+                
+                # Find the most recent booking assigned to this driver that hasn't been acknowledged
+                booking = await db.bookings.find_one({
+                    "$or": [
+                        {"assignedDriver": driver_id, "driverAcknowledged": {"$ne": True}},
+                        {"returnDriver": driver_id, "returnDriverAcknowledged": {"$ne": True}}
+                    ]
+                }, {"_id": 0}, sort=[("createdAt", -1)])
+                
+                if booking:
+                    booking_ref = get_booking_reference(booking)
+                    update_fields = {"driverAcknowledgedAt": datetime.now(timezone.utc).isoformat()}
+                    
+                    # Determine which trip (outbound or return) was acknowledged
+                    if booking.get('assignedDriver') == driver_id and not booking.get('driverAcknowledged'):
+                        update_fields["driverAcknowledged"] = True
+                        trip_type = "OUTBOUND"
+                    elif booking.get('returnDriver') == driver_id and not booking.get('returnDriverAcknowledged'):
+                        update_fields["returnDriverAcknowledged"] = True
+                        trip_type = "RETURN"
+                    else:
+                        trip_type = "OUTBOUND"
+                        update_fields["driverAcknowledged"] = True
+                    
+                    await db.bookings.update_one(
+                        {"id": booking.get('id')},
+                        {"$set": update_fields}
+                    )
+                    
+                    logger.info(f"✅ Driver {driver_name} acknowledged {trip_type} trip for booking #{booking_ref}")
+                    
+                    # Send confirmation SMS back to driver
+                    try:
+                        account_sid = os.environ.get('TWILIO_ACCOUNT_SID')
+                        auth_token = os.environ.get('TWILIO_AUTH_TOKEN')
+                        twilio_phone = os.environ.get('TWILIO_PHONE_NUMBER')
+                        
+                        if account_sid and auth_token and twilio_phone:
+                            client = Client(account_sid, auth_token)
+                            client.messages.create(
+                                body=f"✅ Thanks {driver_name}! Job #{booking_ref} confirmed. Customer: {booking.get('name')} on {format_date_ddmmyyyy(booking.get('date'))} at {booking.get('time')}",
+                                from_=twilio_phone,
+                                to=from_number
+                            )
+                    except Exception as sms_error:
+                        logger.error(f"Failed to send acknowledgment confirmation: {str(sms_error)}")
+                    
+                    # Notify admin of driver acknowledgment
+                    try:
+                        admin_email = os.environ.get('ADMIN_EMAIL', 'bookings@bookaride.co.nz')
+                        mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
+                        mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
+                        sender_email = os.environ.get('SENDER_EMAIL', 'noreply@mg.bookaride.co.nz')
+                        
+                        if mailgun_api_key and mailgun_domain:
+                            html_content = f"""
+                            <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px;">
+                                <div style="background: #22c55e; color: white; padding: 15px; border-radius: 8px 8px 0 0; text-align: center;">
+                                    <h2 style="margin: 0;">✅ Driver Acknowledged Job</h2>
+                                </div>
+                                <div style="background: #f0fdf4; padding: 20px; border: 1px solid #86efac; border-top: none; border-radius: 0 0 8px 8px;">
+                                    <p><strong>Driver:</strong> {driver_name}</p>
+                                    <p><strong>Booking:</strong> #{booking_ref}</p>
+                                    <p><strong>Trip Type:</strong> {trip_type}</p>
+                                    <p><strong>Customer:</strong> {booking.get('name')}</p>
+                                    <p><strong>Date:</strong> {format_date_ddmmyyyy(booking.get('date'))} at {booking.get('time')}</p>
+                                    <p style="color: #16a34a; font-weight: bold;">Driver has confirmed receipt of this job assignment.</p>
+                                </div>
+                            </div>
+                            """
+                            
+                            requests.post(
+                                f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
+                                auth=("api", mailgun_api_key),
+                                data={
+                                    "from": f"BookaRide System <{sender_email}>",
+                                    "to": admin_email,
+                                    "subject": f"✅ Driver {driver_name} Acknowledged Job #{booking_ref}",
+                                    "html": html_content
+                                }
+                            )
+                    except Exception as email_error:
+                        logger.error(f"Failed to notify admin of acknowledgment: {str(email_error)}")
+                    
+                    # Return TwiML response
+                    return Response(
+                        content='<?xml version="1.0" encoding="UTF-8"?><Response></Response>',
+                        media_type="application/xml"
+                    )
+                else:
+                    logger.warning(f"No pending booking found for driver {driver_name}")
+            else:
+                logger.warning(f"No driver found with phone number: {from_number}")
+        else:
+            logger.info(f"SMS not an acknowledgment: {message_body}")
+        
+        # Return empty TwiML response
+        return Response(
+            content='<?xml version="1.0" encoding="UTF-8"?><Response></Response>',
+            media_type="application/xml"
+        )
+        
+    except Exception as e:
+        logger.error(f"Error processing Twilio SMS webhook: {str(e)}")
+        return Response(
+            content='<?xml version="1.0" encoding="UTF-8"?><Response></Response>',
+            media_type="application/xml"
+        )
+
 
 # ==================== ENHANCED ADMIN FEATURES ====================
 
