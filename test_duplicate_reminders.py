@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 import pytz
 
 # Configuration
-BACKEND_URL = "https://multistep-notify.preview.emergentagent.com/api"
+BACKEND_URL = "https://bookride-fix.preview.emergentagent.com/api"
 ADMIN_USERNAME = "admin"
 ADMIN_PASSWORD = "Kongkong2025!@"
 
