@@ -1822,6 +1822,132 @@ export const AdminDashboard = () => {
         </Card>
           </TabsContent>
 
+          {/* Shuttle Service Tab */}
+          <TabsContent value="shuttle" className="space-y-6">
+            <Card className="border-yellow-200 bg-yellow-50">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <Bus className="w-8 h-8 text-yellow-600" />
+                    <div>
+                      <h3 className="text-xl font-bold text-gray-800">Shared Shuttle Service</h3>
+                      <p className="text-sm text-gray-600">Auckland CBD → Airport (Every 2 Hours)</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Input 
+                      type="date" 
+                      value={shuttleDate} 
+                      onChange={(e) => {
+                        setShuttleDate(e.target.value);
+                        fetchShuttleData(e.target.value);
+                      }}
+                      className="w-40"
+                    />
+                    <Button 
+                      onClick={() => fetchShuttleData(shuttleDate)}
+                      variant="outline"
+                      disabled={loadingShuttle}
+                    >
+                      <RefreshCw className={`w-4 h-4 mr-2 ${loadingShuttle ? 'animate-spin' : ''}`} />
+                      Refresh
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Departure Times Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {shuttleData.departures && Object.entries(shuttleData.departures).map(([time, data]) => (
+                    <div 
+                      key={time} 
+                      className={`p-4 rounded-lg border-2 ${
+                        data.totalPassengers > 0 
+                          ? 'bg-white border-yellow-500 shadow-md' 
+                          : 'bg-gray-50 border-gray-200'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <p className="text-lg font-bold text-gray-800">
+                            {time.replace(':00', ':00').replace(/(\d{2}):(\d{2})/, (m, h, min) => {
+                              const hour = parseInt(h);
+                              const ampm = hour >= 12 ? 'PM' : 'AM';
+                              const hour12 = hour % 12 || 12;
+                              return `${hour12}:${min} ${ampm}`;
+                            })}
+                          </p>
+                          <p className="text-sm text-gray-500">{shuttleDate}</p>
+                        </div>
+                        <div className={`px-2 py-1 rounded text-xs font-medium ${
+                          data.totalPassengers >= 6 ? 'bg-green-100 text-green-800' :
+                          data.totalPassengers >= 3 ? 'bg-yellow-100 text-yellow-800' :
+                          data.totalPassengers > 0 ? 'bg-blue-100 text-blue-800' :
+                          'bg-gray-100 text-gray-500'
+                        }`}>
+                          {data.totalPassengers || 0} pax
+                        </div>
+                      </div>
+
+                      {data.bookings && data.bookings.length > 0 ? (
+                        <>
+                          <div className="space-y-2 mb-3 max-h-40 overflow-y-auto">
+                            {data.bookings.map((booking, idx) => (
+                              <div key={idx} className="text-xs bg-gray-100 rounded p-2">
+                                <div className="font-medium">{booking.name} ({booking.passengers})</div>
+                                <div className="text-gray-500 truncate">{booking.pickupAddress}</div>
+                                <div className="text-gray-400">{booking.phone}</div>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="flex justify-between items-center text-sm mb-3">
+                            <span className="text-gray-600">Est. Revenue:</span>
+                            <span className="font-bold text-green-600">${data.totalRevenue || 0}</span>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button 
+                              size="sm" 
+                              className="flex-1 bg-blue-600 hover:bg-blue-700"
+                              onClick={() => getShuttleRoute(shuttleDate, time)}
+                            >
+                              <Navigation className="w-3 h-3 mr-1" />
+                              Route
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              className="flex-1 bg-green-600 hover:bg-green-700"
+                              onClick={() => captureShuttlePayments(shuttleDate, time)}
+                            >
+                              <DollarSign className="w-3 h-3 mr-1" />
+                              Charge All
+                            </Button>
+                          </div>
+                        </>
+                      ) : (
+                        <p className="text-sm text-gray-400 italic">No bookings yet</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Pricing Info */}
+                <div className="mt-6 p-4 bg-white rounded-lg border">
+                  <h4 className="font-semibold text-gray-700 mb-2">Dynamic Pricing Tiers</h4>
+                  <div className="flex flex-wrap gap-2 text-xs">
+                    <span className="px-2 py-1 bg-gray-100 rounded">1-2 pax: $100/ea</span>
+                    <span className="px-2 py-1 bg-gray-100 rounded">3 pax: $70/ea</span>
+                    <span className="px-2 py-1 bg-gray-100 rounded">4 pax: $55/ea</span>
+                    <span className="px-2 py-1 bg-gray-100 rounded">5 pax: $45/ea</span>
+                    <span className="px-2 py-1 bg-gray-100 rounded">6 pax: $40/ea</span>
+                    <span className="px-2 py-1 bg-gray-100 rounded">7+ pax: $35-25/ea</span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    💳 Cards are authorized at booking, charged when shuttle arrives at airport
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* Analytics Tab */}
           <TabsContent value="analytics">
             <AnalyticsTab />
