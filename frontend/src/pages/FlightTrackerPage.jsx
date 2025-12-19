@@ -19,6 +19,17 @@ const FlightTrackerPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-900">
+      <SEO
+        title="Free Flight Tracker Auckland | Real-Time Flight Status | BookaRide"
+        description="Track your flight to Auckland Airport in real-time. Free flight tracking service - monitor arrivals, departures, delays. We adjust your airport transfer pickup automatically."
+        keywords="Auckland flight tracker, Auckland Airport arrivals, flight status Auckland, track my flight NZ, Auckland Airport departures, real-time flight tracking"
+        canonical="/flight-tracker"
+      />
+      <FAQSchema faqs={[
+        { question: "How do I track my flight to Auckland?", answer: "Enter your flight number in our free flight tracker. We show real-time arrival and departure information for all flights to Auckland Airport." },
+        { question: "Does BookaRide track my flight automatically?", answer: "Yes! When you book an airport transfer with us, we automatically monitor your flight and adjust your pickup time if there are any delays." },
+        { question: "What happens if my flight is delayed?", answer: "We track all flights in real-time. If your flight is delayed, we automatically adjust your pickup time - no need to call us." }
+      ]} />
       <PageBreadcrumb items={[{ label: 'Flight Tracker' }]} />
       
       {/* Hero Section with Air New Zealand Plane */}

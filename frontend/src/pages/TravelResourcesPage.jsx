@@ -11,6 +11,17 @@ import { FAQSchema } from '../components/SchemaMarkup';
 const TravelResourcesPage = () => {
   return (
     <div className="min-h-screen bg-gray-50">
+      <SEO
+        title="New Zealand Travel Guide | Auckland Airport Tips | BookaRide"
+        description="Essential New Zealand travel guide for visitors. Auckland Airport terminal maps, local tips, transport options, and everything you need for a smooth arrival in NZ."
+        keywords="New Zealand travel guide, Auckland Airport guide, NZ travel tips, Auckland Airport terminals, visiting New Zealand, NZ arrival guide"
+        canonical="/travel-resources"
+      />
+      <FAQSchema faqs={[
+        { question: "What should I know before arriving at Auckland Airport?", answer: "Auckland Airport has two terminals - International and Domestic. Allow 10-15 minutes to walk between them. Pre-book your airport transfer for the smoothest arrival experience." },
+        { question: "How do I get from Auckland Airport to the city?", answer: "Options include private shuttle (door-to-door, fixed price), SkyBus (to CBD only), taxi, or rideshare. For comfort and reliability, we recommend booking a private transfer with BookaRide." },
+        { question: "What's the best way to get around Auckland?", answer: "Auckland is spread out so having pre-arranged transport is essential. Book airport transfers in advance and consider car rental for exploring outside the city." }
+      ]} />
       <PageBreadcrumb items={[{ label: 'Travel Guide' }]} />
       {/* Hero Section */}
       <section className="pt-32 pb-16 bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900">
