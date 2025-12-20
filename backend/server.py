@@ -9317,7 +9317,7 @@ async def import_bookings_from_csv(
                     "dropoffAddress": row.get('dropoff_address', '').strip(),
                     "date": booking_date,
                     "time": row.get('booking_time', ''),
-                    "passengers": int(row.get('passengers', 1) or 1),
+                    "passengers": str(row.get('passengers', '1') or '1'),  # Must be string
                     "adults": int(row.get('adults', 0) or 0),
                     "children": int(row.get('children', 0) or 0),
                     "vehicleType": row.get('vehicle_type', ''),
@@ -9337,7 +9337,16 @@ async def import_bookings_from_csv(
                     "created_at": row.get('created_date', datetime.now(timezone.utc).isoformat()),
                     "imported_from": "wordpress_chauffeur",
                     "imported_at": datetime.now(timezone.utc).isoformat(),
-                    "notifications_sent": True  # Mark as sent to prevent sending
+                    "notifications_sent": True,  # Mark as sent to prevent sending
+                    # Add pricing object for validation (historical bookings don't have detailed pricing)
+                    "pricing": {
+                        "distance": float(row.get('distance_km', 0) or 0),
+                        "basePrice": 0,
+                        "airportFee": 0,
+                        "oversizedLuggageFee": 0,
+                        "passengerFee": 0,
+                        "totalPrice": 0
+                    }
                 }
                 
                 await db.bookings.insert_one(booking)
