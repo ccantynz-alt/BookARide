@@ -9439,12 +9439,6 @@ async def trigger_arrival_emails(current_admin: dict = Depends(get_current_admin
     except Exception as e:
         logger.error(f"Error triggering arrival emails: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
-            logger.info(f"🚀 Startup reminder check complete: {result}")
-        else:
-            logger.info(f"🚀 Startup reminder check skipped - outside reminder hours (current hour: {current_hour})")
-            
-    except Exception as e:
-        logger.error(f"❌ Startup reminder check error: {str(e)}")
 
 
 @app.on_event("startup")
