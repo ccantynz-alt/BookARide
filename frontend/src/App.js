@@ -286,6 +286,10 @@ function App() {
             <Route path="/driver/portal" element={<DriverPortal />} />
             <Route path="/drive-with-us" element={<DriveWithUs />} />
             
+            {/* Live GPS Tracking Routes (No Header/Footer) */}
+            <Route path="/track/driver/:sessionId" element={<DriverTracking />} />
+            <Route path="/track/:trackingRef" element={<CustomerTracking />} />
+            
             {/* Admin Routes (No language prefix) */}
             <Route path="/admin/login" element={<AdminLogin />} />
             <Route path="/admin/auth/callback" element={<AdminAuthCallback />} />
