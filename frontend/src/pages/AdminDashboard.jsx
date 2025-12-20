@@ -1798,16 +1798,33 @@ export const AdminDashboard = () => {
                             <button
                               onClick={() => openDetailsModal(booking)}
                               className="p-1 hover:bg-gray-100 rounded"
-                              title="View"
+                              title="View Details"
                             >
                               <Eye className="w-3.5 h-3.5 text-gray-500" />
                             </button>
                             <button
                               onClick={() => openEditBookingModal(booking)}
                               className="p-1 hover:bg-blue-100 rounded"
-                              title="Edit"
+                              title="Edit Booking"
                             >
                               <Edit2 className="w-3.5 h-3.5 text-blue-500" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                setSelectedBooking(booking);
+                                setShowEmailModal(true);
+                              }}
+                              className="p-1 hover:bg-green-100 rounded"
+                              title="Send Email"
+                            >
+                              <Mail className="w-3.5 h-3.5 text-green-500" />
+                            </button>
+                            <button
+                              onClick={() => handleResendConfirmation(booking.id)}
+                              className="p-1 hover:bg-amber-100 rounded"
+                              title="Resend Confirmation"
+                            >
+                              <RefreshCw className="w-3.5 h-3.5 text-amber-500" />
                             </button>
                             <button
                               onClick={() => handleDeleteBooking(booking.id, booking.name, true)}
