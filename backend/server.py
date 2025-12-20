@@ -9128,6 +9128,296 @@ async def startup_reminder_check():
         # Only run startup check if it's between 8 AM and 11 PM
         if current_hour >= 8 and current_hour <= 23:
             result = await send_daily_reminders_core(source="startup_check")
+
+
+# ==================== AIRPORT ARRIVAL EMAILS ====================
+
+async def send_arrival_pickup_emails():
+    """
+    Send airport pickup guide emails to customers arriving tomorrow.
+    Runs daily at 9 AM NZ time.
+    Only for airport arrivals (customers flying INTO Auckland).
+    """
+    try:
+        nz_tz = pytz.timezone('Pacific/Auckland')
+        nz_now = datetime.now(nz_tz)
+        tomorrow = (nz_now + timedelta(days=1)).strftime('%Y-%m-%d')
+        
+        logger.info(f"✈️ [Arrival Emails] Checking for airport arrivals on {tomorrow}")
+        
+        # Find bookings where dropoff is Auckland Airport (arrivals TO Auckland)
+        # These are customers flying INTO Auckland who need pickup at the airport
+        airport_keywords = ['airport', 'auckland airport', 'akl', 'domestic terminal', 'international terminal']
+        
+        # Build query for pickups FROM airport (arriving customers)
+        query = {
+            "date": tomorrow,
+            "status": {"$nin": ["cancelled", "completed"]},
+            "$or": [
+                {"pickupAddress": {"$regex": "airport", "$options": "i"}},
+                {"pickupAddress": {"$regex": "domestic terminal", "$options": "i"}},
+                {"pickupAddress": {"$regex": "international terminal", "$options": "i"}}
+            ]
+        }
+        
+        bookings = await db.bookings.find(query, {"_id": 0}).to_list(500)
+        
+        if not bookings:
+            logger.info(f"✈️ [Arrival Emails] No airport arrivals found for {tomorrow}")
+            return {"sent": 0, "date": tomorrow}
+        
+        logger.info(f"✈️ [Arrival Emails] Found {len(bookings)} airport arrivals for {tomorrow}")
+        
+        # Get email settings
+        mailgun_api_key = os.environ.get('MAILGUN_API_KEY', '')
+        mailgun_domain = os.environ.get('MAILGUN_DOMAIN', '')
+        public_domain = os.environ.get('PUBLIC_DOMAIN', 'https://bookaride.co.nz')
+        
+        if not mailgun_api_key or not mailgun_domain:
+            logger.warning("✈️ [Arrival Emails] Mailgun not configured")
+            return {"sent": 0, "error": "Mailgun not configured"}
+        
+        sent_count = 0
+        
+        for booking in bookings:
+            try:
+                email = booking.get('email')
+                if not email:
+                    continue
+                
+                # Check if we already sent this email
+                if booking.get('arrivalEmailSent'):
+                    logger.info(f"✈️ Skipping {email} - arrival email already sent")
+                    continue
+                
+                customer_name = booking.get('name', 'Valued Customer')
+                pickup_address = booking.get('pickupAddress', '').lower()
+                flight_number = booking.get('flightNumber', '')
+                pickup_time = booking.get('time', '')
+                
+                # Determine terminal type based on pickup address
+                is_international = 'international' in pickup_address
+                is_domestic = 'domestic' in pickup_address or not is_international
+                
+                # Determine specific pickup point based on flight number or address
+                pickup_info = get_pickup_location_info(pickup_address, flight_number)
+                
+                # Create email content
+                email_html = create_arrival_email_html(
+                    customer_name=customer_name,
+                    booking_date=tomorrow,
+                    pickup_time=pickup_time,
+                    flight_number=flight_number,
+                    is_international=is_international,
+                    pickup_info=pickup_info,
+                    public_domain=public_domain
+                )
+                
+                # Send email
+                response = requests.post(
+                    f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
+                    auth=("api", mailgun_api_key),
+                    data={
+                        "from": f"BookaRide NZ <noreply@{mailgun_domain}>",
+                        "to": email,
+                        "subject": f"✈️ Your Airport Pickup Tomorrow - Where to Meet Your Driver",
+                        "html": email_html
+                    }
+                )
+                
+                if response.status_code == 200:
+                    # Mark as sent
+                    await db.bookings.update_one(
+                        {"id": booking.get('id')},
+                        {"$set": {
+                            "arrivalEmailSent": True,
+                            "arrivalEmailSentAt": datetime.now(timezone.utc).isoformat()
+                        }}
+                    )
+                    sent_count += 1
+                    logger.info(f"✈️ Arrival email sent to {email} for booking {booking.get('id')}")
+                else:
+                    logger.error(f"✈️ Failed to send arrival email to {email}: {response.text}")
+                    
+            except Exception as e:
+                logger.error(f"✈️ Error sending arrival email: {str(e)}")
+                continue
+        
+        logger.info(f"✈️ [Arrival Emails] Completed - {sent_count} emails sent for {tomorrow}")
+        return {"sent": sent_count, "date": tomorrow}
+        
+    except Exception as e:
+        logger.error(f"✈️ [Arrival Emails] Error: {str(e)}")
+        return {"sent": 0, "error": str(e)}
+
+
+def get_pickup_location_info(pickup_address: str, flight_number: str) -> dict:
+    """
+    Determine the specific pickup location based on address and flight number.
+    """
+    pickup_lower = pickup_address.lower()
+    flight_upper = flight_number.upper() if flight_number else ""
+    
+    # Check for international terminal
+    if 'international' in pickup_lower:
+        return {
+            "terminal": "International Terminal",
+            "location": "Allpress Cafe",
+            "icon": "☕",
+            "color": "#3B82F6",  # blue
+            "instructions": [
+                "After collecting your luggage, walk through customs into the public arrivals area",
+                "Turn LEFT once you enter the public area",
+                "Look for the Allpress Cafe (ALLPRESS signage)",
+                "Your driver will be at the bench in front of the cafe, holding a sign with your name"
+            ]
+        }
+    
+    # Check for Jetstar flights
+    if 'jetstar' in pickup_lower or flight_upper.startswith('JQ'):
+        return {
+            "terminal": "Domestic Terminal - Jetstar",
+            "location": "Jetstar Car Park",
+            "icon": "🅿️",
+            "color": "#F97316",  # orange
+            "instructions": [
+                "After collecting your bags, head towards the exit",
+                "Walk through Door 5 & 6",
+                "Turn LEFT into the Jetstar car park",
+                "Your driver will meet you there with a sign"
+            ]
+        }
+    
+    # Check for regional flights
+    regional_keywords = ['regional', 'sounds air', 'air chathams', 'barrier air']
+    if any(kw in pickup_lower for kw in regional_keywords):
+        return {
+            "terminal": "Domestic Terminal - Regionals",
+            "location": "Luggage Claim (opposite Krispy Kreme)",
+            "icon": "🍩",
+            "color": "#22C55E",  # green
+            "instructions": [
+                "Head to the luggage claim area",
+                "Look for Krispy Kreme Doughnuts",
+                "Your driver will be waiting opposite Krispy Kreme, holding a sign with your name"
+            ]
+        }
+    
+    # Default to Cities/Main domestic
+    return {
+        "terminal": "Domestic Terminal - Cities",
+        "location": "Outside Arrivals (Dunkin' Donuts)",
+        "icon": "🍩",
+        "color": "#A855F7",  # purple
+        "instructions": [
+            "After collecting your bags, walk out of the arrivals area",
+            "Look for Dunkin' Donuts outside",
+            "Your driver will be standing there with a sign displaying your name"
+        ]
+    }
+
+
+def create_arrival_email_html(customer_name: str, booking_date: str, pickup_time: str, 
+                               flight_number: str, is_international: bool, 
+                               pickup_info: dict, public_domain: str) -> str:
+    """
+    Create the HTML email for airport arrival pickup instructions.
+    """
+    instructions_html = "".join([
+        f'<tr><td style="padding: 8px 0; vertical-align: top; width: 30px;"><span style="display: inline-block; width: 24px; height: 24px; background: {pickup_info["color"]}20; color: {pickup_info["color"]}; border-radius: 50%; text-align: center; line-height: 24px; font-weight: bold; font-size: 12px;">{i+1}</span></td><td style="padding: 8px 0; padding-left: 12px; color: #374151;">{instruction}</td></tr>'
+        for i, instruction in enumerate(pickup_info["instructions"])
+    ])
+    
+    return f'''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f3f4f6;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+            
+            <!-- Header -->
+            <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border-radius: 16px 16px 0 0; padding: 30px; text-align: center;">
+                <h1 style="color: white; margin: 0; font-size: 24px;">✈️ Your Airport Pickup Tomorrow</h1>
+                <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0;">Where to meet your BookaRide driver</p>
+            </div>
+            
+            <!-- Main Content -->
+            <div style="background: white; padding: 30px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                
+                <p style="color: #374151; font-size: 16px; margin: 0 0 20px 0;">
+                    Hi {customer_name},
+                </p>
+                
+                <p style="color: #374151; font-size: 16px; margin: 0 0 25px 0;">
+                    We're looking forward to picking you up tomorrow! Here's exactly where to find your driver.
+                </p>
+                
+                <!-- Booking Details -->
+                <div style="background: #f9fafb; border-radius: 12px; padding: 20px; margin-bottom: 25px;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr>
+                            <td style="padding: 5px 0; color: #6b7280;">Date:</td>
+                            <td style="padding: 5px 0; color: #111827; font-weight: 600; text-align: right;">{booking_date}</td>
+                        </tr>
+                        {f'<tr><td style="padding: 5px 0; color: #6b7280;">Pickup Time:</td><td style="padding: 5px 0; color: #111827; font-weight: 600; text-align: right;">{pickup_time}</td></tr>' if pickup_time else ''}
+                        {f'<tr><td style="padding: 5px 0; color: #6b7280;">Flight:</td><td style="padding: 5px 0; color: #111827; font-weight: 600; text-align: right;">{flight_number}</td></tr>' if flight_number else ''}
+                    </table>
+                </div>
+                
+                <!-- Pickup Location Card -->
+                <div style="border: 2px solid {pickup_info['color']}; border-radius: 12px; overflow: hidden; margin-bottom: 25px;">
+                    <div style="background: {pickup_info['color']}; padding: 15px; text-align: center;">
+                        <span style="font-size: 32px;">{pickup_info['icon']}</span>
+                        <h2 style="color: white; margin: 10px 0 5px 0; font-size: 18px;">{pickup_info['terminal']}</h2>
+                        <p style="color: rgba(255,255,255,0.9); margin: 0; font-size: 14px;">Meet at: <strong>{pickup_info['location']}</strong></p>
+                    </div>
+                    
+                    <div style="padding: 20px;">
+                        <h3 style="color: #111827; margin: 0 0 15px 0; font-size: 16px;">📍 How to Find Your Driver:</h3>
+                        <table style="width: 100%; border-collapse: collapse;">
+                            {instructions_html}
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Look for Name -->
+                <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 12px; padding: 15px; margin-bottom: 25px; text-align: center;">
+                    <p style="color: #92400e; margin: 0; font-size: 16px;">
+                        👀 <strong>Look for your name!</strong><br>
+                        <span style="font-size: 14px;">Your driver will be holding a sign with "{customer_name}" on it.</span>
+                    </p>
+                </div>
+                
+                <!-- Full Guide Link -->
+                <div style="text-align: center; margin-bottom: 25px;">
+                    <a href="{public_domain}/airport-pickup-guide" style="display: inline-block; background: #f59e0b; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">
+                        View Full Pickup Guide
+                    </a>
+                </div>
+                
+                <!-- Contact -->
+                <div style="background: #f9fafb; border-radius: 12px; padding: 20px; text-align: center;">
+                    <p style="color: #6b7280; margin: 0 0 10px 0; font-size: 14px;">Can't find your driver?</p>
+                    <a href="tel:+6421743321" style="color: #f59e0b; font-size: 20px; font-weight: bold; text-decoration: none;">
+                        📞 021 743 321
+                    </a>
+                </div>
+                
+            </div>
+            
+            <!-- Footer -->
+            <div style="text-align: center; padding: 20px; color: #9ca3af; font-size: 12px;">
+                <p style="margin: 0;">BookaRide NZ • Premium Airport Transfers</p>
+                <p style="margin: 5px 0 0 0;">bookaride.co.nz</p>
+            </div>
+            
+        </div>
+    </body>
+    </html>
+    '''
             logger.info(f"🚀 Startup reminder check complete: {result}")
         else:
             logger.info(f"🚀 Startup reminder check skipped - outside reminder hours (current hour: {current_hour})")
