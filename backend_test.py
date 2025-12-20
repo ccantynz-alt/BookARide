@@ -1714,6 +1714,11 @@ TEST002,Test Customer 2,test2@example.com,021654321,456 Sample Ave Auckland,Auck
             return False
         
         # NEW REVIEW REQUEST FEATURES TESTING
+        print("\n📥 Testing Historical Booking Import Feature (REVIEW REQUEST)...")
+        self.test_import_status_endpoint()
+        self.test_import_bookings_endpoint()
+        self.test_imported_bookings_in_list()
+        
         print("\n🚨 Testing 24-Hour Booking Approval Rule (NEW FEATURE)...")
         self.test_24_hour_booking_approval_rule_within_24h()
         self.test_24_hour_booking_approval_rule_beyond_24h()
