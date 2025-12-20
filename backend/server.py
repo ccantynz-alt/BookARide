@@ -3117,7 +3117,10 @@ bookaride.co.nz | +64 21 743 321
                     distance_km = booking.get('distance', booking.get('estimatedDistance', ''))
                     distance_text = f"\nDistance: {distance_km} km" if distance_km else ""
                     
-                    sms_body = f"""BookaRide - {trip_type} Trip Assignment!
+                    # Convert trip_type to user-friendly label
+                    trip_label = "Departure" if trip_type == "OUTBOUND" else "Arrival"
+                    
+                    sms_body = f"""BookaRide - {trip_label}
 
 Ref: {booking_ref}
 Customer: {booking.get('name', 'N/A')}
