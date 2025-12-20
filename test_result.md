@@ -275,6 +275,7 @@ metadata:
 
 test_plan:
   current_focus:
+    - "Historical Booking Import Feature - BACKEND TESTING COMPLETED ✅"
     - "24-Hour Booking Approval Rule - BACKEND TESTING COMPLETED ✅"
     - "Admin Dashboard Alert Banner - BACKEND DATA VERIFIED ✅"
     - "Auckland CBD SEO Pages - BACKEND SUPPORT VERIFIED ✅"
