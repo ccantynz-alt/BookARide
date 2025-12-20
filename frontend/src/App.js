@@ -101,6 +101,8 @@ import ShuttleDriverPortal from './pages/ShuttleDriverPortal';
 // Live GPS Tracking
 import DriverTracking from './pages/DriverTracking';
 import CustomerTracking from './pages/CustomerTracking';
+// Airport Pickup Guide
+import AirportPickupGuide from './pages/AirportPickupGuide';
 
 import RecentBookingsNotification from './components/RecentBookingsNotification';
 import ExitIntentPopup from './components/ExitIntentPopup';
