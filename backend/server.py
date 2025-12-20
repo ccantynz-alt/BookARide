@@ -4555,6 +4555,482 @@ async def twilio_sms_webhook(request: Request):
         )
 
 
+# ==================== LIVE GPS TRACKING ====================
+
+import random
+import string
+
+def generate_tracking_ref(length=6):
+    """Generate a short tracking reference for customer links"""
+    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
+
+
+class LocationUpdate(BaseModel):
+    lat: float
+    lng: float
+    heading: Optional[float] = None
+    speed: Optional[float] = None
+    accuracy: Optional[float] = None
+
+
+class TrackingSessionCreate(BaseModel):
+    bookingId: str
+    bookingType: str = "regular"  # "regular" or "shuttle"
+
+
+@api_router.post("/tracking/create")
+async def create_tracking_session(data: TrackingSessionCreate, current_admin: dict = Depends(get_current_admin)):
+    """
+    Create a tracking session for a booking.
+    Called by admin when assigning driver - sends SMS to driver with tracking start link.
+    """
+    try:
+        # Get booking details
+        if data.bookingType == "shuttle":
+            booking = await db.shuttle_bookings.find_one({"id": data.bookingId}, {"_id": 0})
+        else:
+            booking = await db.bookings.find_one({"id": data.bookingId}, {"_id": 0})
+        
+        if not booking:
+            raise HTTPException(status_code=404, detail="Booking not found")
+        
+        # Get driver info
+        driver_id = booking.get('assignedDriver') or booking.get('assignedDriverId')
+        driver_name = booking.get('driver_name') or booking.get('assignedDriverName')
+        
+        if not driver_id and not driver_name:
+            raise HTTPException(status_code=400, detail="No driver assigned to this booking")
+        
+        # Get driver phone
+        driver = await db.drivers.find_one(
+            {"$or": [{"id": driver_id}, {"name": driver_name}]},
+            {"_id": 0}
+        )
+        driver_phone = driver.get('phone') if driver else None
+        
+        # Generate session ID and tracking ref
+        session_id = str(uuid.uuid4())
+        tracking_ref = generate_tracking_ref()
+        
+        # Create tracking session
+        public_domain = os.environ.get('PUBLIC_DOMAIN', 'https://bookaride.co.nz')
+        driver_link = f"{public_domain}/track/driver/{session_id}"
+        customer_link = f"{public_domain}/track/{tracking_ref}"
+        
+        session = {
+            "id": session_id,
+            "trackingRef": tracking_ref,
+            "bookingId": data.bookingId,
+            "bookingType": data.bookingType,
+            "driverId": driver_id,
+            "driverName": driver_name or (driver.get('name') if driver else 'Driver'),
+            "driverPhone": driver_phone,
+            "customerName": booking.get('name'),
+            "customerPhone": booking.get('phone'),
+            "pickupAddress": booking.get('pickupAddress'),
+            "dropoffAddress": booking.get('dropoffAddress', 'Auckland Airport'),
+            "status": "pending",  # pending -> active -> completed
+            "currentLocation": None,
+            "driverLink": driver_link,
+            "customerLink": customer_link,
+            "createdAt": datetime.now(timezone.utc).isoformat(),
+            "startedAt": None,
+            "endedAt": None,
+            "customerNotified": False
+        }
+        
+        await db.tracking_sessions.insert_one(session)
+        
+        logger.info(f"📍 Tracking session created for booking {data.bookingId} - Ref: {tracking_ref}")
+        
+        return {
+            "success": True,
+            "sessionId": session_id,
+            "trackingRef": tracking_ref,
+            "driverLink": driver_link,
+            "customerLink": customer_link
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error creating tracking session: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error creating tracking session: {str(e)}")
+
+
+@api_router.get("/tracking/driver/{session_id}")
+async def get_driver_tracking_session(session_id: str):
+    """
+    Get tracking session details for driver page.
+    No auth required - driver accesses via unique link from SMS.
+    """
+    try:
+        session = await db.tracking_sessions.find_one({"id": session_id}, {"_id": 0})
+        
+        if not session:
+            raise HTTPException(status_code=404, detail="Tracking session not found")
+        
+        if session.get('status') == 'completed':
+            raise HTTPException(status_code=410, detail="Tracking session has ended")
+        
+        return {
+            "sessionId": session['id'],
+            "status": session['status'],
+            "customerName": session.get('customerName'),
+            "pickupAddress": session.get('pickupAddress'),
+            "dropoffAddress": session.get('dropoffAddress'),
+            "driverName": session.get('driverName')
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting driver tracking session: {str(e)}")
+        raise HTTPException(status_code=500, detail="Error loading tracking session")
+
+
+@api_router.post("/tracking/driver/{session_id}/start")
+async def start_driver_tracking(session_id: str):
+    """
+    Driver starts sharing their location.
+    Automatically sends tracking link to customer via SMS.
+    """
+    try:
+        session = await db.tracking_sessions.find_one({"id": session_id}, {"_id": 0})
+        
+        if not session:
+            raise HTTPException(status_code=404, detail="Tracking session not found")
+        
+        if session.get('status') == 'completed':
+            raise HTTPException(status_code=410, detail="Tracking session has ended")
+        
+        if session.get('status') == 'active':
+            return {"success": True, "message": "Tracking already active"}
+        
+        # Update session to active
+        await db.tracking_sessions.update_one(
+            {"id": session_id},
+            {"$set": {
+                "status": "active",
+                "startedAt": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        
+        # Send tracking link to customer via SMS
+        if not session.get('customerNotified'):
+            customer_phone = session.get('customerPhone')
+            if customer_phone:
+                try:
+                    account_sid = os.environ.get('TWILIO_ACCOUNT_SID')
+                    auth_token = os.environ.get('TWILIO_AUTH_TOKEN')
+                    twilio_phone = os.environ.get('TWILIO_PHONE_NUMBER')
+                    
+                    if account_sid and auth_token and twilio_phone:
+                        twilio_client = Client(account_sid, auth_token)
+                        formatted_phone = format_nz_phone(customer_phone)
+                        
+                        driver_name = session.get('driverName', 'Your driver')
+                        customer_link = session.get('customerLink')
+                        
+                        sms_body = f"""🚗 {driver_name} is on the way!
+
+Track your driver live:
+{customer_link}
+
+See exactly when they'll arrive.
+
+- BookaRide NZ"""
+                        
+                        twilio_client.messages.create(
+                            body=sms_body,
+                            from_=twilio_phone,
+                            to=formatted_phone
+                        )
+                        
+                        await db.tracking_sessions.update_one(
+                            {"id": session_id},
+                            {"$set": {"customerNotified": True}}
+                        )
+                        
+                        logger.info(f"📱 Tracking link sent to customer: {formatted_phone}")
+                        
+                except Exception as sms_error:
+                    logger.error(f"Error sending tracking SMS to customer: {sms_error}")
+        
+        logger.info(f"📍 Driver started tracking - Session: {session_id}")
+        
+        return {"success": True, "message": "Tracking started, customer notified"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error starting driver tracking: {str(e)}")
+        raise HTTPException(status_code=500, detail="Error starting tracking")
+
+
+@api_router.post("/tracking/driver/{session_id}/location")
+async def update_driver_location(session_id: str, location: LocationUpdate):
+    """
+    Driver sends location update.
+    Called every few seconds from driver's browser.
+    """
+    try:
+        session = await db.tracking_sessions.find_one({"id": session_id}, {"_id": 0})
+        
+        if not session:
+            raise HTTPException(status_code=404, detail="Tracking session not found")
+        
+        if session.get('status') == 'completed':
+            raise HTTPException(status_code=410, detail="Tracking session has ended")
+        
+        # Update location
+        location_data = {
+            "lat": location.lat,
+            "lng": location.lng,
+            "heading": location.heading,
+            "speed": location.speed,
+            "accuracy": location.accuracy,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+        
+        await db.tracking_sessions.update_one(
+            {"id": session_id},
+            {"$set": {
+                "currentLocation": location_data,
+                "status": "active"  # Ensure status is active
+            }}
+        )
+        
+        return {"success": True}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating driver location: {str(e)}")
+        raise HTTPException(status_code=500, detail="Error updating location")
+
+
+@api_router.post("/tracking/driver/{session_id}/stop")
+async def stop_driver_tracking(session_id: str):
+    """Driver stops sharing location."""
+    try:
+        result = await db.tracking_sessions.update_one(
+            {"id": session_id},
+            {"$set": {
+                "status": "completed",
+                "endedAt": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Tracking session not found")
+        
+        logger.info(f"📍 Driver stopped tracking - Session: {session_id}")
+        
+        return {"success": True, "message": "Tracking stopped"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error stopping driver tracking: {str(e)}")
+        raise HTTPException(status_code=500, detail="Error stopping tracking")
+
+
+@api_router.get("/tracking/{tracking_ref}")
+async def get_customer_tracking(tracking_ref: str):
+    """
+    Customer views driver location.
+    No auth required - accessed via unique tracking ref from SMS.
+    """
+    try:
+        session = await db.tracking_sessions.find_one({"trackingRef": tracking_ref}, {"_id": 0})
+        
+        if not session:
+            raise HTTPException(status_code=404, detail="Tracking not found")
+        
+        # Calculate ETA if we have location
+        eta_minutes = None
+        if session.get('currentLocation') and session.get('pickupAddress'):
+            google_api_key = os.environ.get('GOOGLE_MAPS_API_KEY', '')
+            if google_api_key and session['currentLocation'].get('lat'):
+                try:
+                    origin = f"{session['currentLocation']['lat']},{session['currentLocation']['lng']}"
+                    destination = session['pickupAddress']
+                    
+                    url = "https://maps.googleapis.com/maps/api/distancematrix/json"
+                    params = {
+                        'origins': origin,
+                        'destinations': destination,
+                        'key': google_api_key
+                    }
+                    response = requests.get(url, params=params)
+                    data = response.json()
+                    
+                    if data['status'] == 'OK' and data['rows']:
+                        element = data['rows'][0]['elements'][0]
+                        if element['status'] == 'OK':
+                            eta_minutes = element['duration']['value'] // 60
+                except Exception as eta_error:
+                    logger.error(f"Error calculating ETA: {eta_error}")
+        
+        return {
+            "trackingRef": tracking_ref,
+            "status": session.get('status', 'pending'),
+            "driverName": session.get('driverName'),
+            "pickupAddress": session.get('pickupAddress'),
+            "dropoffAddress": session.get('dropoffAddress'),
+            "currentLocation": session.get('currentLocation'),
+            "etaMinutes": eta_minutes,
+            "customerName": session.get('customerName')
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting customer tracking: {str(e)}")
+        raise HTTPException(status_code=500, detail="Error loading tracking")
+
+
+@api_router.post("/tracking/send-driver-link/{booking_id}")
+async def send_tracking_link_to_driver(booking_id: str, current_admin: dict = Depends(get_current_admin)):
+    """
+    Create tracking session and send link to driver.
+    One-click action from admin panel.
+    """
+    try:
+        # Get booking
+        booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+        booking_type = "regular"
+        
+        if not booking:
+            booking = await db.shuttle_bookings.find_one({"id": booking_id}, {"_id": 0})
+            booking_type = "shuttle"
+        
+        if not booking:
+            raise HTTPException(status_code=404, detail="Booking not found")
+        
+        # Get driver info
+        driver_id = booking.get('assignedDriver') or booking.get('assignedDriverId')
+        driver_name = booking.get('driver_name') or booking.get('assignedDriverName')
+        
+        if not driver_id and not driver_name:
+            raise HTTPException(status_code=400, detail="No driver assigned to this booking")
+        
+        # Get driver details
+        driver = await db.drivers.find_one(
+            {"$or": [{"id": driver_id}, {"name": driver_name}]},
+            {"_id": 0}
+        )
+        
+        if not driver or not driver.get('phone'):
+            raise HTTPException(status_code=400, detail="Driver phone not found")
+        
+        # Check for existing active session
+        existing_session = await db.tracking_sessions.find_one({
+            "bookingId": booking_id,
+            "status": {"$ne": "completed"}
+        }, {"_id": 0})
+        
+        if existing_session:
+            # Resend the existing link
+            session_id = existing_session['id']
+            tracking_ref = existing_session['trackingRef']
+            driver_link = existing_session['driverLink']
+        else:
+            # Create new session
+            session_id = str(uuid.uuid4())
+            tracking_ref = generate_tracking_ref()
+            public_domain = os.environ.get('PUBLIC_DOMAIN', 'https://bookaride.co.nz')
+            driver_link = f"{public_domain}/track/driver/{session_id}"
+            customer_link = f"{public_domain}/track/{tracking_ref}"
+            
+            session = {
+                "id": session_id,
+                "trackingRef": tracking_ref,
+                "bookingId": booking_id,
+                "bookingType": booking_type,
+                "driverId": driver_id or driver.get('id'),
+                "driverName": driver_name or driver.get('name'),
+                "driverPhone": driver.get('phone'),
+                "customerName": booking.get('name'),
+                "customerPhone": booking.get('phone'),
+                "pickupAddress": booking.get('pickupAddress'),
+                "dropoffAddress": booking.get('dropoffAddress', 'Auckland Airport'),
+                "status": "pending",
+                "currentLocation": None,
+                "driverLink": driver_link,
+                "customerLink": customer_link,
+                "createdAt": datetime.now(timezone.utc).isoformat(),
+                "startedAt": None,
+                "endedAt": None,
+                "customerNotified": False
+            }
+            
+            await db.tracking_sessions.insert_one(session)
+        
+        # Send SMS to driver with tracking link
+        account_sid = os.environ.get('TWILIO_ACCOUNT_SID')
+        auth_token = os.environ.get('TWILIO_AUTH_TOKEN')
+        twilio_phone = os.environ.get('TWILIO_PHONE_NUMBER')
+        
+        if account_sid and auth_token and twilio_phone:
+            twilio_client = Client(account_sid, auth_token)
+            formatted_phone = format_nz_phone(driver.get('phone'))
+            
+            booking_ref = get_booking_reference(booking)
+            customer_name = booking.get('name', 'Customer')
+            pickup = booking.get('pickupAddress', 'N/A')
+            
+            sms_body = f"""📍 SHARE YOUR LOCATION
+            
+Job: {booking_ref}
+Customer: {customer_name}
+Pickup: {pickup}
+
+When ready to drive, tap here to share your live location with the customer:
+
+{driver_link}
+
+Customer will be auto-notified when you start.
+
+- BookaRide"""
+            
+            twilio_client.messages.create(
+                body=sms_body,
+                from_=twilio_phone,
+                to=formatted_phone
+            )
+            
+            logger.info(f"📱 Tracking link sent to driver {driver.get('name')} at {formatted_phone}")
+            
+            # Update booking with tracking info
+            collection = db.shuttle_bookings if booking_type == "shuttle" else db.bookings
+            await collection.update_one(
+                {"id": booking_id},
+                {"$set": {
+                    "trackingSessionId": session_id,
+                    "trackingRef": tracking_ref,
+                    "trackingLinkSent": True,
+                    "trackingLinkSentAt": datetime.now(timezone.utc).isoformat()
+                }}
+            )
+            
+            return {
+                "success": True,
+                "message": f"Tracking link sent to {driver.get('name')}",
+                "sessionId": session_id,
+                "trackingRef": tracking_ref
+            }
+        else:
+            raise HTTPException(status_code=500, detail="Twilio not configured")
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error sending tracking link to driver: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
 # ==================== SHARED SHUTTLE SERVICE ====================
 
 # Shuttle pricing tiers - $200 minimum per run
