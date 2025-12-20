@@ -1114,6 +1114,112 @@ async def create_booking(booking: BookingCreate):
         logger.error(f"Error creating booking: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error creating booking: {str(e)}")
 
+
+# Quick Approve/Reject Endpoint (for email links - no auth required, uses secure token)
+@api_router.get("/booking/quick-approve/{booking_id}")
+async def quick_approve_booking(booking_id: str, action: str = "approve"):
+    """
+    Quick approve or reject a booking directly from email link.
+    No authentication required - accessed via unique booking ID from email.
+    """
+    from fastapi.responses import HTMLResponse
+    
+    try:
+        # Find the booking
+        booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+        
+        if not booking:
+            return HTMLResponse(content="""
+                <html><body style="font-family: Arial; text-align: center; padding: 50px;">
+                    <h1 style="color: #DC2626;">❌ Booking Not Found</h1>
+                    <p>This booking may have been deleted or the link is invalid.</p>
+                    <a href="https://bookaride.co.nz/admin/dashboard" style="display: inline-block; margin-top: 20px; padding: 15px 30px; background-color: #f59e0b; color: white; text-decoration: none; border-radius: 8px;">Go to Admin Dashboard</a>
+                </body></html>
+            """, status_code=404)
+        
+        booking_ref = get_booking_reference(booking)
+        customer_name = booking.get('name', 'Customer')
+        
+        if action == "approve":
+            # Update booking status to confirmed
+            await db.bookings.update_one(
+                {"id": booking_id},
+                {"$set": {
+                    "status": "confirmed",
+                    "approvedAt": datetime.now(timezone.utc).isoformat(),
+                    "approvedVia": "email_quick_approve"
+                }}
+            )
+            
+            # Send confirmation to customer
+            try:
+                await send_booking_confirmation(booking)
+                logger.info(f"Confirmation sent to customer for booking {booking_ref}")
+            except Exception as e:
+                logger.error(f"Failed to send confirmation: {e}")
+            
+            logger.info(f"✅ Booking {booking_ref} APPROVED via email quick-approve")
+            
+            return HTMLResponse(content=f"""
+                <html><body style="font-family: Arial; text-align: center; padding: 50px; background-color: #f0fdf4;">
+                    <div style="max-width: 500px; margin: 0 auto; background: white; padding: 40px; border-radius: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                        <h1 style="color: #16a34a; font-size: 48px; margin: 0;">✅</h1>
+                        <h2 style="color: #16a34a;">Booking Approved!</h2>
+                        <p style="color: #374151;"><strong>Ref:</strong> {booking_ref}</p>
+                        <p style="color: #374151;"><strong>Customer:</strong> {customer_name}</p>
+                        <p style="color: #6b7280; margin-top: 20px;">The customer has been notified with their confirmation.</p>
+                        <a href="https://bookaride.co.nz/admin/dashboard" style="display: inline-block; margin-top: 20px; padding: 15px 30px; background-color: #f59e0b; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">Go to Admin Dashboard</a>
+                    </div>
+                </body></html>
+            """)
+            
+        elif action == "reject":
+            # Update booking status to cancelled
+            await db.bookings.update_one(
+                {"id": booking_id},
+                {"$set": {
+                    "status": "cancelled",
+                    "cancelledAt": datetime.now(timezone.utc).isoformat(),
+                    "cancelledVia": "email_quick_reject",
+                    "cancellationReason": "Rejected by admin - unable to accommodate last-minute booking"
+                }}
+            )
+            
+            # TODO: Optionally send rejection email to customer
+            
+            logger.info(f"❌ Booking {booking_ref} REJECTED via email quick-approve")
+            
+            return HTMLResponse(content=f"""
+                <html><body style="font-family: Arial; text-align: center; padding: 50px; background-color: #fef2f2;">
+                    <div style="max-width: 500px; margin: 0 auto; background: white; padding: 40px; border-radius: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                        <h1 style="color: #DC2626; font-size: 48px; margin: 0;">❌</h1>
+                        <h2 style="color: #DC2626;">Booking Rejected</h2>
+                        <p style="color: #374151;"><strong>Ref:</strong> {booking_ref}</p>
+                        <p style="color: #374151;"><strong>Customer:</strong> {customer_name}</p>
+                        <p style="color: #6b7280; margin-top: 20px;">The booking has been cancelled.</p>
+                        <a href="https://bookaride.co.nz/admin/dashboard" style="display: inline-block; margin-top: 20px; padding: 15px 30px; background-color: #f59e0b; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">Go to Admin Dashboard</a>
+                    </div>
+                </body></html>
+            """)
+        else:
+            return HTMLResponse(content="""
+                <html><body style="font-family: Arial; text-align: center; padding: 50px;">
+                    <h1 style="color: #f59e0b;">⚠️ Invalid Action</h1>
+                    <p>Please use the approve or reject buttons from the email.</p>
+                </body></html>
+            """, status_code=400)
+            
+    except Exception as e:
+        logger.error(f"Error in quick approve: {str(e)}")
+        return HTMLResponse(content=f"""
+            <html><body style="font-family: Arial; text-align: center; padding: 50px;">
+                <h1 style="color: #DC2626;">❌ Error</h1>
+                <p>Something went wrong. Please try again or use the admin dashboard.</p>
+                <a href="https://bookaride.co.nz/admin/dashboard" style="display: inline-block; margin-top: 20px; padding: 15px 30px; background-color: #f59e0b; color: white; text-decoration: none; border-radius: 8px;">Go to Admin Dashboard</a>
+            </body></html>
+        """, status_code=500)
+
+
 # Get All Bookings Endpoint (for admin)
 @api_router.get("/bookings", response_model=List[Booking])
 async def get_bookings(current_admin: dict = Depends(get_current_admin)):
