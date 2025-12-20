@@ -2850,8 +2850,15 @@ async def send_urgent_approval_notification(booking: dict):
                     
                     <div style="margin-top: 20px; padding: 20px; background-color: #fef2f2; border-radius: 8px; border: 2px solid #DC2626; text-align: center;">
                         <p style="margin: 0; font-weight: bold; font-size: 16px; color: #991B1B;">🔔 ACTION REQUIRED</p>
-                        <p style="margin: 10px 0 0 0; font-size: 14px; color: #7F1D1D;">Please review and approve/reject this booking ASAP:</p>
-                        <a href="https://bookaride.co.nz/admin/dashboard" style="display: inline-block; margin-top: 15px; padding: 12px 30px; background-color: #DC2626; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">Open Admin Dashboard</a>
+                        <p style="margin: 10px 0 0 0; font-size: 14px; color: #7F1D1D;">Approve or reject this booking:</p>
+                        
+                        <div style="margin-top: 20px;">
+                            <a href="https://bookaride.co.nz/api/booking/quick-approve/{booking.get('id')}?action=approve" style="display: inline-block; margin: 5px; padding: 15px 40px; background-color: #16a34a; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">✅ APPROVE</a>
+                            <a href="https://bookaride.co.nz/api/booking/quick-approve/{booking.get('id')}?action=reject" style="display: inline-block; margin: 5px; padding: 15px 40px; background-color: #DC2626; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">❌ REJECT</a>
+                        </div>
+                        
+                        <p style="margin: 15px 0 0 0; font-size: 12px; color: #7F1D1D;">Or open the admin dashboard for more options:</p>
+                        <a href="https://bookaride.co.nz/admin/dashboard" style="display: inline-block; margin-top: 10px; padding: 10px 25px; background-color: #6b7280; color: white; text-decoration: none; border-radius: 8px; font-size: 14px;">Open Admin Dashboard</a>
                     </div>
                 </div>
                 
