@@ -2111,6 +2111,28 @@ export const AdminDashboard = () => {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Data Import Tab */}
+          <TabsContent value="import" className="space-y-6">
+            <Card className="border-purple-200 bg-purple-50">
+              <CardContent className="p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <FileText className="w-6 h-6 text-purple-600" />
+                  <h3 className="text-lg font-semibold text-purple-800">Import WordPress Bookings</h3>
+                </div>
+                <p className="text-sm text-purple-700 mb-6">
+                  Import historical bookings from your WordPress Chauffeur Booking System. This preserves original booking IDs for cross-reference and won't send notifications for imported bookings.
+                </p>
+                
+                <ImportBookingsSection 
+                  onSuccess={() => {
+                    fetchBookings();
+                    toast.success('Bookings imported successfully!');
+                  }}
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       </div>
 
