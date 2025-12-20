@@ -98,6 +98,9 @@ import CountryLandingPage from './pages/international/CountryLandingPage';
 // Shared Shuttle Service
 import SharedShuttle from './pages/SharedShuttle';
 import ShuttleDriverPortal from './pages/ShuttleDriverPortal';
+// Live GPS Tracking
+import DriverTracking from './pages/DriverTracking';
+import CustomerTracking from './pages/CustomerTracking';
 
 import RecentBookingsNotification from './components/RecentBookingsNotification';
 import ExitIntentPopup from './components/ExitIntentPopup';
