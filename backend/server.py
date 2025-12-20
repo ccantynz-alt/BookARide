@@ -9469,6 +9469,16 @@ async def startup_event():
         misfire_grace_time=3600 * 4  # Allow 4 hour grace period for missed jobs
     )
     
+    # Layer 1b: Airport Arrival Emails at 9 AM daily
+    scheduler.add_job(
+        send_arrival_pickup_emails,
+        CronTrigger(hour=9, minute=0, timezone=nz_tz),
+        id='arrival_emails_9am',
+        name='Airport arrival pickup emails at 9 AM NZ',
+        replace_existing=True,
+        misfire_grace_time=3600 * 4  # Allow 4 hour grace period
+    )
+    
     # Layer 2: Backup hourly check (runs every hour, only acts if reminders weren't sent)
     scheduler.add_job(
         interval_reminder_check,
