@@ -421,3 +421,45 @@ frontend:
       - working: needs_testing
         agent: "main"
         comment: "New Shuttle tab in admin dashboard with departure grid, route optimization button, capture payments button"
+
+## Live GPS Tracking Feature (NEW - Session)
+
+### Implementation Complete:
+1. **Backend Endpoints Created:**
+   - `POST /api/tracking/create` - Create tracking session
+   - `GET /api/tracking/driver/{session_id}` - Driver gets session info
+   - `POST /api/tracking/driver/{session_id}/start` - Driver starts location sharing
+   - `POST /api/tracking/driver/{session_id}/location` - Driver sends location updates
+   - `POST /api/tracking/driver/{session_id}/stop` - Driver stops sharing
+   - `GET /api/tracking/{tracking_ref}` - Customer views driver location
+   - `POST /api/tracking/send-driver-link/{booking_id}` - Admin sends tracking link to driver
+
+2. **Frontend Pages Created:**
+   - `/track/driver/:sessionId` - Driver location sharing page (DriverTracking.jsx)
+   - `/track/:trackingRef` - Customer live tracking page (CustomerTracking.jsx)
+
+3. **Admin Dashboard Integration:**
+   - "📍 Send Tracking Link" button added to booking details modal
+   - Appears in driver assignment section when driver is assigned
+
+### Flow:
+1. Admin assigns driver → Driver receives job SMS
+2. Admin clicks "Send Tracking Link" → Driver receives SMS with link
+3. Driver opens link → Sees job details, clicks "Start Sharing My Location"
+4. Customer automatically receives SMS with tracking link
+5. Customer opens link → Sees live map with driver's location + ETA
+
+### Test Results:
+- Backend endpoints: ALL WORKING ✅
+- Driver tracking page: WORKING ✅
+- Customer tracking page: WORKING ✅ (with live map and ETA)
+- Admin button: WORKING ✅
+- SMS integration: WORKING ✅
+
+### Testing:
+- Created session: 68e45b93-99e0-4a8d-bcf1-0a3f921abecb
+- Tracking ref: U6Q8H3
+- Driver: John Smith
+- Customer: Test Customer
+- Location sent: -36.862, 174.7682
+- ETA calculated: 8 minutes ✅
