@@ -443,6 +443,18 @@ For the webhook to work in production, configure Twilio to send incoming SMS to:
         agent: "testing"
         comment: "✅ LIVE GPS TRACKING FEATURE WORKING PERFECTLY: Comprehensive testing completed successfully. All 6 key endpoints tested: 1) POST /api/tracking/send-driver-link/{booking_id} successfully sends tracking link to driver with sessionId and trackingRef ✓, 2) GET /api/tracking/driver/{session_id} returns driver session info with customer details ✓, 3) POST /api/tracking/driver/{session_id}/start activates tracking session ✓, 4) POST /api/tracking/driver/{session_id}/location accepts location updates (lat: -36.862, lng: 174.7682) ✓, 5) GET /api/tracking/{tracking_ref} provides customer tracking view with driver location and ETA calculation (8 minutes) ✓. Complete flow tested: Admin → Driver → Customer tracking chain working end-to-end. Session: 68e45b93-99e0-4a8d-bcf1-0a3f921abecb, Tracking Ref: U6Q8H3, Driver: John Smith. SMS integration and ETA calculation via Google Maps API confirmed working."
 
+  - task: "Historical Booking Import Feature"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ HISTORICAL BOOKING IMPORT FEATURE WORKING PERFECTLY: All 3 requested endpoints tested successfully. 1) GET /api/admin/import-status returns correct counts: 1705 total bookings, 1564 WordPress imports (matches expected results) ✓, 2) POST /api/admin/import-bookings successfully imports CSV files with 2 test bookings imported, 0 skipped, 0 errors ✓, 3) Duplicate detection working: second upload of same CSV resulted in 0 imported, 2 skipped ✓, 4) GET /api/bookings shows imported bookings with all required fields (original_booking_id, imported_from, imported_at, pricing) ✓. Large dataset confirmed with 1000+ bookings. Import preserves original booking IDs for cross-reference and adds required pricing objects. Feature is production-ready."
+
 frontend:
   - task: "Shared Shuttle Booking Page"
     implemented: true
