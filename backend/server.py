@@ -9228,6 +9228,153 @@ async def trigger_arrival_emails(current_admin: dict = Depends(get_current_admin
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ==================== WORDPRESS BOOKING IMPORT ====================
+
+import csv
+from io import StringIO
+
+class ImportBookingsRequest(BaseModel):
+    csv_data: str  # Base64 encoded CSV or raw CSV string
+    skip_notifications: bool = True
+    
+@api_router.post("/admin/import-bookings")
+async def import_bookings_from_csv(
+    file: UploadFile = File(...),
+    skip_notifications: bool = Form(True),
+    current_admin: dict = Depends(get_current_admin)
+):
+    """
+    Import bookings from WordPress Chauffeur Booking System CSV export.
+    Preserves original booking IDs for cross-reference.
+    """
+    try:
+        contents = await file.read()
+        
+        # Decode CSV content
+        try:
+            csv_text = contents.decode('utf-8-sig')
+        except:
+            csv_text = contents.decode('latin-1')
+        
+        reader = csv.DictReader(StringIO(csv_text))
+        
+        imported = 0
+        skipped = 0
+        errors = []
+        
+        for row in reader:
+            try:
+                original_id = row.get('original_booking_id', '')
+                
+                # Check if already imported
+                existing = await db.bookings.find_one({
+                    "$or": [
+                        {"wordpress_id": original_id},
+                        {"original_booking_id": original_id}
+                    ]
+                })
+                
+                if existing:
+                    skipped += 1
+                    continue
+                
+                # Parse date - handle DD-MM-YYYY format
+                booking_date = row.get('booking_date', '')
+                if booking_date and '-' in booking_date:
+                    parts = booking_date.split('-')
+                    if len(parts) == 3 and len(parts[0]) == 2:
+                        # DD-MM-YYYY -> YYYY-MM-DD
+                        booking_date = f"{parts[2]}-{parts[1]}-{parts[0]}"
+                
+                # Parse return date
+                return_date = row.get('return_date', '')
+                if return_date and '-' in return_date:
+                    parts = return_date.split('-')
+                    if len(parts) == 3 and len(parts[0]) == 2:
+                        return_date = f"{parts[2]}-{parts[1]}-{parts[0]}"
+                
+                # Map status
+                status_map = {
+                    'confirmed': 'confirmed',
+                    'pending': 'pending',
+                    'completed': 'completed',
+                    'cancelled': 'cancelled',
+                    'publish': 'confirmed'
+                }
+                status = status_map.get(row.get('booking_status', '').lower(), 'confirmed')
+                
+                # Create booking document
+                booking = {
+                    "id": str(uuid.uuid4()),
+                    "wordpress_id": original_id,
+                    "original_booking_id": original_id,
+                    "booking_ref": row.get('booking_reference', original_id),
+                    "referenceNumber": row.get('booking_reference', original_id),
+                    "name": row.get('customer_name', '').strip(),
+                    "email": row.get('customer_email', '').strip(),
+                    "phone": row.get('customer_phone', '').strip(),
+                    "pickupAddress": row.get('pickup_address', '').strip(),
+                    "dropoffAddress": row.get('dropoff_address', '').strip(),
+                    "date": booking_date,
+                    "time": row.get('booking_time', ''),
+                    "passengers": int(row.get('passengers', 1) or 1),
+                    "adults": int(row.get('adults', 0) or 0),
+                    "children": int(row.get('children', 0) or 0),
+                    "vehicleType": row.get('vehicle_type', ''),
+                    "distance": float(row.get('distance_km', 0) or 0),
+                    "serviceType": row.get('service_type', 'Transfer'),
+                    "transferType": row.get('transfer_type', 'One Way'),
+                    "status": status,
+                    "payment_method": row.get('payment_method', ''),
+                    "payment_status": 'paid' if row.get('payment_method') else 'unpaid',
+                    "driver_name": row.get('driver_name', ''),
+                    "flightNumber": row.get('flight_number', ''),
+                    "notes": row.get('special_requests', ''),
+                    "specialRequests": row.get('special_requests', ''),
+                    "bookReturn": row.get('has_return', '').lower() == 'yes',
+                    "returnDate": return_date if return_date else None,
+                    "returnTime": row.get('return_time', '') if row.get('return_time') else None,
+                    "created_at": row.get('created_date', datetime.now(timezone.utc).isoformat()),
+                    "imported_from": "wordpress_chauffeur",
+                    "imported_at": datetime.now(timezone.utc).isoformat(),
+                    "notifications_sent": True  # Mark as sent to prevent sending
+                }
+                
+                await db.bookings.insert_one(booking)
+                imported += 1
+                
+            except Exception as e:
+                errors.append(f"Row {original_id}: {str(e)}")
+        
+        logger.info(f"📥 WordPress import: {imported} imported, {skipped} skipped, {len(errors)} errors")
+        
+        return {
+            "success": True,
+            "imported": imported,
+            "skipped": skipped,
+            "errors": errors[:10],  # First 10 errors
+            "total_errors": len(errors)
+        }
+        
+    except Exception as e:
+        logger.error(f"Import error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/admin/import-status")
+async def get_import_status(current_admin: dict = Depends(get_current_admin)):
+    """Get count of imported WordPress bookings"""
+    try:
+        total = await db.bookings.count_documents({})
+        imported = await db.bookings.count_documents({"imported_from": "wordpress_chauffeur"})
+        return {
+            "total_bookings": total,
+            "wordpress_imports": imported
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # Include the router in the main app (MUST be after all routes are defined)
 app.include_router(api_router)
 
