@@ -262,6 +262,7 @@ function App() {
     { path: "shuttle-driver", element: <ShuttleDriverPortal /> },
     { path: "hobbiton-transfers", element: <HobbitonTransfers /> },
     { path: "cruise-transfers", element: <CruiseTransfers /> },
+    { path: "airport-pickup-guide", element: <AirportPickupGuide /> },
     { path: "suburbs", element: <SuburbsDirectory /> },
     { path: "suburbs/:slug", element: <SuburbPage /> },
     { path: "airport-transfer/:slug", element: <SuburbLandingAdvanced /> },
