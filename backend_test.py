@@ -9,6 +9,7 @@ import json
 import time
 import sys
 from datetime import datetime, timedelta
+from io import StringIO
 
 # Configuration
 BACKEND_URL = "https://ride-booking-enhance.preview.emergentagent.com/api"
