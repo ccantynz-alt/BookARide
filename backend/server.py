@@ -9077,6 +9077,26 @@ async def sync_all_bookings_to_xero(current_admin: dict = Depends(get_current_ad
         logger.error(f"Error syncing to Xero: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@api_router.post("/admin/send-arrival-emails")
+async def trigger_arrival_emails(current_admin: dict = Depends(get_current_admin)):
+    """
+    Manually trigger airport arrival emails for tomorrow's arrivals.
+    Admin only endpoint.
+    """
+    try:
+        result = await send_arrival_pickup_emails()
+        return {
+            "success": True,
+            "message": f"Arrival emails sent: {result.get('sent', 0)}",
+            "date": result.get('date'),
+            "details": result
+        }
+    except Exception as e:
+        logger.error(f"Error triggering arrival emails: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # Include the router in the main app (MUST be after all routes are defined)
 app.include_router(api_router)
 
