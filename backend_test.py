@@ -1583,6 +1583,10 @@ class BookaRideBackendTester:
         self.test_shuttle_departures_admin()
         self.test_shuttle_route_optimization()
         
+        # GPS TRACKING FEATURE TESTING (NEW FEATURE - REVIEW REQUEST)
+        print("\n📍 Testing Live GPS Tracking Feature (NEW FEATURE)...")
+        self.test_gps_tracking_complete_flow()
+        
         # BARBARA WALSH BUG FIX TESTS (REVIEW REQUEST)
         print("\n💰 Testing Pricing Calculation with ratePerKm (Barbara Walsh Bug Fix)...")
         self.test_pricing_calculation_orewa_to_airport_with_rate_per_km()
