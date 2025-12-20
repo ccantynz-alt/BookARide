@@ -74,6 +74,215 @@ const isTomorrow = (dateString) => {
   );
 };
 
+// Import Bookings Section Component
+const ImportBookingsSection = ({ onSuccess }) => {
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState(null);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [importStatus, setImportStatus] = useState(null);
+  const fileInputRef = useRef(null);
+
+  // Fetch import status on mount
+  useEffect(() => {
+    const fetchImportStatus = async () => {
+      try {
+        const token = localStorage.getItem('admin_token');
+        const response = await axios.get(`${API}/admin/import-status`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setImportStatus(response.data);
+      } catch (error) {
+        console.error('Error fetching import status:', error);
+      }
+    };
+    fetchImportStatus();
+  }, [importResult]);
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (file && file.name.endsWith('.csv')) {
+      setSelectedFile(file);
+      setImportResult(null);
+    } else {
+      toast.error('Please select a CSV file');
+    }
+  };
+
+  const handleImport = async () => {
+    if (!selectedFile) {
+      toast.error('Please select a file first');
+      return;
+    }
+
+    setImporting(true);
+    setImportResult(null);
+
+    try {
+      const token = localStorage.getItem('admin_token');
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('skip_notifications', 'true');
+
+      const response = await axios.post(`${API}/admin/import-bookings`, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      setImportResult(response.data);
+      if (response.data.imported > 0) {
+        onSuccess?.();
+      }
+    } catch (error) {
+      console.error('Import error:', error);
+      setImportResult({
+        success: false,
+        error: error.response?.data?.detail || 'Import failed'
+      });
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Current Status */}
+      {importStatus && (
+        <div className="bg-white rounded-lg p-4 border border-purple-200">
+          <h4 className="font-semibold text-gray-700 mb-2">Current Database Status</h4>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span className="text-gray-500">Total Bookings:</span>
+              <span className="ml-2 font-medium">{importStatus.total_bookings}</span>
+            </div>
+            <div>
+              <span className="text-gray-500">WordPress Imports:</span>
+              <span className="ml-2 font-medium text-purple-600">{importStatus.wordpress_imports}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* File Upload Section */}
+      <div className="bg-white rounded-lg p-6 border-2 border-dashed border-purple-300">
+        <div className="text-center">
+          <FileText className="w-12 h-12 mx-auto text-purple-400 mb-3" />
+          <p className="text-gray-700 font-medium mb-2">Upload CSV Export File</p>
+          <p className="text-sm text-gray-500 mb-4">
+            Export your WordPress bookings using the Book A Ride Export Plugin, then upload the CSV file here.
+          </p>
+          
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept=".csv"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+          
+          <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
+            <Button
+              onClick={() => fileInputRef.current?.click()}
+              variant="outline"
+              className="border-purple-400 text-purple-600 hover:bg-purple-50"
+            >
+              Select CSV File
+            </Button>
+            
+            {selectedFile && (
+              <span className="text-sm text-gray-600 bg-purple-100 px-3 py-1 rounded-full">
+                📄 {selectedFile.name}
+              </span>
+            )}
+          </div>
+
+          {selectedFile && (
+            <Button
+              onClick={handleImport}
+              disabled={importing}
+              className="mt-4 bg-purple-600 hover:bg-purple-700 text-white"
+            >
+              {importing ? (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  Importing...
+                </>
+              ) : (
+                <>
+                  <FileText className="w-4 h-4 mr-2" />
+                  Import Bookings
+                </>
+              )}
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Import Results */}
+      {importResult && (
+        <div className={`rounded-lg p-4 border ${
+          importResult.success ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
+        }`}>
+          {importResult.success ? (
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <CheckCircle className="w-5 h-5 text-green-600" />
+                <h4 className="font-semibold text-green-800">Import Completed!</h4>
+              </div>
+              <div className="grid grid-cols-3 gap-4 text-sm">
+                <div className="bg-white p-3 rounded border border-green-200">
+                  <p className="text-green-600 font-semibold text-lg">{importResult.imported}</p>
+                  <p className="text-gray-500">Imported</p>
+                </div>
+                <div className="bg-white p-3 rounded border border-yellow-200">
+                  <p className="text-yellow-600 font-semibold text-lg">{importResult.skipped}</p>
+                  <p className="text-gray-500">Skipped (duplicates)</p>
+                </div>
+                <div className="bg-white p-3 rounded border border-red-200">
+                  <p className="text-red-600 font-semibold text-lg">{importResult.total_errors || 0}</p>
+                  <p className="text-gray-500">Errors</p>
+                </div>
+              </div>
+              {importResult.errors && importResult.errors.length > 0 && (
+                <div className="mt-3 p-3 bg-yellow-50 rounded border border-yellow-200">
+                  <p className="text-sm font-medium text-yellow-800 mb-1">First {importResult.errors.length} errors:</p>
+                  <ul className="text-xs text-yellow-700 list-disc pl-4">
+                    {importResult.errors.map((err, i) => (
+                      <li key={i}>{err}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <XCircle className="w-5 h-5 text-red-600" />
+              <p className="text-red-700">{importResult.error}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Instructions */}
+      <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+        <h4 className="font-semibold text-gray-700 mb-2">📋 Import Instructions</h4>
+        <ol className="text-sm text-gray-600 space-y-2 list-decimal pl-5">
+          <li>Install the <strong>Book A Ride Export Plugin</strong> on your WordPress site</li>
+          <li>Go to WordPress Admin → Tools → Book A Ride Export</li>
+          <li>Click "Download CSV Export" to get your booking data</li>
+          <li>Upload the downloaded CSV file here</li>
+          <li>Original booking IDs will be preserved for cross-reference</li>
+          <li>Duplicate bookings (same original ID) will be automatically skipped</li>
+        </ol>
+        <p className="text-xs text-gray-500 mt-3">
+          ⚠️ No email or SMS notifications will be sent for imported bookings
+        </p>
+      </div>
+    </div>
+  );
+};
+
 export const AdminDashboard = () => {
   const navigate = useNavigate();
   const { isLoaded } = useLoadScript({
