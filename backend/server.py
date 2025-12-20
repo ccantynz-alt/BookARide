@@ -3103,13 +3103,28 @@ bookaride.co.nz | +64 21 743 321
                     
                     client = Client(account_sid, auth_token)
                     
+                    # Get payment status
+                    payment_status = booking.get('payment_status', 'unpaid')
+                    payment_display = {
+                        'paid': '✅ PAID',
+                        'cash': '💵 CASH',
+                        'pay-on-pickup': '🚗 PAY ON PICKUP',
+                        'xero-invoiced': '📄 INVOICED',
+                        'unpaid': '⚠️ UNPAID'
+                    }.get(payment_status, payment_status.upper())
+                    
+                    # Get distance in km
+                    distance_km = booking.get('distance', booking.get('estimatedDistance', ''))
+                    distance_text = f"\nDistance: {distance_km} km" if distance_km else ""
+                    
                     sms_body = f"""BookaRide - {trip_type} Trip Assignment!
 
 Ref: {booking_ref}
 Customer: {booking.get('name', 'N/A')}
 Phone: {booking.get('phone', 'N/A')}
 Pickup: {booking.get('pickupAddress', 'N/A')}
-Date: {formatted_date} at {booking.get('time', 'N/A')}
+Date: {formatted_date} at {booking.get('time', 'N/A')}{distance_text}
+Payment: {payment_display}
 
 ⚠️ REPLY YES to confirm you received this job.
 
