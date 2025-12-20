@@ -1076,6 +1076,22 @@ export const AdminDashboard = () => {
     }
   };
 
+  // Send tracking link to driver
+  const handleSendTrackingLink = async (bookingId) => {
+    try {
+      toast.loading('Sending tracking link to driver...');
+      const response = await axios.post(`${API}/tracking/send-driver-link/${bookingId}`, {}, getAuthHeaders());
+      toast.dismiss();
+      toast.success(response.data.message || 'Tracking link sent to driver!');
+      // Refresh bookings to show tracking info
+      fetchBookings();
+    } catch (error) {
+      toast.dismiss();
+      console.error('Error sending tracking link:', error);
+      toast.error(error.response?.data?.detail || 'Failed to send tracking link');
+    }
+  };
+
   // Preview confirmation before sending
   const handlePreviewConfirmation = async (bookingId) => {
     setPreviewLoading(true);
