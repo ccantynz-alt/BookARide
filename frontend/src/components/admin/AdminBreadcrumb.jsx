@@ -17,15 +17,15 @@ export const AdminBreadcrumb = ({ activeTab, selectedBooking, showDetailsModal, 
   return (
     <nav className="flex items-center space-x-2 text-sm mb-6 bg-gold px-4 py-3 rounded-lg">
       <a href="/admin" className="flex items-center text-white hover:text-white/80 transition-colors">
-        <Home className="w-4 h-4" />
-        <span className="ml-1">Admin</span>
+        <Home className="w-4 h-4 text-white" />
+        <span className="ml-1 text-white">Admin</span>
       </a>
       
       <ChevronRight className="w-4 h-4 text-white/70" />
       
       <span className="flex items-center text-white font-medium">
-        <TabIcon className="w-4 h-4 mr-1" />
-        {currentTab.label}
+        <TabIcon className="w-4 h-4 mr-1 text-white" />
+        <span className="text-white">{currentTab.label}</span>
       </span>
 
       {/* Show booking context if viewing/editing a booking */}
