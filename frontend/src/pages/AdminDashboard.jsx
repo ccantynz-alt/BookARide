@@ -2352,14 +2352,23 @@ export const AdminDashboard = () => {
                           </p>
                         )}
                       </div>
-                      <Button 
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setSelectedDriver('')}
-                        className="text-red-600 hover:bg-red-50"
-                      >
-                        Change Driver
-                      </Button>
+                      <div className="flex flex-col gap-2">
+                        <Button 
+                          size="sm"
+                          onClick={() => handleSendTrackingLink(selectedBooking.id)}
+                          className="bg-blue-500 hover:bg-blue-600 text-white text-xs"
+                        >
+                          📍 Send Tracking Link
+                        </Button>
+                        <Button 
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setSelectedDriver('')}
+                          className="text-red-600 hover:bg-red-50"
+                        >
+                          Change Driver
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 ) : (
