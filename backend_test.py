@@ -1321,6 +1321,235 @@ class BookaRideBackendTester:
         except Exception as e:
             self.log_result("Shuttle Route Optimization", False, f"Route optimization error: {str(e)}")
             return False
+
+    def test_gps_tracking_send_driver_link(self):
+        """Test POST /api/tracking/send-driver-link/{booking_id} - Admin sends tracking link to driver"""
+        try:
+            # First, get a booking with a driver assigned
+            response = self.session.get(f"{BACKEND_URL}/bookings", timeout=10)
+            
+            if response.status_code != 200:
+                self.log_result("GPS Tracking: Send Driver Link", False, "Could not fetch bookings list")
+                return None
+            
+            bookings = response.json()
+            booking_with_driver = None
+            
+            # Look for a booking that has a driver assigned
+            for booking in bookings:
+                if booking.get('driver_name') or booking.get('driverName') or booking.get('assignedDriver'):
+                    booking_with_driver = booking
+                    break
+            
+            if not booking_with_driver:
+                # Create a test booking and assign a driver
+                booking_data = {
+                    "serviceType": "airport-shuttle",
+                    "pickupAddress": "123 Test Street, Auckland",
+                    "dropoffAddress": "Auckland Airport",
+                    "date": "2025-12-25",
+                    "time": "10:00",
+                    "passengers": "2",
+                    "name": "GPS Test Customer",
+                    "email": "gpstest@example.com",
+                    "phone": "+64211234567",
+                    "pricing": {"totalPrice": 85.00}
+                }
+                
+                booking_response = self.session.post(f"{BACKEND_URL}/bookings", json=booking_data, timeout=10)
+                if booking_response.status_code != 200:
+                    self.log_result("GPS Tracking: Send Driver Link", False, "Could not create test booking")
+                    return None
+                
+                booking_with_driver = booking_response.json()
+                booking_id = booking_with_driver.get('id')
+                
+                # Try to assign a driver (this might fail if no drivers exist, but we'll continue)
+                try:
+                    drivers_response = self.session.get(f"{BACKEND_URL}/drivers", timeout=10)
+                    if drivers_response.status_code == 200:
+                        drivers_data = drivers_response.json()
+                        drivers = drivers_data.get('drivers', [])
+                        if drivers:
+                            driver_id = drivers[0].get('id')
+                            self.session.patch(f"{BACKEND_URL}/drivers/{driver_id}/assign?booking_id={booking_id}", timeout=10)
+                except:
+                    pass  # Continue even if driver assignment fails
+            else:
+                booking_id = booking_with_driver.get('id')
+            
+            # Test sending tracking link to driver
+            response = self.session.post(f"{BACKEND_URL}/tracking/send-driver-link/{booking_id}", timeout=15)
+            
+            if response.status_code == 200:
+                data = response.json()
+                session_id = data.get('sessionId')
+                tracking_ref = data.get('trackingRef')
+                success = data.get('success')
+                
+                if session_id and tracking_ref and success:
+                    self.log_result("GPS Tracking: Send Driver Link", True, f"Tracking link sent successfully: sessionId={session_id}, trackingRef={tracking_ref}")
+                    return {'sessionId': session_id, 'trackingRef': tracking_ref, 'bookingId': booking_id}
+                else:
+                    self.log_result("GPS Tracking: Send Driver Link", False, f"Missing required fields in response: {data}")
+                    return None
+            else:
+                self.log_result("GPS Tracking: Send Driver Link", False, f"Send driver link failed with status {response.status_code}", response.text)
+                return None
+                
+        except Exception as e:
+            self.log_result("GPS Tracking: Send Driver Link", False, f"Send driver link error: {str(e)}")
+            return None
+
+    def test_gps_tracking_driver_session_info(self, session_id):
+        """Test GET /api/tracking/driver/{session_id} - Driver gets session info"""
+        try:
+            response = self.session.get(f"{BACKEND_URL}/tracking/driver/{session_id}", timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                customer_name = data.get('customerName')
+                pickup_address = data.get('pickupAddress')
+                dropoff_address = data.get('dropoffAddress')
+                status = data.get('status')
+                
+                if customer_name and pickup_address and dropoff_address and status:
+                    self.log_result("GPS Tracking: Driver Session Info", True, f"Driver session info retrieved: customer={customer_name}, status={status}")
+                    return True
+                else:
+                    self.log_result("GPS Tracking: Driver Session Info", False, f"Missing required fields in response: {data}")
+                    return False
+            else:
+                self.log_result("GPS Tracking: Driver Session Info", False, f"Driver session info failed with status {response.status_code}", response.text)
+                return False
+                
+        except Exception as e:
+            self.log_result("GPS Tracking: Driver Session Info", False, f"Driver session info error: {str(e)}")
+            return False
+
+    def test_gps_tracking_driver_start(self, session_id):
+        """Test POST /api/tracking/driver/{session_id}/start - Driver starts tracking"""
+        try:
+            response = self.session.post(f"{BACKEND_URL}/tracking/driver/{session_id}/start", timeout=15)
+            
+            if response.status_code == 200:
+                data = response.json()
+                success = data.get('success')
+                message = data.get('message')
+                
+                if success:
+                    self.log_result("GPS Tracking: Driver Start", True, f"Driver tracking started successfully: {message}")
+                    return True
+                else:
+                    self.log_result("GPS Tracking: Driver Start", False, f"Driver start failed: {data}")
+                    return False
+            else:
+                self.log_result("GPS Tracking: Driver Start", False, f"Driver start failed with status {response.status_code}", response.text)
+                return False
+                
+        except Exception as e:
+            self.log_result("GPS Tracking: Driver Start", False, f"Driver start error: {str(e)}")
+            return False
+
+    def test_gps_tracking_driver_location_update(self, session_id):
+        """Test POST /api/tracking/driver/{session_id}/location - Driver sends location update"""
+        try:
+            # Send location update (Auckland coordinates)
+            location_data = {
+                "lat": -36.8620,
+                "lng": 174.7682
+            }
+            
+            response = self.session.post(f"{BACKEND_URL}/tracking/driver/{session_id}/location", json=location_data, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                success = data.get('success')
+                
+                if success:
+                    self.log_result("GPS Tracking: Driver Location Update", True, f"Driver location updated successfully: lat={location_data['lat']}, lng={location_data['lng']}")
+                    return True
+                else:
+                    self.log_result("GPS Tracking: Driver Location Update", False, f"Location update failed: {data}")
+                    return False
+            else:
+                self.log_result("GPS Tracking: Driver Location Update", False, f"Location update failed with status {response.status_code}", response.text)
+                return False
+                
+        except Exception as e:
+            self.log_result("GPS Tracking: Driver Location Update", False, f"Location update error: {str(e)}")
+            return False
+
+    def test_gps_tracking_customer_view(self, tracking_ref):
+        """Test GET /api/tracking/{tracking_ref} - Customer views tracking (most important)"""
+        try:
+            response = self.session.get(f"{BACKEND_URL}/tracking/{tracking_ref}", timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                driver_name = data.get('driverName')
+                current_location = data.get('currentLocation')
+                eta_minutes = data.get('etaMinutes')
+                pickup_address = data.get('pickupAddress')
+                
+                if driver_name and current_location and pickup_address:
+                    # Check if ETA is calculated
+                    if eta_minutes is not None:
+                        self.log_result("GPS Tracking: Customer View", True, f"Customer tracking working: driver={driver_name}, ETA={eta_minutes} minutes, location={current_location}")
+                    else:
+                        self.log_result("GPS Tracking: Customer View", True, f"Customer tracking working: driver={driver_name}, location={current_location} (ETA not calculated yet)")
+                    return True
+                else:
+                    self.log_result("GPS Tracking: Customer View", False, f"Missing required fields in customer tracking: {data}")
+                    return False
+            else:
+                self.log_result("GPS Tracking: Customer View", False, f"Customer tracking failed with status {response.status_code}", response.text)
+                return False
+                
+        except Exception as e:
+            self.log_result("GPS Tracking: Customer View", False, f"Customer tracking error: {str(e)}")
+            return False
+
+    def test_gps_tracking_complete_flow(self):
+        """Test complete GPS tracking flow from admin to customer"""
+        try:
+            print("\n📍 Testing Complete GPS Tracking Flow...")
+            
+            # Step 1: Admin sends tracking link to driver
+            tracking_data = self.test_gps_tracking_send_driver_link()
+            if not tracking_data:
+                self.log_result("GPS Tracking: Complete Flow", False, "Failed to send driver link")
+                return False
+            
+            session_id = tracking_data['sessionId']
+            tracking_ref = tracking_data['trackingRef']
+            
+            # Step 2: Driver gets session info
+            if not self.test_gps_tracking_driver_session_info(session_id):
+                self.log_result("GPS Tracking: Complete Flow", False, "Failed to get driver session info")
+                return False
+            
+            # Step 3: Driver starts tracking
+            if not self.test_gps_tracking_driver_start(session_id):
+                self.log_result("GPS Tracking: Complete Flow", False, "Failed to start driver tracking")
+                return False
+            
+            # Step 4: Driver sends location update
+            if not self.test_gps_tracking_driver_location_update(session_id):
+                self.log_result("GPS Tracking: Complete Flow", False, "Failed to update driver location")
+                return False
+            
+            # Step 5: Customer views tracking
+            if not self.test_gps_tracking_customer_view(tracking_ref):
+                self.log_result("GPS Tracking: Complete Flow", False, "Failed customer tracking view")
+                return False
+            
+            self.log_result("GPS Tracking: Complete Flow", True, f"Complete GPS tracking flow working: sessionId={session_id}, trackingRef={tracking_ref}")
+            return True
+                
+        except Exception as e:
+            self.log_result("GPS Tracking: Complete Flow", False, f"Complete flow error: {str(e)}")
+            return False
     
     def run_comprehensive_test(self):
         """Run all tests in sequence"""
