@@ -9128,6 +9128,8 @@ async def startup_reminder_check():
         # Only run startup check if it's between 8 AM and 11 PM
         if current_hour >= 8 and current_hour <= 23:
             result = await send_daily_reminders_core(source="startup_check")
+    except Exception as e:
+        logger.error(f"❌ Startup reminder check error: {str(e)}")
 
 
 # ==================== AIRPORT ARRIVAL EMAILS ====================
