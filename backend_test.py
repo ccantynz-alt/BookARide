@@ -11,7 +11,7 @@ import sys
 from datetime import datetime, timedelta
 
 # Configuration
-BACKEND_URL = "https://ride-admin-1.preview.emergentagent.com/api"
+BACKEND_URL = "https://ride-booking-enhance.preview.emergentagent.com/api"
 ADMIN_USERNAME = "admin"
 ADMIN_PASSWORD = "Kongkong2025!@"
 

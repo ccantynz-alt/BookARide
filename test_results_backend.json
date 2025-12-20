@@ -96,7 +96,7 @@
     {
       "test": "GPS Tracking: Send Driver Link",
       "status": "\u2705 PASS",
-      "message": "Tracking link sent successfully: sessionId=68e45b93-99e0-4a8d-bcf1-0a3f921abecb, trackingRef=U6Q8H3",
+      "message": "Tracking link sent successfully: sessionId=ride-booking-enhance, trackingRef=U6Q8H3",
       "details": {},
       "timestamp": "2025-12-20T04:47:40.565820"
     },
@@ -131,7 +131,7 @@
     {
       "test": "GPS Tracking: Complete Flow",
       "status": "\u2705 PASS",
-      "message": "Complete GPS tracking flow working: sessionId=68e45b93-99e0-4a8d-bcf1-0a3f921abecb, trackingRef=U6Q8H3",
+      "message": "Complete GPS tracking flow working: sessionId=ride-booking-enhance, trackingRef=U6Q8H3",
       "details": {},
       "timestamp": "2025-12-20T04:47:40.758439"
     },
