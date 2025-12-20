@@ -9442,25 +9442,6 @@ def create_arrival_email_html(customer_name: str, booking_date: str, pickup_time
     '''
 
 
-@api_router.post("/admin/send-arrival-emails")
-async def trigger_arrival_emails(current_admin: dict = Depends(get_current_admin)):
-    """
-    Manually trigger airport arrival emails for tomorrow's arrivals.
-    Admin only endpoint.
-    """
-    try:
-        result = await send_arrival_pickup_emails()
-        return {
-            "success": True,
-            "message": f"Arrival emails sent: {result.get('sent', 0)}",
-            "date": result.get('date'),
-            "details": result
-        }
-    except Exception as e:
-        logger.error(f"Error triggering arrival emails: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
 @app.on_event("startup")
 async def startup_event():
     """Start the scheduler when the app starts and ensure default admin exists"""
