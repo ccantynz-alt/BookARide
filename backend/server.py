@@ -9518,6 +9518,7 @@ async def startup_event():
     scheduler.start()
     logger.info("🚀 Scheduler started with all jobs:")
     logger.info("   ✓ Reminder: 8:00 AM NZ daily (primary)")
+    logger.info("   ✓ Arrival emails: 9:00 AM NZ daily")
     logger.info("   ✓ Reminder: Hourly backup check")
     logger.info("   ✓ Abandoned bookings: Every 30 mins")
     logger.info("   ✓ Auto-sync: Every 5 minutes")
