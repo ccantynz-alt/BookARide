@@ -490,6 +490,65 @@ const SharedShuttle = () => {
           </div>
         </section>
         
+        {/* PRICING TABLE */}
+        <section className="py-16 bg-gradient-to-b from-gray-900 to-black">
+          <div className="container mx-auto px-4">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+                Group Pricing - The More You Bring, The More You Save!
+              </h2>
+              <p className="text-xl text-gray-400">
+                City to Airport • Fixed Prices • No Hidden Fees
+              </p>
+            </div>
+            
+            <div className="max-w-4xl mx-auto">
+              <div className="bg-gray-800/80 rounded-3xl overflow-hidden border border-yellow-500/30">
+                <div className="grid grid-cols-3 bg-yellow-500 text-black font-bold text-center">
+                  <div className="p-4">Passengers</div>
+                  <div className="p-4">Total Price</div>
+                  <div className="p-4">Per Person</div>
+                </div>
+                {[
+                  { passengers: '1-2', total: '$100', perPerson: '$50-100', highlight: false, tag: 'Minimum' },
+                  { passengers: '3', total: '$115', perPerson: '$38', highlight: false },
+                  { passengers: '4', total: '$130', perPerson: '$32', highlight: false },
+                  { passengers: '5', total: '$145', perPerson: '$29', highlight: true, tag: 'Popular!' },
+                  { passengers: '6', total: '$160', perPerson: '$27', highlight: false },
+                  { passengers: '7', total: '$175', perPerson: '$25', highlight: false },
+                  { passengers: '8', total: '$188', perPerson: '$24', highlight: false },
+                  { passengers: '9', total: '$200', perPerson: '$22', highlight: true, tag: 'Best Value!' },
+                ].map((row, idx) => (
+                  <div 
+                    key={idx} 
+                    className={`grid grid-cols-3 text-center border-b border-gray-700 ${
+                      row.highlight ? 'bg-yellow-500/10' : ''
+                    }`}
+                  >
+                    <div className="p-4 text-white font-semibold flex items-center justify-center gap-2">
+                      <Users className="w-4 h-4 text-yellow-500" />
+                      {row.passengers}
+                      {row.tag && <span className="text-xs bg-yellow-500 text-black px-2 py-0.5 rounded-full">{row.tag}</span>}
+                    </div>
+                    <div className="p-4 text-2xl font-bold text-yellow-400">{row.total}</div>
+                    <div className="p-4 text-green-400 font-semibold">{row.perPerson}</div>
+                  </div>
+                ))}
+              </div>
+              
+              <div className="mt-6 text-center space-y-2">
+                <p className="text-gray-400">
+                  <Shield className="w-4 h-4 inline mr-2 text-green-500" />
+                  Prices include GST • No surge pricing • No booking fees
+                </p>
+                <p className="text-sm text-gray-500">
+                  Maximum 9 passengers per shuttle • Departs from Auckland CBD to Airport
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+        
         {/* HOW IT WORKS */}
         <section id="how-it-works" className="py-16 bg-gray-900">
           <div className="container mx-auto px-4">
