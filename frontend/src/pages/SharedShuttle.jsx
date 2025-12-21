@@ -473,7 +473,7 @@ const SharedShuttle = () => {
                       <div className="flex items-center justify-between">
                         <div>
                           <div className="text-gray-500 text-xs line-through">Hold: $100</div>
-                          <div className="text-green-400 font-bold text-2xl">Charged: $40</div>
+                          <div className="text-green-400 font-bold text-2xl">Charged: $27</div>
                         </div>
                         <div className="bg-green-500/20 text-green-400 px-3 py-2 rounded-lg text-sm font-bold">
                           SAVED $60!
