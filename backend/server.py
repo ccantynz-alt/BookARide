@@ -9513,9 +9513,31 @@ async def quick_import_wordpress(request: Request):
                     skipped += 1
                     continue
                 
-                # Parse dates
-                booking_date = row.get('booking_date', '')
-                return_date = row.get('return_date', '')
+                # Parse dates - convert from DD-MM-YYYY to YYYY-MM-DD
+                booking_date_raw = row.get('booking_date', '')
+                return_date_raw = row.get('return_date', '')
+                
+                # Convert DD-MM-YYYY to YYYY-MM-DD for proper sorting
+                def convert_date(date_str):
+                    if not date_str:
+                        return ''
+                    try:
+                        # Try DD-MM-YYYY format
+                        if '-' in date_str:
+                            parts = date_str.split('-')
+                            if len(parts) == 3 and len(parts[0]) <= 2:
+                                return f"{parts[2]}-{parts[1].zfill(2)}-{parts[0].zfill(2)}"
+                        # Try DD/MM/YYYY format
+                        if '/' in date_str:
+                            parts = date_str.split('/')
+                            if len(parts) == 3 and len(parts[0]) <= 2:
+                                return f"{parts[2]}-{parts[1].zfill(2)}-{parts[0].zfill(2)}"
+                        return date_str
+                    except:
+                        return date_str
+                
+                booking_date = convert_date(booking_date_raw)
+                return_date = convert_date(return_date_raw)
                 
                 # Map status
                 status_map = {
@@ -9524,7 +9546,7 @@ async def quick_import_wordpress(request: Request):
                     'completed': 'completed',
                     'cancelled': 'cancelled'
                 }
-                status = status_map.get(row.get('status', '').lower(), 'confirmed')
+                status = status_map.get(row.get('booking_status', '').lower(), 'confirmed')
                 
                 # Create booking document
                 booking = {
