@@ -118,7 +118,7 @@ const ImportBookingsSection = ({ onSuccess }) => {
     setImportResult(null);
 
     try {
-      const token = localStorage.getItem('admin_token');
+      const token = localStorage.getItem('adminToken');
       const formData = new FormData();
       formData.append('file', selectedFile);
       formData.append('skip_notifications', 'true');
