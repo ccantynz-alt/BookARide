@@ -164,6 +164,12 @@ function App() {
     { path: "visitors", element: <VisitorsHub /> },
     // Catch-all for other countries
     { path: "visitors/:countrySlug", element: <CountryLandingPage /> },
+    // TOP 5 SEO KEYWORD PAGES
+    { path: "airport-shuttle", element: <AirportShuttlePage /> },
+    { path: "airport-shuttle-service", element: <AirportShuttleServicePage /> },
+    { path: "shared-ride", element: <SharedRidePage /> },
+    { path: "auckland-cbd-to-airport", element: <AucklandCBDToAirportPage /> },
+    // Existing SEO pages
     { path: "auckland-airport-shuttle", element: <AucklandAirportShuttle /> },
     { path: "flight-tracker", element: <FlightTrackerPage /> },
     { path: "travel-guide", element: <TravelResourcesPage /> },
