@@ -9310,14 +9310,31 @@ class ImportBookingsRequest(BaseModel):
     
 @api_router.post("/admin/import-bookings")
 async def import_bookings_from_csv(
+    request: Request,
     file: UploadFile = File(...),
-    skip_notifications: bool = Form(True),
-    current_admin: dict = Depends(get_current_admin)
+    skip_notifications: bool = Form(True)
 ):
     """
     Import bookings from WordPress Chauffeur Booking System CSV export.
     Preserves original booking IDs for cross-reference.
     """
+    # Manual token extraction for multipart/form-data compatibility
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Could not validate credentials")
+    
+    token = auth_header.replace("Bearer ", "")
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username = payload.get("sub")
+        if not username:
+            raise HTTPException(status_code=401, detail="Could not validate credentials")
+        admin = await db.admin_users.find_one({"username": username}, {"_id": 0})
+        if not admin:
+            raise HTTPException(status_code=401, detail="Could not validate credentials")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Could not validate credentials")
+    
     try:
         contents = await file.read()
         
