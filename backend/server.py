@@ -9627,18 +9627,16 @@ async def fix_imported_bookings():
         fixed_status = 0
         fixed_dates = 0
         
-        # Find all imported bookings
+        # Find ALL imported bookings and fix them
         cursor = db.bookings.find({"imported_from": "wordpress_chauffeur"})
         
         async for booking in cursor:
-            updates = {}
-            
-            # Fix status - restore deleted bookings to confirmed
-            if booking.get('status') == 'deleted' or booking.get('deleted'):
-                updates['status'] = 'confirmed'
-                updates['deleted'] = False
-                updates['deletedAt'] = None
-                fixed_status += 1
+            updates = {
+                'status': 'confirmed',
+                'deleted': False,
+                'deletedAt': None
+            }
+            fixed_status += 1
             
             # Fix date format - convert DD-MM-YYYY to YYYY-MM-DD
             date_str = booking.get('date', '')
@@ -9657,11 +9655,10 @@ async def fix_imported_bookings():
                     day, month, year = match.groups()
                     updates['returnDate'] = f"{year}-{month.zfill(2)}-{day.zfill(2)}"
             
-            if updates:
-                await db.bookings.update_one(
-                    {"id": booking['id']},
-                    {"$set": updates}
-                )
+            await db.bookings.update_one(
+                {"id": booking['id']},
+                {"$set": updates}
+            )
         
         logger.info(f"🔧 Fixed imported bookings: {fixed_status} restored, {fixed_dates} dates corrected")
         
@@ -9669,12 +9666,44 @@ async def fix_imported_bookings():
             "success": True,
             "restored_from_deleted": fixed_status,
             "dates_fixed": fixed_dates,
-            "message": f"Fixed {fixed_status} deleted bookings and {fixed_dates} dates"
+            "message": f"Fixed {fixed_status} bookings and {fixed_dates} dates"
         }
         
     except Exception as e:
         logger.error(f"Fix imported bookings error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/admin/fix-now")
+async def fix_now():
+    """Direct URL to fix bookings - just visit this URL"""
+    try:
+        import re
+        fixed = 0
+        
+        cursor = db.bookings.find({"imported_from": "wordpress_chauffeur"})
+        
+        async for booking in cursor:
+            updates = {
+                'status': 'confirmed',
+                'deleted': False,
+                'deletedAt': None
+            }
+            
+            # Fix date
+            date_str = booking.get('date', '')
+            if date_str:
+                match = re.match(r'^(\d{1,2})-(\d{1,2})-(\d{4})$', date_str)
+                if match:
+                    day, month, year = match.groups()
+                    updates['date'] = f"{year}-{month.zfill(2)}-{day.zfill(2)}"
+            
+            await db.bookings.update_one({"id": booking['id']}, {"$set": updates})
+            fixed += 1
+        
+        return {"success": True, "fixed": fixed, "message": f"Fixed {fixed} bookings! Refresh your admin page."}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 
 # Include the router in the main app (MUST be after all routes are defined)
