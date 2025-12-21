@@ -10178,6 +10178,19 @@ async def startup_event():
         )
         logger.info("✅ Admin password reset and email updated to info@bookaride.co.nz")
     
+    # Create database indexes for faster queries
+    try:
+        await db.bookings.create_index("date")
+        await db.bookings.create_index("status")
+        await db.bookings.create_index("name")
+        await db.bookings.create_index("email")
+        await db.bookings.create_index("referenceNumber")
+        await db.bookings.create_index("original_booking_id")
+        await db.bookings.create_index([("date", -1), ("status", 1)])
+        logger.info("✅ Database indexes created for faster queries")
+    except Exception as e:
+        logger.warning(f"Index creation note: {str(e)}")
+    
     # ============================================
     # RELIABLE REMINDER SYSTEM - 3 LAYERS
     # ============================================
