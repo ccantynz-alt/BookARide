@@ -258,15 +258,6 @@ const ImportBookingsSection = ({ onSuccess }) => {
           </div>
         </div>
       )}
-                <>
-                  <FileText className="w-4 h-4 mr-2" />
-                  Import Bookings
-                </>
-              )}
-            </Button>
-          )}
-        </div>
-      </div>
 
       {/* Import Results */}
       {importResult && (
