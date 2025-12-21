@@ -37,23 +37,23 @@ import asyncio
 reminder_lock = asyncio.Lock()
 
 # === Background Task Helpers ===
-def run_async_task(coro_func, *args, task_description="background task"):
+def run_async_task(coro_func, arg, task_description="background task"):
     """Run an async function in a new event loop for background tasks"""
     try:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
-            loop.run_until_complete(coro_func(*args))
+            loop.run_until_complete(coro_func(arg))
             logger.info(f"✅ Background task completed: {task_description}")
         finally:
             loop.close()
     except Exception as e:
         logger.error(f"❌ Background task failed ({task_description}): {str(e)}")
 
-def run_sync_task(sync_func, *args, task_description="background task"):
+def run_sync_task(sync_func, arg, task_description="background task"):
     """Run a synchronous function for background tasks"""
     try:
-        sync_func(*args)
+        sync_func(arg)
         logger.info(f"✅ Background task completed: {task_description}")
     except Exception as e:
         logger.error(f"❌ Background task failed ({task_description}): {str(e)}")
