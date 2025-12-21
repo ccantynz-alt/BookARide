@@ -9473,19 +9473,29 @@ async def get_import_status(current_admin: dict = Depends(get_current_admin)):
 
 
 @api_router.post("/admin/quick-import-wordpress")
-async def quick_import_wordpress():
+async def quick_import_wordpress(request: Request):
     """
-    One-click import from server-side CSV file.
-    No authentication required - uses pre-uploaded file.
+    Import from CSV - accepts either server file or POST body with CSV content.
+    No authentication required for simplicity.
     """
     try:
-        csv_path = "/app/backend/wordpress_bookings_import.csv"
+        csv_text = None
         
-        if not os.path.exists(csv_path):
-            raise HTTPException(status_code=404, detail="WordPress export file not found on server")
+        # Try to get CSV from request body first
+        try:
+            body = await request.json()
+            csv_text = body.get('csv_content', '')
+        except:
+            pass
         
-        with open(csv_path, 'r', encoding='utf-8-sig') as f:
-            csv_text = f.read()
+        # If no body content, try server file
+        if not csv_text:
+            csv_path = "/app/backend/wordpress_bookings_import.csv"
+            if os.path.exists(csv_path):
+                with open(csv_path, 'r', encoding='utf-8-sig') as f:
+                    csv_text = f.read()
+            else:
+                raise HTTPException(status_code=404, detail="No CSV data provided. Please use the file upload option below.")
         
         reader = csv.DictReader(StringIO(csv_text))
         
