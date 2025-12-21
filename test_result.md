@@ -275,6 +275,8 @@ metadata:
 
 test_plan:
   current_focus:
+    - "Booking Creation Performance (BackgroundTasks) - BACKEND TESTING COMPLETED ✅"
+    - "Customer Notification Preference - BACKEND TESTING COMPLETED ✅"
     - "Historical Booking Import Feature - BACKEND TESTING COMPLETED ✅"
     - "24-Hour Booking Approval Rule - BACKEND TESTING COMPLETED ✅"
     - "Admin Dashboard Alert Banner - BACKEND DATA VERIFIED ✅"
