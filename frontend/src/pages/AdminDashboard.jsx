@@ -2210,7 +2210,7 @@ export const AdminDashboard = () => {
                 </table>
               </div>
               
-              {/* Load More Button */}
+              {/* Load More Button - showing if more bookings available */}
               {bookings.length >= bookingsPerPage * currentPage && (
                 <div className="flex justify-center mt-4 pb-4">
                   <Button
@@ -2231,10 +2231,11 @@ export const AdminDashboard = () => {
                 </div>
               )}
               
-              {/* Pagination Info */}
+              {/* Pagination Info - always visible */}
               <div className="text-center text-sm text-gray-500 pb-2">
                 Showing {filteredBookings.length} of {totalBookings || bookings.length} bookings
               </div>
+            </>
             )}
           </CardContent>
         </Card>
