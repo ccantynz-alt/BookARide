@@ -9503,6 +9503,25 @@ async def quick_import_wordpress(request: Request):
         skipped = 0
         errors = []
         
+        # Convert DD-MM-YYYY to YYYY-MM-DD for proper sorting
+        def convert_date(date_str):
+            if not date_str:
+                return ''
+            try:
+                # Try DD-MM-YYYY format
+                if '-' in date_str:
+                    parts = date_str.split('-')
+                    if len(parts) == 3 and len(parts[0]) <= 2:
+                        return f"{parts[2]}-{parts[1].zfill(2)}-{parts[0].zfill(2)}"
+                # Try DD/MM/YYYY format
+                if '/' in date_str:
+                    parts = date_str.split('/')
+                    if len(parts) == 3 and len(parts[0]) <= 2:
+                        return f"{parts[2]}-{parts[1].zfill(2)}-{parts[0].zfill(2)}"
+                return date_str
+            except:
+                return date_str
+        
         for row in reader:
             try:
                 original_id = row.get('original_booking_id', '')
@@ -9513,40 +9532,19 @@ async def quick_import_wordpress(request: Request):
                     skipped += 1
                     continue
                 
-                # Parse dates - convert from DD-MM-YYYY to YYYY-MM-DD
-                booking_date_raw = row.get('booking_date', '')
-                return_date_raw = row.get('return_date', '')
+                # Parse dates
+                booking_date = convert_date(row.get('booking_date', ''))
+                return_date = convert_date(row.get('return_date', ''))
                 
-                # Convert DD-MM-YYYY to YYYY-MM-DD for proper sorting
-                def convert_date(date_str):
-                    if not date_str:
-                        return ''
-                    try:
-                        # Try DD-MM-YYYY format
-                        if '-' in date_str:
-                            parts = date_str.split('-')
-                            if len(parts) == 3 and len(parts[0]) <= 2:
-                                return f"{parts[2]}-{parts[1].zfill(2)}-{parts[0].zfill(2)}"
-                        # Try DD/MM/YYYY format
-                        if '/' in date_str:
-                            parts = date_str.split('/')
-                            if len(parts) == 3 and len(parts[0]) <= 2:
-                                return f"{parts[2]}-{parts[1].zfill(2)}-{parts[0].zfill(2)}"
-                        return date_str
-                    except:
-                        return date_str
-                
-                booking_date = convert_date(booking_date_raw)
-                return_date = convert_date(return_date_raw)
-                
-                # Map status
+                # Map status - use booking_status field, default to confirmed (NOT deleted)
+                raw_status = row.get('booking_status', '').lower()
                 status_map = {
                     'confirmed': 'confirmed',
                     'pending': 'pending',
                     'completed': 'completed',
                     'cancelled': 'cancelled'
                 }
-                status = status_map.get(row.get('booking_status', '').lower(), 'confirmed')
+                status = status_map.get(raw_status, 'confirmed')
                 
                 # Create booking document
                 booking = {
@@ -9613,6 +9611,68 @@ async def quick_import_wordpress(request: Request):
         raise
     except Exception as e:
         logger.error(f"Quick import error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/admin/fix-imported-bookings")
+async def fix_imported_bookings():
+    """
+    Fix all imported WordPress bookings:
+    1. Restore from deleted status
+    2. Fix date format (DD-MM-YYYY to YYYY-MM-DD)
+    No authentication required.
+    """
+    try:
+        fixed_status = 0
+        fixed_dates = 0
+        
+        # Find all imported bookings
+        cursor = db.bookings.find({"imported_from": "wordpress_chauffeur"})
+        
+        async for booking in cursor:
+            updates = {}
+            
+            # Fix status - restore deleted bookings to confirmed
+            if booking.get('status') == 'deleted' or booking.get('deleted'):
+                updates['status'] = 'confirmed'
+                updates['deleted'] = False
+                updates['deletedAt'] = None
+                fixed_status += 1
+            
+            # Fix date format - convert DD-MM-YYYY to YYYY-MM-DD
+            date_str = booking.get('date', '')
+            if date_str and '-' in date_str:
+                parts = date_str.split('-')
+                if len(parts) == 3 and len(parts[0]) <= 2:
+                    new_date = f"{parts[2]}-{parts[1].zfill(2)}-{parts[0].zfill(2)}"
+                    updates['date'] = new_date
+                    fixed_dates += 1
+            
+            # Fix return date
+            return_date_str = booking.get('returnDate', '')
+            if return_date_str and '-' in return_date_str:
+                parts = return_date_str.split('-')
+                if len(parts) == 3 and len(parts[0]) <= 2:
+                    new_return = f"{parts[2]}-{parts[1].zfill(2)}-{parts[0].zfill(2)}"
+                    updates['returnDate'] = new_return
+            
+            if updates:
+                await db.bookings.update_one(
+                    {"id": booking['id']},
+                    {"$set": updates}
+                )
+        
+        logger.info(f"🔧 Fixed imported bookings: {fixed_status} restored, {fixed_dates} dates corrected")
+        
+        return {
+            "success": True,
+            "restored_from_deleted": fixed_status,
+            "dates_fixed": fixed_dates,
+            "message": f"Fixed {fixed_status} deleted bookings and {fixed_dates} dates"
+        }
+        
+    except Exception as e:
+        logger.error(f"Fix imported bookings error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
