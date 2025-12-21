@@ -216,6 +216,34 @@ const ImportBookingsSection = ({ onSuccess }) => {
 
   return (
     <div className="space-y-6">
+      {/* Fix Bookings - Restore from deleted and fix dates */}
+      <div className="bg-yellow-50 rounded-lg p-6 border-2 border-yellow-400">
+        <div className="text-center">
+          <AlertCircle className="w-12 h-12 mx-auto text-yellow-500 mb-3" />
+          <p className="text-gray-700 font-medium mb-2">🔧 Fix Imported Bookings</p>
+          <p className="text-sm text-gray-500 mb-4">
+            Restore bookings from Deleted folder and fix date format (DD-MM-YYYY → YYYY-MM-DD)
+          </p>
+          <Button
+            onClick={handleFixBookings}
+            disabled={importing}
+            className="bg-yellow-500 hover:bg-yellow-600 text-white"
+          >
+            {importing ? (
+              <>
+                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                Fixing...
+              </>
+            ) : (
+              <>
+                <AlertCircle className="w-4 h-4 mr-2" />
+                Fix All Imported Bookings
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+
       {/* Simple Import - Select file then click import */}
       <div className="bg-green-50 rounded-lg p-6 border-2 border-green-300">
         <div className="text-center">
