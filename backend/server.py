@@ -1173,7 +1173,7 @@ async def quick_approve_booking(booking_id: str, action: str = "approve"):
             
             # Send confirmation to customer
             try:
-                await send_booking_confirmation(booking)
+                send_booking_confirmation_email(booking)
                 logger.info(f"Confirmation sent to customer for booking {booking_ref}")
             except Exception as e:
                 logger.error(f"Failed to send confirmation: {e}")
