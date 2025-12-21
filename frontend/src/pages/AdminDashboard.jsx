@@ -154,16 +154,27 @@ const ImportBookingsSection = ({ onSuccess }) => {
     }
   };
 
-  // One-click import from server file (no upload needed)
+  // One-click import - reads file and sends content
   const handleQuickImport = async () => {
+    if (!selectedFile) {
+      toast.error('Please select a CSV file first');
+      return;
+    }
+    
     setImporting(true);
     setImportResult(null);
 
     try {
-      const response = await axios.post(`${API}/admin/quick-import-wordpress`);
+      // Read the file content
+      const csvContent = await selectedFile.text();
+      
+      const response = await axios.post(`${API}/admin/quick-import-wordpress`, {
+        csv_content: csvContent
+      });
       setImportResult(response.data);
       if (response.data.imported > 0) {
         onSuccess?.();
+        toast.success(`Successfully imported ${response.data.imported} bookings!`);
       }
     } catch (error) {
       console.error('Quick import error:', error);
