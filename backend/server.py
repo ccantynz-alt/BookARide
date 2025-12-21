@@ -9679,30 +9679,61 @@ async def fix_now():
     """Direct URL to fix bookings - just visit this URL"""
     try:
         import re
-        fixed = 0
+        restored = 0
+        fixed_dates = 0
         
-        cursor = db.bookings.find({"imported_from": "wordpress_chauffeur"})
-        
-        async for booking in cursor:
-            updates = {
-                'status': 'confirmed',
-                'deleted': False,
-                'deletedAt': None
-            }
+        # STEP 1: Move bookings from deleted_bookings collection back to bookings
+        deleted_cursor = db.deleted_bookings.find({"imported_from": "wordpress_chauffeur"})
+        async for booking in deleted_cursor:
+            # Remove deletion metadata
+            booking.pop('deletedAt', None)
+            booking.pop('deletedBy', None)
+            booking['status'] = 'confirmed'
+            booking['deleted'] = False
             
-            # Fix date
+            # Fix date format
+            date_str = booking.get('date', '')
+            if date_str:
+                match = re.match(r'^(\d{1,2})-(\d{1,2})-(\d{4})$', date_str)
+                if match:
+                    day, month, year = match.groups()
+                    booking['date'] = f"{year}-{month.zfill(2)}-{day.zfill(2)}"
+                    fixed_dates += 1
+            
+            # Insert back to main bookings collection
+            await db.bookings.update_one(
+                {"id": booking['id']},
+                {"$set": booking},
+                upsert=True
+            )
+            
+            # Remove from deleted collection
+            await db.deleted_bookings.delete_one({"id": booking['id']})
+            restored += 1
+        
+        # STEP 2: Fix dates in main bookings collection
+        cursor = db.bookings.find({"imported_from": "wordpress_chauffeur"})
+        async for booking in cursor:
+            updates = {}
             date_str = booking.get('date', '')
             if date_str:
                 match = re.match(r'^(\d{1,2})-(\d{1,2})-(\d{4})$', date_str)
                 if match:
                     day, month, year = match.groups()
                     updates['date'] = f"{year}-{month.zfill(2)}-{day.zfill(2)}"
+                    fixed_dates += 1
             
-            await db.bookings.update_one({"id": booking['id']}, {"$set": updates})
-            fixed += 1
+            if updates:
+                await db.bookings.update_one({"id": booking['id']}, {"$set": updates})
         
-        return {"success": True, "fixed": fixed, "message": f"Fixed {fixed} bookings! Refresh your admin page."}
+        return {
+            "success": True, 
+            "restored_from_deleted": restored,
+            "dates_fixed": fixed_dates,
+            "message": f"Restored {restored} bookings from trash and fixed {fixed_dates} dates! Refresh your admin page."
+        }
     except Exception as e:
+        logger.error(f"Fix error: {str(e)}")
         return {"success": False, "error": str(e)}
 
 
