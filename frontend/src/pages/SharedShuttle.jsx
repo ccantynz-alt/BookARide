@@ -128,11 +128,16 @@ const SharedShuttle = () => {
   
   const currentBookings = shuttleData.departures?.[selectedTime]?.passengers || 0;
   const totalAfterBooking = currentBookings + passengers;
-  const pricePerPerson = getPricePerPerson(totalAfterBooking);
-  const totalPrice = pricePerPerson * passengers;
-  const maxPrice = 100;
-  const savings = maxPrice > pricePerPerson ? (maxPrice - pricePerPerson) * passengers : 0;
-  const savingsPercent = Math.round((1 - pricePerPerson / maxPrice) * 100);
+  
+  // Use new pricing model - total price based on YOUR passengers only
+  const pricing = getSharedShuttlePricing(passengers);
+  const totalPrice = pricing.total;
+  const pricePerPerson = pricing.perPerson;
+  
+  // Calculate savings compared to private transfer ($200)
+  const privateTransferPrice = 200;
+  const savings = privateTransferPrice - totalPrice;
+  const savingsPercent = Math.round((savings / privateTransferPrice) * 100);
   
   const handleAddressChange = async (value) => {
     setPickupAddress(value);
