@@ -5119,6 +5119,7 @@ async def send_tracking_link_to_driver(booking_id: str, current_admin: dict = De
     """
     Create tracking session and send link to driver.
     One-click action from admin panel.
+    Only allows sending for bookings happening today or tomorrow (NZ time).
     """
     try:
         # Get booking
@@ -5131,6 +5132,21 @@ async def send_tracking_link_to_driver(booking_id: str, current_admin: dict = De
         
         if not booking:
             raise HTTPException(status_code=404, detail="Booking not found")
+        
+        # SAFEGUARD: Only allow tracking links for bookings happening today or tomorrow
+        booking_date = booking.get('date', '')
+        if booking_date:
+            nz_tz = pytz.timezone('Pacific/Auckland')
+            nz_now = datetime.now(nz_tz)
+            today = nz_now.strftime('%Y-%m-%d')
+            tomorrow = (nz_now + timedelta(days=1)).strftime('%Y-%m-%d')
+            
+            if booking_date not in [today, tomorrow]:
+                customer_name = booking.get('name', 'Customer')
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Cannot send tracking link for {customer_name}'s booking on {booking_date}. Tracking links can only be sent for today ({today}) or tomorrow ({tomorrow})."
+                )
         
         # Get driver info
         driver_id = booking.get('assignedDriver') or booking.get('assignedDriverId')
