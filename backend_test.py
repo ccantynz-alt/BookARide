@@ -1845,6 +1845,79 @@ TEST002,Test Customer 2,test2@example.com,021654321,456 Sample Ave Auckland,Auck
             self.log_result("Backend Logs Check", True, f"Log check not available in test environment: {str(e)}")
             return True
 
+    def test_batch_sync_calendar_status(self):
+        """Test GET /api/admin/batch-sync-calendar/status endpoint"""
+        try:
+            response = self.session.get(f"{BACKEND_URL}/admin/batch-sync-calendar/status", timeout=15)
+            
+            if response.status_code == 200:
+                data = response.json()
+                remaining_to_sync = data.get('remaining_to_sync')
+                already_synced = data.get('already_synced')
+                last_task = data.get('last_task')
+                
+                # Check if all required fields are present
+                if remaining_to_sync is not None and already_synced is not None:
+                    self.log_result("Batch Calendar Sync: Status Check", True, 
+                                  f"Status endpoint working: {remaining_to_sync} remaining, {already_synced} already synced, last_task: {last_task}")
+                    return True, remaining_to_sync
+                else:
+                    self.log_result("Batch Calendar Sync: Status Check", False, 
+                                  f"Missing required fields in response: {data}")
+                    return False, 0
+            elif response.status_code == 401:
+                self.log_result("Batch Calendar Sync: Status Check", False, 
+                              "Authentication required - admin token may be invalid")
+                return False, 0
+            else:
+                self.log_result("Batch Calendar Sync: Status Check", False, 
+                              f"Status check failed with status {response.status_code}", response.text)
+                return False, 0
+                
+        except Exception as e:
+            self.log_result("Batch Calendar Sync: Status Check", False, f"Status check error: {str(e)}")
+            return False, 0
+
+    def test_batch_sync_calendar_start(self, remaining_count):
+        """Test POST /api/admin/batch-sync-calendar endpoint"""
+        try:
+            # Only run this test if there are reasonable number of bookings to sync
+            if remaining_count > 1000:
+                self.log_result("Batch Calendar Sync: Start Sync", True, 
+                              f"Skipping sync start test - too many bookings ({remaining_count}). Would take too long.")
+                return True
+            
+            response = self.session.post(f"{BACKEND_URL}/admin/batch-sync-calendar", timeout=20)
+            
+            if response.status_code == 200:
+                data = response.json()
+                success = data.get('success')
+                message = data.get('message')
+                total_to_sync = data.get('total_to_sync')
+                status = data.get('status')
+                
+                # Check if all required fields are present
+                if success and message and total_to_sync is not None and status:
+                    self.log_result("Batch Calendar Sync: Start Sync", True, 
+                                  f"Sync started successfully: {message}, {total_to_sync} bookings to sync, status: {status}")
+                    return True
+                else:
+                    self.log_result("Batch Calendar Sync: Start Sync", False, 
+                                  f"Missing required fields in response: {data}")
+                    return False
+            elif response.status_code == 401:
+                self.log_result("Batch Calendar Sync: Start Sync", False, 
+                              "Authentication required - admin token may be invalid")
+                return False
+            else:
+                self.log_result("Batch Calendar Sync: Start Sync", False, 
+                              f"Sync start failed with status {response.status_code}", response.text)
+                return False
+                
+        except Exception as e:
+            self.log_result("Batch Calendar Sync: Start Sync", False, f"Sync start error: {str(e)}")
+            return False
+
     def run_comprehensive_test(self):
         """Run all tests in sequence"""
         print("🚀 Starting BookaRide Backend Testing - Review Request Features")
