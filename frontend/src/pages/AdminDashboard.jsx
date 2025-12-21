@@ -86,7 +86,7 @@ const ImportBookingsSection = ({ onSuccess }) => {
   useEffect(() => {
     const fetchImportStatus = async () => {
       try {
-        const token = localStorage.getItem('admin_token');
+        const token = localStorage.getItem('adminToken');
         const response = await axios.get(`${API}/admin/import-status`, {
           headers: { Authorization: `Bearer ${token}` }
         });
