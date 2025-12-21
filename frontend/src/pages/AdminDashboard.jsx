@@ -136,10 +136,19 @@ const ImportBookingsSection = ({ onSuccess }) => {
       }
     } catch (error) {
       console.error('Import error:', error);
-      setImportResult({
-        success: false,
-        error: error.response?.data?.detail || 'Import failed'
-      });
+      // Check if it's an authentication error
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        setImportResult({
+          success: false,
+          error: 'Session expired. Please log out and log back in, then try again.'
+        });
+        toast.error('Session expired - please log in again');
+      } else {
+        setImportResult({
+          success: false,
+          error: error.response?.data?.detail || 'Import failed. Please try again.'
+        });
+      }
     } finally {
       setImporting(false);
     }
