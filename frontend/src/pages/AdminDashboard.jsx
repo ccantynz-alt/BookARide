@@ -80,6 +80,9 @@ const ImportBookingsSection = ({ onSuccess }) => {
   const [importResult, setImportResult] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
   const [importStatus, setImportStatus] = useState(null);
+  const [calendarSyncing, setCalendarSyncing] = useState(false);
+  const [calendarSyncResult, setCalendarSyncResult] = useState(null);
+  const [calendarSyncStatus, setCalendarSyncStatus] = useState(null);
   const fileInputRef = useRef(null);
 
   // Fetch import status on mount
