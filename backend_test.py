@@ -1860,6 +1860,16 @@ TEST002,Test Customer 2,test2@example.com,021654321,456 Sample Ave Auckland,Auck
             return False
         
         # NEW REVIEW REQUEST FEATURES TESTING
+        print("\n⚡ Testing Booking Creation Performance (BackgroundTasks)...")
+        self.test_booking_creation_performance()
+        
+        print("\n📧 Testing Customer Notification Preferences...")
+        self.test_notification_preference_email_only()
+        self.test_notification_preference_sms_only()
+        
+        print("\n📋 Checking Backend Logs for Background Tasks...")
+        self.check_backend_logs_for_background_tasks()
+        
         print("\n📥 Testing Historical Booking Import Feature (REVIEW REQUEST)...")
         self.test_import_status_endpoint()
         self.test_import_bookings_endpoint()
