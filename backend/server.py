@@ -58,6 +58,14 @@ def run_sync_task(sync_func, arg, task_description="background task"):
     except Exception as e:
         logger.error(f"❌ Background task failed ({task_description}): {str(e)}")
 
+def run_sync_task_with_args(sync_func, arg1, arg2, task_description="background task"):
+    """Run a synchronous function with two arguments for background tasks"""
+    try:
+        sync_func(arg1, arg2)
+        logger.info(f"✅ Background task completed: {task_description}")
+    except Exception as e:
+        logger.error(f"❌ Background task failed ({task_description}): {str(e)}")
+
 ROOT_DIR = Path(__file__).parent
 sys.path.insert(0, str(ROOT_DIR))
 load_dotenv(ROOT_DIR / '.env')
