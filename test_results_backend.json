@@ -173,7 +173,7 @@
     {
       "test": "GPS Tracking: Send Driver Link",
       "status": "\u2705 PASS",
-      "message": "Tracking link sent successfully: sessionId=e7ae0473-9d70-4d4b-9984-d0e0bccdbf09, trackingRef=0EM75H",
+      "message": "Tracking link sent successfully: sessionId=bookingsync-15, trackingRef=0EM75H",
       "details": {},
       "timestamp": "2025-12-21T00:16:29.598304"
     },
@@ -208,7 +208,7 @@
     {
       "test": "GPS Tracking: Complete Flow",
       "status": "\u2705 PASS",
-      "message": "Complete GPS tracking flow working: sessionId=e7ae0473-9d70-4d4b-9984-d0e0bccdbf09, trackingRef=0EM75H",
+      "message": "Complete GPS tracking flow working: sessionId=bookingsync-15, trackingRef=0EM75H",
       "details": {},
       "timestamp": "2025-12-21T00:16:30.055789"
     },
