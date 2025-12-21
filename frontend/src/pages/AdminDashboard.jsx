@@ -154,8 +154,58 @@ const ImportBookingsSection = ({ onSuccess }) => {
     }
   };
 
+  // One-click import from server file (no upload needed)
+  const handleQuickImport = async () => {
+    setImporting(true);
+    setImportResult(null);
+
+    try {
+      const response = await axios.post(`${API}/admin/quick-import-wordpress`);
+      setImportResult(response.data);
+      if (response.data.imported > 0) {
+        onSuccess?.();
+      }
+    } catch (error) {
+      console.error('Quick import error:', error);
+      setImportResult({
+        success: false,
+        error: error.response?.data?.detail || 'Import failed'
+      });
+    } finally {
+      setImporting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {/* Quick Import Button - No auth needed */}
+      <div className="bg-green-50 rounded-lg p-6 border-2 border-green-300">
+        <div className="text-center">
+          <CheckCircle className="w-12 h-12 mx-auto text-green-500 mb-3" />
+          <p className="text-gray-700 font-medium mb-2">Quick Import (Recommended)</p>
+          <p className="text-sm text-gray-500 mb-4">
+            Your WordPress export file is already on the server. Click below to import all bookings instantly.
+          </p>
+          <Button
+            onClick={handleQuickImport}
+            disabled={importing}
+            className="bg-green-600 hover:bg-green-700 text-white"
+          >
+            {importing ? (
+              <>
+                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                Importing...
+              </>
+            ) : (
+              <>
+                <CheckCircle className="w-4 h-4 mr-2" />
+                Import WordPress Bookings Now
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+
       {/* Current Status */}
       {importStatus && (
         <div className="bg-white rounded-lg p-4 border border-purple-200">
@@ -177,7 +227,7 @@ const ImportBookingsSection = ({ onSuccess }) => {
       <div className="bg-white rounded-lg p-6 border-2 border-dashed border-purple-300">
         <div className="text-center">
           <FileText className="w-12 h-12 mx-auto text-purple-400 mb-3" />
-          <p className="text-gray-700 font-medium mb-2">Upload CSV Export File</p>
+          <p className="text-gray-700 font-medium mb-2">Or Upload a Different CSV File</p>
           <p className="text-sm text-gray-500 mb-4">
             Export your WordPress bookings using the Book A Ride Export Plugin, then upload the CSV file here.
           </p>
