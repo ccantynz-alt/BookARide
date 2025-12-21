@@ -187,6 +187,33 @@ const ImportBookingsSection = ({ onSuccess }) => {
     }
   };
 
+  // Fix imported bookings - restore from deleted and fix dates
+  const handleFixBookings = async () => {
+    setImporting(true);
+    setImportResult(null);
+
+    try {
+      const response = await axios.post(`${API}/admin/fix-imported-bookings`);
+      setImportResult({
+        success: true,
+        imported: response.data.restored_from_deleted,
+        skipped: response.data.dates_fixed,
+        errors: [],
+        message: response.data.message
+      });
+      onSuccess?.();
+      toast.success(response.data.message);
+    } catch (error) {
+      console.error('Fix bookings error:', error);
+      setImportResult({
+        success: false,
+        error: error.response?.data?.detail || 'Fix failed'
+      });
+    } finally {
+      setImporting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Simple Import - Select file then click import */}
