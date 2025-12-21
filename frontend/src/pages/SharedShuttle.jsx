@@ -245,7 +245,7 @@ const SharedShuttle = () => {
           </div>
           <div className="absolute top-40 right-16 hidden lg:block animate-pulse">
             <div className="bg-yellow-500 text-black px-4 py-2 rounded-full text-sm font-bold shadow-lg">
-              FROM $25!
+              FROM $22!
             </div>
           </div>
           
