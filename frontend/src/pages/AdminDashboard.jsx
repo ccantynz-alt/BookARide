@@ -670,17 +670,51 @@ export const AdminDashboard = () => {
     };
   };
 
-  const fetchBookings = async () => {
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalBookings, setTotalBookings] = useState(0);
+  const [bookingsPerPage] = useState(50);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+
+  const fetchBookings = async (page = 1, append = false) => {
     try {
-      const response = await axios.get(`${API}/bookings`, getAuthHeaders());
-      // Sort bookings by date (newest first)
-      const sortedBookings = response.data.sort((a, b) => {
-        const dateA = new Date(a.date + ' ' + a.time);
-        const dateB = new Date(b.date + ' ' + b.time);
-        return dateB - dateA;
+      if (page === 1) setLoading(true);
+      else setIsLoadingMore(true);
+      
+      const response = await axios.get(`${API}/bookings`, {
+        ...getAuthHeaders(),
+        params: {
+          page: page,
+          limit: bookingsPerPage
+        }
       });
-      setBookings(sortedBookings);
+      
+      const newBookings = response.data;
+      
+      // Cache bookings in localStorage for offline access
+      try {
+        const cached = JSON.parse(localStorage.getItem('cachedBookings') || '[]');
+        const updatedCache = append ? [...cached, ...newBookings] : newBookings;
+        localStorage.setItem('cachedBookings', JSON.stringify(updatedCache.slice(0, 200))); // Cache up to 200
+        localStorage.setItem('cachedBookingsTime', new Date().toISOString());
+      } catch (e) {
+        console.warn('Could not cache bookings:', e);
+      }
+      
+      if (append) {
+        setBookings(prev => [...prev, ...newBookings]);
+      } else {
+        setBookings(newBookings);
+      }
+      
+      setCurrentPage(page);
       setLoading(false);
+      setIsLoadingMore(false);
+      
+      // Fetch total count for stats
+      if (page === 1) {
+        fetchBookingCounts();
+      }
     } catch (error) {
       if (error.response?.status === 401) {
         toast.error('Session expired. Please login again.');
@@ -690,9 +724,36 @@ export const AdminDashboard = () => {
         return;
       }
       console.error('Error fetching bookings:', error);
-      toast.error('Failed to load bookings');
+      
+      // Try to load from cache if offline
+      try {
+        const cached = JSON.parse(localStorage.getItem('cachedBookings') || '[]');
+        if (cached.length > 0) {
+          setBookings(cached);
+          toast.info('Loaded cached bookings (offline mode)');
+        } else {
+          toast.error('Failed to load bookings');
+        }
+      } catch (e) {
+        toast.error('Failed to load bookings');
+      }
+      
       setLoading(false);
+      setIsLoadingMore(false);
     }
+  };
+
+  const fetchBookingCounts = async () => {
+    try {
+      const response = await axios.get(`${API}/bookings/count`, getAuthHeaders());
+      setTotalBookings(response.data.total || 0);
+    } catch (error) {
+      console.error('Error fetching booking counts:', error);
+    }
+  };
+
+  const loadMoreBookings = () => {
+    fetchBookings(currentPage + 1, true);
   };
 
   const fetchDrivers = async () => {
