@@ -1252,14 +1252,81 @@ async def quick_approve_booking(booking_id: str, action: str = "approve"):
 
 # Get All Bookings Endpoint (for admin)
 @api_router.get("/bookings", response_model=List[Booking])
-async def get_bookings(current_admin: dict = Depends(get_current_admin)):
+async def get_bookings(
+    current_admin: dict = Depends(get_current_admin),
+    page: int = 1,
+    limit: int = 50,
+    status: str = None,
+    search: str = None,
+    date_from: str = None,
+    date_to: str = None
+):
+    """Get bookings with pagination and filtering for faster loading"""
     try:
-        # Sort by booking DATE (not createdAt) so upcoming bookings show first
-        bookings = await db.bookings.find({}, {"_id": 0}).sort("date", -1).to_list(1000)
+        # Build query
+        query = {}
+        
+        # Status filter
+        if status and status != 'all':
+            query['status'] = status
+        
+        # Search filter (name, email, phone, reference)
+        if search:
+            query['$or'] = [
+                {'name': {'$regex': search, '$options': 'i'}},
+                {'email': {'$regex': search, '$options': 'i'}},
+                {'phone': {'$regex': search, '$options': 'i'}},
+                {'referenceNumber': {'$regex': search, '$options': 'i'}},
+                {'original_booking_id': {'$regex': search, '$options': 'i'}}
+            ]
+        
+        # Date range filter
+        if date_from:
+            query['date'] = query.get('date', {})
+            query['date']['$gte'] = date_from
+        if date_to:
+            query.setdefault('date', {})['$lte'] = date_to
+        
+        # Calculate skip for pagination
+        skip = (page - 1) * limit
+        
+        # Get total count for pagination info
+        total = await db.bookings.count_documents(query)
+        
+        # Fetch bookings with pagination - sort by date descending (upcoming first)
+        bookings = await db.bookings.find(query, {"_id": 0}).sort("date", -1).skip(skip).limit(limit).to_list(limit)
+        
+        # Add pagination headers via response
+        logger.info(f"Fetched {len(bookings)} bookings (page {page}, total {total})")
+        
         return [Booking(**booking) for booking in bookings]
     except Exception as e:
         logger.error(f"Error fetching bookings: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error fetching bookings: {str(e)}")
+
+
+@api_router.get("/bookings/count")
+async def get_bookings_count(current_admin: dict = Depends(get_current_admin)):
+    """Get total booking counts for dashboard stats"""
+    try:
+        total = await db.bookings.count_documents({})
+        pending = await db.bookings.count_documents({"status": "pending"})
+        confirmed = await db.bookings.count_documents({"status": "confirmed"})
+        completed = await db.bookings.count_documents({"status": "completed"})
+        cancelled = await db.bookings.count_documents({"status": "cancelled"})
+        pending_approval = await db.bookings.count_documents({"status": "pending_approval"})
+        
+        return {
+            "total": total,
+            "pending": pending,
+            "confirmed": confirmed,
+            "completed": completed,
+            "cancelled": cancelled,
+            "pending_approval": pending_approval
+        }
+    except Exception as e:
+        logger.error(f"Error fetching booking counts: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Update Booking Endpoint (for admin)
 @api_router.patch("/bookings/{booking_id}")
