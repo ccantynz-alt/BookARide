@@ -1040,7 +1040,7 @@ async def calculate_price(request: PriceCalculationRequest):
 
 # Create Booking Endpoint
 @api_router.post("/bookings", response_model=Booking)
-async def create_booking(booking: BookingCreate):
+async def create_booking(booking: BookingCreate, background_tasks: BackgroundTasks):
     try:
         booking_obj = Booking(**booking.dict())
         booking_dict = booking_obj.dict()
