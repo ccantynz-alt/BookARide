@@ -9623,6 +9623,7 @@ async def fix_imported_bookings():
     No authentication required.
     """
     try:
+        import re
         fixed_status = 0
         fixed_dates = 0
         
@@ -9641,20 +9642,20 @@ async def fix_imported_bookings():
             
             # Fix date format - convert DD-MM-YYYY to YYYY-MM-DD
             date_str = booking.get('date', '')
-            if date_str and '-' in date_str:
-                parts = date_str.split('-')
-                if len(parts) == 3 and len(parts[0]) <= 2:
-                    new_date = f"{parts[2]}-{parts[1].zfill(2)}-{parts[0].zfill(2)}"
-                    updates['date'] = new_date
+            if date_str:
+                match = re.match(r'^(\d{1,2})-(\d{1,2})-(\d{4})$', date_str)
+                if match:
+                    day, month, year = match.groups()
+                    updates['date'] = f"{year}-{month.zfill(2)}-{day.zfill(2)}"
                     fixed_dates += 1
             
             # Fix return date
             return_date_str = booking.get('returnDate', '')
-            if return_date_str and '-' in return_date_str:
-                parts = return_date_str.split('-')
-                if len(parts) == 3 and len(parts[0]) <= 2:
-                    new_return = f"{parts[2]}-{parts[1].zfill(2)}-{parts[0].zfill(2)}"
-                    updates['returnDate'] = new_return
+            if return_date_str:
+                match = re.match(r'^(\d{1,2})-(\d{1,2})-(\d{4})$', return_date_str)
+                if match:
+                    day, month, year = match.groups()
+                    updates['returnDate'] = f"{year}-{month.zfill(2)}-{day.zfill(2)}"
             
             if updates:
                 await db.bookings.update_one(
