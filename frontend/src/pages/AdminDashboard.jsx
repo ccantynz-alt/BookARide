@@ -2209,6 +2209,32 @@ export const AdminDashboard = () => {
                   </tbody>
                 </table>
               </div>
+              
+              {/* Load More Button */}
+              {bookings.length >= bookingsPerPage * currentPage && (
+                <div className="flex justify-center mt-4 pb-4">
+                  <Button
+                    onClick={loadMoreBookings}
+                    disabled={isLoadingMore}
+                    variant="outline"
+                    className="px-8"
+                  >
+                    {isLoadingMore ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                        Loading...
+                      </>
+                    ) : (
+                      <>Load More Bookings</>
+                    )}
+                  </Button>
+                </div>
+              )}
+              
+              {/* Pagination Info */}
+              <div className="text-center text-sm text-gray-500 pb-2">
+                Showing {filteredBookings.length} of {totalBookings || bookings.length} bookings
+              </div>
             )}
           </CardContent>
         </Card>
