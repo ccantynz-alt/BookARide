@@ -93,6 +93,11 @@ import ViaductAirportPage from './pages/seo/auckland-cbd/ViaductAirportPage';
 // Programmatic SEO Pages
 import SuburbTransferPage from './pages/seo/SuburbTransferPage';
 import CompetitorComparisonPage from './pages/seo/CompetitorComparisonPage';
+// NEW SEO Attack Pages - Top 5 Keywords
+import AirportShuttlePage from './pages/seo/AirportShuttlePage';
+import AirportShuttleServicePage from './pages/seo/AirportShuttleServicePage';
+import SharedRidePage from './pages/seo/SharedRidePage';
+import AucklandCBDToAirportPage from './pages/seo/AucklandCBDToAirportPage';
 // International Market Landing Pages
 import CountryLandingPage from './pages/international/CountryLandingPage';
 // Shared Shuttle Service
