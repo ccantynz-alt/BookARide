@@ -239,6 +239,8 @@ class BookingCreate(BaseModel):
     bookReturn: Optional[bool] = False
     returnDate: Optional[str] = ""
     returnTime: Optional[str] = ""
+    # Notification preference: 'email', 'sms', or 'both'
+    notificationPreference: Optional[str] = "both"
     createdAt: datetime = Field(default_factory=datetime.utcnow)
 
 class Booking(BookingCreate):
