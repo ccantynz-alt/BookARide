@@ -289,6 +289,82 @@ const ImportBookingsSection = ({ onSuccess }) => {
         </div>
       </div>
 
+      {/* Google Calendar Sync Section */}
+      <div className="bg-blue-50 rounded-lg p-6 border-2 border-blue-400">
+        <div className="text-center">
+          <Calendar className="w-12 h-12 mx-auto text-blue-500 mb-3" />
+          <p className="text-gray-700 font-medium mb-2">📅 Sync Imported Bookings to Google Calendar</p>
+          <p className="text-sm text-gray-500 mb-4">
+            Add all imported WordPress bookings to your Google Calendar. Only bookings not already synced will be processed.
+          </p>
+          
+          {/* Calendar Sync Status */}
+          {calendarSyncStatus && (
+            <div className="bg-white rounded-lg p-3 mb-4 border border-blue-200 text-sm">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <span className="text-gray-500">Already Synced:</span>
+                  <span className="ml-2 font-medium text-green-600">{calendarSyncStatus.already_synced || 0}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500">Pending Sync:</span>
+                  <span className="ml-2 font-medium text-blue-600">{calendarSyncStatus.remaining_to_sync || 0}</span>
+                </div>
+              </div>
+              {calendarSyncStatus.last_task && (
+                <div className="mt-2 pt-2 border-t border-blue-100 text-xs text-gray-500">
+                  Last sync: {calendarSyncStatus.last_task.status === 'completed' 
+                    ? `✅ ${calendarSyncStatus.last_task.synced} synced, ${calendarSyncStatus.last_task.failed} failed`
+                    : calendarSyncStatus.last_task.status === 'processing' 
+                    ? '⏳ In progress...'
+                    : '❌ Error'}
+                </div>
+              )}
+            </div>
+          )}
+          
+          <Button
+            onClick={handleBatchCalendarSync}
+            disabled={calendarSyncing || (calendarSyncStatus?.remaining_to_sync === 0)}
+            className="bg-blue-500 hover:bg-blue-600 text-white disabled:opacity-50"
+          >
+            {calendarSyncing ? (
+              <>
+                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                Starting Sync...
+              </>
+            ) : calendarSyncStatus?.remaining_to_sync === 0 ? (
+              <>
+                <CheckCircle className="w-4 h-4 mr-2" />
+                All Bookings Synced!
+              </>
+            ) : (
+              <>
+                <Calendar className="w-4 h-4 mr-2" />
+                Sync {calendarSyncStatus?.remaining_to_sync || 'All'} Bookings to Calendar
+              </>
+            )}
+          </Button>
+          
+          {/* Calendar Sync Result */}
+          {calendarSyncResult && (
+            <div className={`mt-4 p-3 rounded-lg text-sm ${
+              calendarSyncResult.success ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+            }`}>
+              {calendarSyncResult.success ? (
+                <p>✅ {calendarSyncResult.message}</p>
+              ) : (
+                <p>❌ {calendarSyncResult.error}</p>
+              )}
+            </div>
+          )}
+          
+          <p className="text-xs text-blue-600 mt-3">
+            ⚡ Runs in background - may take 10-15 minutes for 1,500+ bookings
+          </p>
+        </div>
+      </div>
+
       {/* Simple Import - Select file then click import */}
       <div className="bg-green-50 rounded-lg p-6 border-2 border-green-300">
         <div className="text-center">
