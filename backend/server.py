@@ -7268,7 +7268,7 @@ class ManualBooking(BaseModel):
     returnTime: Optional[str] = ""
 
 @api_router.post("/bookings/manual")
-async def create_manual_booking(booking: ManualBooking):
+async def create_manual_booking(booking: ManualBooking, background_tasks: BackgroundTasks):
     """Create a booking manually"""
     try:
         # Get sequential reference number
@@ -7318,45 +7318,66 @@ async def create_manual_booking(booking: ManualBooking):
         await db.bookings.insert_one(new_booking)
         logger.info(f"Manual booking created: #{ref_number} - Payment: {booking.paymentMethod}")
         
-        # Handle payment link sending based on payment method
-        payment_link_sent = False
+        # === BACKGROUND TASKS: Non-critical operations run after response ===
+        
+        # Handle payment link sending based on payment method (in background)
         if booking.paymentMethod == 'stripe':
-            # Send Stripe payment link
-            try:
-                payment_link = await generate_stripe_payment_link(new_booking)
-                if payment_link:
-                    await send_payment_link_email(new_booking, payment_link, 'stripe')
-                    payment_link_sent = True
-                    logger.info(f"Stripe payment link sent for booking {ref_number}")
-            except Exception as e:
-                logger.error(f"Error sending Stripe payment link: {str(e)}")
+            background_tasks.add_task(
+                run_async_task,
+                send_stripe_payment_link_background,
+                new_booking,
+                f"Stripe payment link for booking #{ref_number}"
+            )
         elif booking.paymentMethod == 'paypal':
-            # Send PayPal payment link
-            try:
-                payment_link = generate_paypal_payment_link(new_booking)
-                if payment_link:
-                    await send_payment_link_email(new_booking, payment_link, 'paypal')
-                    payment_link_sent = True
-                    logger.info(f"PayPal payment link sent for booking {ref_number}")
-            except Exception as e:
-                logger.error(f"Error sending PayPal payment link: {str(e)}")
+            background_tasks.add_task(
+                run_async_task,
+                send_paypal_payment_link_background,
+                new_booking,
+                f"PayPal payment link for booking #{ref_number}"
+            )
+        else:
+            # Send confirmation email (with CC if provided) in background
+            background_tasks.add_task(
+                run_sync_task,
+                send_booking_confirmation_email,
+                new_booking,
+                True,  # include_payment_link
+                f"confirmation email for booking #{ref_number}"
+            )
         
-        # Send confirmation email (with CC if provided)
-        send_booking_confirmation_email(new_booking, include_payment_link=not payment_link_sent)
+        # Send confirmation SMS in background
+        background_tasks.add_task(
+            run_sync_task,
+            send_booking_confirmation_sms,
+            new_booking,
+            f"confirmation SMS for booking #{ref_number}"
+        )
         
-        # Send confirmation SMS
-        send_booking_confirmation_sms(new_booking)
+        # Send admin notification in background
+        background_tasks.add_task(
+            run_async_task,
+            send_booking_notification_to_admin,
+            new_booking,
+            f"admin notification for booking #{ref_number}"
+        )
         
-        # Send admin notification
-        await send_booking_notification_to_admin(new_booking)
+        # Create calendar event in background
+        background_tasks.add_task(
+            run_async_task,
+            create_calendar_event,
+            new_booking,
+            f"calendar event for booking #{ref_number}"
+        )
         
-        # Create calendar event
-        await create_calendar_event(new_booking)
+        # Sync contact to iCloud in background
+        background_tasks.add_task(
+            run_sync_task,
+            add_contact_to_icloud,
+            new_booking,
+            f"iCloud contact sync for booking #{ref_number}"
+        )
         
-        # Sync contact to iCloud
-        add_contact_to_icloud(new_booking)
-        
-        return {"message": "Booking created successfully", "id": new_booking['id'], "referenceNumber": ref_number, "paymentLinkSent": payment_link_sent}
+        return {"message": "Booking created successfully", "id": new_booking['id'], "referenceNumber": ref_number, "paymentLinkSent": booking.paymentMethod in ['stripe', 'paypal']}
     except Exception as e:
         logger.error(f"Error creating manual booking: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
