@@ -6705,6 +6705,32 @@ def generate_paypal_payment_link(booking: dict) -> str:
         return None
 
 
+# Background task helpers for payment link sending
+async def send_stripe_payment_link_background(booking: dict):
+    """Send Stripe payment link in background"""
+    try:
+        payment_link = await generate_stripe_payment_link(booking)
+        if payment_link:
+            await send_payment_link_email(booking, payment_link, 'stripe')
+            # Also send confirmation email
+            send_booking_confirmation_email(booking, include_payment_link=False)
+            logger.info(f"Stripe payment link sent for booking #{booking.get('referenceNumber')}")
+    except Exception as e:
+        logger.error(f"Error sending Stripe payment link: {str(e)}")
+
+async def send_paypal_payment_link_background(booking: dict):
+    """Send PayPal payment link in background"""
+    try:
+        payment_link = generate_paypal_payment_link(booking)
+        if payment_link:
+            await send_payment_link_email(booking, payment_link, 'paypal')
+            # Also send confirmation email
+            send_booking_confirmation_email(booking, include_payment_link=False)
+            logger.info(f"PayPal payment link sent for booking #{booking.get('referenceNumber')}")
+    except Exception as e:
+        logger.error(f"Error sending PayPal payment link: {str(e)}")
+
+
 # ============================================
 # AFTERPAY DIRECT API INTEGRATION
 # ============================================
