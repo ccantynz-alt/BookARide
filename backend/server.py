@@ -7368,7 +7368,7 @@ async def create_manual_booking(booking: ManualBooking, background_tasks: Backgr
         else:
             # Send confirmation email (with CC if provided) in background
             background_tasks.add_task(
-                run_sync_task,
+                run_sync_task_with_args,
                 send_booking_confirmation_email,
                 new_booking,
                 True,  # include_payment_link
