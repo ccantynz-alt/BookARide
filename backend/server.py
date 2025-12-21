@@ -8850,7 +8850,7 @@ if cors_origins_env == '*':
     cors_origins = [
         "https://bookaride.co.nz",
         "https://www.bookaride.co.nz",
-        "https://ride-booking-enhance.preview.emergentagent.com",
+        "https://bookingsync-15.preview.emergentagent.com",
         "http://localhost:3000"
     ]
 else:
@@ -9803,6 +9803,155 @@ async def fix_now():
     except Exception as e:
         logger.error(f"Fix error: {str(e)}")
         return {"success": False, "error": str(e)}
+
+
+@api_router.post("/admin/batch-sync-calendar")
+async def batch_sync_calendar(
+    background_tasks: BackgroundTasks,
+    current_admin: dict = Depends(get_current_admin)
+):
+    """
+    Batch sync all imported bookings to Google Calendar.
+    Only syncs bookings that don't already have a calendar_event_id.
+    Runs in background to avoid timeout for large datasets.
+    """
+    try:
+        # Count bookings that need syncing (imported + no calendar event)
+        query = {
+            "imported_from": "wordpress_chauffeur",
+            "$or": [
+                {"calendar_event_id": {"$exists": False}},
+                {"calendar_event_id": None},
+                {"calendar_event_id": ""}
+            ]
+        }
+        
+        total_to_sync = await db.bookings.count_documents(query)
+        
+        if total_to_sync == 0:
+            return {
+                "success": True,
+                "message": "All imported bookings are already synced to Google Calendar!",
+                "total_synced": 0,
+                "total_to_sync": 0
+            }
+        
+        # Start background task to sync bookings
+        background_tasks.add_task(
+            batch_sync_calendar_task,
+            query
+        )
+        
+        return {
+            "success": True,
+            "message": f"Calendar sync started for {total_to_sync} imported bookings. This runs in the background - check back in a few minutes.",
+            "total_to_sync": total_to_sync,
+            "status": "processing"
+        }
+        
+    except Exception as e:
+        logger.error(f"Batch calendar sync error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+async def batch_sync_calendar_task(query: dict):
+    """Background task to sync bookings to calendar"""
+    try:
+        logger.info("📅 Starting batch calendar sync for imported bookings...")
+        
+        synced = 0
+        failed = 0
+        
+        # Process bookings in batches to avoid memory issues
+        cursor = db.bookings.find(query, {"_id": 0})
+        
+        async for booking in cursor:
+            try:
+                # Add small delay between requests to avoid rate limiting
+                await asyncio.sleep(0.5)
+                
+                success = await create_calendar_event(booking)
+                if success:
+                    synced += 1
+                    if synced % 50 == 0:
+                        logger.info(f"📅 Calendar sync progress: {synced} bookings synced")
+                else:
+                    failed += 1
+                    
+            except Exception as booking_error:
+                logger.warning(f"Failed to sync booking {booking.get('id', 'unknown')}: {str(booking_error)}")
+                failed += 1
+        
+        logger.info(f"📅 Batch calendar sync completed: {synced} synced, {failed} failed")
+        
+        # Store sync result for status checking
+        await db.system_tasks.update_one(
+            {"task": "batch_calendar_sync"},
+            {
+                "$set": {
+                    "task": "batch_calendar_sync",
+                    "completed_at": datetime.now(timezone.utc).isoformat(),
+                    "synced": synced,
+                    "failed": failed,
+                    "status": "completed"
+                }
+            },
+            upsert=True
+        )
+        
+    except Exception as e:
+        logger.error(f"Batch calendar sync task error: {str(e)}")
+        await db.system_tasks.update_one(
+            {"task": "batch_calendar_sync"},
+            {
+                "$set": {
+                    "task": "batch_calendar_sync",
+                    "completed_at": datetime.now(timezone.utc).isoformat(),
+                    "status": "error",
+                    "error": str(e)
+                }
+            },
+            upsert=True
+        )
+
+
+@api_router.get("/admin/batch-sync-calendar/status")
+async def get_batch_sync_status(current_admin: dict = Depends(get_current_admin)):
+    """Check the status of the batch calendar sync task"""
+    try:
+        # Get task status
+        task_status = await db.system_tasks.find_one(
+            {"task": "batch_calendar_sync"},
+            {"_id": 0}
+        )
+        
+        # Count remaining bookings to sync
+        query = {
+            "imported_from": "wordpress_chauffeur",
+            "$or": [
+                {"calendar_event_id": {"$exists": False}},
+                {"calendar_event_id": None},
+                {"calendar_event_id": ""}
+            ]
+        }
+        remaining = await db.bookings.count_documents(query)
+        
+        # Count already synced
+        synced_query = {
+            "imported_from": "wordpress_chauffeur",
+            "calendar_event_id": {"$exists": True, "$ne": None, "$ne": ""}
+        }
+        already_synced = await db.bookings.count_documents(synced_query)
+        
+        return {
+            "remaining_to_sync": remaining,
+            "already_synced": already_synced,
+            "last_task": task_status
+        }
+        
+    except Exception as e:
+        logger.error(f"Get batch sync status error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # Include the router in the main app (MUST be after all routes are defined)
