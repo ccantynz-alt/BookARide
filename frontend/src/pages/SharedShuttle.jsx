@@ -1046,7 +1046,7 @@ const SharedShuttle = () => {
               className="px-12 py-5 bg-black text-yellow-400 text-xl font-black rounded-full shadow-xl flex items-center justify-center gap-3 mx-auto"
             >
               <Bus className="w-6 h-6" />
-              Book Now - From $25/Person
+              Book Now - From $22/Person
               <ArrowRight className="w-6 h-6" />
             </motion.button>
           </div>
