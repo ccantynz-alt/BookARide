@@ -1063,51 +1063,49 @@ async def create_booking(booking: BookingCreate, background_tasks: BackgroundTas
         await db.bookings.insert_one(booking_dict)
         logger.info(f"Booking created: {booking_obj.id} with reference #{ref_number}")
         
-        # Send admin notification email for new booking
+        # === BACKGROUND TASKS: Non-critical operations run after response ===
+        # This significantly speeds up booking creation for customers
+        
+        # Send admin notification email in background
         if requires_approval:
-            # Send URGENT approval notification for bookings within 24 hours
-            try:
-                await send_urgent_approval_notification(booking_dict)
-                logger.info(f"Urgent approval notification sent for booking #{ref_number}")
-            except Exception as email_error:
-                logger.error(f"Failed to send urgent approval notification for booking #{ref_number}: {str(email_error)}")
+            background_tasks.add_task(
+                run_async_task, 
+                send_urgent_approval_notification, 
+                booking_dict,
+                f"urgent approval notification for booking #{ref_number}"
+            )
         else:
-            # Send regular admin notification
-            try:
-                await send_booking_notification_to_admin(booking_dict)
-                logger.info(f"Admin notification sent for booking #{ref_number}")
-            except Exception as email_error:
-                logger.error(f"Failed to send admin notification for booking #{ref_number}: {str(email_error)}")
-            # Don't fail the booking creation if email fails
+            background_tasks.add_task(
+                run_async_task,
+                send_booking_notification_to_admin,
+                booking_dict,
+                f"admin notification for booking #{ref_number}"
+            )
         
-        # Sync to Google Calendar
-        try:
-            await create_calendar_event(booking_dict)
-            logger.info(f"Calendar event created for booking #{ref_number}")
-        except Exception as calendar_error:
-            logger.error(f"Failed to create calendar event for booking #{ref_number}: {str(calendar_error)}")
-            # Don't fail the booking creation if calendar sync fails
+        # Sync to Google Calendar in background
+        background_tasks.add_task(
+            run_async_task,
+            create_calendar_event,
+            booking_dict,
+            f"calendar event for booking #{ref_number}"
+        )
         
-        # Sync contact to iCloud
-        try:
-            add_contact_to_icloud(booking_dict)
-            logger.info(f"Contact synced to iCloud for booking #{ref_number}")
-        except Exception as contact_error:
-            logger.error(f"Failed to sync contact to iCloud for booking #{ref_number}: {str(contact_error)}")
-            # Don't fail the booking creation if contact sync fails
+        # Sync contact to iCloud in background (sync function, not async)
+        background_tasks.add_task(
+            run_sync_task,
+            add_contact_to_icloud,
+            booking_dict,
+            f"iCloud contact sync for booking #{ref_number}"
+        )
         
-        # If payment method is 'xero', create and send Xero invoice automatically
+        # If payment method is 'xero', create and send Xero invoice in background
         if booking_dict.get('paymentMethod') == 'xero':
-            try:
-                xero_result = await create_and_send_xero_invoice(booking_dict)
-                if xero_result:
-                    logger.info(f"Xero invoice {xero_result.get('invoice_number')} created and sent for booking #{ref_number}")
-                    # Update the returned booking object with Xero info
-                    booking_obj.xero_invoice_id = xero_result.get('invoice_id')
-                    booking_obj.xero_invoice_number = xero_result.get('invoice_number')
-            except Exception as xero_error:
-                logger.error(f"Failed to create Xero invoice for booking #{ref_number}: {str(xero_error)}")
-                # Don't fail the booking creation if Xero fails
+            background_tasks.add_task(
+                run_async_task,
+                create_and_send_xero_invoice,
+                booking_dict,
+                f"Xero invoice for booking #{ref_number}"
+            )
         
         return booking_obj
     except Exception as e:
