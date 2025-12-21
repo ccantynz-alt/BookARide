@@ -331,11 +331,11 @@ const SharedShuttle = () => {
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
                   {[
                     { pax: '1-2', price: 100, color: 'red', savings: 0 },
-                    { pax: '3', price: 70, color: 'orange', savings: 30 },
-                    { pax: '4', price: 55, color: 'yellow', savings: 45 },
-                    { pax: '5-6', price: 40, color: 'lime', savings: 60 },
-                    { pax: '7-8', price: 32, color: 'green', savings: 68 },
-                    { pax: '9+', price: 25, color: 'emerald', savings: 75 },
+                    { pax: '3', price: 38, color: 'orange', savings: 62 },
+                    { pax: '4', price: 32, color: 'yellow', savings: 68 },
+                    { pax: '5-6', price: 28, color: 'lime', savings: 72 },
+                    { pax: '7-8', price: 24, color: 'green', savings: 76 },
+                    { pax: '9+', price: 22, color: 'emerald', savings: 78 },
                   ].map((tier, idx) => (
                     <motion.div
                       key={tier.pax}
