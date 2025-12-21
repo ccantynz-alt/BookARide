@@ -4539,11 +4539,8 @@ async def stripe_webhook(request: Request):
                         # Get booking details for notifications
                         booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
                         if booking:
-                            # Send email confirmation
-                            send_booking_confirmation_email(booking)
-                            
-                            # Send SMS confirmation
-                            send_booking_confirmation_sms(booking)
+                            # Send confirmations based on customer's notification preference
+                            send_customer_confirmation(booking)
                             
                             # Send admin notification
                             await send_booking_notification_to_admin(booking)
