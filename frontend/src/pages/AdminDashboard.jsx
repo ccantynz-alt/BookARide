@@ -2238,7 +2238,7 @@ export const AdminDashboard = () => {
             )}
           </CardContent>
         </Card>
-          </TabsContent>
+        </TabsContent>
 
           {/* Shuttle Service Tab */}
           <TabsContent value="shuttle" className="space-y-6">
