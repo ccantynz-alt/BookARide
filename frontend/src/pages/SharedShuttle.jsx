@@ -226,7 +226,7 @@ const SharedShuttle = () => {
     <>
       <Helmet>
         <title>From Just $25/Person! Shared Airport Shuttle | Auckland CBD to Airport</title>
-        <meta name="description" content="Auckland's CHEAPEST airport transfer! Pay as little as $25 per person with our shared shuttle. More passengers = bigger savings. Book now and save up to 75%!" />
+        <meta name="description" content="Auckland's CHEAPEST airport transfer! Pay as little as $22 per person with our shared shuttle. More passengers = bigger savings. Minimum $100, Maximum $200 for up to 9 passengers. Book now!" />
       </Helmet>
       
       <Header />
