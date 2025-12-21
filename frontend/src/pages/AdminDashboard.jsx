@@ -101,6 +101,48 @@ const ImportBookingsSection = ({ onSuccess }) => {
     fetchImportStatus();
   }, [importResult]);
 
+  // Fetch calendar sync status on mount
+  useEffect(() => {
+    const fetchCalendarSyncStatus = async () => {
+      try {
+        const token = localStorage.getItem('adminToken');
+        const response = await axios.get(`${API}/admin/batch-sync-calendar/status`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setCalendarSyncStatus(response.data);
+      } catch (error) {
+        console.error('Error fetching calendar sync status:', error);
+      }
+    };
+    fetchCalendarSyncStatus();
+  }, [calendarSyncResult]);
+
+  // Batch sync all imported bookings to Google Calendar
+  const handleBatchCalendarSync = async () => {
+    setCalendarSyncing(true);
+    setCalendarSyncResult(null);
+
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await axios.post(`${API}/admin/batch-sync-calendar`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setCalendarSyncResult(response.data);
+      if (response.data.success) {
+        toast.success(response.data.message);
+      }
+    } catch (error) {
+      console.error('Calendar sync error:', error);
+      setCalendarSyncResult({
+        success: false,
+        error: error.response?.data?.detail || 'Calendar sync failed'
+      });
+      toast.error('Failed to start calendar sync');
+    } finally {
+      setCalendarSyncing(false);
+    }
+  };
+
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
     if (file && file.name.endsWith('.csv')) {
