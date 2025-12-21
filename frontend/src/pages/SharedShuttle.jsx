@@ -721,13 +721,18 @@ const SharedShuttle = () => {
                                   {savings > 0 && (
                                     <div className="text-green-400 text-sm flex items-center gap-1 mt-1">
                                       <TrendingDown className="w-4 h-4" />
-                                      Saving ${savings} with group discount!
+                                      Save ${savings} vs private transfer!
                                     </div>
                                   )}
                                 </div>
                                 <div className="text-right">
-                                  <div className="text-gray-400 text-sm">Total for {passengers}</div>
+                                  <div className="text-gray-400 text-sm">Total for {passengers} {passengers === 1 ? 'passenger' : 'passengers'}</div>
                                   <div className="text-3xl font-bold text-yellow-400">${totalPrice}</div>
+                                  {passengers < 9 && (
+                                    <div className="text-xs text-gray-500 mt-1">
+                                      Add more passengers to save!
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </div>
