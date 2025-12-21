@@ -1254,7 +1254,8 @@ async def quick_approve_booking(booking_id: str, action: str = "approve"):
 @api_router.get("/bookings", response_model=List[Booking])
 async def get_bookings(current_admin: dict = Depends(get_current_admin)):
     try:
-        bookings = await db.bookings.find({}, {"_id": 0}).sort("createdAt", -1).to_list(1000)
+        # Sort by booking DATE (not createdAt) so upcoming bookings show first
+        bookings = await db.bookings.find({}, {"_id": 0}).sort("date", -1).to_list(1000)
         return [Booking(**booking) for booking in bookings]
     except Exception as e:
         logger.error(f"Error fetching bookings: {str(e)}")
