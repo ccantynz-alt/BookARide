@@ -284,7 +284,7 @@ const SharedShuttle = () => {
                 <div className="text-yellow-400 text-2xl font-bold md:hidden">↓</div>
                 <div className="bg-green-900/50 border-2 border-green-500 rounded-xl p-4 text-center transform scale-110 shadow-xl shadow-green-500/20">
                   <div className="text-green-400 text-sm font-semibold">Our Shared Shuttle</div>
-                  <div className="text-green-300 text-4xl font-black">$25-100</div>
+                  <div className="text-green-300 text-4xl font-black">$22-100</div>
                   <div className="text-green-500 text-xs mt-1">Per Person!</div>
                 </div>
               </div>
