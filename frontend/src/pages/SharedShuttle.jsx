@@ -265,7 +265,7 @@ const SharedShuttle = () => {
               <h1 className="text-4xl md:text-6xl lg:text-7xl font-black text-white mb-4 leading-tight">
                 Auckland CBD to Airport
                 <span className="block text-yellow-400 mt-2">
-                  From Just <span className="text-5xl md:text-7xl lg:text-8xl">$25</span>/Person!
+                  From Just <span className="text-5xl md:text-7xl lg:text-8xl">$22</span>/Person!
                 </span>
               </h1>
               
