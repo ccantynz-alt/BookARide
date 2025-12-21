@@ -37,22 +37,41 @@ import { Footer } from '../components/Footer';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
-// Pricing tiers - $200 minimum, price decreases as more passengers book
+// Shared Shuttle Pricing Model - City to Airport
+// Minimum: $100 (covers costs for 1-2 passengers)
+// Maximum: $200 (full van with 9 passengers)
+// More passengers = cheaper per person, but total increases toward $200
+const SHARED_SHUTTLE_PRICING = {
+  1: { total: 100, perPerson: 100 },
+  2: { total: 100, perPerson: 50 },
+  3: { total: 115, perPerson: 38 },
+  4: { total: 130, perPerson: 32 },
+  5: { total: 145, perPerson: 29 },
+  6: { total: 160, perPerson: 27 },
+  7: { total: 175, perPerson: 25 },
+  8: { total: 188, perPerson: 24 },
+  9: { total: 200, perPerson: 22 },
+};
+
+const getSharedShuttlePricing = (passengers) => {
+  if (passengers >= 9) return { total: 200, perPerson: 22 };
+  return SHARED_SHUTTLE_PRICING[passengers] || { total: 100, perPerson: 100 };
+};
+
+// Legacy per-person pricing (kept for backward compatibility)
 const PRICING_TIERS = {
-  1: 100, 2: 100,
-  3: 70,
-  4: 55,
-  5: 45,
-  6: 40,
-  7: 35,
-  8: 32,
-  9: 30,
-  10: 28,
-  11: 25,
+  1: 100, 2: 50,
+  3: 38,
+  4: 32,
+  5: 29,
+  6: 27,
+  7: 25,
+  8: 24,
+  9: 22,
 };
 
 const getPricePerPerson = (totalPassengers) => {
-  if (totalPassengers >= 11) return 25;
+  if (totalPassengers >= 9) return 22;
   return PRICING_TIERS[totalPassengers] || 100;
 };
 
