@@ -570,3 +570,15 @@ frontend:
 - Customer: Test Customer
 - Location sent: -36.862, 174.7682
 - ETA calculated: 8 minutes ✅
+
+  - task: "Batch Sync Imported Bookings to Google Calendar"
+    implemented: true
+    working: needs_testing
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: needs_testing
+        agent: "main"
+        comment: "New batch calendar sync feature added. POST /api/admin/batch-sync-calendar starts background sync, GET /api/admin/batch-sync-calendar/status shows sync status. Frontend UI added in Import tab."
