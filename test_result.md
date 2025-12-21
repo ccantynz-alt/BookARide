@@ -305,6 +305,22 @@ test_plan:
    - Import instructions section
    - Database status showing total vs imported bookings
 
+3. **Performance Optimization - Booking Creation (P1 Fix)**
+   - Refactored `/api/bookings` and `/api/bookings/manual` endpoints
+   - Non-critical operations now run in BackgroundTasks:
+     - Email notifications (admin and customer)
+     - Google Calendar sync
+     - iCloud contact sync
+     - Xero invoice creation
+     - Payment link generation
+   - Booking creation now returns instantly, improving customer experience
+
+4. **Customer Notification Preference Feature**
+   - Added `notificationPreference` field to BookingCreate model
+   - Frontend already has UI for selecting preference (email/SMS/both)
+   - Payment confirmation now respects customer preference using `send_customer_confirmation()`
+   - Updated both payment status check and webhook handlers
+
 ### Import Stats:
 - Total bookings after import: 1,705
 - WordPress imports: 1,564
@@ -316,6 +332,8 @@ test_plan:
 - Frontend Import tab: ✅ Working  
 - Database validation fix: ✅ Applied
 - Duplicate prevention: ✅ Working
+- BackgroundTasks: ✅ Implemented
+- Notification preferences: ✅ Implemented
 
 agent_communication:
   - agent: "testing"
