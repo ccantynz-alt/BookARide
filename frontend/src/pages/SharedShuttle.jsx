@@ -464,7 +464,7 @@ const SharedShuttle = () => {
                         </li>
                         <li className="flex items-center gap-2 text-gray-400">
                           <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                          Now 6 passengers total = $40/person
+                          Now 6 passengers total = $27/person
                         </li>
                       </ul>
                     </div>
