@@ -763,7 +763,7 @@ const SharedShuttle = () => {
                               </button>
                               <span className="text-3xl font-bold text-white w-12 text-center">{passengers}</span>
                               <button
-                                onClick={() => setPassengers(Math.min(11, passengers + 1))}
+                                onClick={() => setPassengers(Math.min(9, passengers + 1))}
                                 className="w-12 h-12 rounded-lg bg-gray-700 text-white text-xl font-bold hover:bg-gray-600"
                               >
                                 +
