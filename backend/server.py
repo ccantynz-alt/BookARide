@@ -9939,7 +9939,7 @@ async def get_batch_sync_status(current_admin: dict = Depends(get_current_admin)
         # Count already synced
         synced_query = {
             "imported_from": "wordpress_chauffeur",
-            "calendar_event_id": {"$exists": True, "$ne": None, "$ne": ""}
+            "calendar_event_id": {"$exists": True, "$nin": [None, ""]}
         }
         already_synced = await db.bookings.count_documents(synced_query)
         
