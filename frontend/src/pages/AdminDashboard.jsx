@@ -189,31 +189,56 @@ const ImportBookingsSection = ({ onSuccess }) => {
 
   return (
     <div className="space-y-6">
-      {/* Quick Import Button - No auth needed */}
+      {/* Simple Import - Select file then click import */}
       <div className="bg-green-50 rounded-lg p-6 border-2 border-green-300">
         <div className="text-center">
           <CheckCircle className="w-12 h-12 mx-auto text-green-500 mb-3" />
-          <p className="text-gray-700 font-medium mb-2">Quick Import (Recommended)</p>
+          <p className="text-gray-700 font-medium mb-2">Import WordPress Bookings</p>
           <p className="text-sm text-gray-500 mb-4">
-            Your WordPress export file is already on the server. Click below to import all bookings instantly.
+            Select your CSV export file, then click Import. No login issues - just works!
           </p>
-          <Button
-            onClick={handleQuickImport}
-            disabled={importing}
-            className="bg-green-600 hover:bg-green-700 text-white"
-          >
-            {importing ? (
-              <>
-                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                Importing...
-              </>
-            ) : (
-              <>
-                <CheckCircle className="w-4 h-4 mr-2" />
-                Import WordPress Bookings Now
-              </>
+          
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept=".csv"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+          
+          <div className="flex flex-col gap-3 items-center">
+            <Button
+              onClick={() => fileInputRef.current?.click()}
+              variant="outline"
+              className="border-green-400 text-green-600 hover:bg-green-50"
+            >
+              1. Select CSV File
+            </Button>
+            
+            {selectedFile && (
+              <span className="text-sm text-gray-600 bg-green-100 px-3 py-1 rounded-full">
+                📄 {selectedFile.name}
+              </span>
             )}
-          </Button>
+            
+            <Button
+              onClick={handleQuickImport}
+              disabled={importing || !selectedFile}
+              className="bg-green-600 hover:bg-green-700 text-white disabled:opacity-50"
+            >
+              {importing ? (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  Importing...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  2. Import Bookings Now
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -233,52 +258,6 @@ const ImportBookingsSection = ({ onSuccess }) => {
           </div>
         </div>
       )}
-
-      {/* File Upload Section */}
-      <div className="bg-white rounded-lg p-6 border-2 border-dashed border-purple-300">
-        <div className="text-center">
-          <FileText className="w-12 h-12 mx-auto text-purple-400 mb-3" />
-          <p className="text-gray-700 font-medium mb-2">Or Upload a Different CSV File</p>
-          <p className="text-sm text-gray-500 mb-4">
-            Export your WordPress bookings using the Book A Ride Export Plugin, then upload the CSV file here.
-          </p>
-          
-          <input
-            type="file"
-            ref={fileInputRef}
-            accept=".csv"
-            onChange={handleFileSelect}
-            className="hidden"
-          />
-          
-          <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
-            <Button
-              onClick={() => fileInputRef.current?.click()}
-              variant="outline"
-              className="border-purple-400 text-purple-600 hover:bg-purple-50"
-            >
-              Select CSV File
-            </Button>
-            
-            {selectedFile && (
-              <span className="text-sm text-gray-600 bg-purple-100 px-3 py-1 rounded-full">
-                📄 {selectedFile.name}
-              </span>
-            )}
-          </div>
-
-          {selectedFile && (
-            <Button
-              onClick={handleImport}
-              disabled={importing}
-              className="mt-4 bg-purple-600 hover:bg-purple-700 text-white"
-            >
-              {importing ? (
-                <>
-                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                  Importing...
-                </>
-              ) : (
                 <>
                   <FileText className="w-4 h-4 mr-2" />
                   Import Bookings
