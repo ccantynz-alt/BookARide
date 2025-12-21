@@ -9472,6 +9472,118 @@ async def get_import_status(current_admin: dict = Depends(get_current_admin)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@api_router.post("/admin/quick-import-wordpress")
+async def quick_import_wordpress():
+    """
+    One-click import from server-side CSV file.
+    No authentication required - uses pre-uploaded file.
+    """
+    try:
+        csv_path = "/app/backend/wordpress_bookings_import.csv"
+        
+        if not os.path.exists(csv_path):
+            raise HTTPException(status_code=404, detail="WordPress export file not found on server")
+        
+        with open(csv_path, 'r', encoding='utf-8-sig') as f:
+            csv_text = f.read()
+        
+        reader = csv.DictReader(StringIO(csv_text))
+        
+        imported = 0
+        skipped = 0
+        errors = []
+        
+        for row in reader:
+            try:
+                original_id = row.get('original_booking_id', '')
+                
+                # Check if already imported
+                existing = await db.bookings.find_one({"original_booking_id": original_id})
+                if existing:
+                    skipped += 1
+                    continue
+                
+                # Parse dates
+                booking_date = row.get('booking_date', '')
+                return_date = row.get('return_date', '')
+                
+                # Map status
+                status_map = {
+                    'confirmed': 'confirmed',
+                    'pending': 'pending',
+                    'completed': 'completed',
+                    'cancelled': 'cancelled'
+                }
+                status = status_map.get(row.get('status', '').lower(), 'confirmed')
+                
+                # Create booking document
+                booking = {
+                    "id": str(uuid.uuid4()),
+                    "wordpress_id": original_id,
+                    "original_booking_id": original_id,
+                    "booking_ref": row.get('booking_reference', original_id),
+                    "referenceNumber": row.get('booking_reference', original_id),
+                    "name": row.get('customer_name', '').strip(),
+                    "email": row.get('customer_email', '').strip(),
+                    "phone": row.get('customer_phone', '').strip(),
+                    "pickupAddress": row.get('pickup_address', '').strip(),
+                    "dropoffAddress": row.get('dropoff_address', '').strip(),
+                    "date": booking_date,
+                    "time": row.get('booking_time', ''),
+                    "passengers": str(row.get('passengers', '1') or '1'),
+                    "adults": int(row.get('adults', 0) or 0),
+                    "children": int(row.get('children', 0) or 0),
+                    "vehicleType": row.get('vehicle_type', ''),
+                    "distance": float(row.get('distance_km', 0) or 0),
+                    "serviceType": row.get('service_type', 'Transfer'),
+                    "transferType": row.get('transfer_type', 'One Way'),
+                    "status": status,
+                    "payment_method": row.get('payment_method', ''),
+                    "payment_status": 'paid' if row.get('payment_method') else 'unpaid',
+                    "driver_name": row.get('driver_name', ''),
+                    "flightNumber": row.get('flight_number', ''),
+                    "notes": row.get('special_requests', ''),
+                    "specialRequests": row.get('special_requests', ''),
+                    "bookReturn": row.get('has_return', '').lower() == 'yes',
+                    "returnDate": return_date if return_date else None,
+                    "returnTime": row.get('return_time', '') if row.get('return_time') else None,
+                    "created_at": row.get('created_date', datetime.now(timezone.utc).isoformat()),
+                    "imported_from": "wordpress_chauffeur",
+                    "imported_at": datetime.now(timezone.utc).isoformat(),
+                    "notifications_sent": True,
+                    "pricing": {
+                        "distance": float(row.get('distance_km', 0) or 0),
+                        "basePrice": 0,
+                        "airportFee": 0,
+                        "oversizedLuggageFee": 0,
+                        "passengerFee": 0,
+                        "totalPrice": 0
+                    }
+                }
+                
+                await db.bookings.insert_one(booking)
+                imported += 1
+                
+            except Exception as row_error:
+                errors.append(f"Row {original_id}: {str(row_error)}")
+        
+        logger.info(f"📥 Quick WordPress import: {imported} imported, {skipped} skipped, {len(errors)} errors")
+        
+        return {
+            "success": True,
+            "imported": imported,
+            "skipped": skipped,
+            "errors": errors[:10],
+            "total_errors": len(errors)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Quick import error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # Include the router in the main app (MUST be after all routes are defined)
 app.include_router(api_router)
 
