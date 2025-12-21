@@ -2014,6 +2014,7 @@ export const AdminDashboard = () => {
                 <p className="text-gray-600">No bookings found</p>
               </div>
             ) : (
+            <>
               <div className="overflow-x-auto">
                 {/* Bulk Action Bar */}
                 {selectedBookings.size > 0 && (
