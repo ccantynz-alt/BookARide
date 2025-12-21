@@ -721,7 +721,7 @@ const SharedShuttle = () => {
                             <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
                               {DEPARTURE_TIMES.map((time) => {
                                 const timeData = shuttleData.departures?.[time] || { passengers: 0 };
-                                const spotsLeft = 11 - timeData.passengers;
+                                const spotsLeft = 9 - timeData.passengers;
                                 const priceAtTime = getPricePerPerson(timeData.passengers + 1);
                                 
                                 return (
