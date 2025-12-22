@@ -7380,6 +7380,11 @@ class ManualBooking(BaseModel):
     bookReturn: Optional[bool] = False
     returnDate: Optional[str] = ""
     returnTime: Optional[str] = ""
+    skipNotifications: Optional[bool] = False  # Skip sending email/SMS notifications
+    referenceNumber: Optional[str] = None  # Allow setting custom reference number
+    driver_name: Optional[str] = ""  # Pre-assign driver
+    payment_status: Optional[str] = None  # Override payment status (paid, unpaid, etc.)
+    status: Optional[str] = "confirmed"  # Booking status
 
 @api_router.post("/bookings/manual")
 async def create_manual_booking(booking: ManualBooking, background_tasks: BackgroundTasks):
