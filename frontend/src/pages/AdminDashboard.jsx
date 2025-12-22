@@ -2808,12 +2808,19 @@ export const AdminDashboard = () => {
               </div>
 
               {/* Flight Info */}
-              {(selectedBooking.flightArrivalNumber || selectedBooking.flightDepartureNumber) && (
+              {(selectedBooking.flightArrivalNumber || selectedBooking.flightDepartureNumber || selectedBooking.flightNumber) && (
                 <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                   <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
                     ✈️ Flight Information
                   </h3>
                   <div className="grid grid-cols-2 gap-4 text-sm">
+                    {/* Show flightNumber from WordPress imports */}
+                    {selectedBooking.flightNumber && !selectedBooking.flightArrivalNumber && !selectedBooking.flightDepartureNumber && (
+                      <div>
+                        <span className="text-gray-600">Flight:</span>
+                        <p className="font-medium">{selectedBooking.flightNumber}</p>
+                      </div>
+                    )}
                     {selectedBooking.flightArrivalNumber && (
                       <div>
                         <span className="text-gray-600">Arrival Flight:</span>
