@@ -7390,8 +7390,11 @@ class ManualBooking(BaseModel):
 async def create_manual_booking(booking: ManualBooking, background_tasks: BackgroundTasks):
     """Create a booking manually"""
     try:
-        # Get sequential reference number
-        ref_number = await get_next_reference_number()
+        # Get sequential reference number OR use provided one
+        if booking.referenceNumber:
+            ref_number = booking.referenceNumber
+        else:
+            ref_number = await get_next_reference_number()
         
         # Extract total price from pricing or use override
         if booking.priceOverride is not None and booking.priceOverride > 0:
@@ -7404,6 +7407,9 @@ async def create_manual_booking(booking: ManualBooking, background_tasks: Backgr
         else:
             total_price = booking.pricing.get('totalPrice', 0) if isinstance(booking.pricing, dict) else 0
             pricing_data = booking.pricing
+        
+        # Determine payment status
+        payment_status = booking.payment_status if booking.payment_status else booking.paymentMethod
         
         new_booking = {
             "id": str(uuid.uuid4()),
@@ -7422,8 +7428,10 @@ async def create_manual_booking(booking: ManualBooking, background_tasks: Backgr
             "pricing": pricing_data,
             "totalPrice": total_price,
             "notes": booking.notes,
-            "status": "confirmed",
-            "payment_status": booking.paymentMethod,  # cash, card, bank-transfer, pay-on-pickup
+            "status": booking.status or "confirmed",
+            "payment_status": payment_status,
+            "payment_method": booking.paymentMethod,
+            "driver_name": booking.driver_name or "",
             "flightArrivalNumber": booking.flightArrivalNumber or "",
             "flightArrivalTime": booking.flightArrivalTime or "",
             "flightDepartureNumber": booking.flightDepartureNumber or "",
@@ -7431,72 +7439,75 @@ async def create_manual_booking(booking: ManualBooking, background_tasks: Backgr
             "bookReturn": booking.bookReturn or False,
             "returnDate": booking.returnDate or "",
             "returnTime": booking.returnTime or "",
+            "notifications_sent": booking.skipNotifications,  # Mark as sent if skipping
             "createdAt": datetime.now(timezone.utc)
         }
         
         await db.bookings.insert_one(new_booking)
-        logger.info(f"Manual booking created: #{ref_number} - Payment: {booking.paymentMethod}")
+        logger.info(f"Manual booking created: #{ref_number} - Payment: {payment_status} - Skip notifications: {booking.skipNotifications}")
         
-        # === BACKGROUND TASKS: Non-critical operations run after response ===
-        
-        # Handle payment link sending based on payment method (in background)
-        if booking.paymentMethod == 'stripe':
+        # === BACKGROUND TASKS: Only run if NOT skipping notifications ===
+        if not booking.skipNotifications:
+            # Handle payment link sending based on payment method (in background)
+            if booking.paymentMethod == 'stripe':
+                background_tasks.add_task(
+                    run_async_task,
+                    send_stripe_payment_link_background,
+                    new_booking,
+                    f"Stripe payment link for booking #{ref_number}"
+                )
+            elif booking.paymentMethod == 'paypal':
+                background_tasks.add_task(
+                    run_async_task,
+                    send_paypal_payment_link_background,
+                    new_booking,
+                    f"PayPal payment link for booking #{ref_number}"
+                )
+            else:
+                # Send confirmation email (with CC if provided) in background
+                background_tasks.add_task(
+                    run_sync_task_with_args,
+                    send_booking_confirmation_email,
+                    new_booking,
+                    True,  # include_payment_link
+                    f"confirmation email for booking #{ref_number}"
+                )
+            
+            # Send confirmation SMS in background
             background_tasks.add_task(
-                run_async_task,
-                send_stripe_payment_link_background,
+                run_sync_task,
+                send_booking_confirmation_sms,
                 new_booking,
-                f"Stripe payment link for booking #{ref_number}"
+                f"confirmation SMS for booking #{ref_number}"
             )
-        elif booking.paymentMethod == 'paypal':
+            
+            # Send admin notification in background
             background_tasks.add_task(
                 run_async_task,
-                send_paypal_payment_link_background,
+                send_booking_notification_to_admin,
                 new_booking,
-                f"PayPal payment link for booking #{ref_number}"
+                f"admin notification for booking #{ref_number}"
+            )
+            
+            # Create calendar event in background
+            background_tasks.add_task(
+                run_async_task,
+                create_calendar_event,
+                new_booking,
+                f"calendar event for booking #{ref_number}"
+            )
+            
+            # Sync contact to iCloud in background
+            background_tasks.add_task(
+                run_sync_task,
+                add_contact_to_icloud,
+                new_booking,
+                f"iCloud contact sync for booking #{ref_number}"
             )
         else:
-            # Send confirmation email (with CC if provided) in background
-            background_tasks.add_task(
-                run_sync_task_with_args,
-                send_booking_confirmation_email,
-                new_booking,
-                True,  # include_payment_link
-                f"confirmation email for booking #{ref_number}"
-            )
+            logger.info(f"Skipping all notifications for booking #{ref_number} as requested")
         
-        # Send confirmation SMS in background
-        background_tasks.add_task(
-            run_sync_task,
-            send_booking_confirmation_sms,
-            new_booking,
-            f"confirmation SMS for booking #{ref_number}"
-        )
-        
-        # Send admin notification in background
-        background_tasks.add_task(
-            run_async_task,
-            send_booking_notification_to_admin,
-            new_booking,
-            f"admin notification for booking #{ref_number}"
-        )
-        
-        # Create calendar event in background
-        background_tasks.add_task(
-            run_async_task,
-            create_calendar_event,
-            new_booking,
-            f"calendar event for booking #{ref_number}"
-        )
-        
-        # Sync contact to iCloud in background
-        background_tasks.add_task(
-            run_sync_task,
-            add_contact_to_icloud,
-            new_booking,
-            f"iCloud contact sync for booking #{ref_number}"
-        )
-        
-        return {"message": "Booking created successfully", "id": new_booking['id'], "referenceNumber": ref_number, "paymentLinkSent": booking.paymentMethod in ['stripe', 'paypal']}
+        return {"message": "Booking created successfully", "id": new_booking['id'], "referenceNumber": ref_number, "paymentLinkSent": booking.paymentMethod in ['stripe', 'paypal'] and not booking.skipNotifications}
     except Exception as e:
         logger.error(f"Error creating manual booking: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
