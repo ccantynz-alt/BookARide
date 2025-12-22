@@ -3695,11 +3695,26 @@ async def sync_booking_to_calendar(booking_id: str, current_admin: dict = Depend
 # Resend Confirmation Endpoint
 @api_router.post("/bookings/{booking_id}/resend-confirmation")
 async def resend_booking_confirmation(booking_id: str, current_admin: dict = Depends(get_current_admin)):
-    """Resend confirmation email and SMS to customer"""
+    """Resend confirmation email and SMS to customer - with rate limiting"""
     try:
         booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
         if not booking:
             raise HTTPException(status_code=404, detail="Booking not found")
+        
+        # RATE LIMIT: Check if confirmation was sent in the last 5 minutes
+        last_resend = booking.get('lastConfirmationResent')
+        if last_resend:
+            try:
+                last_resend_time = datetime.fromisoformat(last_resend.replace('Z', '+00:00'))
+                time_since_last = datetime.now(timezone.utc) - last_resend_time
+                if time_since_last.total_seconds() < 300:  # 5 minutes
+                    minutes_left = int((300 - time_since_last.total_seconds()) / 60) + 1
+                    raise HTTPException(
+                        status_code=429, 
+                        detail=f"Confirmation was just sent. Please wait {minutes_left} more minute(s) before resending."
+                    )
+            except ValueError:
+                pass  # Invalid date format, allow resend
         
         email_sent = False
         sms_sent = False
@@ -3719,6 +3734,12 @@ async def resend_booking_confirmation(booking_id: str, current_admin: dict = Dep
             logger.info(f"Confirmation SMS resent for booking {booking_id}")
         except Exception as e:
             logger.error(f"Failed to resend SMS for booking {booking_id}: {str(e)}")
+        
+        # Track resend time
+        await db.bookings.update_one(
+            {"id": booking_id},
+            {"$set": {"lastConfirmationResent": datetime.now(timezone.utc).isoformat()}}
+        )
         
         if email_sent and sms_sent:
             return {"success": True, "message": "Confirmation email and SMS resent successfully!"}
