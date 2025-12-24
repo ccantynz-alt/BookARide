@@ -4055,7 +4055,7 @@ def generate_confirmation_email_html(booking: dict) -> str:
                             </div>
                             <div>
                                 <h3 style="margin: 0; color: #1a1a1a; font-size: 18px;">Outbound Trip</h3>
-                                <p style="margin: 2px 0 0 0; color: #666; font-size: 13px;">{formatted_date} at {booking.get('time', 'N/A')}</p>
+                                <p style="margin: 2px 0 0 0; color: #666; font-size: 13px;">{formatted_date} at {formatted_time}</p>
                             </div>
                         </div>
                         
