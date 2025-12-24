@@ -3162,10 +3162,11 @@ async def send_driver_notification(booking: dict, driver: dict, trip_type: str =
         
         # Format date and get references
         formatted_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
+        formatted_time = format_time_ampm(booking.get('time', 'N/A'))
         booking_ref = get_booking_reference(booking)
         full_booking_id = get_full_booking_reference(booking)
         
-        logger.info(f"📧 Formatted: date={formatted_date}, ref={booking_ref}")
+        logger.info(f"📧 Formatted: date={formatted_date}, time={formatted_time}, ref={booking_ref}")
         
         # Calculate DRIVER PAYOUT (deduct Stripe fees + 10% admin fee)
         # Drivers should NOT see the full customer price
