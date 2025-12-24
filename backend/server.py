@@ -3313,7 +3313,7 @@ Service Type: {booking.get('serviceType', 'N/A').replace('-', ' ').title()}
 Pickup: {booking.get('pickupAddress', 'N/A')}
 Drop-off: {booking.get('dropoffAddress', 'N/A')}
 Date: {formatted_date}
-Time: {booking.get('time', 'N/A')}
+Time: {formatted_time}
 Passengers: {booking.get('passengers', 'N/A')}
 
 Your Payout: ${driver_payout:.2f} NZD
