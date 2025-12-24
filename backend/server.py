@@ -3144,20 +3144,25 @@ async def send_driver_notification(booking: dict, driver: dict, trip_type: str =
         
         # Calculate DRIVER PAYOUT (deduct Stripe fees + 10% admin fee)
         # Drivers should NOT see the full customer price
-        total_price = booking.get('pricing', {}).get('totalPrice', 0) if isinstance(booking.get('pricing'), dict) else 0
+        # Check for manual override first
+        if booking.get('driver_payout_override') is not None:
+            driver_payout = float(booking.get('driver_payout_override'))
+            logger.info(f"📧 Using manual driver payout override: ${driver_payout:.2f}")
+        else:
+            total_price = booking.get('pricing', {}).get('totalPrice', 0) if isinstance(booking.get('pricing'), dict) else 0
+            
+            # Stripe fees: 2.9% + $0.30 NZD
+            stripe_fee = (total_price * 0.029) + 0.30
+            after_stripe = total_price - stripe_fee
+            
+            # Admin/processing fee: 10%
+            admin_fee = after_stripe * 0.10
+            driver_payout = after_stripe - admin_fee
+            
+            # Round to 2 decimal places
+            driver_payout = round(driver_payout, 2)
         
-        # Stripe fees: 2.9% + $0.30 NZD
-        stripe_fee = (total_price * 0.029) + 0.30
-        after_stripe = total_price - stripe_fee
-        
-        # Admin/processing fee: 10%
-        admin_fee = after_stripe * 0.10
-        driver_payout = after_stripe - admin_fee
-        
-        # Round to 2 decimal places
-        driver_payout = round(driver_payout, 2)
-        
-        logger.info(f"📧 Pricing: Total=${total_price:.2f}, Stripe=${stripe_fee:.2f}, Admin=${admin_fee:.2f}, Driver Payout=${driver_payout:.2f}")
+        logger.info(f"📧 Driver Payout: ${driver_payout:.2f}")
         
         # Send Email to Driver
         mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
