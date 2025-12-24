@@ -4709,10 +4709,13 @@ async def twilio_sms_webhook(request: Request):
                 driver_name = driver.get('name', 'Unknown')
                 
                 # Find the most recent booking assigned to this driver that hasn't been acknowledged
-                # Match by driver ID OR driver name (some bookings use name instead of ID)
+                # Match by driver ID OR driver name (some bookings use different field names)
                 booking = await db.bookings.find_one({
                     "$or": [
+                        {"driver_id": driver_id, "driverAcknowledged": {"$ne": True}},
                         {"assignedDriver": driver_id, "driverAcknowledged": {"$ne": True}},
+                        {"assignedDriverId": driver_id, "driverAcknowledged": {"$ne": True}},
+                        {"return_driver_id": driver_id, "returnDriverAcknowledged": {"$ne": True}},
                         {"returnDriver": driver_id, "returnDriverAcknowledged": {"$ne": True}},
                         {"driver_name": driver_name, "driverAcknowledged": {"$ne": True}},
                         {"return_driver_name": driver_name, "returnDriverAcknowledged": {"$ne": True}}
