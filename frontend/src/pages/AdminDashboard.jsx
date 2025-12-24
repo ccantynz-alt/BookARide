@@ -2926,16 +2926,18 @@ export const AdminDashboard = () => {
                           size="sm"
                           onClick={() => handleSendTrackingLink(selectedBooking.id)}
                           className="bg-blue-500 hover:bg-blue-600 text-white text-xs"
+                          title="Sends SMS to driver with tracking link"
                         >
-                          📍 Send Tracking Link
+                          📍 Send Tracking Link to Driver
                         </Button>
+                        <p className="text-[10px] text-gray-500 italic">Sends SMS to driver only</p>
                         <Button 
                           size="sm"
                           variant="outline"
-                          onClick={() => setSelectedDriver('')}
-                          className="text-red-600 hover:bg-red-50"
+                          onClick={() => handleUnassignDriver('outbound')}
+                          className="text-red-600 hover:bg-red-50 border-red-200"
                         >
-                          Change Driver
+                          ✕ Unassign Driver
                         </Button>
                       </div>
                     </div>
