@@ -4727,15 +4727,32 @@ async def twilio_sms_webhook(request: Request):
                     update_fields = {"driverAcknowledgedAt": datetime.now(timezone.utc).isoformat()}
                     
                     # Determine which trip (outbound or return) was acknowledged
-                    if (booking.get('assignedDriver') == driver_id or booking.get('driver_name') == driver_name) and not booking.get('driverAcknowledged'):
+                    # Check all possible field name variations
+                    is_outbound_driver = (
+                        booking.get('driver_id') == driver_id or 
+                        booking.get('assignedDriver') == driver_id or 
+                        booking.get('assignedDriverId') == driver_id or
+                        booking.get('driver_name') == driver_name
+                    )
+                    is_return_driver = (
+                        booking.get('return_driver_id') == driver_id or 
+                        booking.get('returnDriver') == driver_id or 
+                        booking.get('return_driver_name') == driver_name
+                    )
+                    
+                    if is_outbound_driver and not booking.get('driverAcknowledged'):
                         update_fields["driverAcknowledged"] = True
+                        update_fields["driverConfirmed"] = True
+                        update_fields["driverResponse"] = "Yes"
                         trip_type = "OUTBOUND"
-                    elif (booking.get('returnDriver') == driver_id or booking.get('return_driver_name') == driver_name) and not booking.get('returnDriverAcknowledged'):
+                    elif is_return_driver and not booking.get('returnDriverAcknowledged'):
                         update_fields["returnDriverAcknowledged"] = True
                         trip_type = "RETURN"
                     else:
                         trip_type = "OUTBOUND"
                         update_fields["driverAcknowledged"] = True
+                        update_fields["driverConfirmed"] = True
+                        update_fields["driverResponse"] = "Yes"
                     
                     await db.bookings.update_one(
                         {"id": booking.get('id')},
