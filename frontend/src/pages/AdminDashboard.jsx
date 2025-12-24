@@ -3010,14 +3010,30 @@ export const AdminDashboard = () => {
                           ))}
                         </SelectContent>
                       </Select>
+                    </div>
+                    <div className="flex gap-2 items-center">
+                      <div className="flex-1">
+                        <label className="text-xs text-gray-500 mb-1 block">Driver Payout (optional)</label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                          <input
+                            type="number"
+                            placeholder="Auto-calculated"
+                            value={driverPayoutOverride}
+                            onChange={(e) => setDriverPayoutOverride(e.target.value)}
+                            className="w-full pl-7 pr-3 py-2 border rounded-md text-sm"
+                          />
+                        </div>
+                      </div>
                       <Button 
                         onClick={() => handleAssignDriver('outbound')}
                         disabled={!selectedDriver}
-                        className="bg-gold hover:bg-gold/90 text-black"
+                        className="bg-gold hover:bg-gold/90 text-black mt-5"
                       >
                         Assign
                       </Button>
                     </div>
+                    <p className="text-[10px] text-gray-400">Leave blank to auto-calculate (after Stripe + 10% admin fee)</p>
                   </div>
                 )}
               </div>
