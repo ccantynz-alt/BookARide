@@ -3383,7 +3383,7 @@ Ref: {booking_ref}
 Customer: {booking.get('name', 'N/A')}
 Phone: {booking.get('phone', 'N/A')}
 Pickup: {booking.get('pickupAddress', 'N/A')}
-Date: {formatted_date} at {booking.get('time', 'N/A')}{distance_text}
+Date: {formatted_date} at {formatted_time}{distance_text}
 Your Payout: ${driver_payout:.2f}
 Payment: {payment_display}
 
