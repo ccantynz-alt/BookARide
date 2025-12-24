@@ -3261,7 +3261,7 @@ async def send_driver_notification(booking: dict, driver: dict, trip_type: str =
                             {pickup_html}
                             <p style="margin: 5px 0;"><strong>Drop-off:</strong> {booking.get('dropoffAddress', 'N/A')}</p>
                             <p style="margin: 5px 0;"><strong>Date:</strong> {formatted_date}</p>
-                            <p style="margin: 5px 0;"><strong>Time:</strong> {booking.get('time', 'N/A')}</p>
+                            <p style="margin: 5px 0;"><strong>Time:</strong> {formatted_time}</p>
                             <p style="margin: 5px 0;"><strong>Passengers:</strong> {booking.get('passengers', 'N/A')}</p>
                             <hr style="border: 0; border-top: 2px solid #D4AF37; margin: 15px 0;">
                             <p style="margin: 5px 0; font-size: 18px;"><strong>💰 Your Payout: ${driver_payout:.2f} NZD</strong></p>
