@@ -536,6 +536,7 @@ export const AdminDashboard = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [drivers, setDrivers] = useState([]);
   const [selectedDriver, setSelectedDriver] = useState('');
+  const [driverPayoutOverride, setDriverPayoutOverride] = useState('');
   const [showCreateBookingModal, setShowCreateBookingModal] = useState(false);
   const [newBooking, setNewBooking] = useState({
     name: '',
