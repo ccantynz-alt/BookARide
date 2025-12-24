@@ -7925,10 +7925,26 @@ async def unassign_driver_from_booking(booking_id: str, trip_type: str = "outbou
         if not current_driver:
             raise HTTPException(status_code=400, detail=f"No driver assigned to {trip_label} trip")
         
-        # Update booking to clear driver assignment
+        # Update booking to clear driver assignment using $unset to fully remove fields
+        # and $set to reset boolean flags
+        unset_fields = {}
+        set_fields = {}
+        
+        for key, value in clear_fields.items():
+            if value is None:
+                unset_fields[key] = ""
+            else:
+                set_fields[key] = value
+        
+        update_query = {}
+        if unset_fields:
+            update_query["$unset"] = unset_fields
+        if set_fields:
+            update_query["$set"] = set_fields
+        
         result = await db.bookings.update_one(
             {"id": booking_id},
-            {"$set": clear_fields}
+            update_query
         )
         
         if result.matched_count == 0:
