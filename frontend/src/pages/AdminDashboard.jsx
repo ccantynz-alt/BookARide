@@ -1104,6 +1104,52 @@ export const AdminDashboard = () => {
     }
   };
 
+  const handleUnassignDriver = async (tripType = 'outbound') => {
+    if (!selectedBooking) return;
+    
+    const driverName = tripType === 'return' 
+      ? selectedBooking.return_driver_name 
+      : selectedBooking.driver_name;
+    
+    if (!window.confirm(`Are you sure you want to unassign ${driverName} from the ${tripType} trip?`)) {
+      return;
+    }
+    
+    try {
+      const response = await axios.patch(
+        `${API}/bookings/${selectedBooking.id}/unassign-driver?trip_type=${tripType}`,
+        {},
+        getAuthHeaders()
+      );
+      
+      // Update the selectedBooking to clear driver info based on trip type
+      if (tripType === 'return') {
+        setSelectedBooking(prev => ({
+          ...prev,
+          return_driver_id: null,
+          return_driver_name: null,
+          return_driver_phone: null,
+          return_driver_email: null
+        }));
+      } else {
+        setSelectedBooking(prev => ({
+          ...prev,
+          driver_id: null,
+          driver_name: null,
+          driver_phone: null,
+          driver_email: null,
+          driverConfirmed: false
+        }));
+      }
+      
+      toast.success(response.data?.message || 'Driver unassigned successfully!');
+      fetchBookings();
+    } catch (error) {
+      console.error('Error unassigning driver:', error);
+      toast.error(error.response?.data?.detail || 'Failed to unassign driver');
+    }
+  };
+
   const filterBookings = () => {
     let filtered = bookings;
 
