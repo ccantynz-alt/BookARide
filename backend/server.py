@@ -7880,6 +7880,70 @@ async def assign_driver_to_booking(driver_id: str, booking_id: str, trip_type: s
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@api_router.patch("/bookings/{booking_id}/unassign-driver")
+async def unassign_driver_from_booking(booking_id: str, trip_type: str = "outbound", current_admin: dict = Depends(get_current_admin)):
+    """Unassign a driver from a booking
+    
+    Args:
+        booking_id: The booking ID
+        trip_type: "outbound" (default) or "return" - which leg of the trip to unassign
+    """
+    try:
+        # Get booking to check current driver
+        booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+        if not booking:
+            raise HTTPException(status_code=404, detail="Booking not found")
+        
+        # Determine which fields to clear based on trip type
+        if trip_type == "return":
+            current_driver = booking.get('return_driver_name', '')
+            clear_fields = {
+                "return_driver_id": None,
+                "return_driver_name": None,
+                "return_driver_phone": None,
+                "return_driver_email": None,
+                "return_driver_assigned_at": None
+            }
+            trip_label = "RETURN"
+        else:
+            current_driver = booking.get('driver_name', '')
+            clear_fields = {
+                "driver_id": None,
+                "driver_name": None,
+                "driver_phone": None,
+                "driver_email": None,
+                "driver_assigned_at": None,
+                "assignedDriver": None,
+                "assignedDriverId": None,
+                "driverConfirmed": False,
+                "driverAcknowledged": False,
+                "driverResponse": None,
+                "driverRespondedAt": None
+            }
+            trip_label = "OUTBOUND"
+        
+        if not current_driver:
+            raise HTTPException(status_code=400, detail=f"No driver assigned to {trip_label} trip")
+        
+        # Update booking to clear driver assignment
+        result = await db.bookings.update_one(
+            {"id": booking_id},
+            {"$set": clear_fields}
+        )
+        
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Booking not found")
+        
+        logger.info(f"Driver {current_driver} unassigned from {trip_label} trip for booking {booking_id}")
+        
+        return {"message": f"Driver {current_driver} unassigned from {trip_label} trip successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error unassigning driver: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ==================== DRIVER PORTAL ====================
 
 # Driver Login
