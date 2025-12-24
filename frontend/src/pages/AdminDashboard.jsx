@@ -2285,44 +2285,49 @@ export const AdminDashboard = () => {
                           )}
                         </td>
                         <td className="px-1 py-1">
-                          <div className="flex gap-0.5">
+                          <div className="flex gap-1">
                             <button
                               onClick={() => openDetailsModal(booking)}
-                              className="p-1 hover:bg-gray-100 rounded"
-                              title="View Details"
+                              className="p-1.5 hover:bg-gray-100 rounded flex flex-col items-center"
+                              title="View booking details"
                             >
-                              <Eye className="w-3.5 h-3.5 text-gray-500" />
+                              <Eye className="w-4 h-4 text-gray-600" />
+                              <span className="text-[8px] text-gray-500">View</span>
                             </button>
                             <button
                               onClick={() => openEditBookingModal(booking)}
-                              className="p-1 hover:bg-blue-100 rounded"
-                              title="Edit Booking"
+                              className="p-1.5 hover:bg-blue-100 rounded flex flex-col items-center"
+                              title="Edit booking details"
                             >
-                              <Edit2 className="w-3.5 h-3.5 text-blue-500" />
+                              <Edit2 className="w-4 h-4 text-blue-600" />
+                              <span className="text-[8px] text-blue-500">Edit</span>
                             </button>
                             <button
                               onClick={() => {
                                 setSelectedBooking(booking);
                                 setShowEmailModal(true);
                               }}
-                              className="p-1 hover:bg-green-100 rounded"
-                              title="Send Email"
+                              className="p-1.5 hover:bg-green-100 rounded flex flex-col items-center"
+                              title="Send custom email (won't send SMS)"
                             >
-                              <Mail className="w-3.5 h-3.5 text-green-500" />
+                              <Mail className="w-4 h-4 text-green-600" />
+                              <span className="text-[8px] text-green-500">Email</span>
                             </button>
                             <button
                               onClick={() => handleResendConfirmation(booking.id)}
-                              className="p-1 hover:bg-amber-100 rounded"
-                              title="Resend Confirmation"
+                              className="p-1.5 hover:bg-amber-100 rounded flex flex-col items-center border border-amber-200"
+                              title="⚠️ Resend confirmation EMAIL + SMS to customer"
                             >
-                              <RefreshCw className="w-3.5 h-3.5 text-amber-500" />
+                              <RefreshCw className="w-4 h-4 text-amber-600" />
+                              <span className="text-[8px] text-amber-600 font-medium">Resend</span>
                             </button>
                             <button
                               onClick={() => handleDeleteBooking(booking.id, booking.name, true)}
-                              className="p-1 hover:bg-red-100 rounded"
-                              title="Delete"
+                              className="p-1.5 hover:bg-red-100 rounded flex flex-col items-center"
+                              title="Delete this booking"
                             >
-                              <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                              <Trash2 className="w-4 h-4 text-red-500" />
+                              <span className="text-[8px] text-red-500">Delete</span>
                             </button>
                           </div>
                         </td>
