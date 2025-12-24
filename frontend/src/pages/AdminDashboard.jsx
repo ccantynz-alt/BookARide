@@ -1068,11 +1068,13 @@ export const AdminDashboard = () => {
     }
     
     try {
-      const response = await axios.patch(
-        `${API}/drivers/${selectedDriver}/assign?booking_id=${selectedBooking.id}&trip_type=${tripType}`,
-        {},
-        getAuthHeaders()
-      );
+      // Build URL with optional driver payout
+      let url = `${API}/drivers/${selectedDriver}/assign?booking_id=${selectedBooking.id}&trip_type=${tripType}`;
+      if (driverPayoutOverride && !isNaN(parseFloat(driverPayoutOverride))) {
+        url += `&driver_payout=${parseFloat(driverPayoutOverride)}`;
+      }
+      
+      const response = await axios.patch(url, {}, getAuthHeaders());
       
       // Get the driver details to update selectedBooking
       const assignedDriver = drivers.find(d => d.id === selectedDriver);
@@ -1084,7 +1086,8 @@ export const AdminDashboard = () => {
           return_driver_id: selectedDriver,
           return_driver_name: assignedDriver?.name || '',
           return_driver_phone: assignedDriver?.phone || '',
-          return_driver_email: assignedDriver?.email || ''
+          return_driver_email: assignedDriver?.email || '',
+          return_driver_payout: driverPayoutOverride ? parseFloat(driverPayoutOverride) : null
         }));
       } else {
         setSelectedBooking(prev => ({
@@ -1092,12 +1095,14 @@ export const AdminDashboard = () => {
           driver_id: selectedDriver,
           driver_name: assignedDriver?.name || '',
           driver_phone: assignedDriver?.phone || '',
-          driver_email: assignedDriver?.email || ''
+          driver_email: assignedDriver?.email || '',
+          driver_payout: driverPayoutOverride ? parseFloat(driverPayoutOverride) : null
         }));
       }
       
       toast.success(response.data?.message || 'Driver assigned successfully!');
       setSelectedDriver('');
+      setDriverPayoutOverride('');
       fetchBookings();
     } catch (error) {
       console.error('Error assigning driver:', error);
