@@ -3110,11 +3110,11 @@ export const AdminDashboard = () => {
                         </div>
                       </div>
                       <Button 
-                        onClick={() => handleAssignDriver('outbound')}
+                        onClick={() => handleShowAssignPreview('outbound')}
                         disabled={!selectedDriver}
                         className="bg-gold hover:bg-gold/90 text-black mt-5"
                       >
-                        Assign
+                        Preview & Assign
                       </Button>
                     </div>
                     <p className="text-[10px] text-gray-400">Leave blank to auto-calculate (after Stripe + 10% admin fee)</p>
