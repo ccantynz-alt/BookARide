@@ -1569,6 +1569,31 @@ def format_date_ddmmyyyy(date_str: str) -> str:
     except Exception:
         return date_str
 
+
+def format_time_ampm(time_str: str) -> str:
+    """Convert 24-hour time to 12-hour AM/PM format"""
+    if not time_str or time_str == 'N/A':
+        return 'N/A'
+    try:
+        # Handle HH:MM format
+        if ':' in time_str:
+            parts = time_str.split(':')
+            hour = int(parts[0])
+            minute = parts[1]
+            
+            if hour == 0:
+                return f"12:{minute} AM"
+            elif hour < 12:
+                return f"{hour}:{minute} AM"
+            elif hour == 12:
+                return f"12:{minute} PM"
+            else:
+                return f"{hour - 12}:{minute} PM"
+        return time_str
+    except Exception:
+        return time_str
+
+
 def get_booking_reference(booking: dict) -> str:
     """Get the booking reference number for display"""
     # Use the sequential reference number if available
