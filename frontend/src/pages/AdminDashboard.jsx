@@ -3192,11 +3192,11 @@ export const AdminDashboard = () => {
                           </div>
                         </div>
                         <Button 
-                          onClick={() => handleAssignDriver('return')}
+                          onClick={() => handleShowAssignPreview('return')}
                           disabled={!selectedDriver}
                           className="bg-blue-600 hover:bg-blue-700 text-white mt-5"
                         >
-                          Assign Return
+                          Preview & Assign Return
                         </Button>
                       </div>
                     </div>
