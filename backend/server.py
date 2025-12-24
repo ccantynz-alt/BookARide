@@ -8000,21 +8000,28 @@ async def driver_login(credentials: DriverLogin):
 
 @api_router.get("/drivers/{driver_id}/bookings")
 async def get_driver_bookings(driver_id: str, date: Optional[str] = None):
-    """Get bookings assigned to a driver with reduced pricing (15% commission)"""
+    """Get bookings assigned to a driver with net payout (after Stripe + admin fees)"""
     try:
         query = {"driver_id": driver_id}
         
         # Get all bookings for the driver (for weekly/upcoming view)
         all_bookings = await db.bookings.find(query, {"_id": 0}).to_list(1000)
         
-        # Calculate driver price (85% of customer price - 15% commission)
+        # Calculate driver payout (customer price minus Stripe fees minus 10% admin fee)
         for booking in all_bookings:
             customer_price = booking.get('pricing', {}).get('totalPrice', 0)
-            # Driver gets 85% of the customer price
-            driver_price = customer_price * 0.85
-            booking['driver_price'] = round(driver_price, 2)
             
-            # Remove the full pricing details from response
+            # Stripe fees: 2.9% + $0.30 NZD
+            stripe_fee = (customer_price * 0.029) + 0.30
+            after_stripe = customer_price - stripe_fee
+            
+            # Admin/processing fee: 10%
+            admin_fee = after_stripe * 0.10
+            driver_payout = after_stripe - admin_fee
+            
+            booking['driver_price'] = round(driver_payout, 2)
+            
+            # Remove the full pricing details from response (drivers shouldn't see original price)
             if 'pricing' in booking:
                 del booking['pricing']
         
