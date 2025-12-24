@@ -1063,6 +1063,88 @@ export const AdminDashboard = () => {
     }
   };
 
+  // Show preview before assigning driver
+  const handleShowAssignPreview = (tripType = 'outbound') => {
+    if (!selectedDriver) {
+      toast.error('Please select a driver');
+      return;
+    }
+    
+    const driver = drivers.find(d => d.id === selectedDriver);
+    const customerPrice = selectedBooking?.pricing?.totalPrice || 0;
+    
+    // Calculate auto payout if no override
+    let calculatedPayout;
+    if (driverPayoutOverride && !isNaN(parseFloat(driverPayoutOverride))) {
+      calculatedPayout = parseFloat(driverPayoutOverride);
+    } else {
+      // Auto-calculate: Stripe fees (2.9% + $0.30) + 10% admin fee
+      const stripeFee = (customerPrice * 0.029) + 0.30;
+      const afterStripe = customerPrice - stripeFee;
+      const adminFee = afterStripe * 0.10;
+      calculatedPayout = Math.round((afterStripe - adminFee) * 100) / 100;
+    }
+    
+    setPendingAssignment({
+      tripType,
+      driver,
+      driverPayout: calculatedPayout,
+      isOverride: !!driverPayoutOverride,
+      customerPrice
+    });
+    setShowDriverAssignPreview(true);
+  };
+
+  // Confirm and send driver assignment
+  const handleConfirmAssignDriver = async () => {
+    if (!pendingAssignment) return;
+    
+    const { tripType, driverPayout } = pendingAssignment;
+    
+    try {
+      let url = `${API}/drivers/${selectedDriver}/assign?booking_id=${selectedBooking.id}&trip_type=${tripType}`;
+      if (driverPayoutOverride && !isNaN(parseFloat(driverPayoutOverride))) {
+        url += `&driver_payout=${parseFloat(driverPayoutOverride)}`;
+      }
+      
+      const response = await axios.patch(url, {}, getAuthHeaders());
+      
+      // Get the driver details to update selectedBooking
+      const assignedDriver = drivers.find(d => d.id === selectedDriver);
+      
+      // Update the selectedBooking with driver info based on trip type
+      if (tripType === 'return') {
+        setSelectedBooking(prev => ({
+          ...prev,
+          return_driver_id: selectedDriver,
+          return_driver_name: assignedDriver?.name || '',
+          return_driver_phone: assignedDriver?.phone || '',
+          return_driver_email: assignedDriver?.email || '',
+          return_driver_payout: driverPayout
+        }));
+      } else {
+        setSelectedBooking(prev => ({
+          ...prev,
+          driver_id: selectedDriver,
+          driver_name: assignedDriver?.name || '',
+          driver_phone: assignedDriver?.phone || '',
+          driver_email: assignedDriver?.email || '',
+          driver_payout: driverPayout
+        }));
+      }
+      
+      toast.success(response.data?.message || 'Driver assigned successfully!');
+      setSelectedDriver('');
+      setDriverPayoutOverride('');
+      setShowDriverAssignPreview(false);
+      setPendingAssignment(null);
+      fetchBookings();
+    } catch (error) {
+      console.error('Error assigning driver:', error);
+      toast.error('Failed to assign driver');
+    }
+  };
+
   const handleAssignDriver = async (tripType = 'outbound') => {
     if (!selectedDriver) {
       toast.error('Please select a driver');
