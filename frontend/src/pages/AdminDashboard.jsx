@@ -537,6 +537,8 @@ export const AdminDashboard = () => {
   const [drivers, setDrivers] = useState([]);
   const [selectedDriver, setSelectedDriver] = useState('');
   const [driverPayoutOverride, setDriverPayoutOverride] = useState('');
+  const [showDriverAssignPreview, setShowDriverAssignPreview] = useState(false);
+  const [pendingAssignment, setPendingAssignment] = useState(null); // {tripType, driverPayout, driver}
   const [showCreateBookingModal, setShowCreateBookingModal] = useState(false);
   const [newBooking, setNewBooking] = useState({
     name: '',
