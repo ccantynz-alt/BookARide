@@ -3312,9 +3312,9 @@ export const AdminDashboard = () => {
                 <p className="text-sm text-gray-600">Driver will see payout of:</p>
                 <p className="font-bold text-2xl text-green-700">${pendingAssignment.driverPayout?.toFixed(2)}</p>
                 {pendingAssignment.isOverride ? (
-                  <p className="text-xs text-orange-600 mt-1">⚠️ Manual override (Customer paid: ${pendingAssignment.customerPrice?.toFixed(2)})</p>
+                  <p className="text-xs text-green-600 mt-1">✓ Custom payout set</p>
                 ) : (
-                  <p className="text-xs text-gray-500 mt-1">Auto-calculated from ${pendingAssignment.customerPrice?.toFixed(2)} after fees</p>
+                  <p className="text-xs text-gray-500 mt-1">Auto-calculated after fees</p>
                 )}
               </div>
               
