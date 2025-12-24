@@ -1854,8 +1854,9 @@ def send_booking_confirmation_sms(booking: dict):
         
         client = Client(account_sid, auth_token)
         
-        # Format date as DD/MM/YYYY and get reference
+        # Format date as DD/MM/YYYY and time with AM/PM
         formatted_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
+        formatted_time = format_time_ampm(booking.get('time', 'N/A'))
         booking_ref = get_booking_reference(booking)
         
         # Create SMS message
@@ -1863,7 +1864,7 @@ def send_booking_confirmation_sms(booking: dict):
 
 Ref: {booking_ref}
 Pickup: {booking.get('pickupAddress', 'N/A')}
-Date: {formatted_date} at {booking.get('time', 'N/A')}
+Date: {formatted_date} at {formatted_time}
 Total: ${booking.get('totalPrice', 0):.2f} NZD
 
 Thank you for booking with us!"""
