@@ -7878,8 +7878,12 @@ async def assign_driver_to_booking(driver_id: str, booking_id: str, trip_type: s
                 'pickup': pickup,
                 'dropoff': dropoff
             }
+            # Add driver payout override if set
+            if driver_payout is not None:
+                notification_booking['driver_payout_override'] = driver_payout
+            
             await send_driver_notification(notification_booking, driver, trip_type=trip_label)
-            logger.info(f"Driver {driver.get('name')} ({driver_id}) assigned to {trip_label} trip for booking {booking_id}")
+            logger.info(f"Driver {driver.get('name')} ({driver_id}) assigned to {trip_label} trip for booking {booking_id}" + (f" with payout ${driver_payout:.2f}" if driver_payout else ""))
         
         return {"message": f"Driver {driver.get('name')} assigned to {trip_label} trip successfully"}
     except HTTPException:
