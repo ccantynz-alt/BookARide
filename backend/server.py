@@ -3840,8 +3840,9 @@ def generate_confirmation_email_html(booking: dict) -> str:
     # Get pricing
     total_price = booking.get('totalPrice', 0) or booking.get('pricing', {}).get('totalPrice', 0)
     
-    # Format date and get reference
+    # Format date and time with AM/PM
     formatted_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
+    formatted_time = format_time_ampm(booking.get('time', 'N/A'))
     booking_ref = get_booking_reference(booking)
     
     # Build pickup addresses list for outbound
