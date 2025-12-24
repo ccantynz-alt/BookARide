@@ -7794,13 +7794,14 @@ async def delete_driver(driver_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.patch("/drivers/{driver_id}/assign")
-async def assign_driver_to_booking(driver_id: str, booking_id: str, trip_type: str = "outbound"):
+async def assign_driver_to_booking(driver_id: str, booking_id: str, trip_type: str = "outbound", driver_payout: Optional[float] = None):
     """Assign a driver to a booking - supports separate outbound and return trip assignments
     
     Args:
         driver_id: The driver's ID
         booking_id: The booking ID
         trip_type: "outbound" (default) or "return" - which leg of the trip
+        driver_payout: Optional custom payout amount for the driver (overrides auto-calculation)
     """
     try:
         # Get driver details first
@@ -7826,6 +7827,10 @@ async def assign_driver_to_booking(driver_id: str, booking_id: str, trip_type: s
                 "return_driver_email": driver.get('email', ''),
                 "return_driver_assigned_at": datetime.now(timezone.utc)
             }
+            # Store driver payout override for return trip
+            if driver_payout is not None:
+                update_fields["return_driver_payout"] = driver_payout
+            
             trip_label = "RETURN"
             trip_date = booking.get('returnDate', booking.get('date'))
             trip_time = booking.get('returnTime', '')
@@ -7841,6 +7846,10 @@ async def assign_driver_to_booking(driver_id: str, booking_id: str, trip_type: s
                 "driver_email": driver.get('email', ''),
                 "driver_assigned_at": datetime.now(timezone.utc)
             }
+            # Store driver payout override for outbound trip
+            if driver_payout is not None:
+                update_fields["driver_payout"] = driver_payout
+            
             trip_label = "OUTBOUND"
             trip_date = booking.get('date', '')
             trip_time = booking.get('time', '')
