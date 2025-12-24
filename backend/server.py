@@ -3142,14 +3142,29 @@ async def send_driver_notification(booking: dict, driver: dict, trip_type: str =
         
         logger.info(f"📧 Formatted: date={formatted_date}, ref={booking_ref}")
         
+        # Calculate DRIVER PAYOUT (deduct Stripe fees + 10% admin fee)
+        # Drivers should NOT see the full customer price
+        total_price = booking.get('pricing', {}).get('totalPrice', 0) if isinstance(booking.get('pricing'), dict) else 0
+        
+        # Stripe fees: 2.9% + $0.30 NZD
+        stripe_fee = (total_price * 0.029) + 0.30
+        after_stripe = total_price - stripe_fee
+        
+        # Admin/processing fee: 10%
+        admin_fee = after_stripe * 0.10
+        driver_payout = after_stripe - admin_fee
+        
+        # Round to 2 decimal places
+        driver_payout = round(driver_payout, 2)
+        
+        logger.info(f"📧 Pricing: Total=${total_price:.2f}, Stripe=${stripe_fee:.2f}, Admin=${admin_fee:.2f}, Driver Payout=${driver_payout:.2f}")
+        
         # Send Email to Driver
         mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
         mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
         sender_email = os.environ.get('SENDER_EMAIL', 'noreply@bookaride.co.nz')
         
         if mailgun_api_key and mailgun_domain:
-            total_price = booking.get('pricing', {}).get('totalPrice', 0) if isinstance(booking.get('pricing'), dict) else 0
-            
             # Build pickup addresses list
             pickup_addresses = [booking.get('pickupAddress', 'N/A')]
             additional_pickups = booking.get('pickupAddresses', [])
@@ -3218,7 +3233,7 @@ async def send_driver_notification(booking: dict, driver: dict, trip_type: str =
                             <p style="margin: 5px 0;"><strong>Time:</strong> {booking.get('time', 'N/A')}</p>
                             <p style="margin: 5px 0;"><strong>Passengers:</strong> {booking.get('passengers', 'N/A')}</p>
                             <hr style="border: 0; border-top: 2px solid #D4AF37; margin: 15px 0;">
-                            <p style="margin: 5px 0; font-size: 18px;"><strong>💰 Job Total: ${total_price:.2f} NZD</strong></p>
+                            <p style="margin: 5px 0; font-size: 18px;"><strong>💰 Your Payout: ${driver_payout:.2f} NZD</strong></p>
                         </td>
                     </tr>
                 </table>
@@ -3270,7 +3285,7 @@ Date: {formatted_date}
 Time: {booking.get('time', 'N/A')}
 Passengers: {booking.get('passengers', 'N/A')}
 
-Job Total: ${total_price:.2f} NZD
+Your Payout: ${driver_payout:.2f} NZD
 
 Special Notes: {booking.get('notes', 'None') or 'None'}
 
