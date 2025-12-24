@@ -2947,7 +2947,7 @@ export const AdminDashboard = () => {
                 <h3 className="font-semibold text-gray-900 mb-3">
                   🚗 Outbound Driver {selectedBooking.bookReturn && <span className="text-sm font-normal text-gray-500">(One-way to destination)</span>}
                 </h3>
-                {selectedBooking.driver_id ? (
+                {(selectedBooking.driver_id || selectedBooking.driver_name) ? (
                   <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                     <div className="flex items-center justify-between">
                       <div>
