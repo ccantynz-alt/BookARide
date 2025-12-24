@@ -3288,6 +3288,59 @@ export const AdminDashboard = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Driver Assignment Preview Modal */}
+      <Dialog open={showDriverAssignPreview} onOpenChange={setShowDriverAssignPreview}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>📋 Confirm Driver Assignment</DialogTitle>
+          </DialogHeader>
+          {pendingAssignment && selectedBooking && (
+            <div className="space-y-4">
+              <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+                <p className="text-sm"><strong>Booking:</strong> #{selectedBooking.referenceNumber} - {selectedBooking.name}</p>
+                <p className="text-sm"><strong>Date:</strong> {selectedBooking.date} at {selectedBooking.time}</p>
+                <p className="text-sm"><strong>Trip:</strong> {pendingAssignment.tripType === 'return' ? 'Return Trip' : 'Outbound Trip'}</p>
+              </div>
+              
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <p className="text-sm text-gray-600">Assigning to:</p>
+                <p className="font-bold text-lg">{pendingAssignment.driver?.name}</p>
+                <p className="text-sm text-gray-500">{pendingAssignment.driver?.phone}</p>
+              </div>
+              
+              <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                <p className="text-sm text-gray-600">Driver will see payout of:</p>
+                <p className="font-bold text-2xl text-green-700">${pendingAssignment.driverPayout?.toFixed(2)}</p>
+                {pendingAssignment.isOverride ? (
+                  <p className="text-xs text-orange-600 mt-1">⚠️ Manual override (Customer paid: ${pendingAssignment.customerPrice?.toFixed(2)})</p>
+                ) : (
+                  <p className="text-xs text-gray-500 mt-1">Auto-calculated from ${pendingAssignment.customerPrice?.toFixed(2)} after fees</p>
+                )}
+              </div>
+              
+              <div className="flex gap-2 pt-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    setShowDriverAssignPreview(false);
+                    setPendingAssignment(null);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                  onClick={handleConfirmAssignDriver}
+                >
+                  ✓ Confirm & Send to Driver
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Email Modal */}
       <Dialog open={showEmailModal} onOpenChange={setShowEmailModal}>
         <DialogContent className="max-w-2xl">
