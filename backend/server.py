@@ -3805,6 +3805,53 @@ async def resend_booking_confirmation(booking_id: str, current_admin: dict = Dep
         raise HTTPException(status_code=500, detail=f"Error resending confirmation: {str(e)}")
 
 
+@api_router.post("/bookings/{booking_id}/resend-payment-link")
+async def resend_payment_link(booking_id: str, payment_method: str = "stripe", current_admin: dict = Depends(get_current_admin)):
+    """Resend payment link to customer via email
+    
+    Args:
+        booking_id: The booking ID
+        payment_method: 'stripe' or 'paypal'
+    """
+    try:
+        booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+        if not booking:
+            raise HTTPException(status_code=404, detail="Booking not found")
+        
+        # Check if already paid
+        if booking.get('payment_status') == 'paid':
+            raise HTTPException(status_code=400, detail="This booking has already been paid")
+        
+        booking_ref = get_booking_reference(booking)
+        
+        if payment_method == 'stripe':
+            payment_link = await generate_stripe_payment_link(booking)
+            if payment_link:
+                await send_payment_link_email(booking, payment_link, 'stripe')
+                logger.info(f"Stripe payment link resent for booking #{booking_ref}")
+                return {"success": True, "message": f"Stripe payment link sent to {booking.get('email')}"}
+            else:
+                raise HTTPException(status_code=500, detail="Failed to generate Stripe payment link")
+        
+        elif payment_method == 'paypal':
+            payment_link = generate_paypal_payment_link(booking)
+            if payment_link:
+                await send_payment_link_email(booking, payment_link, 'paypal')
+                logger.info(f"PayPal payment link resent for booking #{booking_ref}")
+                return {"success": True, "message": f"PayPal payment link sent to {booking.get('email')}"}
+            else:
+                raise HTTPException(status_code=500, detail="Failed to generate PayPal payment link")
+        
+        else:
+            raise HTTPException(status_code=400, detail="Invalid payment method. Use 'stripe' or 'paypal'")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error resending payment link: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error resending payment link: {str(e)}")
+
+
 # Preview Confirmation Email Endpoint
 @api_router.get("/bookings/{booking_id}/preview-confirmation")
 async def preview_booking_confirmation(booking_id: str, current_admin: dict = Depends(get_current_admin)):
