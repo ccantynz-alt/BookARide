@@ -1698,6 +1698,24 @@ export const AdminDashboard = () => {
     }
   };
 
+  // Resend payment link to customer
+  const handleResendPaymentLink = async (bookingId, paymentMethod = 'stripe') => {
+    try {
+      toast.loading('Sending payment link...');
+      const response = await axios.post(
+        `${API}/bookings/${bookingId}/resend-payment-link?payment_method=${paymentMethod}`, 
+        {}, 
+        getAuthHeaders()
+      );
+      toast.dismiss();
+      toast.success(response.data.message || 'Payment link sent!');
+    } catch (error) {
+      toast.dismiss();
+      console.error('Error sending payment link:', error);
+      toast.error(error.response?.data?.detail || 'Failed to send payment link');
+    }
+  };
+
   // Send tracking link to driver
   const handleSendTrackingLink = async (bookingId) => {
     try {
