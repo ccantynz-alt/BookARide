@@ -4275,6 +4275,16 @@ export const AdminDashboard = () => {
                     <RefreshCw className="w-4 h-4 mr-2" />
                     Resend Confirmation
                   </Button>
+                  {editingBooking.payment_status !== 'paid' && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleResendPaymentLink(editingBooking.id, 'stripe')}
+                      className="bg-white text-green-600 border-green-200 hover:bg-green-50"
+                    >
+                      💳 Send Payment Link
+                    </Button>
+                  )}
                   <Button
                     size="sm"
                     variant="outline"
