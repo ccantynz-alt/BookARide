@@ -187,7 +187,7 @@
     {
       "test": "GPS Tracking: Send Driver Link",
       "status": "\u2705 PASS",
-      "message": "Tracking link sent successfully: sessionId=6ffcd849-e5e6-48e3-8171-13300959670e, trackingRef=GNTNFL",
+      "message": "Tracking link sent successfully: sessionId=driver-dispatch-8, trackingRef=GNTNFL",
       "details": {},
       "timestamp": "2025-12-21T20:42:54.707382"
     },
@@ -222,7 +222,7 @@
     {
       "test": "GPS Tracking: Complete Flow",
       "status": "\u2705 PASS",
-      "message": "Complete GPS tracking flow working: sessionId=6ffcd849-e5e6-48e3-8171-13300959670e, trackingRef=GNTNFL",
+      "message": "Complete GPS tracking flow working: sessionId=driver-dispatch-8, trackingRef=GNTNFL",
       "details": {},
       "timestamp": "2025-12-21T20:42:55.295884"
     },
