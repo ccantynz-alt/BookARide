@@ -3017,14 +3017,44 @@ async def send_booking_notification_to_admin(booking: dict):
         
         if response.status_code == 200:
             logger.info(f"Auto-notification sent to admin: {admin_email} for booking: {booking_ref}")
-            return True
+            email_sent = True
         else:
             logger.error(f"Failed to send admin notification: {response.status_code} - {response.text}")
-            return False
+            email_sent = False
             
     except Exception as e:
         logger.error(f"Error sending admin notification: {str(e)}")
-        return False
+        email_sent = False
+    
+    # ALSO send SMS to admin for ALL new bookings
+    sms_sent = False
+    try:
+        admin_phone = os.environ.get('ADMIN_PHONE', '+64212345678')
+        twilio_sid = os.environ.get('TWILIO_ACCOUNT_SID')
+        twilio_token = os.environ.get('TWILIO_AUTH_TOKEN')
+        twilio_from = os.environ.get('TWILIO_PHONE_NUMBER')
+        
+        if twilio_sid and twilio_token and twilio_from:
+            client = Client(twilio_sid, twilio_token)
+            booking_ref = get_booking_reference(booking)
+            formatted_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
+            formatted_time = format_time_ampm(booking.get('time', 'N/A'))
+            
+            sms_body = f"🔔 NEW BookaRide: {booking.get('name')} booked for {formatted_date} {formatted_time}. Ref: #{booking_ref}. Check admin dashboard."
+            
+            client.messages.create(
+                body=sms_body,
+                from_=twilio_from,
+                to=admin_phone
+            )
+            logger.info(f"✅ Admin SMS sent for new booking: #{booking_ref}")
+            sms_sent = True
+        else:
+            logger.warning("Twilio not configured - cannot send admin SMS")
+    except Exception as sms_error:
+        logger.error(f"Failed to send admin SMS: {str(sms_error)}")
+    
+    return email_sent or sms_sent
 
 
 async def send_urgent_approval_notification(booking: dict):
