@@ -733,19 +733,29 @@ export const BookNow = () => {
                           </div>
 
                           {/* Return Flight Information */}
-                          <div className="bg-white p-4 rounded-lg">
-                            <h4 className="text-md font-semibold text-gray-900 mb-3">Return Flight Information (Optional)</h4>
+                          <div className="bg-white p-4 rounded-lg border-2 border-purple-200">
+                            <h4 className="text-md font-semibold text-gray-900 mb-3">
+                              Return Flight Information 
+                              <span className="text-red-500 ml-1">*</span>
+                              <span className="text-sm font-normal text-gray-500 ml-2">(Required for return trips)</span>
+                            </h4>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div className="space-y-2">
-                                <Label htmlFor="returnDepartureFlightNumber">Departure Flight Number</Label>
+                                <Label htmlFor="returnDepartureFlightNumber">
+                                  Return Flight Number <span className="text-red-500">*</span>
+                                </Label>
                                 <Input
                                   id="returnDepartureFlightNumber"
                                   name="returnDepartureFlightNumber"
                                   value={formData.returnDepartureFlightNumber}
                                   onChange={handleChange}
                                   placeholder="e.g., NZ123"
-                                  className="transition-all duration-200 focus:ring-2 focus:ring-gold"
+                                  required={formData.bookReturn}
+                                  className={`transition-all duration-200 focus:ring-2 focus:ring-gold ${!formData.returnDepartureFlightNumber && formData.bookReturn ? 'border-red-300 bg-red-50' : ''}`}
                                 />
+                                {!formData.returnDepartureFlightNumber && formData.bookReturn && (
+                                  <p className="text-xs text-red-500">⚠️ Return flight number is required</p>
+                                )}
                               </div>
                               <div className="space-y-2">
                                 <Label>Departure Time</Label>
@@ -763,7 +773,7 @@ export const BookNow = () => {
                                 />
                               </div>
                               <div className="space-y-2">
-                                <Label htmlFor="returnArrivalFlightNumber">Arrival Flight Number</Label>
+                                <Label htmlFor="returnArrivalFlightNumber">Arrival Flight Number (Optional)</Label>
                                 <Input
                                   id="returnArrivalFlightNumber"
                                   name="returnArrivalFlightNumber"
