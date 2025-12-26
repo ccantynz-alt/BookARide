@@ -38,7 +38,7 @@ const UrgentReturnsPanel = () => {
     // Refresh every 5 minutes
     const interval = setInterval(fetchUrgentReturns, 5 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [token]);
+  }, []);
 
   const getUrgencyStyle = (color) => {
     switch (color) {
