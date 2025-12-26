@@ -3206,8 +3206,8 @@ async def send_driver_notification(booking: dict, driver: dict, trip_type: str =
         
         logger.info(f"📧 Formatted: date={formatted_date}, time={formatted_time}, ref={booking_ref}")
         
-        # Calculate DRIVER PAYOUT (deduct Stripe fees + 10% admin fee)
-        # Drivers should NOT see the full customer price
+        # Calculate DRIVER PAYOUT (deduct Stripe fees only - no admin percentage)
+        # Drivers get the full amount minus Stripe processing fees
         # Check for manual override first
         if booking.get('driver_payout_override') is not None:
             driver_payout = float(booking.get('driver_payout_override'))
@@ -3215,18 +3215,14 @@ async def send_driver_notification(booking: dict, driver: dict, trip_type: str =
         else:
             total_price = booking.get('pricing', {}).get('totalPrice', 0) if isinstance(booking.get('pricing'), dict) else 0
             
-            # Stripe fees: 2.9% + $0.30 NZD
+            # Stripe fees only: 2.9% + $0.30 NZD
             stripe_fee = (total_price * 0.029) + 0.30
-            after_stripe = total_price - stripe_fee
-            
-            # Admin/processing fee: 10%
-            admin_fee = after_stripe * 0.10
-            driver_payout = after_stripe - admin_fee
+            driver_payout = total_price - stripe_fee
             
             # Round to 2 decimal places
             driver_payout = round(driver_payout, 2)
         
-        logger.info(f"📧 Driver Payout: ${driver_payout:.2f}")
+        logger.info(f"📧 Driver Payout: ${driver_payout:.2f} (Stripe fee only, no admin %)")
         
         # Send Email to Driver
         mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
