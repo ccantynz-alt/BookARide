@@ -2360,9 +2360,21 @@ export const AdminDashboard = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredBookings.map((booking) => (
-                      <tr key={booking.id} className={`border-b hover:bg-gray-50 ${selectedBookings.has(booking.id) ? 'bg-gold/10' : ''} ${isToday(booking.date) ? 'border-l-2 border-l-blue-600 bg-blue-50/30' : ''} ${isTomorrow(booking.date) ? 'border-l-2 border-l-orange-400' : ''}`}>
-                        <td className="px-1 py-1">
+                    {filteredBookings.map((booking) => {
+                      const hasReturn = booking.returnDate && booking.returnTime;
+                      const isUnassigned = !booking.driver_id && !booking.driver_name && !booking.assignedDriver;
+                      const isUrgentUnassigned = isToday(booking.date) && isUnassigned;
+                      const flightNum = booking.flightNumber || booking.flight_number || '';
+                      
+                      return (
+                      <tr key={booking.id} className={`border-b hover:bg-gray-50 transition-colors
+                        ${selectedBookings.has(booking.id) ? 'bg-gold/10' : ''} 
+                        ${isUrgentUnassigned ? 'bg-red-50 border-l-4 border-l-red-500' : ''}
+                        ${!isUrgentUnassigned && isToday(booking.date) ? 'bg-blue-50/50 border-l-4 border-l-blue-500' : ''} 
+                        ${!isUrgentUnassigned && !isToday(booking.date) && isTomorrow(booking.date) ? 'border-l-4 border-l-orange-400 bg-orange-50/30' : ''}
+                        ${hasReturn ? 'border-r-4 border-r-purple-400' : ''}
+                      `}>
+                        <td className="px-2 py-2">
                           <button
                             onClick={() => {
                               const newSelected = new Set(selectedBookings);
@@ -2382,44 +2394,116 @@ export const AdminDashboard = () => {
                             )}
                           </button>
                         </td>
-                        <td className="px-2 py-1">
-                          <div className="flex items-center gap-1">
-                            <span className="text-[11px] font-bold text-gold">#{booking.referenceNumber || booking.id?.slice(0, 5)}</span>
-                            {isToday(booking.date) && <span className="px-1 text-[8px] font-bold bg-blue-600 text-white rounded">TODAY</span>}
-                            {isTomorrow(booking.date) && <span className="px-1 text-[8px] font-bold bg-orange-500 text-white rounded">TMR</span>}
+                        {/* REF & DATE COLUMN */}
+                        <td className="px-2 py-2">
+                          <div className="flex flex-col">
+                            <div className="flex items-center gap-1 mb-0.5">
+                              <span className="text-xs font-bold text-gold bg-gold/10 px-1.5 py-0.5 rounded">#{booking.referenceNumber || booking.id?.slice(0, 5)}</span>
+                              {isToday(booking.date) && <span className="px-1.5 py-0.5 text-[9px] font-bold bg-blue-600 text-white rounded animate-pulse">TODAY</span>}
+                              {isTomorrow(booking.date) && <span className="px-1.5 py-0.5 text-[9px] font-bold bg-orange-500 text-white rounded">TMR</span>}
+                            </div>
+                            <div className="text-xs text-gray-700 font-medium">{formatDate(booking.date)}</div>
+                            <div className="text-sm font-bold text-gray-900">{booking.time}</div>
                           </div>
-                          <div className="text-[10px] text-gray-600">{formatDate(booking.date)} • {booking.time}</div>
                         </td>
-                        <td className="px-2 py-1">
-                          <div className="text-[11px] font-medium text-gray-900 truncate max-w-[80px] md:max-w-[120px]">{booking.name}</div>
-                          <div className="text-[9px] text-gray-500">{booking.phone}</div>
+                        {/* CUSTOMER COLUMN */}
+                        <td className="px-2 py-2">
+                          <div className="flex flex-col">
+                            <span className="text-sm font-semibold text-gray-900 truncate max-w-[120px]">{booking.name}</span>
+                            <a href={`tel:${booking.phone}`} className="text-xs text-blue-600 hover:underline">{booking.phone}</a>
+                            <span className="text-[10px] text-gray-500 truncate max-w-[120px]">{booking.email}</span>
+                            {booking.passengers > 1 && (
+                              <span className="text-[10px] bg-gray-100 px-1 rounded mt-0.5 w-fit">👥 {booking.passengers} pax</span>
+                            )}
+                          </div>
                         </td>
-                        <td className="px-2 py-1 hidden lg:table-cell">
-                          <span className="text-[10px] text-gray-600">{booking.serviceType?.slice(0, 10)}</span>
+                        {/* ROUTE COLUMN */}
+                        <td className="px-2 py-2 hidden md:table-cell">
+                          <div className="flex flex-col text-[10px] max-w-[180px]">
+                            <div className="flex items-start gap-1">
+                              <span className="text-green-600 font-bold">↑</span>
+                              <span className="text-gray-700 truncate" title={booking.pickupAddress}>{booking.pickupAddress?.slice(0, 35)}...</span>
+                            </div>
+                            <div className="flex items-start gap-1 mt-0.5">
+                              <span className="text-red-600 font-bold">↓</span>
+                              <span className="text-gray-700 truncate" title={booking.dropoffAddress}>{booking.dropoffAddress?.slice(0, 35)}...</span>
+                            </div>
+                          </div>
                         </td>
-                        <td className="px-2 py-1 hidden xl:table-cell">
-                          <div className="text-[9px] text-gray-500 max-w-[120px] truncate" title={booking.pickupAddress}>{booking.pickupAddress?.slice(0, 25)}...</div>
+                        {/* FLIGHT COLUMN */}
+                        <td className="px-2 py-2 hidden lg:table-cell">
+                          {flightNum ? (
+                            <div className="flex flex-col">
+                              <span className="text-xs font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded">✈️ {flightNum}</span>
+                              {booking.pickupAddress?.toLowerCase().includes('international') && (
+                                <span className="text-[9px] text-gray-500 mt-0.5">Int'l Terminal</span>
+                              )}
+                              {booking.pickupAddress?.toLowerCase().includes('domestic') && (
+                                <span className="text-[9px] text-gray-500 mt-0.5">Domestic Terminal</span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-gray-300 text-xs">—</span>
+                          )}
                         </td>
-                        <td className="px-2 py-1">
-                          <span className="text-[11px] font-semibold">${booking.pricing?.totalPrice?.toFixed(0) || '0'}</span>
+                        {/* RETURN COLUMN */}
+                        <td className="px-2 py-2 hidden xl:table-cell">
+                          {hasReturn ? (
+                            <div className="flex flex-col bg-purple-50 p-1.5 rounded border border-purple-200">
+                              <span className="text-[10px] font-semibold text-purple-700">🔄 RETURN</span>
+                              <span className="text-xs font-bold text-purple-900">{formatDate(booking.returnDate)}</span>
+                              <span className="text-sm font-bold text-purple-800">{booking.returnTime}</span>
+                            </div>
+                          ) : (
+                            <span className="text-gray-300 text-xs">—</span>
+                          )}
                         </td>
-                        <td className="px-2 py-1 hidden md:table-cell">
-                          <span className={`px-1 py-0.5 rounded text-[9px] font-medium ${
-                            booking.payment_status === 'paid' ? 'bg-green-100 text-green-700' : 
-                            booking.payment_status === 'cash' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
-                          }`}>
-                            {booking.payment_status === 'paid' ? '✓' : booking.payment_status === 'cash' ? '💵' : '✗'}
-                          </span>
+                        {/* PRICE & PAYMENT COLUMN */}
+                        <td className="px-2 py-2">
+                          <div className="flex flex-col items-start">
+                            <span className="text-sm font-bold text-gray-900">${booking.pricing?.totalPrice?.toFixed(0) || booking.totalPrice || '0'}</span>
+                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold ${
+                              booking.payment_status === 'paid' ? 'bg-green-100 text-green-700' : 
+                              booking.payment_status === 'cash' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
+                            }`}>
+                              {booking.payment_status === 'paid' ? '✓ PAID' : booking.payment_status === 'cash' ? '💵 CASH' : '✗ UNPAID'}
+                            </span>
+                          </div>
                         </td>
-                        <td className="p-2 md:p-4">
+                        {/* DRIVER COLUMN */}
+                        <td className="px-2 py-2">
+                          {booking.driver_id || booking.driver_name || booking.assignedDriver ? (
+                            <div className="flex flex-col">
+                              <div className="flex items-center gap-1">
+                                <span className="text-xs font-medium text-gray-900">{booking.driver_name?.split(' ')[0] || 'Assigned'}</span>
+                                {booking.driverAcknowledged ? (
+                                  <CheckCircle className="w-3.5 h-3.5 text-green-500" title="Driver confirmed" />
+                                ) : (
+                                  <Clock className="w-3.5 h-3.5 text-orange-500 animate-pulse" title="Awaiting confirmation" />
+                                )}
+                              </div>
+                              <span className={`text-[9px] ${booking.driverAcknowledged ? 'text-green-600' : 'text-orange-600'}`}>
+                                {booking.driverAcknowledged ? '✓ Confirmed' : '⏳ Pending'}
+                              </span>
+                            </div>
+                          ) : (
+                            <div className={`flex flex-col items-start ${isToday(booking.date) ? 'animate-pulse' : ''}`}>
+                              <span className={`px-2 py-1 rounded text-[10px] font-bold ${isToday(booking.date) ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-600'}`}>
+                                {isToday(booking.date) ? '⚠️ ASSIGN!' : 'No Driver'}
+                              </span>
+                            </div>
+                          )}
+                        </td>
+                        {/* STATUS COLUMN */}
+                        <td className="px-2 py-2">
                           <Select
                             value={booking.status}
                             onValueChange={(value) => handleStatusUpdate(booking.id, value)}
                           >
-                            <SelectTrigger className="w-20 md:w-28 h-7 text-[10px] md:text-xs">
+                            <SelectTrigger className="w-24 h-7 text-[10px]">
                               <SelectValue>
-                                <span className={`px-1 py-0.5 rounded text-[10px] font-medium ${getStatusColor(booking.status)}`}>
-                                  {booking.status?.slice(0,8)}
+                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${getStatusColor(booking.status)}`}>
+                                  {booking.status?.replace('_', ' ').slice(0,10)}
                                 </span>
                               </SelectValue>
                             </SelectTrigger>
@@ -2432,21 +2516,8 @@ export const AdminDashboard = () => {
                             </SelectContent>
                           </Select>
                         </td>
-                        <td className="px-2 py-1 hidden lg:table-cell">
-                          {booking.driver_id || booking.driver_name ? (
-                            <div className="flex items-center gap-0.5">
-                              <span className="text-[9px] text-gray-600 truncate max-w-[50px]">{booking.driver_name?.split(' ')[0]}</span>
-                              {booking.driverAcknowledged ? (
-                                <CheckCircle className="w-3 h-3 text-green-500" />
-                              ) : (
-                                <Clock className="w-3 h-3 text-orange-500" />
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-[9px] text-gray-300">-</span>
-                          )}
-                        </td>
-                        <td className="px-1 py-1">
+                        {/* ACTIONS COLUMN */}
+                        <td className="px-1 py-2">
                           <div className="flex gap-1">
                             <button
                               onClick={() => openDetailsModal(booking)}
