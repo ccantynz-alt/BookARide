@@ -10735,6 +10735,340 @@ async def send_arrival_pickup_emails():
         return {"sent": 0, "error": str(e)}
 
 
+# ==================== DAILY ERROR CHECK SYSTEM ====================
+# Runs daily at 6 AM to catch data integrity issues before they become critical
+
+async def run_daily_error_check():
+    """
+    Comprehensive daily check for booking system health.
+    Identifies issues like missing data, unassigned bookings, sync failures, etc.
+    Sends report to admin via email and SMS for critical issues.
+    """
+    try:
+        nz_tz = pytz.timezone('Pacific/Auckland')
+        now_nz = datetime.now(nz_tz)
+        today_str = now_nz.strftime('%Y-%m-%d')
+        tomorrow_str = (now_nz + timedelta(days=1)).strftime('%Y-%m-%d')
+        
+        logger.info(f"🔍 [Daily Error Check] Starting - NZ time: {now_nz.strftime('%Y-%m-%d %H:%M')}")
+        
+        issues = []
+        warnings = []
+        stats = {
+            "total_bookings_checked": 0,
+            "issues_found": 0,
+            "warnings_found": 0
+        }
+        
+        # ===========================================
+        # CHECK 1: Upcoming bookings with missing data
+        # ===========================================
+        upcoming_bookings = await db.bookings.find({
+            'date': {'$in': [today_str, tomorrow_str]},
+            'status': {'$nin': ['cancelled', 'deleted']}
+        }, {'_id': 0}).to_list(500)
+        
+        stats["total_bookings_checked"] = len(upcoming_bookings)
+        
+        for booking in upcoming_bookings:
+            booking_ref = get_booking_reference(booking)
+            booking_id = booking.get('id', 'unknown')
+            
+            # Check for missing customer details
+            if not booking.get('name'):
+                issues.append(f"🚨 Booking #{booking_ref}: Missing customer NAME")
+            if not booking.get('phone'):
+                issues.append(f"🚨 Booking #{booking_ref}: Missing customer PHONE")
+            if not booking.get('email'):
+                warnings.append(f"⚠️ Booking #{booking_ref}: Missing customer EMAIL")
+            
+            # Check for missing addresses
+            if not booking.get('pickupAddress'):
+                issues.append(f"🚨 Booking #{booking_ref}: Missing PICKUP address")
+            if not booking.get('dropoffAddress'):
+                issues.append(f"🚨 Booking #{booking_ref}: Missing DROPOFF address")
+            
+            # Check for missing time
+            if not booking.get('time'):
+                issues.append(f"🚨 Booking #{booking_ref}: Missing PICKUP TIME")
+            
+            # Check for unassigned TODAY bookings
+            if booking.get('date') == today_str:
+                if not booking.get('driver_id') and not booking.get('assignedDriver'):
+                    issues.append(f"🚨 TODAY Booking #{booking_ref} ({booking.get('name')}): NO DRIVER ASSIGNED!")
+        
+        # ===========================================
+        # CHECK 2: Return bookings without complete info
+        # ===========================================
+        return_bookings = await db.bookings.find({
+            'bookReturn': True,
+            'status': {'$nin': ['cancelled', 'deleted']}
+        }, {'_id': 0}).to_list(500)
+        
+        for booking in return_bookings:
+            booking_ref = get_booking_reference(booking)
+            if not booking.get('returnDate'):
+                warnings.append(f"⚠️ Booking #{booking_ref}: Has bookReturn=true but missing RETURN DATE")
+            if not booking.get('returnTime'):
+                warnings.append(f"⚠️ Booking #{booking_ref}: Has bookReturn=true but missing RETURN TIME")
+        
+        # ===========================================
+        # CHECK 3: Payment status inconsistencies
+        # ===========================================
+        unpaid_today = await db.bookings.find({
+            'date': today_str,
+            'payment_status': {'$in': ['unpaid', 'pending', None]},
+            'status': {'$nin': ['cancelled', 'deleted']}
+        }, {'_id': 0}).to_list(100)
+        
+        for booking in unpaid_today:
+            booking_ref = get_booking_reference(booking)
+            total_price = booking.get('totalPrice', 0)
+            if isinstance(booking.get('pricing'), dict):
+                total_price = booking.get('pricing', {}).get('totalPrice', total_price)
+            
+            if total_price and float(total_price) > 0:
+                warnings.append(f"⚠️ TODAY Booking #{booking_ref} ({booking.get('name')}): UNPAID - ${total_price}")
+        
+        # ===========================================
+        # CHECK 4: Recent bookings without confirmation sent
+        # ===========================================
+        yesterday = (now_nz - timedelta(days=1)).strftime('%Y-%m-%d')
+        recent_bookings = await db.bookings.find({
+            'created_at': {'$gte': yesterday},
+            'confirmation_sent': {'$ne': True},
+            'status': {'$nin': ['cancelled', 'deleted']}
+        }, {'_id': 0}).to_list(50)
+        
+        for booking in recent_bookings:
+            booking_ref = get_booking_reference(booking)
+            warnings.append(f"⚠️ Booking #{booking_ref}: Confirmation may not have been sent")
+        
+        # ===========================================
+        # CHECK 5: Database health checks
+        # ===========================================
+        total_bookings = await db.bookings.count_documents({})
+        total_drivers = await db.drivers.count_documents({})
+        active_drivers = await db.drivers.count_documents({'status': 'active'})
+        
+        if active_drivers == 0:
+            issues.append("🚨 CRITICAL: No active drivers in system!")
+        
+        # ===========================================
+        # COMPILE REPORT
+        # ===========================================
+        stats["issues_found"] = len(issues)
+        stats["warnings_found"] = len(warnings)
+        
+        report_time = now_nz.strftime('%d/%m/%Y %H:%M')
+        
+        # Build report
+        report = f"""
+╔══════════════════════════════════════════════════════════════╗
+║           BOOKARIDE DAILY ERROR CHECK REPORT                 ║
+║                    {report_time}                               ║
+╚══════════════════════════════════════════════════════════════╝
+
+📊 SUMMARY
+• Bookings checked (today/tomorrow): {stats['total_bookings_checked']}
+• Total bookings in database: {total_bookings}
+• Active drivers: {active_drivers} / {total_drivers}
+• Critical issues found: {stats['issues_found']}
+• Warnings found: {stats['warnings_found']}
+
+"""
+        
+        if issues:
+            report += "🚨 CRITICAL ISSUES (Require immediate attention):\n"
+            report += "─" * 50 + "\n"
+            for issue in issues[:20]:  # Limit to 20
+                report += f"  {issue}\n"
+            report += "\n"
+        
+        if warnings:
+            report += "⚠️ WARNINGS (Review recommended):\n"
+            report += "─" * 50 + "\n"
+            for warning in warnings[:20]:  # Limit to 20
+                report += f"  {warning}\n"
+            report += "\n"
+        
+        if not issues and not warnings:
+            report += "✅ ALL SYSTEMS HEALTHY - No issues detected!\n"
+        
+        logger.info(f"🔍 [Daily Error Check] Complete: {stats['issues_found']} issues, {stats['warnings_found']} warnings")
+        
+        # ===========================================
+        # SEND NOTIFICATIONS
+        # ===========================================
+        
+        # Send email report
+        try:
+            admin_email = os.environ.get('ADMIN_EMAIL', 'info@bookaride.co.nz')
+            mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
+            mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
+            sender_email = os.environ.get('SENDER_EMAIL', 'noreply@mg.bookaride.co.nz')
+            
+            if mailgun_api_key and mailgun_domain:
+                subject = f"{'🚨 ISSUES FOUND' if issues else '✅ All Clear'} - BookaRide Daily Check {report_time}"
+                
+                html_report = f"""
+                <html>
+                <body style="font-family: 'Courier New', monospace; background: #1a1a1a; color: #00ff00; padding: 20px;">
+                    <pre style="white-space: pre-wrap; font-size: 12px;">{report}</pre>
+                </body>
+                </html>
+                """
+                
+                response = requests.post(
+                    f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
+                    auth=("api", mailgun_api_key),
+                    data={
+                        "from": f"BookaRide System <{sender_email}>",
+                        "to": admin_email,
+                        "subject": subject,
+                        "html": html_report
+                    }
+                )
+                
+                if response.status_code == 200:
+                    logger.info(f"🔍 [Daily Error Check] Email report sent to {admin_email}")
+                else:
+                    logger.error(f"🔍 [Daily Error Check] Failed to send email: {response.text}")
+        except Exception as email_err:
+            logger.error(f"🔍 [Daily Error Check] Email error: {str(email_err)}")
+        
+        # Send SMS if critical issues found
+        if issues:
+            try:
+                admin_phone = os.environ.get('ADMIN_PHONE', '+6421743321')
+                twilio_sid = os.environ.get('TWILIO_ACCOUNT_SID')
+                twilio_token = os.environ.get('TWILIO_AUTH_TOKEN')
+                twilio_from = os.environ.get('TWILIO_PHONE_NUMBER')
+                
+                if twilio_sid and twilio_token and twilio_from:
+                    client = Client(twilio_sid, twilio_token)
+                    
+                    sms_body = f"🚨 BookaRide Daily Check\n"
+                    sms_body += f"{len(issues)} critical issues found!\n"
+                    sms_body += f"Top issue: {issues[0][:80]}...\n"
+                    sms_body += f"Check email for full report."
+                    
+                    client.messages.create(
+                        body=sms_body,
+                        from_=twilio_from,
+                        to=admin_phone
+                    )
+                    logger.info(f"🔍 [Daily Error Check] Critical alert SMS sent")
+            except Exception as sms_err:
+                logger.error(f"🔍 [Daily Error Check] SMS error: {str(sms_err)}")
+        
+        # Store report in database for dashboard access
+        await db.error_check_reports.insert_one({
+            "report_date": today_str,
+            "report_time": now_nz.isoformat(),
+            "stats": stats,
+            "issues": issues[:50],  # Store up to 50
+            "warnings": warnings[:50],
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+        
+        return {
+            "success": True,
+            "stats": stats,
+            "issues_count": len(issues),
+            "warnings_count": len(warnings)
+        }
+        
+    except Exception as e:
+        logger.error(f"🔍 [Daily Error Check] Fatal error: {str(e)}")
+        return {"success": False, "error": str(e)}
+
+
+@api_router.get("/admin/system-health")
+async def get_system_health(current_admin: dict = Depends(get_current_admin)):
+    """Get latest system health report and run quick check."""
+    try:
+        nz_tz = pytz.timezone('Pacific/Auckland')
+        now_nz = datetime.now(nz_tz)
+        today_str = now_nz.strftime('%Y-%m-%d')
+        tomorrow_str = (now_nz + timedelta(days=1)).strftime('%Y-%m-%d')
+        
+        # Get latest stored report
+        latest_report = await db.error_check_reports.find_one(
+            {},
+            sort=[("created_at", -1)]
+        )
+        
+        # Quick live stats
+        total_bookings = await db.bookings.count_documents({})
+        today_bookings = await db.bookings.count_documents({'date': today_str})
+        tomorrow_bookings = await db.bookings.count_documents({'date': tomorrow_str})
+        
+        # Check for unassigned today bookings
+        unassigned_today = await db.bookings.count_documents({
+            'date': today_str,
+            'driver_id': {'$exists': False},
+            'assignedDriver': {'$exists': False},
+            'status': {'$nin': ['cancelled', 'deleted']}
+        })
+        
+        # Check for unpaid today bookings
+        unpaid_today = await db.bookings.count_documents({
+            'date': today_str,
+            'payment_status': {'$in': ['unpaid', 'pending', None]},
+            'status': {'$nin': ['cancelled', 'deleted']}
+        })
+        
+        active_drivers = await db.drivers.count_documents({'status': 'active'})
+        
+        # Determine overall health status
+        if unassigned_today > 0:
+            health_status = "critical"
+            health_message = f"{unassigned_today} TODAY booking(s) need driver assignment!"
+        elif unpaid_today > 3:
+            health_status = "warning"
+            health_message = f"{unpaid_today} unpaid bookings for today"
+        else:
+            health_status = "healthy"
+            health_message = "All systems operational"
+        
+        return {
+            "health_status": health_status,
+            "health_message": health_message,
+            "live_stats": {
+                "total_bookings": total_bookings,
+                "today_bookings": today_bookings,
+                "tomorrow_bookings": tomorrow_bookings,
+                "unassigned_today": unassigned_today,
+                "unpaid_today": unpaid_today,
+                "active_drivers": active_drivers
+            },
+            "latest_report": {
+                "date": latest_report.get("report_date") if latest_report else None,
+                "issues_count": latest_report.get("stats", {}).get("issues_found", 0) if latest_report else 0,
+                "warnings_count": latest_report.get("stats", {}).get("warnings_found", 0) if latest_report else 0,
+                "issues": latest_report.get("issues", [])[:10] if latest_report else [],
+                "warnings": latest_report.get("warnings", [])[:10] if latest_report else []
+            },
+            "checked_at": now_nz.strftime('%Y-%m-%d %H:%M:%S')
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting system health: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/admin/run-error-check")
+async def manual_run_error_check(current_admin: dict = Depends(get_current_admin)):
+    """Manually trigger the daily error check."""
+    try:
+        result = await run_daily_error_check()
+        return result
+    except Exception as e:
+        logger.error(f"Error running manual error check: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 def get_pickup_location_info(pickup_address: str, flight_number: str) -> dict:
     """
     Determine the specific pickup location based on address and flight number.
