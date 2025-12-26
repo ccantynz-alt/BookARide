@@ -6656,6 +6656,301 @@ async def auto_sync_from_production():
     except Exception as e:
         logger.error(f"Auto-sync error: {str(e)}")
 
+
+# ==================== SMART RETURN BOOKING ALERT SYSTEM ====================
+# Base address for calculating drive times
+BASE_ADDRESS = "492 Hillsborough Road, Mount Roskill, Auckland, New Zealand"
+DEPARTURE_BUFFER_MINUTES = 60  # Alert 1 hour before you need to leave
+
+async def calculate_drive_time_from_base(destination_address: str) -> int:
+    """Calculate drive time in minutes from base to destination using Google Maps.
+    Returns estimated drive time in minutes, or 60 as fallback."""
+    try:
+        google_api_key = os.environ.get('GOOGLE_MAPS_API_KEY', '')
+        if not google_api_key:
+            logger.warning("Google Maps API key not configured for drive time calculation")
+            return 60  # Default 1 hour if no API key
+        
+        url = "https://maps.googleapis.com/maps/api/distancematrix/json"
+        params = {
+            'origins': BASE_ADDRESS,
+            'destinations': destination_address,
+            'departure_time': 'now',  # Use current traffic conditions
+            'key': google_api_key
+        }
+        
+        response = requests.get(url, params=params, timeout=15)
+        data = response.json()
+        
+        if data['status'] == 'OK' and len(data['rows']) > 0:
+            element = data['rows'][0]['elements'][0]
+            if element['status'] == 'OK':
+                # Use duration_in_traffic if available, otherwise duration
+                duration = element.get('duration_in_traffic', element.get('duration', {}))
+                drive_minutes = duration.get('value', 3600) // 60  # Convert seconds to minutes
+                logger.info(f"📍 Drive time from base to {destination_address[:50]}...: {drive_minutes} mins")
+                return drive_minutes
+        
+        logger.warning(f"Could not calculate drive time to {destination_address[:50]}...")
+        return 60  # Default fallback
+        
+    except Exception as e:
+        logger.error(f"Error calculating drive time: {str(e)}")
+        return 60  # Default fallback
+
+
+async def check_return_booking_alerts():
+    """Check for upcoming return bookings and send alerts if needed.
+    Called every 15 minutes by scheduler.
+    Alerts admin 1 hour before they need to LEAVE (not before pickup time)."""
+    try:
+        nz_tz = pytz.timezone('Pacific/Auckland')
+        now_nz = datetime.now(nz_tz)
+        today_str = now_nz.strftime('%Y-%m-%d')
+        
+        logger.info(f"🔔 [return_alerts] Checking return bookings - NZ time: {now_nz.strftime('%Y-%m-%d %H:%M')}")
+        
+        # Find bookings with return trips today or tomorrow
+        tomorrow_str = (now_nz + timedelta(days=1)).strftime('%Y-%m-%d')
+        
+        return_bookings = await db.bookings.find({
+            'returnDate': {'$in': [today_str, tomorrow_str]},
+            'returnTime': {'$exists': True, '$ne': ''},
+            'status': {'$nin': ['cancelled', 'completed']}
+        }, {'_id': 0}).to_list(100)
+        
+        alerts_sent = 0
+        
+        for booking in return_bookings:
+            try:
+                return_date = booking.get('returnDate', '')
+                return_time = booking.get('returnTime', '')
+                
+                if not return_date or not return_time:
+                    continue
+                
+                # Parse return pickup datetime
+                try:
+                    return_datetime = datetime.strptime(f"{return_date} {return_time}", '%Y-%m-%d %H:%M')
+                    return_datetime = nz_tz.localize(return_datetime)
+                except:
+                    continue
+                
+                # Skip if return is in the past
+                if return_datetime < now_nz:
+                    continue
+                
+                # Get the return pickup address (usually dropoff becomes pickup for return)
+                return_pickup = booking.get('dropoffAddress', booking.get('pickupAddress', ''))
+                
+                # Calculate drive time from base
+                drive_minutes = await calculate_drive_time_from_base(return_pickup)
+                
+                # Calculate when admin needs to LEAVE
+                leave_time = return_datetime - timedelta(minutes=drive_minutes)
+                
+                # Calculate alert time (1 hour before leaving)
+                alert_time = leave_time - timedelta(minutes=DEPARTURE_BUFFER_MINUTES)
+                
+                # Check if we're within alert window (alert_time <= now < leave_time + 15 mins)
+                # The 15 min buffer ensures we don't miss alerts if check runs slightly late
+                alert_window_end = leave_time + timedelta(minutes=15)
+                
+                booking_id = booking.get('id', '')
+                alert_key = f"return_alert_{booking_id}_{return_date}"
+                
+                # Check if we already sent this alert
+                existing_alert = await db.return_alerts_sent.find_one({"alert_key": alert_key})
+                if existing_alert:
+                    continue
+                
+                if alert_time <= now_nz < alert_window_end:
+                    # Time to send alert!
+                    booking_ref = get_booking_reference(booking)
+                    customer_name = booking.get('name', 'Customer')
+                    formatted_time = format_time_ampm(return_time)
+                    
+                    # Calculate time remaining
+                    minutes_until_leave = int((leave_time - now_nz).total_seconds() / 60)
+                    
+                    # Send SMS to admin
+                    admin_phone = os.environ.get('ADMIN_PHONE', '+6421743321')
+                    twilio_sid = os.environ.get('TWILIO_ACCOUNT_SID')
+                    twilio_token = os.environ.get('TWILIO_AUTH_TOKEN')
+                    twilio_from = os.environ.get('TWILIO_PHONE_NUMBER')
+                    
+                    if twilio_sid and twilio_token and twilio_from:
+                        try:
+                            client = Client(twilio_sid, twilio_token)
+                            
+                            sms_body = f"⚠️ RETURN TRIP ALERT!\n"
+                            sms_body += f"Leave in {minutes_until_leave} mins for:\n"
+                            sms_body += f"{customer_name} - Ref #{booking_ref}\n"
+                            sms_body += f"Pickup: {formatted_time}\n"
+                            sms_body += f"From: {return_pickup[:60]}\n"
+                            sms_body += f"Drive time: {drive_minutes} mins"
+                            
+                            client.messages.create(
+                                body=sms_body,
+                                from_=twilio_from,
+                                to=admin_phone
+                            )
+                            logger.info(f"✅ Return alert SMS sent for booking #{booking_ref}")
+                            alerts_sent += 1
+                        except Exception as sms_err:
+                            logger.error(f"Failed to send return alert SMS: {str(sms_err)}")
+                    
+                    # Send reminder to assigned driver (if assigned)
+                    driver_id = booking.get('return_driver_id', booking.get('driver_id'))
+                    if driver_id:
+                        driver = await db.drivers.find_one({"id": driver_id}, {"_id": 0})
+                        if driver and driver.get('phone'):
+                            try:
+                                driver_sms = f"🚗 RETURN PICKUP REMINDER\n"
+                                driver_sms += f"Customer: {customer_name}\n"
+                                driver_sms += f"Time: {formatted_time}\n"
+                                driver_sms += f"From: {return_pickup[:60]}\n"
+                                driver_sms += f"Phone: {booking.get('phone', 'N/A')}"
+                                
+                                client = Client(twilio_sid, twilio_token)
+                                client.messages.create(
+                                    body=driver_sms,
+                                    from_=twilio_from,
+                                    to=driver.get('phone')
+                                )
+                                logger.info(f"✅ Driver return reminder sent for booking #{booking_ref}")
+                            except Exception as drv_err:
+                                logger.error(f"Failed to send driver reminder: {str(drv_err)}")
+                    
+                    # Mark alert as sent
+                    await db.return_alerts_sent.insert_one({
+                        "alert_key": alert_key,
+                        "booking_id": booking_id,
+                        "sent_at": datetime.now(timezone.utc).isoformat(),
+                        "drive_minutes": drive_minutes
+                    })
+        
+        logger.info(f"🔔 [return_alerts] Check complete: {alerts_sent} alerts sent")
+        return {"alerts_sent": alerts_sent}
+        
+    except Exception as e:
+        logger.error(f"Error in return booking alerts: {str(e)}")
+        return {"error": str(e)}
+
+
+@api_router.get("/admin/urgent-returns")
+async def get_urgent_return_bookings(current_admin: dict = Depends(get_current_admin)):
+    """Get upcoming return bookings with drive time calculations for dashboard display.
+    Returns bookings sorted by urgency (how soon admin needs to leave)."""
+    try:
+        nz_tz = pytz.timezone('Pacific/Auckland')
+        now_nz = datetime.now(nz_tz)
+        today_str = now_nz.strftime('%Y-%m-%d')
+        tomorrow_str = (now_nz + timedelta(days=1)).strftime('%Y-%m-%d')
+        
+        # Find return bookings for today and tomorrow
+        return_bookings = await db.bookings.find({
+            'returnDate': {'$in': [today_str, tomorrow_str]},
+            'returnTime': {'$exists': True, '$ne': ''},
+            'status': {'$nin': ['cancelled', 'completed']}
+        }, {'_id': 0}).to_list(50)
+        
+        urgent_returns = []
+        
+        for booking in return_bookings:
+            try:
+                return_date = booking.get('returnDate', '')
+                return_time = booking.get('returnTime', '')
+                
+                if not return_date or not return_time:
+                    continue
+                
+                # Parse return datetime
+                try:
+                    return_datetime = datetime.strptime(f"{return_date} {return_time}", '%Y-%m-%d %H:%M')
+                    return_datetime = nz_tz.localize(return_datetime)
+                except:
+                    continue
+                
+                # Skip past returns
+                if return_datetime < now_nz:
+                    continue
+                
+                return_pickup = booking.get('dropoffAddress', booking.get('pickupAddress', ''))
+                
+                # Calculate drive time
+                drive_minutes = await calculate_drive_time_from_base(return_pickup)
+                
+                # Calculate times
+                leave_time = return_datetime - timedelta(minutes=drive_minutes)
+                alert_time = leave_time - timedelta(minutes=DEPARTURE_BUFFER_MINUTES)
+                
+                minutes_until_leave = int((leave_time - now_nz).total_seconds() / 60)
+                minutes_until_pickup = int((return_datetime - now_nz).total_seconds() / 60)
+                
+                # Determine urgency level
+                if minutes_until_leave <= 0:
+                    urgency = "OVERDUE"
+                    urgency_color = "red"
+                elif minutes_until_leave <= 60:
+                    urgency = "LEAVE NOW"
+                    urgency_color = "red"
+                elif minutes_until_leave <= 120:
+                    urgency = "LEAVE SOON"
+                    urgency_color = "orange"
+                elif minutes_until_leave <= 240:
+                    urgency = "UPCOMING"
+                    urgency_color = "yellow"
+                else:
+                    urgency = "SCHEDULED"
+                    urgency_color = "green"
+                
+                # Check driver assignment
+                driver_id = booking.get('return_driver_id', booking.get('driver_id'))
+                driver_assigned = bool(driver_id)
+                driver_name = None
+                if driver_id:
+                    driver = await db.drivers.find_one({"id": driver_id}, {"_id": 0, "name": 1})
+                    driver_name = driver.get('name') if driver else None
+                
+                urgent_returns.append({
+                    "booking_id": booking.get('id'),
+                    "booking_ref": get_booking_reference(booking),
+                    "customer_name": booking.get('name', 'Unknown'),
+                    "customer_phone": booking.get('phone', ''),
+                    "return_date": return_date,
+                    "return_time": return_time,
+                    "return_time_formatted": format_time_ampm(return_time),
+                    "pickup_address": return_pickup,
+                    "drive_minutes": drive_minutes,
+                    "minutes_until_leave": minutes_until_leave,
+                    "minutes_until_pickup": minutes_until_pickup,
+                    "leave_by": leave_time.strftime('%H:%M'),
+                    "urgency": urgency,
+                    "urgency_color": urgency_color,
+                    "driver_assigned": driver_assigned,
+                    "driver_name": driver_name
+                })
+                
+            except Exception as item_err:
+                logger.warning(f"Error processing return booking: {str(item_err)}")
+                continue
+        
+        # Sort by minutes_until_leave (most urgent first)
+        urgent_returns.sort(key=lambda x: x['minutes_until_leave'])
+        
+        return {
+            "urgent_returns": urgent_returns,
+            "total_count": len(urgent_returns),
+            "base_address": BASE_ADDRESS,
+            "checked_at": now_nz.strftime('%Y-%m-%d %H:%M:%S')
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting urgent returns: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # Endpoint to EXPORT data (called by other environments to fetch data)
 @api_router.get("/sync/export")
 async def export_data_for_sync(secret: str = ""):
