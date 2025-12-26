@@ -10559,6 +10559,91 @@ async def get_batch_sync_status(current_admin: dict = Depends(get_current_admin)
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@api_router.get("/admin/system-health")
+async def get_system_health(current_admin: dict = Depends(get_current_admin)):
+    """Get latest system health report and run quick check."""
+    try:
+        nz_tz = pytz.timezone('Pacific/Auckland')
+        now_nz = datetime.now(nz_tz)
+        today_str = now_nz.strftime('%Y-%m-%d')
+        tomorrow_str = (now_nz + timedelta(days=1)).strftime('%Y-%m-%d')
+        
+        # Get latest stored report
+        latest_report = await db.error_check_reports.find_one(
+            {},
+            sort=[("created_at", -1)]
+        )
+        
+        # Quick live stats
+        total_bookings = await db.bookings.count_documents({})
+        today_bookings = await db.bookings.count_documents({'date': today_str})
+        tomorrow_bookings = await db.bookings.count_documents({'date': tomorrow_str})
+        
+        # Check for unassigned today bookings
+        unassigned_today = await db.bookings.count_documents({
+            'date': today_str,
+            'driver_id': {'$exists': False},
+            'assignedDriver': {'$exists': False},
+            'status': {'$nin': ['cancelled', 'deleted']}
+        })
+        
+        # Check for unpaid today bookings
+        unpaid_today = await db.bookings.count_documents({
+            'date': today_str,
+            'payment_status': {'$in': ['unpaid', 'pending', None]},
+            'status': {'$nin': ['cancelled', 'deleted']}
+        })
+        
+        active_drivers = await db.drivers.count_documents({'status': 'active'})
+        
+        # Determine overall health status
+        if unassigned_today > 0:
+            health_status = "critical"
+            health_message = f"{unassigned_today} TODAY booking(s) need driver assignment!"
+        elif unpaid_today > 3:
+            health_status = "warning"
+            health_message = f"{unpaid_today} unpaid bookings for today"
+        else:
+            health_status = "healthy"
+            health_message = "All systems operational"
+        
+        return {
+            "health_status": health_status,
+            "health_message": health_message,
+            "live_stats": {
+                "total_bookings": total_bookings,
+                "today_bookings": today_bookings,
+                "tomorrow_bookings": tomorrow_bookings,
+                "unassigned_today": unassigned_today,
+                "unpaid_today": unpaid_today,
+                "active_drivers": active_drivers
+            },
+            "latest_report": {
+                "date": latest_report.get("report_date") if latest_report else None,
+                "issues_count": latest_report.get("stats", {}).get("issues_found", 0) if latest_report else 0,
+                "warnings_count": latest_report.get("stats", {}).get("warnings_found", 0) if latest_report else 0,
+                "issues": latest_report.get("issues", [])[:10] if latest_report else [],
+                "warnings": latest_report.get("warnings", [])[:10] if latest_report else []
+            },
+            "checked_at": now_nz.strftime('%Y-%m-%d %H:%M:%S')
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting system health: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/admin/run-error-check")
+async def manual_run_error_check(current_admin: dict = Depends(get_current_admin)):
+    """Manually trigger the daily error check."""
+    try:
+        result = await run_daily_error_check()
+        return result
+    except Exception as e:
+        logger.error(f"Error running manual error check: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # Include the router in the main app (MUST be after all routes are defined)
 app.include_router(api_router)
 
