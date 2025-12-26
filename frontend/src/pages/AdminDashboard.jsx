@@ -2327,9 +2327,9 @@ export const AdminDashboard = () => {
                   </div>
                 )}
                 <table className="w-full text-sm">
-                  <thead className="bg-gray-100 border-b">
+                  <thead className="bg-gradient-to-r from-gray-100 to-gray-50 border-b-2 border-gray-200">
                     <tr>
-                      <th className="p-2 md:p-4 w-8">
+                      <th className="p-2 w-8">
                         <button
                           onClick={() => {
                             if (selectedBookings.size === filteredBookings.length) {
@@ -2348,15 +2348,15 @@ export const AdminDashboard = () => {
                           )}
                         </button>
                       </th>
-                      <th className="text-left p-2 md:p-4 font-semibold text-gray-700 text-xs md:text-sm">Date</th>
-                      <th className="text-left p-2 md:p-4 font-semibold text-gray-700 text-xs md:text-sm">Customer</th>
-                      <th className="text-left p-2 md:p-4 font-semibold text-gray-700 text-xs md:text-sm hidden lg:table-cell">Service</th>
-                      <th className="text-left p-2 md:p-4 font-semibold text-gray-700 text-xs md:text-sm hidden xl:table-cell">Route</th>
-                      <th className="text-left p-2 md:p-4 font-semibold text-gray-700 text-xs md:text-sm">Price</th>
-                      <th className="text-left p-2 md:p-4 font-semibold text-gray-700 text-xs md:text-sm hidden md:table-cell">Payment</th>
-                      <th className="text-left p-2 md:p-4 font-semibold text-gray-700 text-xs md:text-sm">Status</th>
-                      <th className="text-left p-2 md:p-4 font-semibold text-gray-700 text-xs md:text-sm hidden lg:table-cell">Driver</th>
-                      <th className="text-left p-2 md:p-4 font-semibold text-gray-700 text-xs md:text-sm">Actions</th>
+                      <th className="text-left p-2 font-semibold text-gray-700 text-xs">Ref/Date</th>
+                      <th className="text-left p-2 font-semibold text-gray-700 text-xs">Customer</th>
+                      <th className="text-left p-2 font-semibold text-gray-700 text-xs hidden md:table-cell">Route</th>
+                      <th className="text-left p-2 font-semibold text-gray-700 text-xs hidden lg:table-cell">✈️ Flight</th>
+                      <th className="text-left p-2 font-semibold text-gray-700 text-xs hidden xl:table-cell">🔄 Return</th>
+                      <th className="text-left p-2 font-semibold text-gray-700 text-xs">💰 Price</th>
+                      <th className="text-left p-2 font-semibold text-gray-700 text-xs">🚗 Driver</th>
+                      <th className="text-left p-2 font-semibold text-gray-700 text-xs">Status</th>
+                      <th className="text-left p-2 font-semibold text-gray-700 text-xs">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
