@@ -1,217 +1,309 @@
 <analysis>**original_problem_statement:**
-The user's initial problem statement was to resolve a number of bugs and add features to their booking application. This session focused on several key areas:
-1.  **[P0] Historical Booking Import:** The primary goal was to import ~1,500 historical bookings from a WordPress CSV export. This was completed, but involved extensive debugging of authentication, data validation (date formats, missing fields), and data restoration (bookings were incorrectly moved to a  collection).
-2.  **[P0] Admin Dashboard Performance:** The user reported that the admin dashboard was loading very slowly after the import.
-3.  **[P0] Fix Deployment Failures:** The user's attempts to deploy the application were failing due to a syntax error in the frontend code.
-4.  **[P1] Shared Shuttle Pricing:** The user requested a new dynamic pricing model for the shared shuttle service.
-5.  **[P1] Advanced SEO:** The user requested an aggressive SEO attack to rank #1 for several keywords.
-6.  **[P1] Calendar Sync for Imported Bookings:** The user noticed that the 1,500+ imported bookings were not appearing on their Google Calendar.
+The user's primary goal was to fix a recurring bug where driver SMS acknowledgments were not updating in the admin panel. This led to a cascade of feature requests and bug reports throughout the session.
+
+Key tasks addressed:
+1.  **[P0] Fix Driver SMS Acknowledgment:** A recurring issue where driver Yes replies via SMS were not updating the booking status on the live site.
+2.  **[P0] Fix Live Site Deployment:** The user attempted to deploy fixes, which resulted in the entire live application crashing with a 502 Bad Gateway error.
+3.  **[P0] Fix Automatic Calendar Sync:** New bookings were not being automatically added to the user's Google Calendar.
+4.  **[P0] Fix Multiple Notifications:** A customer received 4 notifications for a single booking, prompting an investigation into notification triggers.
+5.  **[P0] Data Integrity & Missing Bookings:** The user reported several critical data issues, including a booking for Phil missing return details, a booking for Gordon that needed to be created manually, a booking for GP (#65) that was missing entirely, and a booking for Michelle with incorrect time information.
+6.  **[P1] New Feature - Driver Payout Override:** The user requested the ability to set a custom payout for a driver that is different from the auto-calculated rate.
+7.  **[P1] New Feature - Unassign/Reassign Driver:** The user was unable to change a driver once one had been assigned.
+8.  **[P1] UI/UX Improvements:** The user found the admin panel icons confusing and requested clearer labels. They also asked for a confirmation preview before assigning a driver with a custom payout.
 
 **User's preferred language**: English
 
 **what currently exists?**
-The application is a full-stack booking platform. In this session, the agent successfully completed the complex historical data import of 1,564 bookings, navigating numerous bugs related to data validation, date formatting, and authentication.
+The application is a full-stack booking platform. In this session, the agent implemented a large number of features and bug fixes in the preview environment.
 
-To address performance issues caused by the large dataset, the agent implemented backend pagination on the  endpoint, added crucial database indexes, and introduced frontend caching with  for offline access and faster load times. The booking creation process was also significantly sped up by refactoring long-running operations (emails, calendar sync) into background tasks.
+**Core Feature Additions:**
+*   **Driver Payout Management:** A comprehensive system was added to allow admins to override the default driver payout, with a confirmation preview modal to prevent errors. The system now correctly calculates and displays the net payout to drivers (after Stripe and admin fees).
+*   **Driver Unassign/Reassign:** A robust workflow was implemented, fixing a bug where a driver could not be changed once assigned. This involved using MongoDB's  operator to properly clear driver-related fields.
+*   **Notification Safeguards:** Fixes were applied to prevent duplicate notifications. The manual booking endpoint now respects a  flag, and a rate limit was added to the resend confirmation button.
+*   **Resend Payment Link:** A new feature was added to allow admins to resend a Stripe payment link for unpaid bookings.
 
-Key features were also added, including five new SEO landing pages to target specific keywords and a complete overhaul of the  page with a new dynamic pricing model.
+**UI/UX and Data Fixes:**
+*   Admin dashboard icons now have clear text labels (, , , etc.).
+*   All customer and driver-facing communications (email/SMS) now display time in AM/PM format.
+*   The agent fixed a display bug where flight numbers for imported bookings were not showing.
+*   The agent manually performed numerous critical data corrections for the user on the live database.
 
-Crucially, the agent diagnosed and fixed a deployment-blocking syntax error in  that was preventing the user from pushing updates to the live site. The agent was just beginning to address the lack of Google Calendar sync for the imported bookings when the session ended.
+However, a deployment attempt by the user at the end of the session failed, bringing the entire live application down.
 
 **Last working item**:
-    - Last item agent was working: The user reported that the imported WordPress bookings were not synced to Google Calendar. The agent identified the existing  function and was about to implement a new backend endpoint to batch-sync all imported bookings to the calendar.
-    - Status: NOT STARTED
+    - Last item agent was working: The user reported that after they deployed the application, the live site began showing a 502 Bad Gateway error and payment links were failing. The agent confirmed the production backend was down and was about to investigate the cause of the deployment failure.
+    - Status: BLOCKED
     - Agent Testing Done: N
-    - Which testing method agent to use? backend testing agent. The new endpoint can be triggered with . The agent should check backend logs for successful execution of the  function for the batch of bookings.
+    - Which testing method agent to use? **troubleshoot_agent**. The priority is to diagnose the production server crash. The agent should check the production supervisor logs for the backend service to identify the fatal error that occurred on startup.
     - User Testing Done: N
 
 **All Pending/In progress Issue list**:
-  Issue 1:  Driver SMS Acknowledgment Not Updating in Admin Panel (P0)
-  Issue 2:  Urgent Booking Notification Not Working on Live Site (P0)
-  Issue 3:  AI Email Auto-Responder Not Receiving Live Emails (P1)
-  Issue 4:  Driver password-setting crash (P1)
+  Issue 1:  Live Application is Down (502 Bad Gateway) (P0)
+  Issue 2:  Driver SMS Acknowledgment Not Working on Live Site (P0)
+  Issue 3:  Automatic Calendar Sync Not Working on Live Site (P0)
   
   Issues Detail:
-  - Issue 1: Driver SMS Acknowledgment Not Updating in Admin Panel (P0)
-     - Attempted fixes: The code fix was completed in a previous session. The webhook logic in  was updated.
-     - Next debug checklist: The user **must deploy the application** for the fix to become active on the production Twilio webhook URL. This needs to be clearly communicated to the user as the primary resolution step.
-     - Why fix this issue and what will be achieved with the fix? Provides real-time visibility of driver job acceptance.
-     - Status:  USER VERIFICATION PENDING
-     - Is recurring issue? Y
-     - Should Test frontend/backend/both after fix? Backend (Webhook Integration)
-     - Blocked on other issue: User deploying the application.
-  - Issue 2: Urgent Booking Notification Not Working on Live Site (P0)
-     - Attempted fixes: The code fix was completed in a previous session.
-     - Next debug checklist: The root cause is that the live site is running outdated code. The user **must deploy the application** to activate the logic. After deployment, create a test booking for the same day on the live site to verify.
-     - Why fix this issue and what will be achieved with the fix? Ensures the admin is immediately alerted to last-minute bookings.
-     - Status:  USER VERIFICATION PENDING
+  - Issue 1: Live Application is Down (502 Bad Gateway) (P0)
+     - Attempted fixes: None. The issue occurred right at the end of the session after the user deployed.
+     - Next debug checklist: 
+       1. Call the  to analyze the deployment failure.
+       2. Check the production backend logs for startup errors: 2025-12-25 21:08:06,552 - apscheduler.executors.default - INFO - Job "Abandoned booking recovery emails (trigger: interval[0:30:00], next run at: 2025-12-25 21:38:05 UTC)" executed successfully
+2025-12-25 21:08:08,588 - server - INFO - 🔄 Auto-sync complete: 1604 bookings, 3 drivers
+2025-12-25 21:08:08,590 - apscheduler.executors.default - INFO - Job "Auto-sync from production database (trigger: interval[0:05:00], next run at: 2025-12-25 21:13:05 UTC)" executed successfully
+2025-12-25 21:13:05,179 - apscheduler.executors.default - INFO - Running job "Auto-sync from production database (trigger: interval[0:05:00], next run at: 2025-12-25 21:18:05 UTC)" (scheduled at 2025-12-25 21:13:05.178742+00:00)
+2025-12-25 21:13:05,179 - server - INFO - 🔄 Auto-sync: Starting sync from production...
+2025-12-25 21:14:05,370 - server - WARNING - Auto-sync: Connection timeout
+2025-12-25 21:14:05,370 - apscheduler.executors.default - INFO - Job "Auto-sync from production database (trigger: interval[0:05:00], next run at: 2025-12-25 21:18:05 UTC)" executed successfully
+2025-12-25 21:18:05,179 - apscheduler.executors.default - INFO - Running job "Auto-sync from production database (trigger: interval[0:05:00], next run at: 2025-12-25 21:23:05 UTC)" (scheduled at 2025-12-25 21:18:05.178742+00:00)
+2025-12-25 21:18:05,179 - server - INFO - 🔄 Auto-sync: Starting sync from production...
+2025-12-25 21:18:08,621 - server - INFO - 🔄 Auto-sync complete: 1604 bookings, 3 drivers
+2025-12-25 21:18:08,623 - apscheduler.executors.default - INFO - Job "Auto-sync from production database (trigger: interval[0:05:00], next run at: 2025-12-25 21:23:05 UTC)" executed successfully
+2025-12-25 21:23:05,179 - apscheduler.executors.default - INFO - Running job "Auto-sync from production database (trigger: interval[0:05:00], next run at: 2025-12-25 21:28:05 UTC)" (scheduled at 2025-12-25 21:23:05.178742+00:00)
+2025-12-25 21:23:05,180 - server - INFO - 🔄 Auto-sync: Starting sync from production...
+2025-12-25 21:23:08,448 - server - INFO - 🔄 Auto-sync complete: 1604 bookings, 3 drivers
+2025-12-25 21:23:08,449 - apscheduler.executors.default - INFO - Job "Auto-sync from production database (trigger: interval[0:05:00], next run at: 2025-12-25 21:28:05 UTC)" executed successfully
+2025-12-25 21:28:05,179 - apscheduler.executors.default - INFO - Running job "Auto-sync from production database (trigger: interval[0:05:00], next run at: 2025-12-25 21:33:05 UTC)" (scheduled at 2025-12-25 21:28:05.178742+00:00)
+2025-12-25 21:28:05,179 - server - INFO - 🔄 Auto-sync: Starting sync from production...
+2025-12-25 21:28:08,399 - server - INFO - 🔄 Auto-sync complete: 1604 bookings, 3 drivers
+2025-12-25 21:28:08,401 - apscheduler.executors.default - INFO - Job "Auto-sync from production database (trigger: interval[0:05:00], next run at: 2025-12-25 21:33:05 UTC)" executed successfully
+INFO:     Will watch for changes in these directories: ['/app/backend']
+INFO:     Uvicorn running on http://0.0.0.0:8001 (Press CTRL+C to quit)
+INFO:     Started reloader process [48] using WatchFiles
+INFO:     Started server process [92]
+INFO:     Waiting for application startup.
+2025-12-26 03:12:13,197 - passlib.handlers.bcrypt - WARNING - (trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "/root/.venv/lib/python3.11/site-packages/passlib/handlers/bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+              ^^^^^^^^^^^^^^^^^
+AttributeError: module 'bcrypt' has no attribute '__about__'
+2025-12-26 03:12:13,442 - server - INFO - ✅ Admin password reset and email updated to info@bookaride.co.nz
+2025-12-26 03:12:13,444 - server - INFO - ✅ Database indexes created for faster queries
+2025-12-26 03:12:13,444 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-12-26 03:12:13,444 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-12-26 03:12:13,451 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-12-26 03:12:13,451 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-12-26 03:12:13,451 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-12-26 03:12:13,452 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-12-26 03:12:13,453 - apscheduler.scheduler - INFO - Added job "Primary: Send reminders at 8 AM NZ" to job store "default"
+2025-12-26 03:12:13,453 - apscheduler.scheduler - INFO - Added job "Airport arrival pickup emails at 9 AM NZ" to job store "default"
+2025-12-26 03:12:13,453 - apscheduler.scheduler - INFO - Added job "Backup: Hourly reminder check" to job store "default"
+2025-12-26 03:12:13,453 - apscheduler.scheduler - INFO - Added job "Abandoned booking recovery emails" to job store "default"
+2025-12-26 03:12:13,453 - apscheduler.scheduler - INFO - Added job "Auto-sync from production database" to job store "default"
+2025-12-26 03:12:13,453 - apscheduler.scheduler - INFO - Added job "Startup sync from production" to job store "default"
+2025-12-26 03:12:13,453 - apscheduler.scheduler - INFO - Scheduler started
+2025-12-26 03:12:13,453 - server - INFO - 🚀 Scheduler started with all jobs:
+2025-12-26 03:12:13,453 - server - INFO -    ✓ Reminder: 8:00 AM NZ daily (primary)
+2025-12-26 03:12:13,453 - server - INFO -    ✓ Arrival emails: 9:00 AM NZ daily
+2025-12-26 03:12:13,453 - server - INFO -    ✓ Reminder: Hourly backup check
+2025-12-26 03:12:13,453 - server - INFO -    ✓ Abandoned bookings: Every 30 mins
+2025-12-26 03:12:13,453 - server - INFO -    ✓ Auto-sync: Every 5 minutes
+2025-12-26 03:12:13,453 - server - INFO -    ✓ Startup reminder check (running now...)
+2025-12-26 03:12:13,453 - server - INFO - 🚀 Startup reminder check - NZ time: 2025-12-26 16:12:13
+2025-12-26 03:12:13,453 - server - INFO - 🔔 [startup_check] Checking reminders - NZ time: 2025-12-26 16:12:13, Tomorrow: 2025-12-27
+2025-12-26 03:12:13,453 - apscheduler.scheduler - INFO - Removed job startup_sync
+2025-12-26 03:12:13,454 - apscheduler.executors.default - INFO - Running job "Startup sync from production (trigger: date[2025-12-26 16:12:13 NZDT], next run at: 2025-12-26 16:12:13 NZDT)" (scheduled at 2025-12-26 16:12:13.452619+13:00)
+2025-12-26 03:12:13,454 - server - INFO - 🔄 Auto-sync: Starting sync from production...
+2025-12-26 03:12:16,060 - server - INFO - 🔔 [startup_check] Found 0 bookings needing reminders for 2025-12-27
+2025-12-26 03:12:16,060 - server - INFO - ✅ [startup_check] Reminders complete: 0 sent, 0 skipped
+INFO:     Application startup complete.
+2025-12-26 03:12:19,361 - server - INFO - 🔄 Auto-sync complete: 1604 bookings, 3 drivers
+2025-12-26 03:12:19,363 - apscheduler.executors.default - INFO - Job "Startup sync from production (trigger: date[2025-12-26 16:12:13 NZDT], next run at: 2025-12-26 16:12:13 NZDT)" executed successfully
+INFO:     Will watch for changes in these directories: ['/app/backend']
+INFO:     Uvicorn running on http://0.0.0.0:8001 (Press CTRL+C to quit)
+INFO:     Started reloader process [49] using WatchFiles
+INFO:     Started server process [85]
+INFO:     Waiting for application startup.
+2025-12-26 03:13:39,257 - passlib.handlers.bcrypt - WARNING - (trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "/root/.venv/lib/python3.11/site-packages/passlib/handlers/bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+              ^^^^^^^^^^^^^^^^^
+AttributeError: module 'bcrypt' has no attribute '__about__'
+2025-12-26 03:13:39,500 - server - INFO - ✅ Admin password reset and email updated to info@bookaride.co.nz
+2025-12-26 03:13:39,503 - server - INFO - ✅ Database indexes created for faster queries
+2025-12-26 03:13:39,503 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-12-26 03:13:39,503 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-12-26 03:13:39,510 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-12-26 03:13:39,510 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-12-26 03:13:39,510 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-12-26 03:13:39,511 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-12-26 03:13:39,512 - apscheduler.scheduler - INFO - Added job "Primary: Send reminders at 8 AM NZ" to job store "default"
+2025-12-26 03:13:39,512 - apscheduler.scheduler - INFO - Added job "Airport arrival pickup emails at 9 AM NZ" to job store "default"
+2025-12-26 03:13:39,512 - apscheduler.scheduler - INFO - Added job "Backup: Hourly reminder check" to job store "default"
+2025-12-26 03:13:39,512 - apscheduler.scheduler - INFO - Added job "Abandoned booking recovery emails" to job store "default"
+2025-12-26 03:13:39,512 - apscheduler.scheduler - INFO - Added job "Auto-sync from production database" to job store "default"
+2025-12-26 03:13:39,512 - apscheduler.scheduler - INFO - Added job "Startup sync from production" to job store "default"
+2025-12-26 03:13:39,512 - apscheduler.scheduler - INFO - Scheduler started
+2025-12-26 03:13:39,512 - server - INFO - 🚀 Scheduler started with all jobs:
+2025-12-26 03:13:39,512 - server - INFO -    ✓ Reminder: 8:00 AM NZ daily (primary)
+2025-12-26 03:13:39,512 - server - INFO -    ✓ Arrival emails: 9:00 AM NZ daily
+2025-12-26 03:13:39,512 - server - INFO -    ✓ Reminder: Hourly backup check
+2025-12-26 03:13:39,512 - server - INFO -    ✓ Abandoned bookings: Every 30 mins
+2025-12-26 03:13:39,512 - server - INFO -    ✓ Auto-sync: Every 5 minutes
+2025-12-26 03:13:39,512 - server - INFO -    ✓ Startup reminder check (running now...)
+2025-12-26 03:13:39,512 - server - INFO - 🚀 Startup reminder check - NZ time: 2025-12-26 16:13:39
+2025-12-26 03:13:39,512 - server - INFO - 🔔 [startup_check] Checking reminders - NZ time: 2025-12-26 16:13:39, Tomorrow: 2025-12-27
+2025-12-26 03:13:39,513 - apscheduler.scheduler - INFO - Removed job startup_sync
+2025-12-26 03:13:39,513 - apscheduler.executors.default - INFO - Running job "Startup sync from production (trigger: date[2025-12-26 16:13:39 NZDT], next run at: 2025-12-26 16:13:39 NZDT)" (scheduled at 2025-12-26 16:13:39.511652+13:00)
+2025-12-26 03:13:39,513 - server - INFO - 🔄 Auto-sync: Starting sync from production...
+       3. The error is likely a syntax issue or a problem with a newly installed dependency that breaks the production environment.
+     - Why fix this issue and what will be achieved with the fix? The entire live application is inaccessible. Fixing this will restore service for the user and their customers.
+     - Status:  NOT STARTED
      - Is recurring issue? N
      - Should Test frontend/backend/both after fix? Both
-     - Blocked on other issue: User deploying the application.
-  - Issue 3: AI Email Auto-Responder Not Receiving Live Emails (P1)
-     - Attempted fixes: None.
-     - Next debug checklist: User needs to test the webhook by sending an email from their live site. This is likely an external configuration issue.
-     - Why fix this issue and what will be achieved with the fix? Enables automated AI email responses.
+     - Blocked on other issue: None. This is the top priority blocker.
+  - Issue 2: Driver SMS Acknowledgment Not Working on Live Site (P0)
+     - Attempted fixes: The agent updated the webhook code in  to correctly query for the driver using multiple possible fields (, , ).
+     - Next debug checklist: This is almost certainly because the live site is running old code (or is now down). Once the 502 error is resolved and a successful deployment is confirmed, this must be the first feature tested.
+     - Why fix this issue and what will be achieved with the fix? This is a core workflow for the user to get real-time confirmation from drivers.
      - Status:  BLOCKED
      - Is recurring issue? Y
-     - Should Test frontend/backend/both after fix? Backend (Integration)
-     - Blocked on other issue: User-side testing.
-  - Issue 4: Driver password-setting crash (P1)
-     - Attempted fixes: None.
-     - Next debug checklist: User needs to test this flow on their deployed site.
-     - Why fix this issue and what will be achieved with the fix? Fixes a core administrative function for managing drivers.
-     - Status:  USER VERIFICATION PENDING
-     - Is recurring issue? Y
-     - Should Test frontend/backend/both after fix? Frontend
-     - Blocked on other issue: User deploying the application.
+     - Should Test frontend/backend/both after fix? Backend (Twilio Webhook)
+     - Blocked on other issue: Issue 1: Live Application is Down
+  - Issue 3: Automatic Calendar Sync Not Working on Live Site (P0)
+     - Attempted fixes: The code to trigger calendar sync in a background task upon booking creation exists in the preview environment. The agent also manually synced ~60 bookings for the user as a temporary fix.
+     - Next debug checklist: This feature relies on the background task runner, which is not active on the live site due to failed deployment. This will work after a successful deployment.
+     - Why fix this issue and what will be achieved with the fix? Automates a key administrative task and ensures the user's calendar is always up-to-date.
+     - Status:  BLOCKED
+     - Is recurring issue? N
+     - Should Test frontend/backend/both after fix? Backend (Google Calendar Integration)
+     - Blocked on other issue: Issue 1: Live Application is Down
 
 **In progress Task List**:
-  Task 1:  Batch Sync Imported Bookings to Google Calendar (P0)
-  
- Task Detail:
-  - Task 1: Batch Sync Imported Bookings to Google Calendar (P0)
-     - Where to resume: Create a new backend endpoint (e.g., ). This endpoint should query the database for all bookings with an  that haven't been synced yet. Then, iterate through these bookings and call the existing  function for each one. Add a button to the Data Import tab in  to trigger this endpoint.
-     - What will be achieved with this? All 1,564 historical bookings will appear on the user's Google Calendar.
-     - Status:  NOT STARTED
-     - Should Test frontend/backend/both after fix? backend
-     - Blocked on something: none
+- There are no tasks in progress. The current focus must be on resolving the critical production outage.
 
 **Upcoming and Future Tasks**
     Upcoming Tasks:
-    - P0: Guide user to **DEPLOY** the application. This is the highest priority action to resolve multiple user-facing bugs.
+    - P0: **Diagnose and Fix Production Deployment:** Resolve the 502 Bad Gateway error on the live site.
+    - P0: **Verify All Deployed Fixes:** After a successful deployment, thoroughly test all features implemented in this session, especially the recurring Driver SMS Acknowledgment bug.
     - P1: Connect the Google Reviews Widget to the user's actual Google Place ID.
-    - P2: Investigate and remove the obsolete  file if it's no longer needed.
+    - P2: Investigate and remove the obsolete  file.
     Future Tasks:
     - Set up automated database backups to Google Drive.
     - Implement a WhatsApp AI Bot.
     - Implement other payment options like Klarna.
     - Add features for subscription packages and corporate accounts.
-    - Continue with Advanced SEO strategy beyond the initial landing pages.
-    - Refactor the large  component.
+    - Continue with Advanced SEO strategy.
+    - Refactor the  and  files.
 
 **Completed work in this session**
-- **Historical Booking Import (Complete):**
-  - Fully implemented the UI and backend logic to import 1,564 bookings from a CSV file.
-  - Resolved multiple critical bugs during the process, including authentication failures, data validation errors, incorrect date parsing (DD-MM-YYYY to YYYY-MM-DD), and an issue where bookings were moved to a separate  collection.
-  - Created a  endpoint to allow the user to easily restore and correct data on the live server post-deployment.
-- **Admin Dashboard Performance Optimization (Complete):**
-  - Implemented backend pagination and database indexing (Sun Dec 21 20:33:15 UTC 2025, , ) to drastically reduce booking load times.
-  - Added frontend caching using  to provide offline access and a faster user experience.
-- **Booking Creation Performance (Complete):**
-  - Refactored  and  endpoints to use FastAPI  for non-critical operations (emails, calendar sync, etc.), resulting in instant booking confirmations.
-- **Shared Shuttle Pricing Feature (Complete):**
-  - Implemented a new dynamic pricing model for the  page, with prices adjusting based on the number of passengers (from 00 for 1-2pax to 00 for 9pax).
-  - Updated the UI, pricing table, and passenger limits to reflect the new model.
-- **Advanced SEO Landing Pages (Complete):**
-  - Created five new, content-rich SEO landing pages for the keywords: , , , , and .
-  - Updated the sitemap and application routes.
-- **Customer Notification Preferences (Complete):**
-  - Verified and correctly integrated the existing notification preference logic into the payment confirmation webhooks, ensuring customers receive confirmations via their chosen method (email/SMS/both).
-- **Deployment Build Failure (Fixed):**
-  - Diagnosed and fixed a critical JSX syntax error in  that was causing the production build to fail, unblocking user deployments.
+- **Driver Payout Management (Ready for Deployment):**
+  - Implemented logic to deduct Stripe + 10% admin fees from the job total to calculate a driver's net payout.
+  - Added a Driver Payout override field in the admin panel to allow manual price adjustments.
+  - Created a confirmation preview modal to show admins the exact payout a driver will see before an assignment is sent.
+- **Driver Unassign/Reassign Flow (Ready for Deployment):**
+  - Fixed a critical bug preventing the re-assignment of drivers by using MongoDB's  to properly clear driver fields.
+  - Added an Unassign Driver button to the admin UI.
+- **UI/UX and Notification Enhancements (Ready for Deployment):**
+  - Added clear text labels to all action icons in the admin booking list.
+  - Updated all customer and driver emails/SMS to format time with AM/PM (e.g., 12:15 PM).
+  - Added a feature to resend payment links for unpaid bookings.
+  - Added safeguards to prevent duplicate notifications from being sent.
+- **Webhook and Data Display Fixes (Ready for Deployment):**
+  - Improved the Twilio SMS webhook to more reliably match replying drivers to bookings.
+  - Fixed the admin panel to correctly display flight numbers from imported WordPress bookings.
+- **Manual Data Operations and Syncing (Done):**
+  - Manually recreated and corrected multiple critical live bookings for the user (#65, Phil O'Connell, Gordon Trotter).
+  - Manually synced approximately 60 bookings to the user's Google Calendar as a temporary measure.
 
 **Earlier issues found/mentioned but not fixed**
-   - Issue 1:
-     - The obsolete file  (created in a previous session and rejected by the user) was mentioned in the previous handoff but the agent never investigated if it should be deleted.
+   - Issue 1: The obsolete file  was mentioned in the previous handoff but the agent never investigated if it should be deleted. This is a recurring code hygiene task.
      - Debug checklist:
-       1.  Use -rw-r--r-- 1 root root 19205 Dec 19 21:01 /app/frontend/src/pages/ShuttleDriverPortal.jsx to confirm it exists.
-       2.  Use  to see if it's referenced anywhere else in the codebase.
-       3.  If it's unreferenced, confirm with the user before deleting it to clean up the codebase.
-     - Why to solve this issue and what will be achieved with this? Code hygiene, removes dead code and potential for future confusion.
+       1.  Confirm file existence: /app/frontend/src/pages/ShuttleDriverPortal.jsx
+       2.  Check for references: /app/frontend/src/App.js:import ShuttleDriverPortal from './pages/ShuttleDriverPortal';
+/app/frontend/src/App.js:    { path: "shuttle-driver", element: <ShuttleDriverPortal /> },
+/app/frontend/src/pages/ShuttleDriverPortal.jsx:const ShuttleDriverPortal = () => {
+/app/frontend/src/pages/ShuttleDriverPortal.jsx:export default ShuttleDriverPortal;
+       3.  If unreferenced, confirm with the user before deleting.
+     - Why to solve this issue and what will be achieved with this? Removes dead code and reduces future confusion.
      - Should Test frontend/backend/both after fix: none
      - Is recurring issue? Y
 
 **Known issue recurrence from previous fork**
-  - **Driver SMS Acknowledgment Bug:** This remains unresolved for the user on their live site because it requires a deployment to push the fix to production. It has been a recurring issue across multiple sessions.
-  - Recurrence count: 2+
-  - Status: USER VERIFICATION PENDING
+  - **Driver SMS Acknowledgment Bug:** This issue persists on the live site because every deployment attempt containing the fix has failed. The code has been improved, but it cannot function until it's live.
+  - Recurrence count: 3+
+  - Status: BLOCKED
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-- **FastAPI BackgroundTasks:** Used to offload non-blocking tasks like sending emails and syncing to external services, dramatically improving API response times for end-users.
-- **Database Indexing:** Created indexes on the  collection for Sun Dec 21 20:33:15 UTC 2025, , and  fields in MongoDB to optimize query performance for sorting and filtering.
-- **API Pagination:** Implemented  and  query parameters on the backend and corresponding Load More logic on the frontend to efficiently handle thousands of records.
-- **Frontend Caching:** Used  to cache booking data, enabling faster initial loads and providing a degree of offline functionality in the admin panel.
-- **JSX/Build Debugging:** Diagnosed and fixed a subtle JSX syntax error (improperly nested conditional rendering) that was passing local linting but breaking the production  process.
-- **Data Migration & Correction:** Wrote and executed multiple scripts (via  and dedicated API endpoints) to fix data integrity issues in the database post-import, such as converting date formats and restoring incorrectly deleted records.
+- **Production vs. Preview Environments:** A recurring theme was the user's confusion between the preview environment and the live site. The agent correctly identified that many fixes (code changes) require deployment to take effect on the live URL, while data changes must be made directly on the production database.
+- **Deployment Failures:** The session ended with a critical deployment failure, resulting in a 502 Bad Gateway on the live site. This highlights the fragility of deploying large, monolithic files ().
+- **MongoDB :** The key to solving the unassign/reassign driver bug was using the  operator to completely remove the  and  fields from a booking document, rather than setting them to .
+- **Webhook Scoping:** The agent correctly diagnosed that the Twilio webhook points to the production URL, meaning any fixes to the webhook logic in  will only work after a successful deployment.
 
 **key DB schema**
--   **bookings:** (Modified Schema)
-    -   Indexes added: Sun Dec 21 20:33:15 UTC 2025, , .
-    -    (string: 'email', 'sms', 'both') added to store user choice.
-    -    field type corrected to  during import.
-    -    field added with a default value during import.
--   **deleted_bookings:** (Discovered Collection)
-    -   The agent discovered that an old workflow moved deleted bookings to this separate collection. A fix was implemented to restore bookings from here back to the main  collection.
+  - **bookings:**
+    -  (Number, optional): Stores a manually set payout amount for the driver, overriding auto-calculation.
+    -  (Datetime, optional): A timestamp to enable rate-limiting on the resend confirmation feature.
 
 **All files of reference**
--   **/app/backend/server.py**: Contains all backend logic, including the new paginated  endpoint, the  background tasks, the data import/fix endpoints, and database indexing logic.
--   **/app/frontend/src/pages/AdminDashboard.jsx**: Contains the frontend logic for the import UI, pagination, caching, and the fix for the deployment build error.
--   **/app/frontend/src/pages/SharedShuttle.jsx**: Contains the new dynamic pricing model and updated UI.
--   **/app/frontend/src/App.js**: Contains the routes for the new SEO pages.
--   **/app/frontend/public/sitemap.xml**: Updated with the new SEO page URLs.
--   **/app/frontend/src/pages/seo/**: Directory containing the new SEO landing pages.
--   **/app/backend/wordpress_bookings_import.csv**: The source data file for the import, located in the backend directory.
+-   **/app/backend/server.py**: Contains all new backend logic for driver payouts, unassigning, resending payment links, and improved notification/webhook handling.
+-   **/app/frontend/src/pages/AdminDashboard.jsx**: Contains all new frontend UI for the features listed above, including modals and updated button layouts.
 
 **Areas that need refactoring**:
--   **/app/frontend/src/pages/AdminDashboard.jsx**: This component is now extremely large and complex due to the addition of import logic, pagination, caching, and multiple UI states. It should be broken down into smaller, manageable components (e.g., , ,  hook).
--   **/app/backend/server.py**: This single file now exceeds 10,000 lines. The logic for booking import, data fixing, and SEO-related endpoints should be moved into separate router files/modules to improve maintainability.
+-   **/app/frontend/src/pages/AdminDashboard.jsx**: This component has grown even larger and more complex. It urgently needs to be broken down into smaller components to reduce risk during future changes.
+-   **/app/backend/server.py**: This monolithic file is now over 10,000 lines and is a major liability. A deployment failure at the end of the session was likely caused by a change in this file. It must be refactored into separate routers/modules.
 
 **key api endpoints**
--    (GET): **MODIFIED** to support  for pagination.
--    (POST): **MODIFIED** to handle authentication issues and accept CSV data directly in the request body.
--    (GET): **NEW** endpoint created for the user to trigger a one-click fix on production to restore bookings from the  collection and correct date formats.
--   , , etc. (GET): **NEW** frontend routes for the SEO landing pages.
+-   : **MODIFIED** to accept an optional  in the request body.
+-   : **NEW** endpoint to clear driver information from a booking for both outbound and return trips.
+-   : **NEW** endpoint to generate and email a Stripe payment link to the customer.
+-   : **MODIFIED** the database query to be more robust in finding the correct booking based on the driver's phone number.
+-   : **MODIFIED** to correctly handle the  flag.
 
 **Critical Info for New Agent**
--   **Communicate Deployment Clearly:** The user is non-technical and frequently confuses the preview environment with the live production site. Many fixes (SMS acknowledgments, urgent notifications) are complete in the code but require the user to **deploy** to take effect on their live site. You must be very clear about this distinction and guide them on when to deploy.
--   **AdminDashboard.jsx is Fragile:** This file is very large and has already caused a production build to fail once. Make any changes to it with extreme care, lint thoroughly, and if possible, prioritize refactoring it into smaller components.
--   **Data Import is Done, but Follow-up Tasks Remain:** The core import of 1,564 records is complete, but it has downstream consequences. The immediate next task is syncing these to Google Calendar. Be prepared for other potential follow-up requests related to this historical data.
+-   **PRODUCTION IS DOWN (502 Error):** This is the absolute highest priority. The user's live site is offline after a failed deployment. Your first task is to use the  to diagnose and fix the production server crash. Do not work on anything else until the site is back online.
+-   **DEPLOYMENT IS THE GOAL:** The user is frustrated because many bugs (like SMS acknowledgment) are fixed in code but not on the live site. A successful deployment is the only way to resolve these recurring issues. Your primary goal, after fixing the 502 error, is to achieve a stable deployment.
+-   **User Communication is Key:** The user frequently confuses the preview and live environments. Be extremely clear and explicit about where changes are being made (preview code, live database) and what actions are required from them (e.g., You must now deploy for this fix to work on your live site.).
+-   **Fragile Codebase:** The  and  files are massive and high-risk. Any changes have a high probability of causing unintended side effects. Prioritize refactoring them if possible, but at a minimum, be extremely careful when making edits.
 
 **documents and test_reports created in this job**
-  - /app/test_result.md (Updated for background tasks feature)
+  - /app/test_result.md (Updated with a test case for the batch calendar sync feature)
 
 **Last 10 User Messages and any pending HUMAN messages**
--   good morning the bookings in the Edmonton are taking a very long time to load we could if they’re available off-line as well
--   Use deployment agent to identify the issues. Sharing build error logs when trying to deploy the current app to production...
--   i’vei’ve just noticed that the calendar uploads are not working for all the imported bookings
--   The build is now successful. Let me restart the services:
--   I have updated the deployment with a new method for importing your WordPress export CSV file. Please try the following steps on your live site...
--   Wait, this shows it's still using the server file. Let me check why:
--   The import process shows 1564 entries skipped because they were already imported in the preview database...
--   Please fix this. This is getting really annoying.
--   I’ve already deployed i will try again
--   Another error
+-   can you have a look, please to see why the automatic calendar uploads are not working and just make sure that the contact details have been uploaded to the iPhone without duplicates
+-   if you can sync my calendar, that would be fantastic so it’s got all the updated jobs including Today’s and then I’ll deploy
+-   I need to be able to still resend payment links to customers
+-   IVE of deployed, but it looks like their payment link failed
+-   good morning can we please run a check on a Booking that’s currently live it’s for Michelle. It’s for 1215. We need to check if there was a flight number attached to the booking at the time and whether it’s a.m. or p.m. this needs to be fixed ASAP.
+-   OK, can we please check to see whether the customer has booked his a.m. or p.m. also two why isn’t the a.m. and p.m. showing on the Driver assignment or the confirmation?
+-   i’ve just seen the confirmed Driver assignment preview it’s his driver. Will he pay out of 50 but underneath it says manual override customer paid 88.92 I pacifically said I don’t want the driver to see the full cost of the job.
+-   Please check the driver is replying, yes, and its still not confirming on the admin dashboard."
+-   "so what are you saying I need to re-deploy because I have been red deploying let’s make the deploy changes now we need this working"
+-   "Urgent. Triage. Were missing booking 65 for the 28th of December for GP on the admin booking panel.
 
 **Project Health Check:**
 - **Broken:**
-  - **Live Site:** Driver SMS acknowledgment is broken pending deployment.
-  - **Live Site:** 24-hour urgent booking alert is broken pending deployment.
-  - Google Calendar sync for all 1,564 imported bookings is not working.
+  - **ENTIRE LIVE APPLICATION:** The production site is returning a 502 Bad Gateway error and is completely offline following a deployment attempt.
+  - **Live Site:** Driver SMS acknowledgment webhook is not processing replies correctly.
+  - **Live Site:** Automatic Google Calendar sync for new bookings is not working.
 - **Mocked:**
   - AI Email Auto-responder.
   - Google Reviews widget.
 
 **3rd Party Integrations**
 -   **Xero:** Connection is working.
--   **Twilio:** Used for SMS. A key bug fix is pending deployment.
+-   **Twilio:** Used for SMS. A critical fix for the reply webhook is pending successful deployment.
 -   **Google Maps API:** Used for maps and address autocomplete.
 -   **Stripe:** Primary payment processor.
 -   **Mailgun:** Primary email provider.
 -   **OpenAI GPT (via emergentintegrations):** Powers AI features. Uses Emergent LLM Key.
--   **Google Calendar API:** Used for syncing new bookings. Fails for imported bookings.
+-   **Google Calendar API:** Used for syncing bookings. Automatic sync is broken pending deployment.
+-   **iCloud Contacts (via CardDAV):** Used for syncing customer contacts.
 
 **Testing status**
-  - Testing agent used after significant changes: YES, the backend testing agent was used to validate the  implementation.
-  - Troubleshoot agent used after agent stuck in loop: NO
+  - Testing agent used after significant changes: NO. The agent relied on manual  calls,  scripts, and screenshots. The final set of features was not validated by the testing agent before the user's deployment attempt.
+  - Troubleshoot agent used after agent stuck in loop: NO. The agent was about to use the deployment agent when the session ended.
   - Test files created: []
-  - Known regressions: None in the preview environment. Multiple features are regressed on the live site because it's running old code.
+  - Known regressions: The entire live application is down.
 
 **Credentials to test flow:**
 -   **Admin Login:**  / 
 -   **Driver for testing:** Craig Canty, ID: 
 
 **What agent forgot to execute**
-- The agent did not investigate or remove the obsolete  file, which was noted as a cleanup task in the previous handoff summary.</analysis>
+-   The agent never investigated or removed the obsolete  file.
+-   The agent did not use the  or  before instructing the user to deploy, which may have caught the issue that led to the production 502 error.</analysis>
