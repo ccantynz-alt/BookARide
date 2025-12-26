@@ -1080,11 +1080,9 @@ export const AdminDashboard = () => {
     if (driverPayoutOverride && !isNaN(parseFloat(driverPayoutOverride))) {
       calculatedPayout = parseFloat(driverPayoutOverride);
     } else {
-      // Auto-calculate: Stripe fees (2.9% + $0.30) + 10% admin fee
+      // Auto-calculate: Stripe fees only (2.9% + $0.30) - NO admin percentage
       const stripeFee = (customerPrice * 0.029) + 0.30;
-      const afterStripe = customerPrice - stripeFee;
-      const adminFee = afterStripe * 0.10;
-      calculatedPayout = Math.round((afterStripe - adminFee) * 100) / 100;
+      calculatedPayout = Math.round((customerPrice - stripeFee) * 100) / 100;
     }
     
     setPendingAssignment({
