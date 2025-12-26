@@ -11018,6 +11018,7 @@ async def startup_event():
     logger.info("   ✓ Reminder: Hourly backup check")
     logger.info("   ✓ Abandoned bookings: Every 30 mins")
     logger.info("   ✓ Auto-sync: Every 5 minutes")
+    logger.info("   ✓ Return alerts: Every 15 minutes")
     logger.info("   ✓ Startup reminder check (running now...)")
     
     # Layer 3: Immediate startup check
