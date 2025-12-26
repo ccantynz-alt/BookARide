@@ -6947,7 +6947,7 @@ async def generate_stripe_payment_link(booking: dict) -> str:
         )
         
         session = await stripe_checkout.create_checkout_session(checkout_request)
-        return session.checkout_url
+        return session.url  # Fixed: attribute is 'url' not 'checkout_url'
     except Exception as e:
         logger.error(f"Error generating Stripe payment link: {str(e)}")
         return None
