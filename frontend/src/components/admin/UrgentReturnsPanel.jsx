@@ -7,13 +7,14 @@ import axios from 'axios';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
-const UrgentReturnsPanel = ({ token }) => {
+const UrgentReturnsPanel = () => {
   const [urgentReturns, setUrgentReturns] = useState([]);
   const [loading, setLoading] = useState(false);
   const [lastChecked, setLastChecked] = useState(null);
   const [baseAddress, setBaseAddress] = useState('');
 
   const fetchUrgentReturns = async () => {
+    const token = localStorage.getItem('adminToken');
     if (!token) return;
     
     setLoading(true);
