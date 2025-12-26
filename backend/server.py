@@ -6829,6 +6829,10 @@ async def check_return_booking_alerts():
                         "sent_at": datetime.now(timezone.utc).isoformat(),
                         "drive_minutes": drive_minutes
                     })
+            
+            except Exception as booking_err:
+                logger.warning(f"Error processing return booking alert: {str(booking_err)}")
+                continue
         
         logger.info(f"🔔 [return_alerts] Check complete: {alerts_sent} alerts sent")
         return {"alerts_sent": alerts_sent}
