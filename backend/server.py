@@ -11340,6 +11340,16 @@ async def startup_event():
         replace_existing=True
     )
     
+    # DAILY ERROR CHECK - Runs at 6 AM NZ time
+    scheduler.add_job(
+        run_daily_error_check,
+        CronTrigger(hour=6, minute=0, timezone=nz_tz),
+        id='daily_error_check',
+        name='Daily system health check',
+        replace_existing=True,
+        misfire_grace_time=3600 * 4  # Allow 4 hour grace period
+    )
+    
     # Also run sync immediately on startup
     scheduler.add_job(
         auto_sync_from_production,
