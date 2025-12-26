@@ -2565,7 +2565,8 @@ export const AdminDashboard = () => {
                           </div>
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
