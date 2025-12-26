@@ -8468,17 +8468,13 @@ async def get_driver_bookings(driver_id: str, date: Optional[str] = None):
         # Get all bookings for the driver (for weekly/upcoming view)
         all_bookings = await db.bookings.find(query, {"_id": 0}).to_list(1000)
         
-        # Calculate driver payout (customer price minus Stripe fees minus 10% admin fee)
+        # Calculate driver payout (customer price minus Stripe fees only - no admin percentage)
         for booking in all_bookings:
             customer_price = booking.get('pricing', {}).get('totalPrice', 0)
             
-            # Stripe fees: 2.9% + $0.30 NZD
+            # Stripe fees only: 2.9% + $0.30 NZD
             stripe_fee = (customer_price * 0.029) + 0.30
-            after_stripe = customer_price - stripe_fee
-            
-            # Admin/processing fee: 10%
-            admin_fee = after_stripe * 0.10
-            driver_payout = after_stripe - admin_fee
+            driver_payout = customer_price - stripe_fee
             
             booking['driver_price'] = round(driver_payout, 2)
             
