@@ -236,6 +236,7 @@ class BookingCreate(BaseModel):
     departureTime: Optional[str] = ""
     arrivalFlightNumber: Optional[str] = ""
     arrivalTime: Optional[str] = ""
+    flightNumber: Optional[str] = ""  # General flight number field
     name: str
     email: str
     phone: str
@@ -247,9 +248,22 @@ class BookingCreate(BaseModel):
     bookReturn: Optional[bool] = False
     returnDate: Optional[str] = ""
     returnTime: Optional[str] = ""
+    returnFlightNumber: Optional[str] = ""  # REQUIRED when bookReturn=True for airport shuttle
     # Notification preference: 'email', 'sms', or 'both'
     notificationPreference: Optional[str] = "both"
+    skipNotifications: Optional[bool] = False
     createdAt: datetime = Field(default_factory=datetime.utcnow)
+    
+    @model_validator(mode='after')
+    def validate_return_flight_for_airport_shuttle(self):
+        """Validate that return flight number is provided for airport shuttle returns"""
+        service_type = self.serviceType.lower() if self.serviceType else ''
+        is_airport_shuttle = 'airport' in service_type or 'shuttle' in service_type
+        
+        if is_airport_shuttle and self.bookReturn:
+            if not self.returnFlightNumber or not self.returnFlightNumber.strip():
+                raise ValueError('Return flight number is required for airport shuttle return bookings')
+        return self
 
 class Booking(BookingCreate):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
