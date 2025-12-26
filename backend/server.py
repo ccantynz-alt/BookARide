@@ -10993,6 +10993,15 @@ async def startup_event():
         replace_existing=True
     )
     
+    # RETURN BOOKING ALERTS - Check every 15 minutes
+    scheduler.add_job(
+        check_return_booking_alerts,
+        IntervalTrigger(minutes=15),
+        id='return_booking_alerts',
+        name='Return booking departure alerts',
+        replace_existing=True
+    )
+    
     # Also run sync immediately on startup
     scheduler.add_job(
         auto_sync_from_production,
