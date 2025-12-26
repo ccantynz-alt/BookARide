@@ -3213,7 +3213,7 @@ export const AdminDashboard = () => {
                         Preview & Assign
                       </Button>
                     </div>
-                    <p className="text-[10px] text-gray-400">Leave blank to auto-calculate (after Stripe + 10% admin fee)</p>
+                    <p className="text-[10px] text-gray-400">Leave blank to auto-calculate (after Stripe fees only)</p>
                   </div>
                 )}
               </div>
