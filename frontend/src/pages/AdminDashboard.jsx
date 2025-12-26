@@ -2146,6 +2146,9 @@ export const AdminDashboard = () => {
           {/* Bookings Tab */}
           <TabsContent value="bookings" className="space-y-6">
         
+        {/* DASHBOARD STATS PANEL - Overview of today's operations */}
+        <DashboardStatsPanel bookings={bookings} drivers={drivers} />
+        
         {/* URGENT RETURNS PANEL - Shows upcoming return trips with departure alerts */}
         <UrgentReturnsPanel />
         
