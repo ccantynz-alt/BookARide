@@ -3144,16 +3144,17 @@ async def send_urgent_approval_notification(booking: dict):
         
         if response.status_code == 200:
             logger.info(f"Urgent approval notification sent to admin: {admin_email} for booking: {booking_ref}")
-            return True
+            email_sent = True
         else:
             logger.error(f"Failed to send urgent approval notification: {response.status_code} - {response.text}")
-            return False
+            email_sent = False
             
     except Exception as e:
         logger.error(f"Error sending urgent approval notification: {str(e)}")
-        return False
+        email_sent = False
 
-    # Also send SMS to admin for urgent bookings
+    # Also send SMS to admin for URGENT bookings (within 24 hours)
+    sms_sent = False
     try:
         admin_phone = os.environ.get('ADMIN_PHONE', '+64212345678')
         twilio_sid = os.environ.get('TWILIO_ACCOUNT_SID')
@@ -3164,17 +3165,23 @@ async def send_urgent_approval_notification(booking: dict):
             client = Client(twilio_sid, twilio_token)
             booking_ref = get_booking_reference(booking)
             formatted_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
+            formatted_time = format_time_ampm(booking.get('time', 'N/A'))
             
-            sms_body = f"🚨 URGENT BookaRide: {booking.get('name')} needs approval for {formatted_date} {booking.get('time')} pickup. Ref: {booking_ref}. Check admin dashboard NOW!"
+            sms_body = f"🚨 URGENT BookaRide: {booking.get('name')} needs approval for {formatted_date} {formatted_time} pickup. Ref: #{booking_ref}. Check admin dashboard NOW!"
             
             client.messages.create(
                 body=sms_body,
                 from_=twilio_from,
                 to=admin_phone
             )
-            logger.info(f"Urgent SMS sent to admin for booking: {booking_ref}")
+            logger.info(f"✅ Urgent SMS sent to admin for booking: #{booking_ref}")
+            sms_sent = True
+        else:
+            logger.warning("Twilio not configured - cannot send urgent SMS")
     except Exception as sms_error:
         logger.error(f"Failed to send urgent SMS: {str(sms_error)}")
+    
+    return email_sent or sms_sent
 
 
 async def send_driver_notification(booking: dict, driver: dict, trip_type: str = "OUTBOUND"):
