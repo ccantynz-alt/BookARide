@@ -235,6 +235,20 @@ export const BookNow = () => {
       return;
     }
 
+    // Validate return flight number for airport shuttle return bookings
+    const isAirportShuttle = formData.serviceType?.toLowerCase().includes('airport') || 
+                            formData.serviceType?.toLowerCase().includes('shuttle');
+    if (isAirportShuttle && formData.bookReturn) {
+      if (!formData.returnDepartureFlightNumber || !formData.returnDepartureFlightNumber.trim()) {
+        toast.error('Return flight number is required for airport shuttle return bookings');
+        return;
+      }
+      if (!formData.returnDate || !formData.returnTime) {
+        toast.error('Please select return date and time for your return trip');
+        return;
+      }
+    }
+
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
