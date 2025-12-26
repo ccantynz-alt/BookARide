@@ -2146,7 +2146,7 @@ export const AdminDashboard = () => {
           <TabsContent value="bookings" className="space-y-6">
         
         {/* URGENT RETURNS PANEL - Shows upcoming return trips with departure alerts */}
-        <UrgentReturnsPanel token={token} />
+        <UrgentReturnsPanel />
         
         {/* Urgent Approval Alert Banner */}
         {stats.pendingApproval > 0 && (
