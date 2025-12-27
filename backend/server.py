@@ -4167,6 +4167,7 @@ def generate_confirmation_email_html(booking: dict) -> str:
                                     <td style="padding: 8px 0; color: #666; font-size: 13px;">Passengers</td>
                                     <td style="padding: 8px 0; color: #333; font-size: 14px; font-weight: 500;">{booking.get('passengers', 'N/A')}</td>
                                 </tr>
+                                {'<tr><td style="padding: 8px 0; color: #666; font-size: 13px;">✈️ Flight</td><td style="padding: 8px 0; color: #1565C0; font-size: 14px; font-weight: 600;">' + (booking.get('flightNumber') or booking.get('departureFlightNumber') or booking.get('arrivalFlightNumber') or '') + '</td></tr>' if (booking.get('flightNumber') or booking.get('departureFlightNumber') or booking.get('arrivalFlightNumber')) else ''}
                             </table>
                         </div>
                         
