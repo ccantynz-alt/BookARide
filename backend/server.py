@@ -7212,6 +7212,48 @@ async def get_customers():
         logger.error(f"Error getting customers: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@api_router.get("/customers/search")
+async def search_customers(q: str = ""):
+    """Fast customer search for autocomplete - searches name, email, phone"""
+    try:
+        if not q or len(q) < 2:
+            return {"customers": []}
+        
+        search_term = q.lower().strip()
+        
+        # Get unique customers from bookings
+        pipeline = [
+            {"$match": {
+                "$or": [
+                    {"name": {"$regex": search_term, "$options": "i"}},
+                    {"email": {"$regex": search_term, "$options": "i"}},
+                    {"phone": {"$regex": search_term, "$options": "i"}}
+                ]
+            }},
+            {"$sort": {"createdAt": -1}},  # Most recent first
+            {"$group": {
+                "_id": "$email",
+                "name": {"$first": "$name"},
+                "email": {"$first": "$email"},
+                "phone": {"$first": "$phone"},
+                "pickupAddress": {"$first": "$pickupAddress"},
+                "dropoffAddress": {"$first": "$dropoffAddress"},
+                "lastBookingDate": {"$first": "$date"},
+                "totalBookings": {"$sum": 1}
+            }},
+            {"$sort": {"totalBookings": -1}},
+            {"$limit": 10},
+            {"$project": {"_id": 0}}
+        ]
+        
+        customers = await db.bookings.aggregate(pipeline).to_list(10)
+        
+        logger.info(f"Customer search for '{q}': found {len(customers)} results")
+        return {"customers": customers}
+    except Exception as e:
+        logger.error(f"Error searching customers: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Export to CSV
 @api_router.get("/export/csv")
 async def export_csv():
