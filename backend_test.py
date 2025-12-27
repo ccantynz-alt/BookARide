@@ -2032,6 +2032,9 @@ TEST002,Test Customer 2,test2@example.com,021654321,456 Sample Ave Auckland,Auck
             return False
         
         # NEW REVIEW REQUEST FEATURES TESTING
+        print("\n📧 Testing Customer Confirmation on Booking Creation (REVIEW REQUEST)...")
+        self.test_customer_confirmation_on_booking_creation()
+        
         print("\n⚡ Testing Booking Creation Performance (BackgroundTasks)...")
         self.test_booking_creation_performance()
         
