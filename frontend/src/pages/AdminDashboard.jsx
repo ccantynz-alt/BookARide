@@ -587,6 +587,13 @@ export const AdminDashboard = () => {
   const [editingBooking, setEditingBooking] = useState(null);
   const [calendarLoading, setCalendarLoading] = useState(false);
   
+  // Customer autocomplete state
+  const [customerSearchQuery, setCustomerSearchQuery] = useState('');
+  const [customerSearchResults, setCustomerSearchResults] = useState([]);
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+  const [searchingCustomers, setSearchingCustomers] = useState(false);
+  const customerSearchRef = useRef(null);
+  
   // Preview confirmation modal states
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [previewHtml, setPreviewHtml] = useState('');
