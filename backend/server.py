@@ -271,6 +271,12 @@ class Booking(BookingCreate):
     
     class Config:
         extra = 'allow'  # Allow extra fields from database (importedFrom, notificationsSent, etc.)
+    
+    @model_validator(mode='after')
+    def validate_return_flight_for_airport_shuttle(self):
+        """Skip validation for existing bookings - only enforce on creation via BookingCreate"""
+        # This overrides the parent validator to allow reading old bookings without returnFlightNumber
+        return self
 
 def is_booking_within_24_hours(date_str: str, time_str: str) -> bool:
     """Check if the booking pickup datetime is within 24 hours from now"""
