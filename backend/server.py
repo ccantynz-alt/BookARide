@@ -4082,9 +4082,10 @@ def generate_confirmation_email_html(booking: dict) -> str:
                         </div>
                         <div>
                             <h3 style="margin: 0; color: #1a1a1a; font-size: 18px;">Return Trip</h3>
-                            <p style="margin: 2px 0 0 0; color: #666; font-size: 13px;">{formatted_return_date} at {return_time or 'TBC'}</p>
+                            <p style="margin: 2px 0 0 0; color: #666; font-size: 13px;">{formatted_return_date} at {format_time_ampm(return_time) if return_time else 'TBC'}</p>
                         </div>
                     </div>
+                    {'<div style="background: #e3f2fd; border-radius: 8px; padding: 12px; margin-bottom: 15px; border-left: 4px solid #2196F3;"><p style="margin: 0; color: #1565C0; font-size: 14px;"><strong>✈️ Return Flight:</strong> ' + (booking.get('returnFlightNumber') or booking.get('returnDepartureFlightNumber') or 'Not provided') + '</p></div>' if True else ''}
                     {return_route_html}
                     {meet_greet_html}
                 </div>
