@@ -3630,9 +3630,63 @@ export const AdminDashboard = () => {
             <DialogTitle>Create Manual Booking</DialogTitle>
           </DialogHeader>
           <div className="space-y-6 pt-4">
-            {/* Customer Information */}
+            {/* Customer Search & Information */}
             <div>
               <h3 className="font-semibold text-gray-900 mb-3">Customer Information</h3>
+              
+              {/* Customer Search Autocomplete */}
+              <div className="mb-4 relative" ref={customerSearchRef}>
+                <Label className="text-amber-600 font-medium">🔍 Search Existing Customer</Label>
+                <div className="relative mt-1">
+                  <Input
+                    value={customerSearchQuery}
+                    onChange={(e) => {
+                      setCustomerSearchQuery(e.target.value);
+                      if (!e.target.value) {
+                        setShowCustomerDropdown(false);
+                      }
+                    }}
+                    placeholder="Type customer name, email, or phone to search..."
+                    className="pr-10"
+                  />
+                  {searchingCustomers && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      <div className="w-4 h-4 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Customer Search Results Dropdown */}
+                {showCustomerDropdown && customerSearchResults.length > 0 && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                    {customerSearchResults.map((customer, idx) => (
+                      <div
+                        key={idx}
+                        className="px-4 py-3 hover:bg-amber-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                        onClick={() => selectCustomer(customer)}
+                      >
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="font-medium text-gray-900">{customer.name}</p>
+                            <p className="text-sm text-gray-500">{customer.email}</p>
+                            <p className="text-sm text-gray-500">{customer.phone}</p>
+                          </div>
+                          <div className="text-right">
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                              {customer.totalBookings} bookings
+                            </span>
+                            {customer.lastBookingDate && (
+                              <p className="text-xs text-gray-400 mt-1">Last: {customer.lastBookingDate}</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <p className="text-xs text-gray-500 mt-1">Start typing to find existing customers</p>
+              </div>
+              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label>Name *</Label>
