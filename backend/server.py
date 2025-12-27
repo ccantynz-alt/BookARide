@@ -3266,13 +3266,16 @@ async def send_driver_notification(booking: dict, driver: dict, trip_type: str =
             if booking.get('bookReturn'):
                 return_date = booking.get('returnDate', '')
                 return_time = booking.get('returnTime', '')
+                return_flight = booking.get('returnFlightNumber') or booking.get('returnDepartureFlightNumber') or ''
                 if return_date:
                     formatted_return = format_date_ddmmyyyy(return_date)
+                    formatted_return_time = format_time_ampm(return_time) if return_time else 'TBC'
                     return_html = f"""
-                    <div style="background-color: #fff8e1; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #D4AF37;">
-                        <p style="margin: 0; font-weight: bold;">🔄 RETURN TRIP</p>
-                        <p style="margin: 5px 0;">Return Date: {formatted_return}</p>
-                        <p style="margin: 5px 0;">Return Time: {return_time}</p>
+                    <div style="background-color: #f3e5f5; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #9C27B0;">
+                        <p style="margin: 0; font-weight: bold; color: #7B1FA2;">🔄 RETURN TRIP DETAILS</p>
+                        <p style="margin: 5px 0;"><strong>Return Date:</strong> {formatted_return}</p>
+                        <p style="margin: 5px 0;"><strong>Return Time:</strong> {formatted_return_time}</p>
+                        {'<p style="margin: 5px 0;"><strong>✈️ Return Flight:</strong> ' + return_flight + '</p>' if return_flight else '<p style="margin: 5px 0; color: #d32f2f;"><strong>⚠️ Return Flight:</strong> NOT PROVIDED</p>'}
                         <p style="margin: 5px 0; font-size: 12px; color: #666;">Reverse route back to original pickup location(s)</p>
                     </div>
                     """
