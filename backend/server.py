@@ -3313,6 +3313,7 @@ async def send_driver_notification(booking: dict, driver: dict, trip_type: str =
                             <p style="margin: 5px 0;"><strong>Date:</strong> {formatted_date}</p>
                             <p style="margin: 5px 0;"><strong>Time:</strong> {formatted_time}</p>
                             <p style="margin: 5px 0;"><strong>Passengers:</strong> {booking.get('passengers', 'N/A')}</p>
+                            {'<div style="background-color: #e3f2fd; padding: 10px; border-radius: 5px; margin: 10px 0; border-left: 4px solid #2196F3;"><p style="margin: 0; font-weight: bold; color: #1565C0;">✈️ FLIGHT: ' + (booking.get('flightNumber') or booking.get('departureFlightNumber') or booking.get('arrivalFlightNumber') or 'N/A') + '</p></div>' if (booking.get('flightNumber') or booking.get('departureFlightNumber') or booking.get('arrivalFlightNumber')) else ''}
                             <hr style="border: 0; border-top: 2px solid #D4AF37; margin: 15px 0;">
                             <p style="margin: 5px 0; font-size: 18px;"><strong>💰 Your Payout: ${driver_payout:.2f} NZD</strong></p>
                         </td>
