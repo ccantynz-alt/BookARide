@@ -1159,6 +1159,17 @@ async def create_booking(booking: BookingCreate, background_tasks: BackgroundTas
                 f"Xero invoice for booking #{ref_number}"
             )
         
+        # Send customer confirmation email and SMS in background
+        # Note: For Stripe/PayPal payments, additional confirmations will be sent via webhook after payment
+        # This ensures customers always get an immediate acknowledgment of their booking
+        background_tasks.add_task(
+            run_sync_task,
+            send_customer_confirmation,
+            booking_dict,
+            f"customer confirmation for booking #{ref_number}"
+        )
+        logger.info(f"Queued customer confirmation for booking #{ref_number}")
+        
         return booking_obj
     except Exception as e:
         logger.error(f"Error creating booking: {str(e)}")
