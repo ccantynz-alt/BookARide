@@ -1887,6 +1887,63 @@ export const AdminDashboard = () => {
     }
   };
 
+  // Customer search for autocomplete
+  const searchCustomers = async (query) => {
+    if (!query || query.length < 2) {
+      setCustomerSearchResults([]);
+      setShowCustomerDropdown(false);
+      return;
+    }
+    
+    setSearchingCustomers(true);
+    try {
+      const response = await axios.get(`${API}/customers/search?q=${encodeURIComponent(query)}`, getAuthHeaders());
+      setCustomerSearchResults(response.data.customers || []);
+      setShowCustomerDropdown(response.data.customers?.length > 0);
+    } catch (error) {
+      console.error('Error searching customers:', error);
+      setCustomerSearchResults([]);
+    } finally {
+      setSearchingCustomers(false);
+    }
+  };
+
+  // Debounced customer search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (customerSearchQuery) {
+        searchCustomers(customerSearchQuery);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [customerSearchQuery]);
+
+  // Select customer from autocomplete
+  const selectCustomer = (customer) => {
+    setNewBooking(prev => ({
+      ...prev,
+      name: customer.name || '',
+      email: customer.email || '',
+      phone: customer.phone || '',
+      pickupAddress: customer.pickupAddress || prev.pickupAddress,
+      dropoffAddress: customer.dropoffAddress || prev.dropoffAddress
+    }));
+    setCustomerSearchQuery('');
+    setShowCustomerDropdown(false);
+    toast.success(`Loaded ${customer.name}'s details (${customer.totalBookings} previous bookings)`);
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (customerSearchRef.current && !customerSearchRef.current.contains(event.target)) {
+        setShowCustomerDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const handleCreateManualBooking = async () => {
     // Validation
     if (!newBooking.name || !newBooking.email || !newBooking.phone) {
