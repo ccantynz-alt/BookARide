@@ -2145,8 +2145,17 @@ export const AdminDashboard = () => {
           {/* Bookings Tab */}
           <TabsContent value="bookings" className="space-y-6">
         
-        {/* DASHBOARD STATS PANEL - Overview of today's operations */}
+        {/* DASHBOARD STATS PANEL - Executive overview */}
         <DashboardStatsPanel bookings={bookings} drivers={drivers} />
+        
+        {/* TODAY'S OPERATIONS - Unified view of all pickups including returns */}
+        <TodaysOperationsPanel 
+          bookings={bookings} 
+          onViewBooking={(booking) => {
+            setSelectedBooking(booking);
+            setShowBookingDetails(true);
+          }}
+        />
         
         {/* URGENT RETURNS PANEL - Shows upcoming return trips with departure alerts */}
         <UrgentReturnsPanel />
