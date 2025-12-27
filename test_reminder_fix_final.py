@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 import pytz
 
 # Configuration
-BACKEND_URL = "https://driver-dispatch-8.preview.emergentagent.com/api"
+BACKEND_URL = "https://booking-fix-7.preview.emergentagent.com/api"
 ADMIN_USERNAME = "admin"
 ADMIN_PASSWORD = "Kongkong2025!@"
 

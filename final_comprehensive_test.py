@@ -13,7 +13,7 @@ from datetime import datetime
 sys.path.append('/app/backend')
 from server import send_booking_confirmation_email, send_booking_confirmation_sms
 
-BACKEND_URL = "https://driver-dispatch-8.preview.emergentagent.com/api"
+BACKEND_URL = "https://booking-fix-7.preview.emergentagent.com/api"
 ADMIN_USERNAME = "admin"
 ADMIN_PASSWORD = "BookARide2024!"
 

@@ -6,7 +6,7 @@ Test authentication requirements for admin endpoints
 import requests
 import json
 
-BACKEND_URL = "https://driver-dispatch-8.preview.emergentagent.com/api"
+BACKEND_URL = "https://booking-fix-7.preview.emergentagent.com/api"
 TEST_BOOKING_ID = "e28adbfd-07a0-4348-94d1-2d18a7a51c46"
 
 def test_endpoint_without_auth(endpoint, method="POST", data=None):
