@@ -3347,12 +3347,15 @@ async def send_driver_notification(booking: dict, driver: dict, trip_type: str =
 </body>
 </html>"""
             
+            # Get flight number for text version
+            flight_number = booking.get('flightNumber') or booking.get('departureFlightNumber') or booking.get('arrivalFlightNumber') or 'N/A'
+            
             # Create plain text version for email clients that don't render HTML
-            text_content = f"""BookaRide.co.nz - New Booking Assignment
+            text_content = f"""BookaRide.co.nz - New Booking Assignment ({trip_type} TRIP)
 
 Hi {driver.get('name', 'Driver')},
 
-You have been assigned a new booking. Please review the details below:
+You have been assigned {'a new' if trip_type == 'OUTBOUND' else 'the RETURN leg of a'} booking. Please review the details below:
 
 BOOKING DETAILS
 ===============
@@ -3369,6 +3372,7 @@ Drop-off: {booking.get('dropoffAddress', 'N/A')}
 Date: {formatted_date}
 Time: {formatted_time}
 Passengers: {booking.get('passengers', 'N/A')}
+FLIGHT: {flight_number}
 
 Your Payout: ${driver_payout:.2f} NZD
 
