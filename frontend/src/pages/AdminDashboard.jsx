@@ -21,6 +21,7 @@ import { LandingPagesTab } from '../components/admin/LandingPagesTab';
 import { AdminBreadcrumb } from '../components/admin/AdminBreadcrumb';
 import UrgentReturnsPanel from '../components/admin/UrgentReturnsPanel';
 import DashboardStatsPanel from '../components/admin/DashboardStatsPanel';
+import TodaysOperationsPanel from '../components/admin/TodaysOperationsPanel';
 import { initAutocompleteWithFix } from '../utils/fixGoogleAutocomplete';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
