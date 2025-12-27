@@ -587,3 +587,45 @@ frontend:
       - working: true
         agent: "testing"
         comment: "✅ BATCH CALENDAR SYNC FEATURE WORKING PERFECTLY: Both endpoints tested successfully. 1) GET /api/admin/batch-sync-calendar/status returns correct data: 3132 remaining to sync, 0 already synced, last_task: None ✓, 2) POST /api/admin/batch-sync-calendar endpoint exists and would work but skipped due to large dataset (3132 bookings would take too long) ✓. All required fields present in responses (remaining_to_sync, already_synced, last_task for status; success, message, total_to_sync, status for start sync). Admin authentication working correctly. Feature is production-ready for batch syncing imported bookings to Google Calendar."
+
+  - task: "Booking Retrieval with Return Flight Validation Fix"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "critical"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "✅ Fixed critical bug where Pydantic validation for return flight numbers was blocking ALL booking retrieval. Override validator in Booking class to skip validation for existing bookings. Dashboard now loads properly - 50 bookings visible."
+
+  - task: "Customer Confirmation on Booking Creation"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "critical"
+    needs_retesting: true
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "✅ Added customer confirmation (email + SMS) to main booking creation endpoint. Previously only admin was notified - customers with pay-on-pickup never received confirmation. Now all customers get immediate acknowledgment."
+
+  - task: "SEO Page Image Fix"
+    implemented: true
+    working: true
+    file: "SuburbAirportTemplate.jsx"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "✅ Fixed missing image reference '/images/airport-hero.jpg' in SEO template. Replaced with Unsplash URL. Frontend now compiles without errors."
+
+Incorporate User Feedback:
+  - Jeanette Davies booking found in database (Ref #91, Dec 30 13:30, $151, confirmed)
+  - Dashboard "offline" error was caused by Pydantic validation blocking booking retrieval
+  - Customer confirmations were NOT being sent on booking creation - only after Stripe payment webhook
+  - For pay-on-pickup customers, no confirmation was ever sent
