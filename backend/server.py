@@ -3432,6 +3432,10 @@ bookaride.co.nz | +64 21 743 321
                     distance_km = booking.get('distance', booking.get('estimatedDistance', ''))
                     distance_text = f"\nDistance: {distance_km} km" if distance_km else ""
                     
+                    # Get flight number
+                    flight_num = booking.get('flightNumber') or booking.get('departureFlightNumber') or booking.get('arrivalFlightNumber') or ''
+                    flight_text = f"\n✈️ Flight: {flight_num}" if flight_num else ""
+                    
                     # Convert trip_type to user-friendly label
                     trip_label = "Departure" if trip_type == "OUTBOUND" else "Arrival"
                     
@@ -3441,7 +3445,7 @@ Ref: {booking_ref}
 Customer: {booking.get('name', 'N/A')}
 Phone: {booking.get('phone', 'N/A')}
 Pickup: {booking.get('pickupAddress', 'N/A')}
-Date: {formatted_date} at {formatted_time}{distance_text}
+Date: {formatted_date} at {formatted_time}{flight_text}{distance_text}
 Your Payout: ${driver_payout:.2f}
 Payment: {payment_display}
 
