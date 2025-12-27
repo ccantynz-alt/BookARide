@@ -113,7 +113,7 @@ const SuburbAirportPage = ({
       <div className="min-h-screen bg-white">
         {/* Hero Section */}
         <section className="relative bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white overflow-hidden">
-          <div className="absolute inset-0 bg-[url('/images/airport-hero.jpg')] bg-cover bg-center opacity-20"></div>
+          <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=1920&q=80')] bg-cover bg-center opacity-20"></div>
           <div className="absolute inset-0 bg-gradient-to-r from-slate-900/90 to-transparent"></div>
           
           <div className="relative max-w-7xl mx-auto px-4 py-20 lg:py-28">
