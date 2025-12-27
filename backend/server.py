@@ -8755,7 +8755,7 @@ Hi {customer_name.split()[0] if customer_name else 'there'},
 
 Your booking for {formatted_date} at {booking_time} has been cancelled.
 
-If you didn't request this, please call us at 027-246-0201.
+If you didn't request this, please call us at 021-743-321.
 
 To rebook: bookaride.co.nz"""
     
