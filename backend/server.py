@@ -11011,7 +11011,52 @@ async def run_daily_error_check():
             warnings.append(f"⚠️ Booking #{booking_ref}: Confirmation may not have been sent")
         
         # ===========================================
-        # CHECK 5: Database health checks
+        # CHECK 5: Calendar sync verification for ALL bookings
+        # ===========================================
+        bookings_needing_calendar = await db.bookings.find({
+            'date': {'$in': [today_str, tomorrow_str]},
+            'status': {'$nin': ['cancelled', 'deleted']},
+            '$or': [
+                {'calendar_event_id': {'$exists': False}},
+                {'calendar_event_id': ''},
+                {'calendar_event_id': None}
+            ]
+        }, {'_id': 0}).to_list(100)
+        
+        for booking in bookings_needing_calendar:
+            booking_ref = get_booking_reference(booking)
+            issues.append(f"🚨 Booking #{booking_ref} ({booking.get('name')}): NOT synced to CALENDAR!")
+        
+        # ===========================================
+        # CHECK 6: Return trips today/tomorrow without calendar sync
+        # ===========================================
+        return_trips_soon = await db.bookings.find({
+            'returnDate': {'$in': [today_str, tomorrow_str]},
+            'returnTime': {'$exists': True, '$ne': ''},
+            'status': {'$nin': ['cancelled', 'deleted']}
+        }, {'_id': 0}).to_list(100)
+        
+        for booking in return_trips_soon:
+            booking_ref = get_booking_reference(booking)
+            return_date = booking.get('returnDate', '')
+            return_time = booking.get('returnTime', '')
+            calendar_ids = booking.get('calendar_event_id', '')
+            
+            # Check if return has a separate calendar event (should have 2 events: outbound + return)
+            event_count = len(calendar_ids.split(',')) if calendar_ids else 0
+            has_return_calendar = event_count >= 2  # Should have at least 2 events if return exists
+            
+            if not has_return_calendar:
+                urgency = "TODAY" if return_date == today_str else "TOMORROW"
+                issues.append(f"🚨 {urgency} RETURN #{booking_ref} ({booking.get('name')}): {return_date} @ {return_time} - NOT in calendar!")
+            
+            # Check if return trip has driver assigned
+            if return_date == today_str:
+                if not booking.get('return_driver_id') and not booking.get('driver_id'):
+                    issues.append(f"🚨 TODAY RETURN #{booking_ref} ({booking.get('name')}): @ {return_time} - NO DRIVER!")
+        
+        # ===========================================
+        # CHECK 7: Database health checks
         # ===========================================
         total_bookings = await db.bookings.count_documents({})
         total_drivers = await db.drivers.count_documents({})
