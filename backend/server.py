@@ -2111,13 +2111,13 @@ def send_reminder_email(booking: dict):
                     {f'''
                     <div style="background: #fff8e6; padding: 15px; border-radius: 8px; border-left: 4px solid #D4AF37; margin: 20px 0;">
                         <p style="margin: 0; font-size: 14px; color: #666;">
-                            <strong>📍 Please be ready</strong> at your pickup location 5 minutes before your scheduled time.
+                            <strong>&#128205; Please be ready</strong> at your pickup location 5 minutes before your scheduled time.
                         </p>
                     </div>
                     ''' if not is_airport_pickup else ''}
                     
                     <div style="background: #f0f9ff; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                        <p style="margin: 0 0 10px 0; font-size: 14px; color: #333;"><strong>📞 Contact Us</strong></p>
+                        <p style="margin: 0 0 10px 0; font-size: 14px; color: #333;"><strong>&#128222; Contact Us</strong></p>
                         <p style="margin: 0; font-size: 14px; color: #666;">
                             Need to make changes or have questions?<br>
                             Phone: <a href="tel:+6421743321" style="color: #D4AF37; font-weight: bold;">+64 21 743 321</a><br>
