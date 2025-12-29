@@ -8978,7 +8978,8 @@ async def get_driver_bookings(driver_id: str, date: Optional[str] = None):
             
             # For return bookings, this driver only gets half (outbound portion)
             if has_return:
-                one_way_price = booking.get('pricing', {}).get('oneWayPrice') or booking.get('pricing', {}).get('basePrice')
+                # Use oneWayPrice if explicitly set, otherwise split evenly
+                one_way_price = booking.get('pricing', {}).get('oneWayPrice')
                 if one_way_price:
                     trip_price = one_way_price
                 else:
