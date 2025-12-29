@@ -161,13 +161,16 @@ const ExitIntentPopup = () => {
                     You're All Set!
                   </h3>
                   <p className="text-gray-600 mb-4">
-                    Your discount code is:
+                    Your exclusive discount code is:
                   </p>
                   <div className="bg-gray-100 rounded-lg p-4 mb-4">
                     <span className="text-2xl font-bold text-gold tracking-wider">WELCOME10</span>
                   </div>
-                  <p className="text-sm text-gray-500">
-                    Use this code at checkout for 10% off!
+                  <p className="text-sm text-gray-500 mb-2">
+                    Enter this code in the <strong>"Have a promo code?"</strong> box when booking to save 10%!
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    Code saved to your clipboard ✓
                   </p>
                 </div>
               )}
