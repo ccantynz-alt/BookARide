@@ -165,14 +165,27 @@ const ExitIntentPopup = () => {
                   <p className="text-gray-600 mb-4">
                     Your exclusive discount code is:
                   </p>
-                  <div className="bg-gray-100 rounded-lg p-4 mb-4">
+                  <div className="bg-gray-100 rounded-lg p-4 mb-6">
                     <span className="text-2xl font-bold text-gold tracking-wider">WELCOME10</span>
+                    <p className="text-sm text-green-600 mt-1">10% off your first ride!</p>
                   </div>
-                  <p className="text-sm text-gray-500 mb-2">
-                    Enter this code in the <strong>"Have a promo code?"</strong> box when booking to save 10%!
-                  </p>
-                  <p className="text-xs text-gray-400">
-                    Code saved to your clipboard ✓
+                  
+                  <Button
+                    onClick={() => {
+                      // Save the promo code to localStorage
+                      localStorage.setItem('promoCode', 'WELCOME10');
+                      // Close popup and navigate to booking page
+                      setIsVisible(false);
+                      navigate('/book-now');
+                    }}
+                    className="w-full bg-gold hover:bg-yellow-500 text-black font-semibold py-3 text-lg"
+                  >
+                    Book Now with 10% Off
+                    <ArrowRight className="ml-2 w-5 h-5" />
+                  </Button>
+                  
+                  <p className="text-xs text-gray-400 mt-4">
+                    Or save the code and book later
                   </p>
                 </div>
               )}
