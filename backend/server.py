@@ -1125,6 +1125,43 @@ async def calculate_price(request: PriceCalculationRequest):
         logger.error(f"Error calculating price: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error calculating price: {str(e)}")
 
+# Validate and apply promo code
+@api_router.post("/validate-promo")
+async def validate_promo_code(data: PromoCodeValidation):
+    """Validate a promo code and return discount details"""
+    try:
+        code = data.code.upper().strip()
+        subtotal = data.subtotal
+        
+        if code not in PROMO_CODES:
+            raise HTTPException(status_code=400, detail="Invalid promo code")
+        
+        promo = PROMO_CODES[code]
+        discount_percent = promo["discount_percent"]
+        discount_amount = round(subtotal * (discount_percent / 100), 2)
+        new_subtotal = round(subtotal - discount_amount, 2)
+        
+        # Recalculate Stripe fee on discounted amount
+        stripe_fee = round((new_subtotal * 0.029) + 0.30, 2)
+        new_total = round(new_subtotal + stripe_fee, 2)
+        
+        return {
+            "valid": True,
+            "code": code,
+            "description": promo["description"],
+            "discountPercent": discount_percent,
+            "discountAmount": discount_amount,
+            "originalSubtotal": subtotal,
+            "newSubtotal": new_subtotal,
+            "stripeFee": stripe_fee,
+            "newTotal": new_total
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error validating promo code: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Create Booking Endpoint
 @api_router.post("/bookings", response_model=Booking)
 async def create_booking(booking: BookingCreate, background_tasks: BackgroundTasks):
