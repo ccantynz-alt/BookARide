@@ -1,4 +1,40 @@
 backend:
+  - task: "Backend SyntaxError Fix - Emoji in Python Source"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "critical"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "✅ Fixed SyntaxError caused by emoji characters (📍, 📞) in Python string literals. Added UTF-8 encoding declaration and refactored nested f-strings by pre-computing conditional HTML blocks. Backend now starts successfully."
+
+  - task: "Payment Status Update API"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "critical"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "✅ Verified PUT /api/bookings/{id}/payment-status works. Updated booking 57842e07-ea67-40d0-a9de-95fafcbc30a2 from 'pending' to 'paid' successfully."
+
+  - task: "Driver Assignment API"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "critical"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "✅ Verified PATCH /api/drivers/{id}/assign?booking_id={id}&trip_type=outbound works. Assigned Craig Canty to booking successfully."
+
   - task: "Pricing Calculation with ratePerKm - Long Trip"
     implemented: true
     working: true
