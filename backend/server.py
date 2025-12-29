@@ -8469,6 +8469,58 @@ async def assign_driver_to_booking(driver_id: str, booking_id: str, trip_type: s
         raise HTTPException(status_code=500, detail=str(e))
 
 
+
+@api_router.patch("/bookings/{booking_id}/confirm-driver")
+async def confirm_driver_acknowledgment(booking_id: str, trip_type: str = "outbound", current_admin: dict = Depends(get_current_admin)):
+    """Manually confirm driver acknowledgment from admin panel
+    
+    Args:
+        booking_id: The booking ID
+        trip_type: "outbound" (default) or "return" - which trip to confirm
+    """
+    try:
+        booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+        if not booking:
+            raise HTTPException(status_code=404, detail="Booking not found")
+        
+        if trip_type == "return":
+            if not booking.get('return_driver_id') and not booking.get('return_driver_name'):
+                raise HTTPException(status_code=400, detail="No return driver assigned")
+            
+            update_fields = {
+                "returnDriverAcknowledged": True,
+                "returnDriverConfirmedBy": "admin",
+                "returnDriverAcknowledgedAt": datetime.now(timezone.utc).isoformat()
+            }
+            driver_name = booking.get('return_driver_name', 'Unknown')
+        else:
+            if not booking.get('driver_id') and not booking.get('driver_name'):
+                raise HTTPException(status_code=400, detail="No outbound driver assigned")
+            
+            update_fields = {
+                "driverAcknowledged": True,
+                "driverConfirmed": True,
+                "driverResponse": "Confirmed by admin",
+                "driverAcknowledgedAt": datetime.now(timezone.utc).isoformat()
+            }
+            driver_name = booking.get('driver_name', 'Unknown')
+        
+        await db.bookings.update_one(
+            {"id": booking_id},
+            {"$set": update_fields}
+        )
+        
+        booking_ref = get_booking_reference(booking)
+        logger.info(f"✅ Admin manually confirmed {trip_type} driver {driver_name} for booking #{booking_ref}")
+        
+        return {"success": True, "message": f"Driver {driver_name} confirmed for {trip_type} trip"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error confirming driver: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @api_router.patch("/bookings/{booking_id}/unassign-driver")
 async def unassign_driver_from_booking(booking_id: str, trip_type: str = "outbound", current_admin: dict = Depends(get_current_admin)):
     """Unassign a driver from a booking
