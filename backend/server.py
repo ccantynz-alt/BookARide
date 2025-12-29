@@ -1991,7 +1991,7 @@ async def update_confirmation_status(booking_id: str, results: dict):
 
 
 def send_reminder_email(booking: dict):
-    """Send day-before reminder email to customer"""
+    """Send day-before reminder email to customer with professional pickup instructions"""
     try:
         mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
         mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
@@ -2003,7 +2003,15 @@ def send_reminder_email(booking: dict):
         
         booking_ref = get_booking_reference(booking)
         formatted_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
+        formatted_time = format_time_ampm(booking.get('time', 'N/A'))
         recipient_email = booking.get('email')
+        customer_name = booking.get('name', 'Customer')
+        driver_name = booking.get('driver_name', '')
+        
+        # Check if this is an airport pickup (international arrival)
+        pickup_address = booking.get('pickupAddress', '').lower()
+        dropoff_address = booking.get('dropoffAddress', '').lower()
+        is_airport_pickup = 'airport' in pickup_address or 'akl' in pickup_address or 'international' in pickup_address
         
         # Build pickup addresses
         primary_pickup = booking.get('pickupAddress', 'N/A')
@@ -2014,6 +2022,45 @@ def send_reminder_email(booking: dict):
             for i, addr in enumerate(pickup_addresses):
                 if addr and addr.strip():
                     pickup_html += f"<p><strong>Additional Stop {i+1}:</strong> {addr}</p>"
+        
+        # Professional Airport Pickup Instructions
+        airport_instructions = ""
+        if is_airport_pickup:
+            airport_instructions = f'''
+                    <div style="background: linear-gradient(135deg, #1a365d 0%, #2c5282 100%); border-radius: 12px; padding: 25px; margin: 25px 0; color: white;">
+                        <h3 style="margin: 0 0 15px 0; font-size: 18px; display: flex; align-items: center;">
+                            ✈️ INTERNATIONAL ARRIVALS - MEETING POINT
+                        </h3>
+                        
+                        <div style="background: rgba(255,255,255,0.1); border-radius: 8px; padding: 15px; margin-bottom: 15px;">
+                            <p style="margin: 0 0 10px 0; font-size: 15px;">
+                                <strong>Your driver will be waiting for you in the Arrivals Hall.</strong>
+                            </p>
+                            <p style="margin: 0; font-size: 14px; line-height: 1.6;">
+                                {'<strong>' + driver_name + '</strong> will be holding an iPad displaying your name: <strong>' + customer_name + '</strong>' if driver_name else 'Your driver will be holding a <strong>BOOK A RIDE</strong> sign or an iPad with your name: <strong>' + customer_name + '</strong>'}
+                            </p>
+                        </div>
+                        
+                        <div style="background: rgba(212,175,55,0.2); border-radius: 8px; padding: 15px; border-left: 4px solid #D4AF37;">
+                            <p style="margin: 0 0 8px 0; font-size: 15px; font-weight: bold;">
+                                📍 DIRECTIONS TO MEETING POINT:
+                            </p>
+                            <ol style="margin: 0; padding-left: 20px; font-size: 14px; line-height: 1.8;">
+                                <li>After collecting your luggage, exit through the Customs doors</li>
+                                <li><strong>TURN LEFT</strong> immediately upon entering the Arrivals Hall</li>
+                                <li>Walk towards the <strong>Allpress Espresso Café</strong></li>
+                                <li>All drivers wait directly in front of the café</li>
+                            </ol>
+                        </div>
+                        
+                        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.2);">
+                            <p style="margin: 0; font-size: 13px; opacity: 0.9;">
+                                💡 <strong>Tip:</strong> If you turn RIGHT, you'll be heading towards the domestic terminal. 
+                                Turn LEFT to find your driver at the Allpress Café meeting point.
+                            </p>
+                        </div>
+                    </div>
+            '''
         
         # Logo as inline SVG
         logo_svg = '''
@@ -2036,40 +2083,53 @@ def send_reminder_email(booking: dict):
                 </div>
                 
                 <div style="background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%); padding: 20px; text-align: center;">
-                    <h2 style="margin: 0; color: white; font-size: 20px;">🔔 Reminder: Your Ride is Tomorrow!</h2>
+                    <h2 style="margin: 0; color: white; font-size: 20px;">Your Ride is Tomorrow!</h2>
+                    <p style="margin: 8px 0 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">{formatted_date} at {formatted_time}</p>
                 </div>
                 
                 <div style="padding: 25px;">
-                    <p style="color: #333; font-size: 15px;">Dear <strong>{booking.get('name', 'Customer')}</strong>,</p>
-                    <p style="color: #333; font-size: 15px;">This is a friendly reminder that your ride is scheduled for <strong>tomorrow</strong>.</p>
+                    <p style="color: #333; font-size: 15px;">Dear <strong>{customer_name}</strong>,</p>
+                    <p style="color: #333; font-size: 15px;">This is a friendly reminder that your transfer is scheduled for <strong>tomorrow</strong>. Please find your booking details and pickup instructions below.</p>
                     
                     <div style="background: #faf8f3; border-radius: 10px; padding: 20px; margin: 20px 0; border: 1px solid #e8e4d9;">
-                        <p style="margin: 5px 0;"><strong>Reference:</strong> {booking_ref}</p>
-                        <p style="margin: 5px 0;"><strong>Date:</strong> {formatted_date}</p>
-                        <p style="margin: 5px 0;"><strong>Time:</strong> {booking.get('time', 'N/A')}</p>
-                        <p style="margin: 5px 0;"><strong>Passengers:</strong> {booking.get('passengers', 'N/A')}</p>
+                        <h3 style="margin: 0 0 15px 0; color: #1a1a1a; font-size: 16px;">📋 BOOKING DETAILS</h3>
+                        <table style="width: 100%; font-size: 14px; color: #333;">
+                            <tr><td style="padding: 5px 0; width: 120px;"><strong>Reference:</strong></td><td>{booking_ref}</td></tr>
+                            <tr><td style="padding: 5px 0;"><strong>Date:</strong></td><td>{formatted_date}</td></tr>
+                            <tr><td style="padding: 5px 0;"><strong>Time:</strong></td><td>{formatted_time}</td></tr>
+                            <tr><td style="padding: 5px 0;"><strong>Passengers:</strong></td><td>{booking.get('passengers', 'N/A')}</td></tr>
+                            {f'<tr><td style="padding: 5px 0;"><strong>Driver:</strong></td><td>{driver_name}</td></tr>' if driver_name else ''}
+                        </table>
                         <hr style="border: none; border-top: 1px solid #ddd; margin: 15px 0;">
                         {pickup_html}
                         <p style="margin: 5px 0;"><strong>Drop-off:</strong> {booking.get('dropoffAddress', 'N/A')}</p>
                     </div>
                     
+                    {airport_instructions}
+                    
+                    {f'''
                     <div style="background: #fff8e6; padding: 15px; border-radius: 8px; border-left: 4px solid #D4AF37; margin: 20px 0;">
                         <p style="margin: 0; font-size: 14px; color: #666;">
                             <strong>📍 Please be ready</strong> at your pickup location 5 minutes before your scheduled time.
                         </p>
                     </div>
+                    ''' if not is_airport_pickup else ''}
                     
-                    <p style="color: #666; font-size: 14px;">
-                        If you need to make any changes or have questions, please contact us:<br>
-                        📞 <a href="tel:+6421743321" style="color: #D4AF37;">+64 21 743 321</a><br>
-                        ✉️ <a href="mailto:info@bookaride.co.nz" style="color: #D4AF37;">info@bookaride.co.nz</a>
-                    </p>
+                    <div style="background: #f0f9ff; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                        <p style="margin: 0 0 10px 0; font-size: 14px; color: #333;"><strong>📞 Contact Us</strong></p>
+                        <p style="margin: 0; font-size: 14px; color: #666;">
+                            Need to make changes or have questions?<br>
+                            Phone: <a href="tel:+6421743321" style="color: #D4AF37; font-weight: bold;">+64 21 743 321</a><br>
+                            Email: <a href="mailto:info@bookaride.co.nz" style="color: #D4AF37;">info@bookaride.co.nz</a>
+                        </p>
+                    </div>
                     
-                    <p style="color: #333; margin-top: 25px;">See you tomorrow!<br><strong>The BookaRide Team</strong></p>
+                    <p style="color: #333; margin-top: 25px;">We look forward to seeing you tomorrow!<br><strong>The BookaRide Team</strong></p>
                 </div>
                 
-                <div style="background: #faf8f3; padding: 15px; text-align: center; border-top: 1px solid #e8e4d9;">
-                    <p style="margin: 0; color: #888; font-size: 12px;">BookaRide NZ | bookaride.co.nz | +64 21 743 321</p>
+                <div style="background: #1a1a1a; padding: 20px; text-align: center;">
+                    <p style="margin: 0; color: #888; font-size: 12px;">BookaRide NZ | Auckland Airport Transfers</p>
+                    <p style="margin: 5px 0 0 0; color: #666; font-size: 11px;">bookaride.co.nz | +64 21 743 321</p>
                 </div>
             </div>
         </body>
@@ -2082,7 +2142,7 @@ def send_reminder_email(booking: dict):
             data={
                 "from": f"BookaRide <{sender_email}>",
                 "to": recipient_email,
-                "subject": f"🔔 Reminder: Your Ride Tomorrow - Ref: {booking_ref}",
+                "subject": f"Your Ride Tomorrow - {formatted_date} at {formatted_time} - Ref: {booking_ref}",
                 "html": html_content
             }
         )
