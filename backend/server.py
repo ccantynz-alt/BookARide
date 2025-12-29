@@ -3262,17 +3262,25 @@ Price: ${booking.get('totalPrice', 0):.2f}
             )
             logger.info(f"✅ Urgent SMS sent to admin {admin_phone} for booking: #{booking_ref} - SID: {message.sid}")
             
-            # Store booking ID in database for SMS reply matching
-            await db.pending_approvals.update_one(
-                {"admin_phone": admin_phone},
-                {"$set": {
-                    "booking_id": booking.get('id'),
-                    "booking_ref": booking_ref,
-                    "customer_name": booking.get('name'),
-                    "created_at": datetime.now(timezone.utc).isoformat()
-                }},
-                upsert=True
-            )
+            # Store booking ID in database for SMS reply matching (using sync client)
+            try:
+                from pymongo import MongoClient
+                sync_client = MongoClient(os.environ.get('MONGO_URL', 'mongodb://localhost:27017'))
+                sync_db = sync_client[os.environ.get('DB_NAME', 'test_database')]
+                sync_db.pending_approvals.update_one(
+                    {"admin_phone": admin_phone},
+                    {"$set": {
+                        "booking_id": booking.get('id'),
+                        "booking_ref": booking_ref,
+                        "customer_name": booking.get('name'),
+                        "created_at": datetime.now(timezone.utc).isoformat()
+                    }},
+                    upsert=True
+                )
+                sync_client.close()
+                logger.info(f"✅ Stored pending approval for booking #{booking_ref}")
+            except Exception as db_error:
+                logger.error(f"Failed to store pending approval: {db_error}")
             
             sms_sent = True
         else:
