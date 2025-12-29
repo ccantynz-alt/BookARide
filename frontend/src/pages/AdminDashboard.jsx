@@ -3507,7 +3507,17 @@ export const AdminDashboard = () => {
                 {pendingAssignment.isOverride ? (
                   <p className="text-xs text-green-600 mt-1">✓ Custom payout set</p>
                 ) : (
-                  <p className="text-xs text-gray-500 mt-1">Auto-calculated after fees</p>
+                  <div className="text-xs text-gray-500 mt-1 space-y-1">
+                    <p>Auto-calculated:</p>
+                    {pendingAssignment.hasReturn && (
+                      <p>• {pendingAssignment.tripType === 'outbound' ? 'Outbound' : 'Return'} portion of return booking (${(pendingAssignment.customerPrice/2).toFixed(2)})</p>
+                    )}
+                    {pendingAssignment.isCashPayment ? (
+                      <p>• <span className="text-amber-600 font-medium">Pay-on-pickup: No Stripe fees</span></p>
+                    ) : (
+                      <p>• Stripe fees deducted (2.9% + $0.30)</p>
+                    )}
+                  </div>
                 )}
               </div>
               
