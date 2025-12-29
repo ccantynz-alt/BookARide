@@ -2037,7 +2037,7 @@ def send_reminder_email(booking: dict):
                                 <strong>Your driver will be waiting for you in the Arrivals Hall.</strong>
                             </p>
                             <p style="margin: 0; font-size: 14px; line-height: 1.6;">
-                                {'<strong>' + driver_name + '</strong> will be holding an iPad displaying your name: <strong>' + customer_name + '</strong>' if driver_name else 'Your driver will be holding a <strong>BOOK A RIDE</strong> sign or an iPad with your name: <strong>' + customer_name + '</strong>'}
+                                Look for your driver holding either a <strong>BOOK A RIDE</strong> sign or an iPad displaying your name: <strong>{customer_name}</strong>
                             </p>
                         </div>
                         
