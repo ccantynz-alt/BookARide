@@ -1086,15 +1086,37 @@ export const AdminDashboard = () => {
     
     const driver = drivers.find(d => d.id === selectedDriver);
     const customerPrice = selectedBooking?.pricing?.totalPrice || 0;
+    const paymentStatus = (selectedBooking?.payment_status || '').toLowerCase();
+    const hasReturn = selectedBooking?.bookReturn || !!selectedBooking?.returnDate;
     
     // Calculate auto payout if no override
     let calculatedPayout;
     if (driverPayoutOverride && !isNaN(parseFloat(driverPayoutOverride))) {
       calculatedPayout = parseFloat(driverPayoutOverride);
     } else {
-      // Auto-calculate: Stripe fees only (2.9% + $0.30) - NO admin percentage
-      const stripeFee = (customerPrice * 0.029) + 0.30;
-      calculatedPayout = Math.round((customerPrice - stripeFee) * 100) / 100;
+      // Determine trip price (for return bookings, split the total)
+      let tripPrice = customerPrice;
+      if (hasReturn) {
+        // Use oneWayPrice if available, otherwise split evenly
+        const oneWayPrice = selectedBooking?.pricing?.oneWayPrice || selectedBooking?.pricing?.basePrice;
+        if (oneWayPrice) {
+          tripPrice = tripType === 'outbound' ? oneWayPrice : (customerPrice - oneWayPrice);
+        } else {
+          tripPrice = customerPrice / 2;
+        }
+      }
+      
+      // Check if pay-on-pickup (no Stripe fees)
+      const isCashPayment = ['pay-on-pickup', 'cash', 'pay_on_pickup', 'payonpickup'].includes(paymentStatus);
+      
+      if (isCashPayment) {
+        // No Stripe fees for cash
+        calculatedPayout = Math.round(tripPrice * 100) / 100;
+      } else {
+        // Auto-calculate: Stripe fees only (2.9% + $0.30) - NO admin percentage
+        const stripeFee = (tripPrice * 0.029) + 0.30;
+        calculatedPayout = Math.round((tripPrice - stripeFee) * 100) / 100;
+      }
     }
     
     setPendingAssignment({
@@ -1102,7 +1124,9 @@ export const AdminDashboard = () => {
       driver,
       driverPayout: calculatedPayout,
       isOverride: !!driverPayoutOverride,
-      customerPrice
+      customerPrice,
+      isCashPayment: ['pay-on-pickup', 'cash', 'pay_on_pickup', 'payonpickup'].includes(paymentStatus),
+      hasReturn
     });
     setShowDriverAssignPreview(true);
   };
