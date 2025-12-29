@@ -14,9 +14,17 @@ const ProfessionalStatsBar = ({ bookings = [], drivers = [], onRefresh }) => {
   const [systemHealth, setSystemHealth] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // Calculate stats from bookings
-  const today = new Date().toISOString().split('T')[0];
-  const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+  // Calculate stats from bookings - use LOCAL dates, not UTC
+  const getLocalDateString = (date) => {
+    const d = date || new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+  
+  const today = getLocalDateString(new Date());
+  const tomorrow = getLocalDateString(new Date(Date.now() + 86400000));
 
   const todayBookings = bookings.filter(b => (b.date || b.pickupDate) === today && b.status !== 'cancelled');
   const tomorrowBookings = bookings.filter(b => (b.date || b.pickupDate) === tomorrow && b.status !== 'cancelled');
