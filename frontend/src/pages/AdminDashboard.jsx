@@ -2208,10 +2208,40 @@ export const AdminDashboard = () => {
           {/* Bookings Tab */}
           <TabsContent value="bookings" className="space-y-6">
         
-        {/* DASHBOARD STATS PANEL - Executive overview */}
-        <DashboardStatsPanel bookings={bookings} drivers={drivers} />
+        {/* PROFESSIONAL STATS BAR - Clean white theme */}
+        <ProfessionalStatsBar bookings={bookings} drivers={drivers} />
         
-        {/* TODAY'S OPERATIONS - Unified view of all pickups including returns */}
+        {/* URGENT NOTIFICATIONS CENTER - Action required items */}
+        <UrgentNotificationsCenter 
+          bookings={bookings} 
+          drivers={drivers}
+          onAssignDriver={(booking) => {
+            setSelectedBooking(booking);
+            setShowBookingDetails(true);
+          }}
+          onViewBooking={(booking) => {
+            setSelectedBooking(booking);
+            setShowBookingDetails(true);
+          }}
+        />
+        
+        {/* Two Column Layout for Confirmations and Returns */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* CONFIRMATION STATUS PANEL - Track email/SMS confirmations */}
+          <ConfirmationStatusPanel bookings={bookings} />
+          
+          {/* RETURNS OVERVIEW PANEL - All upcoming returns */}
+          <ReturnsOverviewPanel 
+            bookings={bookings}
+            drivers={drivers}
+            onViewBooking={(booking) => {
+              setSelectedBooking(booking);
+              setShowBookingDetails(true);
+            }}
+          />
+        </div>
+        
+        {/* TODAY'S OPERATIONS - Unified view of all pickups */}
         <TodaysOperationsPanel 
           bookings={bookings} 
           onViewBooking={(booking) => {
@@ -2219,9 +2249,6 @@ export const AdminDashboard = () => {
             setShowBookingDetails(true);
           }}
         />
-        
-        {/* URGENT RETURNS PANEL - Shows upcoming return trips with departure alerts */}
-        <UrgentReturnsPanel />
         
         {/* Urgent Approval Alert Banner */}
         {stats.pendingApproval > 0 && (
