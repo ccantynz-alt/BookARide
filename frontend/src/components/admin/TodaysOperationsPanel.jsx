@@ -28,9 +28,17 @@ const formatDateShort = (dateString) => {
 const TodaysOperationsPanel = ({ bookings = [], onViewBooking, onAssignDriver, onStatusUpdate }) => {
   const [viewMode, setViewMode] = useState('today'); // 'today', 'tomorrow', 'all'
   
-  // Get today and tomorrow dates
-  const today = new Date().toISOString().split('T')[0];
-  const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+  // Get today and tomorrow dates using LOCAL time, not UTC
+  const getLocalDateString = (date) => {
+    const d = date || new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+  
+  const today = getLocalDateString(new Date());
+  const tomorrow = getLocalDateString(new Date(Date.now() + 86400000));
 
   // Process bookings to create unified pickup list (outbound + returns on their actual dates)
   const processedPickups = useMemo(() => {
