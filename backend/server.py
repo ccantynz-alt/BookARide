@@ -1077,26 +1077,26 @@ async def calculate_price(request: PriceCalculationRequest):
                 # Use the distance TO Hibiscus Coast (approx 40km from CBD)
                 distance_to_hibiscus = min(distance_km, hibiscus_coast_distance_km)
                 
-                # Calculate price for the distance to Hibiscus Coast using tiered rates (+20%)
+                # Calculate price for the distance to Hibiscus Coast using tiered rates (+11.11%)
                 if distance_to_hibiscus <= 15.0:
-                    rate_to_hibiscus = 14.40
+                    rate_to_hibiscus = 13.33
                 elif distance_to_hibiscus <= 15.8:
-                    rate_to_hibiscus = 9.60
+                    rate_to_hibiscus = 8.89
                 elif distance_to_hibiscus <= 16.0:
-                    rate_to_hibiscus = 7.20
+                    rate_to_hibiscus = 6.67
                 elif distance_to_hibiscus <= 25.5:
-                    rate_to_hibiscus = 6.60
+                    rate_to_hibiscus = 6.11
                 elif distance_to_hibiscus <= 35.0:
-                    rate_to_hibiscus = 6.00
+                    rate_to_hibiscus = 5.56
                 elif distance_to_hibiscus <= 50.0:
-                    rate_to_hibiscus = 4.80
+                    rate_to_hibiscus = 4.44
                 else:
-                    rate_to_hibiscus = 4.20
+                    rate_to_hibiscus = 3.89
                 
                 price_to_hibiscus = distance_to_hibiscus * rate_to_hibiscus
                 
-                # Total = km rate to Hibiscus Coast + $660 concert base (+20%) + extras
-                matakana_concert_base_adjusted = 660.0  # Was $550
+                # Total = km rate to Hibiscus Coast + $611 concert base (+11.11%) + extras
+                matakana_concert_base_adjusted = 611.0  # Was $550
                 total_price = price_to_hibiscus + matakana_concert_base_adjusted + airport_fee + oversized_luggage_fee + passenger_fee
                 
                 logger.info(f"🎵 Auckland → Matakana Country Park: {distance_to_hibiscus}km @ ${rate_to_hibiscus}/km = ${price_to_hibiscus:.2f} + ${matakana_concert_base_adjusted} = ${total_price:.2f}")
