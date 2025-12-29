@@ -15,8 +15,14 @@ const UrgentNotificationsCenter = ({ bookings = [], drivers = [], onAssignDriver
   const [loading, setLoading] = useState(false);
   const [sendingReminder, setSendingReminder] = useState(null);
 
-  const today = new Date().toISOString().split('T')[0];
-  const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+  // Helper for local date string
+  const getLocalDateString = (date) => {
+    const d = date || new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
+  const today = getLocalDateString(new Date());
+  const tomorrow = getLocalDateString(new Date(Date.now() + 86400000));
 
   // Get urgent items
   const unassignedToday = bookings.filter(b => 
