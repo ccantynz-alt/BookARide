@@ -1087,9 +1087,9 @@ async def calculate_price(request: PriceCalculationRequest):
                 total_price = price_to_hibiscus + matakana_concert_base_adjusted + airport_fee + oversized_luggage_fee + passenger_fee
                 
                 logger.info(f"🎵 Auckland → Matakana Country Park: {distance_to_hibiscus}km @ ${rate_to_hibiscus}/km = ${price_to_hibiscus:.2f} + ${matakana_concert_base_adjusted} = ${total_price:.2f}")
-        elif total_price < 100.0:
-            # Standard minimum of $100 for regular trips
-            total_price = 100.0
+        elif total_price < 120.0:
+            # Standard minimum of $120 for regular trips (was $100, +20%)
+            total_price = 120.0
         
         # Calculate Stripe processing fee (2.9% + $0.30 NZD) and add to customer total
         # This ensures drivers get the full base amount
