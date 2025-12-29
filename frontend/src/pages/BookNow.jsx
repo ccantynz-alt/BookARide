@@ -1152,9 +1152,46 @@ export const BookNow = () => {
                           </div>
                         </div>
                       ) : (
-                        <div className="text-center py-8 text-gray-500">
+                        <div className="text-center py-8">
                           <MapPin className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                          <p>Enter addresses to see price estimate</p>
+                          <p className="text-gray-500 mb-6">Enter addresses to see price estimate</p>
+                          
+                          {/* Promo Code Input - Always visible */}
+                          <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-4 border border-green-200 text-left">
+                            <p className="text-sm font-medium text-gray-700 mb-2">🎁 Have a promo code?</p>
+                            {promoApplied ? (
+                              <div className="flex items-center justify-between bg-white rounded-lg p-3 border border-green-300">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-green-600 font-bold">{promoApplied.code}</span>
+                                  <span className="text-sm text-green-600">✓ Ready to apply</span>
+                                </div>
+                                <button
+                                  onClick={handleRemovePromo}
+                                  className="text-red-500 hover:text-red-700 text-sm font-medium"
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex gap-2">
+                                <input
+                                  type="text"
+                                  value={promoCode}
+                                  onChange={(e) => {
+                                    setPromoCode(e.target.value.toUpperCase());
+                                    setPromoError('');
+                                  }}
+                                  placeholder="Enter code (e.g. WELCOME10)"
+                                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gold focus:border-gold"
+                                />
+                              </div>
+                            )}
+                            {promoCode && !promoApplied && (
+                              <p className="text-xs text-green-600 mt-2">
+                                ✓ Code saved - discount will apply when you get your quote
+                              </p>
+                            )}
+                          </div>
                         </div>
                       )}
 
