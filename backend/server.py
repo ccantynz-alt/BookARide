@@ -3777,36 +3777,30 @@ Date: {booking.get('returnDate', 'N/A')} at {booking.get('returnTime', 'N/A')}
                 reverse_stops.append(f"{len(reverse_stops) + 1}. {main_pickup} (FINAL DROP-OFF)")
                 
                 return_event = {
-                    'summary': f"🔄 RETURN: {customer_name} - {service_type}",
+                    'summary': f"{customer_name} ← Return from {eng['dropoff'].split(',')[0]}",
                     'location': eng['dropoff'],  # Return starts from original drop-off
-                    'description': f"""
+                    'description': f"""BOOKING #{ref_num} - RETURN
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🔄 RETURN TRIP
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Reference: #{ref_num} (RETURN)
-Date: {formatted_return_date}
-Pickup Time: {return_time}
 
-👤 CUSTOMER
-Name: {customer_name}
-Phone: {customer_phone}
-Email: {customer_email}
-Passengers: {passengers}
+CUSTOMER
+{customer_name}
+{customer_phone}
+{customer_email}
+{passengers} passenger(s)
 
-📍 PICKUP (Start of Return):
+PICKUP: {formatted_return_date} at {return_time}
 {eng['dropoff']}
 
-🛤️ DROP-OFF STOPS (Reverse Order):
+DROP-OFF STOPS
 {chr(10).join(reverse_stops)}
 
-💰 PAYMENT
-Total (both ways): ${total_price:.2f} NZD
-Status: {payment_status}
+PAYMENT
+${total_price:.2f} NZD (total both ways) - {payment_status}
 
-📝 NOTES: {notes}
+{f'NOTES: {notes}' if notes and notes.strip() else ''}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ℹ️ This is the RETURN leg of booking #{ref_num}
+Return leg of booking #{ref_num}
 Outbound was: {formatted_date} at {booking_time}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
                     """.strip(),
