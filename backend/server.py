@@ -3223,9 +3223,10 @@ async def send_urgent_approval_notification(booking: dict):
         email_sent = False
 
     # Also send SMS to admin for URGENT bookings (within 24 hours)
+    # Admin can reply YES to approve or NO to decline
     sms_sent = False
     try:
-        admin_phone = os.environ.get('ADMIN_PHONE', '+64212345678')
+        admin_phone = os.environ.get('ADMIN_PHONE', '+6421743321')
         twilio_sid = os.environ.get('TWILIO_ACCOUNT_SID')
         twilio_token = os.environ.get('TWILIO_AUTH_TOKEN')
         twilio_from = os.environ.get('TWILIO_PHONE_NUMBER')
@@ -3236,14 +3237,43 @@ async def send_urgent_approval_notification(booking: dict):
             formatted_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
             formatted_time = format_time_ampm(booking.get('time', 'N/A'))
             
-            sms_body = f"🚨 URGENT BookaRide: {booking.get('name')} needs approval for {formatted_date} {formatted_time} pickup. Ref: #{booking_ref}. Check admin dashboard NOW!"
+            # Truncate addresses for SMS
+            pickup = booking.get('pickupAddress', 'N/A')
+            dropoff = booking.get('dropoffAddress', 'N/A')
+            pickup_short = pickup[:50] + '...' if len(pickup) > 50 else pickup
+            dropoff_short = dropoff[:50] + '...' if len(dropoff) > 50 else dropoff
             
-            client.messages.create(
+            sms_body = f"""🚨 URGENT BOOKING #{booking_ref}
+
+Customer: {booking.get('name')}
+Phone: {booking.get('phone')}
+Date: {formatted_date}
+Time: {formatted_time}
+Pickup: {pickup_short}
+Dropoff: {dropoff_short}
+Price: ${booking.get('totalPrice', 0):.2f}
+
+⚠️ Reply YES to APPROVE or NO to DECLINE"""
+            
+            message = client.messages.create(
                 body=sms_body,
                 from_=twilio_from,
                 to=admin_phone
             )
-            logger.info(f"✅ Urgent SMS sent to admin for booking: #{booking_ref}")
+            logger.info(f"✅ Urgent SMS sent to admin {admin_phone} for booking: #{booking_ref} - SID: {message.sid}")
+            
+            # Store booking ID in database for SMS reply matching
+            await db.pending_approvals.update_one(
+                {"admin_phone": admin_phone},
+                {"$set": {
+                    "booking_id": booking.get('id'),
+                    "booking_ref": booking_ref,
+                    "customer_name": booking.get('name'),
+                    "created_at": datetime.now(timezone.utc).isoformat()
+                }},
+                upsert=True
+            )
+            
             sms_sent = True
         else:
             logger.warning("Twilio not configured - cannot send urgent SMS")
