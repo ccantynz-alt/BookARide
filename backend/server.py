@@ -8962,20 +8962,38 @@ async def driver_login(credentials: DriverLogin):
 
 @api_router.get("/drivers/{driver_id}/bookings")
 async def get_driver_bookings(driver_id: str, date: Optional[str] = None):
-    """Get bookings assigned to a driver with net payout (after Stripe + admin fees)"""
+    """Get bookings assigned to a driver with net payout (after Stripe fees for card payments)"""
     try:
         query = {"driver_id": driver_id}
         
         # Get all bookings for the driver (for weekly/upcoming view)
         all_bookings = await db.bookings.find(query, {"_id": 0}).to_list(1000)
         
-        # Calculate driver payout (customer price minus Stripe fees only - no admin percentage)
+        # Calculate driver payout for each booking
         for booking in all_bookings:
             customer_price = booking.get('pricing', {}).get('totalPrice', 0)
+            payment_status = booking.get('payment_status', '').lower()
+            has_return = booking.get('bookReturn') or bool(booking.get('returnDate'))
             
-            # Stripe fees only: 2.9% + $0.30 NZD
-            stripe_fee = (customer_price * 0.029) + 0.30
-            driver_payout = customer_price - stripe_fee
+            # For return bookings, this driver only gets half (outbound portion)
+            if has_return:
+                one_way_price = booking.get('pricing', {}).get('oneWayPrice') or booking.get('pricing', {}).get('basePrice')
+                if one_way_price:
+                    trip_price = one_way_price
+                else:
+                    trip_price = customer_price / 2
+            else:
+                trip_price = customer_price
+            
+            # No Stripe fees for cash/pay-on-pickup
+            is_cash_payment = payment_status in ['pay-on-pickup', 'cash', 'pay_on_pickup', 'payonpickup']
+            
+            if is_cash_payment:
+                driver_payout = trip_price
+            else:
+                # Stripe fees: 2.9% + $0.30 NZD
+                stripe_fee = (trip_price * 0.029) + 0.30
+                driver_payout = trip_price - stripe_fee
             
             booking['driver_price'] = round(driver_payout, 2)
             
