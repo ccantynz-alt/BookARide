@@ -226,6 +226,19 @@ class PricingBreakdown(BaseModel):
     subtotal: float = 0.0  # Price before Stripe fee
     totalPrice: float
     ratePerKm: Optional[float] = None  # Rate per km for transparency
+    promoCode: Optional[str] = None  # Applied promo code
+    promoDiscount: float = 0.0  # Discount amount from promo code
+
+# Valid promo codes configuration
+PROMO_CODES = {
+    "WELCOME10": {"discount_percent": 10, "description": "10% off your first ride"},
+    "SUMMER15": {"discount_percent": 15, "description": "Summer special 15% off"},
+    "VIP20": {"discount_percent": 20, "description": "VIP 20% discount"},
+}
+
+class PromoCodeValidation(BaseModel):
+    code: str
+    subtotal: float  # Price before discount to calculate discount amount
 
 class BookingCreate(BaseModel):
     serviceType: str
