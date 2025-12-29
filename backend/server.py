@@ -2174,18 +2174,45 @@ def send_reminder_sms(booking: dict):
         
         booking_ref = get_booking_reference(booking)
         formatted_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
+        formatted_time = format_time_ampm(booking.get('time', 'N/A'))
+        customer_name = booking.get('name', 'Customer')
+        driver_name = booking.get('driver_name', '')
         
-        message_body = f"""🔔 BookaRide Reminder
+        # Check if this is an airport pickup (international arrival)
+        pickup_address = booking.get('pickupAddress', '').lower()
+        is_airport_pickup = 'airport' in pickup_address or 'akl' in pickup_address or 'international' in pickup_address
+        
+        if is_airport_pickup:
+            # Professional airport pickup SMS with meeting point instructions
+            message_body = f"""BookaRide - Tomorrow
 
-Your ride is TOMORROW!
+{customer_name}, your transfer is confirmed for TOMORROW at {formatted_time}.
+
+MEETING POINT:
+{'Driver ' + driver_name + ' will hold an iPad with your name.' if driver_name else 'Driver will hold a BOOK A RIDE sign.'}
+
+DIRECTIONS:
+1. Exit Customs into Arrivals Hall
+2. TURN LEFT immediately  
+3. Walk to Allpress Espresso Café
+4. All drivers wait in front of the café
 
 Ref: {booking_ref}
+Questions? +64 21 743 321"""
+        else:
+            # Standard reminder SMS
+            message_body = f"""BookaRide - Tomorrow
+
+{customer_name}, your ride is confirmed for TOMORROW.
+
 Date: {formatted_date}
-Time: {booking.get('time', 'N/A')}
-Pickup: {booking.get('pickupAddress', 'N/A')[:50]}...
+Time: {formatted_time}
+Pickup: {booking.get('pickupAddress', 'N/A')[:60]}
+{f'Driver: {driver_name}' if driver_name else ''}
 
 Please be ready 5 mins early.
-Questions? Call +64 21 743 321"""
+Ref: {booking_ref}
+Questions? +64 21 743 321"""
         
         formatted_phone = format_nz_phone(booking.get('phone', ''))
         if not formatted_phone:
