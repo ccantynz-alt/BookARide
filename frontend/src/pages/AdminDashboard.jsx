@@ -2087,60 +2087,55 @@ export const AdminDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 pt-20">
-      {/* Header */}
-      <div className="bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white py-8">
+      {/* Professional Light Header */}
+      <div className="bg-white border-b border-gray-200 py-6">
         <div className="container mx-auto px-4">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-4xl font-bold mb-2">Admin Dashboard</h1>
-              <p className="text-white/70">Manage bookings and customer communications</p>
-              <p className="text-white/50 text-xs mt-1">v2024.12.08</p>
+              <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
+              <p className="text-gray-500 text-sm mt-1">Manage bookings and customer communications</p>
             </div>
             <div className="flex gap-2 flex-wrap">
-              <Button onClick={() => window.open('/', '_blank')} variant="outline" className="border-white text-white hover:bg-white hover:text-gray-900">
+              <Button onClick={() => window.open('/', '_blank')} variant="outline" size="sm">
                 <Home className="w-4 h-4 mr-2" />
                 View Site
               </Button>
-              <Button onClick={handleSyncContactsToiPhone} disabled={syncingContacts} variant="outline" className="border-white text-white hover:bg-white hover:text-gray-900">
+              <Button onClick={handleSyncContactsToiPhone} disabled={syncingContacts} variant="outline" size="sm">
                 <Smartphone className="w-4 h-4 mr-2" />
                 {syncingContacts ? 'Syncing...' : 'Sync to iPhone'}
               </Button>
-              <Button onClick={() => navigate('/driver/portal')} variant="outline" className="border-white text-white hover:bg-white hover:text-gray-900">
+              <Button onClick={() => navigate('/driver/portal')} variant="outline" size="sm">
                 <Users className="w-4 h-4 mr-2" />
                 Driver Portal
               </Button>
-              <Button onClick={() => navigate('/admin/seo')} variant="outline" className="border-white text-white hover:bg-white hover:text-gray-900">
+              <Button onClick={() => navigate('/admin/seo')} variant="outline" size="sm">
                 <Settings className="w-4 h-4 mr-2" />
                 SEO Management
-              </Button>
-              <Button onClick={() => navigate('/admin/facebook-strategy')} variant="outline" className="border-white text-white hover:bg-white hover:text-gray-900">
-                <Facebook className="w-4 h-4 mr-2" />
-                Facebook Strategy
               </Button>
               <Button 
                 onClick={handleSync} 
                 disabled={syncing}
                 variant="outline" 
-                className="border-white text-white hover:bg-white hover:text-gray-900"
+                size="sm"
               >
                 <RefreshCw className={`w-4 h-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
                 {syncing ? 'Syncing...' : 'Sync'}
               </Button>
               {xeroConnected ? (
-                <Button variant="outline" className="border-white text-white hover:bg-white hover:text-gray-900">
+                <Button variant="outline" size="sm" className="text-green-600 border-green-300">
                   <DollarSign className="w-4 h-4 mr-2" />
                   Xero: {xeroOrg || 'Connected'}
                 </Button>
               ) : (
-                <Button onClick={connectXero} variant="outline" className="border-white text-white hover:bg-white hover:text-gray-900">
+                <Button onClick={connectXero} variant="outline" size="sm">
                   <DollarSign className="w-4 h-4 mr-2" />
                   Connect Xero
                 </Button>
               )}
-              <Button onClick={() => setShowPasswordModal(true)} variant="outline" className="border-white text-white hover:bg-white hover:text-gray-900">
+              <Button onClick={() => setShowPasswordModal(true)} variant="outline" size="sm">
                 Change Password
               </Button>
-              <Button onClick={handleLogout} variant="outline" className="border-white text-white hover:bg-white hover:text-gray-900">
+              <Button onClick={handleLogout} variant="outline" size="sm" className="text-red-600 border-red-300 hover:bg-red-50">
                 <LogOut className="w-4 h-4 mr-2" />
                 Logout
               </Button>
