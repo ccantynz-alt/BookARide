@@ -2043,20 +2043,20 @@ def send_reminder_email(booking: dict):
                         
                         <div style="background: rgba(212,175,55,0.2); border-radius: 8px; padding: 15px; border-left: 4px solid #D4AF37;">
                             <p style="margin: 0 0 8px 0; font-size: 15px; font-weight: bold;">
-                                📍 DIRECTIONS TO MEETING POINT:
+                                DIRECTIONS TO MEETING POINT:
                             </p>
                             <ol style="margin: 0; padding-left: 20px; font-size: 14px; line-height: 1.8;">
                                 <li>After collecting your luggage, exit through the Customs doors</li>
                                 <li><strong>TURN LEFT</strong> immediately upon entering the Arrivals Hall</li>
-                                <li>Walk towards the <strong>Allpress Espresso Café</strong></li>
-                                <li>All drivers wait directly in front of the café</li>
+                                <li>Walk towards the <strong>Allpress Espresso Cafe</strong></li>
+                                <li>All drivers wait directly in front of the cafe</li>
                             </ol>
                         </div>
                         
                         <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.2);">
                             <p style="margin: 0; font-size: 13px; opacity: 0.9;">
-                                💡 <strong>Tip:</strong> If you turn RIGHT, you'll be heading towards the domestic terminal. 
-                                Turn LEFT to find your driver at the Allpress Café meeting point.
+                                <strong>Tip:</strong> If you turn RIGHT, you will be heading towards the domestic terminal. 
+                                Turn LEFT to find your driver at the Allpress Cafe meeting point.
                             </p>
                         </div>
                     </div>
