@@ -167,13 +167,19 @@ export const BookNow = () => {
       // If return trip is booked, double the price (round trip)
       const multiplier = formData.bookReturn ? 2 : 1;
       
+      // Calculate Stripe fee for the multiplied amount
+      const subtotal = response.data.subtotal * multiplier;
+      const stripeFee = (subtotal * 0.029) + 0.30;
+      
       setPricing({
         distance: response.data.distance * multiplier,
         basePrice: response.data.basePrice * multiplier,
         airportFee: response.data.airportFee * multiplier,
         oversizedLuggageFee: response.data.oversizedLuggageFee * multiplier,
         passengerFee: response.data.passengerFee * multiplier,
-        totalPrice: response.data.totalPrice * multiplier,
+        stripeFee: Math.round(stripeFee * 100) / 100,
+        subtotal: subtotal,
+        totalPrice: Math.round((subtotal + stripeFee) * 100) / 100,
         calculating: false
       });
     } catch (error) {
