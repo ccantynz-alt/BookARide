@@ -85,6 +85,8 @@ export const BookNow = () => {
     airportFee: 0,
     oversizedLuggageFee: 0,
     passengerFee: 0,
+    stripeFee: 0,
+    subtotal: 0,
     totalPrice: 0,
     calculating: false
   });
