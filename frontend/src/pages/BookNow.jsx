@@ -98,6 +98,18 @@ export const BookNow = () => {
   const [promoApplied, setPromoApplied] = useState(null);
   const [promoError, setPromoError] = useState('');
   const [applyingPromo, setApplyingPromo] = useState(false);
+  const [hasPromoFromPopup, setHasPromoFromPopup] = useState(false);
+
+  // Check for saved promo code from exit popup on mount
+  useEffect(() => {
+    const savedPromo = localStorage.getItem('promoCode');
+    if (savedPromo) {
+      setPromoCode(savedPromo);
+      setHasPromoFromPopup(true);
+      // Clear it so it doesn't persist forever
+      localStorage.removeItem('promoCode');
+    }
+  }, []);
 
   // Flight tracking states
   const [arrivalFlightData, setArrivalFlightData] = useState(null);
