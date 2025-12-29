@@ -268,10 +268,20 @@ class BookingCreate(BaseModel):
 
 class Booking(BookingCreate):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    referenceNumber: Optional[int] = None  # Sequential reference number starting from 10
+    referenceNumber: Optional[str] = None  # Sequential reference number (can be int stored as string or custom string like TEST-999)
     
     class Config:
         extra = 'allow'  # Allow extra fields from database (importedFrom, notificationsSent, etc.)
+    
+    @model_validator(mode='before')
+    @classmethod
+    def convert_reference_number(cls, data):
+        """Convert referenceNumber to string if it's an int"""
+        if isinstance(data, dict) and 'referenceNumber' in data:
+            ref = data['referenceNumber']
+            if ref is not None:
+                data['referenceNumber'] = str(ref)
+        return data
     
     @model_validator(mode='after')
     def validate_return_flight_for_airport_shuttle(self):
