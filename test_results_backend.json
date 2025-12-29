@@ -19,7 +19,7 @@
     {
       "test": "Customer Confirmation: Booking Creation",
       "status": "\u2705 PASS",
-      "message": "Booking created successfully: ID=1e33c96d-de55-4c4d-9192-32b8608dd11f, Ref=#127",
+      "message": "Booking created successfully: ID=bookmend, Ref=#127",
       "details": {},
       "timestamp": "2025-12-27T21:10:15.013924"
     },
