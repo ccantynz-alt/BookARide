@@ -1090,13 +1090,21 @@ async def calculate_price(request: PriceCalculationRequest):
             # Standard minimum of $100 for regular trips
             total_price = 100.0
         
+        # Calculate Stripe processing fee (2.9% + $0.30 NZD) and add to customer total
+        # This ensures drivers get the full base amount
+        subtotal = round(total_price, 2)
+        stripe_fee = round((subtotal * 0.029) + 0.30, 2)
+        total_with_stripe = round(subtotal + stripe_fee, 2)
+        
         return PricingBreakdown(
             distance=distance_km,
             basePrice=round(base_price, 2),
             airportFee=round(airport_fee, 2),
             oversizedLuggageFee=round(oversized_luggage_fee, 2),
             passengerFee=round(passenger_fee, 2),
-            totalPrice=round(total_price, 2),
+            stripeFee=stripe_fee,
+            subtotal=subtotal,
+            totalPrice=total_with_stripe,
             ratePerKm=round(rate_per_km, 2)
         )
     except Exception as e:
