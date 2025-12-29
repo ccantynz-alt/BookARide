@@ -88,8 +88,16 @@ export const BookNow = () => {
     stripeFee: 0,
     subtotal: 0,
     totalPrice: 0,
-    calculating: false
+    calculating: false,
+    promoCode: null,
+    promoDiscount: 0
   });
+
+  // Promo code state
+  const [promoCode, setPromoCode] = useState('');
+  const [promoApplied, setPromoApplied] = useState(null);
+  const [promoError, setPromoError] = useState('');
+  const [applyingPromo, setApplyingPromo] = useState(false);
 
   // Flight tracking states
   const [arrivalFlightData, setArrivalFlightData] = useState(null);
@@ -104,8 +112,8 @@ export const BookNow = () => {
     return total + (addOn?.price || 0);
   }, 0);
 
-  // Final total including add-ons
-  const finalTotal = pricing.totalPrice + addOnsTotal;
+  // Final total including add-ons and promo discount
+  const finalTotal = (promoApplied ? promoApplied.newTotal : pricing.totalPrice) + addOnsTotal;
 
   const serviceOptions = [
     { value: 'airport-shuttle', label: 'Airport Shuttle' },
