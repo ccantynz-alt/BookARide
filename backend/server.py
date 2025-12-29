@@ -2063,6 +2063,17 @@ def send_reminder_email(booking: dict):
                     </div>
             '''
         
+        # Pre-compute the ready reminder (only for non-airport pickups)
+        ready_reminder_html = ""
+        if not is_airport_pickup:
+            ready_reminder_html = '''
+                    <div style="background: #fff8e6; padding: 15px; border-radius: 8px; border-left: 4px solid #D4AF37; margin: 20px 0;">
+                        <p style="margin: 0; font-size: 14px; color: #666;">
+                            <strong>&#128205; Please be ready</strong> at your pickup location 5 minutes before your scheduled time.
+                        </p>
+                    </div>
+            '''
+        
         # Logo as inline SVG
         logo_svg = '''
             <svg width="50" height="50" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
