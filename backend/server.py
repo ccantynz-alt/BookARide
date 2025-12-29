@@ -3461,48 +3461,47 @@ async def send_driver_notification(booking: dict, driver: dict, trip_type: str =
         logger.info(f"📧 Formatted: date={formatted_date}, time={formatted_time}, ref={booking_ref}")
         
         # Calculate DRIVER PAYOUT
+        # Since Stripe fees are now added to the customer's total, drivers get the full subtotal
         # - For return bookings: outbound driver gets half, return driver gets half
-        # - For pay-on-pickup/cash: NO Stripe fees deducted
-        # - For card payments: Deduct Stripe fees (2.9% + $0.30)
+        # - For all payments: Driver gets the subtotal (price before Stripe fee was added to customer)
         
         # Check for manual override first
         if booking.get('driver_payout_override') is not None:
             driver_payout = float(booking.get('driver_payout_override'))
             logger.info(f"📧 Using manual driver payout override: ${driver_payout:.2f}")
         else:
-            total_price = booking.get('pricing', {}).get('totalPrice', 0) if isinstance(booking.get('pricing'), dict) else 0
-            payment_status = booking.get('payment_status', '').lower()
+            pricing = booking.get('pricing', {}) if isinstance(booking.get('pricing'), dict) else {}
+            # Use subtotal if available (price before Stripe fee), otherwise use totalPrice
+            # For older bookings without subtotal, calculate it by removing Stripe fee from total
+            subtotal = pricing.get('subtotal')
+            if subtotal is None:
+                total_price = pricing.get('totalPrice', 0)
+                # For legacy bookings, assume totalPrice includes Stripe fee, so calculate subtotal
+                # Stripe fee formula: fee = subtotal * 0.029 + 0.30
+                # So: total = subtotal + subtotal * 0.029 + 0.30 = subtotal * 1.029 + 0.30
+                # Therefore: subtotal = (total - 0.30) / 1.029
+                subtotal = (total_price - 0.30) / 1.029 if total_price > 0 else 0
+            
             has_return = booking.get('bookReturn') or bool(booking.get('returnDate'))
             
             # Determine the price for THIS trip (outbound or return)
             if has_return:
-                # For return bookings, split the total price between outbound and return
+                # For return bookings, split the subtotal between outbound and return
                 # Use oneWayPrice if explicitly set, otherwise split evenly
-                # Note: basePrice is price before additional fees, NOT one-way price
-                one_way_price = booking.get('pricing', {}).get('oneWayPrice')
+                one_way_price = pricing.get('oneWayPrice')
                 if one_way_price:
-                    trip_price = one_way_price if trip_type == 'outbound' else (total_price - one_way_price)
+                    trip_price = one_way_price if trip_type == 'outbound' else (subtotal - one_way_price)
                 else:
                     # Split evenly for return bookings without explicit oneWayPrice
-                    trip_price = total_price / 2
-                logger.info(f"📧 Return booking: {trip_type} trip price = ${trip_price:.2f} (total ${total_price})")
+                    trip_price = subtotal / 2
+                logger.info(f"📧 Return booking: {trip_type} trip price = ${trip_price:.2f} (subtotal ${subtotal:.2f})")
             else:
-                # One-way booking - use full price
-                trip_price = total_price
+                # One-way booking - use full subtotal
+                trip_price = subtotal
             
-            # Determine if Stripe fees apply
-            # Pay-on-pickup, cash payments = NO Stripe fees
-            is_cash_payment = payment_status in ['pay-on-pickup', 'cash', 'pay_on_pickup', 'payonpickup']
-            
-            if is_cash_payment:
-                # No Stripe fees for cash/pay-on-pickup
-                driver_payout = trip_price
-                logger.info(f"📧 Cash/pay-on-pickup: No Stripe fees deducted")
-            else:
-                # Deduct Stripe fees: 2.9% + $0.30 NZD
-                stripe_fee = (trip_price * 0.029) + 0.30
-                driver_payout = trip_price - stripe_fee
-                logger.info(f"📧 Card payment: Stripe fee ${stripe_fee:.2f} deducted")
+            # Driver gets the full trip price (Stripe fee is paid by customer on top)
+            driver_payout = round(trip_price, 2)
+            logger.info(f"📧 Driver gets full subtotal (customer pays Stripe fee separately)")
             
             # Round to 2 decimal places
             driver_payout = round(driver_payout, 2)
