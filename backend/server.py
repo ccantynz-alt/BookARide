@@ -3467,12 +3467,13 @@ async def send_driver_notification(booking: dict, driver: dict, trip_type: str =
             # Determine the price for THIS trip (outbound or return)
             if has_return:
                 # For return bookings, split the total price between outbound and return
-                # Try to use oneWayPrice if available, otherwise split evenly
-                one_way_price = booking.get('pricing', {}).get('oneWayPrice') or booking.get('pricing', {}).get('basePrice')
+                # Use oneWayPrice if explicitly set, otherwise split evenly
+                # Note: basePrice is price before additional fees, NOT one-way price
+                one_way_price = booking.get('pricing', {}).get('oneWayPrice')
                 if one_way_price:
                     trip_price = one_way_price if trip_type == 'outbound' else (total_price - one_way_price)
                 else:
-                    # Split evenly
+                    # Split evenly for return bookings without explicit oneWayPrice
                     trip_price = total_price / 2
                 logger.info(f"📧 Return booking: {trip_type} trip price = ${trip_price:.2f} (total ${total_price})")
             else:
