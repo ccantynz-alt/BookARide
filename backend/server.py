@@ -3710,39 +3710,32 @@ async def create_calendar_event(booking: dict):
         has_return = booking.get('bookReturn', False)
         
         outbound_event = {
-            'summary': f"🚗 OUTBOUND: {customer_name} - {service_type}" + (" (+ RETURN)" if has_return else ""),
+            'summary': f"{customer_name} → {eng['dropoff'].split(',')[0]}" + (" + Return" if has_return else ""),
             'location': main_pickup,
-            'description': f"""
+            'description': f"""BOOKING #{ref_num}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🚗 OUTBOUND TRIP
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Reference: #{ref_num}
-Date: {formatted_date}
-Pickup Time: {booking_time}
 
-👤 CUSTOMER
-Name: {customer_name}
-Phone: {customer_phone}
-Email: {customer_email}
-Passengers: {passengers}
+CUSTOMER
+{customer_name}
+{customer_phone}
+{customer_email}
+{passengers} passenger(s)
 
-📍 PICKUP LOCATIONS:
+PICKUP: {formatted_date} at {booking_time}
 {chr(10).join(pickup_list)}
 
-🏁 DROP-OFF:
+DROP-OFF
 {eng['dropoff']}
 
-💰 PAYMENT
-Total: ${total_price:.2f} NZD
-Status: {payment_status}
+PAYMENT
+${total_price:.2f} NZD - {payment_status}
 
-📝 NOTES: {notes}
+{f'NOTES: {notes}' if notes and notes.strip() else ''}
 {"" if not has_return else f'''
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-⚠️ THIS BOOKING HAS A RETURN TRIP
-Return Date: {booking.get('returnDate', 'N/A')}
-Return Time: {booking.get('returnTime', 'N/A')}
-(See separate calendar event for return)
+RETURN TRIP BOOKED
+Date: {booking.get('returnDate', 'N/A')} at {booking.get('returnTime', 'N/A')}
+(See separate calendar event)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'''}
             """.strip(),
             'start': {'dateTime': nz_dt.isoformat()},
