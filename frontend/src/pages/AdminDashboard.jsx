@@ -22,6 +22,10 @@ import { AdminBreadcrumb } from '../components/admin/AdminBreadcrumb';
 import UrgentReturnsPanel from '../components/admin/UrgentReturnsPanel';
 import DashboardStatsPanel from '../components/admin/DashboardStatsPanel';
 import TodaysOperationsPanel from '../components/admin/TodaysOperationsPanel';
+import ProfessionalStatsBar from '../components/admin/ProfessionalStatsBar';
+import UrgentNotificationsCenter from '../components/admin/UrgentNotificationsCenter';
+import ConfirmationStatusPanel from '../components/admin/ConfirmationStatusPanel';
+import ReturnsOverviewPanel from '../components/admin/ReturnsOverviewPanel';
 import { initAutocompleteWithFix } from '../utils/fixGoogleAutocomplete';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
