@@ -4896,10 +4896,10 @@ async def stripe_webhook(request: Request):
         raise HTTPException(status_code=500, detail=f"Error processing webhook: {str(e)}")
 
 
-# Twilio SMS Webhook - Driver Acknowledgment
+# Twilio SMS Webhook - Driver Acknowledgment AND Admin Approval
 @api_router.post("/webhook/twilio/sms")
 async def twilio_sms_webhook(request: Request):
-    """Handle incoming SMS replies from drivers for job acknowledgment"""
+    """Handle incoming SMS replies from drivers for job acknowledgment AND admin for urgent approval"""
     try:
         # Parse the form data from Twilio
         form_data = await request.form()
@@ -4908,7 +4908,120 @@ async def twilio_sms_webhook(request: Request):
         
         logger.info(f"📱 Incoming SMS from {from_number}: {message_body}")
         
-        # Check if this is a "YES" acknowledgment
+        # Get admin phone number
+        admin_phone = os.environ.get('ADMIN_PHONE', '+6421743321')
+        normalized_admin = admin_phone.replace('+64', '0').replace(' ', '').replace('-', '')
+        normalized_from = from_number.replace('+64', '0').replace(' ', '').replace('-', '')
+        if normalized_from.startswith('64'):
+            normalized_from = '0' + normalized_from[2:]
+        if normalized_admin.startswith('64'):
+            normalized_admin = '0' + normalized_admin[2:]
+        
+        # Check if this is from admin for urgent booking approval
+        is_admin = (normalized_from == normalized_admin or from_number == admin_phone)
+        
+        if is_admin and message_body in ['YES', 'Y', 'YEP', 'CONFIRM', 'APPROVE', 'OK', 'OKAY', 'ACCEPTED']:
+            # Admin is approving an urgent booking
+            pending = await db.pending_approvals.find_one({"admin_phone": admin_phone}, {"_id": 0})
+            
+            if pending:
+                booking_id = pending.get('booking_id')
+                booking_ref = pending.get('booking_ref')
+                customer_name = pending.get('customer_name')
+                
+                # Approve the booking
+                await db.bookings.update_one(
+                    {"id": booking_id},
+                    {"$set": {
+                        "status": "confirmed",
+                        "approved_by": "admin_sms",
+                        "approved_at": datetime.now(timezone.utc).isoformat()
+                    }}
+                )
+                
+                # Get booking and send confirmation to customer
+                booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+                if booking:
+                    # Send customer confirmation
+                    send_customer_confirmation(booking)
+                    # Create calendar event
+                    await create_calendar_event(booking)
+                
+                # Clear the pending approval
+                await db.pending_approvals.delete_one({"admin_phone": admin_phone})
+                
+                logger.info(f"✅ Admin approved booking #{booking_ref} ({customer_name}) via SMS")
+                
+                # Send confirmation SMS back to admin
+                try:
+                    twilio_sid = os.environ.get('TWILIO_ACCOUNT_SID')
+                    twilio_token = os.environ.get('TWILIO_AUTH_TOKEN')
+                    twilio_from = os.environ.get('TWILIO_PHONE_NUMBER')
+                    if twilio_sid and twilio_token:
+                        client = Client(twilio_sid, twilio_token)
+                        client.messages.create(
+                            body=f"✅ Booking #{booking_ref} for {customer_name} APPROVED! Customer confirmation sent.",
+                            from_=twilio_from,
+                            to=admin_phone
+                        )
+                except Exception as e:
+                    logger.error(f"Failed to send admin confirmation SMS: {e}")
+                
+                return Response(content='<?xml version="1.0" encoding="UTF-8"?><Response></Response>', media_type="application/xml")
+            else:
+                logger.warning(f"Admin SMS approval received but no pending booking found")
+                return Response(content='<?xml version="1.0" encoding="UTF-8"?><Response></Response>', media_type="application/xml")
+        
+        elif is_admin and message_body in ['NO', 'N', 'NOPE', 'DECLINE', 'REJECT', 'CANCEL', 'REJECTED']:
+            # Admin is declining an urgent booking
+            pending = await db.pending_approvals.find_one({"admin_phone": admin_phone}, {"_id": 0})
+            
+            if pending:
+                booking_id = pending.get('booking_id')
+                booking_ref = pending.get('booking_ref')
+                customer_name = pending.get('customer_name')
+                
+                # Get booking details before rejecting
+                booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+                
+                # Reject/cancel the booking
+                await db.bookings.update_one(
+                    {"id": booking_id},
+                    {"$set": {
+                        "status": "cancelled",
+                        "cancellationReason": "Declined by admin - unable to accommodate last-minute request",
+                        "cancelled_by": "admin_sms",
+                        "cancelled_at": datetime.now(timezone.utc).isoformat()
+                    }}
+                )
+                
+                # Send cancellation email to customer if booking exists
+                if booking:
+                    await send_cancellation_notification(booking, "Unable to accommodate last-minute booking request")
+                
+                # Clear the pending approval
+                await db.pending_approvals.delete_one({"admin_phone": admin_phone})
+                
+                logger.info(f"❌ Admin declined booking #{booking_ref} ({customer_name}) via SMS")
+                
+                # Send confirmation SMS back to admin
+                try:
+                    twilio_sid = os.environ.get('TWILIO_ACCOUNT_SID')
+                    twilio_token = os.environ.get('TWILIO_AUTH_TOKEN')
+                    twilio_from = os.environ.get('TWILIO_PHONE_NUMBER')
+                    if twilio_sid and twilio_token:
+                        client = Client(twilio_sid, twilio_token)
+                        client.messages.create(
+                            body=f"❌ Booking #{booking_ref} for {customer_name} DECLINED. Customer notified.",
+                            from_=twilio_from,
+                            to=admin_phone
+                        )
+                except Exception as e:
+                    logger.error(f"Failed to send admin decline confirmation SMS: {e}")
+                
+                return Response(content='<?xml version="1.0" encoding="UTF-8"?><Response></Response>', media_type="application/xml")
+        
+        # Otherwise, check if this is a driver acknowledgment
         if message_body in ['YES', 'Y', 'YEP', 'CONFIRM', 'CONFIRMED', 'OK', 'OKAY', 'ACCEPTED']:
             # Normalize the phone number for matching
             normalized_phone = from_number.replace('+64', '0').replace(' ', '')
