@@ -1355,6 +1355,7 @@ async def get_bookings(
                 return (2, date, time)  # Past dates last
         
         all_bookings.sort(key=sort_key)
+        logger.info(f"Today: {today_str}, First 3 bookings after sort: {[b.get('date') for b in all_bookings[:3]]}")
         
         # Apply pagination
         bookings = all_bookings[skip:skip + limit]
