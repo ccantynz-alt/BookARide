@@ -8972,7 +8972,7 @@ async def driver_login(credentials: DriverLogin):
 
 @api_router.get("/drivers/{driver_id}/bookings")
 async def get_driver_bookings(driver_id: str, date: Optional[str] = None):
-    """Get bookings assigned to a driver with net payout (after Stripe fees for card payments)"""
+    """Get bookings assigned to a driver with payout (driver gets full subtotal, customer pays Stripe fee)"""
     try:
         query = {"driver_id": driver_id}
         
@@ -8981,32 +8981,29 @@ async def get_driver_bookings(driver_id: str, date: Optional[str] = None):
         
         # Calculate driver payout for each booking
         for booking in all_bookings:
-            customer_price = booking.get('pricing', {}).get('totalPrice', 0)
-            payment_status = booking.get('payment_status', '').lower()
+            pricing = booking.get('pricing', {})
+            # Use subtotal if available (price before Stripe fee), otherwise calculate from total
+            subtotal = pricing.get('subtotal')
+            if subtotal is None:
+                total_price = pricing.get('totalPrice', 0)
+                # For legacy bookings, calculate subtotal from total
+                subtotal = (total_price - 0.30) / 1.029 if total_price > 0 else 0
+            
             has_return = booking.get('bookReturn') or bool(booking.get('returnDate'))
             
             # For return bookings, this driver only gets half (outbound portion)
             if has_return:
                 # Use oneWayPrice if explicitly set, otherwise split evenly
-                one_way_price = booking.get('pricing', {}).get('oneWayPrice')
+                one_way_price = pricing.get('oneWayPrice')
                 if one_way_price:
                     trip_price = one_way_price
                 else:
-                    trip_price = customer_price / 2
+                    trip_price = subtotal / 2
             else:
-                trip_price = customer_price
+                trip_price = subtotal
             
-            # No Stripe fees for cash/pay-on-pickup
-            is_cash_payment = payment_status in ['pay-on-pickup', 'cash', 'pay_on_pickup', 'payonpickup']
-            
-            if is_cash_payment:
-                driver_payout = trip_price
-            else:
-                # Stripe fees: 2.9% + $0.30 NZD
-                stripe_fee = (trip_price * 0.029) + 0.30
-                driver_payout = trip_price - stripe_fee
-            
-            booking['driver_price'] = round(driver_payout, 2)
+            # Driver gets the full trip price (Stripe fee is paid by customer)
+            booking['driver_price'] = round(trip_price, 2)
             
             # Remove the full pricing details from response (drivers shouldn't see original price)
             if 'pricing' in booking:
