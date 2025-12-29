@@ -13,9 +13,15 @@ const ReturnsOverviewPanel = ({ bookings = [], drivers = [], onAssignDriver, onV
   const [urgentReturns, setUrgentReturns] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const today = new Date().toISOString().split('T')[0];
-  const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
-  const nextWeek = new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0];
+  // Helper for local date string
+  const getLocalDateString = (date) => {
+    const d = date || new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
+  const today = getLocalDateString(new Date());
+  const tomorrow = getLocalDateString(new Date(Date.now() + 86400000));
+  const nextWeek = getLocalDateString(new Date(Date.now() + 7 * 86400000));
 
   // Get all returns (today, tomorrow, and upcoming)
   const allReturns = bookings.filter(b => 
