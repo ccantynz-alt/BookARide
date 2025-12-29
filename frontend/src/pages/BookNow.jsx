@@ -191,10 +191,16 @@ export const BookNow = () => {
         calculating: false
       });
       
-      // Reset promo if price changes
-      setPromoApplied(null);
-      setPromoCode('');
-      setPromoError('');
+      // Auto-apply promo code if one was entered before price calculation
+      if (promoCode.trim() && !promoApplied) {
+        // Delay slightly to ensure state is updated
+        setTimeout(() => {
+          handleApplyPromoWithSubtotal(promoCode.trim(), subtotal);
+        }, 100);
+      } else {
+        // Reset promo if price changes and there's no pending code
+        setPromoApplied(null);
+      }
     } catch (error) {
       console.error('Error calculating price:', error);
       setPricing(prev => ({ ...prev, calculating: false }));
@@ -202,7 +208,29 @@ export const BookNow = () => {
     }
   };
 
-  // Apply promo code
+  // Apply promo code with specific subtotal (for auto-apply after price calc)
+  const handleApplyPromoWithSubtotal = async (code, subtotal) => {
+    setApplyingPromo(true);
+    setPromoError('');
+    
+    try {
+      const response = await axios.post(`${API}/validate-promo`, {
+        code: code,
+        subtotal: subtotal
+      });
+      
+      setPromoApplied(response.data);
+      toast.success(`Promo code applied! You saved $${response.data.discountAmount.toFixed(2)}`);
+    } catch (error) {
+      const message = error.response?.data?.detail || 'Invalid promo code';
+      setPromoError(message);
+      setPromoApplied(null);
+    } finally {
+      setApplyingPromo(false);
+    }
+  };
+
+  // Apply promo code (manual button click)
   const handleApplyPromo = async () => {
     if (!promoCode.trim()) {
       setPromoError('Please enter a promo code');
@@ -210,7 +238,7 @@ export const BookNow = () => {
     }
     
     if (pricing.subtotal <= 0) {
-      setPromoError('Please calculate your trip price first');
+      setPromoError('Get a quote first, then your code will be applied automatically');
       return;
     }
     
