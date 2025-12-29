@@ -1094,31 +1094,27 @@ export const AdminDashboard = () => {
     if (driverPayoutOverride && !isNaN(parseFloat(driverPayoutOverride))) {
       calculatedPayout = parseFloat(driverPayoutOverride);
     } else {
-      // Determine trip price (for return bookings, split the total)
-      let tripPrice = customerPrice;
+      // Use subtotal (price before Stripe fee) if available, otherwise calculate from total
+      // Stripe fee formula: total = subtotal * 1.029 + 0.30
+      // Therefore: subtotal = (total - 0.30) / 1.029
+      const subtotal = selectedBooking?.pricing?.subtotal || 
+        ((customerPrice - 0.30) / 1.029);
+      
+      // Determine trip price (for return bookings, split the subtotal)
+      let tripPrice = subtotal;
       if (hasReturn) {
         // Use oneWayPrice if explicitly set, otherwise split evenly
-        // Note: basePrice is the price before additional fees, NOT the one-way price
         const oneWayPrice = selectedBooking?.pricing?.oneWayPrice;
         if (oneWayPrice) {
-          tripPrice = tripType === 'outbound' ? oneWayPrice : (customerPrice - oneWayPrice);
+          tripPrice = tripType === 'outbound' ? oneWayPrice : (subtotal - oneWayPrice);
         } else {
           // Split evenly for return bookings without explicit oneWayPrice
-          tripPrice = customerPrice / 2;
+          tripPrice = subtotal / 2;
         }
       }
       
-      // Check if pay-on-pickup (no Stripe fees)
-      const isCashPayment = ['pay-on-pickup', 'cash', 'pay_on_pickup', 'payonpickup'].includes(paymentStatus);
-      
-      if (isCashPayment) {
-        // No Stripe fees for cash
-        calculatedPayout = Math.round(tripPrice * 100) / 100;
-      } else {
-        // Auto-calculate: Stripe fees only (2.9% + $0.30) - NO admin percentage
-        const stripeFee = (tripPrice * 0.029) + 0.30;
-        calculatedPayout = Math.round((tripPrice - stripeFee) * 100) / 100;
-      }
+      // Driver gets the full trip price (customer pays Stripe fee separately)
+      calculatedPayout = Math.round(tripPrice * 100) / 100;
     }
     
     setPendingAssignment({
@@ -1127,8 +1123,9 @@ export const AdminDashboard = () => {
       driverPayout: calculatedPayout,
       isOverride: !!driverPayoutOverride,
       customerPrice,
-      isCashPayment: ['pay-on-pickup', 'cash', 'pay_on_pickup', 'payonpickup'].includes(paymentStatus),
-      hasReturn
+      hasReturn,
+      // Stripe fee is now paid by customer, so no fee info needed
+      customerPaysStripeFee: true
     });
     setShowDriverAssignPreview(true);
   };
