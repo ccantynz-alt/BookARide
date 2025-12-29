@@ -1925,6 +1925,7 @@ def send_customer_confirmation(booking: dict):
     """Send confirmation based on customer's notification preference"""
     preference = booking.get('notificationPreference', 'both')
     results = {'email': False, 'sms': False}
+    booking_id = booking.get('id')
     
     if preference in ['email', 'both']:
         results['email'] = send_booking_confirmation_email(booking)
@@ -1939,7 +1940,42 @@ def send_customer_confirmation(booking: dict):
     elif preference == 'sms':
         logger.info(f"Customer prefers SMS only - skipping email for booking {get_booking_reference(booking)}")
     
+    # Update database with confirmation status
+    if booking_id:
+        try:
+            import asyncio
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # We're in an async context, use create_task
+                asyncio.create_task(update_confirmation_status(booking_id, results))
+            else:
+                loop.run_until_complete(update_confirmation_status(booking_id, results))
+        except Exception as e:
+            logger.error(f"Error updating confirmation status: {e}")
+    
     return results
+
+async def update_confirmation_status(booking_id: str, results: dict):
+    """Update booking with confirmation status"""
+    try:
+        nz_tz = pytz.timezone('Pacific/Auckland')
+        now = datetime.now(nz_tz).isoformat()
+        
+        update_data = {
+            'confirmation_sent': results['email'] or results['sms'],
+            'confirmation_sent_at': now,
+            'email_confirmation_sent': results['email'],
+            'sms_confirmation_sent': results['sms'],
+            'notifications_sent': True
+        }
+        
+        await db.bookings.update_one(
+            {"id": booking_id},
+            {"$set": update_data}
+        )
+        logger.info(f"✅ Confirmation status updated for booking {booking_id}")
+    except Exception as e:
+        logger.error(f"Error updating confirmation status: {e}")
 
 
 def send_reminder_email(booking: dict):
