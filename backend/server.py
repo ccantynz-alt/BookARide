@@ -1340,8 +1340,8 @@ async def get_bookings(
         now_nz = datetime.now(nz_tz)
         today_str = now_nz.strftime('%Y-%m-%d')
         
-        # Fetch ALL matching bookings to sort properly
-        all_bookings = await db.bookings.find(query, {"_id": 0}).to_list(1000)
+        # Fetch ALL matching bookings to sort properly (needed for smart date ordering)
+        all_bookings = await db.bookings.find(query, {"_id": 0}).to_list(None)
         
         # Custom sort: prioritize today, then tomorrow, then upcoming dates, then past dates
         def sort_key(b):
