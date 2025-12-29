@@ -232,8 +232,6 @@ class PricingBreakdown(BaseModel):
 # Valid promo codes configuration
 PROMO_CODES = {
     "WELCOME10": {"discount_percent": 10, "description": "10% off your first ride"},
-    "SUMMER15": {"discount_percent": 15, "description": "Summer special 15% off"},
-    "VIP20": {"discount_percent": 20, "description": "VIP 20% discount"},
 }
 
 class PromoCodeValidation(BaseModel):
