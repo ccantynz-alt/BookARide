@@ -2189,7 +2189,7 @@ def send_reminder_sms(booking: dict):
 {customer_name}, your transfer is confirmed for TOMORROW at {formatted_time}.
 
 MEETING POINT:
-{'Driver ' + driver_name + ' will hold an iPad with your name.' if driver_name else 'Driver will hold a BOOK A RIDE sign.'}
+Your driver will hold either a BOOK A RIDE sign or an iPad with your name.
 
 DIRECTIONS:
 1. Exit Customs into Arrivals Hall
