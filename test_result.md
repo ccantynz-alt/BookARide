@@ -35,6 +35,18 @@ backend:
         agent: "main"
         comment: "✅ Verified PATCH /api/drivers/{id}/assign?booking_id={id}&trip_type=outbound works. Assigned Craig Canty to booking successfully."
 
+  - task: "Driver Payout Calculation - Return Bookings & Pay-on-Pickup"
+    implemented: true
+    working: true
+    file: "server.py, AdminDashboard.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "✅ Fixed driver payout calculation: (1) Return bookings now split total evenly between outbound/return trips; (2) Pay-on-pickup/cash payments no longer deduct Stripe fees. Verified with Karen Kennedy return booking showing $150.81 and Simon Sheppard pay-on-pickup showing $951."
+
   - task: "Pricing Calculation with ratePerKm - Long Trip"
     implemented: true
     working: true
