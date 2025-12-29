@@ -3450,23 +3450,53 @@ async def send_driver_notification(booking: dict, driver: dict, trip_type: str =
         
         logger.info(f"📧 Formatted: date={formatted_date}, time={formatted_time}, ref={booking_ref}")
         
-        # Calculate DRIVER PAYOUT (deduct Stripe fees only - no admin percentage)
-        # Drivers get the full amount minus Stripe processing fees
+        # Calculate DRIVER PAYOUT
+        # - For return bookings: outbound driver gets half, return driver gets half
+        # - For pay-on-pickup/cash: NO Stripe fees deducted
+        # - For card payments: Deduct Stripe fees (2.9% + $0.30)
+        
         # Check for manual override first
         if booking.get('driver_payout_override') is not None:
             driver_payout = float(booking.get('driver_payout_override'))
             logger.info(f"📧 Using manual driver payout override: ${driver_payout:.2f}")
         else:
             total_price = booking.get('pricing', {}).get('totalPrice', 0) if isinstance(booking.get('pricing'), dict) else 0
+            payment_status = booking.get('payment_status', '').lower()
+            has_return = booking.get('bookReturn') or bool(booking.get('returnDate'))
             
-            # Stripe fees only: 2.9% + $0.30 NZD
-            stripe_fee = (total_price * 0.029) + 0.30
-            driver_payout = total_price - stripe_fee
+            # Determine the price for THIS trip (outbound or return)
+            if has_return:
+                # For return bookings, split the total price between outbound and return
+                # Try to use oneWayPrice if available, otherwise split evenly
+                one_way_price = booking.get('pricing', {}).get('oneWayPrice') or booking.get('pricing', {}).get('basePrice')
+                if one_way_price:
+                    trip_price = one_way_price if trip_type == 'outbound' else (total_price - one_way_price)
+                else:
+                    # Split evenly
+                    trip_price = total_price / 2
+                logger.info(f"📧 Return booking: {trip_type} trip price = ${trip_price:.2f} (total ${total_price})")
+            else:
+                # One-way booking - use full price
+                trip_price = total_price
+            
+            # Determine if Stripe fees apply
+            # Pay-on-pickup, cash payments = NO Stripe fees
+            is_cash_payment = payment_status in ['pay-on-pickup', 'cash', 'pay_on_pickup', 'payonpickup']
+            
+            if is_cash_payment:
+                # No Stripe fees for cash/pay-on-pickup
+                driver_payout = trip_price
+                logger.info(f"📧 Cash/pay-on-pickup: No Stripe fees deducted")
+            else:
+                # Deduct Stripe fees: 2.9% + $0.30 NZD
+                stripe_fee = (trip_price * 0.029) + 0.30
+                driver_payout = trip_price - stripe_fee
+                logger.info(f"📧 Card payment: Stripe fee ${stripe_fee:.2f} deducted")
             
             # Round to 2 decimal places
             driver_payout = round(driver_payout, 2)
         
-        logger.info(f"📧 Driver Payout: ${driver_payout:.2f} (Stripe fee only, no admin %)")
+        logger.info(f"📧 Driver Payout: ${driver_payout:.2f} for {trip_type} trip")
         
         # Send Email to Driver
         mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
