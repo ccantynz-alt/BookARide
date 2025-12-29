@@ -1012,27 +1012,27 @@ async def calculate_price(request: PriceCalculationRequest):
                 # From elsewhere - calculate distance to Hibiscus Coast and add $550
                 logger.info(f"🎵 CONCERT PRICING: {distance_km}km total, charging to Hibiscus Coast + ${matakana_concert_base} concert transfer")
         
-        # Standard tiered pricing
+        # Standard tiered pricing (rates include 20% buffer for promo codes)
         if distance_km <= 15.0:
-            rate_per_km = 12.00  # $12.00 per km for 0-15km
+            rate_per_km = 14.40  # $14.40 per km for 0-15km (was $12.00)
         elif distance_km <= 15.8:
-            rate_per_km = 8.00   # $8.00 per km for 15-15.8km
+            rate_per_km = 9.60   # $9.60 per km for 15-15.8km (was $8.00)
         elif distance_km <= 16.0:
-            rate_per_km = 6.00   # $6.00 per km for 15.8-16km
+            rate_per_km = 7.20   # $7.20 per km for 15.8-16km (was $6.00)
         elif distance_km <= 25.5:
-            rate_per_km = 5.50   # $5.50 per km for 16-25.5km
+            rate_per_km = 6.60   # $6.60 per km for 16-25.5km (was $5.50)
         elif distance_km <= 35.0:
-            rate_per_km = 5.00   # $5.00 per km for 25.5-35km
+            rate_per_km = 6.00   # $6.00 per km for 25.5-35km (was $5.00)
         elif distance_km <= 50.0:
-            rate_per_km = 4.00   # $4.00 per km for 35-50km
+            rate_per_km = 4.80   # $4.80 per km for 35-50km (was $4.00)
         elif distance_km <= 60.0:
-            rate_per_km = 2.60   # $2.60 per km for 50-60km
+            rate_per_km = 3.12   # $3.12 per km for 50-60km (was $2.60)
         elif distance_km <= 75.0:
-            rate_per_km = 2.47   # $2.47 per km for 60-75km
+            rate_per_km = 2.96   # $2.96 per km for 60-75km (was $2.47)
         elif distance_km <= 100.0:
-            rate_per_km = 2.70   # $2.70 per km for 75-100km
+            rate_per_km = 3.24   # $3.24 per km for 75-100km (was $2.70)
         else:
-            rate_per_km = 3.50   # $3.50 per km for 100km+
+            rate_per_km = 4.20   # $4.20 per km for 100km+ (was $3.50)
         
         # Calculate base price: distance × rate for that bracket
         base_price = distance_km * rate_per_km
