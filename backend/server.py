@@ -5005,7 +5005,7 @@ async def twilio_sms_webhook(request: Request):
                 
                 # Send cancellation email to customer if booking exists
                 if booking:
-                    await send_cancellation_notification(booking, "Unable to accommodate last-minute booking request")
+                    await send_cancellation_notifications(booking)
                 
                 # Clear the pending approval
                 await db.pending_approvals.delete_one({"admin_phone": admin_phone})
