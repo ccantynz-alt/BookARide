@@ -190,11 +190,55 @@ export const BookNow = () => {
         totalPrice: Math.round((subtotal + stripeFee) * 100) / 100,
         calculating: false
       });
+      
+      // Reset promo if price changes
+      setPromoApplied(null);
+      setPromoCode('');
+      setPromoError('');
     } catch (error) {
       console.error('Error calculating price:', error);
       setPricing(prev => ({ ...prev, calculating: false }));
       toast.error('Unable to calculate distance. Please check addresses.');
     }
+  };
+
+  // Apply promo code
+  const handleApplyPromo = async () => {
+    if (!promoCode.trim()) {
+      setPromoError('Please enter a promo code');
+      return;
+    }
+    
+    if (pricing.subtotal <= 0) {
+      setPromoError('Please calculate your trip price first');
+      return;
+    }
+    
+    setApplyingPromo(true);
+    setPromoError('');
+    
+    try {
+      const response = await axios.post(`${API}/validate-promo`, {
+        code: promoCode.trim(),
+        subtotal: pricing.subtotal
+      });
+      
+      setPromoApplied(response.data);
+      toast.success(`Promo code applied! You saved $${response.data.discountAmount.toFixed(2)}`);
+    } catch (error) {
+      const message = error.response?.data?.detail || 'Invalid promo code';
+      setPromoError(message);
+      setPromoApplied(null);
+    } finally {
+      setApplyingPromo(false);
+    }
+  };
+
+  // Remove promo code
+  const handleRemovePromo = () => {
+    setPromoApplied(null);
+    setPromoCode('');
+    setPromoError('');
   };
 
   const handleChange = (e) => {
