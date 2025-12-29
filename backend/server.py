@@ -1940,23 +1940,35 @@ def send_customer_confirmation(booking: dict):
     elif preference == 'sms':
         logger.info(f"Customer prefers SMS only - skipping email for booking {get_booking_reference(booking)}")
     
-    # Update database with confirmation status
+    # Update database with confirmation status (sync version)
     if booking_id:
         try:
-            import asyncio
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                # We're in an async context, use create_task
-                asyncio.create_task(update_confirmation_status(booking_id, results))
-            else:
-                loop.run_until_complete(update_confirmation_status(booking_id, results))
+            from pymongo import MongoClient
+            sync_client = MongoClient(os.environ.get('MONGO_URL', 'mongodb://localhost:27017'))
+            sync_db = sync_client[os.environ.get('DB_NAME', 'test_database')]
+            
+            nz_tz = pytz.timezone('Pacific/Auckland')
+            now = datetime.now(nz_tz).isoformat()
+            
+            sync_db.bookings.update_one(
+                {"id": booking_id},
+                {"$set": {
+                    'confirmation_sent': results['email'] or results['sms'],
+                    'confirmation_sent_at': now,
+                    'email_confirmation_sent': results['email'],
+                    'sms_confirmation_sent': results['sms'],
+                    'notifications_sent': True
+                }}
+            )
+            sync_client.close()
+            logger.info(f"✅ Confirmation status updated for booking {booking_id}")
         except Exception as e:
             logger.error(f"Error updating confirmation status: {e}")
     
     return results
 
 async def update_confirmation_status(booking_id: str, results: dict):
-    """Update booking with confirmation status"""
+    """Update booking with confirmation status - ASYNC VERSION (deprecated, use sync in send_customer_confirmation)"""
     try:
         nz_tz = pytz.timezone('Pacific/Auckland')
         now = datetime.now(nz_tz).isoformat()
