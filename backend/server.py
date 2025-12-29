@@ -1325,8 +1325,8 @@ async def get_bookings(
         # Get total count for pagination info
         total = await db.bookings.count_documents(query)
         
-        # Fetch bookings with pagination - sort by date descending (upcoming first)
-        bookings = await db.bookings.find(query, {"_id": 0}).sort("date", -1).skip(skip).limit(limit).to_list(limit)
+        # Fetch bookings with pagination - sort by date ascending (soonest first for operations)
+        bookings = await db.bookings.find(query, {"_id": 0}).sort("date", 1).skip(skip).limit(limit).to_list(limit)
         
         # Add pagination headers via response
         logger.info(f"Fetched {len(bookings)} bookings (page {page}, total {total})")
