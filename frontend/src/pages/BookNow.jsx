@@ -964,6 +964,30 @@ export const BookNow = () => {
                             )}
                           </div>
                           
+                          {/* Price Breakdown */}
+                          <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm">
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Trip fare</span>
+                              <span className="font-medium">${pricing.subtotal?.toFixed(2) || pricing.basePrice?.toFixed(2)}</span>
+                            </div>
+                            {pricing.stripeFee > 0 && (
+                              <div className="flex justify-between text-gray-500">
+                                <span>Card processing fee</span>
+                                <span>${pricing.stripeFee.toFixed(2)}</span>
+                              </div>
+                            )}
+                            {addOnsTotal > 0 && (
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Add-ons</span>
+                                <span className="font-medium">${addOnsTotal.toFixed(2)}</span>
+                              </div>
+                            )}
+                            <div className="flex justify-between border-t pt-2 font-semibold">
+                              <span>Total</span>
+                              <span className="text-gold">${finalTotal.toFixed(2)}</span>
+                            </div>
+                          </div>
+                          
                           <div className="bg-gray-50 rounded-lg p-4 text-center">
                             <p className="text-sm text-gray-600">
                               {formData.bookReturn ? `${pricing.distance / 2} km each way` : `${pricing.distance} km`} • {formData.passengers} passenger{parseInt(formData.passengers) > 1 ? 's' : ''}
