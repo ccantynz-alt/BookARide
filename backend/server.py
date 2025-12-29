@@ -2119,13 +2119,7 @@ def send_reminder_email(booking: dict):
                     
                     {airport_instructions}
                     
-                    {f'''
-                    <div style="background: #fff8e6; padding: 15px; border-radius: 8px; border-left: 4px solid #D4AF37; margin: 20px 0;">
-                        <p style="margin: 0; font-size: 14px; color: #666;">
-                            <strong>&#128205; Please be ready</strong> at your pickup location 5 minutes before your scheduled time.
-                        </p>
-                    </div>
-                    ''' if not is_airport_pickup else ''}
+                    {ready_reminder_html}
                     
                     <div style="background: #f0f9ff; padding: 15px; border-radius: 8px; margin: 20px 0;">
                         <p style="margin: 0 0 10px 0; font-size: 14px; color: #333;"><strong>&#128222; Contact Us</strong></p>
