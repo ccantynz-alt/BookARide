@@ -222,6 +222,8 @@ class PricingBreakdown(BaseModel):
     airportFee: float
     oversizedLuggageFee: float
     passengerFee: float
+    stripeFee: float = 0.0  # Stripe processing fee (2.9% + $0.30) added to customer total
+    subtotal: float = 0.0  # Price before Stripe fee
     totalPrice: float
     ratePerKm: Optional[float] = None  # Rate per km for transparency
 
