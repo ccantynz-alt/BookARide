@@ -4945,12 +4945,31 @@ async def twilio_sms_webhook(request: Request):
                         update_fields["driverConfirmed"] = True
                         update_fields["driverResponse"] = "Yes"
                     
+                    # Update THIS booking
                     await db.bookings.update_one(
                         {"id": booking.get('id')},
                         {"$set": update_fields}
                     )
                     
-                    logger.info(f"✅ Driver {driver_name} acknowledged {trip_type} trip for booking #{booking_ref}")
+                    # ALSO update ALL other pending bookings for this driver (batch confirm)
+                    # This makes it easier - one YES confirms all their pending jobs
+                    batch_result = await db.bookings.update_many(
+                        {
+                            "$or": [
+                                {"driver_id": driver_id, "driverAcknowledged": {"$ne": True}},
+                                {"driver_name": driver_name, "driverAcknowledged": {"$ne": True}}
+                            ]
+                        },
+                        {"$set": {
+                            "driverAcknowledged": True,
+                            "driverConfirmed": True,
+                            "driverResponse": "Yes (batch)",
+                            "driverAcknowledgedAt": datetime.now(timezone.utc).isoformat()
+                        }}
+                    )
+                    
+                    total_confirmed = 1 + batch_result.modified_count
+                    logger.info(f"✅ Driver {driver_name} acknowledged {trip_type} trip for booking #{booking_ref} (+ {batch_result.modified_count} other bookings)")
                     
                     # Send confirmation SMS back to driver
                     try:
