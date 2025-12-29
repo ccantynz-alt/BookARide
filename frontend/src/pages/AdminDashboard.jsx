@@ -1097,11 +1097,13 @@ export const AdminDashboard = () => {
       // Determine trip price (for return bookings, split the total)
       let tripPrice = customerPrice;
       if (hasReturn) {
-        // Use oneWayPrice if available, otherwise split evenly
-        const oneWayPrice = selectedBooking?.pricing?.oneWayPrice || selectedBooking?.pricing?.basePrice;
+        // Use oneWayPrice if explicitly set, otherwise split evenly
+        // Note: basePrice is the price before additional fees, NOT the one-way price
+        const oneWayPrice = selectedBooking?.pricing?.oneWayPrice;
         if (oneWayPrice) {
           tripPrice = tripType === 'outbound' ? oneWayPrice : (customerPrice - oneWayPrice);
         } else {
+          // Split evenly for return bookings without explicit oneWayPrice
           tripPrice = customerPrice / 2;
         }
       }
