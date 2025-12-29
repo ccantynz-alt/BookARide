@@ -3,12 +3,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Gift, ArrowRight, Mail } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
+import { useNavigate } from 'react-router-dom';
 
 const ExitIntentPopup = () => {
   const [isVisible, setIsVisible] = useState(false);
   const [email, setEmail] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [hasShown, setHasShown] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     // Check if already shown this session
