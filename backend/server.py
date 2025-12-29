@@ -1329,18 +1329,35 @@ async def get_bookings(
         if date_to:
             query.setdefault('date', {})['$lte'] = date_to
         
-        # If no date filters provided, default to showing upcoming bookings first
-        # Sort by date descending (newest/future dates first) so today and tomorrow appear at the top
-        sort_order = -1  # Descending - future dates first
-        
         # Calculate skip for pagination
         skip = (page - 1) * limit
         
         # Get total count for pagination info
         total = await db.bookings.count_documents(query)
         
-        # Fetch bookings with pagination - sort by date descending so today/tomorrow come before far-future dates
-        bookings = await db.bookings.find(query, {"_id": 0}).sort([("date", sort_order), ("time", 1)]).skip(skip).limit(limit).to_list(limit)
+        # Get current date in NZ timezone for sorting priority
+        nz_tz = pytz.timezone('Pacific/Auckland')
+        now_nz = datetime.now(nz_tz)
+        today_str = now_nz.strftime('%Y-%m-%d')
+        
+        # Fetch ALL matching bookings to sort properly
+        all_bookings = await db.bookings.find(query, {"_id": 0}).to_list(1000)
+        
+        # Custom sort: prioritize today, then tomorrow, then upcoming dates, then past dates
+        def sort_key(b):
+            date = b.get('date', '9999-99-99')
+            time = b.get('time', '00:00')
+            if date == today_str:
+                return (0, time)  # Today first
+            elif date > today_str:
+                return (1, date, time)  # Future dates in ascending order
+            else:
+                return (2, date, time)  # Past dates last
+        
+        all_bookings.sort(key=sort_key)
+        
+        # Apply pagination
+        bookings = all_bookings[skip:skip + limit]
         
         # Add pagination headers via response
         logger.info(f"Fetched {len(bookings)} bookings (page {page}, total {total})")
