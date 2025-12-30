@@ -340,7 +340,7 @@ export const BookNow = () => {
                             formData.serviceType?.toLowerCase().includes('shuttle');
     if (isAirportShuttle && formData.bookReturn) {
       if (!formData.returnDepartureFlightNumber || !formData.returnDepartureFlightNumber.trim()) {
-        toast.error('Return flight number is required for airport shuttle return bookings');
+        toast.error('Flight number is mandatory for return trips. Bookings without flight numbers may face cancellation.');
         return;
       }
       if (!formData.returnDate || !formData.returnTime) {
