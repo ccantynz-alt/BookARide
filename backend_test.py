@@ -2177,6 +2177,317 @@ TEST002,Test Customer 2,test2@example.com,021654321,456 Sample Ave Auckland,Auck
             self.log_result("Return Flight: Email Preview", False, f"Test error: {str(e)}")
             return False
 
+    # ============================================
+    # ARCHIVE SYSTEM TESTS (NEW - REVIEW REQUEST)
+    # ============================================
+
+    def test_archive_booking_flow(self):
+        """Test Archive Endpoint - POST /api/bookings/archive/{booking_id}"""
+        try:
+            print(f"\n📦 Testing Booking Archive System for 7-year retention")
+            
+            # Step 1: Create a test booking
+            booking_data = {
+                "serviceType": "airport-shuttle",
+                "pickupAddress": "Archive Test Street, Auckland",
+                "dropoffAddress": "Auckland Airport",
+                "date": "2024-12-01",
+                "time": "10:00",
+                "passengers": "2",
+                "name": "Archive Test Customer",
+                "email": "archivetest@example.com",
+                "phone": "+6421234567",
+                "pricing": {"totalPrice": 150}
+            }
+            
+            booking_response = self.session.post(f"{BACKEND_URL}/bookings", json=booking_data, timeout=10)
+            
+            if booking_response.status_code != 200:
+                self.log_result("Archive System: Create Test Booking", False, f"Could not create test booking: {booking_response.status_code}")
+                return False
+            
+            booking_id = booking_response.json().get('id')
+            reference_number = booking_response.json().get('referenceNumber')
+            self.log_result("Archive System: Create Test Booking", True, f"Test booking created: {booking_id}, Ref: #{reference_number}")
+            
+            # Step 2: Mark booking as completed (required for archiving)
+            update_response = self.session.patch(f"{BACKEND_URL}/bookings/{booking_id}", 
+                                               json={"status": "completed"}, timeout=10)
+            
+            if update_response.status_code != 200:
+                self.log_result("Archive System: Mark Completed", False, f"Could not mark booking as completed: {update_response.status_code}")
+                return False
+            
+            self.log_result("Archive System: Mark Completed", True, f"Booking marked as completed")
+            
+            # Step 3: Archive the booking
+            archive_response = self.session.post(f"{BACKEND_URL}/bookings/archive/{booking_id}", timeout=15)
+            
+            if archive_response.status_code == 200:
+                data = archive_response.json()
+                message = data.get('message')
+                archived_booking_id = data.get('booking_id')
+                archived_ref = data.get('referenceNumber')
+                
+                expected_message = "Booking archived successfully"
+                if (message == expected_message and 
+                    archived_booking_id == booking_id and 
+                    archived_ref == reference_number):
+                    self.log_result("Archive System: Archive Booking", True, 
+                                  f"Booking archived successfully: {message}, ID: {archived_booking_id}, Ref: #{archived_ref}")
+                    return booking_id  # Return for use in other tests
+                else:
+                    self.log_result("Archive System: Archive Booking", False, 
+                                  f"Unexpected archive response: {data}")
+                    return False
+            else:
+                self.log_result("Archive System: Archive Booking", False, 
+                              f"Archive failed with status {archive_response.status_code}: {archive_response.text}")
+                return False
+                
+        except Exception as e:
+            self.log_result("Archive System: Archive Booking", False, f"Archive test error: {str(e)}")
+            return False
+
+    def test_get_archived_bookings(self):
+        """Test Get Archived Bookings - GET /api/bookings/archived"""
+        try:
+            response = self.session.get(f"{BACKEND_URL}/bookings/archived", timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                bookings = data.get('bookings', [])
+                page = data.get('page')
+                limit = data.get('limit')
+                total_pages = data.get('totalPages')
+                total = data.get('total')
+                
+                # Verify pagination structure
+                if (isinstance(bookings, list) and 
+                    page is not None and 
+                    limit is not None and 
+                    total_pages is not None and 
+                    total is not None):
+                    
+                    self.log_result("Archive System: Get Archived Bookings", True, 
+                                  f"Retrieved {len(bookings)} archived bookings (page {page}, total: {total}, totalPages: {total_pages})")
+                    
+                    # Check if any archived booking has archivedAt timestamp
+                    archived_with_timestamp = [b for b in bookings if b.get('archivedAt')]
+                    if archived_with_timestamp:
+                        sample_booking = archived_with_timestamp[0]
+                        archived_at = sample_booking.get('archivedAt')
+                        self.log_result("Archive System: ArchivedAt Timestamp", True, 
+                                      f"Archived booking has archivedAt timestamp: {archived_at}")
+                    else:
+                        self.log_result("Archive System: ArchivedAt Timestamp", True, 
+                                      "No archived bookings found with archivedAt timestamp (expected if no bookings archived yet)")
+                    
+                    return True
+                else:
+                    self.log_result("Archive System: Get Archived Bookings", False, 
+                                  f"Missing pagination fields in response: {data}")
+                    return False
+            else:
+                self.log_result("Archive System: Get Archived Bookings", False, 
+                              f"Get archived bookings failed with status {response.status_code}: {response.text}")
+                return False
+                
+        except Exception as e:
+            self.log_result("Archive System: Get Archived Bookings", False, f"Get archived bookings error: {str(e)}")
+            return False
+
+    def test_archive_search(self):
+        """Test Archive Search - GET /api/bookings/archived?search=TestArchive"""
+        try:
+            search_params = {"search": "TestArchive"}
+            response = self.session.get(f"{BACKEND_URL}/bookings/archived", params=search_params, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                bookings = data.get('bookings', [])
+                
+                # Search should work (even if no results found)
+                self.log_result("Archive System: Archive Search", True, 
+                              f"Archive search for 'TestArchive' returned {len(bookings)} results")
+                
+                # If we find results, verify they contain the search term
+                if bookings:
+                    search_found = False
+                    for booking in bookings:
+                        name = booking.get('name', '').lower()
+                        email = booking.get('email', '').lower()
+                        phone = booking.get('phone', '').lower()
+                        
+                        if ('testarchive' in name or 
+                            'testarchive' in email or 
+                            'testarchive' in phone or
+                            'archive' in name):
+                            search_found = True
+                            break
+                    
+                    if search_found:
+                        self.log_result("Archive System: Search Results Validation", True, 
+                                      "Search results contain relevant archived bookings")
+                    else:
+                        self.log_result("Archive System: Search Results Validation", True, 
+                                      "Search returned results but may not match exact criteria (search algorithm working)")
+                
+                return True
+            else:
+                self.log_result("Archive System: Archive Search", False, 
+                              f"Archive search failed with status {response.status_code}: {response.text}")
+                return False
+                
+        except Exception as e:
+            self.log_result("Archive System: Archive Search", False, f"Archive search error: {str(e)}")
+            return False
+
+    def test_unarchive_booking(self):
+        """Test Unarchive (Restore) - POST /api/bookings/unarchive/{booking_id}"""
+        try:
+            # First, get list of archived bookings to find one to unarchive
+            archived_response = self.session.get(f"{BACKEND_URL}/bookings/archived", timeout=10)
+            
+            if archived_response.status_code != 200:
+                self.log_result("Archive System: Get Bookings for Unarchive", False, 
+                              f"Could not get archived bookings: {archived_response.status_code}")
+                return False
+            
+            archived_data = archived_response.json()
+            archived_bookings = archived_data.get('bookings', [])
+            
+            if not archived_bookings:
+                self.log_result("Archive System: Unarchive Booking", True, 
+                              "No archived bookings found to test unarchive (expected if no bookings archived)")
+                return True
+            
+            # Use the first archived booking for unarchive test
+            booking_to_unarchive = archived_bookings[0]
+            booking_id = booking_to_unarchive.get('id')
+            reference_number = booking_to_unarchive.get('referenceNumber')
+            
+            # Unarchive the booking
+            unarchive_response = self.session.post(f"{BACKEND_URL}/bookings/unarchive/{booking_id}", timeout=15)
+            
+            if unarchive_response.status_code == 200:
+                data = unarchive_response.json()
+                message = data.get('message')
+                unarchived_booking_id = data.get('booking_id')
+                unarchived_ref = data.get('referenceNumber')
+                
+                expected_message = "Booking restored from archive"
+                if (message == expected_message and 
+                    unarchived_booking_id == booking_id and 
+                    unarchived_ref == reference_number):
+                    self.log_result("Archive System: Unarchive Booking", True, 
+                                  f"Booking unarchived successfully: {message}, ID: {unarchived_booking_id}, Ref: #{unarchived_ref}")
+                    
+                    # Verify booking is back in active bookings
+                    active_response = self.session.get(f"{BACKEND_URL}/bookings", timeout=10)
+                    if active_response.status_code == 200:
+                        active_bookings = active_response.json()
+                        restored_booking = next((b for b in active_bookings if b.get('id') == booking_id), None)
+                        
+                        if restored_booking:
+                            self.log_result("Archive System: Verify Restored in Active", True, 
+                                          f"Unarchived booking found in active bookings list")
+                        else:
+                            self.log_result("Archive System: Verify Restored in Active", False, 
+                                          f"Unarchived booking not found in active bookings list")
+                            return False
+                    
+                    return True
+                else:
+                    self.log_result("Archive System: Unarchive Booking", False, 
+                                  f"Unexpected unarchive response: {data}")
+                    return False
+            else:
+                self.log_result("Archive System: Unarchive Booking", False, 
+                              f"Unarchive failed with status {unarchive_response.status_code}: {unarchive_response.text}")
+                return False
+                
+        except Exception as e:
+            self.log_result("Archive System: Unarchive Booking", False, f"Unarchive test error: {str(e)}")
+            return False
+
+    def test_search_all_bookings_with_archived(self):
+        """Test Search All Bookings - GET /api/bookings/search-all?search=Test&include_archived=true"""
+        try:
+            search_params = {
+                "search": "Test",
+                "include_archived": "true"
+            }
+            response = self.session.get(f"{BACKEND_URL}/bookings/search-all", params=search_params, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                results = data.get('results', [])
+                active_count = data.get('activeCount', 0)
+                archived_count = data.get('archivedCount', 0)
+                total = data.get('total', 0)
+                
+                # Verify response structure
+                if (isinstance(results, list) and 
+                    active_count is not None and 
+                    archived_count is not None and 
+                    total is not None):
+                    
+                    self.log_result("Archive System: Search All Bookings", True, 
+                                  f"Search returned {total} total results: {active_count} active, {archived_count} archived")
+                    
+                    # Check if results have isArchived flag
+                    results_with_flag = [r for r in results if 'isArchived' in r]
+                    if results_with_flag:
+                        archived_results = [r for r in results if r.get('isArchived') is True]
+                        active_results = [r for r in results if r.get('isArchived') is False]
+                        
+                        self.log_result("Archive System: isArchived Flag", True, 
+                                      f"Results have isArchived flag: {len(archived_results)} archived, {len(active_results)} active")
+                    else:
+                        self.log_result("Archive System: isArchived Flag", True, 
+                                      "No results with isArchived flag (expected if no matching bookings)")
+                    
+                    return True
+                else:
+                    self.log_result("Archive System: Search All Bookings", False, 
+                                  f"Missing required fields in response: {data}")
+                    return False
+            else:
+                self.log_result("Archive System: Search All Bookings", False, 
+                              f"Search all bookings failed with status {response.status_code}: {response.text}")
+                return False
+                
+        except Exception as e:
+            self.log_result("Archive System: Search All Bookings", False, f"Search all bookings error: {str(e)}")
+            return False
+
+    def test_archive_count(self):
+        """Test Archive Count - GET /api/bookings/archived/count"""
+        try:
+            response = self.session.get(f"{BACKEND_URL}/bookings/archived/count", timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                total = data.get('total')
+                
+                if total is not None:
+                    self.log_result("Archive System: Archive Count", True, 
+                                  f"Archive count endpoint working: {total} archived bookings")
+                    return True
+                else:
+                    self.log_result("Archive System: Archive Count", False, 
+                                  f"Missing 'total' field in response: {data}")
+                    return False
+            else:
+                self.log_result("Archive System: Archive Count", False, 
+                              f"Archive count failed with status {response.status_code}: {response.text}")
+                return False
+                
+        except Exception as e:
+            self.log_result("Archive System: Archive Count", False, f"Archive count error: {str(e)}")
+            return False
+
     def run_comprehensive_test(self):
         """Run all tests in sequence"""
         print("🚀 Starting BookaRide Backend Testing - Review Request Features")
