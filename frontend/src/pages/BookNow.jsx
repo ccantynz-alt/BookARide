@@ -871,7 +871,7 @@ export const BookNow = () => {
                                   className={`transition-all duration-200 focus:ring-2 focus:ring-gold ${!formData.returnDepartureFlightNumber && formData.bookReturn ? 'border-red-300 bg-red-50' : ''}`}
                                 />
                                 {!formData.returnDepartureFlightNumber && formData.bookReturn && (
-                                  <p className="text-xs text-red-500">⚠️ Return flight number is required</p>
+                                  <p className="text-xs text-red-500 font-medium">⚠️ Flight number is mandatory for return trips. Bookings without flight numbers may face cancellation.</p>
                                 )}
                               </div>
                               <div className="space-y-2">
