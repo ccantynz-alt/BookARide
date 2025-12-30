@@ -2255,6 +2255,7 @@ export const AdminDashboard = () => {
           setActiveTab(val);
           if (val === 'deleted') fetchDeletedBookings();
           if (val === 'shuttle') fetchShuttleData();
+          if (val === 'archive') fetchArchivedBookings(1, '');
         }} className="w-full">
           <TabsList className="flex flex-wrap w-full gap-1 mb-4 md:mb-8 bg-transparent">
             <TabsTrigger value="bookings" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4">
