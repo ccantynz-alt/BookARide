@@ -9406,6 +9406,224 @@ async def permanent_delete_booking(booking_id: str, current_admin: dict = Depend
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ============================================
+# BOOKING ARCHIVE ENDPOINTS (7-year retention)
+# ============================================
+
+@api_router.post("/bookings/archive/{booking_id}")
+async def archive_booking(booking_id: str, current_admin: dict = Depends(get_current_admin)):
+    """Archive a completed booking - moves to archive collection for long-term storage"""
+    try:
+        # Find the booking
+        booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+        if not booking:
+            raise HTTPException(status_code=404, detail="Booking not found")
+        
+        # Add archive metadata
+        booking['archivedAt'] = datetime.now(timezone.utc).isoformat()
+        booking['archivedBy'] = current_admin.get('username', 'admin')
+        booking['archiveReason'] = 'manual'
+        # Set retention expiry (7 years from archive date)
+        booking['retentionExpiry'] = (datetime.now(timezone.utc) + timedelta(days=365*7)).isoformat()
+        
+        # Insert into archive collection
+        await db.bookings_archive.insert_one(booking)
+        
+        # Remove from active bookings
+        await db.bookings.delete_one({"id": booking_id})
+        
+        logger.info(f"Booking {booking_id} (Ref #{booking.get('referenceNumber', 'N/A')}) archived by {current_admin.get('username', 'admin')}")
+        return {"message": "Booking archived successfully", "booking_id": booking_id, "referenceNumber": booking.get('referenceNumber')}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error archiving booking: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/bookings/archive-bulk")
+async def archive_bookings_bulk(
+    booking_ids: List[str] = Body(..., embed=True),
+    current_admin: dict = Depends(get_current_admin)
+):
+    """Archive multiple bookings at once"""
+    try:
+        archived_count = 0
+        failed = []
+        
+        for booking_id in booking_ids:
+            try:
+                booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+                if booking:
+                    booking['archivedAt'] = datetime.now(timezone.utc).isoformat()
+                    booking['archivedBy'] = current_admin.get('username', 'admin')
+                    booking['archiveReason'] = 'bulk'
+                    booking['retentionExpiry'] = (datetime.now(timezone.utc) + timedelta(days=365*7)).isoformat()
+                    
+                    await db.bookings_archive.insert_one(booking)
+                    await db.bookings.delete_one({"id": booking_id})
+                    archived_count += 1
+                else:
+                    failed.append(booking_id)
+            except Exception as e:
+                failed.append(booking_id)
+                logger.error(f"Failed to archive booking {booking_id}: {str(e)}")
+        
+        logger.info(f"Bulk archive: {archived_count} bookings archived by {current_admin.get('username', 'admin')}")
+        return {"message": f"Archived {archived_count} bookings", "archived": archived_count, "failed": failed}
+    except Exception as e:
+        logger.error(f"Error in bulk archive: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/bookings/archived")
+async def get_archived_bookings(
+    page: int = 1,
+    limit: int = 50,
+    search: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    current_admin: dict = Depends(get_current_admin)
+):
+    """Get archived bookings with pagination and search"""
+    try:
+        query = {}
+        
+        # Search filter - search across multiple fields
+        if search:
+            search_lower = search.lower()
+            query["$or"] = [
+                {"name": {"$regex": search, "$options": "i"}},
+                {"email": {"$regex": search, "$options": "i"}},
+                {"phone": {"$regex": search, "$options": "i"}},
+                {"pickupAddress": {"$regex": search, "$options": "i"}},
+                {"dropoffAddress": {"$regex": search, "$options": "i"}},
+                {"referenceNumber": {"$regex": search, "$options": "i"}}
+            ]
+            # Also try to match reference number as integer
+            try:
+                ref_num = int(search)
+                query["$or"].append({"referenceNumber": ref_num})
+            except ValueError:
+                pass
+        
+        # Date range filter
+        if date_from or date_to:
+            date_filter = {}
+            if date_from:
+                date_filter["$gte"] = date_from
+            if date_to:
+                date_filter["$lte"] = date_to
+            query["date"] = date_filter
+        
+        # Get total count for pagination
+        total = await db.bookings_archive.count_documents(query)
+        
+        # Get paginated results
+        skip = (page - 1) * limit
+        archived_bookings = await db.bookings_archive.find(query, {"_id": 0}).sort("archivedAt", -1).skip(skip).limit(limit).to_list(limit)
+        
+        return {
+            "bookings": archived_bookings,
+            "total": total,
+            "page": page,
+            "limit": limit,
+            "totalPages": (total + limit - 1) // limit
+        }
+    except Exception as e:
+        logger.error(f"Error fetching archived bookings: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/bookings/archived/count")
+async def get_archived_count(current_admin: dict = Depends(get_current_admin)):
+    """Get count of archived bookings"""
+    try:
+        total = await db.bookings_archive.count_documents({})
+        return {"total": total}
+    except Exception as e:
+        logger.error(f"Error counting archived bookings: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/bookings/unarchive/{booking_id}")
+async def unarchive_booking(booking_id: str, current_admin: dict = Depends(get_current_admin)):
+    """Restore an archived booking back to active bookings"""
+    try:
+        # Find the archived booking
+        archived_booking = await db.bookings_archive.find_one({"id": booking_id}, {"_id": 0})
+        if not archived_booking:
+            raise HTTPException(status_code=404, detail="Archived booking not found")
+        
+        # Remove archive metadata
+        archived_booking.pop('archivedAt', None)
+        archived_booking.pop('archivedBy', None)
+        archived_booking.pop('archiveReason', None)
+        archived_booking.pop('retentionExpiry', None)
+        archived_booking['unarchivedAt'] = datetime.now(timezone.utc).isoformat()
+        archived_booking['unarchivedBy'] = current_admin.get('username', 'admin')
+        
+        # Insert back into active bookings
+        await db.bookings.insert_one(archived_booking)
+        
+        # Remove from archive
+        await db.bookings_archive.delete_one({"id": booking_id})
+        
+        logger.info(f"Booking {booking_id} (Ref #{archived_booking.get('referenceNumber', 'N/A')}) unarchived by {current_admin.get('username', 'admin')}")
+        return {"message": "Booking restored from archive", "booking_id": booking_id, "referenceNumber": archived_booking.get('referenceNumber')}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error unarchiving booking: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/bookings/search-all")
+async def search_all_bookings(
+    search: str,
+    include_archived: bool = True,
+    current_admin: dict = Depends(get_current_admin)
+):
+    """Search across both active and archived bookings"""
+    try:
+        search_query = {
+            "$or": [
+                {"name": {"$regex": search, "$options": "i"}},
+                {"email": {"$regex": search, "$options": "i"}},
+                {"phone": {"$regex": search, "$options": "i"}},
+                {"pickupAddress": {"$regex": search, "$options": "i"}},
+                {"dropoffAddress": {"$regex": search, "$options": "i"}},
+                {"referenceNumber": {"$regex": search, "$options": "i"}}
+            ]
+        }
+        
+        # Try to match reference number as integer
+        try:
+            ref_num = int(search)
+            search_query["$or"].append({"referenceNumber": ref_num})
+        except ValueError:
+            pass
+        
+        # Search active bookings
+        active_bookings = await db.bookings.find(search_query, {"_id": 0}).to_list(100)
+        for b in active_bookings:
+            b['isArchived'] = False
+        
+        # Search archived bookings if requested
+        archived_bookings = []
+        if include_archived:
+            archived_bookings = await db.bookings_archive.find(search_query, {"_id": 0}).to_list(100)
+            for b in archived_bookings:
+                b['isArchived'] = True
+        
+        # Combine results
+        all_results = active_bookings + archived_bookings
+        
+        return {
+            "results": all_results,
+            "activeCount": len(active_bookings),
+            "archivedCount": len(archived_bookings),
+            "totalCount": len(all_results)
+        }
+    except Exception as e:
+        logger.error(f"Error searching all bookings: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 # ============================================
 # SEO MANAGEMENT ENDPOINTS
