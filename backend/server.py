@@ -263,6 +263,10 @@ class BookingCreate(BaseModel):
     returnDate: Optional[str] = ""
     returnTime: Optional[str] = ""
     returnFlightNumber: Optional[str] = ""  # REQUIRED when bookReturn=True for airport shuttle
+    returnDepartureFlightNumber: Optional[str] = ""  # Alternative field name used by frontend
+    returnDepartureTime: Optional[str] = ""
+    returnArrivalFlightNumber: Optional[str] = ""
+    returnArrivalTime: Optional[str] = ""
     # Notification preference: 'email', 'sms', or 'both'
     notificationPreference: Optional[str] = "both"
     skipNotifications: Optional[bool] = False
