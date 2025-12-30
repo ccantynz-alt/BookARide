@@ -275,8 +275,10 @@ class BookingCreate(BaseModel):
         is_airport_shuttle = 'airport' in service_type or 'shuttle' in service_type
         
         if is_airport_shuttle and self.bookReturn:
-            if not self.returnFlightNumber or not self.returnFlightNumber.strip():
-                raise ValueError('Return flight number is required for airport shuttle return bookings')
+            # Check both returnFlightNumber and returnDepartureFlightNumber (frontend sends latter)
+            return_flight = self.returnFlightNumber or getattr(self, 'returnDepartureFlightNumber', '') or ''
+            if not return_flight or not return_flight.strip():
+                raise ValueError('Return flight number is required for airport shuttle return bookings. Without a flight number, your booking may face cancellation.')
         return self
 
 class Booking(BookingCreate):
