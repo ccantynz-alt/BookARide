@@ -8,7 +8,7 @@ import json
 import time
 from datetime import datetime
 
-BACKEND_URL = "https://bookmend.preview.emergentagent.com/api"
+BACKEND_URL = "https://ride-booking-fix-7.preview.emergentagent.com/api"
 ADMIN_USERNAME = "admin"
 ADMIN_PASSWORD = "BookARide2024!"
 
