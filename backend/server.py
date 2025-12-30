@@ -11436,6 +11436,93 @@ async def manual_run_error_check(current_admin: dict = Depends(get_current_admin
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ==================== AUTO-ARCHIVE SYSTEM ====================
+# Automatically archives completed bookings after trip date has passed
+
+async def auto_archive_completed_bookings():
+    """
+    Automatically archive bookings that are past their trip date.
+    Rules:
+    - One-way bookings: Archive when booking date has passed
+    - Return bookings: Archive when return date has passed
+    Only archives bookings with status 'completed'.
+    Runs daily at 2 AM NZ time.
+    """
+    try:
+        nz_tz = pytz.timezone('Pacific/Auckland')
+        now_nz = datetime.now(nz_tz)
+        today_str = now_nz.strftime('%Y-%m-%d')
+        
+        logger.info(f"📦 [Auto-Archive] Starting - NZ time: {now_nz.strftime('%Y-%m-%d %H:%M')}")
+        
+        archived_count = 0
+        skipped_count = 0
+        
+        # Find all completed bookings
+        completed_bookings = await db.bookings.find({
+            'status': 'completed'
+        }, {'_id': 0}).to_list(5000)
+        
+        logger.info(f"📦 [Auto-Archive] Found {len(completed_bookings)} completed bookings to check")
+        
+        for booking in completed_bookings:
+            try:
+                booking_date = booking.get('date', '')
+                is_return = booking.get('bookReturn', False)
+                return_date = booking.get('returnDate', '')
+                
+                # Determine the "trip end date"
+                # For return bookings, use return date; otherwise use booking date
+                trip_end_date = return_date if is_return and return_date else booking_date
+                
+                # Skip if no valid date
+                if not trip_end_date:
+                    skipped_count += 1
+                    continue
+                
+                # Check if trip has passed (trip end date is before today)
+                if trip_end_date < today_str:
+                    # Archive this booking
+                    booking['archivedAt'] = datetime.now(timezone.utc).isoformat()
+                    booking['archivedBy'] = 'auto-archive'
+                    booking['archiveReason'] = 'auto' if not is_return else 'auto-return'
+                    booking['retentionExpiry'] = (datetime.now(timezone.utc) + timedelta(days=365*7)).isoformat()
+                    
+                    # Insert into archive
+                    await db.bookings_archive.insert_one(booking)
+                    
+                    # Remove from active bookings
+                    await db.bookings.delete_one({"id": booking.get('id')})
+                    
+                    archived_count += 1
+                    
+                    if archived_count <= 5:  # Only log first 5 for brevity
+                        logger.info(f"📦 Auto-archived: Ref #{booking.get('referenceNumber')} - {booking.get('name')} (trip ended: {trip_end_date})")
+                else:
+                    skipped_count += 1
+                    
+            except Exception as e:
+                logger.error(f"📦 Error processing booking {booking.get('id', 'unknown')}: {str(e)}")
+                continue
+        
+        logger.info(f"📦 [Auto-Archive] Completed - Archived: {archived_count}, Skipped: {skipped_count}")
+        return {"archived": archived_count, "skipped": skipped_count, "date": today_str}
+        
+    except Exception as e:
+        logger.error(f"📦 [Auto-Archive] Error: {str(e)}")
+        return {"archived": 0, "error": str(e)}
+
+@api_router.post("/admin/trigger-auto-archive")
+async def trigger_auto_archive(current_admin: dict = Depends(get_current_admin)):
+    """Manually trigger the auto-archive process."""
+    try:
+        result = await auto_archive_completed_bookings()
+        return result
+    except Exception as e:
+        logger.error(f"Error running auto-archive: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # Include the router in the main app (MUST be after all routes are defined)
 app.include_router(api_router)
 
