@@ -987,6 +987,28 @@ export const AdminDashboard = () => {
     fetchArchivedBookings(1, archiveSearchTerm);
   };
 
+  // Run auto-archive manually
+  const handleRunAutoArchive = async () => {
+    setRunningAutoArchive(true);
+    try {
+      const response = await axios.post(`${API}/admin/trigger-auto-archive`, {}, getAuthHeaders());
+      const { archived, skipped } = response.data;
+      if (archived > 0) {
+        toast.success(`Auto-archive complete! Archived ${archived} completed bookings.`);
+        fetchArchivedBookings(1, '');
+        fetchArchivedCount();
+        fetchBookings(); // Refresh active bookings list
+      } else {
+        toast.info('No bookings to archive. All completed trips are either already archived or still have pending return dates.');
+      }
+    } catch (error) {
+      console.error('Error running auto-archive:', error);
+      toast.error(error.response?.data?.detail || 'Failed to run auto-archive');
+    } finally {
+      setRunningAutoArchive(false);
+    }
+  };
+
   // Fetch shuttle data for admin
   const fetchShuttleData = async (date = shuttleDate) => {
     setLoadingShuttle(true);
