@@ -2726,6 +2726,16 @@ export const AdminDashboard = () => {
                               <RefreshCw className="w-4 h-4 text-amber-600" />
                               <span className="text-[8px] text-amber-600 font-medium">Resend</span>
                             </button>
+                            {booking.status === 'completed' && (
+                              <button
+                                onClick={() => handleArchiveBooking(booking.id)}
+                                className="p-1.5 hover:bg-blue-100 rounded flex flex-col items-center border border-blue-200"
+                                title="Archive this completed booking"
+                              >
+                                <Archive className="w-4 h-4 text-blue-600" />
+                                <span className="text-[8px] text-blue-600 font-medium">Archive</span>
+                              </button>
+                            )}
                             <button
                               onClick={() => handleDeleteBooking(booking.id, booking.name, true)}
                               className="p-1.5 hover:bg-red-100 rounded flex flex-col items-center"
