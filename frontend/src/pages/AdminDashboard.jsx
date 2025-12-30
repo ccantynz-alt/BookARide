@@ -923,6 +923,68 @@ export const AdminDashboard = () => {
     }
   };
 
+  // Fetch archived bookings
+  const fetchArchivedBookings = async (page = 1, search = '') => {
+    setLoadingArchived(true);
+    try {
+      const params = new URLSearchParams({ page, limit: 50 });
+      if (search) params.append('search', search);
+      const response = await axios.get(`${API}/bookings/archived?${params}`, getAuthHeaders());
+      setArchivedBookings(response.data.bookings || []);
+      setArchivedCount(response.data.total || 0);
+      setArchivePage(response.data.page || 1);
+      setArchiveTotalPages(response.data.totalPages || 1);
+    } catch (error) {
+      console.error('Error fetching archived bookings:', error);
+      toast.error('Failed to load archived bookings');
+    } finally {
+      setLoadingArchived(false);
+    }
+  };
+
+  // Fetch archive count on load
+  const fetchArchivedCount = async () => {
+    try {
+      const response = await axios.get(`${API}/bookings/archived/count`, getAuthHeaders());
+      setArchivedCount(response.data.total || 0);
+    } catch (error) {
+      console.error('Error fetching archived count:', error);
+    }
+  };
+
+  // Archive a booking
+  const handleArchiveBooking = async (bookingId) => {
+    try {
+      const response = await axios.post(`${API}/bookings/archive/${bookingId}`, {}, getAuthHeaders());
+      toast.success(`Booking #${response.data.referenceNumber} archived successfully`);
+      fetchBookings();
+      fetchArchivedCount();
+    } catch (error) {
+      console.error('Error archiving booking:', error);
+      toast.error(error.response?.data?.detail || 'Failed to archive booking');
+    }
+  };
+
+  // Unarchive (restore) a booking
+  const handleUnarchiveBooking = async (bookingId) => {
+    try {
+      const response = await axios.post(`${API}/bookings/unarchive/${bookingId}`, {}, getAuthHeaders());
+      toast.success(`Booking #${response.data.referenceNumber} restored to active bookings`);
+      fetchArchivedBookings(archivePage, archiveSearchTerm);
+      fetchBookings();
+    } catch (error) {
+      console.error('Error unarchiving booking:', error);
+      toast.error(error.response?.data?.detail || 'Failed to restore booking');
+    }
+  };
+
+  // Search archived bookings
+  const handleArchiveSearch = (e) => {
+    e.preventDefault();
+    setArchivePage(1);
+    fetchArchivedBookings(1, archiveSearchTerm);
+  };
+
   // Fetch shuttle data for admin
   const fetchShuttleData = async (date = shuttleDate) => {
     setLoadingShuttle(true);
