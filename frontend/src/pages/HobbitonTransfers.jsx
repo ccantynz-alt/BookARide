@@ -4,7 +4,7 @@ import { MapPin, Clock, Users, Star, CheckCircle, ArrowRight } from 'lucide-reac
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import SEO from '../components/SEO';
-import PageBreadcrumb from '../components/PageBreadcrumb';
+import { Home, ChevronRight } from 'lucide-react';
 
 export const HobbitonTransfers = () => {
   const features = [
@@ -42,16 +42,16 @@ export const HobbitonTransfers = () => {
   ];
 
   return (
-    <div className="min-h-screen pt-20">
+    <div className="min-h-screen">
       <SEO 
         title="Hobbiton Transfers - Auckland to Hobbiton Movie Set Shuttle Service"
         description="Professional Hobbiton Movie Set transfers from Auckland. Direct shuttle service to Matamata Hobbiton tours. Comfortable, scenic journey through Waikato. Book your Hobbiton transfer today - perfect for Lord of the Rings fans!"
         keywords="Hobbiton transfers, Auckland to Hobbiton shuttle, Hobbiton Movie Set transfer, Matamata shuttle, Lord of the Rings tour transport, Hobbiton tour transfer, shuttle to Hobbiton, Auckland Hobbiton transport"
         canonical="/hobbiton-transfers"
       />
-      <PageBreadcrumb items={[{ label: 'Services', href: '/services' }, { label: 'Hobbiton Transfers' }]} />
-      {/* Hero Section */}
-      <section className="relative text-white py-20 overflow-hidden min-h-[600px] flex items-center">
+      
+      {/* Hero Section with integrated breadcrumb */}
+      <section className="relative text-white pt-20 pb-20 overflow-hidden min-h-[600px] flex flex-col">
         {/* Beautiful Hobbiton Background Image */}
         <div className="absolute inset-0">
           <img 
@@ -63,7 +63,35 @@ export const HobbitonTransfers = () => {
           <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-black/40" />
         </div>
         
-        <div className="container mx-auto px-4 relative z-10">
+        {/* Breadcrumb - white text, inside hero */}
+        <nav className="relative z-10 mb-8">
+          <div className="container mx-auto px-4">
+            <ol className="flex items-center gap-2 text-sm">
+              <li>
+                <Link to="/" className="text-white/70 hover:text-gold transition-colors flex items-center gap-1">
+                  <Home className="w-4 h-4" />
+                  <span className="hidden sm:inline">Home</span>
+                </Link>
+              </li>
+              <li className="text-white/50">
+                <ChevronRight className="w-4 h-4" />
+              </li>
+              <li>
+                <Link to="/services" className="text-white/70 hover:text-gold transition-colors">
+                  Services
+                </Link>
+              </li>
+              <li className="text-white/50">
+                <ChevronRight className="w-4 h-4" />
+              </li>
+              <li>
+                <span className="text-gold font-medium">Hobbiton Transfers</span>
+              </li>
+            </ol>
+          </div>
+        </nav>
+        
+        <div className="container mx-auto px-4 relative z-10 flex-1 flex items-center">
           <div className="max-w-4xl">
             <div className="inline-flex items-center gap-2 bg-gold/20 border border-gold/40 rounded-full px-4 py-2 mb-6">
               <Star className="w-4 h-4 text-gold" />
