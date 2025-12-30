@@ -3147,9 +3147,27 @@ export const AdminDashboard = () => {
                     <Archive className="w-6 h-6 text-blue-600" />
                     <div>
                       <h3 className="text-lg font-semibold text-blue-800">Archived Bookings</h3>
-                      <p className="text-sm text-blue-600">{archivedCount} bookings stored • 7-year retention</p>
+                      <p className="text-sm text-blue-600">{archivedCount} bookings stored • 7-year retention • Auto-archives daily at 2 AM</p>
                     </div>
                   </div>
+                  <Button
+                    onClick={handleRunAutoArchive}
+                    disabled={runningAutoArchive}
+                    variant="outline"
+                    className="border-blue-300 text-blue-700 hover:bg-blue-100"
+                  >
+                    {runningAutoArchive ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                        Archiving...
+                      </>
+                    ) : (
+                      <>
+                        <Archive className="w-4 h-4 mr-2" />
+                        Run Auto-Archive Now
+                      </>
+                    )}
+                  </Button>
                 </div>
                 
                 {/* Search Bar */}
