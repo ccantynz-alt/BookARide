@@ -12116,6 +12116,16 @@ async def startup_event():
     except Exception as e:
         logger.warning(f"Index creation note: {str(e)}")
     
+    # Create index for archive collection
+    try:
+        await db.bookings_archive.create_index("archivedAt")
+        await db.bookings_archive.create_index("name")
+        await db.bookings_archive.create_index("email")
+        await db.bookings_archive.create_index("referenceNumber")
+        logger.info("✅ Archive indexes created")
+    except Exception as e:
+        logger.warning(f"Archive index creation note: {str(e)}")
+    
     # ============================================
     # RELIABLE REMINDER SYSTEM - 3 LAYERS
     # ============================================
