@@ -1353,18 +1353,40 @@ export const AdminDashboard = () => {
       filtered = filtered.filter(b => b.status === statusFilter);
     }
 
-    // Search filter
+    // Search filter - also search archive via API
     if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
       filtered = filtered.filter(b => 
-        b.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        b.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        b.phone.includes(searchTerm) ||
-        b.pickupAddress.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        b.dropoffAddress.toLowerCase().includes(searchTerm.toLowerCase())
+        b.name?.toLowerCase().includes(searchLower) ||
+        b.email?.toLowerCase().includes(searchLower) ||
+        b.phone?.includes(searchTerm) ||
+        b.pickupAddress?.toLowerCase().includes(searchLower) ||
+        b.dropoffAddress?.toLowerCase().includes(searchLower) ||
+        String(b.referenceNumber)?.includes(searchTerm)
       );
+      
+      // Also search archive for matching results
+      searchAllBookings(searchTerm);
     }
 
     setFilteredBookings(filtered);
+  };
+
+  // Search across all bookings (active + archived)
+  const [archiveSearchResults, setArchiveSearchResults] = useState([]);
+  const searchAllBookings = async (term) => {
+    if (!term || term.length < 2) {
+      setArchiveSearchResults([]);
+      return;
+    }
+    try {
+      const response = await axios.get(`${API}/bookings/search-all?search=${encodeURIComponent(term)}&include_archived=true`, getAuthHeaders());
+      // Only set archived results that aren't already in the active bookings
+      const archivedOnly = response.data.results.filter(b => b.isArchived);
+      setArchiveSearchResults(archivedOnly);
+    } catch (error) {
+      console.error('Error searching all bookings:', error);
+    }
   };
 
   const handleLogout = () => {
