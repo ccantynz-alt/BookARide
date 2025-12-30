@@ -637,6 +637,7 @@ export const AdminDashboard = () => {
     fetchBookings();
     fetchDrivers();
     checkXeroStatus();
+    fetchArchivedCount(); // Load archive count on initial load
   }, [navigate]);
 
   useEffect(() => {
