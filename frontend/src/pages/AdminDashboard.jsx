@@ -528,6 +528,7 @@ export const AdminDashboard = () => {
   const [archiveSearchTerm, setArchiveSearchTerm] = useState('');
   const [archivePage, setArchivePage] = useState(1);
   const [archiveTotalPages, setArchiveTotalPages] = useState(1);
+  const [runningAutoArchive, setRunningAutoArchive] = useState(false);
   // Shuttle state
   const [shuttleDate, setShuttleDate] = useState(new Date().toISOString().split('T')[0]);
   const [shuttleData, setShuttleData] = useState({});
