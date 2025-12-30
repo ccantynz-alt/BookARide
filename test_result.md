@@ -558,6 +558,18 @@ For the webhook to work in production, configure Twilio to send incoming SMS to:
         agent: "testing"
         comment: "✅ CUSTOMER NOTIFICATION PREFERENCE FEATURE WORKING PERFECTLY: BookingCreate model correctly accepts notificationPreference field. Tested both 'email' and 'sms' preferences successfully. 1) Booking with notificationPreference: 'email' created successfully and field stored correctly ✓, 2) Booking with notificationPreference: 'sms' created successfully and field stored correctly ✓. The field is properly validated and persisted in the database, allowing customers to choose their preferred notification method during booking creation."
 
+  - task: "Return Flight Number Implementation"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "critical"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ RETURN FLIGHT NUMBER IMPLEMENTATION VERIFIED: All 4 test scenarios passed successfully. 1) Booking creation WITH return flight number (NZ456) succeeds and creates booking with reference number ✓, 2) Booking creation WITHOUT return flight number correctly fails with validation error 'Return flight number is required for airport shuttle return bookings. Without a flight number, your booking may face cancellation.' ✓, 3) Existing booking 7ed7315d-47b3-4a3c-9f7a-fc4d0140a694 successfully retrieved with return flight NZ456 ✓, 4) Email preview endpoint /bookings/{booking_id}/preview-confirmation contains return flight number NZ456 in HTML content ✓. Backend validation working correctly for airport shuttle return bookings. Feature is production-ready."
+
 frontend:
   - task: "Shared Shuttle Booking Page"
     implemented: true
