@@ -86,13 +86,13 @@ const ExitIntentPopup = () => {
             onClick={handleClose}
           />
 
-          {/* Popup */}
+          {/* Popup - centered with max-height constraint to prevent overflow */}
           <motion.div
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[101] w-full max-w-lg mx-4"
+            className="fixed inset-4 sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 z-[101] w-auto sm:w-full sm:max-w-lg flex items-center justify-center"
           >
             <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
               {/* Close button */}
