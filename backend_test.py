@@ -2532,6 +2532,14 @@ TEST002,Test Customer 2,test2@example.com,021654321,456 Sample Ave Auckland,Auck
         if status_success:
             self.test_batch_sync_calendar_start(remaining_count)
         
+        print("\n📦 Testing Booking Archive System (NEW REVIEW REQUEST)...")
+        self.test_archive_booking_flow()
+        self.test_get_archived_bookings()
+        self.test_archive_search()
+        self.test_unarchive_booking()
+        self.test_search_all_bookings_with_archived()
+        self.test_archive_count()
+        
         print("\n🚨 Testing 24-Hour Booking Approval Rule (NEW FEATURE)...")
         self.test_24_hour_booking_approval_rule_within_24h()
         self.test_24_hour_booking_approval_rule_beyond_24h()
