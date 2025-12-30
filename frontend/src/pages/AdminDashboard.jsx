@@ -2408,12 +2408,18 @@ export const AdminDashboard = () => {
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                   <Input
-                    placeholder="Search by name, email, phone, or address..."
+                    placeholder="Search by name, email, phone, or address... (also searches archive)"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10"
                   />
                 </div>
+                {searchTerm && (
+                  <p className="text-xs text-blue-600 mt-1 flex items-center gap-1">
+                    <Archive className="w-3 h-3" />
+                    Search includes archived bookings
+                  </p>
+                )}
               </div>
               <div className="w-full md:w-48">
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
