@@ -2017,6 +2017,166 @@ TEST002,Test Customer 2,test2@example.com,021654321,456 Sample Ave Auckland,Auck
             self.log_result("Customer Confirmation: Booking Creation", False, f"Test error: {str(e)}")
             return False
 
+    def test_return_flight_booking_with_flight_number(self):
+        """Test booking creation WITH return flight number (should succeed)"""
+        try:
+            booking_data = {
+                "serviceType": "airport-shuttle",
+                "pickupAddress": "10 Queen Street, Auckland",
+                "dropoffAddress": "Auckland Airport",
+                "date": "2025-12-31",
+                "time": "10:00",
+                "passengers": "1",
+                "name": "Test User",
+                "email": "test@example.com",
+                "phone": "+6421234567",
+                "bookReturn": True,
+                "returnDate": "2026-01-05",
+                "returnTime": "15:00",
+                "returnDepartureFlightNumber": "NZ456",
+                "pricing": {"totalPrice": 195.85}
+            }
+            
+            response = self.session.post(f"{BACKEND_URL}/bookings", json=booking_data, timeout=15)
+            
+            if response.status_code == 200:
+                data = response.json()
+                booking_id = data.get('id')
+                reference_number = data.get('referenceNumber')
+                
+                if booking_id and reference_number:
+                    self.log_result("Return Flight: With Flight Number", True, f"Booking created successfully with return flight NZ456: {booking_id}, Ref: #{reference_number}")
+                    return booking_id
+                else:
+                    self.log_result("Return Flight: With Flight Number", False, f"Missing booking ID or reference number: {data}")
+                    return None
+            else:
+                self.log_result("Return Flight: With Flight Number", False, f"Booking creation failed: {response.status_code} - {response.text}")
+                return None
+                
+        except Exception as e:
+            self.log_result("Return Flight: With Flight Number", False, f"Test error: {str(e)}")
+            return None
+
+    def test_return_flight_booking_without_flight_number(self):
+        """Test booking creation WITHOUT return flight number (should fail with validation error)"""
+        try:
+            booking_data = {
+                "serviceType": "airport-shuttle",
+                "pickupAddress": "10 Queen Street, Auckland",
+                "dropoffAddress": "Auckland Airport",
+                "date": "2025-12-31",
+                "time": "10:00",
+                "passengers": "1",
+                "name": "Test User",
+                "email": "test@example.com",
+                "phone": "+6421234567",
+                "bookReturn": True,
+                "returnDate": "2026-01-05",
+                "returnTime": "15:00",
+                "returnDepartureFlightNumber": "",  # Empty flight number
+                "pricing": {"totalPrice": 195.85}
+            }
+            
+            response = self.session.post(f"{BACKEND_URL}/bookings", json=booking_data, timeout=15)
+            
+            if response.status_code == 422:  # Validation error expected
+                data = response.json()
+                detail = data.get('detail', [])
+                
+                # Check if the error message contains the expected validation message
+                error_found = False
+                for error in detail:
+                    if isinstance(error, dict):
+                        msg = error.get('msg', '')
+                        if 'Return flight number is required' in msg and 'cancellation' in msg:
+                            error_found = True
+                            break
+                    elif isinstance(error, str) and 'Return flight number is required' in error and 'cancellation' in error:
+                        error_found = True
+                        break
+                
+                if error_found:
+                    self.log_result("Return Flight: Without Flight Number", True, "Validation correctly rejected booking without return flight number")
+                    return True
+                else:
+                    self.log_result("Return Flight: Without Flight Number", False, f"Wrong validation error message: {detail}")
+                    return False
+            else:
+                self.log_result("Return Flight: Without Flight Number", False, f"Expected validation error (422) but got: {response.status_code} - {response.text}")
+                return False
+                
+        except Exception as e:
+            self.log_result("Return Flight: Without Flight Number", False, f"Test error: {str(e)}")
+            return False
+
+    def test_existing_booking_with_return_flight_retrieval(self):
+        """Test retrieving existing booking with return flight number"""
+        try:
+            # Get all bookings and look for the specific booking ID mentioned in the review request
+            response = self.session.get(f"{BACKEND_URL}/bookings", timeout=10)
+            
+            if response.status_code == 200:
+                bookings = response.json()
+                target_booking_id = "7ed7315d-47b3-4a3c-9f7a-fc4d0140a694"
+                
+                # Find the specific booking
+                target_booking = None
+                for booking in bookings:
+                    if booking.get('id') == target_booking_id:
+                        target_booking = booking
+                        break
+                
+                if target_booking:
+                    return_flight = target_booking.get('returnDepartureFlightNumber') or target_booking.get('returnFlightNumber')
+                    
+                    if return_flight == "NZ456":
+                        self.log_result("Return Flight: Existing Booking Retrieval", True, f"Found booking {target_booking_id} with return flight NZ456")
+                        return True
+                    else:
+                        self.log_result("Return Flight: Existing Booking Retrieval", False, f"Booking {target_booking_id} has wrong return flight: {return_flight} (expected NZ456)")
+                        return False
+                else:
+                    self.log_result("Return Flight: Existing Booking Retrieval", False, f"Booking {target_booking_id} not found in bookings list")
+                    return False
+            else:
+                self.log_result("Return Flight: Existing Booking Retrieval", False, f"Failed to get bookings: {response.status_code} - {response.text}")
+                return False
+                
+        except Exception as e:
+            self.log_result("Return Flight: Existing Booking Retrieval", False, f"Test error: {str(e)}")
+            return False
+
+    def test_email_preview_with_return_flight(self):
+        """Test email preview endpoint to verify return flight number is included"""
+        try:
+            # First, try to find an existing booking with return flight, or use the specific ID from review request
+            target_booking_id = "7ed7315d-47b3-4a3c-9f7a-fc4d0140a694"
+            
+            response = self.session.get(f"{BACKEND_URL}/booking/email-preview/{target_booking_id}", timeout=10)
+            
+            if response.status_code == 200:
+                # Response should be HTML content
+                html_content = response.text
+                
+                # Check if the return flight number "NZ456" is included in the HTML
+                if "NZ456" in html_content:
+                    self.log_result("Return Flight: Email Preview", True, f"Email preview contains return flight number NZ456")
+                    return True
+                else:
+                    self.log_result("Return Flight: Email Preview", False, f"Email preview does not contain return flight number NZ456")
+                    return False
+            elif response.status_code == 404:
+                self.log_result("Return Flight: Email Preview", False, f"Email preview endpoint not found or booking {target_booking_id} not found")
+                return False
+            else:
+                self.log_result("Return Flight: Email Preview", False, f"Email preview failed: {response.status_code} - {response.text}")
+                return False
+                
+        except Exception as e:
+            self.log_result("Return Flight: Email Preview", False, f"Test error: {str(e)}")
+            return False
+
     def run_comprehensive_test(self):
         """Run all tests in sequence"""
         print("🚀 Starting BookaRide Backend Testing - Review Request Features")
