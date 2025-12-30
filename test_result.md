@@ -696,3 +696,32 @@ Incorporate User Feedback:
   - Dashboard "offline" error was caused by Pydantic validation blocking booking retrieval
   - Customer confirmations were NOT being sent on booking creation - only after Stripe payment webhook
   - For pay-on-pickup customers, no confirmation was ever sent
+
+## Return Flight Number Implementation (Session Update)
+
+### Changes Made:
+1. **Backend Validation Updated** (`/app/backend/server.py`):
+   - Updated `validate_return_flight_for_airport_shuttle` to check both `returnFlightNumber` AND `returnDepartureFlightNumber`
+   - Added new fields to BookingCreate model: `returnDepartureFlightNumber`, `returnDepartureTime`, `returnArrivalFlightNumber`, `returnArrivalTime`
+   - Updated validation error message to include cancellation warning
+
+2. **Frontend Booking Form** (`/app/frontend/src/pages/BookNow.jsx`):
+   - Updated validation error message to be more impactful
+   - Updated inline warning message to mention potential cancellation
+
+3. **Admin Dashboard** (`/app/frontend/src/pages/AdminDashboard.jsx`):
+   - Updated return flight display to check both `returnDepartureFlightNumber` AND `returnFlightNumber` fields
+   - Updated warning message for missing return flight to include "follow up required"
+
+### Testing Needed:
+- Test booking creation with return trip and valid flight number ✅ (Ref #145 created)
+- Test booking creation with return trip but NO flight number (should reject) ✅ (Proper error message)
+- Verify admin panel shows return flight number correctly
+- Verify email template includes return flight number
+
+### Test Booking Created:
+- ID: 7ed7315d-47b3-4a3c-9f7a-fc4d0140a694
+- Ref: #145
+- Customer: Test User Flight
+- Return Flight: NZ456
+- Return Date: 2026-01-05 at 15:00
