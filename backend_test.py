@@ -2153,7 +2153,7 @@ TEST002,Test Customer 2,test2@example.com,021654321,456 Sample Ave Auckland,Auck
             # First, try to find an existing booking with return flight, or use the specific ID from review request
             target_booking_id = "7ed7315d-47b3-4a3c-9f7a-fc4d0140a694"
             
-            response = self.session.get(f"{BACKEND_URL}/booking/email-preview/{target_booking_id}", timeout=10)
+            response = self.session.get(f"{BACKEND_URL}/bookings/{target_booking_id}/preview-confirmation", timeout=10)
             
             if response.status_code == 200:
                 # Response should be HTML content
