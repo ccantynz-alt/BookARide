@@ -3134,6 +3134,31 @@ export const AdminDashboard = () => {
                             <p className="font-medium">{selectedBooking.returnTime}</p>
                           </div>
                         </div>
+                        {/* Return Flight Numbers */}
+                        {(selectedBooking.returnDepartureFlightNumber || selectedBooking.returnArrivalFlightNumber) && (
+                          <div className="mt-3 pt-3 border-t border-amber-200">
+                            <span className="text-gray-500 text-xs font-medium">✈️ Return Flight Info:</span>
+                            <div className="grid grid-cols-2 gap-2 mt-1">
+                              {selectedBooking.returnDepartureFlightNumber && (
+                                <div>
+                                  <span className="text-gray-500 text-xs">Departure Flight:</span>
+                                  <p className="font-medium text-blue-700">{selectedBooking.returnDepartureFlightNumber}</p>
+                                </div>
+                              )}
+                              {selectedBooking.returnArrivalFlightNumber && (
+                                <div>
+                                  <span className="text-gray-500 text-xs">Arrival Flight:</span>
+                                  <p className="font-medium text-blue-700">{selectedBooking.returnArrivalFlightNumber}</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        {!selectedBooking.returnDepartureFlightNumber && (
+                          <div className="mt-2 p-2 bg-red-100 rounded text-xs text-red-700">
+                            ⚠️ No return flight number provided
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
