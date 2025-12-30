@@ -12284,6 +12284,16 @@ async def startup_event():
         misfire_grace_time=3600 * 4  # Allow 4 hour grace period
     )
     
+    # AUTO-ARCHIVE COMPLETED BOOKINGS - Runs at 2 AM NZ time
+    scheduler.add_job(
+        auto_archive_completed_bookings,
+        CronTrigger(hour=2, minute=0, timezone=nz_tz),
+        id='auto_archive_bookings',
+        name='Auto-archive completed bookings',
+        replace_existing=True,
+        misfire_grace_time=3600 * 4  # Allow 4 hour grace period
+    )
+    
     # Also run sync immediately on startup
     scheduler.add_job(
         auto_sync_from_production,
@@ -12302,6 +12312,7 @@ async def startup_event():
     logger.info("   ✓ Auto-sync: Every 5 minutes")
     logger.info("   ✓ Return alerts: Every 15 minutes")
     logger.info("   ✓ Daily error check: 6:00 AM NZ daily")
+    logger.info("   ✓ Auto-archive: 2:00 AM NZ daily")
     logger.info("   ✓ Startup reminder check (running now...)")
     
     # Layer 3: Immediate startup check
