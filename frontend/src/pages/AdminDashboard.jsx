@@ -521,6 +521,13 @@ export const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [deletedBookings, setDeletedBookings] = useState([]);
+  // Archive state
+  const [archivedBookings, setArchivedBookings] = useState([]);
+  const [archivedCount, setArchivedCount] = useState(0);
+  const [loadingArchived, setLoadingArchived] = useState(false);
+  const [archiveSearchTerm, setArchiveSearchTerm] = useState('');
+  const [archivePage, setArchivePage] = useState(1);
+  const [archiveTotalPages, setArchiveTotalPages] = useState(1);
   // Shuttle state
   const [shuttleDate, setShuttleDate] = useState(new Date().toISOString().split('T')[0]);
   const [shuttleData, setShuttleData] = useState({});
