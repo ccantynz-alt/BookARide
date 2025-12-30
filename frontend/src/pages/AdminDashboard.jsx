@@ -3037,6 +3037,161 @@ export const AdminDashboard = () => {
             </Card>
           </TabsContent>
 
+          {/* Archive Tab - Long-term booking storage (7 years retention) */}
+          <TabsContent value="archive" className="space-y-6">
+            <Card className="border-blue-200 bg-blue-50">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <Archive className="w-6 h-6 text-blue-600" />
+                    <div>
+                      <h3 className="text-lg font-semibold text-blue-800">Archived Bookings</h3>
+                      <p className="text-sm text-blue-600">{archivedCount} bookings stored • 7-year retention</p>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Search Bar */}
+                <form onSubmit={handleArchiveSearch} className="flex gap-2 mb-4">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <Input
+                      placeholder="Search by name, email, phone, or reference #..."
+                      value={archiveSearchTerm}
+                      onChange={(e) => setArchiveSearchTerm(e.target.value)}
+                      className="pl-10 bg-white"
+                    />
+                  </div>
+                  <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
+                    <Search className="w-4 h-4 mr-2" />
+                    Search
+                  </Button>
+                  {archiveSearchTerm && (
+                    <Button 
+                      type="button" 
+                      variant="outline"
+                      onClick={() => {
+                        setArchiveSearchTerm('');
+                        fetchArchivedBookings(1, '');
+                      }}
+                    >
+                      Clear
+                    </Button>
+                  )}
+                </form>
+
+                {loadingArchived ? (
+                  <div className="text-center py-8">
+                    <RefreshCw className="w-8 h-8 animate-spin mx-auto text-gray-400" />
+                    <p className="text-gray-500 mt-2">Loading archived bookings...</p>
+                  </div>
+                ) : archivedBookings.length === 0 ? (
+                  <div className="text-center py-8 bg-white rounded-lg border border-blue-100">
+                    <Archive className="w-12 h-12 mx-auto text-gray-300 mb-3" />
+                    <p className="text-gray-500">No archived bookings found</p>
+                    <p className="text-sm text-gray-400">
+                      {archiveSearchTerm ? 'Try a different search term' : 'Archive completed bookings to move them here'}
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="bg-blue-100 text-blue-800">
+                            <th className="px-3 py-2 text-left">Ref #</th>
+                            <th className="px-3 py-2 text-left">Customer</th>
+                            <th className="px-3 py-2 text-left">Date</th>
+                            <th className="px-3 py-2 text-left">Route</th>
+                            <th className="px-3 py-2 text-left">Total</th>
+                            <th className="px-3 py-2 text-left">Archived</th>
+                            <th className="px-3 py-2 text-left">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {archivedBookings.map((booking) => (
+                            <tr key={booking.id} className="border-b border-blue-100 hover:bg-blue-50/50 bg-white">
+                              <td className="px-3 py-3 font-medium text-blue-700">#{booking.referenceNumber}</td>
+                              <td className="px-3 py-3">
+                                <div className="font-medium text-gray-900">{booking.name}</div>
+                                <div className="text-xs text-gray-500">{booking.email}</div>
+                                <div className="text-xs text-gray-500">{booking.phone}</div>
+                              </td>
+                              <td className="px-3 py-3">
+                                <div className="font-medium">{formatDate(booking.date)}</div>
+                                <div className="text-xs text-gray-500">{booking.time}</div>
+                              </td>
+                              <td className="px-3 py-3">
+                                <div className="text-xs text-gray-600 truncate max-w-[200px]" title={booking.pickupAddress}>
+                                  📍 {booking.pickupAddress}
+                                </div>
+                                <div className="text-xs text-gray-600 truncate max-w-[200px]" title={booking.dropoffAddress}>
+                                  🎯 {booking.dropoffAddress}
+                                </div>
+                              </td>
+                              <td className="px-3 py-3 font-medium text-green-700">
+                                ${(booking.pricing?.totalPrice || booking.totalPrice || 0).toFixed(2)}
+                              </td>
+                              <td className="px-3 py-3 text-xs text-gray-500">
+                                {booking.archivedAt ? new Date(booking.archivedAt).toLocaleDateString() : 'N/A'}
+                              </td>
+                              <td className="px-3 py-3">
+                                <div className="flex gap-2">
+                                  <Button
+                                    onClick={() => openDetailsModal(booking)}
+                                    variant="ghost"
+                                    size="sm"
+                                    title="View Details"
+                                  >
+                                    <Eye className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    onClick={() => handleUnarchiveBooking(booking.id)}
+                                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                                    size="sm"
+                                    title="Restore to Active Bookings"
+                                  >
+                                    <RotateCcw className="w-4 h-4 mr-1" />
+                                    Restore
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    
+                    {/* Pagination */}
+                    {archiveTotalPages > 1 && (
+                      <div className="flex justify-center items-center gap-4 mt-4">
+                        <Button
+                          onClick={() => fetchArchivedBookings(archivePage - 1, archiveSearchTerm)}
+                          disabled={archivePage <= 1}
+                          variant="outline"
+                          size="sm"
+                        >
+                          Previous
+                        </Button>
+                        <span className="text-sm text-gray-600">
+                          Page {archivePage} of {archiveTotalPages}
+                        </span>
+                        <Button
+                          onClick={() => fetchArchivedBookings(archivePage + 1, archiveSearchTerm)}
+                          disabled={archivePage >= archiveTotalPages}
+                          variant="outline"
+                          size="sm"
+                        >
+                          Next
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* Data Import Tab */}
           <TabsContent value="import" className="space-y-6">
             <Card className="border-purple-200 bg-purple-50">
