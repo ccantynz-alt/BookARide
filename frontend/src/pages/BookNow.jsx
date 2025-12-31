@@ -1147,33 +1147,6 @@ export const BookNow = () => {
                         <div className="text-center py-8">
                           <MapPin className="w-12 h-12 mx-auto mb-3 text-gray-300" />
                           <p className="text-gray-500 mb-4">Enter addresses to see price estimate</p>
-                          
-                          {/* Only show promo code section if they came with a code from popup */}
-                          {hasPromoFromPopup && promoCode && (
-                            <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-4 border border-green-200 text-left mt-4">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-2xl">🎉</span>
-                                  <div>
-                                    <p className="font-semibold text-green-700">{promoCode} applied!</p>
-                                    <p className="text-sm text-green-600">10% discount ready</p>
-                                  </div>
-                                </div>
-                                <button
-                                  onClick={() => {
-                                    setPromoCode('');
-                                    setHasPromoFromPopup(false);
-                                  }}
-                                  className="text-gray-400 hover:text-red-500 text-sm"
-                                >
-                                  ✕
-                                </button>
-                              </div>
-                              <p className="text-xs text-gray-500 mt-2">
-                                Fill in your trip details above to see your discounted price
-                              </p>
-                            </div>
-                          )}
                         </div>
                       )}
 
