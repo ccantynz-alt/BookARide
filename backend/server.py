@@ -1081,32 +1081,31 @@ async def calculate_price(request: PriceCalculationRequest):
                 # Use the distance TO Hibiscus Coast (approx 40km from CBD)
                 distance_to_hibiscus = min(distance_km, hibiscus_coast_distance_km)
                 
-                # Calculate price for the distance to Hibiscus Coast using tiered rates (+11.11%)
+                # Calculate price for the distance to Hibiscus Coast using tiered rates
                 if distance_to_hibiscus <= 15.0:
-                    rate_to_hibiscus = 13.33
+                    rate_to_hibiscus = 12.00
                 elif distance_to_hibiscus <= 15.8:
-                    rate_to_hibiscus = 8.89
+                    rate_to_hibiscus = 8.00
                 elif distance_to_hibiscus <= 16.0:
-                    rate_to_hibiscus = 6.67
+                    rate_to_hibiscus = 6.00
                 elif distance_to_hibiscus <= 25.5:
-                    rate_to_hibiscus = 6.11
+                    rate_to_hibiscus = 5.50
                 elif distance_to_hibiscus <= 35.0:
-                    rate_to_hibiscus = 5.56
+                    rate_to_hibiscus = 5.00
                 elif distance_to_hibiscus <= 50.0:
-                    rate_to_hibiscus = 4.44
+                    rate_to_hibiscus = 4.00
                 else:
-                    rate_to_hibiscus = 3.89
+                    rate_to_hibiscus = 3.50
                 
                 price_to_hibiscus = distance_to_hibiscus * rate_to_hibiscus
                 
-                # Total = km rate to Hibiscus Coast + $611 concert base (+11.11%) + extras
-                matakana_concert_base_adjusted = 611.0  # Was $550
-                total_price = price_to_hibiscus + matakana_concert_base_adjusted + airport_fee + oversized_luggage_fee + passenger_fee
+                # Total = km rate to Hibiscus Coast + $550 concert base + extras
+                total_price = price_to_hibiscus + matakana_concert_base + airport_fee + oversized_luggage_fee + passenger_fee
                 
-                logger.info(f"🎵 Auckland → Matakana Country Park: {distance_to_hibiscus}km @ ${rate_to_hibiscus}/km = ${price_to_hibiscus:.2f} + ${matakana_concert_base_adjusted} = ${total_price:.2f}")
-        elif total_price < 111.0:
-            # Standard minimum of $111 for regular trips (was $100, +11.11% so 10% off = $100)
-            total_price = 111.0
+                logger.info(f"🎵 Auckland → Matakana Country Park: {distance_to_hibiscus}km @ ${rate_to_hibiscus}/km = ${price_to_hibiscus:.2f} + ${matakana_concert_base} = ${total_price:.2f}")
+        elif total_price < 100.0:
+            # Standard minimum of $100 for regular trips
+            total_price = 100.0
         
         # Calculate Stripe processing fee (2.9% + $0.30 NZD) and add to customer total
         # This ensures drivers get the full base amount
