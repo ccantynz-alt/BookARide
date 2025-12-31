@@ -567,7 +567,7 @@ export const AdminDashboard = () => {
     date: '',
     time: '',
     passengers: '1',
-    paymentMethod: 'pay-on-pickup',
+    paymentMethod: 'stripe',  // Default to Stripe payment link (mandatory online payment)
     notes: '',
     flightArrivalNumber: '',
     flightArrivalTime: '',
