@@ -125,7 +125,7 @@ export const BookNow = () => {
   }, 0);
 
   // Final total including add-ons and promo discount
-  const finalTotal = (promoApplied ? promoApplied.newTotal : pricing.totalPrice) + addOnsTotal;
+  const finalTotal = pricing.totalPrice + addOnsTotal;
 
   const serviceOptions = [
     { value: 'airport-shuttle', label: 'Airport Shuttle' },
