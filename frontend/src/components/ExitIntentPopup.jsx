@@ -1,16 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Gift, ArrowRight, Mail } from 'lucide-react';
+import { X, Mail, ArrowRight, Star } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { useNavigate } from 'react-router-dom';
 
 const ExitIntentPopup = () => {
   const [isVisible, setIsVisible] = useState(false);
   const [email, setEmail] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [hasShown, setHasShown] = useState(false);
-  const navigate = useNavigate();
 
   useEffect(() => {
     // Check if already shown this session
@@ -51,19 +49,10 @@ const ExitIntentPopup = () => {
     e.preventDefault();
     if (!email) return;
 
-    // Store email (you can connect this to your backend)
+    // Store email for potential newsletter signup
     try {
-      // Optional: Send to backend
-      // await fetch('/api/subscribe', { method: 'POST', body: JSON.stringify({ email }) });
-      
-      localStorage.setItem('discountEmail', email);
-      localStorage.setItem('discountCode', 'WELCOME10');
+      localStorage.setItem('subscriberEmail', email);
       setIsSubmitted(true);
-      
-      // Auto-close after 3 seconds
-      setTimeout(() => {
-        setIsVisible(false);
-      }, 3000);
     } catch (error) {
       console.error('Error saving email:', error);
     }
@@ -72,6 +61,8 @@ const ExitIntentPopup = () => {
   const handleClose = () => {
     setIsVisible(false);
   };
+
+  if (!isVisible) return null;
 
   return (
     <AnimatePresence>
@@ -86,7 +77,7 @@ const ExitIntentPopup = () => {
             onClick={handleClose}
           />
 
-          {/* Popup - centered with max-height constraint to prevent overflow */}
+          {/* Popup - centered with max-height constraint */}
           <motion.div
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -105,23 +96,23 @@ const ExitIntentPopup = () => {
 
               {!isSubmitted ? (
                 <>
-                  {/* Header with gradient */}
+                  {/* Header */}
                   <div className="bg-gradient-to-r from-black via-gray-900 to-black p-8 text-center">
                     <div className="inline-flex items-center justify-center w-16 h-16 bg-gold rounded-full mb-4">
-                      <Gift className="w-8 h-8 text-black" />
+                      <Star className="w-8 h-8 text-black" />
                     </div>
                     <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">
-                      Wait! Don't Leave Empty-Handed
+                      Before You Go...
                     </h2>
-                    <p className="text-gold text-xl font-semibold">
-                      Get 10% OFF Your First Ride!
+                    <p className="text-gold text-lg font-semibold">
+                      Stay Connected With Us!
                     </p>
                   </div>
 
                   {/* Form */}
                   <div className="p-8">
                     <p className="text-gray-600 text-center mb-6">
-                      Enter your email and we'll send you an exclusive discount code for your first airport transfer.
+                      Subscribe to receive travel tips, special announcements, and updates about our Auckland airport transfer services.
                     </p>
 
                     <form onSubmit={handleSubmit} className="space-y-4">
@@ -139,10 +130,10 @@ const ExitIntentPopup = () => {
 
                       <Button
                         type="submit"
-                        className="w-full bg-gold hover:bg-yellow-500 text-black font-semibold py-6 text-lg group"
+                        className="w-full bg-gold hover:bg-gold/90 text-black font-semibold py-6 text-lg flex items-center justify-center gap-2"
                       >
-                        Claim My 10% Discount
-                        <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                        Subscribe
+                        <ArrowRight className="w-5 h-5" />
                       </Button>
                     </form>
 
@@ -154,39 +145,23 @@ const ExitIntentPopup = () => {
               ) : (
                 /* Success State */
                 <div className="p-8 text-center">
-                  <div className="inline-flex items-center justify-center w-20 h-20 bg-green-100 rounded-full mb-6">
+                  <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
                     <svg className="w-10 h-10 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                   </div>
                   <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                    You're All Set!
+                    You're Subscribed!
                   </h3>
-                  <p className="text-gray-600 mb-4">
-                    Your exclusive discount code is:
+                  <p className="text-gray-600 mb-6">
+                    Thanks for subscribing. We'll keep you updated with the latest news and travel tips.
                   </p>
-                  <div className="bg-gray-100 rounded-lg p-4 mb-6">
-                    <span className="text-2xl font-bold text-gold tracking-wider">WELCOME10</span>
-                    <p className="text-sm text-green-600 mt-1">10% off your first ride!</p>
-                  </div>
-                  
                   <Button
-                    onClick={() => {
-                      // Save the promo code to localStorage
-                      localStorage.setItem('promoCode', 'WELCOME10');
-                      // Close popup and navigate to booking page
-                      setIsVisible(false);
-                      navigate('/book-now');
-                    }}
-                    className="w-full bg-gold hover:bg-yellow-500 text-black font-semibold py-3 text-lg"
+                    onClick={handleClose}
+                    className="bg-gold hover:bg-gold/90 text-black font-semibold px-8"
                   >
-                    Book Now with 10% Off
-                    <ArrowRight className="ml-2 w-5 h-5" />
+                    Continue Browsing
                   </Button>
-                  
-                  <p className="text-xs text-gray-400 mt-4">
-                    Or save the code and book later
-                  </p>
                 </div>
               )}
             </div>
