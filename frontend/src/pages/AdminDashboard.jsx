@@ -2173,7 +2173,7 @@ export const AdminDashboard = () => {
         date: '',
         time: '',
         passengers: '1',
-        paymentMethod: 'pay-on-pickup',
+        paymentMethod: 'stripe',  // Default to Stripe payment link
         notes: '',
         flightArrivalNumber: '',
         flightArrivalTime: '',
@@ -4602,7 +4602,7 @@ export const AdminDashboard = () => {
                     date: '',
                     time: '',
                     passengers: '1',
-                    paymentMethod: 'pay-on-pickup',
+                    paymentMethod: 'stripe',  // Default to Stripe payment link
                     notes: ''
                   });
                   setBookingPricing({
