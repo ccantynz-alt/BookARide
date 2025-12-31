@@ -1067,22 +1067,10 @@ export const BookNow = () => {
                                 ${pricing.subtotal?.toFixed(2) || pricing.basePrice?.toFixed(2)}
                               </span>
                             </div>
-                            {promoApplied && (
-                              <>
-                                <div className="flex justify-between text-green-600">
-                                  <span>Promo discount ({promoApplied.discountPercent}% off)</span>
-                                  <span>-${promoApplied.discountAmount.toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span className="text-gray-600">Discounted fare</span>
-                                  <span className="font-medium">${promoApplied.newSubtotal.toFixed(2)}</span>
-                                </div>
-                              </>
-                            )}
-                            {(promoApplied ? promoApplied.stripeFee : pricing.stripeFee) > 0 && (
+                            {pricing.stripeFee > 0 && (
                               <div className="flex justify-between text-gray-500">
                                 <span>Card processing fee</span>
-                                <span>${(promoApplied ? promoApplied.stripeFee : pricing.stripeFee).toFixed(2)}</span>
+                                <span>${pricing.stripeFee.toFixed(2)}</span>
                               </div>
                             )}
                             {addOnsTotal > 0 && (
@@ -1096,37 +1084,6 @@ export const BookNow = () => {
                               <span className="text-gold">${finalTotal.toFixed(2)}</span>
                             </div>
                           </div>
-                          
-                          {/* Promo Code Section - Only show if promo applied or came from popup */}
-                          {(promoApplied || hasPromoFromPopup) && (
-                            <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-4 border border-green-200">
-                              {promoApplied ? (
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-2xl">🎉</span>
-                                    <div>
-                                      <span className="text-green-600 font-bold">{promoApplied.code}</span>
-                                      <span className="text-sm text-gray-500 ml-2">({promoApplied.discountPercent}% off)</span>
-                                    </div>
-                                  </div>
-                                  <button
-                                    onClick={handleRemovePromo}
-                                    className="text-red-500 hover:text-red-700 text-sm font-medium"
-                                  >
-                                    Remove
-                                  </button>
-                                </div>
-                              ) : (
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-xl">🎁</span>
-                                    <span className="text-green-700 font-semibold">{promoCode}</span>
-                                  </div>
-                                  <span className="text-sm text-amber-600">Applying...</span>
-                                </div>
-                              )}
-                            </div>
-                          )}
                           
                           <div className="bg-gray-50 rounded-lg p-4 text-center">
                             <p className="text-sm text-gray-600">
