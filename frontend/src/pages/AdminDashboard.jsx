@@ -3119,7 +3119,7 @@ export const AdminDashboard = () => {
                                 <span className="text-gray-400">Total:</span> ${booking.totalPrice || booking.total_price}
                               </div>
                               <div>
-                                <span className="text-gray-400">Deleted:</span> {new Date(booking.deletedAt).toLocaleDateString()}
+                                <span className="text-gray-400">Deleted:</span> {new Date(booking.deletedAt).toLocaleDateString('en-NZ')}
                               </div>
                             </div>
                             <div className="mt-2 text-sm">
