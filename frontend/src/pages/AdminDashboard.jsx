@@ -3890,7 +3890,7 @@ export const AdminDashboard = () => {
             <div className="space-y-4">
               <div className="bg-gray-50 p-4 rounded-lg space-y-2">
                 <p className="text-sm"><strong>Booking:</strong> #{selectedBooking.referenceNumber} - {selectedBooking.name}</p>
-                <p className="text-sm"><strong>Date:</strong> {selectedBooking.date} at {selectedBooking.time}</p>
+                <p className="text-sm"><strong>Date:</strong> {formatDate(selectedBooking.date)} at {selectedBooking.time}</p>
                 <p className="text-sm"><strong>Trip:</strong> {pendingAssignment.tripType === 'return' ? 'Return Trip' : 'Outbound Trip'}</p>
               </div>
               
