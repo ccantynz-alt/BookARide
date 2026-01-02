@@ -284,6 +284,23 @@ class BookingCreate(BaseModel):
             if not return_flight or not return_flight.strip():
                 raise ValueError('Return flight number is required for airport shuttle return bookings. Without a flight number, your booking may face cancellation.')
         return self
+    
+    @model_validator(mode='after')
+    def validate_booking_date(self):
+        """Validate that booking date is not in the past"""
+        if self.date:
+            try:
+                nz_tz = pytz.timezone('Pacific/Auckland')
+                today = datetime.now(nz_tz).strftime('%Y-%m-%d')
+                # Allow bookings for today and future only
+                if self.date < today:
+                    raise ValueError(f'Booking date ({self.date}) cannot be in the past. Today is {today}.')
+            except Exception as e:
+                if 'cannot be in the past' in str(e):
+                    raise
+                # If date parsing fails, let it through (will fail elsewhere)
+                pass
+        return self
 
 class Booking(BookingCreate):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
