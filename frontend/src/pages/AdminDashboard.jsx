@@ -4843,6 +4843,7 @@ export const AdminDashboard = () => {
                             type="date"
                             value={editingBooking.returnDate || ''}
                             onChange={(e) => setEditingBooking(prev => ({...prev, returnDate: e.target.value}))}
+                            min={editingBooking.date || new Date().toISOString().split('T')[0]}
                             className="mt-1 bg-white"
                           />
                         </div>
