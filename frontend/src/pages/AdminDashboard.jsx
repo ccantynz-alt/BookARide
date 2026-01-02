@@ -3275,7 +3275,7 @@ export const AdminDashboard = () => {
                                 ${(booking.pricing?.totalPrice || booking.totalPrice || 0).toFixed(2)}
                               </td>
                               <td className="px-3 py-3 text-xs text-gray-500">
-                                {booking.archivedAt ? new Date(booking.archivedAt).toLocaleDateString() : 'N/A'}
+                                {booking.archivedAt ? new Date(booking.archivedAt).toLocaleDateString('en-NZ') : 'N/A'}
                               </td>
                               <td className="px-3 py-3">
                                 <div className="flex gap-2">
