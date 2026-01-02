@@ -3718,7 +3718,7 @@ export const AdminDashboard = () => {
               {selectedBooking.bookReturn && (
                 <div className="mt-4 pt-4 border-t border-dashed">
                   <h3 className="font-semibold text-gray-900 mb-3">
-                    🔄 Return Driver <span className="text-sm font-normal text-gray-500">(Return on {selectedBooking.returnDate} at {selectedBooking.returnTime})</span>
+                    🔄 Return Driver <span className="text-sm font-normal text-gray-500">(Return on {formatDate(selectedBooking.returnDate)} at {selectedBooking.returnTime})</span>
                   </h3>
                   {selectedBooking.return_driver_id ? (
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
