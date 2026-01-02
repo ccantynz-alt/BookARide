@@ -4294,7 +4294,7 @@ export const AdminDashboard = () => {
                           }
                         }}
                         placeholder="Select date"
-                        minDate={new Date('2020-01-01')}
+                        minDate={new Date()}
                         maxDate={new Date('2030-12-31')}
                         showMonthDropdown
                         showYearDropdown
