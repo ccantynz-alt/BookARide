@@ -978,7 +978,21 @@ export const BookNow = () => {
                   {/* Contact Information */}
                   <Card className="border-2 border-gray-200 shadow-lg">
                     <CardContent className="p-8">
-                      <h2 className="text-2xl font-bold text-gray-900 mb-6">Contact Information</h2>
+                      <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-2xl font-bold text-gray-900">Contact Information</h2>
+                        {isReturningCustomer && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-green-600 font-medium">👋 Welcome back!</span>
+                            <button
+                              type="button"
+                              onClick={clearSavedCustomer}
+                              className="text-xs text-gray-400 hover:text-red-500 underline"
+                            >
+                              Not you?
+                            </button>
+                          </div>
+                        )}
+                      </div>
 
                       <div className="space-y-6">
                         <div className="space-y-2">
