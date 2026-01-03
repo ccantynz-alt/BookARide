@@ -7754,9 +7754,18 @@ async def generate_stripe_payment_link(booking: dict) -> str:
         success_url = f"{public_url}/payment-success?session_id={{CHECKOUT_SESSION_ID}}"
         cancel_url = f"{public_url}/book-now"
         
-        amount = float(booking.get('totalPrice', 0))
+        # Get price from multiple possible locations (admin may update pricing.totalPrice)
+        amount = 0
+        if booking.get('pricing') and booking.get('pricing', {}).get('totalPrice'):
+            amount = float(booking.get('pricing', {}).get('totalPrice', 0))
+        elif booking.get('totalPrice'):
+            amount = float(booking.get('totalPrice', 0))
+        
         if amount <= 0:
+            logger.error(f"Invalid amount for payment link: {amount}")
             return None
+        
+        logger.info(f"Generating Stripe payment link for ${amount:.2f} (booking #{booking.get('referenceNumber')})")
         
         checkout_request = CheckoutSessionRequest(
             amount=amount,
