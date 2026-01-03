@@ -69,6 +69,37 @@ export const BookNow = () => {
     notificationPreference: 'both'  // 'email', 'sms', or 'both'
   });
 
+  // Load saved customer details on mount
+  useEffect(() => {
+    const savedCustomer = localStorage.getItem('bookaride_customer');
+    if (savedCustomer) {
+      try {
+        const customer = JSON.parse(savedCustomer);
+        setFormData(prev => ({
+          ...prev,
+          name: customer.name || '',
+          email: customer.email || '',
+          phone: customer.phone || ''
+        }));
+      } catch (e) {
+        console.error('Error loading saved customer:', e);
+      }
+    }
+  }, []);
+
+  // Save customer details after successful booking
+  const saveCustomerDetails = () => {
+    if (formData.name && formData.email) {
+      const customerData = {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        lastBooking: new Date().toISOString()
+      };
+      localStorage.setItem('bookaride_customer', JSON.stringify(customerData));
+    }
+  };
+
   // Date/Time picker states
   const [pickupDate, setPickupDate] = useState(null);
   const [pickupTime, setPickupTime] = useState(null);
