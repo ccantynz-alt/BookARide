@@ -12310,14 +12310,14 @@ async def startup_event():
         misfire_grace_time=3600 * 4  # Allow 4 hour grace period
     )
     
-    # Also run sync immediately on startup
-    scheduler.add_job(
-        auto_sync_from_production,
-        'date',  # Run once immediately
-        id='startup_sync',
-        name='Startup sync from production',
-        replace_existing=True
-    )
+    # Startup sync DISABLED - was overwriting local changes
+    # scheduler.add_job(
+    #     auto_sync_from_production,
+    #     'date',  # Run once immediately
+    #     id='startup_sync',
+    #     name='Startup sync from production',
+    #     replace_existing=True
+    # )
     
     scheduler.start()
     logger.info("🚀 Scheduler started with all jobs:")
