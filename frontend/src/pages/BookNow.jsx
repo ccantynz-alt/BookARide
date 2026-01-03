@@ -406,6 +406,9 @@ export const BookNow = () => {
       const bookingResponse = await axios.post(`${API}/bookings`, bookingData);
       const booking = bookingResponse.data;
 
+      // Save customer details for future bookings
+      saveCustomerDetails();
+
       // Check payment method
       if (formData.paymentMethod === 'afterpay') {
         // Create Afterpay checkout
