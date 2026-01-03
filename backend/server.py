@@ -7790,7 +7790,14 @@ def generate_paypal_payment_link(booking: dict) -> str:
     """Generate a PayPal.me payment link for a booking"""
     try:
         paypal_username = os.environ.get('PAYPAL_ME_USERNAME', 'bookaridenz')
-        amount = float(booking.get('totalPrice', 0))
+        
+        # Get price from multiple possible locations (admin may update pricing.totalPrice)
+        amount = 0
+        if booking.get('pricing') and booking.get('pricing', {}).get('totalPrice'):
+            amount = float(booking.get('pricing', {}).get('totalPrice', 0))
+        elif booking.get('totalPrice'):
+            amount = float(booking.get('totalPrice', 0))
+        
         if amount <= 0:
             return None
         
