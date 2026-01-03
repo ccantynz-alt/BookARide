@@ -1484,6 +1484,21 @@ async def update_booking(booking_id: str, update_data: dict, current_admin: dict
             else:
                 update_data['bookReturn'] = False
         
+        # Sync totalPrice when pricing is updated
+        if 'pricing' in update_data and update_data['pricing']:
+            if 'totalPrice' in update_data['pricing']:
+                update_data['totalPrice'] = update_data['pricing']['totalPrice']
+                logger.info(f"Synced totalPrice to {update_data['totalPrice']} for booking {booking_id}")
+        
+        # Also sync if totalPrice is updated directly
+        if 'totalPrice' in update_data and update_data['totalPrice']:
+            # Update pricing.totalPrice as well if pricing exists
+            existing = await db.bookings.find_one({"id": booking_id}, {"_id": 0, "pricing": 1})
+            if existing and existing.get('pricing'):
+                if 'pricing' not in update_data:
+                    update_data['pricing'] = existing['pricing']
+                update_data['pricing']['totalPrice'] = update_data['totalPrice']
+        
         result = await db.bookings.update_one(
             {"id": booking_id},
             {"$set": update_data}
