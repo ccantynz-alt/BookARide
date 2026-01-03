@@ -70,6 +70,8 @@ export const BookNow = () => {
   });
 
   // Load saved customer details on mount
+  const [isReturningCustomer, setIsReturningCustomer] = useState(false);
+  
   useEffect(() => {
     const savedCustomer = localStorage.getItem('bookaride_customer');
     if (savedCustomer) {
@@ -81,6 +83,7 @@ export const BookNow = () => {
           email: customer.email || '',
           phone: customer.phone || ''
         }));
+        setIsReturningCustomer(true);
       } catch (e) {
         console.error('Error loading saved customer:', e);
       }
@@ -98,6 +101,18 @@ export const BookNow = () => {
       };
       localStorage.setItem('bookaride_customer', JSON.stringify(customerData));
     }
+  };
+
+  // Clear saved customer details
+  const clearSavedCustomer = () => {
+    localStorage.removeItem('bookaride_customer');
+    setFormData(prev => ({
+      ...prev,
+      name: '',
+      email: '',
+      phone: ''
+    }));
+    setIsReturningCustomer(false);
   };
 
   // Date/Time picker states
