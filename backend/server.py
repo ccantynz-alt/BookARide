@@ -12272,14 +12272,14 @@ async def startup_event():
         replace_existing=True
     )
     
-    # Auto-sync from production every 5 minutes
-    scheduler.add_job(
-        auto_sync_from_production,
-        IntervalTrigger(minutes=5),
-        id='auto_sync_production',
-        name='Auto-sync from production database',
-        replace_existing=True
-    )
+    # Auto-sync from production DISABLED - was overwriting local changes
+    # scheduler.add_job(
+    #     auto_sync_from_production,
+    #     IntervalTrigger(minutes=5),
+    #     id='auto_sync_production',
+    #     name='Auto-sync from production database',
+    #     replace_existing=True
+    # )
     
     # RETURN BOOKING ALERTS - Check every 15 minutes
     scheduler.add_job(
