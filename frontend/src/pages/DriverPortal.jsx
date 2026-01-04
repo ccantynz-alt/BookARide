@@ -383,14 +383,13 @@ export const DriverPortal = () => {
                       <DollarSign className="w-6 h-6 text-amber-600" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-amber-800 mb-2">How Earnings Work</h3>
+                      <h3 className="font-bold text-amber-800 mb-2">Payment Information</h3>
                       <p className="text-amber-700 text-sm">
-                        You receive <strong>85%</strong> of the total booking price for each job.
-                        A 15% service fee is retained by BookaRide for platform maintenance,
-                        customer support, and marketing.
+                        Your payout for each job is shown on the booking card.
+                        Payments are processed weekly via bank transfer.
                       </p>
                       <p className="text-amber-600 text-xs mt-2">
-                        Example: $100 booking = $85 to you
+                        Contact admin if you have any questions about your earnings.
                       </p>
                     </div>
                   </div>
