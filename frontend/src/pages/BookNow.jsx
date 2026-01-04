@@ -16,6 +16,7 @@ import CurrencyConverter from '../components/CurrencyConverter';
 import TripCostSplitter from '../components/TripCostSplitter';
 import WeatherWidget from '../components/WeatherWidget';
 import LiveJourneyVisualizer from '../components/LiveJourneyVisualizer';
+import MultiStopRouteMap from '../components/MultiStopRouteMap';
 import { CustomDatePicker, CustomTimePicker } from '../components/DateTimePicker';
 import { initAutocompleteWithFix } from '../utils/fixGoogleAutocomplete';
 import PriceComparison from '../components/PriceComparison';
