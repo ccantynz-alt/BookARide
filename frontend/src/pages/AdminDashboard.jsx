@@ -4856,6 +4856,15 @@ export const AdminDashboard = () => {
                             className="mt-1 bg-white"
                           />
                         </div>
+                        <div>
+                          <Label>Return Flight Number</Label>
+                          <Input
+                            value={editingBooking.returnFlightNumber || editingBooking.returnDepartureFlightNumber || ''}
+                            onChange={(e) => setEditingBooking(prev => ({...prev, returnFlightNumber: e.target.value, returnDepartureFlightNumber: e.target.value}))}
+                            placeholder="e.g. NZ456"
+                            className="mt-1 bg-white"
+                          />
+                        </div>
                         <div className="md:col-span-2">
                           <p className="text-xs text-gray-600 italic">
                             Return route: {editingBooking.dropoffAddress?.split(',')[0]} → {editingBooking.pickupAddress?.split(',')[0]}
