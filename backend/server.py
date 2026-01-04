@@ -9074,7 +9074,7 @@ async def driver_login(credentials: DriverLogin):
 
 @api_router.get("/drivers/{driver_id}/bookings")
 async def get_driver_bookings(driver_id: str, date: Optional[str] = None):
-    """Get bookings assigned to a driver with payout (driver gets full subtotal, customer pays Stripe fee)"""
+    """Get bookings assigned to a driver with payout - ONLY shows driver payout, not original pricing"""
     try:
         query = {"driver_id": driver_id}
         
@@ -9083,33 +9083,35 @@ async def get_driver_bookings(driver_id: str, date: Optional[str] = None):
         
         # Calculate driver payout for each booking
         for booking in all_bookings:
-            pricing = booking.get('pricing', {})
-            # Use subtotal if available (price before Stripe fee), otherwise calculate from total
-            subtotal = pricing.get('subtotal')
-            if subtotal is None:
-                total_price = pricing.get('totalPrice', 0)
-                # For legacy bookings, calculate subtotal from total
-                subtotal = (total_price - 0.30) / 1.029 if total_price > 0 else 0
-            
-            has_return = booking.get('bookReturn') or bool(booking.get('returnDate'))
-            
-            # For return bookings, this driver only gets half (outbound portion)
-            if has_return:
-                # Use oneWayPrice if explicitly set, otherwise split evenly
-                one_way_price = pricing.get('oneWayPrice')
-                if one_way_price:
-                    trip_price = one_way_price
-                else:
-                    trip_price = subtotal / 2
+            # PRIORITY 1: Use driver_payout_override if set by admin
+            if booking.get('driver_payout_override'):
+                booking['driver_price'] = float(booking.get('driver_payout_override'))
             else:
-                trip_price = subtotal
+                # PRIORITY 2: Calculate from pricing
+                pricing = booking.get('pricing', {})
+                subtotal = pricing.get('subtotal')
+                if subtotal is None:
+                    total_price = pricing.get('totalPrice', 0)
+                    subtotal = (total_price - 0.30) / 1.029 if total_price > 0 else 0
+                
+                has_return = booking.get('bookReturn') or bool(booking.get('returnDate'))
+                
+                if has_return:
+                    one_way_price = pricing.get('oneWayPrice')
+                    if one_way_price:
+                        trip_price = one_way_price
+                    else:
+                        trip_price = subtotal / 2
+                else:
+                    trip_price = subtotal
+                
+                booking['driver_price'] = round(trip_price, 2)
             
-            # Driver gets the full trip price (Stripe fee is paid by customer)
-            booking['driver_price'] = round(trip_price, 2)
-            
-            # Remove the full pricing details from response (drivers shouldn't see original price)
-            if 'pricing' in booking:
-                del booking['pricing']
+            # IMPORTANT: Remove ALL pricing details - drivers should ONLY see their payout
+            booking.pop('pricing', None)
+            booking.pop('totalPrice', None)
+            booking.pop('basePrice', None)
+            booking.pop('subtotal', None)
         
         return {"bookings": all_bookings}
     except Exception as e:
