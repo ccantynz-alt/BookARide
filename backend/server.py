@@ -9076,14 +9076,30 @@ async def driver_login(credentials: DriverLogin):
 async def get_driver_bookings(driver_id: str, date: Optional[str] = None):
     """Get bookings assigned to a driver - shows ONLY the driver payout set by admin"""
     try:
-        query = {"driver_id": driver_id}
+        # Query for both outbound and return driver assignments
+        query = {
+            "$or": [
+                {"driver_id": driver_id},
+                {"return_driver_id": driver_id}
+            ]
+        }
         
         # Get all bookings for the driver
         all_bookings = await db.bookings.find(query, {"_id": 0}).to_list(1000)
         
         for booking in all_bookings:
-            # Use driver_payout_override if set, otherwise use driver_payout, otherwise 0
-            override = booking.get('driver_payout_override') or booking.get('driver_payout')
+            # Determine if this driver is for outbound or return
+            is_return_driver = booking.get('return_driver_id') == driver_id and booking.get('driver_id') != driver_id
+            
+            if is_return_driver:
+                # Use return driver payout
+                override = booking.get('return_driver_payout') or booking.get('return_driver_payout_override')
+                booking['trip_type'] = 'return'
+            else:
+                # Use outbound driver payout
+                override = booking.get('driver_payout_override') or booking.get('driver_payout')
+                booking['trip_type'] = 'outbound'
+            
             booking['driver_price'] = float(override) if override else 0
             
             # REMOVE ALL PRICING - drivers see ONLY their payout
@@ -9093,6 +9109,8 @@ async def get_driver_bookings(driver_id: str, date: Optional[str] = None):
             booking.pop('subtotal', None)
             booking.pop('driver_payout', None)
             booking.pop('driver_payout_override', None)
+            booking.pop('return_driver_payout', None)
+            booking.pop('return_driver_payout_override', None)
         
         return {"bookings": all_bookings}
     except Exception as e:
