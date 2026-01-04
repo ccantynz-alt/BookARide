@@ -47,26 +47,27 @@ const MultiStopRouteMap = ({
   const [routeInfo, setRouteInfo] = useState(null);
   const mapRef = useRef(null);
 
+  // Create a stable string representation of pickupAddresses for dependency
+  const pickupAddressesKey = pickupAddresses.filter(addr => addr && addr.trim()).join('|');
+
   // Get all valid addresses
   const allPickups = [pickupAddress, ...pickupAddresses].filter(addr => addr && addr.trim());
   const hasMultipleStops = allPickups.length > 1;
 
   useEffect(() => {
+    // Early return without setState - handled by initial state
     if (!isLoaded || !pickupAddress || !dropoffAddress) {
-      setDirections(null);
-      setRouteInfo(null);
       return;
     }
 
     const directionsService = new window.google.maps.DirectionsService();
 
     // Build waypoints from additional pickup addresses
-    const waypoints = pickupAddresses
-      .filter(addr => addr && addr.trim())
-      .map(addr => ({
-        location: addr,
-        stopover: true
-      }));
+    const validPickupAddresses = pickupAddresses.filter(addr => addr && addr.trim());
+    const waypoints = validPickupAddresses.map(addr => ({
+      location: addr,
+      stopover: true
+    }));
 
     const request = {
       origin: pickupAddress,
@@ -90,24 +91,27 @@ const MultiStopRouteMap = ({
           totalDuration += leg.duration.value;
         });
 
+        const stopCount = 1 + validPickupAddresses.length + 1; // first pickup + additional + dropoff
         const info = {
           distance: (totalDistance / 1000).toFixed(1),
           duration: Math.round(totalDuration / 60),
-          stops: allPickups.length + 1 // pickups + dropoff
+          stops: stopCount
         };
         
         setRouteInfo(info);
-        
-        if (onRouteCalculated) {
-          onRouteCalculated(info);
-        }
       } else {
         console.error('Directions request failed:', status);
         setDirections(null);
         setRouteInfo(null);
       }
     });
-  }, [isLoaded, pickupAddress, pickupAddresses.join(','), dropoffAddress]);
+
+    // Reset when addresses change
+    return () => {
+      setDirections(null);
+      setRouteInfo(null);
+    };
+  }, [isLoaded, pickupAddress, pickupAddressesKey, dropoffAddress, pickupAddresses]);
 
   if (loadError) {
     return (
