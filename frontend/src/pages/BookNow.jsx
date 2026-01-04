@@ -1191,13 +1191,13 @@ export const BookNow = () => {
                             <WeatherWidget location={formData.dropoffAddress || 'Auckland'} />
                           </div>
 
-                          {/* Live Journey Visualizer */}
+                          {/* Multi-Stop Route Map with Visual Preview */}
                           {formData.pickupAddress && formData.dropoffAddress && (
-                            <div className="mt-4">
-                              <LiveJourneyVisualizer 
+                            <div className="mt-4" data-testid="route-map-container">
+                              <MultiStopRouteMap 
                                 pickupAddress={formData.pickupAddress}
+                                pickupAddresses={formData.pickupAddresses}
                                 dropoffAddress={formData.dropoffAddress}
-                                distance={pricing.distance}
                               />
                             </div>
                           )}
