@@ -41,7 +41,7 @@ const BookingCard = ({ booking, showDate = false }) => (
         </div>
         <div className="text-right">
           <p className="text-2xl font-bold text-green-600">${booking.driver_price?.toFixed(2) || '0.00'}</p>
-          <p className="text-xs text-gray-500">Your Earnings (85%)</p>
+          <p className="text-xs text-gray-500">Your Payout</p>
         </div>
       </div>
 
