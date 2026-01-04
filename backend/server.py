@@ -1507,6 +1507,20 @@ async def update_booking(booking_id: str, update_data: dict, current_admin: dict
         if result.matched_count == 0:
             raise HTTPException(status_code=404, detail="Booking not found")
         logger.info(f"Booking updated: {booking_id}")
+        
+        # Auto-sync to Google Calendar if date/time changed
+        if any(key in update_data for key in ['date', 'time', 'returnDate', 'returnTime', 'pickupAddress', 'dropoffAddress']):
+            try:
+                # Get the updated booking
+                updated_booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+                if updated_booking and updated_booking.get('calendar_event_id'):
+                    # Update existing calendar event
+                    await update_calendar_event(updated_booking)
+                    logger.info(f"📅 Calendar event updated for booking {booking_id}")
+            except Exception as cal_error:
+                logger.warning(f"⚠️ Failed to update calendar event: {str(cal_error)}")
+                # Don't fail the whole update if calendar sync fails
+        
         return {"message": "Booking updated successfully"}
     except HTTPException:
         raise
