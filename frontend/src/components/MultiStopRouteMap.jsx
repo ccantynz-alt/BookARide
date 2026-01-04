@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { GoogleMap, useLoadScript, Marker, DirectionsRenderer } from '@react-google-maps/api';
-import { MapPin, Navigation, Route, ChevronDown, ChevronUp } from 'lucide-react';
+import { MapPin, Navigation, Route, ChevronDown, ChevronUp, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const libraries = ['places', 'directions'];
