@@ -3786,20 +3786,34 @@ bookaride.co.nz | +64 21 743 321
                     distance_km = booking.get('distance', booking.get('estimatedDistance', ''))
                     distance_text = f"\nDistance: {distance_km} km" if distance_km else ""
                     
-                    # Get flight number
-                    flight_num = booking.get('flightNumber') or booking.get('departureFlightNumber') or booking.get('arrivalFlightNumber') or ''
-                    flight_text = f"\n✈️ Flight: {flight_num}" if flight_num else ""
+                    # Get flight number based on trip type
+                    if trip_type == "RETURN":
+                        # For return trips, use return flight number
+                        flight_num = booking.get('returnFlightNumber') or booking.get('returnDepartureFlightNumber') or ''
+                        trip_label = "Return Trip"
+                        # For return, pickup/dropoff are reversed
+                        pickup_addr = booking.get('dropoffAddress', 'N/A')
+                        trip_date = booking.get('returnDate', booking.get('date', 'N/A'))
+                        trip_time = booking.get('returnTime', booking.get('time', 'N/A'))
+                    else:
+                        # For outbound trips, use original flight number
+                        flight_num = booking.get('flightNumber') or booking.get('departureFlightNumber') or booking.get('arrivalFlightNumber') or ''
+                        trip_label = "Departure"
+                        pickup_addr = booking.get('pickupAddress', 'N/A')
+                        trip_date = booking.get('date', 'N/A')
+                        trip_time = booking.get('time', 'N/A')
                     
-                    # Convert trip_type to user-friendly label
-                    trip_label = "Departure" if trip_type == "OUTBOUND" else "Arrival"
+                    flight_text = f"\n✈️ Flight: {flight_num}" if flight_num else ""
+                    formatted_trip_date = format_date_ddmmyyyy(trip_date)
+                    formatted_trip_time = format_time_ampm(trip_time)
                     
                     sms_body = f"""BookaRide - {trip_label}
 
 Ref: {booking_ref}
 Customer: {booking.get('name', 'N/A')}
 Phone: {booking.get('phone', 'N/A')}
-Pickup: {booking.get('pickupAddress', 'N/A')}
-Date: {formatted_date} at {formatted_time}{flight_text}{distance_text}
+Pickup: {pickup_addr}
+Date: {formatted_trip_date} at {formatted_trip_time}{flight_text}{distance_text}
 Your Payout: ${driver_payout:.2f}
 Payment: {payment_display}
 
