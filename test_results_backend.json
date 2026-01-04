@@ -47,7 +47,7 @@
     {
       "test": "Customer Confirmation: Booking Creation",
       "status": "\u2705 PASS",
-      "message": "Booking created successfully: ID=71f8ac0e-7f5f-409b-9465-f66a202d2672, Ref=#161",
+      "message": "Booking created successfully: ID=airport-booking-fix, Ref=#161",
       "details": {},
       "timestamp": "2025-12-30T09:03:48.431462"
     },
@@ -327,7 +327,7 @@
     {
       "test": "GPS Tracking: Send Driver Link",
       "status": "\u2705 PASS",
-      "message": "Tracking link sent successfully: sessionId=181af55a-7bfa-4efc-b6a3-b43b8376f651, trackingRef=Q3K2RS",
+      "message": "Tracking link sent successfully: sessionId=airport-booking-fix, trackingRef=Q3K2RS",
       "details": {},
       "timestamp": "2025-12-30T09:03:50.424842"
     },
@@ -362,7 +362,7 @@
     {
       "test": "GPS Tracking: Complete Flow",
       "status": "\u2705 PASS",
-      "message": "Complete GPS tracking flow working: sessionId=181af55a-7bfa-4efc-b6a3-b43b8376f651, trackingRef=Q3K2RS",
+      "message": "Complete GPS tracking flow working: sessionId=airport-booking-fix, trackingRef=Q3K2RS",
       "details": {},
       "timestamp": "2025-12-30T09:03:50.721258"
     },
