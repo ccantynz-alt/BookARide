@@ -214,7 +214,7 @@ export const BookNow = () => {
     if (formData.pickupAddress && formData.dropoffAddress && formData.serviceType) {
       calculatePrice();
     }
-  }, [formData.pickupAddress, formData.dropoffAddress, formData.passengers, formData.serviceType, formData.bookReturn, formData.vipAirportPickup, formData.oversizedLuggage]);
+  }, [formData.pickupAddress, formData.dropoffAddress, formData.pickupAddresses, formData.passengers, formData.serviceType, formData.bookReturn, formData.vipAirportPickup, formData.oversizedLuggage]);
 
   const calculatePrice = async () => {
     setPricing(prev => ({ ...prev, calculating: true }));
