@@ -2019,13 +2019,31 @@ def send_booking_confirmation_sms(booking: dict):
         formatted_time = format_time_ampm(booking.get('time', 'N/A'))
         booking_ref = get_booking_reference(booking)
         
+        # Get flight number
+        flight_num = booking.get('flightNumber') or booking.get('departureFlightNumber') or booking.get('arrivalFlightNumber') or ''
+        flight_text = f"\nFlight: {flight_num}" if flight_num else ""
+        
+        # Get return trip info
+        return_text = ""
+        if booking.get('bookReturn') or booking.get('returnDate'):
+            return_date = format_date_ddmmyyyy(booking.get('returnDate', ''))
+            return_time = format_time_ampm(booking.get('returnTime', ''))
+            return_flight = booking.get('returnFlightNumber') or booking.get('returnDepartureFlightNumber') or ''
+            return_text = f"\n\n🔄 Return: {return_date} at {return_time}"
+            if return_flight:
+                return_text += f"\nReturn Flight: {return_flight}"
+        
+        # Get pricing
+        pricing = booking.get('pricing', {})
+        total_price = pricing.get('totalPrice') or booking.get('totalPrice', 0)
+        
         # Create SMS message
         message_body = f"""Book A Ride NZ - Booking Confirmed!
 
 Ref: {booking_ref}
 Pickup: {booking.get('pickupAddress', 'N/A')}
-Date: {formatted_date} at {formatted_time}
-Total: ${booking.get('totalPrice', 0):.2f} NZD
+Date: {formatted_date} at {formatted_time}{flight_text}
+Total: ${total_price:.2f} NZD{return_text}
 
 Thank you for booking with us!"""
         
