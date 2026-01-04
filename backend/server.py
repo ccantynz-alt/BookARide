@@ -1204,8 +1204,22 @@ async def create_booking(booking: BookingCreate, background_tasks: BackgroundTas
         # Extract totalPrice from pricing for payment processing
         booking_dict['totalPrice'] = booking.pricing.get('totalPrice', 0)
         booking_dict['payment_status'] = 'unpaid'
-        await db.bookings.insert_one(booking_dict)
-        logger.info(f"Booking created: {booking_obj.id} with reference #{ref_number}")
+        
+        # Critical: Verify the database write succeeded
+        result = await db.bookings.insert_one(booking_dict)
+        
+        # Verify insert was acknowledged and we have an inserted_id
+        if not result.acknowledged or not result.inserted_id:
+            logger.error(f"Database insert not acknowledged for booking #{ref_number}")
+            raise HTTPException(status_code=500, detail="Failed to save booking to database")
+        
+        # Double-check the booking exists in the database before proceeding
+        saved_booking = await db.bookings.find_one({"_id": result.inserted_id})
+        if not saved_booking:
+            logger.error(f"Booking #{ref_number} not found after insert - potential data loss!")
+            raise HTTPException(status_code=500, detail="Booking verification failed")
+        
+        logger.info(f"Booking created and verified: {booking_obj.id} with reference #{ref_number}, DB id: {result.inserted_id}")
         
         # === BACKGROUND TASKS: Non-critical operations run after response ===
         # This significantly speeds up booking creation for customers
