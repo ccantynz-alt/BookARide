@@ -4142,6 +4142,50 @@ Outbound was: {formatted_date} at {booking_time}
         return False
 
 
+async def update_calendar_event(booking: dict):
+    """Update Google Calendar event(s) for a booking - deletes existing and recreates"""
+    try:
+        existing_event_ids = booking.get('calendar_event_id', '')
+        
+        if not existing_event_ids:
+            logger.info(f"No existing calendar event for booking {booking.get('id')}, creating new")
+            return await create_calendar_event(booking)
+        
+        # Delete existing events
+        creds = await get_calendar_credentials()
+        if not creds:
+            logger.warning("Cannot update calendar event: No credentials")
+            return False
+        
+        service = build('calendar', 'v3', credentials=creds)
+        calendar_id = os.environ.get('GOOGLE_CALENDAR_ID', 'primary')
+        
+        # Delete existing events (comma-separated for return trips)
+        for event_id in existing_event_ids.split(','):
+            event_id = event_id.strip()
+            if event_id:
+                try:
+                    service.events().delete(calendarId=calendar_id, eventId=event_id).execute()
+                    logger.info(f"Deleted calendar event {event_id} for update")
+                except Exception as del_error:
+                    logger.warning(f"Could not delete calendar event {event_id}: {str(del_error)}")
+        
+        # Clear the old event ID before creating new
+        await db.bookings.update_one(
+            {"id": booking.get('id')},
+            {"$unset": {"calendar_event_id": ""}}
+        )
+        
+        # Create new events with updated data
+        success = await create_calendar_event(booking)
+        logger.info(f"Calendar event updated for booking {booking.get('id')}: {success}")
+        return success
+        
+    except Exception as e:
+        logger.error(f"Error updating calendar event: {str(e)}")
+        return False
+
+
 # Manual Calendar Sync Endpoint
 @api_router.post("/bookings/{booking_id}/sync-calendar")
 async def sync_booking_to_calendar(booking_id: str, current_admin: dict = Depends(get_current_admin)):
