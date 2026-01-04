@@ -1198,6 +1198,8 @@ export const BookNow = () => {
                                 pickupAddress={formData.pickupAddress}
                                 pickupAddresses={formData.pickupAddresses}
                                 dropoffAddress={formData.dropoffAddress}
+                                pickupTime={formData.time}
+                                pickupDate={formData.date}
                               />
                             </div>
                           )}
