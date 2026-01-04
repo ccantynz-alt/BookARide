@@ -303,6 +303,27 @@ const MultiStopRouteMap = ({
                   ✓ Route optimized for {allPickups.length} pickup locations
                 </p>
               )}
+
+              {/* Estimated Arrival Time */}
+              {estimatedArrival && (
+                <div className="mt-3 bg-gradient-to-r from-blue-50 to-indigo-50 p-3 rounded-lg border border-blue-200" data-testid="estimated-arrival">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center">
+                        <Clock className="w-4 h-4 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-blue-600 font-medium">Estimated Arrival</p>
+                        <p className="text-lg font-bold text-blue-800">{estimatedArrival}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-gray-500">Pickup at</p>
+                      <p className="text-sm font-semibold text-gray-700">{pickupTime}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </motion.div>
         )}
