@@ -34,7 +34,9 @@ const mapOptions = {
 const MultiStopRouteMap = ({ 
   pickupAddress, 
   pickupAddresses = [], 
-  dropoffAddress
+  dropoffAddress,
+  pickupTime,
+  pickupDate
 }) => {
   const { isLoaded, loadError } = useLoadScript({
     googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY,
@@ -45,6 +47,27 @@ const MultiStopRouteMap = ({
   const [isExpanded, setIsExpanded] = useState(true);
   const [routeInfo, setRouteInfo] = useState(null);
   const mapRef = useRef(null);
+
+  // Calculate estimated arrival time
+  const getEstimatedArrival = () => {
+    if (!pickupTime || !routeInfo?.duration) return null;
+    
+    try {
+      const [hours, minutes] = pickupTime.split(':').map(Number);
+      const arrivalDate = new Date();
+      arrivalDate.setHours(hours, minutes + routeInfo.duration, 0, 0);
+      
+      return arrivalDate.toLocaleTimeString('en-NZ', { 
+        hour: 'numeric', 
+        minute: '2-digit',
+        hour12: true 
+      });
+    } catch (e) {
+      return null;
+    }
+  };
+
+  const estimatedArrival = getEstimatedArrival();
 
   // Create a stable string representation of pickupAddresses for dependency
   const pickupAddressesKey = pickupAddresses.filter(addr => addr && addr.trim()).join('|');
