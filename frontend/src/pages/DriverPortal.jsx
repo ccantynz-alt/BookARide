@@ -325,7 +325,6 @@ export const DriverPortal = () => {
                     <div className="text-center">
                       <p className="text-white/70 text-sm mb-2">Total Earnings (All Time)</p>
                       <p className="text-5xl font-bold text-gold">${totalEarnings.toFixed(2)}</p>
-                      <p className="text-white/50 text-xs mt-2">You receive 85% of each booking</p>
                     </div>
                   </div>
 
