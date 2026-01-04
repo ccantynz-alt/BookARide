@@ -24,8 +24,9 @@ Airport shuttle booking platform for New Zealand with features including:
 - ✅ "Remember me" feature for returning customers
 - ✅ Flight tracking integration
 - ✅ Currency converter and price comparison
+- ✅ **NEW: Interactive Route Map with Multiple Stop Visualization**
 
-## Recent Bug Fixes (January 2026)
+## Recent Changes (January 2026)
 
 ### Fixed: Price Estimator Not Updating with Multiple Addresses (P0)
 **Date:** January 4, 2026
@@ -33,6 +34,17 @@ Airport shuttle booking platform for New Zealand with features including:
 **Root Cause:** `formData.pickupAddresses` was missing from the useEffect dependency array
 **Fix:** Added `formData.pickupAddresses` to the dependency array in `/app/frontend/src/pages/BookNow.jsx` line 217
 **Verification:** All 5 test scenarios passed - price correctly updates when addresses are added/removed
+
+### Enhancement: Interactive Multi-Stop Route Map
+**Date:** January 4, 2026
+**Feature:** Added a visual Google Maps component showing the full route with markers
+**Implementation:**
+- Created `/app/frontend/src/components/MultiStopRouteMap.jsx`
+- Shows numbered markers for each pickup location (green=start, amber=additional, red=destination)
+- Displays real-time distance and duration calculations
+- Collapsible/expandable interface
+- Updates dynamically when addresses are added/removed
+**Verification:** All 6 test scenarios passed including map rendering, marker display, and dynamic updates
 
 ## Pending Issues
 
@@ -60,6 +72,7 @@ Airport shuttle booking platform for New Zealand with features including:
 - `/app/frontend/src/pages/BookNow.jsx` - Customer booking form
 - `/app/frontend/src/pages/AdminDashboard.jsx` - Admin interface
 - `/app/frontend/src/pages/DriverPortal.jsx` - Driver portal
+- `/app/frontend/src/components/MultiStopRouteMap.jsx` - **NEW** Route map visualization
 - `/app/HANDOVER_DOCUMENTATION.md` - Setup documentation
 
 ## Technical Notes
@@ -67,6 +80,7 @@ Airport shuttle booking platform for New Zealand with features including:
 - Driver portal only shows final payout amounts (no calculation visibility)
 - All admin dates standardized to DD/MM/YYYY format
 - Frontend validation prevents past-dated bookings
+- MultiStopRouteMap uses @react-google-maps/api with Google Directions API
 
 ## Admin Credentials
 - Username: `admin`
