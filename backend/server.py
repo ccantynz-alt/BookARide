@@ -2306,6 +2306,12 @@ async def update_confirmation_status(booking_id: str, results: dict):
 def send_reminder_email(booking: dict):
     """Send day-before reminder email to customer with professional pickup instructions"""
     try:
+        # SAFETY CHECK: Don't send reminders for cancelled bookings
+        booking_status = booking.get('status', '').lower()
+        if booking_status in ['cancelled', 'canceled', 'deleted']:
+            logger.warning(f"⚠️ Skipping reminder email for CANCELLED booking: {booking.get('name')} (Ref: {booking.get('referenceNumber')})")
+            return False
+        
         mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
         mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
         sender_email = os.environ.get('SENDER_EMAIL', 'noreply@bookaride.co.nz')
