@@ -191,42 +191,53 @@ const TravelAgents = () => {
         </div>
       </section>
 
-      {/* Commission Tiers */}
+      {/* Commission Structure - REMOVED - Requires approval */}
+      {/* Contact for partnership details */}
       <section className="py-16 bg-gray-900 text-white">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Commission Structure</h2>
-            <p className="text-gray-400">Earn more as you grow with us</p>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">Partnership Benefits</h2>
+            <p className="text-gray-400">Contact us to discuss partnership terms tailored to your agency</p>
           </div>
           
           <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
             <div className="bg-gray-800 rounded-xl p-6 text-center">
-              <div className="text-gold text-4xl font-bold mb-2">10%</div>
-              <div className="text-xl font-semibold mb-4">Starter</div>
+              <div className="text-gold text-4xl font-bold mb-2">
+                <Users className="w-10 h-10 mx-auto" />
+              </div>
+              <div className="text-xl font-semibold mb-4">Small Agencies</div>
               <ul className="text-gray-400 text-sm space-y-2">
-                <li>1-20 bookings/month</li>
-                <li>Standard support</li>
                 <li>Online booking portal</li>
+                <li>Standard support</li>
+                <li>Competitive rates</li>
               </ul>
             </div>
             <div className="bg-gold text-black rounded-xl p-6 text-center transform scale-105">
-              <div className="text-4xl font-bold mb-2">12%</div>
-              <div className="text-xl font-semibold mb-4">Partner</div>
+              <div className="text-4xl font-bold mb-2">
+                <Building2 className="w-10 h-10 mx-auto" />
+              </div>
+              <div className="text-xl font-semibold mb-4">Growing Partners</div>
               <ul className="text-gray-800 text-sm space-y-2">
-                <li>21-50 bookings/month</li>
                 <li>Priority support</li>
                 <li>Dedicated account manager</li>
+                <li>Volume-based terms</li>
               </ul>
             </div>
             <div className="bg-gray-800 rounded-xl p-6 text-center">
-              <div className="text-gold text-4xl font-bold mb-2">15%</div>
-              <div className="text-xl font-semibold mb-4">Premier</div>
+              <div className="text-gold text-4xl font-bold mb-2">
+                <Award className="w-10 h-10 mx-auto" />
+              </div>
+              <div className="text-xl font-semibold mb-4">Premier Partners</div>
               <ul className="text-gray-400 text-sm space-y-2">
-                <li>50+ bookings/month</li>
                 <li>24/7 direct line</li>
                 <li>Custom solutions</li>
+                <li>Exclusive terms</li>
               </ul>
             </div>
+          </div>
+          
+          <div className="text-center mt-8">
+            <p className="text-gray-400">Contact our partnerships team to discuss rates and terms</p>
           </div>
         </div>
       </section>
