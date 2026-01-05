@@ -6331,10 +6331,11 @@ async def create_shuttle_booking(booking: ShuttleBookingCreate):
             stripe.api_key = stripe_api_key
             
             # Create a Checkout Session for card authorization
+            # Apple Pay and Google Pay work through 'card' + Payment Request API
             public_domain = os.environ.get('PUBLIC_DOMAIN', 'https://bookaride.co.nz')
             
             checkout_session = stripe.checkout.Session.create(
-                payment_method_types=['card'],
+                payment_method_types=['card', 'link'],  # card enables Apple Pay/Google Pay
                 mode='payment',
                 payment_intent_data={
                     'capture_method': 'manual',  # Authorize but don't charge
