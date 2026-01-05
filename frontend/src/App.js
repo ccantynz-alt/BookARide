@@ -119,6 +119,8 @@ import DriverTracking from './pages/DriverTracking';
 import CustomerTracking from './pages/CustomerTracking';
 // Airport Pickup Guide
 import AirportPickupGuide from './pages/AirportPickupGuide';
+// Travel Agent Page
+import TravelAgents from './pages/TravelAgents';
 
 import RecentBookingsNotification from './components/RecentBookingsNotification';
 import ExitIntentPopup from './components/ExitIntentPopup';
