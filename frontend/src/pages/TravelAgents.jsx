@@ -359,7 +359,7 @@ const TravelAgents = () => {
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl font-bold text-black mb-4">Ready to Partner With Us?</h2>
           <p className="text-black/80 mb-8 max-w-xl mx-auto">
-            Join New Zealand's most trusted ground transport network and give your clients the best travel experience.
+            Join New Zealand&apos;s most trusted ground transport network and give your clients the best travel experience.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" className="bg-black text-white hover:bg-gray-800" asChild>
