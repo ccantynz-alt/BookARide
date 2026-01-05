@@ -2790,10 +2790,18 @@ export const AdminDashboard = () => {
                             <button
                               onClick={() => handleDeleteBooking(booking.id, booking.name, true)}
                               className="p-1.5 hover:bg-red-100 rounded flex flex-col items-center"
-                              title="Delete this booking"
+                              title="Cancel & notify customer via email/SMS"
                             >
                               <Trash2 className="w-4 h-4 text-red-500" />
-                              <span className="text-[8px] text-red-500">Delete</span>
+                              <span className="text-[8px] text-red-500">Cancel</span>
+                            </button>
+                            <button
+                              onClick={() => handleDeleteBooking(booking.id, booking.name, false)}
+                              className="p-1.5 hover:bg-gray-200 rounded flex flex-col items-center"
+                              title="Silent delete - NO notification to customer (use for duplicates)"
+                            >
+                              <XCircle className="w-4 h-4 text-gray-500" />
+                              <span className="text-[8px] text-gray-500">Silent</span>
                             </button>
                           </div>
                         </td>
