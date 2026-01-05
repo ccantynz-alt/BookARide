@@ -11828,6 +11828,404 @@ async def trigger_auto_archive(current_admin: dict = Depends(get_current_admin))
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ==================== HOTEL CONCIERGE PORTAL API ====================
+
+class HotelLoginRequest(BaseModel):
+    hotelCode: str
+    password: str
+
+class HotelBookingRequest(BaseModel):
+    guestName: str
+    guestEmail: str
+    guestPhone: str
+    roomNumber: Optional[str] = ""
+    pickupDate: str
+    pickupTime: str
+    flightNumber: Optional[str] = ""
+    destination: str
+    passengers: str
+    luggage: Optional[str] = "1"
+    specialRequests: Optional[str] = ""
+
+@api_router.post("/hotel/login")
+async def hotel_login(request: HotelLoginRequest):
+    """Hotel partner login endpoint."""
+    try:
+        # Find hotel by code
+        hotel = await db.hotel_partners.find_one({"code": request.hotelCode}, {"_id": 0})
+        
+        if not hotel:
+            raise HTTPException(status_code=401, detail="Invalid hotel code")
+        
+        # Verify password
+        if not pwd_context.verify(request.password, hotel.get("hashed_password", "")):
+            raise HTTPException(status_code=401, detail="Invalid password")
+        
+        # Generate token
+        token_data = {
+            "hotel_id": hotel["id"],
+            "hotel_code": hotel["code"],
+            "exp": datetime.now(timezone.utc) + timedelta(hours=24)
+        }
+        token = jwt.encode(token_data, os.environ.get("SECRET_KEY", "hotel-secret-key"), algorithm="HS256")
+        
+        return {
+            "success": True,
+            "token": token,
+            "hotel": {
+                "id": hotel["id"],
+                "name": hotel["name"],
+                "code": hotel["code"],
+                "address": hotel.get("address", "")
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Hotel login error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Login failed")
+
+async def get_current_hotel(request: Request):
+    """Dependency to get current hotel from token."""
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    token = auth_header.split(" ")[1]
+    try:
+        payload = jwt.decode(token, os.environ.get("SECRET_KEY", "hotel-secret-key"), algorithms=["HS256"])
+        return payload
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+@api_router.get("/hotel/bookings")
+async def get_hotel_bookings(hotel: dict = Depends(get_current_hotel)):
+    """Get all bookings made by this hotel."""
+    try:
+        bookings = await db.hotel_bookings.find(
+            {"hotel_id": hotel["hotel_id"]},
+            {"_id": 0}
+        ).sort("created_at", -1).to_list(100)
+        
+        return {"bookings": bookings}
+    except Exception as e:
+        logger.error(f"Error fetching hotel bookings: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to fetch bookings")
+
+@api_router.post("/hotel/bookings")
+async def create_hotel_booking(request: HotelBookingRequest, hotel: dict = Depends(get_current_hotel)):
+    """Create a new booking for a hotel guest."""
+    try:
+        # Get hotel info
+        hotel_info = await db.hotel_partners.find_one({"id": hotel["hotel_id"]}, {"_id": 0})
+        
+        # Generate reference number
+        ref_number = await get_next_reference_number()
+        
+        # Create booking
+        booking_id = str(uuid.uuid4())
+        hotel_booking = {
+            "id": booking_id,
+            "hotel_id": hotel["hotel_id"],
+            "hotel_name": hotel_info.get("name", ""),
+            "hotel_code": hotel["hotel_code"],
+            "referenceNumber": ref_number,
+            "guestName": request.guestName,
+            "guestEmail": request.guestEmail,
+            "guestPhone": request.guestPhone,
+            "roomNumber": request.roomNumber,
+            "pickupDate": request.pickupDate,
+            "pickupTime": request.pickupTime,
+            "flightNumber": request.flightNumber,
+            "destination": request.destination,
+            "passengers": int(request.passengers),
+            "luggage": int(request.luggage) if request.luggage else 1,
+            "specialRequests": request.specialRequests,
+            "status": "pending",
+            "created_at": datetime.now(timezone.utc),
+            "source": "hotel_portal"
+        }
+        
+        await db.hotel_bookings.insert_one(hotel_booking)
+        
+        # Also create a regular booking for the admin dashboard
+        main_booking = {
+            "id": booking_id,
+            "referenceNumber": ref_number,
+            "name": request.guestName,
+            "email": request.guestEmail,
+            "phone": request.guestPhone,
+            "date": request.pickupDate,
+            "time": request.pickupTime,
+            "pickupAddress": hotel_info.get("address", hotel_info.get("name", "")),
+            "dropoffAddress": request.destination.replace("-", " ").title(),
+            "passengers": int(request.passengers),
+            "flightNumber": request.flightNumber,
+            "specialRequests": f"Hotel: {hotel_info.get('name', '')} | Room: {request.roomNumber} | {request.specialRequests}",
+            "status": "pending",
+            "serviceType": "airport-shuttle",
+            "source": f"hotel:{hotel['hotel_code']}",
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        await db.bookings.insert_one(main_booking)
+        
+        logger.info(f"Hotel booking created: {ref_number} by {hotel_info.get('name', '')}")
+        
+        return {
+            "success": True,
+            "bookingId": booking_id,
+            "referenceNumber": ref_number
+        }
+    except Exception as e:
+        logger.error(f"Error creating hotel booking: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to create booking")
+
+@api_router.post("/hotel/register")
+async def register_hotel_partner(
+    name: str,
+    code: str,
+    password: str,
+    address: str,
+    email: str,
+    phone: str,
+    current_admin: dict = Depends(get_current_admin)
+):
+    """Admin endpoint to register a new hotel partner."""
+    try:
+        # Check if code already exists
+        existing = await db.hotel_partners.find_one({"code": code})
+        if existing:
+            raise HTTPException(status_code=400, detail="Hotel code already exists")
+        
+        hotel_partner = {
+            "id": str(uuid.uuid4()),
+            "name": name,
+            "code": code.upper(),
+            "hashed_password": pwd_context.hash(password),
+            "address": address,
+            "email": email,
+            "phone": phone,
+            "is_active": True,
+            "created_at": datetime.now(timezone.utc)
+        }
+        
+        await db.hotel_partners.insert_one(hotel_partner)
+        
+        return {"success": True, "message": f"Hotel partner {name} registered successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error registering hotel: {str(e)}")
+        raise HTTPException(status_code=500, detail="Registration failed")
+
+
+# ==================== AIRLINE PARTNERSHIP API ====================
+
+class AirlineAPIKeyAuth:
+    """Dependency for airline API key authentication."""
+    async def __call__(self, request: Request):
+        api_key = request.headers.get("X-API-Key")
+        if not api_key:
+            raise HTTPException(status_code=401, detail="API key required")
+        
+        airline = await db.airline_partners.find_one({"api_key": api_key, "is_active": True}, {"_id": 0})
+        if not airline:
+            raise HTTPException(status_code=401, detail="Invalid API key")
+        
+        return airline
+
+airline_auth = AirlineAPIKeyAuth()
+
+class AirlineAvailabilityRequest(BaseModel):
+    pickup_location: str
+    dropoff_location: str
+    pickup_datetime: str  # ISO format
+    passengers: int
+    flight_number: Optional[str] = None
+
+class AirlineBookingRequest(BaseModel):
+    pickup_location: str
+    dropoff_location: str
+    pickup_datetime: str
+    passengers: int
+    customer_name: str
+    customer_email: str
+    customer_phone: str
+    flight_number: Optional[str] = None
+    pnr: Optional[str] = None  # Airline booking reference
+
+@api_router.get("/airline/v1/health")
+async def airline_api_health():
+    """Health check for airline API."""
+    return {"status": "healthy", "version": "1.0", "service": "bookaride-airline-api"}
+
+@api_router.post("/airline/v1/availability")
+async def check_availability(request: AirlineAvailabilityRequest, airline: dict = Depends(airline_auth)):
+    """Check availability and get pricing for a transfer."""
+    try:
+        # Calculate distance and price
+        google_api_key = os.environ.get('GOOGLE_MAPS_API_KEY', '')
+        
+        # Use the existing price calculation logic
+        distance = 30  # Default estimate
+        base_price = 85
+        
+        if google_api_key:
+            try:
+                # Call Google Distance Matrix
+                url = f"https://maps.googleapis.com/maps/api/distancematrix/json"
+                params = {
+                    "origins": request.pickup_location,
+                    "destinations": request.dropoff_location,
+                    "key": google_api_key,
+                    "mode": "driving"
+                }
+                response = requests.get(url, params=params)
+                data = response.json()
+                
+                if data.get("status") == "OK":
+                    element = data["rows"][0]["elements"][0]
+                    if element.get("status") == "OK":
+                        distance = element["distance"]["value"] / 1000  # km
+                        duration = element["duration"]["value"] / 60  # minutes
+            except Exception as e:
+                logger.warning(f"Distance calculation failed: {str(e)}")
+        
+        # Calculate price based on distance
+        if distance <= 20:
+            base_price = 85
+        elif distance <= 40:
+            base_price = 85 + (distance - 20) * 3.5
+        else:
+            base_price = 155 + (distance - 40) * 3.0
+        
+        # Add passenger surcharge
+        if request.passengers > 4:
+            base_price += (request.passengers - 4) * 10
+        
+        return {
+            "available": True,
+            "quote": {
+                "currency": "NZD",
+                "amount": round(base_price, 2),
+                "distance_km": round(distance, 1),
+                "estimated_duration_minutes": int(distance * 1.5),  # Rough estimate
+                "vehicle_type": "sedan" if request.passengers <= 4 else "van",
+                "valid_until": (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
+            },
+            "pickup_location": request.pickup_location,
+            "dropoff_location": request.dropoff_location
+        }
+    except Exception as e:
+        logger.error(f"Airline availability check error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Availability check failed")
+
+@api_router.post("/airline/v1/book")
+async def create_airline_booking(request: AirlineBookingRequest, airline: dict = Depends(airline_auth)):
+    """Create a booking from airline partner."""
+    try:
+        ref_number = await get_next_reference_number()
+        booking_id = str(uuid.uuid4())
+        
+        # Parse datetime
+        try:
+            pickup_dt = datetime.fromisoformat(request.pickup_datetime.replace('Z', '+00:00'))
+            pickup_date = pickup_dt.strftime("%Y-%m-%d")
+            pickup_time = pickup_dt.strftime("%H:%M")
+        except:
+            pickup_date = request.pickup_datetime[:10]
+            pickup_time = request.pickup_datetime[11:16] if len(request.pickup_datetime) > 10 else "12:00"
+        
+        booking = {
+            "id": booking_id,
+            "referenceNumber": ref_number,
+            "name": request.customer_name,
+            "email": request.customer_email,
+            "phone": request.customer_phone,
+            "date": pickup_date,
+            "time": pickup_time,
+            "pickupAddress": request.pickup_location,
+            "dropoffAddress": request.dropoff_location,
+            "passengers": request.passengers,
+            "flightNumber": request.flight_number,
+            "status": "confirmed",
+            "serviceType": "airport-shuttle",
+            "source": f"airline:{airline['code']}",
+            "airline_pnr": request.pnr,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        await db.bookings.insert_one(booking)
+        
+        # Log the booking
+        logger.info(f"Airline booking created: {ref_number} via {airline['name']}")
+        
+        return {
+            "success": True,
+            "booking": {
+                "id": booking_id,
+                "reference_number": ref_number,
+                "status": "confirmed",
+                "pickup_date": pickup_date,
+                "pickup_time": pickup_time
+            }
+        }
+    except Exception as e:
+        logger.error(f"Airline booking error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Booking failed")
+
+@api_router.get("/airline/v1/booking/{booking_id}")
+async def get_airline_booking(booking_id: str, airline: dict = Depends(airline_auth)):
+    """Get booking status."""
+    try:
+        booking = await db.bookings.find_one(
+            {"id": booking_id, "source": {"$regex": f"^airline:{airline['code']}"}},
+            {"_id": 0}
+        )
+        
+        if not booking:
+            raise HTTPException(status_code=404, detail="Booking not found")
+        
+        return {
+            "id": booking["id"],
+            "reference_number": booking.get("referenceNumber"),
+            "status": booking.get("status"),
+            "pickup_date": booking.get("date"),
+            "pickup_time": booking.get("time"),
+            "pickup_location": booking.get("pickupAddress"),
+            "dropoff_location": booking.get("dropoffAddress"),
+            "driver_name": booking.get("driver_name"),
+            "driver_phone": booking.get("driver_phone")
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching airline booking: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to fetch booking")
+
+@api_router.delete("/airline/v1/booking/{booking_id}")
+async def cancel_airline_booking(booking_id: str, airline: dict = Depends(airline_auth)):
+    """Cancel a booking."""
+    try:
+        result = await db.bookings.update_one(
+            {"id": booking_id, "source": {"$regex": f"^airline:{airline['code']}"}},
+            {"$set": {"status": "cancelled", "cancelled_at": datetime.now(timezone.utc).isoformat()}}
+        )
+        
+        if result.modified_count == 0:
+            raise HTTPException(status_code=404, detail="Booking not found")
+        
+        return {"success": True, "message": "Booking cancelled"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error cancelling airline booking: {str(e)}")
+        raise HTTPException(status_code=500, detail="Cancellation failed")
+
+
 # Include the router in the main app (MUST be after all routes are defined)
 app.include_router(api_router)
 
