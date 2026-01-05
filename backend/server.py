@@ -285,22 +285,40 @@ class BookingCreate(BaseModel):
                 raise ValueError('Return flight number is required for airport shuttle return bookings. Without a flight number, your booking may face cancellation.')
         return self
     
-    @model_validator(mode='after')
-    def validate_booking_date(self):
-        """Validate that booking date is not in the past"""
-        if self.date:
-            try:
-                nz_tz = pytz.timezone('Pacific/Auckland')
-                today = datetime.now(nz_tz).strftime('%Y-%m-%d')
-                # Allow bookings for today and future only
-                if self.date < today:
-                    raise ValueError(f'Booking date ({self.date}) cannot be in the past. Today is {today}.')
-            except Exception as e:
-                if 'cannot be in the past' in str(e):
-                    raise
-                # If date parsing fails, let it through (will fail elsewhere)
-                pass
+    # @model_validator(mode='after')
+    # def validate_booking_date(self):
+    #     """Validate that booking date is not in the past"""
+    #     if self.date:
+    #         try:
+    #             nz_tz = pytz.timezone('Pacific/Auckland')
+    #             today = datetime.now(nz_tz).strftime('%Y-%m-%d')
+    #             # Allow bookings for today and future only
+    #             if self.date < today:
+    #                 raise ValueError(f'Booking date ({self.date}) cannot be in the past. Today is {today}.')
+    #         except Exception as e:
+    #             if 'cannot be in the past' in str(e):
+    #                 raise
+    #             # If date parsing fails, let it through (will fail elsewhere)
+    #             pass
+    #     return self
+
+@model_validator(mode='after')
+def validate_booking_date(self):       
+    # Skip validation for data retrieval operations    
+    if hasattr(self, '_skip_date_validation') or getattr(self, 'id', None):    
         return self
+    
+    if self.date:  # ✅ NOW PROPERLY INSIDE THE FUNCTION
+        try:
+            nz_tz = pytz.timezone('Pacific/Auckland')
+            today = datetime.now(nz_tz).strftime('%Y-%m-%d')
+            if self.date < today:
+                raise ValueError(f'Booking date ({self.date}) cannot be in the past. Today is {today}.')
+        except Exception as e:
+            if 'cannot be in the past' in str(e):
+                raise
+            pass
+    return self
 
 class Booking(BookingCreate):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -1624,6 +1642,8 @@ async def get_bookings_count(current_admin: dict = Depends(get_current_admin)):
     except Exception as e:
         logger.error(f"Error fetching booking counts: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
 
 # Update Booking Endpoint (for admin)
 @api_router.patch("/bookings/{booking_id}")
