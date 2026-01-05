@@ -169,6 +169,10 @@ function App() {
     { path: "inbound-tour-operators", element: <TravelAgents /> },
     { path: "travel-trade", element: <TravelAgents /> },
     { path: "nz-ground-transport-partner", element: <TravelAgents /> },
+    // Hotel Concierge Portal
+    { path: "hotel-portal", element: <HotelConciergePortal /> },
+    { path: "hotel/login", element: <HotelConciergePortal /> },
+    { path: "concierge", element: <HotelConciergePortal /> },
     // Market-Specific Landing Pages (Old)
     // International Market Landing Pages (NEW Professional Design)
     { path: "visitors/usa", element: <CountryLandingPage /> },
