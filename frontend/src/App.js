@@ -121,6 +121,8 @@ import CustomerTracking from './pages/CustomerTracking';
 import AirportPickupGuide from './pages/AirportPickupGuide';
 // Travel Agent Page
 import TravelAgents from './pages/TravelAgents';
+// Hotel Concierge Portal
+import HotelConciergePortal from './pages/HotelConciergePortal';
 
 import RecentBookingsNotification from './components/RecentBookingsNotification';
 import ExitIntentPopup from './components/ExitIntentPopup';
