@@ -159,6 +159,14 @@ function App() {
     { path: "international/hamilton-airport", element: <HamiltonAirportInternational /> },
     { path: "international/corporate-transfers", element: <CorporateTransfers /> },
     { path: "international/group-bookings", element: <GroupBookings /> },
+    // Travel Agent & B2B Pages
+    { path: "travel-agents", element: <TravelAgents /> },
+    { path: "travel-agent-portal", element: <TravelAgents /> },
+    { path: "wholesale-transfers", element: <TravelAgents /> },
+    { path: "tour-operator-partnerships", element: <TravelAgents /> },
+    { path: "inbound-tour-operators", element: <TravelAgents /> },
+    { path: "travel-trade", element: <TravelAgents /> },
+    { path: "nz-ground-transport-partner", element: <TravelAgents /> },
     // Market-Specific Landing Pages (Old)
     // International Market Landing Pages (NEW Professional Design)
     { path: "visitors/usa", element: <CountryLandingPage /> },
