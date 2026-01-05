@@ -5137,13 +5137,15 @@ async def create_payment_checkout(request: PaymentCheckoutRequest, http_request:
         if amount <= 0:
             raise HTTPException(status_code=400, detail="Invalid booking amount")
         
-        # Create checkout session with Afterpay enabled
+        # Create checkout session with Apple Pay, Google Pay, Afterpay enabled
+        # Note: Apple Pay and Google Pay work through 'card' payment method with Payment Request Button
+        # Adding 'link' enables Stripe Link for faster checkout
         checkout_request = CheckoutSessionRequest(
             amount=amount,
             currency="nzd",
             success_url=success_url,
             cancel_url=cancel_url,
-            payment_methods=["card", "afterpay_clearpay"],  # Enable Afterpay/Clearpay
+            payment_methods=["card", "afterpay_clearpay", "link"],  # card includes Apple Pay/Google Pay via Payment Request
             metadata={
                 "booking_id": request.booking_id,
                 "customer_email": booking.get('email', ''),
