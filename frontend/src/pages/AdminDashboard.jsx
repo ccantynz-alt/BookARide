@@ -1476,8 +1476,8 @@ export const AdminDashboard = () => {
 
   const handleDeleteBooking = async (bookingId, bookingName, sendNotification = true) => {
     const confirmMessage = sendNotification 
-      ? `Are you sure you want to CANCEL booking for ${bookingName}?\n\nThe customer will receive a cancellation email and SMS.`
-      : `Are you sure you want to DELETE booking for ${bookingName}?\n\nNo notification will be sent to the customer.`;
+      ? `Are you sure you want to CANCEL booking for ${bookingName}?\n\n⚠️ The customer will receive a cancellation email and SMS.`
+      : `SILENT DELETE for ${bookingName}?\n\n✓ No email or SMS will be sent to the customer.\n✓ Use this for duplicate bookings.`;
     
     if (!window.confirm(confirmMessage)) {
       return;
@@ -1489,7 +1489,7 @@ export const AdminDashboard = () => {
       if (sendNotification) {
         toast.success('Booking cancelled - Customer notified via email & SMS');
       } else {
-        toast.success('Booking deleted (no notification sent)');
+        toast.success('Booking silently deleted - No notification sent');
       }
       fetchBookings();
     } catch (error) {
