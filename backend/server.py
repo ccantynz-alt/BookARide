@@ -2486,6 +2486,12 @@ def send_reminder_email(booking: dict):
 def send_reminder_sms(booking: dict):
     """Send day-before reminder SMS to customer"""
     try:
+        # SAFETY CHECK: Don't send reminders for cancelled bookings
+        booking_status = booking.get('status', '').lower()
+        if booking_status in ['cancelled', 'canceled', 'deleted']:
+            logger.warning(f"⚠️ Skipping reminder SMS for CANCELLED booking: {booking.get('name')} (Ref: {booking.get('referenceNumber')})")
+            return False
+        
         account_sid = os.environ.get('TWILIO_ACCOUNT_SID')
         auth_token = os.environ.get('TWILIO_AUTH_TOKEN')
         twilio_phone = os.environ.get('TWILIO_PHONE_NUMBER')
