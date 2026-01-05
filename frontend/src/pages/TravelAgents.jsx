@@ -52,7 +52,7 @@ const TravelAgents = () => {
   };
 
   const benefits = [
-    { icon: DollarSign, title: 'Competitive Commission', desc: 'Earn up to 15% commission on every booking. Volume-based tiers available.' },
+    { icon: DollarSign, title: 'Partner Rates', desc: 'Competitive partner rates on every booking. Contact us to discuss terms.' },
     { icon: Clock, title: 'Real-Time Availability', desc: 'Instant booking confirmation. No waiting for availability checks.' },
     { icon: Shield, title: 'Reliable Service', desc: '99.8% on-time rate. Your clients are in safe hands.' },
     { icon: Headphones, title: 'Dedicated Support', desc: '24/7 agent support line. Direct access to our partnerships team.' },
