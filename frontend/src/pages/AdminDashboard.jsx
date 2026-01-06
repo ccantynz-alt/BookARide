@@ -3686,12 +3686,16 @@ export const AdminDashboard = () => {
                         <SelectTrigger className="flex-1">
                           <SelectValue placeholder="Select a driver..." />
                         </SelectTrigger>
-                        <SelectContent>
-                          {drivers.filter(d => d.status === 'active').map((driver) => (
-                            <SelectItem key={driver.id} value={driver.id}>
-                              {driver.name} - {driver.phone}
-                            </SelectItem>
-                          ))}
+                        <SelectContent className="z-[9999] bg-white">
+                          {drivers.filter(d => d.status === 'active').length === 0 ? (
+                            <SelectItem value="no-drivers" disabled>No active drivers</SelectItem>
+                          ) : (
+                            drivers.filter(d => d.status === 'active').map((driver) => (
+                              <SelectItem key={driver.id} value={driver.id}>
+                                {driver.name} - {driver.phone}
+                              </SelectItem>
+                            ))
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
