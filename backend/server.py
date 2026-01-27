@@ -87,6 +87,12 @@ security = HTTPBearer()
 # Create the main app without a prefix
 app = FastAPI()
 
+# Root-level health check for Kubernetes - MUST be at root, not under /api
+@app.get("/health")
+async def root_health_check():
+    """Root health check endpoint for Kubernetes liveness/readiness probes"""
+    return {"status": "healthy", "service": "bookaride-api"}
+
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
