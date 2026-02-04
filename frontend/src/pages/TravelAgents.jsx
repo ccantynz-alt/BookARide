@@ -353,8 +353,8 @@ const TravelAgents = () => {
             <div className="mt-8 text-center text-gray-600">
               <p className="mb-2">Prefer to talk? Contact our partnerships team directly:</p>
               <div className="flex justify-center gap-6">
-                <a href="tel:+6421339030" className="flex items-center gap-2 text-gold hover:underline">
-                  <Phone className="w-4 h-4" /> +64 21 339 030
+                <a href="tel:+6421743321" className="flex items-center gap-2 text-gold hover:underline">
+                  <Phone className="w-4 h-4" /> 021 743 321
                 </a>
                 <a href="mailto:partners@bookaride.co.nz" className="flex items-center gap-2 text-gold hover:underline">
                   <Mail className="w-4 h-4" /> partners@bookaride.co.nz
