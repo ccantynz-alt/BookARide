@@ -244,7 +244,7 @@ const ShuttleDriverPortal = () => {
                 type="tel"
                 value={loginPhone}
                 onChange={(e) => setLoginPhone(e.target.value)}
-                placeholder="+64 21 339 030"
+                placeholder="021 743 321"
                 className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white"
                 required
               />

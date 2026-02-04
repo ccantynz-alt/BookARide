@@ -4818,7 +4818,7 @@ def generate_confirmation_email_html(booking: dict) -> str:
                 <div style="background: #1a1a2e; padding: 25px 20px; text-align: center;">
                     <p style="margin: 0 0 15px 0; color: #D4AF37; font-size: 14px;">Questions? Contact us anytime</p>
                     <p style="margin: 0 0 5px 0;">
-                        <a href="tel:+6421339030" style="color: #fff; text-decoration: none; font-size: 16px; font-weight: 600;">+64 21 339 030</a>
+                        <a href="tel:+6421743321" style="color: #fff; text-decoration: none; font-size: 16px; font-weight: 600;">021 743 321</a>
                     </p>
                     <p style="margin: 0 0 15px 0;">
                         <a href="mailto:{sender_email}" style="color: #888; text-decoration: none; font-size: 13px;">{sender_email}</a>
