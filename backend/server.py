@@ -4564,7 +4564,7 @@ async def preview_booking_confirmation(booking_id: str, current_admin: dict = De
 
 
 def generate_confirmation_email_html(booking: dict) -> str:
-    """Generate the confirmation email HTML for preview or sending"""
+    """Generate the confirmation email HTML for preview or sending - Clean professional design"""
     sender_email = os.environ.get('SENDER_EMAIL', 'bookings@bookaride.co.nz')
     
     # Get pricing
@@ -4581,12 +4581,11 @@ def generate_confirmation_email_html(booking: dict) -> str:
     pickup_addresses = booking.get('pickupAddresses', [])
     dropoff_address = booking.get('dropoffAddress', 'N/A')
     
-    # Get flight number (check multiple fields)
-    flight_number = booking.get('flightNumber') or booking.get('departureFlightNumber') or booking.get('arrivalFlightNumber') or ''
-    
-    # Get driver info if assigned
-    driver_name = booking.get('driver_name', '')
-    driver_phone = booking.get('driver_phone', '')
+    # Get flight numbers
+    departure_flight = booking.get('departureFlightNumber') or ''
+    arrival_flight = booking.get('arrivalFlightNumber') or booking.get('flightNumber') or ''
+    departure_time = booking.get('departureTime') or ''
+    arrival_time_flight = booking.get('arrivalTime') or ''
     
     # Service type display
     service_type = booking.get('serviceType', 'airport-shuttle')
@@ -4598,6 +4597,12 @@ def generate_confirmation_email_html(booking: dict) -> str:
     
     # Payment status
     payment_status = booking.get('payment_status', 'unpaid').upper()
+    
+    # Notes/Special requests
+    notes = booking.get('notes') or booking.get('specialRequests') or ''
+    
+    # Passengers
+    passengers = booking.get('passengers', '1')
     payment_color = '#22c55e' if payment_status == 'PAID' else '#f59e0b'
     
     # Build all stops display
