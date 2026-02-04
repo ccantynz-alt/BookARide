@@ -157,10 +157,6 @@ export const BookNow = () => {
     }
   }, []);
 
-  // Flight tracking states
-  const [arrivalFlightData, setArrivalFlightData] = useState(null);
-  const [showFlightTracker, setShowFlightTracker] = useState(false);
-
   const [selectedAddOns, setSelectedAddOns] = useState([]);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
