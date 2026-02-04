@@ -662,9 +662,9 @@ export const BookNow = () => {
                       {/* Flight Information */}
                       <div className="bg-gray-50 p-6 rounded-lg mb-6">
                         <h3 className="text-lg font-semibold text-gray-900 mb-2">Flight Information</h3>
-                        <p className="text-sm text-gray-600 mb-2">Enter your flight number and we'll track it for you - if your flight is delayed, we'll adjust your pickup time automatically.</p>
+                        <p className="text-sm text-gray-600 mb-2">Enter your flight number so our driver knows which flight to meet.</p>
                         <p className="text-xs text-amber-700 bg-amber-50 p-2 rounded mb-4">
-                          ⚠️ <strong>Important:</strong> Flight numbers are required for airport pickups so our driver can track your flight and meet you on time.
+                          ⚠️ <strong>Important:</strong> Flight numbers are required for airport pickups so our driver can meet you on time.
                         </p>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           <div className="space-y-2">
