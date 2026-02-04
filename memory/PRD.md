@@ -1,5 +1,8 @@
 # Book A Ride NZ - Product Requirements Document
 
+## Latest Updates (Feb 2026)
+- **Flight Number Input Simplified:** Removed flight tracking/lookup feature. Flight number fields are now simple text inputs where customers type their flight number (e.g., NZ179) without any matching/lookup behavior.
+
 ## Original Problem Statement
 Airport shuttle booking platform for New Zealand with features including:
 - End-to-end booking flow for customers
