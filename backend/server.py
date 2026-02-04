@@ -4569,181 +4569,115 @@ def generate_confirmation_email_html(booking: dict) -> str:
     
     # Get pricing
     total_price = booking.get('totalPrice', 0) or booking.get('pricing', {}).get('totalPrice', 0)
+    distance = booking.get('pricing', {}).get('distance', booking.get('distance', 0))
     
     # Format date and time with AM/PM
     formatted_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
     formatted_time = format_time_ampm(booking.get('time', 'N/A'))
     booking_ref = get_booking_reference(booking)
     
-    # Build pickup addresses list for outbound
-    pickup_addresses = booking.get('pickupAddresses', [])
+    # Get all addresses
     primary_pickup = booking.get('pickupAddress', 'N/A')
+    pickup_addresses = booking.get('pickupAddresses', [])
     dropoff_address = booking.get('dropoffAddress', 'N/A')
     
-    # Build the route display for outbound trip with elegant styling
-    outbound_route_html = f'''
-        <div style="background: linear-gradient(135deg, #fefefe 0%, #f8f6f0 100%); border-radius: 8px; padding: 15px; margin: 10px 0;">
-            <div style="display: flex; align-items: flex-start; margin-bottom: 8px;">
-                <div style="width: 24px; height: 24px; background: #D4AF37; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px; flex-shrink: 0;">
-                    <span style="color: white; font-size: 12px; font-weight: bold;">1</span>
-                </div>
-                <div style="flex: 1;">
-                    <span style="color: #666; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Pickup</span>
-                    <p style="margin: 2px 0 0 0; color: #333; font-size: 14px;">{primary_pickup}</p>
-                </div>
-            </div>
+    # Get flight number (check multiple fields)
+    flight_number = booking.get('flightNumber') or booking.get('departureFlightNumber') or booking.get('arrivalFlightNumber') or ''
+    
+    # Get driver info if assigned
+    driver_name = booking.get('driver_name', '')
+    driver_phone = booking.get('driver_phone', '')
+    
+    # Service type display
+    service_type = booking.get('serviceType', 'airport-shuttle')
+    service_display = service_type.replace('-', ' ').title()
+    
+    # Transfer type
+    has_return = booking.get('bookReturn', False) or booking.get('returnDate', '')
+    transfer_type = "Return Trip" if has_return else "One Way"
+    
+    # Payment status
+    payment_status = booking.get('payment_status', 'unpaid').upper()
+    payment_color = '#22c55e' if payment_status == 'PAID' else '#f59e0b'
+    
+    # Build all stops display
+    all_stops_html = f'''
+        <tr>
+            <td style="padding: 10px 15px; background: #D4AF37; color: white; font-weight: 600;">📍 PICKUP</td>
+            <td style="padding: 10px 15px; background: #faf8f3;">{primary_pickup}</td>
+        </tr>
     '''
     
-    if pickup_addresses and len(pickup_addresses) > 0:
-        for i, addr in enumerate(pickup_addresses):
-            if addr and addr.strip():
-                outbound_route_html += f'''
-            <div style="display: flex; align-items: flex-start; margin-bottom: 8px; padding-left: 36px; border-left: 2px dashed #D4AF37; margin-left: 11px;">
-                <div style="width: 24px; height: 24px; background: #D4AF37; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px; margin-left: -49px; flex-shrink: 0;">
-                    <span style="color: white; font-size: 12px; font-weight: bold;">{i + 2}</span>
-                </div>
-                <div style="flex: 1;">
-                    <span style="color: #666; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Pickup</span>
-                    <p style="margin: 2px 0 0 0; color: #333; font-size: 14px;">{addr}</p>
-                </div>
-            </div>
-                '''
+    # Add additional pickups
+    for i, addr in enumerate(pickup_addresses):
+        if addr and addr.strip():
+            all_stops_html += f'''
+        <tr>
+            <td style="padding: 10px 15px; background: #e8e4d9; color: #666; font-weight: 500;">📍 STOP {i+2}</td>
+            <td style="padding: 10px 15px; background: #fefefe;">{addr}</td>
+        </tr>
+            '''
     
-    outbound_route_html += f'''
-            <div style="display: flex; align-items: flex-start; padding-left: 36px; border-left: 2px solid #D4AF37; margin-left: 11px;">
-                <div style="width: 24px; height: 24px; background: #22c55e; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px; margin-left: -49px; flex-shrink: 0;">
-                    <span style="color: white; font-size: 14px;">✓</span>
-                </div>
-                <div style="flex: 1;">
-                    <span style="color: #666; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Drop-off</span>
-                    <p style="margin: 2px 0 0 0; color: #333; font-size: 14px; font-weight: 600;">{dropoff_address}</p>
-                </div>
-            </div>
-        </div>
+    # Add dropoff
+    all_stops_html += f'''
+        <tr>
+            <td style="padding: 10px 15px; background: #22c55e; color: white; font-weight: 600;">🏁 DROP-OFF</td>
+            <td style="padding: 10px 15px; background: #f0fdf4; font-weight: 600;">{dropoff_address}</td>
+        </tr>
     '''
     
-    # Build return trip section if applicable
-    return_trip_html = ""
-    has_return = booking.get('bookReturn', False)
-    return_date = booking.get('returnDate', '')
-    return_time = booking.get('returnTime', '')
-    
-    # Also check if returnDate exists (fallback for legacy bookings where bookReturn might not be set)
-    if (has_return or return_date) and return_date:
-        # Format return date
-        formatted_return_date = format_date_ddmmyyyy(return_date)
+    # Build return trip section
+    return_section_html = ""
+    if has_return:
+        return_date = booking.get('returnDate', '')
+        return_time = booking.get('returnTime', '')
+        return_flight = booking.get('returnFlightNumber') or booking.get('returnDepartureFlightNumber') or ''
         
-        # Reverse the pickups to become drop-offs
-        all_pickups = [primary_pickup]
-        if pickup_addresses:
-            all_pickups.extend([addr for addr in pickup_addresses if addr and addr.strip()])
+        formatted_return_date = format_date_ddmmyyyy(return_date) if return_date else 'TBC'
+        formatted_return_time = format_time_ampm(return_time) if return_time else 'TBC'
         
-        reversed_dropoffs = list(reversed(all_pickups))
-        
-        # Build return route HTML
-        return_route_html = f'''
-        <div style="background: linear-gradient(135deg, #fefefe 0%, #f8f6f0 100%); border-radius: 8px; padding: 15px; margin: 10px 0;">
-            <div style="display: flex; align-items: flex-start; margin-bottom: 8px;">
-                <div style="width: 24px; height: 24px; background: #D4AF37; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px; flex-shrink: 0;">
-                    <span style="color: white; font-size: 14px;">↩</span>
-                </div>
-                <div style="flex: 1;">
-                    <span style="color: #666; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Pickup</span>
-                    <p style="margin: 2px 0 0 0; color: #333; font-size: 14px;">{dropoff_address}</p>
-                </div>
+        return_section_html = f'''
+            <!-- RETURN TRIP -->
+            <div style="margin-top: 30px; border-top: 3px solid #D4AF37; padding-top: 20px;">
+                <h3 style="margin: 0 0 15px 0; color: #1a1a1a; font-size: 18px; display: flex; align-items: center;">
+                    <span style="background: #D4AF37; color: white; padding: 5px 10px; border-radius: 4px; margin-right: 10px;">↩️ RETURN TRIP</span>
+                </h3>
+                
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px;">
+                    <tr>
+                        <td style="padding: 8px 0; color: #666; font-size: 14px; width: 140px;">Return Date</td>
+                        <td style="padding: 8px 0; color: #333; font-size: 15px; font-weight: 600;">{formatted_return_date}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px 0; color: #666; font-size: 14px;">Pickup Time</td>
+                        <td style="padding: 8px 0; color: #333; font-size: 15px; font-weight: 600;">{formatted_return_time}</td>
+                    </tr>
+                    {'<tr><td style="padding: 8px 0; color: #666; font-size: 14px;">✈️ Flight Number</td><td style="padding: 8px 0; color: #1565C0; font-size: 15px; font-weight: 600;">' + return_flight + '</td></tr>' if return_flight else ''}
+                </table>
+                
+                <table style="width: 100%; border-collapse: collapse; border: 1px solid #e8e4d9; border-radius: 8px; overflow: hidden;">
+                    <tr>
+                        <td style="padding: 10px 15px; background: #D4AF37; color: white; font-weight: 600;">📍 PICKUP</td>
+                        <td style="padding: 10px 15px; background: #faf8f3;">{dropoff_address}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px 15px; background: #22c55e; color: white; font-weight: 600;">🏁 DROP-OFF</td>
+                        <td style="padding: 10px 15px; background: #f0fdf4; font-weight: 600;">{primary_pickup}</td>
+                    </tr>
+                </table>
             </div>
         '''
-        
-        for i, addr in enumerate(reversed_dropoffs):
-            is_final = i == len(reversed_dropoffs) - 1
-            label = "Final Drop-off" if is_final else f"Drop-off"
-            bg_color = "#22c55e" if is_final else "#D4AF37"
-            icon = "✓" if is_final else str(i + 1)
-            
-            return_route_html += f'''
-            <div style="display: flex; align-items: flex-start; margin-bottom: 8px; padding-left: 36px; border-left: 2px {'solid' if is_final else 'dashed'} #D4AF37; margin-left: 11px;">
-                <div style="width: 24px; height: 24px; background: {bg_color}; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px; margin-left: -49px; flex-shrink: 0;">
-                    <span style="color: white; font-size: {'14px' if is_final else '12px'}; font-weight: bold;">{icon}</span>
-                </div>
-                <div style="flex: 1;">
-                    <span style="color: #666; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">{label}</span>
-                    <p style="margin: 2px 0 0 0; color: #333; font-size: 14px; {'font-weight: 600;' if is_final else ''}">{addr}</p>
-                </div>
+    
+    # Driver section (if assigned)
+    driver_section_html = ""
+    if driver_name:
+        driver_section_html = f'''
+            <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 15px; margin: 20px 0;">
+                <h4 style="margin: 0 0 10px 0; color: #0369a1; font-size: 14px;">🚗 YOUR DRIVER</h4>
+                <p style="margin: 0; color: #333; font-size: 16px; font-weight: 600;">{driver_name}</p>
+                {'<p style="margin: 5px 0 0 0; color: #666; font-size: 14px;">📞 ' + driver_phone + '</p>' if driver_phone else ''}
             </div>
-            '''
-        
-        return_route_html += '</div>'
-        
-        # Check if return trip is TO Auckland Airport (Meet & Greet offer)
-        meet_greet_html = ""
-        airport_keywords = ['auckland airport', 'akl airport', 'international terminal', 'domestic terminal']
-        is_airport_return = any(kw in dropoff_address.lower() for kw in airport_keywords)
-        
-        if is_airport_return:
-            meet_greet_html = '''
-                    <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-radius: 10px; padding: 20px; margin-top: 20px; border: 2px solid #D4AF37;">
-                        <div style="text-align: center; margin-bottom: 15px;">
-                            <span style="font-size: 28px;">🤝</span>
-                            <h4 style="margin: 10px 0 5px 0; color: #D4AF37; font-size: 18px;">Meet & Greet Service Available</h4>
-                            <p style="margin: 0; color: #ccc; font-size: 13px;">For your return journey to Auckland Airport</p>
-                        </div>
-                        <div style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 15px; margin: 15px 0;">
-                            <p style="margin: 0 0 10px 0; color: #fff; font-size: 14px;"><strong>What's included:</strong></p>
-                            <ul style="margin: 0; padding-left: 20px; color: #ccc; font-size: 13px; line-height: 1.8;">
-                                <li>Personal greeter waiting at arrivals with your name sign</li>
-                                <li>Assistance with luggage to your vehicle</li>
-                                <li>Priority pickup - no waiting in queues</li>
-                                <li>Flight tracking - we adjust if your flight is delayed</li>
-                            </ul>
-                        </div>
-                        <div style="text-align: center; margin-top: 15px;">
-                            <p style="margin: 0 0 10px 0; color: #D4AF37; font-size: 16px; font-weight: 600;">Only +$20 NZD</p>
-                            <a href="mailto:bookings@bookaride.co.nz?subject=Meet%20%26%20Greet%20Request%20-%20''' + booking_ref + '''&body=Hi%2C%0A%0AI%20would%20like%20to%20add%20Meet%20%26%20Greet%20service%20to%20my%20booking%20''' + booking_ref + '''.%0A%0AThank%20you!" 
-                               style="display: inline-block; background: #D4AF37; color: #1a1a2e; padding: 12px 25px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 14px;">
-                                Add Meet & Greet to My Booking
-                            </a>
-                        </div>
-                    </div>
-            '''
-        
-        return_trip_html = f'''
-                <!-- Return Trip Section -->
-                <div style="margin-top: 30px;">
-                    <div style="display: flex; align-items: center; margin-bottom: 15px;">
-                        <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
-                            <span style="color: white; font-size: 18px;">↩</span>
-                        </div>
-                        <div>
-                            <h3 style="margin: 0; color: #1a1a1a; font-size: 18px;">Return Trip</h3>
-                            <p style="margin: 2px 0 0 0; color: #666; font-size: 13px;">{formatted_return_date} at {format_time_ampm(return_time) if return_time else 'TBC'}</p>
-                        </div>
-                    </div>
-                    {'<div style="background: #e3f2fd; border-radius: 8px; padding: 12px; margin-bottom: 15px; border-left: 4px solid #2196F3;"><p style="margin: 0; color: #1565C0; font-size: 14px;"><strong>✈️ Return Flight:</strong> ' + (booking.get('returnFlightNumber') or booking.get('returnDepartureFlightNumber') or 'Not provided') + '</p></div>' if True else ''}
-                    {return_route_html}
-                    {meet_greet_html}
-                </div>
         '''
-    
-    # Logo as inline SVG (gold B logo)
-    logo_svg = '''
-        <svg width="60" height="60" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="64" height="64" rx="12" fill="#D4AF37"/>
-            <circle cx="32" cy="32" r="20" stroke="white" stroke-width="3" fill="none"/>
-            <text x="32" y="42" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="white" text-anchor="middle">B</text>
-        </svg>
-    '''
-    
-    # Dynamic service tagline based on service type
-    service_type = booking.get('serviceType', 'private-transfer')
-    service_tagline_map = {
-        'private-transfer': 'PRIVATE SHUTTLE TRANSFER',
-        'private-shuttle': 'PRIVATE SHUTTLE TRANSFER',
-        'airport-transfer': 'AIRPORT TRANSFER',
-        'shared-shuttle': 'SHARED SHUTTLE SERVICE',
-        'cruise-transfer': 'CRUISE SHIP TRANSFER',
-        'charter': 'CHARTER SERVICE',
-    }
-    service_tagline = service_tagline_map.get(service_type, service_type.replace('-', ' ').upper())
     
     html_content = f'''
     <!DOCTYPE html>
@@ -4755,86 +4689,98 @@ def generate_confirmation_email_html(booking: dict) -> str:
         <body style="font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 0; background-color: #f5f5f5;">
             <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
                 
-                <!-- Header with Logo -->
-                <div style="background: linear-gradient(135deg, #ffffff 0%, #faf8f3 100%); padding: 30px 20px; text-align: center; border-bottom: 3px solid #D4AF37;">
-                    {logo_svg}
-                    <h1 style="margin: 15px 0 5px 0; color: #1a1a1a; font-size: 24px; font-weight: 300; letter-spacing: 2px;">BOOK<span style="color: #D4AF37; font-weight: 600;">A</span>RIDE</h1>
-                    <p style="margin: 0; color: #888; font-size: 12px; letter-spacing: 1px;">{service_tagline}</p>
+                <!-- Header -->
+                <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 25px; text-align: center;">
+                    <h1 style="margin: 0; color: #D4AF37; font-size: 28px; font-weight: 300; letter-spacing: 3px;">BOOK<span style="font-weight: 700;">A</span>RIDE</h1>
+                    <p style="margin: 8px 0 0 0; color: #ccc; font-size: 12px; letter-spacing: 1px;">PREMIUM AIRPORT TRANSFERS</p>
                 </div>
                 
                 <!-- Confirmation Badge -->
-                <div style="background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%); padding: 20px; text-align: center;">
-                    <div style="display: inline-block; background: white; border-radius: 50%; width: 50px; height: 50px; line-height: 50px; margin-bottom: 10px;">
-                        <span style="color: #22c55e; font-size: 28px;">✓</span>
-                    </div>
-                    <h2 style="margin: 0; color: white; font-size: 22px; font-weight: 400;">Booking Confirmed</h2>
-                    <p style="margin: 5px 0 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">Reference: <strong>{booking_ref}</strong></p>
+                <div style="background: #D4AF37; padding: 20px; text-align: center;">
+                    <h2 style="margin: 0; color: #1a1a2e; font-size: 20px;">✓ BOOKING CONFIRMED</h2>
+                    <p style="margin: 8px 0 0 0; color: #1a1a2e; font-size: 24px; font-weight: 700;">Reference #{booking_ref}</p>
                 </div>
                 
                 <!-- Main Content -->
-                <div style="padding: 30px 25px;">
-                    <p style="color: #333; font-size: 15px; line-height: 1.6; margin: 0 0 25px 0;">
-                        Dear <strong>{booking.get('name', 'Customer')}</strong>,<br><br>
-                        Thank you for choosing BookaRide! Your booking has been confirmed. Here are your trip details:
-                    </p>
+                <div style="padding: 25px;">
                     
-                    <!-- Outbound Trip Section -->
+                    <!-- BOOKING SUMMARY BOX -->
+                    <div style="background: #faf8f3; border: 2px solid #D4AF37; border-radius: 10px; padding: 20px; margin-bottom: 25px;">
+                        <h3 style="margin: 0 0 15px 0; color: #1a1a2e; font-size: 16px; border-bottom: 1px solid #e8e4d9; padding-bottom: 10px;">📋 BOOKING SUMMARY</h3>
+                        
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <tr>
+                                <td style="padding: 8px 0; color: #666; font-size: 14px; width: 140px;">Status</td>
+                                <td style="padding: 8px 0;"><span style="background: #22c55e; color: white; padding: 3px 10px; border-radius: 4px; font-size: 12px; font-weight: 600;">CONFIRMED</span></td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 0; color: #666; font-size: 14px;">Service Type</td>
+                                <td style="padding: 8px 0; color: #333; font-size: 15px; font-weight: 500;">{service_display}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 0; color: #666; font-size: 14px;">Transfer Type</td>
+                                <td style="padding: 8px 0; color: #333; font-size: 15px; font-weight: 500;">{transfer_type}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 0; color: #666; font-size: 14px;">Date & Time</td>
+                                <td style="padding: 8px 0; color: #333; font-size: 15px; font-weight: 600;">{formatted_date} at {formatted_time}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 0; color: #666; font-size: 14px;">Passengers</td>
+                                <td style="padding: 8px 0; color: #333; font-size: 15px; font-weight: 500;">{booking.get('passengers', 'N/A')} person(s)</td>
+                            </tr>
+                            {'<tr><td style="padding: 8px 0; color: #666; font-size: 14px;">Distance</td><td style="padding: 8px 0; color: #333; font-size: 15px;">' + str(distance) + ' km</td></tr>' if distance else ''}
+                            {'<tr><td style="padding: 8px 0; color: #666; font-size: 14px;">✈️ Flight Number</td><td style="padding: 8px 0; color: #1565C0; font-size: 15px; font-weight: 600;">' + flight_number + '</td></tr>' if flight_number else ''}
+                        </table>
+                    </div>
+                    
+                    <!-- ROUTE LOCATIONS -->
                     <div style="margin-bottom: 25px;">
-                        <div style="display: flex; align-items: center; margin-bottom: 15px;">
-                            <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
-                                <span style="color: white; font-size: 18px;">→</span>
-                            </div>
-                            <div>
-                                <h3 style="margin: 0; color: #1a1a1a; font-size: 18px;">Outbound Trip</h3>
-                                <p style="margin: 2px 0 0 0; color: #666; font-size: 13px;">{formatted_date} at {formatted_time}</p>
-                            </div>
-                        </div>
-                        
-                        <!-- Trip Details Card -->
-                        <div style="background: #faf8f3; border-radius: 10px; padding: 15px; margin-bottom: 15px; border: 1px solid #e8e4d9;">
-                            <table style="width: 100%; border-collapse: collapse;">
-                                <tr>
-                                    <td style="padding: 8px 0; color: #666; font-size: 13px; width: 120px;">Service Type</td>
-                                    <td style="padding: 8px 0; color: #333; font-size: 14px; font-weight: 500;">{booking.get('serviceType', 'N/A').replace('-', ' ').title()}</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 8px 0; color: #666; font-size: 13px;">Passengers</td>
-                                    <td style="padding: 8px 0; color: #333; font-size: 14px; font-weight: 500;">{booking.get('passengers', 'N/A')}</td>
-                                </tr>
-                                {'<tr><td style="padding: 8px 0; color: #666; font-size: 13px;">✈️ Flight</td><td style="padding: 8px 0; color: #1565C0; font-size: 14px; font-weight: 600;">' + (booking.get('flightNumber') or booking.get('departureFlightNumber') or booking.get('arrivalFlightNumber') or '') + '</td></tr>' if (booking.get('flightNumber') or booking.get('departureFlightNumber') or booking.get('arrivalFlightNumber')) else ''}
-                            </table>
-                        </div>
-                        
-                        <!-- Route -->
-                        {outbound_route_html}
+                        <h3 style="margin: 0 0 15px 0; color: #1a1a2e; font-size: 16px;">🛤️ ROUTE</h3>
+                        <table style="width: 100%; border-collapse: collapse; border: 1px solid #e8e4d9; border-radius: 8px; overflow: hidden;">
+                            {all_stops_html}
+                        </table>
                     </div>
                     
-                    {return_trip_html}
+                    {return_section_html}
                     
-                    <!-- Price Section -->
-                    <div style="background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%); border-radius: 10px; padding: 20px; margin: 25px 0; text-align: center;">
+                    {driver_section_html}
+                    
+                    <!-- CUSTOMER DETAILS -->
+                    <div style="background: #f8f8f8; border-radius: 8px; padding: 15px; margin: 20px 0;">
+                        <h4 style="margin: 0 0 10px 0; color: #666; font-size: 14px;">👤 CUSTOMER DETAILS</h4>
+                        <p style="margin: 0 0 5px 0; color: #333; font-size: 15px; font-weight: 600;">{booking.get('name', 'N/A')}</p>
+                        <p style="margin: 0 0 3px 0; color: #666; font-size: 14px;">📧 {booking.get('email', 'N/A')}</p>
+                        <p style="margin: 0; color: #666; font-size: 14px;">📞 {booking.get('phone', 'N/A')}</p>
+                    </div>
+                    
+                    <!-- PAYMENT -->
+                    <div style="background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%); border-radius: 10px; padding: 20px; text-align: center;">
                         <p style="margin: 0 0 5px 0; color: rgba(255,255,255,0.9); font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Total Amount</p>
-                        <p style="margin: 0; color: white; font-size: 32px; font-weight: 600;">${total_price:.2f} <span style="font-size: 16px; color: rgba(255,255,255,0.8);">NZD</span></p>
+                        <p style="margin: 0 0 10px 0; color: white; font-size: 32px; font-weight: 700;">${total_price:.2f} <span style="font-size: 14px;">NZD</span></p>
+                        <p style="margin: 0;"><span style="background: {'#22c55e' if payment_status == 'PAID' else '#fff'}; color: {'white' if payment_status == 'PAID' else '#f59e0b'}; padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: 600;">{payment_status}</span></p>
                     </div>
                     
-                    <!-- Contact Info -->
-                    <div style="background: #f8f8f8; border-radius: 10px; padding: 20px; text-align: center; border: 1px solid #eee;">
-                        <p style="margin: 0 0 10px 0; color: #666; font-size: 14px;">Questions? We're here to help!</p>
+                    <!-- Special Requests -->
+                    {'<div style="background: #fef3c7; border: 1px solid #fcd34d; border-radius: 8px; padding: 15px; margin: 20px 0;"><h4 style="margin: 0 0 8px 0; color: #92400e; font-size: 14px;">📝 SPECIAL REQUESTS</h4><p style="margin: 0; color: #78350f; font-size: 14px;">' + booking.get('specialRequests', '') + '</p></div>' if booking.get('specialRequests') else ''}
+                    
+                    <!-- Contact -->
+                    <div style="text-align: center; padding: 20px 0; border-top: 1px solid #eee; margin-top: 20px;">
+                        <p style="margin: 0 0 10px 0; color: #666; font-size: 14px;">Questions? Contact us:</p>
                         <p style="margin: 0;">
-                            <a href="tel:+6421743321" style="color: #D4AF37; text-decoration: none; font-weight: 600; font-size: 16px;">+64 21 743 321</a>
-                            <span style="color: #ccc; margin: 0 10px;">|</span>
+                            <a href="tel:+6421339030" style="color: #D4AF37; text-decoration: none; font-weight: 600; font-size: 16px;">+64 21 339 030</a>
+                        </p>
+                        <p style="margin: 5px 0 0 0;">
                             <a href="mailto:{sender_email}" style="color: #D4AF37; text-decoration: none; font-size: 14px;">{sender_email}</a>
                         </p>
                     </div>
                 </div>
                 
                 <!-- Footer -->
-                <div style="background: #faf8f3; padding: 25px; text-align: center; border-top: 1px solid #e8e4d9;">
-                    <p style="margin: 0 0 10px 0; color: #333; font-size: 14px; font-weight: 500;">Thank you for choosing BookaRide!</p>
-                    <p style="margin: 0; color: #888; font-size: 12px;">Premium Airport Transfers across Auckland</p>
-                    <div style="margin-top: 15px;">
-                        <a href="https://bookaride.co.nz" style="color: #D4AF37; text-decoration: none; font-size: 12px;">bookaride.co.nz</a>
-                    </div>
+                <div style="background: #1a1a2e; padding: 20px; text-align: center;">
+                    <p style="margin: 0; color: #D4AF37; font-size: 14px; font-weight: 500;">Thank you for choosing BookaRide!</p>
+                    <p style="margin: 8px 0 0 0; color: #888; font-size: 12px;">Premium Airport Transfers • Auckland, New Zealand</p>
+                    <p style="margin: 10px 0 0 0;"><a href="https://bookaride.co.nz" style="color: #D4AF37; text-decoration: none; font-size: 12px;">bookaride.co.nz</a></p>
                 </div>
                 
             </div>
