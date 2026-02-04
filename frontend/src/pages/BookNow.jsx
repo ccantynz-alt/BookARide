@@ -725,27 +725,6 @@ export const BookNow = () => {
                             />
                           </div>
                         </div>
-                        
-                        {/* Flight Tracker Display */}
-                        {showFlightTracker && formData.arrivalFlightNumber.length >= 3 && (
-                          <div className="mt-4">
-                            <FlightTracker 
-                              flightNumber={formData.arrivalFlightNumber}
-                              onFlightData={(data) => {
-                                setArrivalFlightData(data);
-                                // Auto-fill arrival time if available
-                                if (data?.arrival?.time && data.arrival.time !== 'TBA') {
-                                  const [hours, minutes] = data.arrival.time.split(':');
-                                  const timeDate = new Date();
-                                  timeDate.setHours(parseInt(hours), parseInt(minutes));
-                                  setArrivalTimeDate(timeDate);
-                                  setFormData(prev => ({ ...prev, arrivalTime: data.arrival.time }));
-                                }
-                              }}
-                              showInline={true}
-                            />
-                          </div>
-                        )}
                       </div>
 
                       {/* Passengers */}
