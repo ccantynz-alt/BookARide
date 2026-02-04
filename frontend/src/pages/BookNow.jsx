@@ -700,30 +700,14 @@ export const BookNow = () => {
                           </div>
                           <div className="space-y-2">
                             <Label htmlFor="arrivalFlightNumber">Arrival Flight Number</Label>
-                            <div className="flex gap-2">
-                              <Input
-                                id="arrivalFlightNumber"
-                                name="arrivalFlightNumber"
-                                value={formData.arrivalFlightNumber}
-                                onChange={(e) => {
-                                  handleChange(e);
-                                  setShowFlightTracker(e.target.value.length >= 3);
-                                }}
-                                placeholder="e.g., NZ456"
-                                className="transition-all duration-200 focus:ring-2 focus:ring-gold"
-                              />
-                              {formData.arrivalFlightNumber.length >= 3 && (
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => setShowFlightTracker(true)}
-                                  className="whitespace-nowrap"
-                                >
-                                  Track Flight
-                                </Button>
-                              )}
-                            </div>
+                            <Input
+                              id="arrivalFlightNumber"
+                              name="arrivalFlightNumber"
+                              value={formData.arrivalFlightNumber}
+                              onChange={handleChange}
+                              placeholder="e.g., NZ456"
+                              className="transition-all duration-200 focus:ring-2 focus:ring-gold"
+                            />
                           </div>
                           <div className="space-y-2">
                             <Label>Arrival Time</Label>
