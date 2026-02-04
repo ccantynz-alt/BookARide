@@ -114,7 +114,7 @@ const TravelAgents = () => {
                 className="border-white text-white hover:bg-white/10"
                 asChild
               >
-                <a href="tel:+6421339030">
+                <a href="tel:+6421743321">
                   <Phone className="mr-2 w-5 h-5" /> Call Partnerships Team
                 </a>
               </Button>
