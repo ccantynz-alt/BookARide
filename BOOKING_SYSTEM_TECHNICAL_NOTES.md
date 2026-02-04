@@ -734,7 +734,7 @@ GOOGLE_SERVICE_ACCOUNT_JSON='{"type":"service_account",...}'
 ### Frontend `.env`
 
 ```bash
-REACT_APP_BACKEND_URL=https://airport-booking-fix.preview.emergentagent.com/api
+REACT_APP_BACKEND_URL=https://dazzling-leakey.preview.emergentagent.com/api
 REACT_APP_STRIPE_KEY=pk_live_xxx
 REACT_APP_GOOGLE_MAPS_KEY=AIzaxxx
 ```

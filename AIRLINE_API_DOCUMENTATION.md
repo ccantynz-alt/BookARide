@@ -218,7 +218,7 @@ We can send booking status updates to your webhook URL. Contact us to set up web
 
 ## Test Environment
 For testing, use:
-- **Base URL:** `https://airport-booking-fix.preview.emergentagent.com/api/airline/v1`
+- **Base URL:** `https://dazzling-leakey.preview.emergentagent.com/api/airline/v1`
 - Contact us for test API credentials
 
 ---
