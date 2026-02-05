@@ -1348,8 +1348,17 @@ async def validate_promo_code(data: PromoCodeValidation):
 @api_router.post("/bookings", response_model=Booking)
 async def create_booking(booking: BookingCreate, background_tasks: BackgroundTasks):
     try:
+        # Log return flight number for debugging
+        logger.info(f"Creating booking - returnDepartureFlightNumber: '{booking.returnDepartureFlightNumber}', returnFlightNumber: '{booking.returnFlightNumber}', bookReturn: {booking.bookReturn}")
+        
         booking_obj = Booking(**booking.dict())
         booking_dict = booking_obj.dict()
+        
+        # Ensure return flight number is preserved (check both field names)
+        if booking.returnDepartureFlightNumber:
+            booking_dict['returnDepartureFlightNumber'] = booking.returnDepartureFlightNumber
+            booking_dict['returnFlightNumber'] = booking.returnDepartureFlightNumber  # Also set the alias
+            logger.info(f"Set returnDepartureFlightNumber: {booking.returnDepartureFlightNumber}")
         
         # Get sequential reference number
         ref_number = await get_next_reference_number()
