@@ -24,10 +24,16 @@
                         },
     "overrides":  {
                       "schema-utils":  "3.3.0",
+                      "babel-loader":  {
+
+                                       },
+                      "terser-webpack-plugin":  {
+                                                    "schema-utils":  "3.3.0"
+                                                },
                       "ajv":  "6.12.6",
                       "ajv-keywords":  "3.5.2",
-                      "babel-loader":  {
-                                           "schema-utils":  "2.7.1"
-                                       }
+                      "webpack":  {
+                                      "schema-utils":  "3.3.0"
+                                  }
                   }
 }
