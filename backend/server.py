@@ -12900,7 +12900,7 @@ async def startup_event():
     # Ensure default admin exists with correct email for Google OAuth
     try:
         default_admin = await db.admin_users.find_one({"username": "admin"})
-except Exception as e:
+    except Exception as e:
         print("WARN: admin seed skipped (db unavailable):", repr(e))
         default_admin = {"_skip": True}
     if not default_admin:
