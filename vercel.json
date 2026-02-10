@@ -1,7 +1,5 @@
 {
-  "version": 2,
-  "installCommand": "cd frontend && npm install",
-  "buildCommand": "cd frontend && npm run build",
-  "devCommand": "cd frontend && npm run dev",
-  "outputDirectory": "frontend/.next"
+    "version":  2,
+    "devCommand":  "cd frontend \u0026\u0026 npm run dev",
+    "outputDirectory":  "frontend/.next"
 }
