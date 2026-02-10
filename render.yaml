@@ -1,0 +1,8 @@
+services:
+  - type: web
+    name: bookaride-backend
+    env: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: python start.py
+    autoDeploy: true
