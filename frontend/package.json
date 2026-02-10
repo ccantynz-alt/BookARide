@@ -1,1 +1,29 @@
-
+{
+    "name":  "frontend",
+    "version":  "0.1.0",
+    "private":  true,
+    "engines":  {
+                    "node":  "20.x",
+                    "npm":  "10.x"
+                },
+    "scripts":  {
+                    "start":  "craco start",
+                    "build":  "cross-env CI=false craco build",
+                    "test":  "craco test",
+                    "eject":  "react-scripts eject"
+                },
+    "dependencies":  {
+                         "react":  "^18.2.0",
+                         "react-dom":  "^18.2.0",
+                         "react-scripts":  "5.0.1"
+                     },
+    "devDependencies":  {
+                            "cross-env":  "7.0.3",
+                            "@craco/craco":  "7.1.0"
+                        },
+    "overrides":  {
+                      "schema-utils":  "2.7.1",
+                      "ajv":  "6.12.6",
+                      "ajv-keywords":  "3.5.2"
+                  }
+}
