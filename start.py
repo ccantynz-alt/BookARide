@@ -1,4 +1,14 @@
 import os
+try:
+    _p = os.path.join(os.path.dirname(__file__), "backend", "_build_stamp.txt")
+    if os.path.exists(_p):
+        with open(_p, "r", encoding="utf-8", errors="replace") as f:
+            print("BUILD_STAMP:", f.read().strip().replace("\n"," | "))
+    else:
+        print("BUILD_STAMP: MISSING backend/_build_stamp.txt")
+except Exception as _e:
+    print("BUILD_STAMP_ERROR:", repr(_e))
+import os
 import uvicorn
 
 # Import the FastAPI app.
