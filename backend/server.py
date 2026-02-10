@@ -48,7 +48,7 @@ def run_async_task(coro_func, arg, task_description="background task"):
             logger.info(f"✅ Background task completed: {task_description}")
         finally:
             loop.close()
-    except Exception as e:
+        except Exception as e:
         logger.error(f"❌ Background task failed ({task_description}): {str(e)}")
 
 def run_sync_task(sync_func, arg, task_description="background task"):
@@ -320,7 +320,7 @@ def validate_booking_date(self):
             today = datetime.now(nz_tz).strftime('%Y-%m-%d')
             if self.date < today:
                 raise ValueError(f'Booking date ({self.date}) cannot be in the past. Today is {today}.')
-    except Exception as e:
+        except Exception as e:
             if 'cannot be in the past' in str(e):
                 raise
             pass
@@ -394,7 +394,7 @@ def is_booking_within_24_hours(date_str: str, time_str: str) -> bool:
             logger.info(f"Booking is within 24 hours: pickup at {booking_datetime_nz}, now is {now_nz}")
         
         return is_within_24h
-    except Exception as e:
+            except Exception as e:
         logger.error(f"Error checking 24-hour window: {str(e)}")
         return False
 
@@ -692,7 +692,7 @@ async def get_admin_from_session(request: Request):
         
     except HTTPException:
         raise
-    except Exception as e:
+            except Exception as e:
         logger.error(f"Auth check error: {str(e)}")
         raise HTTPException(status_code=500, detail="Authentication check failed")
 
@@ -834,7 +834,7 @@ async def request_password_reset(reset_request: PasswordResetRequest):
                 logger.error(f"Failed to send reset email: {str(mail_error)}")
         
         return {"message": "If this email is registered, you will receive a password reset link."}
-    except Exception as e:
+            except Exception as e:
         logger.error(f"Password reset request error: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to process password reset request")
 
@@ -1489,7 +1489,7 @@ async def quick_approve_booking(booking_id: str, action: str = "approve"):
             try:
                 send_booking_confirmation_email(booking)
                 logger.info(f"Confirmation sent to customer for booking {booking_ref}")
-    except Exception as e:
+            except Exception as e:
                 logger.error(f"Failed to send confirmation: {e}")
             
             logger.info(f"✅ Booking {booking_ref} APPROVED via email quick-approve")
@@ -1542,7 +1542,7 @@ async def quick_approve_booking(booking_id: str, action: str = "approve"):
                     <p>Please use the approve or reject buttons from the email.</p>
                 </body></html>
             """, status_code=400)
-    except Exception as e:
+            except Exception as e:
         logger.error(f"Error in quick approve: {str(e)}")
         return HTMLResponse(content=f"""
             <html><body style="font-family: Arial; text-align: center; padding: 50px;">
@@ -1706,7 +1706,7 @@ async def update_booking(booking_id: str, update_data: dict, current_admin: dict
         return {"message": "Booking updated successfully"}
     except HTTPException:
         raise
-    except Exception as e:
+            except Exception as e:
         logger.error(f"Error updating booking: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error updating booking: {str(e)}")
 
@@ -2302,7 +2302,7 @@ def send_customer_confirmation(booking: dict):
             )
             sync_client.close()
             logger.info(f"✅ Confirmation status updated for booking {booking_id}")
-    except Exception as e:
+        except Exception as e:
             logger.error(f"Error updating confirmation status: {e}")
     
     return results
@@ -2828,7 +2828,7 @@ async def track_flight(flight_number: str):
         
     except HTTPException:
         raise
-    except Exception as e:
+            except Exception as e:
         logger.error(f"Flight tracking error: {str(e)}")
         # Fallback to mock on error
         return await _get_mock_flight_data(fn)
@@ -3222,9 +3222,9 @@ async def send_abandoned_booking_emails():
                         {"$set": {"email_sent": True, "email_sent_at": datetime.now(timezone.utc).isoformat()}}
                     )
                     logger.info(f"Sent abandoned booking recovery email to {email}")
-    except Exception as e:
+            except Exception as e:
                 logger.error(f"Error sending recovery email: {str(e)}")
-    except Exception as e:
+            except Exception as e:
         logger.error(f"Error in abandoned booking task: {str(e)}")
 
 
@@ -3428,7 +3428,7 @@ async def send_daily_reminders_core(source: str = "unknown"):
             
             logger.info(f"✅ [{source}] Reminders complete: {sent_count} sent, {skipped_count} skipped")
             return {"success": True, "reminders_sent": sent_count, "skipped": skipped_count, "source": source}
-    except Exception as e:
+                except Exception as e:
             logger.error(f"❌ [{source}] Reminder error: {str(e)}")
             raise
 
@@ -4048,7 +4048,7 @@ Check your email for full details."""
             logger.error(f"❌ Error sending driver SMS: {str(sms_error)}")
         
         return True
-    except Exception as e:
+        except Exception as e:
         logger.error(f"Error sending driver notification: {str(e)}")
         return False
 
@@ -4089,7 +4089,7 @@ async def get_calendar_credentials():
         
         logger.warning("Google service account credentials not configured (neither env var nor file)")
         return None
-    except Exception as e:
+            except Exception as e:
         logger.error(f"Error loading service account credentials: {str(e)}")
         return None
 
@@ -4314,7 +4314,7 @@ Outbound was: {formatted_date} at {booking_time}
         
         logger.info(f"Calendar event(s) created for booking {booking.get('id')}: {len(created_event_ids)} event(s)")
         return True
-    except Exception as e:
+            except Exception as e:
         logger.error(f"Error creating calendar event: {str(e)}")
         return False
 
@@ -4357,7 +4357,7 @@ async def update_calendar_event(booking: dict):
         success = await create_calendar_event(booking)
         logger.info(f"Calendar event updated for booking {booking.get('id')}: {success}")
         return success
-    except Exception as e:
+                except Exception as e:
         logger.error(f"Error updating calendar event: {str(e)}")
         return False
 
@@ -4403,7 +4403,7 @@ async def sync_booking_to_calendar(booking_id: str, current_admin: dict = Depend
             raise HTTPException(status_code=500, detail="Failed to sync to calendar. Please check Google Calendar authorization.")
     except HTTPException:
         raise
-    except Exception as e:
+                            except Exception as e:
         logger.error(f"Error syncing booking to calendar: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error syncing to calendar: {str(e)}")
 
@@ -4440,7 +4440,7 @@ async def resend_booking_confirmation(booking_id: str, current_admin: dict = Dep
             send_booking_confirmation_email(booking)
             email_sent = True
             logger.info(f"Confirmation email resent for booking {booking_id}")
-    except Exception as e:
+        except Exception as e:
             logger.error(f"Failed to resend email for booking {booking_id}: {str(e)}")
         
         # Send confirmation SMS
@@ -4448,7 +4448,7 @@ async def resend_booking_confirmation(booking_id: str, current_admin: dict = Dep
             send_booking_confirmation_sms(booking)
             sms_sent = True
             logger.info(f"Confirmation SMS resent for booking {booking_id}")
-    except Exception as e:
+        except Exception as e:
             logger.error(f"Failed to resend SMS for booking {booking_id}: {str(e)}")
         
         # Track resend time
@@ -4468,7 +4468,7 @@ async def resend_booking_confirmation(booking_id: str, current_admin: dict = Dep
             
     except HTTPException:
         raise
-    except Exception as e:
+        except Exception as e:
         logger.error(f"Error resending confirmation: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error resending confirmation: {str(e)}")
 
@@ -4916,7 +4916,7 @@ async def import_bookings(request: ImportBookingsRequest, current_admin: dict = 
                     "referenceNumber": ref_number,
                     "name": new_booking["name"]
                 })
-    except Exception as e:
+            except Exception as e:
                 errors.append({
                     "index": idx,
                     "booking_id": booking_data.booking_id,
@@ -4930,7 +4930,7 @@ async def import_bookings(request: ImportBookingsRequest, current_admin: dict = 
             "imported": imported,
             "errors": errors
         }
-    except Exception as e:
+            except Exception as e:
         logger.error(f"Error importing bookings: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error importing bookings: {str(e)}")
 
@@ -4979,7 +4979,7 @@ async def restore_bookings_from_backup(request: RestoreBookingData, current_admi
                     "name": booking.get("name"),
                     "referenceNumber": booking.get("referenceNumber")
                 })
-    except Exception as e:
+            except Exception as e:
                 errors.append({
                     "id": booking.get("id"),
                     "name": booking.get("name"),
@@ -4995,7 +4995,7 @@ async def restore_bookings_from_backup(request: RestoreBookingData, current_admi
             "skipped": skipped,
             "errors": errors
         }
-    except Exception as e:
+            except Exception as e:
         logger.error(f"Error restoring bookings: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error restoring bookings: {str(e)}")
 
@@ -5405,7 +5405,7 @@ async def stripe_webhook(request: Request):
     
     except HTTPException:
         raise
-    except Exception as e:
+                            except Exception as e:
         logger.error(f"Error processing webhook: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error processing webhook: {str(e)}")
 
@@ -5478,7 +5478,7 @@ async def twilio_sms_webhook(request: Request):
                             from_=twilio_from,
                             to=admin_phone
                         )
-    except Exception as e:
+                except Exception as e:
                     logger.error(f"Failed to send admin confirmation SMS: {e}")
                 
                 return Response(content='<?xml version="1.0" encoding="UTF-8"?><Response></Response>', media_type="application/xml")
@@ -5530,7 +5530,7 @@ async def twilio_sms_webhook(request: Request):
                             from_=twilio_from,
                             to=admin_phone
                         )
-    except Exception as e:
+                except Exception as e:
                     logger.error(f"Failed to send admin decline confirmation SMS: {e}")
                 
                 return Response(content='<?xml version="1.0" encoding="UTF-8"?><Response></Response>', media_type="application/xml")
@@ -5698,7 +5698,7 @@ async def twilio_sms_webhook(request: Request):
             content='<?xml version="1.0" encoding="UTF-8"?><Response></Response>',
             media_type="application/xml"
         )
-    except Exception as e:
+                    except Exception as e:
         logger.error(f"Error processing Twilio SMS webhook: {str(e)}")
         return Response(
             content='<?xml version="1.0" encoding="UTF-8"?><Response></Response>',
@@ -5914,7 +5914,7 @@ See exactly when they'll arrive.
         
     except HTTPException:
         raise
-    except Exception as e:
+                except Exception as e:
         logger.error(f"Error starting driver tracking: {str(e)}")
         raise HTTPException(status_code=500, detail="Error starting tracking")
 
@@ -6037,7 +6037,7 @@ async def get_customer_tracking(tracking_ref: str):
         
     except HTTPException:
         raise
-    except Exception as e:
+                except Exception as e:
         logger.error(f"Error getting customer tracking: {str(e)}")
         raise HTTPException(status_code=500, detail="Error loading tracking")
 
@@ -6541,7 +6541,7 @@ async def capture_all_shuttle_payments(date: str, time: str, current_admin: dict
                 # Capture each booking
                 result = await capture_shuttle_payment(booking["id"], current_admin)
                 results.append({"id": booking["id"], "success": True, **result})
-    except Exception as e:
+            except Exception as e:
                 results.append({"id": booking["id"], "success": False, "error": str(e)})
         
         return {
@@ -6551,7 +6551,7 @@ async def capture_all_shuttle_payments(date: str, time: str, current_admin: dict
             "finalPricePerPerson": final_price,
             "results": results
         }
-    except Exception as e:
+            except Exception as e:
         logger.error(f"Error capturing all shuttle payments: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -6864,7 +6864,7 @@ async def update_driver_location(location: DriverLocationUpdate, current_driver:
         
     except HTTPException:
         raise
-    except Exception as e:
+            except Exception as e:
         logger.error(f"Error updating driver location: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -7098,7 +7098,7 @@ async def start_shuttle_run(date: str, time: str, current_admin: dict = Depends(
         
     except HTTPException:
         raise
-    except Exception as e:
+            except Exception as e:
         logger.error(f"Error starting shuttle: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -7345,7 +7345,7 @@ Customers will be auto-notified 5 mins before their pickup. Drive safe! 🙂"""
         
     except HTTPException:
         raise
-    except Exception as e:
+                except Exception as e:
         logger.error(f"Error assigning driver: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -7406,7 +7406,7 @@ async def auto_sync_from_production():
             
     except requests.exceptions.Timeout:
         logger.warning("Auto-sync: Connection timeout")
-    except Exception as e:
+                except Exception as e:
         logger.error(f"Auto-sync error: {str(e)}")
 
 
@@ -7588,7 +7588,7 @@ async def check_return_booking_alerts():
         
         logger.info(f"🔔 [return_alerts] Check complete: {alerts_sent} alerts sent")
         return {"alerts_sent": alerts_sent}
-    except Exception as e:
+                            except Exception as e:
         logger.error(f"Error in return booking alerts: {str(e)}")
         return {"error": str(e)}
 
@@ -7700,7 +7700,7 @@ async def get_urgent_return_bookings(current_admin: dict = Depends(get_current_a
             "base_address": BASE_ADDRESS,
             "checked_at": now_nz.strftime('%Y-%m-%d %H:%M:%S')
         }
-    except Exception as e:
+                except Exception as e:
         logger.error(f"Error getting urgent returns: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -7768,7 +7768,7 @@ async def sync_from_production():
                         else:
                             await db.bookings.insert_one(booking)
                             sync_results["bookings_synced"] += 1
-    except Exception as e:
+                    except Exception as e:
                         sync_results["errors"].append(f"Booking {booking.get('id', 'unknown')}: {str(e)}")
                 
                 # Sync Drivers
@@ -7785,7 +7785,7 @@ async def sync_from_production():
                         else:
                             await db.drivers.insert_one(driver)
                             sync_results["drivers_synced"] += 1
-    except Exception as e:
+                    except Exception as e:
                         sync_results["errors"].append(f"Driver {driver.get('id', 'unknown')}: {str(e)}")
             
             elif response.status_code == 403:
@@ -7795,7 +7795,7 @@ async def sync_from_production():
                 
         except requests.exceptions.Timeout:
             sync_results["errors"].append("Connection to production timed out")
-    except Exception as e:
+                    except Exception as e:
             sync_results["errors"].append(f"Sync error: {str(e)}")
         
         logger.info(f"Sync completed: {sync_results}")
@@ -7807,7 +7807,7 @@ async def sync_from_production():
             "message": f"Synced {sync_results['bookings_synced']} new bookings, updated {sync_results['bookings_updated']}. Synced {sync_results['drivers_synced']} new drivers, updated {sync_results['drivers_updated']}.",
             "details": sync_results
         }
-    except Exception as e:
+                    except Exception as e:
         logger.error(f"Sync failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Sync failed: {str(e)}")
 
@@ -8611,7 +8611,7 @@ async def sync_all_contacts_to_icloud(current_admin: dict = Depends(get_current_
                     synced_contacts.append({"name": name, "phone": phone})
                 else:
                     failed += 1
-    except Exception as e:
+            except Exception as e:
                 logger.error(f"Failed to sync contact {name}: {str(e)}")
                 failed += 1
         
@@ -8628,7 +8628,7 @@ async def sync_all_contacts_to_icloud(current_admin: dict = Depends(get_current_
         
     except HTTPException:
         raise
-    except Exception as e:
+            except Exception as e:
         logger.error(f"Error in bulk contact sync: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -9420,7 +9420,7 @@ async def delete_booking(booking_id: str, send_notification: bool = True, curren
         if send_notification:
             try:
                 await send_cancellation_notifications(booking)
-    except Exception as e:
+            except Exception as e:
                 logger.error(f"Error sending cancellation notifications: {str(e)}")
                 # Continue with deletion even if notifications fail
         
@@ -9441,7 +9441,7 @@ async def delete_booking(booking_id: str, send_notification: bool = True, curren
         return {"message": "Booking cancelled successfully", "notifications_sent": send_notification}
     except HTTPException:
         raise
-    except Exception as e:
+            except Exception as e:
         logger.error(f"Error deleting booking: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -9460,7 +9460,7 @@ async def send_cancellation_notifications(booking: dict):
         try:
             await send_cancellation_email(booking, customer_email, customer_name)
             logger.info(f"Cancellation email sent to {customer_email}")
-    except Exception as e:
+        except Exception as e:
             logger.error(f"Failed to send cancellation email: {str(e)}")
     
     # Send cancellation SMS
@@ -9468,7 +9468,7 @@ async def send_cancellation_notifications(booking: dict):
         try:
             send_cancellation_sms(booking, customer_phone, customer_name)
             logger.info(f"Cancellation SMS sent to {customer_phone}")
-    except Exception as e:
+        except Exception as e:
             logger.error(f"Failed to send cancellation SMS: {str(e)}")
 
 async def send_cancellation_email(booking: dict, to_email: str, customer_name: str):
@@ -9616,7 +9616,7 @@ async def bulk_delete(booking_ids: List[str], send_notifications: bool = False, 
             for booking in bookings:
                 try:
                     await send_cancellation_notifications(booking)
-    except Exception as e:
+                except Exception as e:
                     logger.error(f"Error sending cancellation for booking {booking.get('id')}: {str(e)}")
         
         # SOFT DELETE: Move all to deleted_bookings collection
@@ -9633,7 +9633,7 @@ async def bulk_delete(booking_ids: List[str], send_notifications: bool = False, 
         
         logger.info(f"Bulk soft-deleted {deleted_count} bookings by {current_admin.get('username', 'admin')}")
         return {"message": "Bookings deleted", "count": result.deleted_count, "notifications_sent": send_notifications}
-    except Exception as e:
+                except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -9759,13 +9759,13 @@ async def archive_bookings_bulk(
                     archived_count += 1
                 else:
                     failed.append(booking_id)
-    except Exception as e:
+            except Exception as e:
                 failed.append(booking_id)
                 logger.error(f"Failed to archive booking {booking_id}: {str(e)}")
         
         logger.info(f"Bulk archive: {archived_count} bookings archived by {current_admin.get('username', 'admin')}")
         return {"message": f"Archived {archived_count} bookings", "archived": archived_count, "failed": failed}
-    except Exception as e:
+            except Exception as e:
         logger.error(f"Error in bulk archive: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -9823,7 +9823,7 @@ async def get_archived_bookings(
             "limit": limit,
             "totalPages": (total + limit - 1) // limit
         }
-    except Exception as e:
+            except Exception as e:
         logger.error(f"Error fetching archived bookings: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -9915,7 +9915,7 @@ async def search_all_bookings(
             "archivedCount": len(archived_bookings),
             "totalCount": len(all_results)
         }
-    except Exception as e:
+        except Exception as e:
         logger.error(f"Error searching all bookings: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -10693,7 +10693,7 @@ async def get_xero_access_token():
             else:
                 logger.error(f"Failed to refresh Xero token: {response.text}")
                 return None, None
-    except Exception as e:
+        except Exception as e:
             logger.error(f"Error refreshing Xero token: {str(e)}")
             return None, None
     
@@ -11022,7 +11022,7 @@ async def sync_all_bookings_to_xero(current_admin: dict = Depends(get_current_ad
                 # Create invoice for each booking
                 result = await create_xero_invoice(booking["id"], current_admin)
                 created_count += 1
-    except Exception as e:
+            except Exception as e:
                 errors.append({"booking_id": booking["id"], "error": str(e)})
         
         return {
@@ -11033,7 +11033,7 @@ async def sync_all_bookings_to_xero(current_admin: dict = Depends(get_current_ad
         
     except HTTPException:
         raise
-    except Exception as e:
+            except Exception as e:
         logger.error(f"Error syncing to Xero: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -11197,7 +11197,7 @@ async def import_bookings_from_csv(
                 
                 await db.bookings.insert_one(booking)
                 imported += 1
-    except Exception as e:
+            except Exception as e:
                 errors.append(f"Row {original_id}: {str(e)}")
         
         logger.info(f"📥 WordPress import: {imported} imported, {skipped} skipped, {len(errors)} errors")
@@ -11209,7 +11209,7 @@ async def import_bookings_from_csv(
             "errors": errors[:10],  # First 10 errors
             "total_errors": len(errors)
         }
-    except Exception as e:
+            except Exception as e:
         logger.error(f"Import error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -11365,7 +11365,7 @@ async def quick_import_wordpress(request: Request):
         
     except HTTPException:
         raise
-    except Exception as e:
+            except Exception as e:
         logger.error(f"Quick import error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -11584,7 +11584,7 @@ async def batch_sync_calendar_task(query: dict):
             },
             upsert=True
         )
-    except Exception as e:
+            except Exception as e:
         logger.error(f"Batch calendar sync task error: {str(e)}")
         await db.system_tasks.update_one(
             {"task": "batch_calendar_sync"},
@@ -11786,13 +11786,13 @@ async def auto_archive_completed_bookings():
                         logger.info(f"📦 Auto-archived: Ref #{booking.get('referenceNumber')} - {booking.get('name')} (trip ended: {trip_end_date})")
                 else:
                     skipped_count += 1
-    except Exception as e:
+            except Exception as e:
                 logger.error(f"📦 Error processing booking {booking.get('id', 'unknown')}: {str(e)}")
                 continue
         
         logger.info(f"📦 [Auto-Archive] Completed - Archived: {archived_count}, Skipped: {skipped_count}")
         return {"archived": archived_count, "skipped": skipped_count, "date": today_str}
-    except Exception as e:
+            except Exception as e:
         logger.error(f"📦 [Auto-Archive] Error: {str(e)}")
         return {"archived": 0, "error": str(e)}
 
@@ -12070,7 +12070,7 @@ async def check_availability(request: AirlineAvailabilityRequest, airline: dict 
                     if element.get("status") == "OK":
                         distance = element["distance"]["value"] / 1000  # km
                         duration = element["duration"]["value"] / 60  # minutes
-    except Exception as e:
+            except Exception as e:
                 logger.warning(f"Distance calculation failed: {str(e)}")
         
         # Calculate price based on distance
@@ -12098,7 +12098,7 @@ async def check_availability(request: AirlineAvailabilityRequest, airline: dict 
             "pickup_location": request.pickup_location,
             "dropoff_location": request.dropoff_location
         }
-    except Exception as e:
+            except Exception as e:
         logger.error(f"Airline availability check error: {str(e)}")
         raise HTTPException(status_code=500, detail="Availability check failed")
 
@@ -12152,7 +12152,7 @@ async def create_airline_booking(request: AirlineBookingRequest, airline: dict =
                 "pickup_time": pickup_time
             }
         }
-    except Exception as e:
+        except Exception as e:
         logger.error(f"Airline booking error: {str(e)}")
         raise HTTPException(status_code=500, detail="Booking failed")
 
@@ -12367,13 +12367,13 @@ async def send_arrival_pickup_emails():
                     logger.info(f"✈️ Arrival email sent to {email} for booking {booking.get('id')}")
                 else:
                     logger.error(f"✈️ Failed to send arrival email to {email}: {response.text}")
-    except Exception as e:
+            except Exception as e:
                 logger.error(f"✈️ Error sending arrival email: {str(e)}")
                 continue
         
         logger.info(f"✈️ [Arrival Emails] Completed - {sent_count} emails sent for {tomorrow}")
         return {"sent": sent_count, "date": tomorrow}
-    except Exception as e:
+            except Exception as e:
         logger.error(f"✈️ [Arrival Emails] Error: {str(e)}")
         return {"sent": 0, "error": str(e)}
 
@@ -12666,7 +12666,7 @@ async def run_daily_error_check():
             "issues_count": len(issues),
             "warnings_count": len(warnings)
         }
-    except Exception as e:
+            except Exception as e:
         logger.error(f"🔍 [Daily Error Check] Fatal error: {str(e)}")
         return {"success": False, "error": str(e)}
 
