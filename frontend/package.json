@@ -111,9 +111,8 @@
     "engines":  {
                     "node":  "18.x"
                 },
-    "overrides": { "terser-webpack-plugin": "5.3.10",
-                      "ajv":  "6.12.6",
-                      "ajv-keywords":  "3.5.2",
-                      "schema-utils":  "3.3.0"
-                  }
-}
+    "overrides": {
+    "schema-utils": "3.3.0",
+    "ajv": "6.12.6",
+    "ajv-keywords": "3.5.2"
+  }}
