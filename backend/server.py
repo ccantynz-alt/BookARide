@@ -12898,7 +12898,11 @@ def create_arrival_email_html(customer_name: str, booking_date: str, pickup_time
 async def startup_event():
     """Start the scheduler when the app starts and ensure default admin exists"""
     # Ensure default admin exists with correct email for Google OAuth
-    default_admin = await db.admin_users.find_one({"username": "admin"})
+    try:
+        default_admin = await db.admin_users.find_one({"username": "admin"})
+except Exception as e:
+        print("WARN: admin seed skipped (db unavailable):", repr(e))
+        default_admin = {"_skip": True}
     if not default_admin:
         hashed_pw = pwd_context.hash("Kongkong2025!@")
         await db.admin_users.insert_one({
