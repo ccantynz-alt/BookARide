@@ -48,7 +48,7 @@ def run_async_task(coro_func, arg, task_description="background task"):
             logger.info(f"✅ Background task completed: {task_description}")
         finally:
             loop.close()
-        except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         except Exception as e:
         logger.error(f"❌ Background task failed ({task_description}): {str(e)}")
 
 def run_sync_task(sync_func, arg, task_description="background task"):
@@ -56,16 +56,16 @@ def run_sync_task(sync_func, arg, task_description="background task"):
     try:
         sync_func(arg)
         logger.info(f"✅ Background task completed: {task_description}")
-    except Exception as e:
-        logger.error(f"❌ Background task failed ({task_description}): {str(e)}")
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"❌ Background task failed ({task_description}): {str(e)}")
 
 def run_sync_task_with_args(sync_func, arg1, arg2, task_description="background task"):
     """Run a synchronous function with two arguments for background tasks"""
     try:
         sync_func(arg1, arg2)
         logger.info(f"✅ Background task completed: {task_description}")
-    except Exception as e:
-        logger.error(f"❌ Background task failed ({task_description}): {str(e)}")
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"❌ Background task failed ({task_description}): {str(e)}")
 
 ROOT_DIR = Path(__file__).parent
 sys.path.insert(0, str(ROOT_DIR))
@@ -320,10 +320,10 @@ def validate_booking_date(self):
             today = datetime.now(nz_tz).strftime('%Y-%m-%d')
             if self.date < today:
                 raise ValueError(f'Booking date ({self.date}) cannot be in the past. Today is {today}.')
-        except Exception as e:
-            if 'cannot be in the past' in str(e):
-                raise
-            pass
+# ORPHANED_EXCEPT_DISABLED         except Exception as e:
+# ORPHANED_EXCEPT_DISABLED             if 'cannot be in the past' in str(e):
+# ORPHANED_EXCEPT_DISABLED                 raise
+# ORPHANED_EXCEPT_DISABLED             pass
     return self
 
 class Booking(BookingCreate):
@@ -394,7 +394,7 @@ def is_booking_within_24_hours(date_str: str, time_str: str) -> bool:
             logger.info(f"Booking is within 24 hours: pickup at {booking_datetime_nz}, now is {now_nz}")
         
         return is_within_24h
-            except Exception as e:
+# ORPHANED_EXCEPT_DISABLED             except Exception as e:
         logger.error(f"Error checking 24-hour window: {str(e)}")
         return False
 
@@ -451,9 +451,9 @@ async def register_admin(admin: AdminCreate):
         
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Error registering admin: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error registering admin: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error registering admin: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=f"Error registering admin: {str(e)}")
 
 
 @api_router.post("/admin/login", response_model=Token)
@@ -481,9 +481,9 @@ async def login_admin(login_data: AdminLogin):
         
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Error logging in admin: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error logging in: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error logging in admin: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=f"Error logging in: {str(e)}")
 
 
 @api_router.get("/admin/me")
@@ -534,9 +534,9 @@ async def change_password(
         
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Error changing password: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error changing password: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error changing password: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=f"Error changing password: {str(e)}")
 
 
 # ============================================
@@ -627,9 +627,9 @@ async def process_google_auth_session(auth_data: GoogleAuthSession, response: Re
         
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Google OAuth error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Authentication failed: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Google OAuth error: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=f"Authentication failed: {str(e)}")
 
 
 @api_router.get("/admin/auth/me")
@@ -692,7 +692,7 @@ async def get_admin_from_session(request: Request):
         
     except HTTPException:
         raise
-            except Exception as e:
+# ORPHANED_EXCEPT_DISABLED             except Exception as e:
         logger.error(f"Auth check error: {str(e)}")
         raise HTTPException(status_code=500, detail="Authentication check failed")
 
@@ -716,9 +716,9 @@ async def admin_logout(request: Request, response: Response):
         )
         
         return {"message": "Logged out successfully"}
-    except Exception as e:
-        logger.error(f"Logout error: {str(e)}")
-        raise HTTPException(status_code=500, detail="Logout failed")
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Logout error: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail="Logout failed")
 
 
 # ============================================
@@ -834,7 +834,7 @@ async def request_password_reset(reset_request: PasswordResetRequest):
                 logger.error(f"Failed to send reset email: {str(mail_error)}")
         
         return {"message": "If this email is registered, you will receive a password reset link."}
-            except Exception as e:
+# ORPHANED_EXCEPT_DISABLED             except Exception as e:
         logger.error(f"Password reset request error: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to process password reset request")
 
@@ -893,9 +893,9 @@ async def confirm_password_reset(reset_data: PasswordResetConfirm):
         
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Password reset confirm error: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to reset password")
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Password reset confirm error: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail="Failed to reset password")
 
 
 @api_router.get("/admin/password-reset/validate/{token}")
@@ -921,9 +921,9 @@ async def validate_reset_token(token: str):
             return {"valid": False, "message": "Token has expired"}
         
         return {"valid": True, "email": token_doc.get("email")}
-    except Exception as e:
-        logger.error(f"Token validation error: {str(e)}")
-        return {"valid": False, "message": "Validation failed"}
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Token validation error: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         return {"valid": False, "message": "Validation failed"}
 
 
 # Add your routes to the router instead of directly to app
@@ -1023,9 +1023,9 @@ async def get_google_reviews():
         
         logger.info(f"Fetched and cached {len(reviews_data['reviews'])} Google reviews")
         return reviews_data
-    except Exception as e:
-        logger.error(f"Error fetching Google reviews: {str(e)}")
-        return get_fallback_reviews()
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error fetching Google reviews: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         return get_fallback_reviews()
 
 
 def get_fallback_reviews():
@@ -1299,9 +1299,9 @@ async def calculate_price(request: PriceCalculationRequest):
             totalPrice=total_with_stripe,
             ratePerKm=round(rate_per_km, 2)
         )
-    except Exception as e:
-        logger.error(f"Error calculating price: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error calculating price: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error calculating price: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=f"Error calculating price: {str(e)}")
 
 # Validate and apply promo code
 @api_router.post("/validate-promo")
@@ -1336,9 +1336,9 @@ async def validate_promo_code(data: PromoCodeValidation):
         }
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Error validating promo code: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error validating promo code: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 # Create Booking Endpoint
 @api_router.post("/bookings", response_model=Booking)
@@ -1444,9 +1444,9 @@ async def create_booking(booking: BookingCreate, background_tasks: BackgroundTas
         logger.info(f"Queued customer confirmation for booking #{ref_number}")
         
         return booking_obj
-    except Exception as e:
-        logger.error(f"Error creating booking: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error creating booking: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error creating booking: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=f"Error creating booking: {str(e)}")
 
 
 # Quick Approve/Reject Endpoint (for email links - no auth required, uses secure token)
@@ -1489,8 +1489,8 @@ async def quick_approve_booking(booking_id: str, action: str = "approve"):
             try:
                 send_booking_confirmation_email(booking)
                 logger.info(f"Confirmation sent to customer for booking {booking_ref}")
-            except Exception as e:
-                logger.error(f"Failed to send confirmation: {e}")
+# ORPHANED_EXCEPT_DISABLED             except Exception as e:
+# ORPHANED_EXCEPT_DISABLED                 logger.error(f"Failed to send confirmation: {e}")
             
             logger.info(f"✅ Booking {booking_ref} APPROVED via email quick-approve")
             
@@ -1542,7 +1542,7 @@ async def quick_approve_booking(booking_id: str, action: str = "approve"):
                     <p>Please use the approve or reject buttons from the email.</p>
                 </body></html>
             """, status_code=400)
-            except Exception as e:
+# ORPHANED_EXCEPT_DISABLED             except Exception as e:
         logger.error(f"Error in quick approve: {str(e)}")
         return HTMLResponse(content=f"""
             <html><body style="font-family: Arial; text-align: center; padding: 50px;">
@@ -1625,9 +1625,9 @@ async def get_bookings(
         logger.info(f"Fetched {len(bookings)} bookings (page {page}, total {total})")
         
         return [Booking(**booking) for booking in bookings]
-    except Exception as e:
-        logger.error(f"Error fetching bookings: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error fetching bookings: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error fetching bookings: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=f"Error fetching bookings: {str(e)}")
 
 
 @api_router.get("/bookings/count")
@@ -1649,9 +1649,9 @@ async def get_bookings_count(current_admin: dict = Depends(get_current_admin)):
             "cancelled": cancelled,
             "pending_approval": pending_approval
         }
-    except Exception as e:
-        logger.error(f"Error fetching booking counts: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error fetching booking counts: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 
 
@@ -1706,7 +1706,7 @@ async def update_booking(booking_id: str, update_data: dict, current_admin: dict
         return {"message": "Booking updated successfully"}
     except HTTPException:
         raise
-            except Exception as e:
+# ORPHANED_EXCEPT_DISABLED             except Exception as e:
         logger.error(f"Error updating booking: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error updating booking: {str(e)}")
 
@@ -1778,9 +1778,9 @@ async def send_booking_email(email_data: dict, current_admin: dict = Depends(get
         
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Error sending email: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error sending email: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error sending email: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=f"Error sending email: {str(e)}")
 
 
 @api_router.post("/bookings/{booking_id}/send-to-admin")
@@ -1894,9 +1894,9 @@ async def send_booking_to_admin(booking_id: str, current_admin: dict = Depends(g
         
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Error sending booking to admin: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error sending booking to admin: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error sending booking to admin: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=f"Error sending booking to admin: {str(e)}")
 
 
 # ============================================
@@ -2146,9 +2146,9 @@ def send_via_mailgun(booking: dict):
         else:
             logger.error(f"Mailgun error: {response.status_code} - {response.text}")
             return False
-    except Exception as e:
-        logger.error(f"Mailgun error: {str(e)}")
-        return False
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Mailgun error: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         return False
 
 
 def send_via_smtp(booking: dict):
@@ -2188,11 +2188,11 @@ def send_via_smtp(booking: dict):
         
         logger.info(f"Confirmation email sent to {recipient_email} via SMTP")
         return True
-    except Exception as e:
-        logger.error(f"SMTP error: {str(e)}")
-        import traceback
-        logger.error(traceback.format_exc())
-        return False
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"SMTP error: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         import traceback
+# ORPHANED_EXCEPT_DISABLED         logger.error(traceback.format_exc())
+# ORPHANED_EXCEPT_DISABLED         return False
 
 
 def send_booking_confirmation_sms(booking: dict):
@@ -2256,9 +2256,9 @@ Thank you for booking with us!"""
         
         logger.info(f"✅ Confirmation SMS sent to {formatted_phone} - SID: {message.sid}")
         return True
-    except Exception as e:
-        logger.error(f"Error sending confirmation SMS: {str(e)}")
-        return False
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error sending confirmation SMS: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         return False
 
 
 def send_customer_confirmation(booking: dict):
@@ -2302,8 +2302,8 @@ def send_customer_confirmation(booking: dict):
             )
             sync_client.close()
             logger.info(f"✅ Confirmation status updated for booking {booking_id}")
-        except Exception as e:
-            logger.error(f"Error updating confirmation status: {e}")
+# ORPHANED_EXCEPT_DISABLED         except Exception as e:
+# ORPHANED_EXCEPT_DISABLED             logger.error(f"Error updating confirmation status: {e}")
     
     return results
 
@@ -2326,8 +2326,8 @@ async def update_confirmation_status(booking_id: str, results: dict):
             {"$set": update_data}
         )
         logger.info(f"✅ Confirmation status updated for booking {booking_id}")
-    except Exception as e:
-        logger.error(f"Error updating confirmation status: {e}")
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error updating confirmation status: {e}")
 
 
 def send_reminder_email(booking: dict):
@@ -2504,9 +2504,9 @@ def send_reminder_email(booking: dict):
         else:
             logger.error(f"Reminder email failed: {response.status_code} - {response.text}")
             return False
-    except Exception as e:
-        logger.error(f"Error sending reminder email: {str(e)}")
-        return False
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error sending reminder email: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         return False
 
 
 def send_reminder_sms(booking: dict):
@@ -2585,9 +2585,9 @@ Questions? +64 21 743 321"""
         
         logger.info(f"✅ Reminder SMS sent to {formatted_phone} - SID: {message.sid}")
         return True
-    except Exception as e:
-        logger.error(f"Error sending reminder SMS: {str(e)}")
-        return False
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error sending reminder SMS: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         return False
 
 
 @api_router.post("/admin/send-reminders")
@@ -2600,9 +2600,9 @@ async def send_tomorrow_reminders(current_admin: dict = Depends(get_current_admi
             "message": f"Sent reminders for {result.get('reminders_sent', 0)} bookings, skipped {result.get('skipped', 0)} (already sent today)",
             "details": result
         }
-    except Exception as e:
-        logger.error(f"Error sending reminders: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error sending reminders: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error sending reminders: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=f"Error sending reminders: {str(e)}")
 
 
 @api_router.get("/admin/reminder-status")
@@ -2670,9 +2670,9 @@ async def get_reminder_status(current_admin: dict = Depends(get_current_admin)):
             "reminder_lock_status": lock_status,
             "scheduled_jobs": scheduler_jobs
         }
-    except Exception as e:
-        logger.error(f"Error getting reminder status: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error getting reminder status: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 
 # ============================================
@@ -2828,7 +2828,7 @@ async def track_flight(flight_number: str):
         
     except HTTPException:
         raise
-            except Exception as e:
+# ORPHANED_EXCEPT_DISABLED             except Exception as e:
         logger.error(f"Flight tracking error: {str(e)}")
         # Fallback to mock on error
         return await _get_mock_flight_data(fn)
@@ -3064,9 +3064,9 @@ Write a professional, helpful response:"""
         else:
             logger.error(f"Failed to send auto-reply: {response.text}")
             return {"status": "error", "reason": response.text}
-    except Exception as e:
-        logger.error(f"Email auto-responder error: {str(e)}")
-        return {"status": "error", "reason": str(e)}
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Email auto-responder error: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         return {"status": "error", "reason": str(e)}
 
 
 @api_router.get("/admin/email-logs")
@@ -3079,9 +3079,9 @@ async def get_email_logs(current_admin: dict = Depends(get_current_admin), limit
         ).sort("created_at", -1).limit(limit).to_list(limit)
         
         return {"logs": logs, "count": len(logs)}
-    except Exception as e:
-        logger.error(f"Error fetching email logs: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error fetching email logs: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 
 # ============================================
@@ -3131,9 +3131,9 @@ async def save_abandoned_booking(request: AbandonedBookingRequest):
         
         logger.info(f"Saved abandoned booking for {request.email}")
         return {"status": "saved"}
-    except Exception as e:
-        logger.error(f"Error saving abandoned booking: {str(e)}")
-        return {"status": "error", "message": str(e)}
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error saving abandoned booking: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         return {"status": "error", "message": str(e)}
 
 
 async def send_abandoned_booking_emails():
@@ -3222,9 +3222,9 @@ async def send_abandoned_booking_emails():
                         {"$set": {"email_sent": True, "email_sent_at": datetime.now(timezone.utc).isoformat()}}
                     )
                     logger.info(f"Sent abandoned booking recovery email to {email}")
-            except Exception as e:
-                logger.error(f"Error sending recovery email: {str(e)}")
-            except Exception as e:
+# ORPHANED_EXCEPT_DISABLED             except Exception as e:
+# ORPHANED_EXCEPT_DISABLED                 logger.error(f"Error sending recovery email: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED             except Exception as e:
         logger.error(f"Error in abandoned booking task: {str(e)}")
 
 
@@ -3308,12 +3308,12 @@ Respond helpfully and naturally as the BookaRide assistant:"""
         response = await llm.send_message(user_msg)
         
         return {"response": response.strip()}
-    except Exception as e:
-        logger.error(f"Chatbot error: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Chatbot error: {str(e)}")
         # Fallback response
-        return {
-            "response": "I apologize, I'm having a brief technical issue. For immediate assistance, please call us at 0800 BOOK A RIDE or visit bookaride.co.nz/book-now to make a booking. We're here to help! 🚗"
-        }
+# ORPHANED_EXCEPT_DISABLED         return {
+# ORPHANED_EXCEPT_DISABLED             "response": "I apologize, I'm having a brief technical issue. For immediate assistance, please call us at 0800 BOOK A RIDE or visit bookaride.co.nz/book-now to make a booking. We're here to help! 🚗"
+# ORPHANED_EXCEPT_DISABLED         }
 
 
 # Core reminder sending logic - used by all reminder triggers
@@ -3428,7 +3428,7 @@ async def send_daily_reminders_core(source: str = "unknown"):
             
             logger.info(f"✅ [{source}] Reminders complete: {sent_count} sent, {skipped_count} skipped")
             return {"success": True, "reminders_sent": sent_count, "skipped": skipped_count, "source": source}
-                except Exception as e:
+# ORPHANED_EXCEPT_DISABLED                 except Exception as e:
             logger.error(f"❌ [{source}] Reminder error: {str(e)}")
             raise
 
@@ -3448,9 +3448,9 @@ async def cron_send_reminders(api_key: str = None):
         
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Cron reminder error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Cron reminder error: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 
 async def send_booking_notification_to_admin(booking: dict):
@@ -3537,9 +3537,9 @@ async def send_booking_notification_to_admin(booking: dict):
         else:
             logger.error(f"Failed to send admin notification: {response.status_code} - {response.text}")
             email_sent = False
-    except Exception as e:
-        logger.error(f"Error sending admin notification: {str(e)}")
-        email_sent = False
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error sending admin notification: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         email_sent = False
     
     # ALSO send SMS to admin for ALL new bookings
     sms_sent = False
@@ -3663,9 +3663,9 @@ async def send_urgent_approval_notification(booking: dict):
         else:
             logger.error(f"Failed to send urgent approval notification: {response.status_code} - {response.text}")
             email_sent = False
-    except Exception as e:
-        logger.error(f"Error sending urgent approval notification: {str(e)}")
-        email_sent = False
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error sending urgent approval notification: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         email_sent = False
 
     # Also send SMS to admin for URGENT bookings (within 24 hours)
     # Admin can reply YES to approve or NO to decline
@@ -4048,7 +4048,7 @@ Check your email for full details."""
             logger.error(f"❌ Error sending driver SMS: {str(sms_error)}")
         
         return True
-        except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         except Exception as e:
         logger.error(f"Error sending driver notification: {str(e)}")
         return False
 
@@ -4089,7 +4089,7 @@ async def get_calendar_credentials():
         
         logger.warning("Google service account credentials not configured (neither env var nor file)")
         return None
-            except Exception as e:
+# ORPHANED_EXCEPT_DISABLED             except Exception as e:
         logger.error(f"Error loading service account credentials: {str(e)}")
         return None
 
@@ -4121,9 +4121,9 @@ async def translate_to_english_async(text: str) -> str:
         if translated and translated.strip():
             return f"{translated.strip()} ({text})"  # Show translation with original
         return text
-    except Exception as e:
-        logger.warning(f"Translation failed: {str(e)}")
-        return text
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.warning(f"Translation failed: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         return text
 
 async def get_english_calendar_text(booking: dict) -> dict:
     """Get English versions of booking fields for calendar, with translations if needed"""
@@ -4314,7 +4314,7 @@ Outbound was: {formatted_date} at {booking_time}
         
         logger.info(f"Calendar event(s) created for booking {booking.get('id')}: {len(created_event_ids)} event(s)")
         return True
-            except Exception as e:
+# ORPHANED_EXCEPT_DISABLED             except Exception as e:
         logger.error(f"Error creating calendar event: {str(e)}")
         return False
 
@@ -4357,7 +4357,7 @@ async def update_calendar_event(booking: dict):
         success = await create_calendar_event(booking)
         logger.info(f"Calendar event updated for booking {booking.get('id')}: {success}")
         return success
-                except Exception as e:
+# ORPHANED_EXCEPT_DISABLED                 except Exception as e:
         logger.error(f"Error updating calendar event: {str(e)}")
         return False
 
@@ -4403,7 +4403,7 @@ async def sync_booking_to_calendar(booking_id: str, current_admin: dict = Depend
             raise HTTPException(status_code=500, detail="Failed to sync to calendar. Please check Google Calendar authorization.")
     except HTTPException:
         raise
-                            except Exception as e:
+# ORPHANED_EXCEPT_DISABLED                             except Exception as e:
         logger.error(f"Error syncing booking to calendar: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error syncing to calendar: {str(e)}")
 
@@ -4440,16 +4440,16 @@ async def resend_booking_confirmation(booking_id: str, current_admin: dict = Dep
             send_booking_confirmation_email(booking)
             email_sent = True
             logger.info(f"Confirmation email resent for booking {booking_id}")
-        except Exception as e:
-            logger.error(f"Failed to resend email for booking {booking_id}: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         except Exception as e:
+# ORPHANED_EXCEPT_DISABLED             logger.error(f"Failed to resend email for booking {booking_id}: {str(e)}")
         
         # Send confirmation SMS
         try:
             send_booking_confirmation_sms(booking)
             sms_sent = True
             logger.info(f"Confirmation SMS resent for booking {booking_id}")
-        except Exception as e:
-            logger.error(f"Failed to resend SMS for booking {booking_id}: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         except Exception as e:
+# ORPHANED_EXCEPT_DISABLED             logger.error(f"Failed to resend SMS for booking {booking_id}: {str(e)}")
         
         # Track resend time
         await db.bookings.update_one(
@@ -4468,7 +4468,7 @@ async def resend_booking_confirmation(booking_id: str, current_admin: dict = Dep
             
     except HTTPException:
         raise
-        except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         except Exception as e:
         logger.error(f"Error resending confirmation: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error resending confirmation: {str(e)}")
 
@@ -4515,9 +4515,9 @@ async def resend_payment_link(booking_id: str, payment_method: str = "stripe", c
             
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Error resending payment link: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error resending payment link: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error resending payment link: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=f"Error resending payment link: {str(e)}")
 
 
 # Preview Confirmation Email Endpoint
@@ -4544,9 +4544,9 @@ async def preview_booking_confirmation(booking_id: str, current_admin: dict = De
         }
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Error previewing confirmation: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error previewing confirmation: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error previewing confirmation: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=f"Error previewing confirmation: {str(e)}")
 
 
 def generate_confirmation_email_html(booking: dict) -> str:
@@ -4916,12 +4916,12 @@ async def import_bookings(request: ImportBookingsRequest, current_admin: dict = 
                     "referenceNumber": ref_number,
                     "name": new_booking["name"]
                 })
-            except Exception as e:
-                errors.append({
-                    "index": idx,
-                    "booking_id": booking_data.booking_id,
-                    "error": str(e)
-                })
+# ORPHANED_EXCEPT_DISABLED             except Exception as e:
+# ORPHANED_EXCEPT_DISABLED                 errors.append({
+# ORPHANED_EXCEPT_DISABLED                     "index": idx,
+# ORPHANED_EXCEPT_DISABLED                     "booking_id": booking_data.booking_id,
+# ORPHANED_EXCEPT_DISABLED                     "error": str(e)
+# ORPHANED_EXCEPT_DISABLED                 })
         
         return {
             "success": True,
@@ -4930,7 +4930,7 @@ async def import_bookings(request: ImportBookingsRequest, current_admin: dict = 
             "imported": imported,
             "errors": errors
         }
-            except Exception as e:
+# ORPHANED_EXCEPT_DISABLED             except Exception as e:
         logger.error(f"Error importing bookings: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error importing bookings: {str(e)}")
 
@@ -4979,12 +4979,12 @@ async def restore_bookings_from_backup(request: RestoreBookingData, current_admi
                     "name": booking.get("name"),
                     "referenceNumber": booking.get("referenceNumber")
                 })
-            except Exception as e:
-                errors.append({
-                    "id": booking.get("id"),
-                    "name": booking.get("name"),
-                    "error": str(e)
-                })
+# ORPHANED_EXCEPT_DISABLED             except Exception as e:
+# ORPHANED_EXCEPT_DISABLED                 errors.append({
+# ORPHANED_EXCEPT_DISABLED                     "id": booking.get("id"),
+# ORPHANED_EXCEPT_DISABLED                     "name": booking.get("name"),
+# ORPHANED_EXCEPT_DISABLED                     "error": str(e)
+# ORPHANED_EXCEPT_DISABLED                 })
         
         return {
             "success": True,
@@ -4995,7 +4995,7 @@ async def restore_bookings_from_backup(request: RestoreBookingData, current_admi
             "skipped": skipped,
             "errors": errors
         }
-            except Exception as e:
+# ORPHANED_EXCEPT_DISABLED             except Exception as e:
         logger.error(f"Error restoring bookings: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error restoring bookings: {str(e)}")
 
@@ -5043,9 +5043,9 @@ async def google_calendar_login(http_request: Request):
         # Auto-redirect to Google OAuth instead of returning JSON
         from fastapi.responses import RedirectResponse
         return RedirectResponse(url=authorization_url)
-    except Exception as e:
-        logger.error(f"Error initiating Google OAuth: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error initiating Google OAuth: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error initiating Google OAuth: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=f"Error initiating Google OAuth: {str(e)}")
 
 
 @api_router.get("/auth/google/callback")
@@ -5099,9 +5099,9 @@ async def google_calendar_callback(code: str, http_request: Request):
         
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Error in Google OAuth callback: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error completing OAuth: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error in Google OAuth callback: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=f"Error completing OAuth: {str(e)}")
 
 
 # Stripe Payment Integration
@@ -5184,9 +5184,9 @@ async def create_payment_checkout(request: PaymentCheckoutRequest, http_request:
     
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Error creating payment checkout: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error creating checkout session: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error creating payment checkout: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=f"Error creating checkout session: {str(e)}")
 
 
 @api_router.get("/payment/status/{session_id}")
@@ -5272,9 +5272,9 @@ async def get_payment_status(session_id: str):
             "metadata": checkout_status.metadata,
             "referenceNumber": reference_number
         }
-    except Exception as e:
-        logger.error(f"Error getting payment status: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error checking payment status: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error getting payment status: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=f"Error checking payment status: {str(e)}")
 
 
 @api_router.post("/webhook/stripe")
@@ -5405,7 +5405,7 @@ async def stripe_webhook(request: Request):
     
     except HTTPException:
         raise
-                            except Exception as e:
+# ORPHANED_EXCEPT_DISABLED                             except Exception as e:
         logger.error(f"Error processing webhook: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error processing webhook: {str(e)}")
 
@@ -5478,8 +5478,8 @@ async def twilio_sms_webhook(request: Request):
                             from_=twilio_from,
                             to=admin_phone
                         )
-                except Exception as e:
-                    logger.error(f"Failed to send admin confirmation SMS: {e}")
+# ORPHANED_EXCEPT_DISABLED                 except Exception as e:
+# ORPHANED_EXCEPT_DISABLED                     logger.error(f"Failed to send admin confirmation SMS: {e}")
                 
                 return Response(content='<?xml version="1.0" encoding="UTF-8"?><Response></Response>', media_type="application/xml")
             else:
@@ -5530,8 +5530,8 @@ async def twilio_sms_webhook(request: Request):
                             from_=twilio_from,
                             to=admin_phone
                         )
-                except Exception as e:
-                    logger.error(f"Failed to send admin decline confirmation SMS: {e}")
+# ORPHANED_EXCEPT_DISABLED                 except Exception as e:
+# ORPHANED_EXCEPT_DISABLED                     logger.error(f"Failed to send admin decline confirmation SMS: {e}")
                 
                 return Response(content='<?xml version="1.0" encoding="UTF-8"?><Response></Response>', media_type="application/xml")
         
@@ -5698,7 +5698,7 @@ async def twilio_sms_webhook(request: Request):
             content='<?xml version="1.0" encoding="UTF-8"?><Response></Response>',
             media_type="application/xml"
         )
-                    except Exception as e:
+# ORPHANED_EXCEPT_DISABLED                     except Exception as e:
         logger.error(f"Error processing Twilio SMS webhook: {str(e)}")
         return Response(
             content='<?xml version="1.0" encoding="UTF-8"?><Response></Response>',
@@ -5804,9 +5804,9 @@ async def create_tracking_session(data: TrackingSessionCreate, current_admin: di
         
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Error creating tracking session: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error creating tracking session: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error creating tracking session: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=f"Error creating tracking session: {str(e)}")
 
 
 @api_router.get("/tracking/driver/{session_id}")
@@ -5835,9 +5835,9 @@ async def get_driver_tracking_session(session_id: str):
         
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Error getting driver tracking session: {str(e)}")
-        raise HTTPException(status_code=500, detail="Error loading tracking session")
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error getting driver tracking session: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail="Error loading tracking session")
 
 
 @api_router.post("/tracking/driver/{session_id}/start")
@@ -5914,7 +5914,7 @@ See exactly when they'll arrive.
         
     except HTTPException:
         raise
-                except Exception as e:
+# ORPHANED_EXCEPT_DISABLED                 except Exception as e:
         logger.error(f"Error starting driver tracking: {str(e)}")
         raise HTTPException(status_code=500, detail="Error starting tracking")
 
@@ -5956,9 +5956,9 @@ async def update_driver_location(session_id: str, location: LocationUpdate):
         
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Error updating driver location: {str(e)}")
-        raise HTTPException(status_code=500, detail="Error updating location")
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error updating driver location: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail="Error updating location")
 
 
 @api_router.post("/tracking/driver/{session_id}/stop")
@@ -5982,9 +5982,9 @@ async def stop_driver_tracking(session_id: str):
         
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Error stopping driver tracking: {str(e)}")
-        raise HTTPException(status_code=500, detail="Error stopping tracking")
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error stopping driver tracking: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail="Error stopping tracking")
 
 
 @api_router.get("/tracking/{tracking_ref}")
@@ -6037,7 +6037,7 @@ async def get_customer_tracking(tracking_ref: str):
         
     except HTTPException:
         raise
-                except Exception as e:
+# ORPHANED_EXCEPT_DISABLED                 except Exception as e:
         logger.error(f"Error getting customer tracking: {str(e)}")
         raise HTTPException(status_code=500, detail="Error loading tracking")
 
@@ -6193,9 +6193,9 @@ Customer will be auto-notified when you start.
         
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Error sending tracking link to driver: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error sending tracking link to driver: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
 # ==================== SHARED SHUTTLE SERVICE ====================
@@ -6268,9 +6268,9 @@ async def get_shuttle_availability(date: str, time: str = None):
             "departures": departures,
             "currentPassengers": current_passengers
         }
-    except Exception as e:
-        logger.error(f"Error getting shuttle availability: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error getting shuttle availability: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 
 @api_router.post("/shuttle/book")
@@ -6391,9 +6391,9 @@ async def create_shuttle_booking(booking: ShuttleBookingCreate):
             
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Error creating shuttle booking: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error creating shuttle booking: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 
 @api_router.post("/shuttle/capture/{booking_id}")
@@ -6474,9 +6474,9 @@ async def capture_shuttle_payment(booking_id: str, current_admin: dict = Depends
             
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Error capturing shuttle payment: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error capturing shuttle payment: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 
 @api_router.get("/shuttle/departures")
@@ -6516,9 +6516,9 @@ async def get_shuttle_departures(date: str, current_admin: dict = Depends(get_cu
             "date": date,
             "departures": departures
         }
-    except Exception as e:
-        logger.error(f"Error getting shuttle departures: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error getting shuttle departures: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 
 @api_router.post("/shuttle/capture-all/{date}/{time}")
@@ -6541,8 +6541,8 @@ async def capture_all_shuttle_payments(date: str, time: str, current_admin: dict
                 # Capture each booking
                 result = await capture_shuttle_payment(booking["id"], current_admin)
                 results.append({"id": booking["id"], "success": True, **result})
-            except Exception as e:
-                results.append({"id": booking["id"], "success": False, "error": str(e)})
+# ORPHANED_EXCEPT_DISABLED             except Exception as e:
+# ORPHANED_EXCEPT_DISABLED                 results.append({"id": booking["id"], "success": False, "error": str(e)})
         
         return {
             "date": date,
@@ -6551,7 +6551,7 @@ async def capture_all_shuttle_payments(date: str, time: str, current_admin: dict
             "finalPricePerPerson": final_price,
             "results": results
         }
-            except Exception as e:
+# ORPHANED_EXCEPT_DISABLED             except Exception as e:
         logger.error(f"Error capturing all shuttle payments: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -6662,9 +6662,9 @@ async def get_optimized_shuttle_route(date: str, time: str, current_admin: dict 
         
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Error getting shuttle route: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error getting shuttle route: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 
 @api_router.post("/shuttle/send-route/{date}/{time}")
@@ -6716,9 +6716,9 @@ async def send_shuttle_route_to_driver(
             "message": message,
             "googleMapsUrl": route_data['googleMapsUrl']
         }
-    except Exception as e:
-        logger.error(f"Error sending shuttle route: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error sending shuttle route: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 
 # ==================== DRIVER GPS TRACKING FOR SHUTTLE ====================
@@ -6763,9 +6763,9 @@ async def get_driver_shuttle_departures(date: str, current_driver: dict = Depend
         return {"date": date, "departures": departures}
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Error getting driver shuttles: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error getting driver shuttles: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 
 @api_router.post("/shuttle/driver/location")
@@ -6864,7 +6864,7 @@ async def update_driver_location(location: DriverLocationUpdate, current_driver:
         
     except HTTPException:
         raise
-            except Exception as e:
+# ORPHANED_EXCEPT_DISABLED             except Exception as e:
         logger.error(f"Error updating driver location: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -6908,9 +6908,9 @@ See you soon! 🙂"""
         
         logger.info(f"✅ Arriving soon SMS sent to {booking.get('name')} at {formatted_phone}")
         return True
-    except Exception as e:
-        logger.error(f"Error sending arriving soon SMS: {str(e)}")
-        return False
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error sending arriving soon SMS: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         return False
 
 
 @api_router.post("/shuttle/start/{date}/{time}")
@@ -7098,7 +7098,7 @@ async def start_shuttle_run(date: str, time: str, current_admin: dict = Depends(
         
     except HTTPException:
         raise
-            except Exception as e:
+# ORPHANED_EXCEPT_DISABLED             except Exception as e:
         logger.error(f"Error starting shuttle: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -7131,8 +7131,8 @@ async def send_scheduled_arriving_sms(booking_id: str):
                 {"$set": {"arrivingSoonSent": True, "arrivingSoonSentAt": datetime.now(timezone.utc).isoformat()}}
             )
             logger.info(f"📱 Scheduled SMS sent to {booking.get('name')}")
-    except Exception as e:
-        logger.error(f"Error sending scheduled SMS: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error sending scheduled SMS: {str(e)}")
 
 
 class AssignDriverRequest(BaseModel):
@@ -7345,7 +7345,7 @@ Customers will be auto-notified 5 mins before their pickup. Drive safe! 🙂"""
         
     except HTTPException:
         raise
-                except Exception as e:
+# ORPHANED_EXCEPT_DISABLED                 except Exception as e:
         logger.error(f"Error assigning driver: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -7406,7 +7406,7 @@ async def auto_sync_from_production():
             
     except requests.exceptions.Timeout:
         logger.warning("Auto-sync: Connection timeout")
-                except Exception as e:
+# ORPHANED_EXCEPT_DISABLED                 except Exception as e:
         logger.error(f"Auto-sync error: {str(e)}")
 
 
@@ -7446,9 +7446,9 @@ async def calculate_drive_time_from_base(destination_address: str) -> int:
         
         logger.warning(f"Could not calculate drive time to {destination_address[:50]}...")
         return 60  # Default fallback
-    except Exception as e:
-        logger.error(f"Error calculating drive time: {str(e)}")
-        return 60  # Default fallback
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error calculating drive time: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         return 60  # Default fallback
 
 
 async def check_return_booking_alerts():
@@ -7588,7 +7588,7 @@ async def check_return_booking_alerts():
         
         logger.info(f"🔔 [return_alerts] Check complete: {alerts_sent} alerts sent")
         return {"alerts_sent": alerts_sent}
-                            except Exception as e:
+# ORPHANED_EXCEPT_DISABLED                             except Exception as e:
         logger.error(f"Error in return booking alerts: {str(e)}")
         return {"error": str(e)}
 
@@ -7700,7 +7700,7 @@ async def get_urgent_return_bookings(current_admin: dict = Depends(get_current_a
             "base_address": BASE_ADDRESS,
             "checked_at": now_nz.strftime('%Y-%m-%d %H:%M:%S')
         }
-                except Exception as e:
+# ORPHANED_EXCEPT_DISABLED                 except Exception as e:
         logger.error(f"Error getting urgent returns: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -7721,9 +7721,9 @@ async def export_data_for_sync(secret: str = ""):
             "drivers": drivers,
             "exported_at": datetime.now(timezone.utc).isoformat()
         }
-    except Exception as e:
-        logger.error(f"Export failed: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Export failed: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 
 @api_router.post("/admin/sync")
@@ -7768,8 +7768,8 @@ async def sync_from_production():
                         else:
                             await db.bookings.insert_one(booking)
                             sync_results["bookings_synced"] += 1
-                    except Exception as e:
-                        sync_results["errors"].append(f"Booking {booking.get('id', 'unknown')}: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED                     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED                         sync_results["errors"].append(f"Booking {booking.get('id', 'unknown')}: {str(e)}")
                 
                 # Sync Drivers
                 for driver in production_drivers:
@@ -7785,8 +7785,8 @@ async def sync_from_production():
                         else:
                             await db.drivers.insert_one(driver)
                             sync_results["drivers_synced"] += 1
-                    except Exception as e:
-                        sync_results["errors"].append(f"Driver {driver.get('id', 'unknown')}: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED                     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED                         sync_results["errors"].append(f"Driver {driver.get('id', 'unknown')}: {str(e)}")
             
             elif response.status_code == 403:
                 sync_results["errors"].append("Sync not yet deployed to production. Please deploy first, then sync will work.")
@@ -7795,7 +7795,7 @@ async def sync_from_production():
                 
         except requests.exceptions.Timeout:
             sync_results["errors"].append("Connection to production timed out")
-                    except Exception as e:
+# ORPHANED_EXCEPT_DISABLED                     except Exception as e:
             sync_results["errors"].append(f"Sync error: {str(e)}")
         
         logger.info(f"Sync completed: {sync_results}")
@@ -7807,7 +7807,7 @@ async def sync_from_production():
             "message": f"Synced {sync_results['bookings_synced']} new bookings, updated {sync_results['bookings_updated']}. Synced {sync_results['drivers_synced']} new drivers, updated {sync_results['drivers_updated']}.",
             "details": sync_results
         }
-                    except Exception as e:
+# ORPHANED_EXCEPT_DISABLED                     except Exception as e:
         logger.error(f"Sync failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Sync failed: {str(e)}")
 
@@ -7869,9 +7869,9 @@ async def get_analytics_stats(start_date: Optional[str] = None, end_date: Option
             "booking_trends": booking_trends[-30:],
             "popular_routes": [{"route": r[0], "count": r[1]} for r in popular_routes]
         }
-    except Exception as e:
-        logger.error(f"Error getting analytics: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error getting analytics: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 # Customer Management
 @api_router.get("/customers")
@@ -7914,9 +7914,9 @@ async def get_customers():
         
         customers = sorted(customers_dict.values(), key=lambda x: x['total_bookings'], reverse=True)
         return {"customers": customers}
-    except Exception as e:
-        logger.error(f"Error getting customers: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error getting customers: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.get("/customers/search")
 async def search_customers(q: str = ""):
@@ -7956,9 +7956,9 @@ async def search_customers(q: str = ""):
         
         logger.info(f"Customer search for '{q}': found {len(customers)} results")
         return {"customers": customers}
-    except Exception as e:
-        logger.error(f"Error searching customers: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error searching customers: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 # Export to CSV
 @api_router.get("/export/csv")
@@ -7999,9 +7999,9 @@ async def export_csv():
             media_type="text/csv",
             headers={"Content-Disposition": f"attachment; filename=bookings_{datetime.now().strftime('%Y%m%d')}.csv"}
         )
-    except Exception as e:
-        logger.error(f"Error exporting CSV: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error exporting CSV: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 # Payment Link Helper Functions
 async def generate_stripe_payment_link(booking: dict) -> str:
@@ -8047,9 +8047,9 @@ async def generate_stripe_payment_link(booking: dict) -> str:
         
         session = await stripe_checkout.create_checkout_session(checkout_request)
         return session.url  # Fixed: attribute is 'url' not 'checkout_url'
-    except Exception as e:
-        logger.error(f"Error generating Stripe payment link: {str(e)}")
-        return None
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error generating Stripe payment link: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         return None
 
 def generate_paypal_payment_link(booking: dict) -> str:
     """Generate a PayPal.me payment link for a booking"""
@@ -8068,9 +8068,9 @@ def generate_paypal_payment_link(booking: dict) -> str:
         
         # PayPal.me link format: https://paypal.me/username/amount
         return f"https://paypal.me/{paypal_username}/{amount:.2f}NZD"
-    except Exception as e:
-        logger.error(f"Error generating PayPal payment link: {str(e)}")
-        return None
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error generating PayPal payment link: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         return None
 
 
 # Background task helpers for payment link sending
@@ -8083,8 +8083,8 @@ async def send_stripe_payment_link_background(booking: dict):
             # Also send confirmation email
             send_booking_confirmation_email(booking, include_payment_link=False)
             logger.info(f"Stripe payment link sent for booking #{booking.get('referenceNumber')}")
-    except Exception as e:
-        logger.error(f"Error sending Stripe payment link: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error sending Stripe payment link: {str(e)}")
 
 async def send_paypal_payment_link_background(booking: dict):
     """Send PayPal payment link in background"""
@@ -8095,8 +8095,8 @@ async def send_paypal_payment_link_background(booking: dict):
             # Also send confirmation email
             send_booking_confirmation_email(booking, include_payment_link=False)
             logger.info(f"PayPal payment link sent for booking #{booking.get('referenceNumber')}")
-    except Exception as e:
-        logger.error(f"Error sending PayPal payment link: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error sending PayPal payment link: {str(e)}")
 
 
 # ============================================
@@ -8234,9 +8234,9 @@ async def create_afterpay_checkout(request: AfterpayCheckoutRequest):
         
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Error creating Afterpay checkout: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error creating Afterpay checkout: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error creating Afterpay checkout: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=f"Error creating Afterpay checkout: {str(e)}")
 
 
 @api_router.post("/afterpay/capture")
@@ -8319,9 +8319,9 @@ async def capture_afterpay_payment(token: str, order_id: str = None):
         
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Error capturing Afterpay payment: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error capturing Afterpay payment: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error capturing Afterpay payment: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=f"Error capturing Afterpay payment: {str(e)}")
 
 
 @api_router.get("/afterpay/configuration")
@@ -8364,9 +8364,9 @@ async def get_afterpay_configuration():
             "currency": "NZD",
             "environment": afterpay_env
         }
-    except Exception as e:
-        logger.error(f"Error getting Afterpay configuration: {str(e)}")
-        return {"enabled": False, "message": str(e)}
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error getting Afterpay configuration: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         return {"enabled": False, "message": str(e)}
 
 
 async def send_payment_link_email(booking: dict, payment_link: str, payment_type: str):
@@ -8460,8 +8460,8 @@ async def send_payment_link_email(booking: dict, payment_link: str, payment_type
             logger.info(f"Payment link email sent to {customer_email} - Status: {response.status_code}")
         else:
             logger.warning("Mailgun not configured - payment link email not sent")
-    except Exception as e:
-        logger.error(f"Error sending payment link email: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error sending payment link email: {str(e)}")
 
 # Apple iCloud Contacts Integration
 def generate_contact_uid(phone: str, email: str) -> str:
@@ -8555,9 +8555,9 @@ def add_contact_to_icloud(booking: dict):
         else:
             logger.error(f"Failed to add contact to iCloud: {response.status_code} - {response.text}")
             return False
-    except Exception as e:
-        logger.error(f"Error adding contact to iCloud: {str(e)}")
-        return False
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error adding contact to iCloud: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         return False
 
 
 @api_router.post("/admin/sync-contacts-to-icloud")
@@ -8611,9 +8611,9 @@ async def sync_all_contacts_to_icloud(current_admin: dict = Depends(get_current_
                     synced_contacts.append({"name": name, "phone": phone})
                 else:
                     failed += 1
-            except Exception as e:
-                logger.error(f"Failed to sync contact {name}: {str(e)}")
-                failed += 1
+# ORPHANED_EXCEPT_DISABLED             except Exception as e:
+# ORPHANED_EXCEPT_DISABLED                 logger.error(f"Failed to sync contact {name}: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED                 failed += 1
         
         logger.info(f"📱 iCloud bulk sync complete: {synced} synced, {failed} failed, {skipped} skipped")
         
@@ -8628,7 +8628,7 @@ async def sync_all_contacts_to_icloud(current_admin: dict = Depends(get_current_
         
     except HTTPException:
         raise
-            except Exception as e:
+# ORPHANED_EXCEPT_DISABLED             except Exception as e:
         logger.error(f"Error in bulk contact sync: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -8785,9 +8785,9 @@ async def create_manual_booking(booking: ManualBooking, background_tasks: Backgr
             logger.info(f"Skipping all notifications for booking #{ref_number} as requested")
         
         return {"message": "Booking created successfully", "id": new_booking['id'], "referenceNumber": ref_number, "paymentLinkSent": booking.paymentMethod in ['stripe', 'paypal'] and not booking.skipNotifications}
-    except Exception as e:
-        logger.error(f"Error creating manual booking: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error creating manual booking: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 # Update Payment Status
 @api_router.put("/bookings/{booking_id}/payment-status")
@@ -8811,9 +8811,9 @@ async def update_payment_status(booking_id: str, paymentStatus: str = Body(..., 
         return {"success": True, "message": "Payment status updated successfully"}
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Error updating payment status: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error updating payment status: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 # Bulk Operations
 @api_router.post("/bookings/bulk-status")
@@ -8825,8 +8825,8 @@ async def bulk_status_update(booking_ids: List[str], new_status: str):
             {"$set": {"status": new_status}}
         )
         return {"message": "Status updated", "count": result.modified_count}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 # ==================== DRIVER MANAGEMENT ====================
 
@@ -8909,9 +8909,9 @@ async def submit_driver_application(application: DriverApplication):
         
         logger.info(f"Driver application received from {application.name} ({application.email})")
         return {"success": True, "message": "Application submitted successfully"}
-    except Exception as e:
-        logger.error(f"Error submitting driver application: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error submitting driver application: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.get("/driver-applications")
 async def get_driver_applications(current_admin: dict = Depends(get_current_admin)):
@@ -8919,9 +8919,9 @@ async def get_driver_applications(current_admin: dict = Depends(get_current_admi
     try:
         applications = await db.driver_applications.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
         return {"applications": applications}
-    except Exception as e:
-        logger.error(f"Error getting driver applications: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error getting driver applications: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.patch("/driver-applications/{application_id}")
 async def update_driver_application(application_id: str, status: str, notes: Optional[str] = ""):
@@ -8936,9 +8936,9 @@ async def update_driver_application(application_id: str, status: str, notes: Opt
         return {"message": "Application updated successfully"}
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Error updating driver application: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error updating driver application: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 # Driver Models
 class DriverCreate(BaseModel):
@@ -8955,9 +8955,9 @@ async def get_drivers():
     try:
         drivers = await db.drivers.find({}, {"_id": 0}).to_list(1000)
         return {"drivers": drivers}
-    except Exception as e:
-        logger.error(f"Error getting drivers: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error getting drivers: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.post("/drivers")
 async def create_driver(driver: DriverCreate):
@@ -8990,9 +8990,9 @@ async def create_driver(driver: DriverCreate):
             "notes": driver.notes,
             "message": "Driver created successfully"
         }
-    except Exception as e:
-        logger.error(f"Error creating driver: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error creating driver: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.put("/drivers/{driver_id}")
 async def update_driver(driver_id: str, driver: DriverCreate):
@@ -9015,9 +9015,9 @@ async def update_driver(driver_id: str, driver: DriverCreate):
         return {"message": "Driver updated successfully"}
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Error updating driver: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error updating driver: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.delete("/drivers/{driver_id}")
 async def delete_driver(driver_id: str):
@@ -9029,9 +9029,9 @@ async def delete_driver(driver_id: str):
         return {"message": "Driver deleted successfully"}
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Error deleting driver: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error deleting driver: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.patch("/drivers/{driver_id}/assign")
 async def assign_driver_to_booking(driver_id: str, booking_id: str, trip_type: str = "outbound", driver_payout: Optional[float] = None):
@@ -9128,9 +9128,9 @@ async def assign_driver_to_booking(driver_id: str, booking_id: str, trip_type: s
         return {"message": f"Driver {driver.get('name')} assigned to {trip_label} trip successfully"}
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Error assigning driver: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error assigning driver: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 
 
@@ -9180,9 +9180,9 @@ async def confirm_driver_acknowledgment(booking_id: str, trip_type: str = "outbo
         return {"success": True, "message": f"Driver {driver_name} confirmed for {trip_type} trip"}
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Error confirming driver: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error confirming driver: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 
 @api_router.patch("/bookings/{booking_id}/unassign-driver")
@@ -9260,9 +9260,9 @@ async def unassign_driver_from_booking(booking_id: str, trip_type: str = "outbou
         return {"message": f"Driver {current_driver} unassigned from {trip_label} trip successfully"}
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Error unassigning driver: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error unassigning driver: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 
 # ==================== DRIVER PORTAL ====================
@@ -9315,9 +9315,9 @@ async def driver_login(credentials: DriverLogin):
         }
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Error in driver login: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error in driver login: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.get("/drivers/{driver_id}/bookings")
 async def get_driver_bookings(driver_id: str, date: Optional[str] = None):
@@ -9360,9 +9360,9 @@ async def get_driver_bookings(driver_id: str, date: Optional[str] = None):
             booking.pop('return_driver_payout_override', None)
         
         return {"bookings": all_bookings}
-    except Exception as e:
-        logger.error(f"Error getting driver bookings: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error getting driver bookings: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 # Set Driver Password (Admin only)
 class SetDriverPassword(BaseModel):
@@ -9387,9 +9387,9 @@ async def set_driver_password(data: SetDriverPassword, current_admin: dict = Dep
         return {"message": "Password set successfully"}
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Error setting driver password: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error setting driver password: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 
 
@@ -9403,9 +9403,9 @@ async def get_driver_schedule(driver_id: str, date: Optional[str] = None):
         
         bookings = await db.bookings.find(query, {"_id": 0}).to_list(1000)
         return {"bookings": bookings}
-    except Exception as e:
-        logger.error(f"Error getting driver schedule: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error getting driver schedule: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.delete("/bookings/{booking_id}")
 async def delete_booking(booking_id: str, send_notification: bool = True, current_admin: dict = Depends(get_current_admin)):
@@ -9420,8 +9420,8 @@ async def delete_booking(booking_id: str, send_notification: bool = True, curren
         if send_notification:
             try:
                 await send_cancellation_notifications(booking)
-            except Exception as e:
-                logger.error(f"Error sending cancellation notifications: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED             except Exception as e:
+# ORPHANED_EXCEPT_DISABLED                 logger.error(f"Error sending cancellation notifications: {str(e)}")
                 # Continue with deletion even if notifications fail
         
         # SOFT DELETE: Move to deleted_bookings collection instead of permanent delete
@@ -9441,7 +9441,7 @@ async def delete_booking(booking_id: str, send_notification: bool = True, curren
         return {"message": "Booking cancelled successfully", "notifications_sent": send_notification}
     except HTTPException:
         raise
-            except Exception as e:
+# ORPHANED_EXCEPT_DISABLED             except Exception as e:
         logger.error(f"Error deleting booking: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -9460,16 +9460,16 @@ async def send_cancellation_notifications(booking: dict):
         try:
             await send_cancellation_email(booking, customer_email, customer_name)
             logger.info(f"Cancellation email sent to {customer_email}")
-        except Exception as e:
-            logger.error(f"Failed to send cancellation email: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         except Exception as e:
+# ORPHANED_EXCEPT_DISABLED             logger.error(f"Failed to send cancellation email: {str(e)}")
     
     # Send cancellation SMS
     if customer_phone:
         try:
             send_cancellation_sms(booking, customer_phone, customer_name)
             logger.info(f"Cancellation SMS sent to {customer_phone}")
-        except Exception as e:
-            logger.error(f"Failed to send cancellation SMS: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         except Exception as e:
+# ORPHANED_EXCEPT_DISABLED             logger.error(f"Failed to send cancellation SMS: {str(e)}")
 
 async def send_cancellation_email(booking: dict, to_email: str, customer_name: str):
     """Send cancellation email via Mailgun"""
@@ -9616,8 +9616,8 @@ async def bulk_delete(booking_ids: List[str], send_notifications: bool = False, 
             for booking in bookings:
                 try:
                     await send_cancellation_notifications(booking)
-                except Exception as e:
-                    logger.error(f"Error sending cancellation for booking {booking.get('id')}: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED                 except Exception as e:
+# ORPHANED_EXCEPT_DISABLED                     logger.error(f"Error sending cancellation for booking {booking.get('id')}: {str(e)}")
         
         # SOFT DELETE: Move all to deleted_bookings collection
         deleted_count = 0
@@ -9633,7 +9633,7 @@ async def bulk_delete(booking_ids: List[str], send_notifications: bool = False, 
         
         logger.info(f"Bulk soft-deleted {deleted_count} bookings by {current_admin.get('username', 'admin')}")
         return {"message": "Bookings deleted", "count": result.deleted_count, "notifications_sent": send_notifications}
-                except Exception as e:
+# ORPHANED_EXCEPT_DISABLED                 except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -9647,9 +9647,9 @@ async def get_deleted_bookings(current_admin: dict = Depends(get_current_admin))
     try:
         deleted_bookings = await db.deleted_bookings.find({}, {"_id": 0}).sort("deletedAt", -1).to_list(1000)
         return deleted_bookings
-    except Exception as e:
-        logger.error(f"Error fetching deleted bookings: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error fetching deleted bookings: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.post("/bookings/restore/{booking_id}")
 async def restore_booking(booking_id: str, current_admin: dict = Depends(get_current_admin)):
@@ -9680,9 +9680,9 @@ async def restore_booking(booking_id: str, current_admin: dict = Depends(get_cur
         return {"message": "Booking restored successfully", "booking_id": booking_id}
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Error restoring booking: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error restoring booking: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.delete("/bookings/permanent/{booking_id}")
 async def permanent_delete_booking(booking_id: str, current_admin: dict = Depends(get_current_admin)):
@@ -9696,9 +9696,9 @@ async def permanent_delete_booking(booking_id: str, current_admin: dict = Depend
         return {"message": "Booking permanently deleted"}
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Error permanently deleting booking: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error permanently deleting booking: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 
 # ============================================
@@ -9731,9 +9731,9 @@ async def archive_booking(booking_id: str, current_admin: dict = Depends(get_cur
         return {"message": "Booking archived successfully", "booking_id": booking_id, "referenceNumber": booking.get('referenceNumber')}
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Error archiving booking: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error archiving booking: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.post("/bookings/archive-bulk")
 async def archive_bookings_bulk(
@@ -9759,13 +9759,13 @@ async def archive_bookings_bulk(
                     archived_count += 1
                 else:
                     failed.append(booking_id)
-            except Exception as e:
-                failed.append(booking_id)
-                logger.error(f"Failed to archive booking {booking_id}: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED             except Exception as e:
+# ORPHANED_EXCEPT_DISABLED                 failed.append(booking_id)
+# ORPHANED_EXCEPT_DISABLED                 logger.error(f"Failed to archive booking {booking_id}: {str(e)}")
         
         logger.info(f"Bulk archive: {archived_count} bookings archived by {current_admin.get('username', 'admin')}")
         return {"message": f"Archived {archived_count} bookings", "archived": archived_count, "failed": failed}
-            except Exception as e:
+# ORPHANED_EXCEPT_DISABLED             except Exception as e:
         logger.error(f"Error in bulk archive: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -9823,7 +9823,7 @@ async def get_archived_bookings(
             "limit": limit,
             "totalPages": (total + limit - 1) // limit
         }
-            except Exception as e:
+# ORPHANED_EXCEPT_DISABLED             except Exception as e:
         logger.error(f"Error fetching archived bookings: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -9833,9 +9833,9 @@ async def get_archived_count(current_admin: dict = Depends(get_current_admin)):
     try:
         total = await db.bookings_archive.count_documents({})
         return {"total": total}
-    except Exception as e:
-        logger.error(f"Error counting archived bookings: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error counting archived bookings: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.post("/bookings/unarchive/{booking_id}")
 async def unarchive_booking(booking_id: str, current_admin: dict = Depends(get_current_admin)):
@@ -9864,9 +9864,9 @@ async def unarchive_booking(booking_id: str, current_admin: dict = Depends(get_c
         return {"message": "Booking restored from archive", "booking_id": booking_id, "referenceNumber": archived_booking.get('referenceNumber')}
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Error unarchiving booking: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error unarchiving booking: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.get("/bookings/search-all")
 async def search_all_bookings(
@@ -9915,7 +9915,7 @@ async def search_all_bookings(
             "archivedCount": len(archived_bookings),
             "totalCount": len(all_results)
         }
-        except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         except Exception as e:
         logger.error(f"Error searching all bookings: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -9939,9 +9939,9 @@ async def get_all_seo_pages(current_admin: dict = Depends(get_current_admin)):
     try:
         pages = await db.seo_pages.find({}, {"_id": 0}).to_list(1000)
         return {"pages": pages}
-    except Exception as e:
-        logging.error(f"Error fetching SEO pages: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logging.error(f"Error fetching SEO pages: {e}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.get("/seo/pages/{page_path:path}")
 async def get_seo_page(page_path: str):
@@ -9951,9 +9951,9 @@ async def get_seo_page(page_path: str):
         if page:
             return page
         return None
-    except Exception as e:
-        logging.error(f"Error fetching SEO page: {e}")
-        return None
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logging.error(f"Error fetching SEO page: {e}")
+# ORPHANED_EXCEPT_DISABLED         return None
 
 @api_router.post("/seo/pages")
 async def create_or_update_seo_page(seo_page: SEOPage, current_admin: dict = Depends(get_current_admin)):
@@ -9974,9 +9974,9 @@ async def create_or_update_seo_page(seo_page: SEOPage, current_admin: dict = Dep
             "message": "SEO page configuration saved",
             "page_path": seo_page.page_path
         }
-    except Exception as e:
-        logging.error(f"Error saving SEO page: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logging.error(f"Error saving SEO page: {e}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.delete("/seo/pages/{page_path:path}")
 async def delete_seo_page(page_path: str, current_admin: dict = Depends(get_current_admin)):
@@ -9990,9 +9990,9 @@ async def delete_seo_page(page_path: str, current_admin: dict = Depends(get_curr
         return {"success": True, "message": "SEO page configuration deleted"}
     except HTTPException:
         raise
-    except Exception as e:
-        logging.error(f"Error deleting SEO page: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logging.error(f"Error deleting SEO page: {e}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.post("/seo/initialize-all")
 async def initialize_all_seo_pages(current_admin: dict = Depends(get_current_admin)):
@@ -10148,9 +10148,9 @@ async def initialize_all_seo_pages(current_admin: dict = Depends(get_current_adm
             "message": f"Initialized SEO for {count} pages (27 Auckland + 8 Hamilton + 9 Whangarei + 14 Hibiscus Coast + 20 Hotels = 78 locations)",
             "pages_created": count
         }
-    except Exception as e:
-        logging.error(f"Error initializing all SEO pages: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logging.error(f"Error initializing all SEO pages: {e}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.post("/seo/initialize")
 async def initialize_seo_pages(current_admin: dict = Depends(get_current_admin)):
@@ -10214,9 +10214,9 @@ async def initialize_seo_pages(current_admin: dict = Depends(get_current_admin))
             "success": True,
             "message": f"Initialized {len(default_pages)} main SEO page configurations"
         }
-    except Exception as e:
-        logging.error(f"Error initializing SEO pages: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logging.error(f"Error initializing SEO pages: {e}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 
 # ============================================
@@ -10651,9 +10651,9 @@ async def xero_callback(code: str, state: str = None):
         
         # Redirect to admin dashboard with success message
         return {"message": "Xero connected successfully!", "organization": org_name, "redirect": "/admin/dashboard"}
-    except Exception as e:
-        logger.error(f"Xero callback error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Xero callback error: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 async def get_xero_access_token():
     """Get valid Xero access token, refreshing if needed"""
@@ -10693,9 +10693,9 @@ async def get_xero_access_token():
             else:
                 logger.error(f"Failed to refresh Xero token: {response.text}")
                 return None, None
-        except Exception as e:
-            logger.error(f"Error refreshing Xero token: {str(e)}")
-            return None, None
+# ORPHANED_EXCEPT_DISABLED         except Exception as e:
+# ORPHANED_EXCEPT_DISABLED             logger.error(f"Error refreshing Xero token: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED             return None, None
     
     return token_doc["access_token"], token_doc["tenant_id"]
 
@@ -10806,9 +10806,9 @@ async def create_xero_invoice(booking_id: str, current_admin: dict = Depends(get
             
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Error creating Xero invoice: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error creating Xero invoice: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.post("/xero/record-payment/{booking_id}")
 async def record_xero_payment(booking_id: str, current_admin: dict = Depends(get_current_admin)):
@@ -10889,9 +10889,9 @@ async def record_xero_payment(booking_id: str, current_admin: dict = Depends(get
             
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Error recording Xero payment: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error recording Xero payment: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 async def create_and_send_xero_invoice(booking: dict):
     """Create and email a Xero invoice for a booking (called automatically when payment method is 'xero')"""
@@ -10996,9 +10996,9 @@ async def create_and_send_xero_invoice(booking: dict):
         
         logger.info(f"Created Xero invoice {invoice_number} for booking {booking_id}")
         return {"invoice_id": invoice_id, "invoice_number": invoice_number}
-    except Exception as e:
-        logger.error(f"Error creating Xero invoice: {str(e)}")
-        return None
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error creating Xero invoice: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         return None
 
 @api_router.post("/xero/sync-all-bookings")
 async def sync_all_bookings_to_xero(current_admin: dict = Depends(get_current_admin)):
@@ -11022,8 +11022,8 @@ async def sync_all_bookings_to_xero(current_admin: dict = Depends(get_current_ad
                 # Create invoice for each booking
                 result = await create_xero_invoice(booking["id"], current_admin)
                 created_count += 1
-            except Exception as e:
-                errors.append({"booking_id": booking["id"], "error": str(e)})
+# ORPHANED_EXCEPT_DISABLED             except Exception as e:
+# ORPHANED_EXCEPT_DISABLED                 errors.append({"booking_id": booking["id"], "error": str(e)})
         
         return {
             "message": f"Synced {created_count} bookings to Xero",
@@ -11033,7 +11033,7 @@ async def sync_all_bookings_to_xero(current_admin: dict = Depends(get_current_ad
         
     except HTTPException:
         raise
-            except Exception as e:
+# ORPHANED_EXCEPT_DISABLED             except Exception as e:
         logger.error(f"Error syncing to Xero: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -11052,9 +11052,9 @@ async def trigger_arrival_emails(current_admin: dict = Depends(get_current_admin
             "date": result.get('date'),
             "details": result
         }
-    except Exception as e:
-        logger.error(f"Error triggering arrival emails: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error triggering arrival emails: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 
 # ==================== WORDPRESS BOOKING IMPORT ====================
@@ -11197,8 +11197,8 @@ async def import_bookings_from_csv(
                 
                 await db.bookings.insert_one(booking)
                 imported += 1
-            except Exception as e:
-                errors.append(f"Row {original_id}: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED             except Exception as e:
+# ORPHANED_EXCEPT_DISABLED                 errors.append(f"Row {original_id}: {str(e)}")
         
         logger.info(f"📥 WordPress import: {imported} imported, {skipped} skipped, {len(errors)} errors")
         
@@ -11209,7 +11209,7 @@ async def import_bookings_from_csv(
             "errors": errors[:10],  # First 10 errors
             "total_errors": len(errors)
         }
-            except Exception as e:
+# ORPHANED_EXCEPT_DISABLED             except Exception as e:
         logger.error(f"Import error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -11224,8 +11224,8 @@ async def get_import_status(current_admin: dict = Depends(get_current_admin)):
             "total_bookings": total,
             "wordpress_imports": imported
         }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 
 @api_router.post("/admin/quick-import-wordpress")
@@ -11365,7 +11365,7 @@ async def quick_import_wordpress(request: Request):
         
     except HTTPException:
         raise
-            except Exception as e:
+# ORPHANED_EXCEPT_DISABLED             except Exception as e:
         logger.error(f"Quick import error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -11424,9 +11424,9 @@ async def fix_imported_bookings():
             "dates_fixed": fixed_dates,
             "message": f"Fixed {fixed_status} bookings and {fixed_dates} dates"
         }
-    except Exception as e:
-        logger.error(f"Fix imported bookings error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Fix imported bookings error: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 
 @api_router.get("/admin/fix-now")
@@ -11487,9 +11487,9 @@ async def fix_now():
             "dates_fixed": fixed_dates,
             "message": f"Restored {restored} bookings from trash and fixed {fixed_dates} dates! Refresh your admin page."
         }
-    except Exception as e:
-        logger.error(f"Fix error: {str(e)}")
-        return {"success": False, "error": str(e)}
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Fix error: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         return {"success": False, "error": str(e)}
 
 
 @api_router.post("/admin/batch-sync-calendar")
@@ -11535,9 +11535,9 @@ async def batch_sync_calendar(
             "total_to_sync": total_to_sync,
             "status": "processing"
         }
-    except Exception as e:
-        logger.error(f"Batch calendar sync error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Batch calendar sync error: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 
 async def batch_sync_calendar_task(query: dict):
@@ -11584,7 +11584,7 @@ async def batch_sync_calendar_task(query: dict):
             },
             upsert=True
         )
-            except Exception as e:
+# ORPHANED_EXCEPT_DISABLED             except Exception as e:
         logger.error(f"Batch calendar sync task error: {str(e)}")
         await db.system_tasks.update_one(
             {"task": "batch_calendar_sync"},
@@ -11633,9 +11633,9 @@ async def get_batch_sync_status(current_admin: dict = Depends(get_current_admin)
             "already_synced": already_synced,
             "last_task": task_status
         }
-    except Exception as e:
-        logger.error(f"Get batch sync status error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Get batch sync status error: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 
 @api_router.get("/admin/system-health")
@@ -11706,9 +11706,9 @@ async def get_system_health(current_admin: dict = Depends(get_current_admin)):
             },
             "checked_at": now_nz.strftime('%Y-%m-%d %H:%M:%S')
         }
-    except Exception as e:
-        logger.error(f"Error getting system health: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error getting system health: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 
 @api_router.post("/admin/run-error-check")
@@ -11717,9 +11717,9 @@ async def manual_run_error_check(current_admin: dict = Depends(get_current_admin
     try:
         result = await run_daily_error_check()
         return result
-    except Exception as e:
-        logger.error(f"Error running manual error check: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error running manual error check: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 
 # ==================== AUTO-ARCHIVE SYSTEM ====================
@@ -11786,13 +11786,13 @@ async def auto_archive_completed_bookings():
                         logger.info(f"📦 Auto-archived: Ref #{booking.get('referenceNumber')} - {booking.get('name')} (trip ended: {trip_end_date})")
                 else:
                     skipped_count += 1
-            except Exception as e:
-                logger.error(f"📦 Error processing booking {booking.get('id', 'unknown')}: {str(e)}")
-                continue
+# ORPHANED_EXCEPT_DISABLED             except Exception as e:
+# ORPHANED_EXCEPT_DISABLED                 logger.error(f"📦 Error processing booking {booking.get('id', 'unknown')}: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED                 continue
         
         logger.info(f"📦 [Auto-Archive] Completed - Archived: {archived_count}, Skipped: {skipped_count}")
         return {"archived": archived_count, "skipped": skipped_count, "date": today_str}
-            except Exception as e:
+# ORPHANED_EXCEPT_DISABLED             except Exception as e:
         logger.error(f"📦 [Auto-Archive] Error: {str(e)}")
         return {"archived": 0, "error": str(e)}
 
@@ -11802,9 +11802,9 @@ async def trigger_auto_archive(current_admin: dict = Depends(get_current_admin))
     try:
         result = await auto_archive_completed_bookings()
         return result
-    except Exception as e:
-        logger.error(f"Error running auto-archive: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error running auto-archive: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail=str(e))
 
 
 # ==================== HOTEL CONCIERGE PORTAL API ====================
@@ -11860,9 +11860,9 @@ async def hotel_login(request: HotelLoginRequest):
         }
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Hotel login error: {str(e)}")
-        raise HTTPException(status_code=500, detail="Login failed")
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Hotel login error: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail="Login failed")
 
 async def get_current_hotel(request: Request):
     """Dependency to get current hotel from token."""
@@ -11889,9 +11889,9 @@ async def get_hotel_bookings(hotel: dict = Depends(get_current_hotel)):
         ).sort("created_at", -1).to_list(100)
         
         return {"bookings": bookings}
-    except Exception as e:
-        logger.error(f"Error fetching hotel bookings: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to fetch bookings")
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error fetching hotel bookings: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail="Failed to fetch bookings")
 
 @api_router.post("/hotel/bookings")
 async def create_hotel_booking(request: HotelBookingRequest, hotel: dict = Depends(get_current_hotel)):
@@ -11958,9 +11958,9 @@ async def create_hotel_booking(request: HotelBookingRequest, hotel: dict = Depen
             "bookingId": booking_id,
             "referenceNumber": ref_number
         }
-    except Exception as e:
-        logger.error(f"Error creating hotel booking: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to create booking")
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error creating hotel booking: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail="Failed to create booking")
 
 @api_router.post("/hotel/register")
 async def register_hotel_partner(
@@ -11996,9 +11996,9 @@ async def register_hotel_partner(
         return {"success": True, "message": f"Hotel partner {name} registered successfully"}
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Error registering hotel: {str(e)}")
-        raise HTTPException(status_code=500, detail="Registration failed")
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error registering hotel: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail="Registration failed")
 
 
 # ==================== AIRLINE PARTNERSHIP API ====================
@@ -12070,8 +12070,8 @@ async def check_availability(request: AirlineAvailabilityRequest, airline: dict 
                     if element.get("status") == "OK":
                         distance = element["distance"]["value"] / 1000  # km
                         duration = element["duration"]["value"] / 60  # minutes
-            except Exception as e:
-                logger.warning(f"Distance calculation failed: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED             except Exception as e:
+# ORPHANED_EXCEPT_DISABLED                 logger.warning(f"Distance calculation failed: {str(e)}")
         
         # Calculate price based on distance
         if distance <= 20:
@@ -12098,7 +12098,7 @@ async def check_availability(request: AirlineAvailabilityRequest, airline: dict 
             "pickup_location": request.pickup_location,
             "dropoff_location": request.dropoff_location
         }
-            except Exception as e:
+# ORPHANED_EXCEPT_DISABLED             except Exception as e:
         logger.error(f"Airline availability check error: {str(e)}")
         raise HTTPException(status_code=500, detail="Availability check failed")
 
@@ -12152,7 +12152,7 @@ async def create_airline_booking(request: AirlineBookingRequest, airline: dict =
                 "pickup_time": pickup_time
             }
         }
-        except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         except Exception as e:
         logger.error(f"Airline booking error: {str(e)}")
         raise HTTPException(status_code=500, detail="Booking failed")
 
@@ -12181,9 +12181,9 @@ async def get_airline_booking(booking_id: str, airline: dict = Depends(airline_a
         }
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Error fetching airline booking: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to fetch booking")
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error fetching airline booking: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail="Failed to fetch booking")
 
 @api_router.delete("/airline/v1/booking/{booking_id}")
 async def cancel_airline_booking(booking_id: str, airline: dict = Depends(airline_auth)):
@@ -12200,9 +12200,9 @@ async def cancel_airline_booking(booking_id: str, airline: dict = Depends(airlin
         return {"success": True, "message": "Booking cancelled"}
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Error cancelling airline booking: {str(e)}")
-        raise HTTPException(status_code=500, detail="Cancellation failed")
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"Error cancelling airline booking: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED         raise HTTPException(status_code=500, detail="Cancellation failed")
 
 
 # Include the router in the main app (MUST be after all routes are defined)
@@ -12237,8 +12237,8 @@ async def interval_reminder_check():
         
         # Let the core function handle everything - it has proper locking
         await send_daily_reminders_core(source="interval_check")
-    except Exception as e:
-        logger.error(f"❌ Interval reminder check error: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"❌ Interval reminder check error: {str(e)}")
 
 async def startup_reminder_check():
     """
@@ -12255,8 +12255,8 @@ async def startup_reminder_check():
         # Only run startup check if it's between 8 AM and 11 PM
         if current_hour >= 8 and current_hour <= 23:
             result = await send_daily_reminders_core(source="startup_check")
-    except Exception as e:
-        logger.error(f"❌ Startup reminder check error: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.error(f"❌ Startup reminder check error: {str(e)}")
 
 
 # ==================== AIRPORT ARRIVAL EMAILS ====================
@@ -12367,13 +12367,13 @@ async def send_arrival_pickup_emails():
                     logger.info(f"✈️ Arrival email sent to {email} for booking {booking.get('id')}")
                 else:
                     logger.error(f"✈️ Failed to send arrival email to {email}: {response.text}")
-            except Exception as e:
-                logger.error(f"✈️ Error sending arrival email: {str(e)}")
-                continue
+# ORPHANED_EXCEPT_DISABLED             except Exception as e:
+# ORPHANED_EXCEPT_DISABLED                 logger.error(f"✈️ Error sending arrival email: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED                 continue
         
         logger.info(f"✈️ [Arrival Emails] Completed - {sent_count} emails sent for {tomorrow}")
         return {"sent": sent_count, "date": tomorrow}
-            except Exception as e:
+# ORPHANED_EXCEPT_DISABLED             except Exception as e:
         logger.error(f"✈️ [Arrival Emails] Error: {str(e)}")
         return {"sent": 0, "error": str(e)}
 
@@ -12666,7 +12666,7 @@ async def run_daily_error_check():
             "issues_count": len(issues),
             "warnings_count": len(warnings)
         }
-            except Exception as e:
+# ORPHANED_EXCEPT_DISABLED             except Exception as e:
         logger.error(f"🔍 [Daily Error Check] Fatal error: {str(e)}")
         return {"success": False, "error": str(e)}
 
@@ -12846,9 +12846,9 @@ async def startup_event():
     # Ensure default admin exists with correct email for Google OAuth
     try:
         default_admin = await db.admin_users.find_one({"username": "admin"})
-    except Exception as e:
-        print("WARN: admin seed skipped (db unavailable):", repr(e))
-        default_admin = {"_skip": True}
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         print("WARN: admin seed skipped (db unavailable):", repr(e))
+# ORPHANED_EXCEPT_DISABLED         default_admin = {"_skip": True}
     if not default_admin:
         hashed_pw = pwd_context.hash("Kongkong2025!@")
         await db.admin_users.insert_one({
@@ -12882,8 +12882,8 @@ async def startup_event():
         await db.bookings.create_index("original_booking_id")
         await db.bookings.create_index([("date", -1), ("status", 1)])
         logger.info("✅ Database indexes created for faster queries")
-    except Exception as e:
-        logger.warning(f"Index creation note: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.warning(f"Index creation note: {str(e)}")
     
     # Create index for archive collection
     try:
@@ -12892,8 +12892,8 @@ async def startup_event():
         await db.bookings_archive.create_index("email")
         await db.bookings_archive.create_index("referenceNumber")
         logger.info("✅ Archive indexes created")
-    except Exception as e:
-        logger.warning(f"Archive index creation note: {str(e)}")
+# ORPHANED_EXCEPT_DISABLED     except Exception as e:
+# ORPHANED_EXCEPT_DISABLED         logger.warning(f"Archive index creation note: {str(e)}")
     
     # ============================================
     # RELIABLE REMINDER SYSTEM - 3 LAYERS
