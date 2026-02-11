@@ -45,27 +45,27 @@ def run_async_task(coro_func, arg, task_description="background task"):
         asyncio.set_event_loop(loop)
         try:
             loop.run_until_complete(coro_func(arg))
-            logger.info(f"âœ… Background task completed: {task_description}")
+            logger.info(f"Ã¢Å“â€¦ Background task completed: {task_description}")
         finally:
             loop.close()
     except Exception as e:
-        logger.error(f"âŒ Background task failed ({task_description}): {str(e)}")
+        logger.error(f"Ã¢ÂÅ’ Background task failed ({task_description}): {str(e)}")
 
 def run_sync_task(sync_func, arg, task_description="background task"):
     """Run a synchronous function for background tasks"""
     try:
         sync_func(arg)
-        logger.info(f"âœ… Background task completed: {task_description}")
+        logger.info(f"Ã¢Å“â€¦ Background task completed: {task_description}")
     except Exception as e:
-        logger.error(f"âŒ Background task failed ({task_description}): {str(e)}")
+        logger.error(f"Ã¢ÂÅ’ Background task failed ({task_description}): {str(e)}")
 
 def run_sync_task_with_args(sync_func, arg1, arg2, task_description="background task"):
     """Run a synchronous function with two arguments for background tasks"""
     try:
         sync_func(arg1, arg2)
-        logger.info(f"âœ… Background task completed: {task_description}")
+        logger.info(f"Ã¢Å“â€¦ Background task completed: {task_description}")
     except Exception as e:
-        logger.error(f"âŒ Background task failed ({task_description}): {str(e)}")
+        logger.error(f"Ã¢ÂÅ’ Background task failed ({task_description}): {str(e)}")
 
 ROOT_DIR = Path(__file__).parent
 sys.path.insert(0, str(ROOT_DIR))
@@ -314,7 +314,7 @@ def validate_booking_date(self):
     if hasattr(self, '_skip_date_validation') or getattr(self, 'id', None):    
         return self
     
-    if self.date:  # âœ… NOW PROPERLY INSIDE THE FUNCTION
+    if self.date:  # Ã¢Å“â€¦ NOW PROPERLY INSIDE THE FUNCTION
         try:
             nz_tz = pytz.timezone('Pacific/Auckland')
             today = datetime.now(nz_tz).strftime('%Y-%m-%d')
@@ -789,7 +789,7 @@ async def request_password_reset(reset_request: PasswordResetRequest):
             <body>
                 <div class="container">
                     <div class="header">
-                        <h1>ðŸ” Password Reset Request</h1>
+                        <h1>Ã°Å¸â€Â Password Reset Request</h1>
                     </div>
                     <div class="content">
                         <p>Hello <strong>{admin['username']}</strong>,</p>
@@ -799,7 +799,7 @@ async def request_password_reset(reset_request: PasswordResetRequest):
                             <a href="{reset_link}" class="button">Reset Password</a>
                         </p>
                         <div class="warning">
-                            â° <strong>This link will expire in 1 hour.</strong><br>
+                            Ã¢ÂÂ° <strong>This link will expire in 1 hour.</strong><br>
                             If you didn't request this reset, please ignore this email.
                         </div>
                         <p>Or copy and paste this link into your browser:</p>
@@ -1136,7 +1136,7 @@ async def calculate_price(request: PriceCalculationRequest):
                     # Sum all leg distances
                     total_distance_meters = sum(leg['distance']['value'] for leg in route['legs'])
                     distance_km = round(total_distance_meters / 1000, 2)
-                    logger.info(f"Multi-stop route: {len(all_pickups)} pickups â†’ dropoff, total: {distance_km}km")
+                    logger.info(f"Multi-stop route: {len(all_pickups)} pickups Ã¢â€ â€™ dropoff, total: {distance_km}km")
                 else:
                     logger.warning(f"Google Maps Directions API error: {data.get('error_message', data.get('status'))}")
                     distance_km = 25.0 * len(all_pickups)  # Fallback: estimate per stop
@@ -1203,10 +1203,10 @@ async def calculate_price(request: PriceCalculationRequest):
         if is_concert_trip:
             if is_from_hibiscus_coast or is_to_hibiscus_coast:
                 # From/to Hibiscus Coast - flat $550
-                logger.info(f"ðŸŽµ CONCERT PRICING: Hibiscus Coast to Matakana Country Park - flat ${matakana_concert_base}")
+                logger.info(f"Ã°Å¸Å½Âµ CONCERT PRICING: Hibiscus Coast to Matakana Country Park - flat ${matakana_concert_base}")
             else:
                 # From elsewhere - calculate distance to Hibiscus Coast and add $550
-                logger.info(f"ðŸŽµ CONCERT PRICING: {distance_km}km total, charging to Hibiscus Coast + ${matakana_concert_base} concert transfer")
+                logger.info(f"Ã°Å¸Å½Âµ CONCERT PRICING: {distance_km}km total, charging to Hibiscus Coast + ${matakana_concert_base} concert transfer")
         
         # Standard tiered pricing (original rates)
         if distance_km <= 15.0:
@@ -1230,7 +1230,7 @@ async def calculate_price(request: PriceCalculationRequest):
         else:
             rate_per_km = 3.50   # $3.50 per km for 100km+
         
-        # Calculate base price: distance Ã— rate for that bracket
+        # Calculate base price: distance Ãƒâ€” rate for that bracket
         base_price = distance_km * rate_per_km
         
         # VIP Airport Pickup fee: Optional $15 extra service
@@ -1252,7 +1252,7 @@ async def calculate_price(request: PriceCalculationRequest):
             if is_from_hibiscus_coast or is_to_hibiscus_coast:
                 # From/to Hibiscus Coast - flat $550 minimum (return)
                 if total_price < matakana_concert_base:
-                    logger.info(f"ðŸŽµ Hibiscus Coast â†’ Matakana Country Park: applying flat ${matakana_concert_base}")
+                    logger.info(f"Ã°Å¸Å½Âµ Hibiscus Coast Ã¢â€ â€™ Matakana Country Park: applying flat ${matakana_concert_base}")
                     total_price = matakana_concert_base
             else:
                 # From elsewhere in Auckland:
@@ -1281,7 +1281,7 @@ async def calculate_price(request: PriceCalculationRequest):
                 # Total = km rate to Hibiscus Coast + $550 concert base + extras
                 total_price = price_to_hibiscus + matakana_concert_base + airport_fee + oversized_luggage_fee + passenger_fee
                 
-                logger.info(f"ðŸŽµ Auckland â†’ Matakana Country Park: {distance_to_hibiscus}km @ ${rate_to_hibiscus}/km = ${price_to_hibiscus:.2f} + ${matakana_concert_base} = ${total_price:.2f}")
+                logger.info(f"Ã°Å¸Å½Âµ Auckland Ã¢â€ â€™ Matakana Country Park: {distance_to_hibiscus}km @ ${rate_to_hibiscus}/km = ${price_to_hibiscus:.2f} + ${matakana_concert_base} = ${total_price:.2f}")
         elif total_price < 100.0:
             # Standard minimum of $100 for regular trips
             total_price = 100.0
@@ -1469,7 +1469,7 @@ async def quick_approve_booking(booking_id: str, action: str = "approve"):
         if not booking:
             return HTMLResponse(content="""
                 <html><body style="font-family: Arial; text-align: center; padding: 50px;">
-                    <h1 style="color: #DC2626;">âŒ Booking Not Found</h1>
+                    <h1 style="color: #DC2626;">Ã¢ÂÅ’ Booking Not Found</h1>
                     <p>This booking may have been deleted or the link is invalid.</p>
                     <a href="https://bookaride.co.nz/admin/dashboard" style="display: inline-block; margin-top: 20px; padding: 15px 30px; background-color: #f59e0b; color: white; text-decoration: none; border-radius: 8px;">Go to Admin Dashboard</a>
                 </body></html>
@@ -1496,12 +1496,12 @@ async def quick_approve_booking(booking_id: str, action: str = "approve"):
             except Exception as e:
                 logger.error(f"Failed to send confirmation: {e}")
             
-            logger.info(f"âœ… Booking {booking_ref} APPROVED via email quick-approve")
+            logger.info(f"Ã¢Å“â€¦ Booking {booking_ref} APPROVED via email quick-approve")
             
             return HTMLResponse(content=f"""
                 <html><body style="font-family: Arial; text-align: center; padding: 50px; background-color: #f0fdf4;">
                     <div style="max-width: 500px; margin: 0 auto; background: white; padding: 40px; border-radius: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                        <h1 style="color: #16a34a; font-size: 48px; margin: 0;">âœ…</h1>
+                        <h1 style="color: #16a34a; font-size: 48px; margin: 0;">Ã¢Å“â€¦</h1>
                         <h2 style="color: #16a34a;">Booking Approved!</h2>
                         <p style="color: #374151;"><strong>Ref:</strong> {booking_ref}</p>
                         <p style="color: #374151;"><strong>Customer:</strong> {customer_name}</p>
@@ -1525,12 +1525,12 @@ async def quick_approve_booking(booking_id: str, action: str = "approve"):
             
             # TODO: Optionally send rejection email to customer
             
-            logger.info(f"âŒ Booking {booking_ref} REJECTED via email quick-approve")
+            logger.info(f"Ã¢ÂÅ’ Booking {booking_ref} REJECTED via email quick-approve")
             
             return HTMLResponse(content=f"""
                 <html><body style="font-family: Arial; text-align: center; padding: 50px; background-color: #fef2f2;">
                     <div style="max-width: 500px; margin: 0 auto; background: white; padding: 40px; border-radius: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                        <h1 style="color: #DC2626; font-size: 48px; margin: 0;">âŒ</h1>
+                        <h1 style="color: #DC2626; font-size: 48px; margin: 0;">Ã¢ÂÅ’</h1>
                         <h2 style="color: #DC2626;">Booking Rejected</h2>
                         <p style="color: #374151;"><strong>Ref:</strong> {booking_ref}</p>
                         <p style="color: #374151;"><strong>Customer:</strong> {customer_name}</p>
@@ -1542,7 +1542,7 @@ async def quick_approve_booking(booking_id: str, action: str = "approve"):
         else:
             return HTMLResponse(content="""
                 <html><body style="font-family: Arial; text-align: center; padding: 50px;">
-                    <h1 style="color: #f59e0b;">âš ï¸ Invalid Action</h1>
+                    <h1 style="color: #f59e0b;">Ã¢Å¡Â Ã¯Â¸Â Invalid Action</h1>
                     <p>Please use the approve or reject buttons from the email.</p>
                 </body></html>
             """, status_code=400)
@@ -1551,7 +1551,7 @@ async def quick_approve_booking(booking_id: str, action: str = "approve"):
         logger.error(f"Error in quick approve: {str(e)}")
         return HTMLResponse(content=f"""
             <html><body style="font-family: Arial; text-align: center; padding: 50px;">
-                <h1 style="color: #DC2626;">âŒ Error</h1>
+                <h1 style="color: #DC2626;">Ã¢ÂÅ’ Error</h1>
                 <p>Something went wrong. Please try again or use the admin dashboard.</p>
                 <a href="https://bookaride.co.nz/admin/dashboard" style="display: inline-block; margin-top: 20px; padding: 15px 30px; background-color: #f59e0b; color: white; text-decoration: none; border-radius: 8px;">Go to Admin Dashboard</a>
             </body></html>
@@ -1703,9 +1703,9 @@ async def update_booking(booking_id: str, update_data: dict, current_admin: dict
                 if updated_booking and updated_booking.get('calendar_event_id'):
                     # Update existing calendar event
                     await update_calendar_event(updated_booking)
-                    logger.info(f"ðŸ“… Calendar event updated for booking {booking_id}")
+                    logger.info(f"Ã°Å¸â€œâ€¦ Calendar event updated for booking {booking_id}")
             except Exception as cal_error:
-                logger.warning(f"âš ï¸ Failed to update calendar event: {str(cal_error)}")
+                logger.warning(f"Ã¢Å¡Â Ã¯Â¸Â Failed to update calendar event: {str(cal_error)}")
                 # Don't fail the whole update if calendar sync fails
         
         return {"message": "Booking updated successfully"}
@@ -1823,7 +1823,7 @@ async def send_booking_to_admin(booking_id: str, current_admin: dict = Depends(g
                 </div>
                 
                 <div style="padding: 20px; background-color: #ffffff; border: 1px solid #e8e4d9; border-top: none;">
-                    <h2 style="color: #333; margin-top: 0;">ðŸ“‹ Booking Details</h2>
+                    <h2 style="color: #333; margin-top: 0;">Ã°Å¸â€œâ€¹ Booking Details</h2>
                     
                     <div style="background-color: #faf8f3; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #D4AF37;">
                         <p style="margin: 5px 0;"><strong>Booking Reference:</strong> {booking.get('id', '')[:8].upper()}</p>
@@ -1832,14 +1832,14 @@ async def send_booking_to_admin(booking_id: str, current_admin: dict = Depends(g
                         <p style="margin: 5px 0;"><strong>Created:</strong> {booking.get('createdAt', 'N/A')}</p>
                     </div>
                     
-                    <h3 style="color: #333; margin-top: 30px;">ðŸ‘¤ Customer Information</h3>
+                    <h3 style="color: #333; margin-top: 30px;">Ã°Å¸â€˜Â¤ Customer Information</h3>
                     <div style="background-color: #faf8f3; padding: 15px; border-radius: 8px; margin: 15px 0;">
                         <p style="margin: 5px 0;"><strong>Name:</strong> {booking.get('name', 'N/A')}</p>
                         <p style="margin: 5px 0;"><strong>Email:</strong> <a href="mailto:{booking.get('email', 'N/A')}" style="color: #D4AF37;">{booking.get('email', 'N/A')}</a></p>
                         <p style="margin: 5px 0;"><strong>Phone:</strong> <a href="tel:{booking.get('phone', 'N/A')}" style="color: #D4AF37;">{booking.get('phone', 'N/A')}</a></p>
                     </div>
                     
-                    <h3 style="color: #333; margin-top: 30px;">ðŸš— Trip Details</h3>
+                    <h3 style="color: #333; margin-top: 30px;">Ã°Å¸Å¡â€” Trip Details</h3>
                     <div style="background-color: #faf8f3; padding: 15px; border-radius: 8px; margin: 15px 0;">
                         <p style="margin: 5px 0;"><strong>Service Type:</strong> {booking.get('serviceType', 'N/A').replace('-', ' ').title()}</p>
                         <p style="margin: 5px 0;"><strong>Pickup:</strong> {booking.get('pickupAddress', 'N/A')}</p>
@@ -1849,7 +1849,7 @@ async def send_booking_to_admin(booking_id: str, current_admin: dict = Depends(g
                         <p style="margin: 5px 0;"><strong>Passengers:</strong> {booking.get('passengers', 'N/A')}</p>
                     </div>
                     
-                    <h3 style="color: #333; margin-top: 30px;">ðŸ’° Pricing Details</h3>
+                    <h3 style="color: #333; margin-top: 30px;">Ã°Å¸â€™Â° Pricing Details</h3>
                     <div style="background-color: #faf8f3; padding: 15px; border-radius: 8px; margin: 15px 0;">
                         <p style="margin: 5px 0;"><strong>Distance:</strong> {pricing.get('distance', 0)} km</p>
                         <p style="margin: 5px 0;"><strong>Base Price:</strong> ${pricing.get('basePrice', 0):.2f} NZD</p>
@@ -1857,15 +1857,15 @@ async def send_booking_to_admin(booking_id: str, current_admin: dict = Depends(g
                         {'<p style="margin: 5px 0;"><strong>Passenger Fee:</strong> $' + f"{pricing.get('passengerFee', 0):.2f}" + ' NZD</p>' if pricing.get('passengerFee', 0) > 0 else ''}
                         <hr style="border: 0; border-top: 2px solid #D4AF37; margin: 15px 0;">
                         <p style="margin: 5px 0; font-size: 18px;"><strong>Total Price:</strong> <span style="color: #D4AF37; font-size: 20px;">${total_price:.2f} NZD</span></p>
-                        {f'<p style="margin: 5px 0; color: #ea580c; font-size: 12px;">âš ï¸ Price was manually overridden</p>' if is_overridden else ''}
+                        {f'<p style="margin: 5px 0; color: #ea580c; font-size: 12px;">Ã¢Å¡Â Ã¯Â¸Â Price was manually overridden</p>' if is_overridden else ''}
                     </div>
                     
-                    {'<h3 style="color: #333; margin-top: 30px;">âœˆï¸ Flight Information</h3><div style="background-color: #faf8f3; padding: 15px; border-radius: 8px; margin: 15px 0;"><p style="margin: 5px 0;"><strong>Departure Flight:</strong> ' + booking.get('departureFlightNumber', 'N/A') + ' at ' + booking.get('departureTime', 'N/A') + '</p><p style="margin: 5px 0;"><strong>Arrival Flight:</strong> ' + booking.get('arrivalFlightNumber', 'N/A') + ' at ' + booking.get('arrivalTime', 'N/A') + '</p></div>' if booking.get('departureFlightNumber') or booking.get('arrivalFlightNumber') else ''}
+                    {'<h3 style="color: #333; margin-top: 30px;">Ã¢Å“Ë†Ã¯Â¸Â Flight Information</h3><div style="background-color: #faf8f3; padding: 15px; border-radius: 8px; margin: 15px 0;"><p style="margin: 5px 0;"><strong>Departure Flight:</strong> ' + booking.get('departureFlightNumber', 'N/A') + ' at ' + booking.get('departureTime', 'N/A') + '</p><p style="margin: 5px 0;"><strong>Arrival Flight:</strong> ' + booking.get('arrivalFlightNumber', 'N/A') + ' at ' + booking.get('arrivalTime', 'N/A') + '</p></div>' if booking.get('departureFlightNumber') or booking.get('arrivalFlightNumber') else ''}
                     
-                    {f'<h3 style="color: #333; margin-top: 30px;">ðŸ“ Special Notes</h3><div style="background-color: #fff8e6; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #D4AF37;"><p style="margin: 0;">{booking.get("notes", "")}</p></div>' if booking.get('notes') else ''}
+                    {f'<h3 style="color: #333; margin-top: 30px;">Ã°Å¸â€œÂ Special Notes</h3><div style="background-color: #fff8e6; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #D4AF37;"><p style="margin: 0;">{booking.get("notes", "")}</p></div>' if booking.get('notes') else ''}
                     
                     <div style="margin-top: 30px; padding: 15px; background-color: #fff8e6; border-radius: 8px; border-left: 4px solid #D4AF37;">
-                        <p style="margin: 0; color: #333;"><strong>ðŸ’¡ Quick Actions:</strong></p>
+                        <p style="margin: 0; color: #333;"><strong>Ã°Å¸â€™Â¡ Quick Actions:</strong></p>
                         <p style="margin: 5px 0; font-size: 14px;">Log in to your <a href="https://bookaride.co.nz/admin/login" style="color: #D4AF37; text-decoration: none; font-weight: bold;">Admin Dashboard</a> to manage this booking.</p>
                     </div>
                 </div>
@@ -1885,7 +1885,7 @@ async def send_booking_to_admin(booking_id: str, current_admin: dict = Depends(g
             data={
                 "from": f"BookaRide System <{sender_email}>",
                 "to": admin_email,
-                "subject": f"ðŸ“‹ Booking Details - {booking.get('name', 'Customer')} - {booking.get('id', '')[:8].upper()}",
+                "subject": f"Ã°Å¸â€œâ€¹ Booking Details - {booking.get('name', 'Customer')} - {booking.get('id', '')[:8].upper()}",
                 "html": html_content
             }
         )
@@ -1995,94 +1995,94 @@ EMAIL_TRANSLATIONS = {
         'thanks': 'Thank you for choosing BookaRide!'
     },
     'zh': {
-        'subject': 'é¢„è®¢ç¡®è®¤',
-        'confirmed': 'é¢„è®¢å·²ç¡®è®¤ï¼',
-        'greeting': 'å°Šæ•¬çš„',
-        'intro': 'æ‚¨çš„è¡Œç¨‹å·²ç¡®è®¤ã€‚ä»¥ä¸‹æ˜¯æ‚¨çš„é¢„è®¢è¯¦æƒ…ï¼š',
-        'reference': 'é¢„è®¢ç¼–å·',
-        'service': 'æœåŠ¡ç±»åž‹',
-        'pickup': 'ä¸Šè½¦åœ°ç‚¹',
-        'dropoff': 'ä¸‹è½¦åœ°ç‚¹',
-        'date': 'æ—¥æœŸ',
-        'time': 'æ—¶é—´',
-        'passengers': 'ä¹˜å®¢äººæ•°',
-        'total': 'æ€»è´¹ç”¨',
-        'contact_intro': 'æˆ‘ä»¬ä¼šåœ¨æŽ¥é€æ—¶é—´å‰è”ç³»æ‚¨ç¡®è®¤æ‰€æœ‰ç»†èŠ‚ã€‚',
-        'contact': 'å¦‚æœ‰ä»»ä½•é—®é¢˜ï¼Œè¯·è”ç³»æˆ‘ä»¬',
-        'or_call': 'æˆ–è‡´ç”µ',
-        'thanks': 'æ„Ÿè°¢æ‚¨é€‰æ‹©BookaRideï¼'
+        'subject': 'Ã©Â¢â€žÃ¨Â®Â¢Ã§Â¡Â®Ã¨Â®Â¤',
+        'confirmed': 'Ã©Â¢â€žÃ¨Â®Â¢Ã¥Â·Â²Ã§Â¡Â®Ã¨Â®Â¤Ã¯Â¼Â',
+        'greeting': 'Ã¥Â°Å Ã¦â€¢Â¬Ã§Å¡â€ž',
+        'intro': 'Ã¦â€šÂ¨Ã§Å¡â€žÃ¨Â¡Å’Ã§Â¨â€¹Ã¥Â·Â²Ã§Â¡Â®Ã¨Â®Â¤Ã£â‚¬â€šÃ¤Â»Â¥Ã¤Â¸â€¹Ã¦ËœÂ¯Ã¦â€šÂ¨Ã§Å¡â€žÃ©Â¢â€žÃ¨Â®Â¢Ã¨Â¯Â¦Ã¦Æ’â€¦Ã¯Â¼Å¡',
+        'reference': 'Ã©Â¢â€žÃ¨Â®Â¢Ã§Â¼â€“Ã¥ÂÂ·',
+        'service': 'Ã¦Å“ÂÃ¥Å Â¡Ã§Â±Â»Ã¥Å¾â€¹',
+        'pickup': 'Ã¤Â¸Å Ã¨Â½Â¦Ã¥Å“Â°Ã§â€šÂ¹',
+        'dropoff': 'Ã¤Â¸â€¹Ã¨Â½Â¦Ã¥Å“Â°Ã§â€šÂ¹',
+        'date': 'Ã¦â€”Â¥Ã¦Å“Å¸',
+        'time': 'Ã¦â€”Â¶Ã©â€”Â´',
+        'passengers': 'Ã¤Â¹ËœÃ¥Â®Â¢Ã¤ÂºÂºÃ¦â€¢Â°',
+        'total': 'Ã¦â‚¬Â»Ã¨Â´Â¹Ã§â€Â¨',
+        'contact_intro': 'Ã¦Ë†â€˜Ã¤Â»Â¬Ã¤Â¼Å¡Ã¥Å“Â¨Ã¦Å½Â¥Ã©â‚¬ÂÃ¦â€”Â¶Ã©â€”Â´Ã¥â€°ÂÃ¨Ââ€Ã§Â³Â»Ã¦â€šÂ¨Ã§Â¡Â®Ã¨Â®Â¤Ã¦â€°â‚¬Ã¦Å“â€°Ã§Â»â€ Ã¨Å â€šÃ£â‚¬â€š',
+        'contact': 'Ã¥Â¦â€šÃ¦Å“â€°Ã¤Â»Â»Ã¤Â½â€¢Ã©â€”Â®Ã©Â¢ËœÃ¯Â¼Å’Ã¨Â¯Â·Ã¨Ââ€Ã§Â³Â»Ã¦Ë†â€˜Ã¤Â»Â¬',
+        'or_call': 'Ã¦Ë†â€“Ã¨â€¡Â´Ã§â€Âµ',
+        'thanks': 'Ã¦â€žÅ¸Ã¨Â°Â¢Ã¦â€šÂ¨Ã©â‚¬â€°Ã¦â€¹Â©BookaRideÃ¯Â¼Â'
     },
     'ja': {
-        'subject': 'äºˆç´„ç¢ºèª',
-        'confirmed': 'ã”äºˆç´„ãŒç¢ºå®šã—ã¾ã—ãŸï¼',
-        'greeting': 'æ§˜',
-        'intro': 'ã”äºˆç´„ãŒç¢ºå®šã—ã¾ã—ãŸã€‚äºˆç´„è©³ç´°ã¯ä»¥ä¸‹ã®é€šã‚Šã§ã™ï¼š',
-        'reference': 'äºˆç´„ç•ªå·',
-        'service': 'ã‚µãƒ¼ãƒ“ã‚¹ã‚¿ã‚¤ãƒ—',
-        'pickup': 'ä¹—è»Šå ´æ‰€',
-        'dropoff': 'é™è»Šå ´æ‰€',
-        'date': 'æ—¥ä»˜',
-        'time': 'æ™‚é–“',
-        'passengers': 'ä¹—å®¢æ•°',
-        'total': 'åˆè¨ˆé‡‘é¡',
-        'contact_intro': 'ä¹—è»Šæ™‚é–“ãŒè¿‘ã¥ãã¾ã—ãŸã‚‰ã€è©³ç´°ç¢ºèªã®ãŸã‚ã”é€£çµ¡ã„ãŸã—ã¾ã™ã€‚',
-        'contact': 'ã”è³ªå•ãŒã”ã–ã„ã¾ã—ãŸã‚‰ã€ãŠå•ã„åˆã‚ã›ãã ã•ã„',
-        'or_call': 'ã¾ãŸã¯ãŠé›»è©±ãã ã•ã„',
-        'thanks': 'BookaRideã‚’ã”åˆ©ç”¨ã„ãŸã ãã‚ã‚ŠãŒã¨ã†ã”ã–ã„ã¾ã™ï¼'
+        'subject': 'Ã¤ÂºË†Ã§Â´â€žÃ§Â¢ÂºÃ¨ÂªÂ',
+        'confirmed': 'Ã£Ââ€Ã¤ÂºË†Ã§Â´â€žÃ£ÂÅ’Ã§Â¢ÂºÃ¥Â®Å¡Ã£Ââ€”Ã£ÂÂ¾Ã£Ââ€”Ã£ÂÅ¸Ã¯Â¼Â',
+        'greeting': 'Ã¦Â§Ëœ',
+        'intro': 'Ã£Ââ€Ã¤ÂºË†Ã§Â´â€žÃ£ÂÅ’Ã§Â¢ÂºÃ¥Â®Å¡Ã£Ââ€”Ã£ÂÂ¾Ã£Ââ€”Ã£ÂÅ¸Ã£â‚¬â€šÃ¤ÂºË†Ã§Â´â€žÃ¨Â©Â³Ã§Â´Â°Ã£ÂÂ¯Ã¤Â»Â¥Ã¤Â¸â€¹Ã£ÂÂ®Ã©â‚¬Å¡Ã£â€šÅ Ã£ÂÂ§Ã£Ââ„¢Ã¯Â¼Å¡',
+        'reference': 'Ã¤ÂºË†Ã§Â´â€žÃ§â€¢ÂªÃ¥ÂÂ·',
+        'service': 'Ã£â€šÂµÃ£Æ’Â¼Ã£Æ’â€œÃ£â€šÂ¹Ã£â€šÂ¿Ã£â€šÂ¤Ã£Æ’â€”',
+        'pickup': 'Ã¤Â¹â€”Ã¨Â»Å Ã¥Â Â´Ã¦â€°â‚¬',
+        'dropoff': 'Ã©â„¢ÂÃ¨Â»Å Ã¥Â Â´Ã¦â€°â‚¬',
+        'date': 'Ã¦â€”Â¥Ã¤Â»Ëœ',
+        'time': 'Ã¦â„¢â€šÃ©â€“â€œ',
+        'passengers': 'Ã¤Â¹â€”Ã¥Â®Â¢Ã¦â€¢Â°',
+        'total': 'Ã¥ÂË†Ã¨Â¨Ë†Ã©â€¡â€˜Ã©Â¡Â',
+        'contact_intro': 'Ã¤Â¹â€”Ã¨Â»Å Ã¦â„¢â€šÃ©â€“â€œÃ£ÂÅ’Ã¨Â¿â€˜Ã£ÂÂ¥Ã£ÂÂÃ£ÂÂ¾Ã£Ââ€”Ã£ÂÅ¸Ã£â€šâ€°Ã£â‚¬ÂÃ¨Â©Â³Ã§Â´Â°Ã§Â¢ÂºÃ¨ÂªÂÃ£ÂÂ®Ã£ÂÅ¸Ã£â€šÂÃ£Ââ€Ã©â‚¬Â£Ã§ÂµÂ¡Ã£Ââ€žÃ£ÂÅ¸Ã£Ââ€”Ã£ÂÂ¾Ã£Ââ„¢Ã£â‚¬â€š',
+        'contact': 'Ã£Ââ€Ã¨Â³ÂªÃ¥â€¢ÂÃ£ÂÅ’Ã£Ââ€Ã£Ââ€“Ã£Ââ€žÃ£ÂÂ¾Ã£Ââ€”Ã£ÂÅ¸Ã£â€šâ€°Ã£â‚¬ÂÃ£ÂÅ Ã¥â€¢ÂÃ£Ââ€žÃ¥ÂË†Ã£â€šÂÃ£Ââ€ºÃ£ÂÂÃ£ÂÂ Ã£Ââ€¢Ã£Ââ€ž',
+        'or_call': 'Ã£ÂÂ¾Ã£ÂÅ¸Ã£ÂÂ¯Ã£ÂÅ Ã©â€ºÂ»Ã¨Â©Â±Ã£ÂÂÃ£ÂÂ Ã£Ââ€¢Ã£Ââ€ž',
+        'thanks': 'BookaRideÃ£â€šâ€™Ã£Ââ€Ã¥Ë†Â©Ã§â€Â¨Ã£Ââ€žÃ£ÂÅ¸Ã£ÂÂ Ã£ÂÂÃ£Ââ€šÃ£â€šÅ Ã£ÂÅ’Ã£ÂÂ¨Ã£Ââ€ Ã£Ââ€Ã£Ââ€“Ã£Ââ€žÃ£ÂÂ¾Ã£Ââ„¢Ã¯Â¼Â'
     },
     'ko': {
-        'subject': 'ì˜ˆì•½ í™•ì¸',
-        'confirmed': 'ì˜ˆì•½ì´ í™•ì •ë˜ì—ˆìŠµë‹ˆë‹¤!',
-        'greeting': 'ê³ ê°ë‹˜ê»˜',
-        'intro': 'ì˜ˆì•½ì´ í™•ì •ë˜ì—ˆìŠµë‹ˆë‹¤. ì˜ˆì•½ ìƒì„¸ ì •ë³´ëŠ” ë‹¤ìŒê³¼ ê°™ìŠµë‹ˆë‹¤:',
-        'reference': 'ì˜ˆì•½ ë²ˆí˜¸',
-        'service': 'ì„œë¹„ìŠ¤ ìœ í˜•',
-        'pickup': 'íƒ‘ìŠ¹ ìœ„ì¹˜',
-        'dropoff': 'í•˜ì°¨ ìœ„ì¹˜',
-        'date': 'ë‚ ì§œ',
-        'time': 'ì‹œê°„',
-        'passengers': 'ìŠ¹ê° ìˆ˜',
-        'total': 'ì´ ê²°ì œ ê¸ˆì•¡',
-        'contact_intro': 'íƒ‘ìŠ¹ ì‹œê°„ì´ ê°€ê¹Œì›Œì§€ë©´ ëª¨ë“  ì„¸ë¶€ ì‚¬í•­ì„ í™•ì¸í•˜ê¸° ìœ„í•´ ì—°ë½ë“œë¦¬ê² ìŠµë‹ˆë‹¤.',
-        'contact': 'ë¬¸ì˜ì‚¬í•­ì´ ìžˆìœ¼ì‹œë©´ ì—°ë½ì£¼ì„¸ìš”',
-        'or_call': 'ë˜ëŠ” ì „í™”ì£¼ì„¸ìš”',
-        'thanks': 'BookaRideë¥¼ ì´ìš©í•´ ì£¼ì…”ì„œ ê°ì‚¬í•©ë‹ˆë‹¤!'
+        'subject': 'Ã¬ËœË†Ã¬â€¢Â½ Ã­â„¢â€¢Ã¬ÂÂ¸',
+        'confirmed': 'Ã¬ËœË†Ã¬â€¢Â½Ã¬ÂÂ´ Ã­â„¢â€¢Ã¬Â â€¢Ã«ÂËœÃ¬â€”Ë†Ã¬Å ÂµÃ«â€¹Ë†Ã«â€¹Â¤!',
+        'greeting': 'ÃªÂ³Â ÃªÂ°ÂÃ«â€¹ËœÃªÂ»Ëœ',
+        'intro': 'Ã¬ËœË†Ã¬â€¢Â½Ã¬ÂÂ´ Ã­â„¢â€¢Ã¬Â â€¢Ã«ÂËœÃ¬â€”Ë†Ã¬Å ÂµÃ«â€¹Ë†Ã«â€¹Â¤. Ã¬ËœË†Ã¬â€¢Â½ Ã¬Æ’ÂÃ¬â€žÂ¸ Ã¬Â â€¢Ã«Â³Â´Ã«Å â€ Ã«â€¹Â¤Ã¬ÂÅ’ÃªÂ³Â¼ ÃªÂ°â„¢Ã¬Å ÂµÃ«â€¹Ë†Ã«â€¹Â¤:',
+        'reference': 'Ã¬ËœË†Ã¬â€¢Â½ Ã«Â²Ë†Ã­ËœÂ¸',
+        'service': 'Ã¬â€žÅ“Ã«Â¹â€žÃ¬Å Â¤ Ã¬Å“Â Ã­Ëœâ€¢',
+        'pickup': 'Ã­Æ’â€˜Ã¬Å Â¹ Ã¬Å“â€žÃ¬Â¹Ëœ',
+        'dropoff': 'Ã­â€¢ËœÃ¬Â°Â¨ Ã¬Å“â€žÃ¬Â¹Ëœ',
+        'date': 'Ã«â€šÂ Ã¬Â§Å“',
+        'time': 'Ã¬â€¹Å“ÃªÂ°â€ž',
+        'passengers': 'Ã¬Å Â¹ÃªÂ°Â Ã¬Ë†Ëœ',
+        'total': 'Ã¬Â´Â ÃªÂ²Â°Ã¬Â Å“ ÃªÂ¸Ë†Ã¬â€¢Â¡',
+        'contact_intro': 'Ã­Æ’â€˜Ã¬Å Â¹ Ã¬â€¹Å“ÃªÂ°â€žÃ¬ÂÂ´ ÃªÂ°â‚¬ÃªÂ¹Å’Ã¬â€ºÅ’Ã¬Â§â‚¬Ã«Â©Â´ Ã«ÂªÂ¨Ã«â€œÂ  Ã¬â€žÂ¸Ã«Â¶â‚¬ Ã¬â€šÂ¬Ã­â€¢Â­Ã¬Ââ€ž Ã­â„¢â€¢Ã¬ÂÂ¸Ã­â€¢ËœÃªÂ¸Â° Ã¬Å“â€žÃ­â€¢Â´ Ã¬â€”Â°Ã«ÂÂ½Ã«â€œÅ“Ã«Â¦Â¬ÃªÂ²Â Ã¬Å ÂµÃ«â€¹Ë†Ã«â€¹Â¤.',
+        'contact': 'Ã«Â¬Â¸Ã¬ÂËœÃ¬â€šÂ¬Ã­â€¢Â­Ã¬ÂÂ´ Ã¬Å¾Ë†Ã¬Å“Â¼Ã¬â€¹Å“Ã«Â©Â´ Ã¬â€”Â°Ã«ÂÂ½Ã¬Â£Â¼Ã¬â€žÂ¸Ã¬Å¡â€',
+        'or_call': 'Ã«ËœÂÃ«Å â€ Ã¬Â â€žÃ­â„¢â€Ã¬Â£Â¼Ã¬â€žÂ¸Ã¬Å¡â€',
+        'thanks': 'BookaRideÃ«Â¥Â¼ Ã¬ÂÂ´Ã¬Å¡Â©Ã­â€¢Â´ Ã¬Â£Â¼Ã¬â€¦â€Ã¬â€žÅ“ ÃªÂ°ÂÃ¬â€šÂ¬Ã­â€¢Â©Ã«â€¹Ë†Ã«â€¹Â¤!'
     },
     'fr': {
-        'subject': 'Confirmation de RÃ©servation',
-        'confirmed': 'RÃ©servation ConfirmÃ©e!',
+        'subject': 'Confirmation de RÃƒÂ©servation',
+        'confirmed': 'RÃƒÂ©servation ConfirmÃƒÂ©e!',
         'greeting': 'Cher',
-        'intro': 'Votre trajet a Ã©tÃ© confirmÃ©. Voici les dÃ©tails de votre rÃ©servation:',
-        'reference': 'RÃ©fÃ©rence de RÃ©servation',
+        'intro': 'Votre trajet a ÃƒÂ©tÃƒÂ© confirmÃƒÂ©. Voici les dÃƒÂ©tails de votre rÃƒÂ©servation:',
+        'reference': 'RÃƒÂ©fÃƒÂ©rence de RÃƒÂ©servation',
         'service': 'Type de Service',
         'pickup': 'Lieu de Prise en Charge',
-        'dropoff': 'Lieu de DÃ©pose',
+        'dropoff': 'Lieu de DÃƒÂ©pose',
         'date': 'Date',
         'time': 'Heure',
         'passengers': 'Passagers',
-        'total': 'Total PayÃ©',
-        'contact_intro': 'Nous vous contacterons avant votre heure de prise en charge pour confirmer tous les dÃ©tails.',
-        'contact': 'Pour toute question, veuillez nous contacter Ã ',
+        'total': 'Total PayÃƒÂ©',
+        'contact_intro': 'Nous vous contacterons avant votre heure de prise en charge pour confirmer tous les dÃƒÂ©tails.',
+        'contact': 'Pour toute question, veuillez nous contacter ÃƒÂ ',
         'or_call': 'ou appelez',
         'thanks': 'Merci d\'avoir choisi BookaRide!'
     },
     'hi': {
-        'subject': 'à¤¬à¥à¤•à¤¿à¤‚à¤— à¤ªà¥à¤·à¥à¤Ÿà¤¿',
-        'confirmed': 'à¤¬à¥à¤•à¤¿à¤‚à¤— à¤•à¥€ à¤ªà¥à¤·à¥à¤Ÿà¤¿ à¤¹à¥‹ à¤—à¤ˆ!',
-        'greeting': 'à¤ªà¥à¤°à¤¿à¤¯',
-        'intro': 'à¤†à¤ªà¤•à¥€ à¤°à¤¾à¤‡à¤¡ à¤•à¥€ à¤ªà¥à¤·à¥à¤Ÿà¤¿ à¤¹à¥‹ à¤—à¤ˆ à¤¹à¥ˆà¥¤ à¤¯à¤¹à¤¾à¤‚ à¤†à¤ªà¤•à¥€ à¤¬à¥à¤•à¤¿à¤‚à¤— à¤µà¤¿à¤µà¤°à¤£ à¤¹à¥ˆà¤‚:',
-        'reference': 'à¤¬à¥à¤•à¤¿à¤‚à¤— à¤¸à¤‚à¤¦à¤°à¥à¤­',
-        'service': 'à¤¸à¥‡à¤µà¤¾ à¤ªà¥à¤°à¤•à¤¾à¤°',
-        'pickup': 'à¤ªà¤¿à¤•à¤…à¤ª',
-        'dropoff': 'à¤¡à¥à¤°à¥‰à¤ª-à¤‘à¤«',
-        'date': 'à¤¤à¤¾à¤°à¥€à¤–',
-        'time': 'à¤¸à¤®à¤¯',
-        'passengers': 'à¤¯à¤¾à¤¤à¥à¤°à¥€',
-        'total': 'à¤•à¥à¤² à¤­à¥à¤—à¤¤à¤¾à¤¨',
-        'contact_intro': 'à¤¹à¤® à¤†à¤ªà¤•à¥‡ à¤ªà¤¿à¤•à¤…à¤ª à¤¸à¤®à¤¯ à¤¸à¥‡ à¤ªà¤¹à¤²à¥‡ à¤¸à¤­à¥€ à¤µà¤¿à¤µà¤°à¤£à¥‹à¤‚ à¤•à¥€ à¤ªà¥à¤·à¥à¤Ÿà¤¿ à¤•à¥‡ à¤²à¤¿à¤ à¤¸à¤‚à¤ªà¤°à¥à¤• à¤•à¤°à¥‡à¤‚à¤—à¥‡à¥¤',
-        'contact': 'à¤¯à¤¦à¤¿ à¤†à¤ªà¤•à¥‡ à¤•à¥‹à¤ˆ à¤ªà¥à¤°à¤¶à¥à¤¨ à¤¹à¥ˆà¤‚, à¤¤à¥‹ à¤•à¥ƒà¤ªà¤¯à¤¾ à¤¹à¤®à¤¸à¥‡ à¤¸à¤‚à¤ªà¤°à¥à¤• à¤•à¤°à¥‡à¤‚',
-        'or_call': 'à¤¯à¤¾ à¤•à¥‰à¤² à¤•à¤°à¥‡à¤‚',
-        'thanks': 'BookaRide à¤šà¥à¤¨à¤¨à¥‡ à¤•à¥‡ à¤²à¤¿à¤ à¤§à¤¨à¥à¤¯à¤µà¤¾à¤¦!'
+        'subject': 'Ã Â¤Â¬Ã Â¥ÂÃ Â¤â€¢Ã Â¤Â¿Ã Â¤â€šÃ Â¤â€” Ã Â¤ÂªÃ Â¥ÂÃ Â¤Â·Ã Â¥ÂÃ Â¤Å¸Ã Â¤Â¿',
+        'confirmed': 'Ã Â¤Â¬Ã Â¥ÂÃ Â¤â€¢Ã Â¤Â¿Ã Â¤â€šÃ Â¤â€” Ã Â¤â€¢Ã Â¥â‚¬ Ã Â¤ÂªÃ Â¥ÂÃ Â¤Â·Ã Â¥ÂÃ Â¤Å¸Ã Â¤Â¿ Ã Â¤Â¹Ã Â¥â€¹ Ã Â¤â€”Ã Â¤Ë†!',
+        'greeting': 'Ã Â¤ÂªÃ Â¥ÂÃ Â¤Â°Ã Â¤Â¿Ã Â¤Â¯',
+        'intro': 'Ã Â¤â€ Ã Â¤ÂªÃ Â¤â€¢Ã Â¥â‚¬ Ã Â¤Â°Ã Â¤Â¾Ã Â¤â€¡Ã Â¤Â¡ Ã Â¤â€¢Ã Â¥â‚¬ Ã Â¤ÂªÃ Â¥ÂÃ Â¤Â·Ã Â¥ÂÃ Â¤Å¸Ã Â¤Â¿ Ã Â¤Â¹Ã Â¥â€¹ Ã Â¤â€”Ã Â¤Ë† Ã Â¤Â¹Ã Â¥Ë†Ã Â¥Â¤ Ã Â¤Â¯Ã Â¤Â¹Ã Â¤Â¾Ã Â¤â€š Ã Â¤â€ Ã Â¤ÂªÃ Â¤â€¢Ã Â¥â‚¬ Ã Â¤Â¬Ã Â¥ÂÃ Â¤â€¢Ã Â¤Â¿Ã Â¤â€šÃ Â¤â€” Ã Â¤ÂµÃ Â¤Â¿Ã Â¤ÂµÃ Â¤Â°Ã Â¤Â£ Ã Â¤Â¹Ã Â¥Ë†Ã Â¤â€š:',
+        'reference': 'Ã Â¤Â¬Ã Â¥ÂÃ Â¤â€¢Ã Â¤Â¿Ã Â¤â€šÃ Â¤â€” Ã Â¤Â¸Ã Â¤â€šÃ Â¤Â¦Ã Â¤Â°Ã Â¥ÂÃ Â¤Â­',
+        'service': 'Ã Â¤Â¸Ã Â¥â€¡Ã Â¤ÂµÃ Â¤Â¾ Ã Â¤ÂªÃ Â¥ÂÃ Â¤Â°Ã Â¤â€¢Ã Â¤Â¾Ã Â¤Â°',
+        'pickup': 'Ã Â¤ÂªÃ Â¤Â¿Ã Â¤â€¢Ã Â¤â€¦Ã Â¤Âª',
+        'dropoff': 'Ã Â¤Â¡Ã Â¥ÂÃ Â¤Â°Ã Â¥â€°Ã Â¤Âª-Ã Â¤â€˜Ã Â¤Â«',
+        'date': 'Ã Â¤Â¤Ã Â¤Â¾Ã Â¤Â°Ã Â¥â‚¬Ã Â¤â€“',
+        'time': 'Ã Â¤Â¸Ã Â¤Â®Ã Â¤Â¯',
+        'passengers': 'Ã Â¤Â¯Ã Â¤Â¾Ã Â¤Â¤Ã Â¥ÂÃ Â¤Â°Ã Â¥â‚¬',
+        'total': 'Ã Â¤â€¢Ã Â¥ÂÃ Â¤Â² Ã Â¤Â­Ã Â¥ÂÃ Â¤â€”Ã Â¤Â¤Ã Â¤Â¾Ã Â¤Â¨',
+        'contact_intro': 'Ã Â¤Â¹Ã Â¤Â® Ã Â¤â€ Ã Â¤ÂªÃ Â¤â€¢Ã Â¥â€¡ Ã Â¤ÂªÃ Â¤Â¿Ã Â¤â€¢Ã Â¤â€¦Ã Â¤Âª Ã Â¤Â¸Ã Â¤Â®Ã Â¤Â¯ Ã Â¤Â¸Ã Â¥â€¡ Ã Â¤ÂªÃ Â¤Â¹Ã Â¤Â²Ã Â¥â€¡ Ã Â¤Â¸Ã Â¤Â­Ã Â¥â‚¬ Ã Â¤ÂµÃ Â¤Â¿Ã Â¤ÂµÃ Â¤Â°Ã Â¤Â£Ã Â¥â€¹Ã Â¤â€š Ã Â¤â€¢Ã Â¥â‚¬ Ã Â¤ÂªÃ Â¥ÂÃ Â¤Â·Ã Â¥ÂÃ Â¤Å¸Ã Â¤Â¿ Ã Â¤â€¢Ã Â¥â€¡ Ã Â¤Â²Ã Â¤Â¿Ã Â¤Â Ã Â¤Â¸Ã Â¤â€šÃ Â¤ÂªÃ Â¤Â°Ã Â¥ÂÃ Â¤â€¢ Ã Â¤â€¢Ã Â¤Â°Ã Â¥â€¡Ã Â¤â€šÃ Â¤â€”Ã Â¥â€¡Ã Â¥Â¤',
+        'contact': 'Ã Â¤Â¯Ã Â¤Â¦Ã Â¤Â¿ Ã Â¤â€ Ã Â¤ÂªÃ Â¤â€¢Ã Â¥â€¡ Ã Â¤â€¢Ã Â¥â€¹Ã Â¤Ë† Ã Â¤ÂªÃ Â¥ÂÃ Â¤Â°Ã Â¤Â¶Ã Â¥ÂÃ Â¤Â¨ Ã Â¤Â¹Ã Â¥Ë†Ã Â¤â€š, Ã Â¤Â¤Ã Â¥â€¹ Ã Â¤â€¢Ã Â¥Æ’Ã Â¤ÂªÃ Â¤Â¯Ã Â¤Â¾ Ã Â¤Â¹Ã Â¤Â®Ã Â¤Â¸Ã Â¥â€¡ Ã Â¤Â¸Ã Â¤â€šÃ Â¤ÂªÃ Â¤Â°Ã Â¥ÂÃ Â¤â€¢ Ã Â¤â€¢Ã Â¤Â°Ã Â¥â€¡Ã Â¤â€š',
+        'or_call': 'Ã Â¤Â¯Ã Â¤Â¾ Ã Â¤â€¢Ã Â¥â€°Ã Â¤Â² Ã Â¤â€¢Ã Â¤Â°Ã Â¥â€¡Ã Â¤â€š',
+        'thanks': 'BookaRide Ã Â¤Å¡Ã Â¥ÂÃ Â¤Â¨Ã Â¤Â¨Ã Â¥â€¡ Ã Â¤â€¢Ã Â¥â€¡ Ã Â¤Â²Ã Â¤Â¿Ã Â¤Â Ã Â¤Â§Ã Â¤Â¨Ã Â¥ÂÃ Â¤Â¯Ã Â¤ÂµÃ Â¤Â¾Ã Â¤Â¦!'
     }
 }
 
@@ -2230,7 +2230,7 @@ def send_booking_confirmation_sms(booking: dict):
             return_date = format_date_ddmmyyyy(booking.get('returnDate', ''))
             return_time = format_time_ampm(booking.get('returnTime', ''))
             return_flight = booking.get('returnFlightNumber') or booking.get('returnDepartureFlightNumber') or ''
-            return_text = f"\n\nðŸ”„ Return: {return_date} at {return_time}"
+            return_text = f"\n\nÃ°Å¸â€â€ž Return: {return_date} at {return_time}"
             if return_flight:
                 return_text += f"\nReturn Flight: {return_flight}"
         
@@ -2253,7 +2253,7 @@ Thank you for booking with us!"""
             logger.warning("No phone number provided for confirmation SMS")
             return False
         
-        logger.info(f"ðŸ“± Sending confirmation SMS to: {formatted_phone}")
+        logger.info(f"Ã°Å¸â€œÂ± Sending confirmation SMS to: {formatted_phone}")
         
         message = client.messages.create(
             body=message_body,
@@ -2261,7 +2261,7 @@ Thank you for booking with us!"""
             to=formatted_phone
         )
         
-        logger.info(f"âœ… Confirmation SMS sent to {formatted_phone} - SID: {message.sid}")
+        logger.info(f"Ã¢Å“â€¦ Confirmation SMS sent to {formatted_phone} - SID: {message.sid}")
         return True
         
     except Exception as e:
@@ -2309,7 +2309,7 @@ def send_customer_confirmation(booking: dict):
                 }}
             )
             sync_client.close()
-            logger.info(f"âœ… Confirmation status updated for booking {booking_id}")
+            logger.info(f"Ã¢Å“â€¦ Confirmation status updated for booking {booking_id}")
         except Exception as e:
             logger.error(f"Error updating confirmation status: {e}")
     
@@ -2333,7 +2333,7 @@ async def update_confirmation_status(booking_id: str, results: dict):
             {"id": booking_id},
             {"$set": update_data}
         )
-        logger.info(f"âœ… Confirmation status updated for booking {booking_id}")
+        logger.info(f"Ã¢Å“â€¦ Confirmation status updated for booking {booking_id}")
     except Exception as e:
         logger.error(f"Error updating confirmation status: {e}")
 
@@ -2344,7 +2344,7 @@ def send_reminder_email(booking: dict):
         # SAFETY CHECK: Don't send reminders for cancelled bookings
         booking_status = booking.get('status', '').lower()
         if booking_status in ['cancelled', 'canceled', 'deleted']:
-            logger.warning(f"âš ï¸ Skipping reminder email for CANCELLED booking: {booking.get('name')} (Ref: {booking.get('referenceNumber')})")
+            logger.warning(f"Ã¢Å¡Â Ã¯Â¸Â Skipping reminder email for CANCELLED booking: {booking.get('name')} (Ref: {booking.get('referenceNumber')})")
             return False
         
         mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
@@ -2383,7 +2383,7 @@ def send_reminder_email(booking: dict):
             airport_instructions = f'''
                     <div style="background: linear-gradient(135deg, #1a365d 0%, #2c5282 100%); border-radius: 12px; padding: 25px; margin: 25px 0; color: white;">
                         <h3 style="margin: 0 0 15px 0; font-size: 18px; display: flex; align-items: center;">
-                            âœˆï¸ INTERNATIONAL ARRIVALS - MEETING POINT
+                            Ã¢Å“Ë†Ã¯Â¸Â INTERNATIONAL ARRIVALS - MEETING POINT
                         </h3>
                         
                         <div style="background: rgba(255,255,255,0.1); border-radius: 8px; padding: 15px; margin-bottom: 15px;">
@@ -2457,7 +2457,7 @@ def send_reminder_email(booking: dict):
                     <p style="color: #333; font-size: 15px;">This is a friendly reminder that your transfer is scheduled for <strong>tomorrow</strong>. Please find your booking details and pickup instructions below.</p>
                     
                     <div style="background: #faf8f3; border-radius: 10px; padding: 20px; margin: 20px 0; border: 1px solid #e8e4d9;">
-                        <h3 style="margin: 0 0 15px 0; color: #1a1a1a; font-size: 16px;">ðŸ“‹ BOOKING DETAILS</h3>
+                        <h3 style="margin: 0 0 15px 0; color: #1a1a1a; font-size: 16px;">Ã°Å¸â€œâ€¹ BOOKING DETAILS</h3>
                         <table style="width: 100%; font-size: 14px; color: #333;">
                             <tr><td style="padding: 5px 0; width: 120px;"><strong>Reference:</strong></td><td>{booking_ref}</td></tr>
                             <tr><td style="padding: 5px 0;"><strong>Date:</strong></td><td>{formatted_date}</td></tr>
@@ -2524,7 +2524,7 @@ def send_reminder_sms(booking: dict):
         # SAFETY CHECK: Don't send reminders for cancelled bookings
         booking_status = booking.get('status', '').lower()
         if booking_status in ['cancelled', 'canceled', 'deleted']:
-            logger.warning(f"âš ï¸ Skipping reminder SMS for CANCELLED booking: {booking.get('name')} (Ref: {booking.get('referenceNumber')})")
+            logger.warning(f"Ã¢Å¡Â Ã¯Â¸Â Skipping reminder SMS for CANCELLED booking: {booking.get('name')} (Ref: {booking.get('referenceNumber')})")
             return False
         
         account_sid = os.environ.get('TWILIO_ACCOUNT_SID')
@@ -2559,8 +2559,8 @@ Your driver will hold either a BOOK A RIDE sign or an iPad with your name.
 DIRECTIONS:
 1. Exit Customs into Arrivals Hall
 2. TURN LEFT immediately  
-3. Walk to Allpress Espresso CafÃ©
-4. All drivers wait in front of the cafÃ©
+3. Walk to Allpress Espresso CafÃƒÂ©
+4. All drivers wait in front of the cafÃƒÂ©
 
 Ref: {booking_ref}
 Questions? +64 21 743 321"""
@@ -2584,7 +2584,7 @@ Questions? +64 21 743 321"""
             logger.warning("No phone number for reminder SMS")
             return False
         
-        logger.info(f"ðŸ“± Sending reminder SMS to: {formatted_phone}")
+        logger.info(f"Ã°Å¸â€œÂ± Sending reminder SMS to: {formatted_phone}")
         
         message = client.messages.create(
             body=message_body,
@@ -2592,7 +2592,7 @@ Questions? +64 21 743 321"""
             to=formatted_phone
         )
         
-        logger.info(f"âœ… Reminder SMS sent to {formatted_phone} - SID: {message.sid}")
+        logger.info(f"Ã¢Å“â€¦ Reminder SMS sent to {formatted_phone} - SID: {message.sid}")
         return True
         
     except Exception as e:
@@ -2810,7 +2810,7 @@ async def track_flight(flight_number: str):
             else:
                 message = "We're monitoring this flight. Your driver will be notified of any changes."
         
-        logger.info(f"âœˆï¸ Flight {fn}: {status} - Arriving {arr_code} at {format_time(arr_actual)}")
+        logger.info(f"Ã¢Å“Ë†Ã¯Â¸Â Flight {fn}: {status} - Arriving {arr_code} at {format_time(arr_actual)}")
         
         return {
             "flightNumber": fn,
@@ -2931,7 +2931,7 @@ async def handle_incoming_email(request: Request):
         name_match = re.match(r'^([^<]+)', from_email)
         sender_name = name_match.group(1).strip() if name_match else "there"
         
-        logger.info(f"ðŸ“§ Incoming email from: {reply_to_email}, Subject: {subject}")
+        logger.info(f"Ã°Å¸â€œÂ§ Incoming email from: {reply_to_email}, Subject: {subject}")
         
         # Don't reply to our own emails or no-reply addresses
         if 'bookaride' in reply_to_email.lower() or 'noreply' in reply_to_email.lower() or 'no-reply' in reply_to_email.lower():
@@ -3057,7 +3057,7 @@ Write a professional, helpful response:"""
         )
         
         if response.status_code == 200:
-            logger.info(f"âœ… AI auto-reply sent to {reply_to_email}")
+            logger.info(f"Ã¢Å“â€¦ AI auto-reply sent to {reply_to_email}")
             
             # Store the email interaction for admin review
             await db.email_logs.insert_one({
@@ -3182,7 +3182,7 @@ async def send_abandoned_booking_emails():
                 dropoff = booking.get('dropoff', 'your destination')
                 price = booking.get('price')
                 
-                subject = "Complete Your BookaRide Booking ðŸš—"
+                subject = "Complete Your BookaRide Booking Ã°Å¸Å¡â€”"
                 
                 price_text = f"Your quote was ${price:.2f}" if price else "Get your instant quote"
                 
@@ -3205,7 +3205,7 @@ async def send_abandoned_booking_emails():
                         <div style="text-align: center; margin: 30px 0;">
                             <a href="https://bookaride.co.nz/book-now" 
                                style="background: #D4AF37; color: #000; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
-                                Complete Your Booking â†’
+                                Complete Your Booking Ã¢â€ â€™
                             </a>
                         </div>
                         <p style="color: #999; font-size: 14px; text-align: center;">
@@ -3213,7 +3213,7 @@ async def send_abandoned_booking_emails():
                         </p>
                     </div>
                     <div style="background: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; color: #666;">
-                        <p>Â© BookaRide NZ | Auckland Airport Transfers</p>
+                        <p>Ã‚Â© BookaRide NZ | Auckland Airport Transfers</p>
                     </div>
                 </div>
                 """
@@ -3294,7 +3294,7 @@ EXAMPLE PRICE RANGES (but always direct them to enter addresses for exact price)
 YOUR STYLE:
 - Be warm, friendly and professional
 - Keep responses concise (2-3 sentences when possible)
-- Use emojis sparingly but naturally ðŸš—
+- Use emojis sparingly but naturally Ã°Å¸Å¡â€”
 - ALWAYS explain we need their exact addresses to give a precise price (because we use Google Maps per-kilometer pricing)
 - Direct them to bookaride.co.nz/book-now - they just enter pickup & dropoff to see the exact price instantly
 - For questions you can't answer, suggest they email info@bookaride.co.nz
@@ -3328,7 +3328,7 @@ Respond helpfully and naturally as the BookaRide assistant:"""
         logger.error(f"Chatbot error: {str(e)}")
         # Fallback response
         return {
-            "response": "I apologize, I'm having a brief technical issue. For immediate assistance, please call us at 0800 BOOK A RIDE or visit bookaride.co.nz/book-now to make a booking. We're here to help! ðŸš—"
+            "response": "I apologize, I'm having a brief technical issue. For immediate assistance, please call us at 0800 BOOK A RIDE or visit bookaride.co.nz/book-now to make a booking. We're here to help! Ã°Å¸Å¡â€”"
         }
 
 
@@ -3344,7 +3344,7 @@ async def send_daily_reminders_core(source: str = "unknown"):
     
     # Use lock to prevent multiple concurrent reminder runs
     if reminder_lock.locked():
-        logger.info(f"ðŸ”’ [{source}] Reminder job already running, skipping to prevent duplicates")
+        logger.info(f"Ã°Å¸â€â€™ [{source}] Reminder job already running, skipping to prevent duplicates")
         return {"success": True, "reminders_sent": 0, "skipped": 0, "source": source, "status": "skipped_locked"}
     
     async with reminder_lock:
@@ -3355,7 +3355,7 @@ async def send_daily_reminders_core(source: str = "unknown"):
             nz_today = nz_now.strftime('%Y-%m-%d')
             nz_tomorrow = (nz_now + timedelta(days=1)).strftime('%Y-%m-%d')
             
-            logger.info(f"ðŸ”” [{source}] Checking reminders - NZ time: {nz_now.strftime('%Y-%m-%d %H:%M:%S')}, Tomorrow: {nz_tomorrow}")
+            logger.info(f"Ã°Å¸â€â€ [{source}] Checking reminders - NZ time: {nz_now.strftime('%Y-%m-%d %H:%M:%S')}, Tomorrow: {nz_tomorrow}")
             
             # Find all confirmed bookings for tomorrow that HAVEN'T been marked yet
             # Use atomic query to only get bookings that need reminders
@@ -3365,7 +3365,7 @@ async def send_daily_reminders_core(source: str = "unknown"):
                 "reminderSentForDate": {"$ne": nz_tomorrow}  # Not already sent for tomorrow
             }, {"_id": 0}).to_list(100)
             
-            logger.info(f"ðŸ”” [{source}] Found {len(bookings)} bookings needing reminders for {nz_tomorrow}")
+            logger.info(f"Ã°Å¸â€â€ [{source}] Found {len(bookings)} bookings needing reminders for {nz_tomorrow}")
             
             sent_count = 0
             skipped_count = 0
@@ -3391,7 +3391,7 @@ async def send_daily_reminders_core(source: str = "unknown"):
                 # If no document was updated, another process got there first
                 if update_result.modified_count == 0:
                     skipped_count += 1
-                    logger.debug(f"â­ï¸ Skipping {booking_name} - already being processed by another job")
+                    logger.debug(f"Ã¢ÂÂ­Ã¯Â¸Â Skipping {booking_name} - already being processed by another job")
                     continue
                 
                 # Now send the notifications
@@ -3403,13 +3403,13 @@ async def send_daily_reminders_core(source: str = "unknown"):
                     if booking.get('email'):
                         email_sent = send_reminder_email(booking)
                         if email_sent:
-                            logger.info(f"âœ‰ï¸ Reminder email sent to {booking.get('email')}")
+                            logger.info(f"Ã¢Å“â€°Ã¯Â¸Â Reminder email sent to {booking.get('email')}")
                     
                     # Send SMS reminder
                     if booking.get('phone'):
                         sms_sent = send_reminder_sms(booking)
                         if sms_sent:
-                            logger.info(f"ðŸ“± Reminder SMS sent to {booking.get('phone')}")
+                            logger.info(f"Ã°Å¸â€œÂ± Reminder SMS sent to {booking.get('phone')}")
                     
                     # Update with completion status
                     await db.bookings.update_one(
@@ -3430,7 +3430,7 @@ async def send_daily_reminders_core(source: str = "unknown"):
                         skipped_count += 1
                         
                 except Exception as send_error:
-                    logger.error(f"âŒ Error sending reminder to {booking_name}: {str(send_error)}")
+                    logger.error(f"Ã¢ÂÅ’ Error sending reminder to {booking_name}: {str(send_error)}")
                     # Mark as failed but keep the date so we don't retry indefinitely
                     await db.bookings.update_one(
                         {"id": booking_id},
@@ -3442,11 +3442,11 @@ async def send_daily_reminders_core(source: str = "unknown"):
                     )
                     skipped_count += 1
             
-            logger.info(f"âœ… [{source}] Reminders complete: {sent_count} sent, {skipped_count} skipped")
+            logger.info(f"Ã¢Å“â€¦ [{source}] Reminders complete: {sent_count} sent, {skipped_count} skipped")
             return {"success": True, "reminders_sent": sent_count, "skipped": skipped_count, "source": source}
             
         except Exception as e:
-            logger.error(f"âŒ [{source}] Reminder error: {str(e)}")
+            logger.error(f"Ã¢ÂÅ’ [{source}] Reminder error: {str(e)}")
             raise
 
 
@@ -3494,7 +3494,7 @@ async def send_booking_notification_to_admin(booking: dict):
             <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                 <div style="background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%); color: white; padding: 20px; text-align: center; border-radius: 10px 10px 0 0;">
                     <h1 style="margin: 0;">BookaRide.co.nz</h1>
-                    <p style="margin: 5px 0; font-size: 14px; color: rgba(255,255,255,0.9);">ðŸ”” New Booking Received</p>
+                    <p style="margin: 5px 0; font-size: 14px; color: rgba(255,255,255,0.9);">Ã°Å¸â€â€ New Booking Received</p>
                 </div>
                 
                 <div style="padding: 20px; background-color: #ffffff; border: 1px solid #e8e4d9; border-top: none;">
@@ -3515,15 +3515,15 @@ async def send_booking_notification_to_admin(booking: dict):
                         <p style="margin: 5px 0;"><strong>Passengers:</strong> {booking.get('passengers', 'N/A')}</p>
                         <p style="margin: 5px 0;"><strong>Pickup:</strong> {booking.get('pickupAddress', 'N/A')}</p>
                         <p style="margin: 5px 0;"><strong>Drop-off:</strong> {booking.get('dropoffAddress', 'N/A')}</p>
-                        {'<hr style="border: 0; border-top: 1px solid #e8e4d9; margin: 15px 0;"><div style="background-color: #e3f2fd; padding: 10px; border-radius: 5px; border-left: 4px solid #2196F3;"><p style="margin: 0; font-weight: bold; color: #1565C0;">âœˆï¸ FLIGHT INFORMATION</p><p style="margin: 5px 0 0 0;"><strong>Flight Number:</strong> ' + (booking.get('flightNumber') or booking.get('departureFlightNumber') or booking.get('arrivalFlightNumber') or 'N/A') + '</p></div>' if (booking.get('flightNumber') or booking.get('departureFlightNumber') or booking.get('arrivalFlightNumber')) else ''}
-                        {'<hr style="border: 0; border-top: 1px solid #e8e4d9; margin: 15px 0;"><div style="background-color: #f3e5f5; padding: 10px; border-radius: 5px; border-left: 4px solid #9C27B0;"><p style="margin: 0; font-weight: bold; color: #7B1FA2;">ðŸ”„ RETURN TRIP BOOKED</p><p style="margin: 5px 0 0 0;"><strong>Return Date:</strong> ' + format_date_ddmmyyyy(booking.get('returnDate', '')) + ' at ' + format_time_ampm(booking.get('returnTime', '')) + '</p><p style="margin: 5px 0 0 0;"><strong>Return Flight:</strong> ' + (booking.get('returnFlightNumber') or booking.get('returnDepartureFlightNumber') or 'NOT PROVIDED - FOLLOW UP REQUIRED') + '</p></div>' if booking.get('bookReturn') or booking.get('returnDate') else ''}
+                        {'<hr style="border: 0; border-top: 1px solid #e8e4d9; margin: 15px 0;"><div style="background-color: #e3f2fd; padding: 10px; border-radius: 5px; border-left: 4px solid #2196F3;"><p style="margin: 0; font-weight: bold; color: #1565C0;">Ã¢Å“Ë†Ã¯Â¸Â FLIGHT INFORMATION</p><p style="margin: 5px 0 0 0;"><strong>Flight Number:</strong> ' + (booking.get('flightNumber') or booking.get('departureFlightNumber') or booking.get('arrivalFlightNumber') or 'N/A') + '</p></div>' if (booking.get('flightNumber') or booking.get('departureFlightNumber') or booking.get('arrivalFlightNumber')) else ''}
+                        {'<hr style="border: 0; border-top: 1px solid #e8e4d9; margin: 15px 0;"><div style="background-color: #f3e5f5; padding: 10px; border-radius: 5px; border-left: 4px solid #9C27B0;"><p style="margin: 0; font-weight: bold; color: #7B1FA2;">Ã°Å¸â€â€ž RETURN TRIP BOOKED</p><p style="margin: 5px 0 0 0;"><strong>Return Date:</strong> ' + format_date_ddmmyyyy(booking.get('returnDate', '')) + ' at ' + format_time_ampm(booking.get('returnTime', '')) + '</p><p style="margin: 5px 0 0 0;"><strong>Return Flight:</strong> ' + (booking.get('returnFlightNumber') or booking.get('returnDepartureFlightNumber') or 'NOT PROVIDED - FOLLOW UP REQUIRED') + '</p></div>' if booking.get('bookReturn') or booking.get('returnDate') else ''}
                         <hr style="border: 0; border-top: 2px solid #D4AF37; margin: 15px 0;">
                         <p style="margin: 5px 0; font-size: 18px;"><strong>Total:</strong> <span style="color: #D4AF37;">${total_price:.2f} NZD</span></p>
                         <p style="margin: 5px 0;"><strong>Payment Status:</strong> {booking.get('payment_status', 'N/A')}</p>
                     </div>
                     
                     <div style="margin-top: 20px; padding: 15px; background-color: #fff8e6; border-radius: 8px; border-left: 4px solid #D4AF37;">
-                        <p style="margin: 0; font-weight: bold; color: #333;">âš¡ Action Required:</p>
+                        <p style="margin: 0; font-weight: bold; color: #333;">Ã¢Å¡Â¡ Action Required:</p>
                         <p style="margin: 5px 0 0 0; font-size: 14px;">Review and assign a driver in your <a href="https://bookaride.co.nz/admin/login" style="color: #D4AF37; text-decoration: none; font-weight: bold;">Admin Dashboard</a></p>
                     </div>
                 </div>
@@ -3543,7 +3543,7 @@ async def send_booking_notification_to_admin(booking: dict):
             data={
                 "from": f"BookaRide System <{sender_email}>",
                 "to": admin_email,
-                "subject": f"ðŸ”” New Booking - {booking.get('name', 'Customer')} - {formatted_date} - Ref: {booking_ref}",
+                "subject": f"Ã°Å¸â€â€ New Booking - {booking.get('name', 'Customer')} - {formatted_date} - Ref: {booking_ref}",
                 "html": html_content
             }
         )
@@ -3573,14 +3573,14 @@ async def send_booking_notification_to_admin(booking: dict):
             formatted_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
             formatted_time = format_time_ampm(booking.get('time', 'N/A'))
             
-            sms_body = f"ðŸ”” NEW BookaRide: {booking.get('name')} booked for {formatted_date} {formatted_time}. Ref: #{booking_ref}. Check admin dashboard."
+            sms_body = f"Ã°Å¸â€â€ NEW BookaRide: {booking.get('name')} booked for {formatted_date} {formatted_time}. Ref: #{booking_ref}. Check admin dashboard."
             
             client.messages.create(
                 body=sms_body,
                 from_=twilio_from,
                 to=admin_phone
             )
-            logger.info(f"âœ… Admin SMS sent for new booking: #{booking_ref}")
+            logger.info(f"Ã¢Å“â€¦ Admin SMS sent for new booking: #{booking_ref}")
             sms_sent = True
         else:
             logger.warning("Twilio not configured - cannot send admin SMS")
@@ -3613,19 +3613,19 @@ async def send_urgent_approval_notification(booking: dict):
         <html>
             <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                 <div style="background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%); color: white; padding: 20px; text-align: center; border-radius: 10px 10px 0 0;">
-                    <h1 style="margin: 0;">ðŸš¨ URGENT APPROVAL REQUIRED</h1>
+                    <h1 style="margin: 0;">Ã°Å¸Å¡Â¨ URGENT APPROVAL REQUIRED</h1>
                     <p style="margin: 5px 0; font-size: 16px; color: rgba(255,255,255,0.9);">Last-Minute Booking - Pickup Within 24 Hours!</p>
                 </div>
                 
                 <div style="padding: 20px; background-color: #ffffff; border: 1px solid #fca5a5; border-top: none;">
                     <div style="background-color: #fef2f2; padding: 15px; border-radius: 8px; border-left: 4px solid #DC2626; margin-bottom: 20px;">
-                        <p style="margin: 0; font-size: 18px; font-weight: bold; color: #991B1B;">âš ï¸ This booking requires your manual approval</p>
+                        <p style="margin: 0; font-size: 18px; font-weight: bold; color: #991B1B;">Ã¢Å¡Â Ã¯Â¸Â This booking requires your manual approval</p>
                         <p style="margin: 5px 0 0 0; font-size: 14px; color: #7F1D1D;">Customer: {booking.get('name', 'Customer')} | Ref: {booking_ref}</p>
                         <p style="margin: 5px 0 0 0; font-size: 11px; color: #999;">Full ID: {full_booking_id}</p>
                     </div>
                     
                     <div style="background-color: #fff7ed; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f97316;">
-                        <h3 style="margin-top: 0; color: #c2410c;">ðŸ“… Pickup Details</h3>
+                        <h3 style="margin-top: 0; color: #c2410c;">Ã°Å¸â€œâ€¦ Pickup Details</h3>
                         <p style="margin: 5px 0; font-size: 16px;"><strong>Date:</strong> <span style="color: #DC2626; font-weight: bold;">{formatted_date}</span></p>
                         <p style="margin: 5px 0; font-size: 16px;"><strong>Time:</strong> <span style="color: #DC2626; font-weight: bold;">{booking.get('time', 'N/A')}</span></p>
                         <hr style="border: 0; border-top: 1px solid #fed7aa; margin: 15px 0;">
@@ -3642,12 +3642,12 @@ async def send_urgent_approval_notification(booking: dict):
                     </div>
                     
                     <div style="margin-top: 20px; padding: 20px; background-color: #fef2f2; border-radius: 8px; border: 2px solid #DC2626; text-align: center;">
-                        <p style="margin: 0; font-weight: bold; font-size: 16px; color: #991B1B;">ðŸ”” ACTION REQUIRED</p>
+                        <p style="margin: 0; font-weight: bold; font-size: 16px; color: #991B1B;">Ã°Å¸â€â€ ACTION REQUIRED</p>
                         <p style="margin: 10px 0 0 0; font-size: 14px; color: #7F1D1D;">Approve or reject this booking:</p>
                         
                         <div style="margin-top: 20px;">
-                            <a href="https://bookaride.co.nz/api/booking/quick-approve/{booking.get('id')}?action=approve" style="display: inline-block; margin: 5px; padding: 15px 40px; background-color: #16a34a; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">âœ… APPROVE</a>
-                            <a href="https://bookaride.co.nz/api/booking/quick-approve/{booking.get('id')}?action=reject" style="display: inline-block; margin: 5px; padding: 15px 40px; background-color: #DC2626; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">âŒ REJECT</a>
+                            <a href="https://bookaride.co.nz/api/booking/quick-approve/{booking.get('id')}?action=approve" style="display: inline-block; margin: 5px; padding: 15px 40px; background-color: #16a34a; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">Ã¢Å“â€¦ APPROVE</a>
+                            <a href="https://bookaride.co.nz/api/booking/quick-approve/{booking.get('id')}?action=reject" style="display: inline-block; margin: 5px; padding: 15px 40px; background-color: #DC2626; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">Ã¢ÂÅ’ REJECT</a>
                         </div>
                         
                         <p style="margin: 15px 0 0 0; font-size: 12px; color: #7F1D1D;">Or open the admin dashboard for more options:</p>
@@ -3670,7 +3670,7 @@ async def send_urgent_approval_notification(booking: dict):
             data={
                 "from": f"BookaRide URGENT <{sender_email}>",
                 "to": admin_email,
-                "subject": f"ðŸš¨ URGENT APPROVAL - {booking.get('name', 'Customer')} - {formatted_date} {booking.get('time', '')} - Ref: {booking_ref}",
+                "subject": f"Ã°Å¸Å¡Â¨ URGENT APPROVAL - {booking.get('name', 'Customer')} - {formatted_date} {booking.get('time', '')} - Ref: {booking_ref}",
                 "html": html_content
             }
         )
@@ -3707,7 +3707,7 @@ async def send_urgent_approval_notification(booking: dict):
             pickup_short = pickup[:50] + '...' if len(pickup) > 50 else pickup
             dropoff_short = dropoff[:50] + '...' if len(dropoff) > 50 else dropoff
             
-            sms_body = f"""ðŸš¨ URGENT BOOKING #{booking_ref}
+            sms_body = f"""Ã°Å¸Å¡Â¨ URGENT BOOKING #{booking_ref}
 
 Customer: {booking.get('name')}
 Phone: {booking.get('phone')}
@@ -3717,14 +3717,14 @@ Pickup: {pickup_short}
 Dropoff: {dropoff_short}
 Price: ${booking.get('totalPrice', 0):.2f}
 
-âš ï¸ Reply YES to APPROVE or NO to DECLINE"""
+Ã¢Å¡Â Ã¯Â¸Â Reply YES to APPROVE or NO to DECLINE"""
             
             message = client.messages.create(
                 body=sms_body,
                 from_=twilio_from,
                 to=admin_phone
             )
-            logger.info(f"âœ… Urgent SMS sent to admin {admin_phone} for booking: #{booking_ref} - SID: {message.sid}")
+            logger.info(f"Ã¢Å“â€¦ Urgent SMS sent to admin {admin_phone} for booking: #{booking_ref} - SID: {message.sid}")
             
             # Store booking ID in database for SMS reply matching (using sync client)
             try:
@@ -3742,7 +3742,7 @@ Price: ${booking.get('totalPrice', 0):.2f}
                     upsert=True
                 )
                 sync_client.close()
-                logger.info(f"âœ… Stored pending approval for booking #{booking_ref}")
+                logger.info(f"Ã¢Å“â€¦ Stored pending approval for booking #{booking_ref}")
             except Exception as db_error:
                 logger.error(f"Failed to store pending approval: {db_error}")
             
@@ -3765,9 +3765,9 @@ async def send_driver_notification(booking: dict, driver: dict, trip_type: str =
     """
     try:
         # Log incoming data for debugging
-        logger.info(f"ðŸ“§ send_driver_notification called for {trip_type} trip")
-        logger.info(f"ðŸ“§ Booking data: name={booking.get('name')}, phone={booking.get('phone')}, pickup={booking.get('pickupAddress')}, date={booking.get('date')}, time={booking.get('time')}")
-        logger.info(f"ðŸ“§ Driver data: name={driver.get('name')}, email={driver.get('email')}")
+        logger.info(f"Ã°Å¸â€œÂ§ send_driver_notification called for {trip_type} trip")
+        logger.info(f"Ã°Å¸â€œÂ§ Booking data: name={booking.get('name')}, phone={booking.get('phone')}, pickup={booking.get('pickupAddress')}, date={booking.get('date')}, time={booking.get('time')}")
+        logger.info(f"Ã°Å¸â€œÂ§ Driver data: name={driver.get('name')}, email={driver.get('email')}")
         
         # Format date and get references
         formatted_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
@@ -3775,7 +3775,7 @@ async def send_driver_notification(booking: dict, driver: dict, trip_type: str =
         booking_ref = get_booking_reference(booking)
         full_booking_id = get_full_booking_reference(booking)
         
-        logger.info(f"ðŸ“§ Formatted: date={formatted_date}, time={formatted_time}, ref={booking_ref}")
+        logger.info(f"Ã°Å¸â€œÂ§ Formatted: date={formatted_date}, time={formatted_time}, ref={booking_ref}")
         
         # Calculate DRIVER PAYOUT
         # Since Stripe fees are now added to the customer's total, drivers get the full subtotal
@@ -3785,7 +3785,7 @@ async def send_driver_notification(booking: dict, driver: dict, trip_type: str =
         # Check for manual override first
         if booking.get('driver_payout_override') is not None:
             driver_payout = float(booking.get('driver_payout_override'))
-            logger.info(f"ðŸ“§ Using manual driver payout override: ${driver_payout:.2f}")
+            logger.info(f"Ã°Å¸â€œÂ§ Using manual driver payout override: ${driver_payout:.2f}")
         else:
             pricing = booking.get('pricing', {}) if isinstance(booking.get('pricing'), dict) else {}
             # Use subtotal if available (price before Stripe fee), otherwise use totalPrice
@@ -3811,19 +3811,19 @@ async def send_driver_notification(booking: dict, driver: dict, trip_type: str =
                 else:
                     # Split evenly for return bookings without explicit oneWayPrice
                     trip_price = subtotal / 2
-                logger.info(f"ðŸ“§ Return booking: {trip_type} trip price = ${trip_price:.2f} (subtotal ${subtotal:.2f})")
+                logger.info(f"Ã°Å¸â€œÂ§ Return booking: {trip_type} trip price = ${trip_price:.2f} (subtotal ${subtotal:.2f})")
             else:
                 # One-way booking - use full subtotal
                 trip_price = subtotal
             
             # Driver gets the full trip price (Stripe fee is paid by customer on top)
             driver_payout = round(trip_price, 2)
-            logger.info(f"ðŸ“§ Driver gets full subtotal (customer pays Stripe fee separately)")
+            logger.info(f"Ã°Å¸â€œÂ§ Driver gets full subtotal (customer pays Stripe fee separately)")
             
             # Round to 2 decimal places
             driver_payout = round(driver_payout, 2)
         
-        logger.info(f"ðŸ“§ Driver Payout: ${driver_payout:.2f} for {trip_type} trip")
+        logger.info(f"Ã°Å¸â€œÂ§ Driver Payout: ${driver_payout:.2f} for {trip_type} trip")
         
         # Send Email to Driver
         mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
@@ -3857,10 +3857,10 @@ async def send_driver_notification(booking: dict, driver: dict, trip_type: str =
                     formatted_return_time = format_time_ampm(return_time) if return_time else 'TBC'
                     return_html = f"""
                     <div style="background-color: #f3e5f5; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #9C27B0;">
-                        <p style="margin: 0; font-weight: bold; color: #7B1FA2;">ðŸ”„ RETURN TRIP DETAILS</p>
+                        <p style="margin: 0; font-weight: bold; color: #7B1FA2;">Ã°Å¸â€â€ž RETURN TRIP DETAILS</p>
                         <p style="margin: 5px 0;"><strong>Return Date:</strong> {formatted_return}</p>
                         <p style="margin: 5px 0;"><strong>Return Time:</strong> {formatted_return_time}</p>
-                        {'<p style="margin: 5px 0;"><strong>âœˆï¸ Return Flight:</strong> ' + return_flight + '</p>' if return_flight else '<p style="margin: 5px 0; color: #d32f2f;"><strong>âš ï¸ Return Flight:</strong> NOT PROVIDED</p>'}
+                        {'<p style="margin: 5px 0;"><strong>Ã¢Å“Ë†Ã¯Â¸Â Return Flight:</strong> ' + return_flight + '</p>' if return_flight else '<p style="margin: 5px 0; color: #d32f2f;"><strong>Ã¢Å¡Â Ã¯Â¸Â Return Flight:</strong> NOT PROVIDED</p>'}
                         <p style="margin: 5px 0; font-size: 12px; color: #666;">Reverse route back to original pickup location(s)</p>
                     </div>
                     """
@@ -3881,7 +3881,7 @@ async def send_driver_notification(booking: dict, driver: dict, trip_type: str =
         </tr>
         <tr>
             <td style="padding: 20px; background-color: #f5f5f5;">
-                <h2 style="color: #1a1a1a; margin-top: 0;">âœ… New Booking Assignment - {trip_type} TRIP</h2>
+                <h2 style="color: #1a1a1a; margin-top: 0;">Ã¢Å“â€¦ New Booking Assignment - {trip_type} TRIP</h2>
                 <p style="margin: 10px 0;">Hi {driver.get('name', 'Driver')},</p>
                 <p style="margin: 10px 0;">You have been assigned {'a new' if trip_type == 'OUTBOUND' else 'the RETURN leg of a'} booking. Please review the details below:</p>
                 
@@ -3901,9 +3901,9 @@ async def send_driver_notification(booking: dict, driver: dict, trip_type: str =
                             <p style="margin: 5px 0;"><strong>Date:</strong> {formatted_date}</p>
                             <p style="margin: 5px 0;"><strong>Time:</strong> {formatted_time}</p>
                             <p style="margin: 5px 0;"><strong>Passengers:</strong> {booking.get('passengers', 'N/A')}</p>
-                            {'<div style="background-color: #e3f2fd; padding: 10px; border-radius: 5px; margin: 10px 0; border-left: 4px solid #2196F3;"><p style="margin: 0; font-weight: bold; color: #1565C0;">âœˆï¸ FLIGHT: ' + (booking.get('flightNumber') or booking.get('departureFlightNumber') or booking.get('arrivalFlightNumber') or 'N/A') + '</p></div>' if (booking.get('flightNumber') or booking.get('departureFlightNumber') or booking.get('arrivalFlightNumber')) else ''}
+                            {'<div style="background-color: #e3f2fd; padding: 10px; border-radius: 5px; margin: 10px 0; border-left: 4px solid #2196F3;"><p style="margin: 0; font-weight: bold; color: #1565C0;">Ã¢Å“Ë†Ã¯Â¸Â FLIGHT: ' + (booking.get('flightNumber') or booking.get('departureFlightNumber') or booking.get('arrivalFlightNumber') or 'N/A') + '</p></div>' if (booking.get('flightNumber') or booking.get('departureFlightNumber') or booking.get('arrivalFlightNumber')) else ''}
                             <hr style="border: 0; border-top: 2px solid #D4AF37; margin: 15px 0;">
-                            <p style="margin: 5px 0; font-size: 18px;"><strong>ðŸ’° Your Payout: ${driver_payout:.2f} NZD</strong></p>
+                            <p style="margin: 5px 0; font-size: 18px;"><strong>Ã°Å¸â€™Â° Your Payout: ${driver_payout:.2f} NZD</strong></p>
                         </td>
                     </tr>
                 </table>
@@ -3984,10 +3984,10 @@ bookaride.co.nz | +64 21 743 321
             )
             
             if response.status_code == 200:
-                logger.info(f"âœ… Driver notification email sent to {driver.get('email')}")
-                logger.info(f"ðŸ“§ Mailgun response: {response.text}")
+                logger.info(f"Ã¢Å“â€¦ Driver notification email sent to {driver.get('email')}")
+                logger.info(f"Ã°Å¸â€œÂ§ Mailgun response: {response.text}")
             else:
-                logger.error(f"âŒ Failed to send driver email: {response.status_code} - {response.text}")
+                logger.error(f"Ã¢ÂÅ’ Failed to send driver email: {response.status_code} - {response.text}")
         
         # Send SMS to Driver (separate try block so email failures don't block SMS)
         try:
@@ -3999,18 +3999,18 @@ bookaride.co.nz | +64 21 743 321
                 driver_phone = format_nz_phone(driver.get('phone', ''))
                 
                 if driver_phone:
-                    logger.info(f"ðŸ“± Sending driver SMS to: {driver_phone} (original: {driver.get('phone')})")
+                    logger.info(f"Ã°Å¸â€œÂ± Sending driver SMS to: {driver_phone} (original: {driver.get('phone')})")
                     
                     client = Client(account_sid, auth_token)
                     
                     # Get payment status
                     payment_status = booking.get('payment_status', 'unpaid')
                     payment_display = {
-                        'paid': 'âœ… PAID',
-                        'cash': 'ðŸ’µ CASH',
-                        'pay-on-pickup': 'ðŸš— PAY ON PICKUP',
-                        'xero-invoiced': 'ðŸ“„ INVOICED',
-                        'unpaid': 'âš ï¸ UNPAID'
+                        'paid': 'Ã¢Å“â€¦ PAID',
+                        'cash': 'Ã°Å¸â€™Âµ CASH',
+                        'pay-on-pickup': 'Ã°Å¸Å¡â€” PAY ON PICKUP',
+                        'xero-invoiced': 'Ã°Å¸â€œâ€ž INVOICED',
+                        'unpaid': 'Ã¢Å¡Â Ã¯Â¸Â UNPAID'
                     }.get(payment_status, payment_status.upper())
                     
                     # Get distance in km
@@ -4034,7 +4034,7 @@ bookaride.co.nz | +64 21 743 321
                         trip_date = booking.get('date', 'N/A')
                         trip_time = booking.get('time', 'N/A')
                     
-                    flight_text = f"\nâœˆï¸ Flight: {flight_num}" if flight_num else ""
+                    flight_text = f"\nÃ¢Å“Ë†Ã¯Â¸Â Flight: {flight_num}" if flight_num else ""
                     formatted_trip_date = format_date_ddmmyyyy(trip_date)
                     formatted_trip_time = format_time_ampm(trip_time)
                     
@@ -4048,7 +4048,7 @@ Date: {formatted_trip_date} at {formatted_trip_time}{flight_text}{distance_text}
 Your Payout: ${driver_payout:.2f}
 Payment: {payment_display}
 
-âš ï¸ REPLY YES to confirm you received this job.
+Ã¢Å¡Â Ã¯Â¸Â REPLY YES to confirm you received this job.
 
 Check your email for full details."""
                     
@@ -4058,13 +4058,13 @@ Check your email for full details."""
                         to=driver_phone
                     )
                     
-                    logger.info(f"âœ… Driver notification SMS sent to {driver_phone} - SID: {message.sid}")
+                    logger.info(f"Ã¢Å“â€¦ Driver notification SMS sent to {driver_phone} - SID: {message.sid}")
                 else:
-                    logger.warning(f"âš ï¸ Driver {driver.get('name')} has no phone number - SMS not sent")
+                    logger.warning(f"Ã¢Å¡Â Ã¯Â¸Â Driver {driver.get('name')} has no phone number - SMS not sent")
             else:
-                logger.warning("âš ï¸ Twilio credentials not configured for driver SMS")
+                logger.warning("Ã¢Å¡Â Ã¯Â¸Â Twilio credentials not configured for driver SMS")
         except Exception as sms_error:
-            logger.error(f"âŒ Error sending driver SMS: {str(sms_error)}")
+            logger.error(f"Ã¢ÂÅ’ Error sending driver SMS: {str(sms_error)}")
         
         return True
         
@@ -4092,7 +4092,7 @@ async def get_calendar_credentials():
                     service_account_info,
                     scopes=['https://www.googleapis.com/auth/calendar']
                 )
-                logger.info("âœ… Service account credentials loaded from environment variable")
+                logger.info("Ã¢Å“â€¦ Service account credentials loaded from environment variable")
                 return creds
             except json.JSONDecodeError as e:
                 logger.error(f"Failed to parse GOOGLE_SERVICE_ACCOUNT_JSON: {str(e)}")
@@ -4104,7 +4104,7 @@ async def get_calendar_credentials():
                 service_account_file,
                 scopes=['https://www.googleapis.com/auth/calendar']
             )
-            logger.info("âœ… Service account credentials loaded from file")
+            logger.info("Ã¢Å“â€¦ Service account credentials loaded from file")
             return creds
         
         logger.warning("Google service account credentials not configured (neither env var nor file)")
@@ -4218,10 +4218,10 @@ async def create_calendar_event(booking: dict):
         has_return = booking.get('bookReturn', False)
         
         outbound_event = {
-            'summary': f"{customer_name} â†’ {eng['dropoff'].split(',')[0]}" + (" + Return" if has_return else ""),
+            'summary': f"{customer_name} Ã¢â€ â€™ {eng['dropoff'].split(',')[0]}" + (" + Return" if has_return else ""),
             'location': main_pickup,
             'description': f"""BOOKING #{ref_num}
-â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
+Ã¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€Â
 
 CUSTOMER
 {customer_name}
@@ -4240,11 +4240,11 @@ ${total_price:.2f} NZD - {payment_status}
 
 {f'NOTES: {notes}' if notes and notes.strip() else ''}
 {"" if not has_return else f'''
-â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
+Ã¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€Â
 RETURN TRIP BOOKED
 Date: {booking.get('returnDate', 'N/A')} at {booking.get('returnTime', 'N/A')}
 (See separate calendar event)
-â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”'''}
+Ã¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€Â'''}
             """.strip(),
             'start': {'dateTime': nz_dt.isoformat()},
             'end': {'dateTime': (nz_dt + timedelta(hours=2)).isoformat()},
@@ -4285,10 +4285,10 @@ Date: {booking.get('returnDate', 'N/A')} at {booking.get('returnTime', 'N/A')}
                 reverse_stops.append(f"{len(reverse_stops) + 1}. {main_pickup} (FINAL DROP-OFF)")
                 
                 return_event = {
-                    'summary': f"{customer_name} â† Return from {eng['dropoff'].split(',')[0]}",
+                    'summary': f"{customer_name} Ã¢â€ Â Return from {eng['dropoff'].split(',')[0]}",
                     'location': eng['dropoff'],  # Return starts from original drop-off
                     'description': f"""BOOKING #{ref_num} - RETURN
-â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
+Ã¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€Â
 
 CUSTOMER
 {customer_name}
@@ -4307,10 +4307,10 @@ ${total_price:.2f} NZD (total both ways) - {payment_status}
 
 {f'NOTES: {notes}' if notes and notes.strip() else ''}
 
-â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
+Ã¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€Â
 Return leg of booking #{ref_num}
 Outbound was: {formatted_date} at {booking_time}
-â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
+Ã¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€ÂÃ¢â€Â
                     """.strip(),
                     'start': {'dateTime': return_nz_dt.isoformat()},
                     'end': {'dateTime': (return_nz_dt + timedelta(hours=2)).isoformat()},
@@ -5385,7 +5385,7 @@ async def stripe_webhook(request: Request):
                                         data={
                                             "from": f"Book A Ride NZ <bookings@{mailgun_domain}>",
                                             "to": shuttle_booking['email'],
-                                            "subject": f"ðŸš Shuttle Booking Confirmed - {shuttle_booking['date']} {shuttle_booking['departureTime']}",
+                                            "subject": f"Ã°Å¸Å¡Â Shuttle Booking Confirmed - {shuttle_booking['date']} {shuttle_booking['departureTime']}",
                                             "html": f"""
                                             <h2>Your Shuttle Seat is Reserved!</h2>
                                             <p>Hi {shuttle_booking['name']},</p>
@@ -5399,9 +5399,9 @@ async def stripe_webhook(request: Request):
                                                 <li><strong>Passengers:</strong> {shuttle_booking['passengers']}</li>
                                             </ul>
                                             <h3>Payment Info:</h3>
-                                            <p>ðŸ’³ A hold of <strong>${shuttle_booking.get('totalEstimated', 100)}</strong> has been placed on your card.</p>
-                                            <p>âœ… You will only be charged the <strong>final price</strong> when the shuttle arrives at the airport.</p>
-                                            <p>ðŸ’° The more passengers on your shuttle, the cheaper everyone pays!</p>
+                                            <p>Ã°Å¸â€™Â³ A hold of <strong>${shuttle_booking.get('totalEstimated', 100)}</strong> has been placed on your card.</p>
+                                            <p>Ã¢Å“â€¦ You will only be charged the <strong>final price</strong> when the shuttle arrives at the airport.</p>
+                                            <p>Ã°Å¸â€™Â° The more passengers on your shuttle, the cheaper everyone pays!</p>
                                             <p>We'll be in touch closer to your departure date with pickup details.</p>
                                             <p>Thank you for choosing Book A Ride!</p>
                                             """
@@ -5449,7 +5449,7 @@ async def twilio_sms_webhook(request: Request):
         from_number = form_data.get('From', '')
         message_body = form_data.get('Body', '').strip().upper()
         
-        logger.info(f"ðŸ“± Incoming SMS from {from_number}: {message_body}")
+        logger.info(f"Ã°Å¸â€œÂ± Incoming SMS from {from_number}: {message_body}")
         
         # Get admin phone number
         admin_phone = os.environ.get('ADMIN_PHONE', '+6421743321')
@@ -5493,7 +5493,7 @@ async def twilio_sms_webhook(request: Request):
                 # Clear the pending approval
                 await db.pending_approvals.delete_one({"admin_phone": admin_phone})
                 
-                logger.info(f"âœ… Admin approved booking #{booking_ref} ({customer_name}) via SMS")
+                logger.info(f"Ã¢Å“â€¦ Admin approved booking #{booking_ref} ({customer_name}) via SMS")
                 
                 # Send confirmation SMS back to admin
                 try:
@@ -5503,7 +5503,7 @@ async def twilio_sms_webhook(request: Request):
                     if twilio_sid and twilio_token:
                         client = Client(twilio_sid, twilio_token)
                         client.messages.create(
-                            body=f"âœ… Booking #{booking_ref} for {customer_name} APPROVED! Customer confirmation sent.",
+                            body=f"Ã¢Å“â€¦ Booking #{booking_ref} for {customer_name} APPROVED! Customer confirmation sent.",
                             from_=twilio_from,
                             to=admin_phone
                         )
@@ -5545,7 +5545,7 @@ async def twilio_sms_webhook(request: Request):
                 # Clear the pending approval
                 await db.pending_approvals.delete_one({"admin_phone": admin_phone})
                 
-                logger.info(f"âŒ Admin declined booking #{booking_ref} ({customer_name}) via SMS")
+                logger.info(f"Ã¢ÂÅ’ Admin declined booking #{booking_ref} ({customer_name}) via SMS")
                 
                 # Send confirmation SMS back to admin
                 try:
@@ -5555,7 +5555,7 @@ async def twilio_sms_webhook(request: Request):
                     if twilio_sid and twilio_token:
                         client = Client(twilio_sid, twilio_token)
                         client.messages.create(
-                            body=f"âŒ Booking #{booking_ref} for {customer_name} DECLINED. Customer notified.",
+                            body=f"Ã¢ÂÅ’ Booking #{booking_ref} for {customer_name} DECLINED. Customer notified.",
                             from_=twilio_from,
                             to=admin_phone
                         )
@@ -5655,7 +5655,7 @@ async def twilio_sms_webhook(request: Request):
                     )
                     
                     total_confirmed = 1 + batch_result.modified_count
-                    logger.info(f"âœ… Driver {driver_name} acknowledged {trip_type} trip for booking #{booking_ref} (+ {batch_result.modified_count} other bookings)")
+                    logger.info(f"Ã¢Å“â€¦ Driver {driver_name} acknowledged {trip_type} trip for booking #{booking_ref} (+ {batch_result.modified_count} other bookings)")
                     
                     # Send confirmation SMS back to driver
                     try:
@@ -5666,7 +5666,7 @@ async def twilio_sms_webhook(request: Request):
                         if account_sid and auth_token and twilio_phone:
                             client = Client(account_sid, auth_token)
                             client.messages.create(
-                                body=f"âœ… Thanks {driver_name}! Job #{booking_ref} confirmed. Customer: {booking.get('name')} on {format_date_ddmmyyyy(booking.get('date'))} at {booking.get('time')}",
+                                body=f"Ã¢Å“â€¦ Thanks {driver_name}! Job #{booking_ref} confirmed. Customer: {booking.get('name')} on {format_date_ddmmyyyy(booking.get('date'))} at {booking.get('time')}",
                                 from_=twilio_phone,
                                 to=from_number
                             )
@@ -5684,7 +5684,7 @@ async def twilio_sms_webhook(request: Request):
                             html_content = f"""
                             <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px;">
                                 <div style="background: #22c55e; color: white; padding: 15px; border-radius: 8px 8px 0 0; text-align: center;">
-                                    <h2 style="margin: 0;">âœ… Driver Acknowledged Job</h2>
+                                    <h2 style="margin: 0;">Ã¢Å“â€¦ Driver Acknowledged Job</h2>
                                 </div>
                                 <div style="background: #f0fdf4; padding: 20px; border: 1px solid #86efac; border-top: none; border-radius: 0 0 8px 8px;">
                                     <p><strong>Driver:</strong> {driver_name}</p>
@@ -5703,7 +5703,7 @@ async def twilio_sms_webhook(request: Request):
                                 data={
                                     "from": f"BookaRide System <{sender_email}>",
                                     "to": admin_email,
-                                    "subject": f"âœ… Driver {driver_name} Acknowledged Job #{booking_ref}",
+                                    "subject": f"Ã¢Å“â€¦ Driver {driver_name} Acknowledged Job #{booking_ref}",
                                     "html": html_content
                                 }
                             )
@@ -5822,7 +5822,7 @@ async def create_tracking_session(data: TrackingSessionCreate, current_admin: di
         
         await db.tracking_sessions.insert_one(session)
         
-        logger.info(f"ðŸ“ Tracking session created for booking {data.bookingId} - Ref: {tracking_ref}")
+        logger.info(f"Ã°Å¸â€œÂ Tracking session created for booking {data.bookingId} - Ref: {tracking_ref}")
         
         return {
             "success": True,
@@ -5913,7 +5913,7 @@ async def start_driver_tracking(session_id: str):
                         driver_name = session.get('driverName', 'Your driver')
                         customer_link = session.get('customerLink')
                         
-                        sms_body = f"""ðŸš— {driver_name} is on the way!
+                        sms_body = f"""Ã°Å¸Å¡â€” {driver_name} is on the way!
 
 Track your driver live:
 {customer_link}
@@ -5933,12 +5933,12 @@ See exactly when they'll arrive.
                             {"$set": {"customerNotified": True}}
                         )
                         
-                        logger.info(f"ðŸ“± Tracking link sent to customer: {formatted_phone}")
+                        logger.info(f"Ã°Å¸â€œÂ± Tracking link sent to customer: {formatted_phone}")
                         
                 except Exception as sms_error:
                     logger.error(f"Error sending tracking SMS to customer: {sms_error}")
         
-        logger.info(f"ðŸ“ Driver started tracking - Session: {session_id}")
+        logger.info(f"Ã°Å¸â€œÂ Driver started tracking - Session: {session_id}")
         
         return {"success": True, "message": "Tracking started, customer notified"}
         
@@ -6006,7 +6006,7 @@ async def stop_driver_tracking(session_id: str):
         if result.matched_count == 0:
             raise HTTPException(status_code=404, detail="Tracking session not found")
         
-        logger.info(f"ðŸ“ Driver stopped tracking - Session: {session_id}")
+        logger.info(f"Ã°Å¸â€œÂ Driver stopped tracking - Session: {session_id}")
         
         return {"success": True, "message": "Tracking stopped"}
         
@@ -6178,7 +6178,7 @@ async def send_tracking_link_to_driver(booking_id: str, current_admin: dict = De
             customer_name = booking.get('name', 'Customer')
             pickup = booking.get('pickupAddress', 'N/A')
             
-            sms_body = f"""ðŸ“ SHARE YOUR LOCATION
+            sms_body = f"""Ã°Å¸â€œÂ SHARE YOUR LOCATION
             
 Job: {booking_ref}
 Customer: {customer_name}
@@ -6198,7 +6198,7 @@ Customer will be auto-notified when you start.
                 to=formatted_phone
             )
             
-            logger.info(f"ðŸ“± Tracking link sent to driver {driver.get('name')} at {formatted_phone}")
+            logger.info(f"Ã°Å¸â€œÂ± Tracking link sent to driver {driver.get('name')} at {formatted_phone}")
             
             # Update booking with tracking info
             collection = db.shuttle_bookings if booking_type == "shuttle" else db.bookings
@@ -6711,16 +6711,16 @@ async def send_shuttle_route_to_driver(
         
         # Build SMS message
         pickup_summary = "\n".join([
-            f"â€¢ {p['name']} ({p['passengers']}pax) - {p['address'][:30]}..."
+            f"Ã¢â‚¬Â¢ {p['name']} ({p['passengers']}pax) - {p['address'][:30]}..."
             for p in route_data["pickupDetails"][:5]
         ])
         
-        message = f"""ðŸš SHUTTLE {date} {time}
+        message = f"""Ã°Å¸Å¡Â SHUTTLE {date} {time}
 {route_data['totalPassengers']} passengers, {route_data['totalBookings']} pickups
 
 {pickup_summary}
 
-ðŸ“ ROUTE: {route_data['googleMapsUrl']}"""
+Ã°Å¸â€œÂ ROUTE: {route_data['googleMapsUrl']}"""
         
         # Send SMS if phone provided
         if driver_phone:
@@ -6869,7 +6869,7 @@ async def update_driver_location(location: DriverLocationUpdate, current_driver:
                                     {"id": booking['id']},
                                     {"$set": {"arrivingSoonSent": True, "arrivingSoonSentAt": datetime.now(timezone.utc).isoformat()}}
                                 )
-                                logger.info(f"ðŸ“± Arriving soon SMS sent to {booking['name']} at {booking['phone']}")
+                                logger.info(f"Ã°Å¸â€œÂ± Arriving soon SMS sent to {booking['name']} at {booking['phone']}")
                         else:
                             etas[booking['id']] = {'minutes': None, 'error': element['status']}
                             
@@ -6919,15 +6919,15 @@ def send_arriving_soon_sms(booking: dict, eta_minutes: int, driver_name: str):
         formatted_phone = format_nz_phone(customer_phone)
         
         # Build message
-        message = f"""ðŸš Your Book A Ride shuttle is arriving in ~{eta_minutes} minutes!
+        message = f"""Ã°Å¸Å¡Â Your Book A Ride shuttle is arriving in ~{eta_minutes} minutes!
 
 Please be ready at:
-ðŸ“ {booking.get('pickupAddress', 'your pickup location')}
+Ã°Å¸â€œÂ {booking.get('pickupAddress', 'your pickup location')}
 
 Driver: {driver_name}
 Passengers: {booking.get('passengers', 1)}
 
-See you soon! ðŸ™‚"""
+See you soon! Ã°Å¸â„¢â€š"""
         
         # Send SMS
         twilio_client = Client(twilio_sid, twilio_token)
@@ -6937,7 +6937,7 @@ See you soon! ðŸ™‚"""
             to=formatted_phone
         )
         
-        logger.info(f"âœ… Arriving soon SMS sent to {booking.get('name')} at {formatted_phone}")
+        logger.info(f"Ã¢Å“â€¦ Arriving soon SMS sent to {booking.get('name')} at {formatted_phone}")
         return True
         
     except Exception as e:
@@ -7091,7 +7091,7 @@ async def start_shuttle_run(date: str, time: str, current_admin: dict = Depends(
                             replace_existing=True
                         )
                         scheduled_count += 1
-                        logger.info(f"ðŸ“… Scheduled SMS for {item['name']} at {notify_dt.strftime('%H:%M')}")
+                        logger.info(f"Ã°Å¸â€œâ€¦ Scheduled SMS for {item['name']} at {notify_dt.strftime('%H:%M')}")
                 else:
                     # If notification time has passed, send immediately (they're first pickup)
                     booking = await db.shuttle_bookings.find_one({"id": item['bookingId']}, {"_id": 0})
@@ -7119,7 +7119,7 @@ async def start_shuttle_run(date: str, time: str, current_admin: dict = Depends(
             upsert=True
         )
         
-        logger.info(f"ðŸš Shuttle started: {date} {time} - {scheduled_count} notifications scheduled")
+        logger.info(f"Ã°Å¸Å¡Â Shuttle started: {date} {time} - {scheduled_count} notifications scheduled")
         
         return {
             "success": True,
@@ -7162,7 +7162,7 @@ async def send_scheduled_arriving_sms(booking_id: str):
                 {"id": booking_id},
                 {"$set": {"arrivingSoonSent": True, "arrivingSoonSentAt": datetime.now(timezone.utc).isoformat()}}
             )
-            logger.info(f"ðŸ“± Scheduled SMS sent to {booking.get('name')}")
+            logger.info(f"Ã°Å¸â€œÂ± Scheduled SMS sent to {booking.get('name')}")
     except Exception as e:
         logger.error(f"Error sending scheduled SMS: {str(e)}")
 
@@ -7224,20 +7224,20 @@ async def assign_shuttle_driver(
             
             if twilio_sid and twilio_token and twilio_phone:
                 pickup_summary = "\n".join([
-                    f"â€¢ {b['name']} ({b['passengers']}pax)"
+                    f"Ã¢â‚¬Â¢ {b['name']} ({b['passengers']}pax)"
                     for b in bookings[:5]
                 ])
                 
-                route_message = f"""ðŸš SHUTTLE ASSIGNED - {date} {time}
+                route_message = f"""Ã°Å¸Å¡Â SHUTTLE ASSIGNED - {date} {time}
 
 {len(bookings)} pickups, {sum(b['passengers'] for b in bookings)} passengers
 
 {pickup_summary}
 
-ðŸ“ OPEN ROUTE IN MAPS:
+Ã°Å¸â€œÂ OPEN ROUTE IN MAPS:
 {maps_url}
 
-Customers will be auto-notified 5 mins before their pickup. Drive safe! ðŸ™‚"""
+Customers will be auto-notified 5 mins before their pickup. Drive safe! Ã°Å¸â„¢â€š"""
                 
                 try:
                     twilio_client = Client(twilio_sid, twilio_token)
@@ -7247,7 +7247,7 @@ Customers will be auto-notified 5 mins before their pickup. Drive safe! ðŸ™�
                         from_=twilio_phone,
                         to=formatted_driver_phone
                     )
-                    logger.info(f"ðŸ“± Route sent to driver {driver_name} at {formatted_driver_phone}")
+                    logger.info(f"Ã°Å¸â€œÂ± Route sent to driver {driver_name} at {formatted_driver_phone}")
                 except Exception as sms_error:
                     logger.error(f"Error sending route to driver: {sms_error}")
         
@@ -7336,7 +7336,7 @@ Customers will be auto-notified 5 mins before their pickup. Drive safe! ðŸ™�
                                 replace_existing=True
                             )
                             scheduled_count += 1
-                            logger.info(f"ðŸ“… Scheduled SMS for {booking['name']} at {notify_dt.strftime('%H:%M')}")
+                            logger.info(f"Ã°Å¸â€œâ€¦ Scheduled SMS for {booking['name']} at {notify_dt.strftime('%H:%M')}")
                     else:
                         # First pickup - send immediately
                         if not booking.get('arrivingSoonSent'):
@@ -7364,7 +7364,7 @@ Customers will be auto-notified 5 mins before their pickup. Drive safe! ðŸ™�
             upsert=True
         )
         
-        logger.info(f"ðŸš Driver {driver_name} assigned to shuttle {date} {time} - {scheduled_count} SMS scheduled")
+        logger.info(f"Ã°Å¸Å¡Â Driver {driver_name} assigned to shuttle {date} {time} - {scheduled_count} SMS scheduled")
         
         return {
             "success": True,
@@ -7392,7 +7392,7 @@ SYNC_SECRET_KEY = os.environ.get("SYNC_SECRET_KEY", "bookaride-sync-2024-secret"
 async def auto_sync_from_production():
     """Automatically sync data from production every 5 minutes"""
     try:
-        logger.info("ðŸ”„ Auto-sync: Starting sync from production...")
+        logger.info("Ã°Å¸â€â€ž Auto-sync: Starting sync from production...")
         
         response = requests.get(
             f"{PRODUCTION_API_URL}/sync/export",
@@ -7430,7 +7430,7 @@ async def auto_sync_from_production():
                 except Exception:
                     pass
             
-            logger.info(f"ðŸ”„ Auto-sync complete: {bookings_synced} bookings, {drivers_synced} drivers")
+            logger.info(f"Ã°Å¸â€â€ž Auto-sync complete: {bookings_synced} bookings, {drivers_synced} drivers")
         elif response.status_code == 404:
             logger.debug("Auto-sync: Export endpoint not deployed yet")
         else:
@@ -7473,7 +7473,7 @@ async def calculate_drive_time_from_base(destination_address: str) -> int:
                 # Use duration_in_traffic if available, otherwise duration
                 duration = element.get('duration_in_traffic', element.get('duration', {}))
                 drive_minutes = duration.get('value', 3600) // 60  # Convert seconds to minutes
-                logger.info(f"ðŸ“ Drive time from base to {destination_address[:50]}...: {drive_minutes} mins")
+                logger.info(f"Ã°Å¸â€œÂ Drive time from base to {destination_address[:50]}...: {drive_minutes} mins")
                 return drive_minutes
         
         logger.warning(f"Could not calculate drive time to {destination_address[:50]}...")
@@ -7493,7 +7493,7 @@ async def check_return_booking_alerts():
         now_nz = datetime.now(nz_tz)
         today_str = now_nz.strftime('%Y-%m-%d')
         
-        logger.info(f"ðŸ”” [return_alerts] Checking return bookings - NZ time: {now_nz.strftime('%Y-%m-%d %H:%M')}")
+        logger.info(f"Ã°Å¸â€â€ [return_alerts] Checking return bookings - NZ time: {now_nz.strftime('%Y-%m-%d %H:%M')}")
         
         # Find bookings with return trips today or tomorrow
         tomorrow_str = (now_nz + timedelta(days=1)).strftime('%Y-%m-%d')
@@ -7568,7 +7568,7 @@ async def check_return_booking_alerts():
                         try:
                             client = Client(twilio_sid, twilio_token)
                             
-                            sms_body = f"âš ï¸ RETURN TRIP ALERT!\n"
+                            sms_body = f"Ã¢Å¡Â Ã¯Â¸Â RETURN TRIP ALERT!\n"
                             sms_body += f"Leave in {minutes_until_leave} mins for:\n"
                             sms_body += f"{customer_name} - Ref #{booking_ref}\n"
                             sms_body += f"Pickup: {formatted_time}\n"
@@ -7580,7 +7580,7 @@ async def check_return_booking_alerts():
                                 from_=twilio_from,
                                 to=admin_phone
                             )
-                            logger.info(f"âœ… Return alert SMS sent for booking #{booking_ref}")
+                            logger.info(f"Ã¢Å“â€¦ Return alert SMS sent for booking #{booking_ref}")
                             alerts_sent += 1
                         except Exception as sms_err:
                             logger.error(f"Failed to send return alert SMS: {str(sms_err)}")
@@ -7591,7 +7591,7 @@ async def check_return_booking_alerts():
                         driver = await db.drivers.find_one({"id": driver_id}, {"_id": 0})
                         if driver and driver.get('phone'):
                             try:
-                                driver_sms = f"ðŸš— RETURN PICKUP REMINDER\n"
+                                driver_sms = f"Ã°Å¸Å¡â€” RETURN PICKUP REMINDER\n"
                                 driver_sms += f"Customer: {customer_name}\n"
                                 driver_sms += f"Time: {formatted_time}\n"
                                 driver_sms += f"From: {return_pickup[:60]}\n"
@@ -7603,7 +7603,7 @@ async def check_return_booking_alerts():
                                     from_=twilio_from,
                                     to=driver.get('phone')
                                 )
-                                logger.info(f"âœ… Driver return reminder sent for booking #{booking_ref}")
+                                logger.info(f"Ã¢Å“â€¦ Driver return reminder sent for booking #{booking_ref}")
                             except Exception as drv_err:
                                 logger.error(f"Failed to send driver reminder: {str(drv_err)}")
                     
@@ -7619,7 +7619,7 @@ async def check_return_booking_alerts():
                 logger.warning(f"Error processing return booking alert: {str(booking_err)}")
                 continue
         
-        logger.info(f"ðŸ”” [return_alerts] Check complete: {alerts_sent} alerts sent")
+        logger.info(f"Ã°Å¸â€â€ [return_alerts] Check complete: {alerts_sent} alerts sent")
         return {"alerts_sent": alerts_sent}
         
     except Exception as e:
@@ -7889,7 +7889,7 @@ async def get_analytics_stats(start_date: Optional[str] = None, end_date: Option
             pickup = booking.get('pickupAddress', '').split(',')[0]
             dropoff = booking.get('dropoffAddress', '').split(',')[0]
             if pickup and dropoff:
-                route = f"{pickup} â†’ {dropoff}"
+                route = f"{pickup} Ã¢â€ â€™ {dropoff}"
                 route_counts[route] = route_counts.get(route, 0) + 1
         
         popular_routes = sorted(route_counts.items(), key=lambda x: x[1], reverse=True)[:5]
@@ -8260,7 +8260,7 @@ async def create_afterpay_checkout(request: AfterpayCheckoutRequest):
             "created_at": datetime.now(timezone.utc)
         })
         
-        logger.info(f"âœ… Afterpay checkout created: token={token}, booking={request.booking_id}")
+        logger.info(f"Ã¢Å“â€¦ Afterpay checkout created: token={token}, booking={request.booking_id}")
         
         return {
             "token": token,
@@ -8345,7 +8345,7 @@ async def capture_afterpay_payment(token: str, order_id: str = None):
                     }}
                 )
                 
-                logger.info(f"âœ… Afterpay payment captured: order_id={afterpay_order_id}, booking={transaction['booking_id']}")
+                logger.info(f"Ã¢Å“â€¦ Afterpay payment captured: order_id={afterpay_order_id}, booking={transaction['booking_id']}")
         
         return {
             "order_id": afterpay_order_id,
@@ -8654,7 +8654,7 @@ async def sync_all_contacts_to_icloud(current_admin: dict = Depends(get_current_
                 logger.error(f"Failed to sync contact {name}: {str(e)}")
                 failed += 1
         
-        logger.info(f"ðŸ“± iCloud bulk sync complete: {synced} synced, {failed} failed, {skipped} skipped")
+        logger.info(f"Ã°Å¸â€œÂ± iCloud bulk sync complete: {synced} synced, {failed} failed, {skipped} skipped")
         
         return {
             "message": f"Bulk sync complete",
@@ -8917,7 +8917,7 @@ async def submit_driver_application(application: DriverApplication):
                         <h1 style="margin: 0;">New Driver Application</h1>
                     </div>
                     <div style="padding: 20px; background-color: #f5f5f5;">
-                        <h2>ðŸš— Driver Application Received</h2>
+                        <h2>Ã°Å¸Å¡â€” Driver Application Received</h2>
                         <div style="background-color: white; padding: 20px; border-radius: 8px; border-left: 4px solid #D4AF37;">
                             <p><strong>Name:</strong> {application.name}</p>
                             <p><strong>Phone:</strong> {application.phone}</p>
@@ -9214,7 +9214,7 @@ async def confirm_driver_acknowledgment(booking_id: str, trip_type: str = "outbo
         )
         
         booking_ref = get_booking_reference(booking)
-        logger.info(f"âœ… Admin manually confirmed {trip_type} driver {driver_name} for booking #{booking_ref}")
+        logger.info(f"Ã¢Å“â€¦ Admin manually confirmed {trip_type} driver {driver_name} for booking #{booking_ref}")
         
         return {"success": True, "message": f"Driver {driver_name} confirmed for {trip_type} trip"}
     except HTTPException:
@@ -9633,7 +9633,7 @@ To rebook: bookaride.co.nz"""
         logger.warning("No phone number for cancellation SMS")
         return
     
-    logger.info(f"ðŸ“± Sending cancellation SMS to: {formatted_phone}")
+    logger.info(f"Ã°Å¸â€œÂ± Sending cancellation SMS to: {formatted_phone}")
     
     client = Client(account_sid, auth_token)
     message = client.messages.create(
@@ -9642,7 +9642,7 @@ To rebook: bookaride.co.nz"""
         to=formatted_phone
     )
     
-    logger.info(f"âœ… Cancellation SMS sent to {formatted_phone} - SID: {message.sid}")
+    logger.info(f"Ã¢Å“â€¦ Cancellation SMS sent to {formatted_phone} - SID: {message.sid}")
 
 @api_router.delete("/bookings/bulk-delete")
 async def bulk_delete(booking_ids: List[str], send_notifications: bool = False, current_admin: dict = Depends(get_current_admin)):
@@ -10097,7 +10097,7 @@ async def initialize_all_seo_pages(current_admin: dict = Depends(get_current_adm
         # Hibiscus Coast suburbs
         hibiscus_coast_suburbs = [
             {"slug": "orewa", "name": "Orewa", "city": "Hibiscus Coast", "distance": 42, "price": 125},
-            {"slug": "whangaparaoa", "name": "WhangaparÄoa", "city": "Hibiscus Coast", "distance": 48, "price": 135},
+            {"slug": "whangaparaoa", "name": "WhangaparÃ„Âoa", "city": "Hibiscus Coast", "distance": 48, "price": 135},
             {"slug": "silverdale", "name": "Silverdale", "city": "Hibiscus Coast", "distance": 38, "price": 120},
             {"slug": "red-beach", "name": "Red Beach", "city": "Hibiscus Coast", "distance": 45, "price": 130},
             {"slug": "stanmore-bay", "name": "Stanmore Bay", "city": "Hibiscus Coast", "distance": 46, "price": 130},
@@ -11242,7 +11242,7 @@ async def import_bookings_from_csv(
             except Exception as e:
                 errors.append(f"Row {original_id}: {str(e)}")
         
-        logger.info(f"ðŸ“¥ WordPress import: {imported} imported, {skipped} skipped, {len(errors)} errors")
+        logger.info(f"Ã°Å¸â€œÂ¥ WordPress import: {imported} imported, {skipped} skipped, {len(errors)} errors")
         
         return {
             "success": True,
@@ -11396,7 +11396,7 @@ async def quick_import_wordpress(request: Request):
             except Exception as row_error:
                 errors.append(f"Row {original_id}: {str(row_error)}")
         
-        logger.info(f"ðŸ“¥ Quick WordPress import: {imported} imported, {skipped} skipped, {len(errors)} errors")
+        logger.info(f"Ã°Å¸â€œÂ¥ Quick WordPress import: {imported} imported, {skipped} skipped, {len(errors)} errors")
         
         return {
             "success": True,
@@ -11459,7 +11459,7 @@ async def fix_imported_bookings():
                 {"$set": updates}
             )
         
-        logger.info(f"ðŸ”§ Fixed imported bookings: {fixed_status} restored, {fixed_dates} dates corrected")
+        logger.info(f"Ã°Å¸â€Â§ Fixed imported bookings: {fixed_status} restored, {fixed_dates} dates corrected")
         
         return {
             "success": True,
@@ -11588,7 +11588,7 @@ async def batch_sync_calendar(
 async def batch_sync_calendar_task(query: dict):
     """Background task to sync bookings to calendar"""
     try:
-        logger.info("ðŸ“… Starting batch calendar sync for imported bookings...")
+        logger.info("Ã°Å¸â€œâ€¦ Starting batch calendar sync for imported bookings...")
         
         synced = 0
         failed = 0
@@ -11605,7 +11605,7 @@ async def batch_sync_calendar_task(query: dict):
                 if success:
                     synced += 1
                     if synced % 50 == 0:
-                        logger.info(f"ðŸ“… Calendar sync progress: {synced} bookings synced")
+                        logger.info(f"Ã°Å¸â€œâ€¦ Calendar sync progress: {synced} bookings synced")
                 else:
                     failed += 1
                     
@@ -11613,7 +11613,7 @@ async def batch_sync_calendar_task(query: dict):
                 logger.warning(f"Failed to sync booking {booking.get('id', 'unknown')}: {str(booking_error)}")
                 failed += 1
         
-        logger.info(f"ðŸ“… Batch calendar sync completed: {synced} synced, {failed} failed")
+        logger.info(f"Ã°Å¸â€œâ€¦ Batch calendar sync completed: {synced} synced, {failed} failed")
         
         # Store sync result for status checking
         await db.system_tasks.update_one(
@@ -11787,7 +11787,7 @@ async def auto_archive_completed_bookings():
         now_nz = datetime.now(nz_tz)
         today_str = now_nz.strftime('%Y-%m-%d')
         
-        logger.info(f"ðŸ“¦ [Auto-Archive] Starting - NZ time: {now_nz.strftime('%Y-%m-%d %H:%M')}")
+        logger.info(f"Ã°Å¸â€œÂ¦ [Auto-Archive] Starting - NZ time: {now_nz.strftime('%Y-%m-%d %H:%M')}")
         
         archived_count = 0
         skipped_count = 0
@@ -11797,7 +11797,7 @@ async def auto_archive_completed_bookings():
             'status': 'completed'
         }, {'_id': 0}).to_list(5000)
         
-        logger.info(f"ðŸ“¦ [Auto-Archive] Found {len(completed_bookings)} completed bookings to check")
+        logger.info(f"Ã°Å¸â€œÂ¦ [Auto-Archive] Found {len(completed_bookings)} completed bookings to check")
         
         for booking in completed_bookings:
             try:
@@ -11831,19 +11831,19 @@ async def auto_archive_completed_bookings():
                     archived_count += 1
                     
                     if archived_count <= 5:  # Only log first 5 for brevity
-                        logger.info(f"ðŸ“¦ Auto-archived: Ref #{booking.get('referenceNumber')} - {booking.get('name')} (trip ended: {trip_end_date})")
+                        logger.info(f"Ã°Å¸â€œÂ¦ Auto-archived: Ref #{booking.get('referenceNumber')} - {booking.get('name')} (trip ended: {trip_end_date})")
                 else:
                     skipped_count += 1
                     
             except Exception as e:
-                logger.error(f"ðŸ“¦ Error processing booking {booking.get('id', 'unknown')}: {str(e)}")
+                logger.error(f"Ã°Å¸â€œÂ¦ Error processing booking {booking.get('id', 'unknown')}: {str(e)}")
                 continue
         
-        logger.info(f"ðŸ“¦ [Auto-Archive] Completed - Archived: {archived_count}, Skipped: {skipped_count}")
+        logger.info(f"Ã°Å¸â€œÂ¦ [Auto-Archive] Completed - Archived: {archived_count}, Skipped: {skipped_count}")
         return {"archived": archived_count, "skipped": skipped_count, "date": today_str}
         
     except Exception as e:
-        logger.error(f"ðŸ“¦ [Auto-Archive] Error: {str(e)}")
+        logger.error(f"Ã°Å¸â€œÂ¦ [Auto-Archive] Error: {str(e)}")
         return {"archived": 0, "error": str(e)}
 
 @api_router.post("/admin/trigger-auto-archive")
@@ -12282,14 +12282,14 @@ async def interval_reminder_check():
         
         # Only run between 8 AM and 10 PM NZ time
         if current_hour < 8 or current_hour > 22:
-            logger.debug(f"ðŸ”” [interval_check] Outside reminder hours ({current_hour}:00 NZ), skipping")
+            logger.debug(f"Ã°Å¸â€â€ [interval_check] Outside reminder hours ({current_hour}:00 NZ), skipping")
             return
         
         # Let the core function handle everything - it has proper locking
         await send_daily_reminders_core(source="interval_check")
         
     except Exception as e:
-        logger.error(f"âŒ Interval reminder check error: {str(e)}")
+        logger.error(f"Ã¢ÂÅ’ Interval reminder check error: {str(e)}")
 
 async def startup_reminder_check():
     """
@@ -12301,13 +12301,13 @@ async def startup_reminder_check():
         nz_now = datetime.now(nz_tz)
         current_hour = nz_now.hour
         
-        logger.info(f"ðŸš€ Startup reminder check - NZ time: {nz_now.strftime('%Y-%m-%d %H:%M:%S')}")
+        logger.info(f"Ã°Å¸Å¡â‚¬ Startup reminder check - NZ time: {nz_now.strftime('%Y-%m-%d %H:%M:%S')}")
         
         # Only run startup check if it's between 8 AM and 11 PM
         if current_hour >= 8 and current_hour <= 23:
             result = await send_daily_reminders_core(source="startup_check")
     except Exception as e:
-        logger.error(f"âŒ Startup reminder check error: {str(e)}")
+        logger.error(f"Ã¢ÂÅ’ Startup reminder check error: {str(e)}")
 
 
 # ==================== AIRPORT ARRIVAL EMAILS ====================
@@ -12323,7 +12323,7 @@ async def send_arrival_pickup_emails():
         nz_now = datetime.now(nz_tz)
         tomorrow = (nz_now + timedelta(days=1)).strftime('%Y-%m-%d')
         
-        logger.info(f"âœˆï¸ [Arrival Emails] Checking for airport arrivals on {tomorrow}")
+        logger.info(f"Ã¢Å“Ë†Ã¯Â¸Â [Arrival Emails] Checking for airport arrivals on {tomorrow}")
         
         # Find bookings where dropoff is Auckland Airport (arrivals TO Auckland)
         # These are customers flying INTO Auckland who need pickup at the airport
@@ -12343,10 +12343,10 @@ async def send_arrival_pickup_emails():
         bookings = await db.bookings.find(query, {"_id": 0}).to_list(500)
         
         if not bookings:
-            logger.info(f"âœˆï¸ [Arrival Emails] No airport arrivals found for {tomorrow}")
+            logger.info(f"Ã¢Å“Ë†Ã¯Â¸Â [Arrival Emails] No airport arrivals found for {tomorrow}")
             return {"sent": 0, "date": tomorrow}
         
-        logger.info(f"âœˆï¸ [Arrival Emails] Found {len(bookings)} airport arrivals for {tomorrow}")
+        logger.info(f"Ã¢Å“Ë†Ã¯Â¸Â [Arrival Emails] Found {len(bookings)} airport arrivals for {tomorrow}")
         
         # Get email settings
         mailgun_api_key = os.environ.get('MAILGUN_API_KEY', '')
@@ -12354,7 +12354,7 @@ async def send_arrival_pickup_emails():
         public_domain = os.environ.get('PUBLIC_DOMAIN', 'https://bookaride.co.nz')
         
         if not mailgun_api_key or not mailgun_domain:
-            logger.warning("âœˆï¸ [Arrival Emails] Mailgun not configured")
+            logger.warning("Ã¢Å“Ë†Ã¯Â¸Â [Arrival Emails] Mailgun not configured")
             return {"sent": 0, "error": "Mailgun not configured"}
         
         sent_count = 0
@@ -12367,7 +12367,7 @@ async def send_arrival_pickup_emails():
                 
                 # Check if we already sent this email
                 if booking.get('arrivalEmailSent'):
-                    logger.info(f"âœˆï¸ Skipping {email} - arrival email already sent")
+                    logger.info(f"Ã¢Å“Ë†Ã¯Â¸Â Skipping {email} - arrival email already sent")
                     continue
                 
                 customer_name = booking.get('name', 'Valued Customer')
@@ -12400,7 +12400,7 @@ async def send_arrival_pickup_emails():
                     data={
                         "from": f"BookaRide NZ <noreply@{mailgun_domain}>",
                         "to": email,
-                        "subject": f"âœˆï¸ Your Airport Pickup Tomorrow - Where to Meet Your Driver",
+                        "subject": f"Ã¢Å“Ë†Ã¯Â¸Â Your Airport Pickup Tomorrow - Where to Meet Your Driver",
                         "html": email_html
                     }
                 )
@@ -12415,19 +12415,19 @@ async def send_arrival_pickup_emails():
                         }}
                     )
                     sent_count += 1
-                    logger.info(f"âœˆï¸ Arrival email sent to {email} for booking {booking.get('id')}")
+                    logger.info(f"Ã¢Å“Ë†Ã¯Â¸Â Arrival email sent to {email} for booking {booking.get('id')}")
                 else:
-                    logger.error(f"âœˆï¸ Failed to send arrival email to {email}: {response.text}")
+                    logger.error(f"Ã¢Å“Ë†Ã¯Â¸Â Failed to send arrival email to {email}: {response.text}")
                     
             except Exception as e:
-                logger.error(f"âœˆï¸ Error sending arrival email: {str(e)}")
+                logger.error(f"Ã¢Å“Ë†Ã¯Â¸Â Error sending arrival email: {str(e)}")
                 continue
         
-        logger.info(f"âœˆï¸ [Arrival Emails] Completed - {sent_count} emails sent for {tomorrow}")
+        logger.info(f"Ã¢Å“Ë†Ã¯Â¸Â [Arrival Emails] Completed - {sent_count} emails sent for {tomorrow}")
         return {"sent": sent_count, "date": tomorrow}
         
     except Exception as e:
-        logger.error(f"âœˆï¸ [Arrival Emails] Error: {str(e)}")
+        logger.error(f"Ã¢Å“Ë†Ã¯Â¸Â [Arrival Emails] Error: {str(e)}")
         return {"sent": 0, "error": str(e)}
 
 
@@ -12446,7 +12446,7 @@ async def run_daily_error_check():
         today_str = now_nz.strftime('%Y-%m-%d')
         tomorrow_str = (now_nz + timedelta(days=1)).strftime('%Y-%m-%d')
         
-        logger.info(f"ðŸ” [Daily Error Check] Starting - NZ time: {now_nz.strftime('%Y-%m-%d %H:%M')}")
+        logger.info(f"Ã°Å¸â€Â [Daily Error Check] Starting - NZ time: {now_nz.strftime('%Y-%m-%d %H:%M')}")
         
         issues = []
         warnings = []
@@ -12472,26 +12472,26 @@ async def run_daily_error_check():
             
             # Check for missing customer details
             if not booking.get('name'):
-                issues.append(f"ðŸš¨ Booking #{booking_ref}: Missing customer NAME")
+                issues.append(f"Ã°Å¸Å¡Â¨ Booking #{booking_ref}: Missing customer NAME")
             if not booking.get('phone'):
-                issues.append(f"ðŸš¨ Booking #{booking_ref}: Missing customer PHONE")
+                issues.append(f"Ã°Å¸Å¡Â¨ Booking #{booking_ref}: Missing customer PHONE")
             if not booking.get('email'):
-                warnings.append(f"âš ï¸ Booking #{booking_ref}: Missing customer EMAIL")
+                warnings.append(f"Ã¢Å¡Â Ã¯Â¸Â Booking #{booking_ref}: Missing customer EMAIL")
             
             # Check for missing addresses
             if not booking.get('pickupAddress'):
-                issues.append(f"ðŸš¨ Booking #{booking_ref}: Missing PICKUP address")
+                issues.append(f"Ã°Å¸Å¡Â¨ Booking #{booking_ref}: Missing PICKUP address")
             if not booking.get('dropoffAddress'):
-                issues.append(f"ðŸš¨ Booking #{booking_ref}: Missing DROPOFF address")
+                issues.append(f"Ã°Å¸Å¡Â¨ Booking #{booking_ref}: Missing DROPOFF address")
             
             # Check for missing time
             if not booking.get('time'):
-                issues.append(f"ðŸš¨ Booking #{booking_ref}: Missing PICKUP TIME")
+                issues.append(f"Ã°Å¸Å¡Â¨ Booking #{booking_ref}: Missing PICKUP TIME")
             
             # Check for unassigned TODAY bookings
             if booking.get('date') == today_str:
                 if not booking.get('driver_id') and not booking.get('assignedDriver'):
-                    issues.append(f"ðŸš¨ TODAY Booking #{booking_ref} ({booking.get('name')}): NO DRIVER ASSIGNED!")
+                    issues.append(f"Ã°Å¸Å¡Â¨ TODAY Booking #{booking_ref} ({booking.get('name')}): NO DRIVER ASSIGNED!")
         
         # ===========================================
         # CHECK 2: Return bookings without complete info
@@ -12504,9 +12504,9 @@ async def run_daily_error_check():
         for booking in return_bookings:
             booking_ref = get_booking_reference(booking)
             if not booking.get('returnDate'):
-                warnings.append(f"âš ï¸ Booking #{booking_ref}: Has bookReturn=true but missing RETURN DATE")
+                warnings.append(f"Ã¢Å¡Â Ã¯Â¸Â Booking #{booking_ref}: Has bookReturn=true but missing RETURN DATE")
             if not booking.get('returnTime'):
-                warnings.append(f"âš ï¸ Booking #{booking_ref}: Has bookReturn=true but missing RETURN TIME")
+                warnings.append(f"Ã¢Å¡Â Ã¯Â¸Â Booking #{booking_ref}: Has bookReturn=true but missing RETURN TIME")
         
         # ===========================================
         # CHECK 3: Payment status inconsistencies
@@ -12524,7 +12524,7 @@ async def run_daily_error_check():
                 total_price = booking.get('pricing', {}).get('totalPrice', total_price)
             
             if total_price and float(total_price) > 0:
-                warnings.append(f"âš ï¸ TODAY Booking #{booking_ref} ({booking.get('name')}): UNPAID - ${total_price}")
+                warnings.append(f"Ã¢Å¡Â Ã¯Â¸Â TODAY Booking #{booking_ref} ({booking.get('name')}): UNPAID - ${total_price}")
         
         # ===========================================
         # CHECK 4: Recent bookings without confirmation sent
@@ -12538,7 +12538,7 @@ async def run_daily_error_check():
         
         for booking in recent_bookings:
             booking_ref = get_booking_reference(booking)
-            warnings.append(f"âš ï¸ Booking #{booking_ref}: Confirmation may not have been sent")
+            warnings.append(f"Ã¢Å¡Â Ã¯Â¸Â Booking #{booking_ref}: Confirmation may not have been sent")
         
         # ===========================================
         # CHECK 5: Calendar sync verification for ALL bookings
@@ -12555,7 +12555,7 @@ async def run_daily_error_check():
         
         for booking in bookings_needing_calendar:
             booking_ref = get_booking_reference(booking)
-            issues.append(f"ðŸš¨ Booking #{booking_ref} ({booking.get('name')}): NOT synced to CALENDAR!")
+            issues.append(f"Ã°Å¸Å¡Â¨ Booking #{booking_ref} ({booking.get('name')}): NOT synced to CALENDAR!")
         
         # ===========================================
         # CHECK 6: Return trips today/tomorrow without calendar sync
@@ -12578,12 +12578,12 @@ async def run_daily_error_check():
             
             if not has_return_calendar:
                 urgency = "TODAY" if return_date == today_str else "TOMORROW"
-                issues.append(f"ðŸš¨ {urgency} RETURN #{booking_ref} ({booking.get('name')}): {return_date} @ {return_time} - NOT in calendar!")
+                issues.append(f"Ã°Å¸Å¡Â¨ {urgency} RETURN #{booking_ref} ({booking.get('name')}): {return_date} @ {return_time} - NOT in calendar!")
             
             # Check if return trip has driver assigned
             if return_date == today_str:
                 if not booking.get('return_driver_id') and not booking.get('driver_id'):
-                    issues.append(f"ðŸš¨ TODAY RETURN #{booking_ref} ({booking.get('name')}): @ {return_time} - NO DRIVER!")
+                    issues.append(f"Ã°Å¸Å¡Â¨ TODAY RETURN #{booking_ref} ({booking.get('name')}): @ {return_time} - NO DRIVER!")
         
         # ===========================================
         # CHECK 7: Database health checks
@@ -12593,7 +12593,7 @@ async def run_daily_error_check():
         active_drivers = await db.drivers.count_documents({'status': 'active'})
         
         if active_drivers == 0:
-            issues.append("ðŸš¨ CRITICAL: No active drivers in system!")
+            issues.append("Ã°Å¸Å¡Â¨ CRITICAL: No active drivers in system!")
         
         # ===========================================
         # COMPILE REPORT
@@ -12605,38 +12605,38 @@ async def run_daily_error_check():
         
         # Build report
         report = f"""
-â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
-â•‘           BOOKARIDE DAILY ERROR CHECK REPORT                 â•‘
-â•‘                    {report_time}                               â•‘
-â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+Ã¢â€¢â€Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢â€”
+Ã¢â€¢â€˜           BOOKARIDE DAILY ERROR CHECK REPORT                 Ã¢â€¢â€˜
+Ã¢â€¢â€˜                    {report_time}                               Ã¢â€¢â€˜
+Ã¢â€¢Å¡Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
-ðŸ“Š SUMMARY
-â€¢ Bookings checked (today/tomorrow): {stats['total_bookings_checked']}
-â€¢ Total bookings in database: {total_bookings}
-â€¢ Active drivers: {active_drivers} / {total_drivers}
-â€¢ Critical issues found: {stats['issues_found']}
-â€¢ Warnings found: {stats['warnings_found']}
+Ã°Å¸â€œÅ  SUMMARY
+Ã¢â‚¬Â¢ Bookings checked (today/tomorrow): {stats['total_bookings_checked']}
+Ã¢â‚¬Â¢ Total bookings in database: {total_bookings}
+Ã¢â‚¬Â¢ Active drivers: {active_drivers} / {total_drivers}
+Ã¢â‚¬Â¢ Critical issues found: {stats['issues_found']}
+Ã¢â‚¬Â¢ Warnings found: {stats['warnings_found']}
 
 """
         
         if issues:
-            report += "ðŸš¨ CRITICAL ISSUES (Require immediate attention):\n"
-            report += "â”€" * 50 + "\n"
+            report += "Ã°Å¸Å¡Â¨ CRITICAL ISSUES (Require immediate attention):\n"
+            report += "Ã¢â€â‚¬" * 50 + "\n"
             for issue in issues[:20]:  # Limit to 20
                 report += f"  {issue}\n"
             report += "\n"
         
         if warnings:
-            report += "âš ï¸ WARNINGS (Review recommended):\n"
-            report += "â”€" * 50 + "\n"
+            report += "Ã¢Å¡Â Ã¯Â¸Â WARNINGS (Review recommended):\n"
+            report += "Ã¢â€â‚¬" * 50 + "\n"
             for warning in warnings[:20]:  # Limit to 20
                 report += f"  {warning}\n"
             report += "\n"
         
         if not issues and not warnings:
-            report += "âœ… ALL SYSTEMS HEALTHY - No issues detected!\n"
+            report += "Ã¢Å“â€¦ ALL SYSTEMS HEALTHY - No issues detected!\n"
         
-        logger.info(f"ðŸ” [Daily Error Check] Complete: {stats['issues_found']} issues, {stats['warnings_found']} warnings")
+        logger.info(f"Ã°Å¸â€Â [Daily Error Check] Complete: {stats['issues_found']} issues, {stats['warnings_found']} warnings")
         
         # ===========================================
         # SEND NOTIFICATIONS
@@ -12650,7 +12650,7 @@ async def run_daily_error_check():
             sender_email = os.environ.get('SENDER_EMAIL', 'noreply@mg.bookaride.co.nz')
             
             if mailgun_api_key and mailgun_domain:
-                subject = f"{'ðŸš¨ ISSUES FOUND' if issues else 'âœ… All Clear'} - BookaRide Daily Check {report_time}"
+                subject = f"{'Ã°Å¸Å¡Â¨ ISSUES FOUND' if issues else 'Ã¢Å“â€¦ All Clear'} - BookaRide Daily Check {report_time}"
                 
                 html_report = f"""
                 <html>
@@ -12672,11 +12672,11 @@ async def run_daily_error_check():
                 )
                 
                 if response.status_code == 200:
-                    logger.info(f"ðŸ” [Daily Error Check] Email report sent to {admin_email}")
+                    logger.info(f"Ã°Å¸â€Â [Daily Error Check] Email report sent to {admin_email}")
                 else:
-                    logger.error(f"ðŸ” [Daily Error Check] Failed to send email: {response.text}")
+                    logger.error(f"Ã°Å¸â€Â [Daily Error Check] Failed to send email: {response.text}")
         except Exception as email_err:
-            logger.error(f"ðŸ” [Daily Error Check] Email error: {str(email_err)}")
+            logger.error(f"Ã°Å¸â€Â [Daily Error Check] Email error: {str(email_err)}")
         
         # Send SMS if critical issues found
         if issues:
@@ -12689,7 +12689,7 @@ async def run_daily_error_check():
                 if twilio_sid and twilio_token and twilio_from:
                     client = Client(twilio_sid, twilio_token)
                     
-                    sms_body = f"ðŸš¨ BookaRide Daily Check\n"
+                    sms_body = f"Ã°Å¸Å¡Â¨ BookaRide Daily Check\n"
                     sms_body += f"{len(issues)} critical issues found!\n"
                     sms_body += f"Top issue: {issues[0][:80]}...\n"
                     sms_body += f"Check email for full report."
@@ -12699,9 +12699,9 @@ async def run_daily_error_check():
                         from_=twilio_from,
                         to=admin_phone
                     )
-                    logger.info(f"ðŸ” [Daily Error Check] Critical alert SMS sent")
+                    logger.info(f"Ã°Å¸â€Â [Daily Error Check] Critical alert SMS sent")
             except Exception as sms_err:
-                logger.error(f"ðŸ” [Daily Error Check] SMS error: {str(sms_err)}")
+                logger.error(f"Ã°Å¸â€Â [Daily Error Check] SMS error: {str(sms_err)}")
         
         # Store report in database for dashboard access
         await db.error_check_reports.insert_one({
@@ -12721,7 +12721,7 @@ async def run_daily_error_check():
         }
         
     except Exception as e:
-        logger.error(f"ðŸ” [Daily Error Check] Fatal error: {str(e)}")
+        logger.error(f"Ã°Å¸â€Â [Daily Error Check] Fatal error: {str(e)}")
         return {"success": False, "error": str(e)}
 
 
@@ -12737,7 +12737,7 @@ def get_pickup_location_info(pickup_address: str, flight_number: str) -> dict:
         return {
             "terminal": "International Terminal",
             "location": "Allpress Cafe",
-            "icon": "â˜•",
+            "icon": "Ã¢Ëœâ€¢",
             "color": "#3B82F6",  # blue
             "instructions": [
                 "After collecting your luggage, walk through customs into the public arrivals area",
@@ -12752,7 +12752,7 @@ def get_pickup_location_info(pickup_address: str, flight_number: str) -> dict:
         return {
             "terminal": "Domestic Terminal - Jetstar",
             "location": "Jetstar Car Park",
-            "icon": "ðŸ…¿ï¸",
+            "icon": "Ã°Å¸â€¦Â¿Ã¯Â¸Â",
             "color": "#F97316",  # orange
             "instructions": [
                 "After collecting your bags, head towards the exit",
@@ -12768,7 +12768,7 @@ def get_pickup_location_info(pickup_address: str, flight_number: str) -> dict:
         return {
             "terminal": "Domestic Terminal - Regionals",
             "location": "Luggage Claim (opposite Krispy Kreme)",
-            "icon": "ðŸ©",
+            "icon": "Ã°Å¸ÂÂ©",
             "color": "#22C55E",  # green
             "instructions": [
                 "Head to the luggage claim area",
@@ -12781,7 +12781,7 @@ def get_pickup_location_info(pickup_address: str, flight_number: str) -> dict:
     return {
         "terminal": "Domestic Terminal - Cities",
         "location": "Outside Arrivals (Dunkin' Donuts)",
-        "icon": "ðŸ©",
+        "icon": "Ã°Å¸ÂÂ©",
         "color": "#A855F7",  # purple
         "instructions": [
             "After collecting your bags, walk out of the arrivals area",
@@ -12814,7 +12814,7 @@ def create_arrival_email_html(customer_name: str, booking_date: str, pickup_time
             
             <!-- Header -->
             <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border-radius: 16px 16px 0 0; padding: 30px; text-align: center;">
-                <h1 style="color: white; margin: 0; font-size: 24px;">âœˆï¸ Your Airport Pickup Tomorrow</h1>
+                <h1 style="color: white; margin: 0; font-size: 24px;">Ã¢Å“Ë†Ã¯Â¸Â Your Airport Pickup Tomorrow</h1>
                 <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0;">Where to meet your BookaRide driver</p>
             </div>
             
@@ -12850,7 +12850,7 @@ def create_arrival_email_html(customer_name: str, booking_date: str, pickup_time
                     </div>
                     
                     <div style="padding: 20px;">
-                        <h3 style="color: #111827; margin: 0 0 15px 0; font-size: 16px;">ðŸ“ How to Find Your Driver:</h3>
+                        <h3 style="color: #111827; margin: 0 0 15px 0; font-size: 16px;">Ã°Å¸â€œÂ How to Find Your Driver:</h3>
                         <table style="width: 100%; border-collapse: collapse;">
                             {instructions_html}
                         </table>
@@ -12860,7 +12860,7 @@ def create_arrival_email_html(customer_name: str, booking_date: str, pickup_time
                 <!-- Look for Name -->
                 <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 12px; padding: 15px; margin-bottom: 25px; text-align: center;">
                     <p style="color: #92400e; margin: 0; font-size: 16px;">
-                        ðŸ‘€ <strong>Look for your name!</strong><br>
+                        Ã°Å¸â€˜â‚¬ <strong>Look for your name!</strong><br>
                         <span style="font-size: 14px;">Your driver will be holding a sign with "{customer_name}" on it.</span>
                     </p>
                 </div>
@@ -12876,7 +12876,7 @@ def create_arrival_email_html(customer_name: str, booking_date: str, pickup_time
                 <div style="background: #f9fafb; border-radius: 12px; padding: 20px; text-align: center;">
                     <p style="color: #6b7280; margin: 0 0 10px 0; font-size: 14px;">Can't find your driver?</p>
                     <a href="tel:+6421743321" style="color: #f59e0b; font-size: 20px; font-weight: bold; text-decoration: none;">
-                        ðŸ“ž 021 743 321
+                        Ã°Å¸â€œÅ¾ 021 743 321
                     </a>
                 </div>
                 
@@ -12884,7 +12884,7 @@ def create_arrival_email_html(customer_name: str, booking_date: str, pickup_time
             
             <!-- Footer -->
             <div style="text-align: center; padding: 20px; color: #9ca3af; font-size: 12px;">
-                <p style="margin: 0;">BookaRide NZ â€¢ Premium Airport Transfers</p>
+                <p style="margin: 0;">BookaRide NZ Ã¢â‚¬Â¢ Premium Airport Transfers</p>
                 <p style="margin: 5px 0 0 0;">bookaride.co.nz</p>
             </div>
             
@@ -12904,7 +12904,7 @@ async def startup_event():
         print("WARN: admin seed skipped (db unavailable):", repr(e))
         default_admin = {"_skip": True}
     if not default_admin:
-        hashed_pw = pwd_context.hash("Kongkong2025")
+        hashed_pw = "$2b$12$C6UzMDM.H6dfI/f/IKcEeO8m8Y4YkQkQ1h6s4H6c3Z8Y5G7c8Y4r2"
         await db.admin_users.insert_one({
             "id": str(uuid.uuid4()),
             "username": "admin",
@@ -12913,10 +12913,10 @@ async def startup_event():
             "created_at": datetime.now(timezone.utc).isoformat(),
             "is_active": True
         })
-        logger.info("âœ… Default admin user created")
+        logger.info("Ã¢Å“â€¦ Default admin user created")
     else:
         # Update password and email to ensure they're correct
-        hashed_pw = pwd_context.hash("Kongkong2025")
+        hashed_pw = "$2b$12$C6UzMDM.H6dfI/f/IKcEeO8m8Y4YkQkQ1h6s4H6c3Z8Y5G7c8Y4r2"
         await db.admin_users.update_one(
             {"username": "admin"},
             {"$set": {
@@ -12924,7 +12924,7 @@ async def startup_event():
                 "email": "info@bookaride.co.nz"
             }}
         )
-        logger.info("âœ… Admin password reset and email updated to info@bookaride.co.nz")
+        logger.info("Ã¢Å“â€¦ Admin password reset and email updated to info@bookaride.co.nz")
     
     # Create database indexes for faster queries
     try:
@@ -12935,7 +12935,7 @@ async def startup_event():
         await db.bookings.create_index("referenceNumber")
         await db.bookings.create_index("original_booking_id")
         await db.bookings.create_index([("date", -1), ("status", 1)])
-        logger.info("âœ… Database indexes created for faster queries")
+        logger.info("Ã¢Å“â€¦ Database indexes created for faster queries")
     except Exception as e:
         logger.warning(f"Index creation note: {str(e)}")
     
@@ -12945,7 +12945,7 @@ async def startup_event():
         await db.bookings_archive.create_index("name")
         await db.bookings_archive.create_index("email")
         await db.bookings_archive.create_index("referenceNumber")
-        logger.info("âœ… Archive indexes created")
+        logger.info("Ã¢Å“â€¦ Archive indexes created")
     except Exception as e:
         logger.warning(f"Archive index creation note: {str(e)}")
     
@@ -13040,16 +13040,16 @@ async def startup_event():
     # )
     
     scheduler.start()
-    logger.info("ðŸš€ Scheduler started with all jobs:")
-    logger.info("   âœ“ Reminder: 8:00 AM NZ daily (primary)")
-    logger.info("   âœ“ Arrival emails: 9:00 AM NZ daily")
-    logger.info("   âœ“ Reminder: Hourly backup check")
-    logger.info("   âœ“ Abandoned bookings: Every 30 mins")
-    logger.info("   âœ“ Auto-sync: Every 5 minutes")
-    logger.info("   âœ“ Return alerts: Every 15 minutes")
-    logger.info("   âœ“ Daily error check: 6:00 AM NZ daily")
-    logger.info("   âœ“ Auto-archive: 2:00 AM NZ daily")
-    logger.info("   âœ“ Startup reminder check (running now...)")
+    logger.info("Ã°Å¸Å¡â‚¬ Scheduler started with all jobs:")
+    logger.info("   Ã¢Å“â€œ Reminder: 8:00 AM NZ daily (primary)")
+    logger.info("   Ã¢Å“â€œ Arrival emails: 9:00 AM NZ daily")
+    logger.info("   Ã¢Å“â€œ Reminder: Hourly backup check")
+    logger.info("   Ã¢Å“â€œ Abandoned bookings: Every 30 mins")
+    logger.info("   Ã¢Å“â€œ Auto-sync: Every 5 minutes")
+    logger.info("   Ã¢Å“â€œ Return alerts: Every 15 minutes")
+    logger.info("   Ã¢Å“â€œ Daily error check: 6:00 AM NZ daily")
+    logger.info("   Ã¢Å“â€œ Auto-archive: 2:00 AM NZ daily")
+    logger.info("   Ã¢Å“â€œ Startup reminder check (running now...)")
     
     # Layer 3: Immediate startup check
     await startup_reminder_check()
