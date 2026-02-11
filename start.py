@@ -1,4 +1,12 @@
 import os
+import sys
+
+# Ensure local packages inside ./backend are importable (fixes 'emergentintegrations' on Render)
+ROOT = os.path.dirname(__file__)
+BACKEND = os.path.join(ROOT, "backend")
+if BACKEND not in sys.path:
+    sys.path.insert(0, BACKEND)
+import os
 try:
     _p = os.path.join(os.path.dirname(__file__), "RENDER_BUILD_STAMP.txt")
     if os.path.exists(_p):
