@@ -40,7 +40,8 @@
         "recharts": "^3.7.0",
         "slick-carousel": "^1.8.1",
         "sonner": "^2.0.7",
-        "tailwind-merge": "^3.4.0"
+        "tailwind-merge": "^3.4.0",
+        "tailwindcss-animate": "^1.0.7"
     },
     "devDependencies": {
         "@craco/craco": "7.1.0",
