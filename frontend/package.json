@@ -14,6 +14,7 @@
         "doctor:report": "node scripts/doctor-report.js"
     },
     "dependencies": {
+        "@radix-ui/react-label": "^2.1.8",
         "@react-google-maps/api": "^2.20.8",
         "aos": "^2.3.4",
         "axios": "^1.13.5",
