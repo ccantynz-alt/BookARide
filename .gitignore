@@ -122,3 +122,4 @@ backend/#*.txt
 *.log
 RUN_LOGS/
 D8_CONTROL/
+.env*.local
