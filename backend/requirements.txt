@@ -15,3 +15,11 @@ bcrypt==4.0.1
 
 # --- Added by Render Sledgehammer ---
 twilio>=9.0.0
+apscheduler>=3.10.0
+python-jose[cryptography]>=3.3.0
+google-auth>=2.28.0
+google-auth-oauthlib>=1.2.0
+google-api-python-client>=2.120.0
+vobject>=0.9.6
+python-multipart>=0.0.9
+stripe>=8.0.0
