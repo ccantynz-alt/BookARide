@@ -12905,31 +12905,30 @@ async def startup_event():
     # Ensure default admin exists with correct email for Google OAuth
     try:
         default_admin = await db.admin_users.find_one({"username": "admin"})
-    except Exception as e:
-        print("WARN: admin seed skipped (db unavailable):", repr(e))
-        default_admin = {"_skip": True}
-    if not default_admin:
-        hashed_pw = pwd_context.hash("Kongkong2025!@")
-        await db.admin_users.insert_one({
-            "id": str(uuid.uuid4()),
-            "username": "admin",
-            "email": "info@bookaride.co.nz",
-            "hashed_password": hashed_pw,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "is_active": True
-        })
-        logger.info("✅ Default admin user created")
-    else:
-        # Update password and email to ensure they're correct
-        hashed_pw = pwd_context.hash("Kongkong2025!@")
-        await db.admin_users.update_one(
-            {"username": "admin"},
-            {"$set": {
+        if not default_admin:
+            hashed_pw = pwd_context.hash("Kongkong2025!@")
+            await db.admin_users.insert_one({
+                "id": str(uuid.uuid4()),
+                "username": "admin",
+                "email": "info@bookaride.co.nz",
                 "hashed_password": hashed_pw,
-                "email": "info@bookaride.co.nz"
-            }}
-        )
-        logger.info("✅ Admin password reset and email updated to info@bookaride.co.nz")
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "is_active": True
+            })
+            logger.info("✅ Default admin user created")
+        else:
+            # Update password and email to ensure they're correct
+            hashed_pw = pwd_context.hash("Kongkong2025!@")
+            await db.admin_users.update_one(
+                {"username": "admin"},
+                {"$set": {
+                    "hashed_password": hashed_pw,
+                    "email": "info@bookaride.co.nz"
+                }}
+            )
+            logger.info("✅ Admin password reset and email updated to info@bookaride.co.nz")
+    except Exception as e:
+        logger.warning(f"Admin seed/update skipped (db unavailable): {str(e)}")
     
     # Create database indexes for faster queries
     try:
