@@ -21,7 +21,7 @@ from email.mime.multipart import MIMEMultipart
 from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionResponse, CheckoutStatusResponse, CheckoutSessionRequest
 # D8_SLEDGEHAMMER_20260213_063450
 try:
-# twilio disabled
+    pass # twilio disabled
 except Exception:
     Client = None
 import requests

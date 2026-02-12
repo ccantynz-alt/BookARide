@@ -1,4 +1,5 @@
 services:
+  # Backend API (Python/FastAPI)
   - type: web
     name: bookaride-backend
     env: python
@@ -6,3 +7,31 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: python start.py
     autoDeploy: true
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: MONGO_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: MAILGUN_API_KEY
+        sync: false
+
+  # Frontend (React)
+  - type: static
+    name: bookaride-frontend
+    env: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    publishPath: build
+    autoDeploy: true
+    envVars:
+      - key: REACT_APP_BACKEND_URL
+        fromService:
+          name: bookaride-backend
+          type: web
+          property: host
