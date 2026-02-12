@@ -1,0 +1,5 @@
+{
+    "version":  2,
+    "devCommand":  "cd frontend \u0026\u0026 npm run dev",
+    "outputDirectory":  "frontend/.next"
+}
