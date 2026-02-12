@@ -26,7 +26,6 @@ try:
     from twilio.rest import Client
 except Exception:
     Client = None
-import requests
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 from google.oauth2.credentials import Credentials
@@ -91,6 +90,14 @@ security = HTTPBearer()
 
 # Create the main app without a prefix
 app = FastAPI()
+
+@app.get("/healthz")
+async def health_check():
+    return {"status": "ok"}
+
+@app.get("/")
+async def root_path():
+    return {"status": "ok", "info": "BookARide API"}
 
 # Root-level health check for Kubernetes - MUST be at root, not under /api
 @app.get("/health")
