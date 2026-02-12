@@ -1,3 +1,4 @@
+print('PROOF:D8_SLEDGEHAMMER_20260213_063450')
 # -*- coding: utf-8 -*-
 from fastapi import FastAPI, APIRouter, HTTPException, Request, Depends, Body, UploadFile, File, Form, BackgroundTasks
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -18,7 +19,11 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionResponse, CheckoutStatusResponse, CheckoutSessionRequest
-from twilio.rest import Client
+# D8_SLEDGEHAMMER_20260213_063450
+try:
+# twilio disabled
+except Exception:
+    Client = None
 import requests
 from passlib.context import CryptContext
 from jose import JWTError, jwt

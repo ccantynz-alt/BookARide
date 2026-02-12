@@ -12,3 +12,6 @@ pymongo>=4.6.0
 # --- pinned for Render stability ---
 passlib==1.7.4
 bcrypt==4.0.1
+
+# --- Added by Render Sledgehammer ---
+twilio>=9.0.0
