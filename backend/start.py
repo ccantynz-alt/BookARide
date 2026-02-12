@@ -1,18 +1,38 @@
 import os
 import sys
 
-def _log(msg: str) -> None:
-    print(msg, flush=True)
+def _pick_app_target():
+    # Prefer backend/server.py if it exists
+    here = os.path.dirname(__file__)
+    backend_server = os.path.join(here, "server.py")
+    root_server = os.path.join(os.path.dirname(here), "server.py")
 
-try:
-    # Primary app (may fail if server.py has SyntaxError)
-    from server import app  # type: ignore  # noqa: F401
-    _log("BOOT: using server.py app")
-except Exception as e:
-    _log("WARN: failed to import server.py app; falling back to minimal_app.py")
-    _log("WARN: " + repr(e))
-    from minimal_app import app  # type: ignore  # noqa: F401
+    # Render runs: python backend/start.py (cwd is repo root)
+    # If backend/server.py exists, use backend.server:app
+    if os.path.exists(backend_server):
+        return "backend.server:app"
+
+    # Otherwise, if root server.py exists, use server:app
+    if os.path.exists(root_server):
+        return "server:app"
+
+    # Fallback (will error clearly)
+    return "backend.server:app"
+
+def main():
+    port = int(os.environ.get("PORT", "8000"))
+    target = _pick_app_target()
+    print(f"BOOT: uvicorn target={target} host=0.0.0.0 port={port}", flush=True)
+
+    import uvicorn
+    uvicorn.run(
+        target,
+        host="0.0.0.0",
+        port=port,
+        log_level=os.environ.get("LOG_LEVEL", "info"),
+        proxy_headers=True,
+        forwarded_allow_ips="*",
+    )
 
 if __name__ == "__main__":
-    # If someone runs this directly, do a tiny sanity print
-    _log("BOOT_OK")
+    main()
