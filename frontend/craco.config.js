@@ -2,6 +2,10 @@
 const path = require("path");
 require("dotenv").config();
 
+// Ensure API base URL exists in production builds even if missing in Vercel env vars.
+process.env.REACT_APP_BACKEND_URL =
+  process.env.REACT_APP_BACKEND_URL || "https://api.bookaride.co.nz";
+
 // Environment variable overrides
 const config = {
   disableHotReload: process.env.DISABLE_HOT_RELOAD === "true",
@@ -35,6 +39,19 @@ const webpackConfig = {
       '@': path.resolve(__dirname, 'src'),
     },
     configure: (webpackConfig) => {
+      // Guarantee the frontend bundle always receives a backend URL.
+      const definePlugin = webpackConfig.plugins.find(
+        (plugin) => plugin && plugin.constructor && plugin.constructor.name === "DefinePlugin"
+      );
+      if (
+        definePlugin &&
+        definePlugin.definitions &&
+        definePlugin.definitions["process.env"]
+      ) {
+        definePlugin.definitions["process.env"].REACT_APP_BACKEND_URL = JSON.stringify(
+          process.env.REACT_APP_BACKEND_URL
+        );
+      }
 
       // Disable hot reload completely if environment variable is set
       if (config.disableHotReload) {
