@@ -1,0 +1,142 @@
+{
+  "generated_at": "2026-02-13T23:24:42.219Z",
+  "source_count": 27,
+  "redirect_count": 27,
+  "redirects": [
+    {
+      "source": "/about-us",
+      "destination": "/about",
+      "permanent": true
+    },
+    {
+      "source": "/admin",
+      "destination": "/admin/login",
+      "permanent": true
+    },
+    {
+      "source": "/airport-guide",
+      "destination": "/airport-pickup-guide",
+      "permanent": true
+    },
+    {
+      "source": "/airport-shuttle-auckland",
+      "destination": "/airport-shuttle",
+      "permanent": true
+    },
+    {
+      "source": "/airport-transfer",
+      "destination": "/book-now",
+      "permanent": true
+    },
+    {
+      "source": "/airport-transfer-auckland",
+      "destination": "/airport-shuttle",
+      "permanent": true
+    },
+    {
+      "source": "/airport-transfers",
+      "destination": "/book-now",
+      "permanent": true
+    },
+    {
+      "source": "/book",
+      "destination": "/book-now",
+      "permanent": true
+    },
+    {
+      "source": "/booking",
+      "destination": "/book-now",
+      "permanent": true
+    },
+    {
+      "source": "/bookings",
+      "destination": "/book-now",
+      "permanent": true
+    },
+    {
+      "source": "/chauffeur-booking",
+      "destination": "/book-now",
+      "permanent": true
+    },
+    {
+      "source": "/contact-us",
+      "destination": "/contact",
+      "permanent": true
+    },
+    {
+      "source": "/flight-status",
+      "destination": "/flight-tracker",
+      "permanent": true
+    },
+    {
+      "source": "/home",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/index.php",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/privacy",
+      "destination": "/privacy-policy",
+      "permanent": true
+    },
+    {
+      "source": "/privacy-policy-nz",
+      "destination": "/privacy-policy",
+      "permanent": true
+    },
+    {
+      "source": "/resources",
+      "destination": "/travel-guide",
+      "permanent": true
+    },
+    {
+      "source": "/shared-transfer",
+      "destination": "/shared-shuttle",
+      "permanent": true
+    },
+    {
+      "source": "/terms",
+      "destination": "/terms-and-conditions",
+      "permanent": true
+    },
+    {
+      "source": "/terms-conditions",
+      "destination": "/terms-and-conditions",
+      "permanent": true
+    },
+    {
+      "source": "/track-flight",
+      "destination": "/flight-tracker",
+      "permanent": true
+    },
+    {
+      "source": "/travel-guide-auckland",
+      "destination": "/travel-guide",
+      "permanent": true
+    },
+    {
+      "source": "/website-policy",
+      "destination": "/website-usage-policy",
+      "permanent": true
+    },
+    {
+      "source": "/wp",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/wp-admin",
+      "destination": "/admin/login",
+      "permanent": true
+    },
+    {
+      "source": "/wp-login.php",
+      "destination": "/admin/login",
+      "permanent": true
+    }
+  ]
+}
