@@ -81,6 +81,11 @@ const isTomorrow = (dateString) => {
   );
 };
 
+const isAirportServiceType = (serviceType = '') => {
+  const normalized = serviceType.toLowerCase();
+  return normalized.includes('airport') || normalized.includes('shuttle');
+};
+
 // Import Bookings Section Component
 const ImportBookingsSection = ({ onSuccess }) => {
   const [importing, setImporting] = useState(false);
@@ -1739,6 +1744,26 @@ export const AdminDashboard = () => {
   const handleSaveEditedBooking = async () => {
     if (!editingBooking) return;
 
+    if (editingBooking.bookReturn && (!editingBooking.returnDate || !editingBooking.returnTime)) {
+      toast.error('Please provide return date and time for return trips');
+      return;
+    }
+
+    const editReturnFlight = (
+      editingBooking.returnDepartureFlightNumber ||
+      editingBooking.returnFlightNumber ||
+      ''
+    ).trim();
+
+    if (
+      editingBooking.bookReturn &&
+      isAirportServiceType(editingBooking.serviceType) &&
+      !editReturnFlight
+    ) {
+      toast.error('Return flight number is required for airport return trips.');
+      return;
+    }
+
     try {
       await axios.patch(`${API}/bookings/${editingBooking.id}`, {
         name: editingBooking.name,
@@ -1758,7 +1783,12 @@ export const AdminDashboard = () => {
         // Return trip fields
         bookReturn: editingBooking.bookReturn,
         returnDate: editingBooking.returnDate,
-        returnTime: editingBooking.returnTime
+        returnTime: editingBooking.returnTime,
+        returnFlightNumber: editReturnFlight,
+        returnDepartureFlightNumber: editReturnFlight,
+        returnDepartureTime: editingBooking.returnDepartureTime,
+        returnArrivalFlightNumber: editingBooking.returnArrivalFlightNumber,
+        returnArrivalTime: editingBooking.returnArrivalTime
       }, getAuthHeaders());
 
       toast.success('Booking updated successfully!');
@@ -1958,26 +1988,35 @@ export const AdminDashboard = () => {
 
   const handleChangePassword = async () => {
     try {
+      const normalizedCurrentPassword = (currentPassword || '').trim();
+      const normalizedNewPassword = (newPassword || '').trim();
+      const normalizedConfirmPassword = (confirmPassword || '').trim();
+
       // Validation
-      if (!currentPassword || !newPassword || !confirmPassword) {
+      if (!normalizedCurrentPassword || !normalizedNewPassword || !normalizedConfirmPassword) {
         toast.error('Please fill in all fields');
         return;
       }
       
-      if (newPassword !== confirmPassword) {
+      if (normalizedNewPassword !== normalizedConfirmPassword) {
         toast.error('New passwords do not match');
         return;
       }
       
-      if (newPassword.length < 8) {
+      if (normalizedNewPassword.length < 8) {
         toast.error('New password must be at least 8 characters');
+        return;
+      }
+
+      if (normalizedCurrentPassword === normalizedNewPassword) {
+        toast.error('New password must be different from current password');
         return;
       }
       
       // Call backend API to change password
       await axios.post(`${API}/auth/change-password`, {
-        current_password: currentPassword,
-        new_password: newPassword
+        current_password: normalizedCurrentPassword,
+        new_password: normalizedNewPassword
       }, getAuthHeaders());
       
       toast.success('Password changed successfully!');
@@ -2109,6 +2148,15 @@ export const AdminDashboard = () => {
       return;
     }
 
+    if (
+      newBooking.bookReturn &&
+      isAirportServiceType(newBooking.serviceType) &&
+      !newBooking.returnDepartureFlightNumber?.trim()
+    ) {
+      toast.error('Return flight number is required for airport return trips.');
+      return;
+    }
+
     // Check if either calculated price or manual override is provided
     const hasCalculatedPrice = bookingPricing.totalPrice > 0;
     const hasManualPrice = manualPriceOverride && parseFloat(manualPriceOverride) > 0;
@@ -2152,6 +2200,7 @@ export const AdminDashboard = () => {
         bookReturn: newBooking.bookReturn,
         returnDate: newBooking.returnDate,
         returnTime: newBooking.returnTime,
+        returnFlightNumber: newBooking.returnDepartureFlightNumber,
         returnDepartureFlightNumber: newBooking.returnDepartureFlightNumber,
         returnDepartureTime: newBooking.returnDepartureTime,
         returnArrivalFlightNumber: newBooking.returnArrivalFlightNumber,
@@ -4483,6 +4532,32 @@ export const AdminDashboard = () => {
                           </div>
                         </div>
                       </div>
+
+                      <div>
+                        <Label>
+                          Return Flight Number {isAirportServiceType(newBooking.serviceType) ? '*' : '(optional)'}
+                        </Label>
+                        <Input
+                          value={newBooking.returnDepartureFlightNumber}
+                          onChange={(e) => setNewBooking(prev => ({
+                            ...prev,
+                            returnDepartureFlightNumber: e.target.value
+                          }))}
+                          placeholder="e.g., NZ456"
+                          className={`mt-1 bg-white ${
+                            isAirportServiceType(newBooking.serviceType) &&
+                            !newBooking.returnDepartureFlightNumber?.trim()
+                              ? 'border-red-300 bg-red-50'
+                              : ''
+                          }`}
+                        />
+                        {isAirportServiceType(newBooking.serviceType) &&
+                          !newBooking.returnDepartureFlightNumber?.trim() && (
+                            <p className="text-xs text-red-600 mt-1">
+                              Return flight number is mandatory for airport return trips.
+                            </p>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -4873,13 +4948,26 @@ export const AdminDashboard = () => {
                           />
                         </div>
                         <div>
-                          <Label>Return Flight Number</Label>
+                          <Label>
+                            Return Flight Number {isAirportServiceType(editingBooking.serviceType) ? '*' : '(optional)'}
+                          </Label>
                           <Input
                             value={editingBooking.returnFlightNumber || editingBooking.returnDepartureFlightNumber || ''}
                             onChange={(e) => setEditingBooking(prev => ({...prev, returnFlightNumber: e.target.value, returnDepartureFlightNumber: e.target.value}))}
                             placeholder="e.g. NZ456"
-                            className="mt-1 bg-white"
+                            className={`mt-1 bg-white ${
+                              isAirportServiceType(editingBooking.serviceType) &&
+                              !(editingBooking.returnFlightNumber || editingBooking.returnDepartureFlightNumber || '').trim()
+                                ? 'border-red-300 bg-red-50'
+                                : ''
+                            }`}
                           />
+                          {isAirportServiceType(editingBooking.serviceType) &&
+                            !(editingBooking.returnFlightNumber || editingBooking.returnDepartureFlightNumber || '').trim() && (
+                              <p className="text-xs text-red-600 mt-1">
+                                Return flight number is required for airport return trips.
+                              </p>
+                          )}
                         </div>
                         <div className="md:col-span-2">
                           <p className="text-xs text-gray-600 italic">

@@ -503,6 +503,7 @@ async def get_current_admin_info(current_admin: dict = Depends(get_current_admin
 
 
 @api_router.post("/auth/change-password")
+@api_router.post("/admin/change-password")
 async def change_password(
     current_password: str = Body(...),
     new_password: str = Body(...),
@@ -510,14 +511,30 @@ async def change_password(
 ):
     """Change admin password"""
     try:
+        current_password = (current_password or "").strip()
+        new_password = (new_password or "").strip()
+
+        if not current_password or not new_password:
+            raise HTTPException(status_code=400, detail="Current and new passwords are required")
+
         # Get admin from database
         admin = await db.admin_users.find_one({"username": current_admin["username"]}, {"_id": 0})
         if not admin:
             raise HTTPException(status_code=404, detail="Admin user not found")
         
+        stored_hash = admin.get("hashed_password")
+        if not stored_hash:
+            raise HTTPException(
+                status_code=400,
+                detail="This account does not have a password set. Please use password reset."
+            )
+
         # Verify current password
-        if not verify_password(current_password, admin["hashed_password"]):
+        if not verify_password(current_password, stored_hash):
             raise HTTPException(status_code=401, detail="Current password is incorrect")
+
+        if current_password == new_password:
+            raise HTTPException(status_code=400, detail="New password must be different from current password")
         
         # Validate new password
         if len(new_password) < 8:
@@ -1786,12 +1803,46 @@ async def get_bookings_count(current_admin: dict = Depends(get_current_admin)):
 @api_router.patch("/bookings/{booking_id}")
 async def update_booking(booking_id: str, update_data: dict, current_admin: dict = Depends(get_current_admin)):
     try:
+        existing_booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+        if not existing_booking:
+            raise HTTPException(status_code=404, detail="Booking not found")
+
         # Auto-sync bookReturn flag when returnDate is set/cleared
         if 'returnDate' in update_data:
             if update_data['returnDate'] and update_data['returnDate'].strip():
                 update_data['bookReturn'] = True
             else:
                 update_data['bookReturn'] = False
+
+        # Keep return flight aliases in sync regardless of edited field name.
+        if 'returnDepartureFlightNumber' in update_data and 'returnFlightNumber' not in update_data:
+            update_data['returnFlightNumber'] = update_data.get('returnDepartureFlightNumber', '')
+        elif 'returnFlightNumber' in update_data and 'returnDepartureFlightNumber' not in update_data:
+            update_data['returnDepartureFlightNumber'] = update_data.get('returnFlightNumber', '')
+
+        # Enforce return flight number for airport/shuttle return bookings.
+        effective_service_type = (update_data.get('serviceType') or existing_booking.get('serviceType') or '').lower()
+        effective_book_return = update_data.get('bookReturn')
+        if effective_book_return is None:
+            effective_book_return = bool(existing_booking.get('bookReturn'))
+
+        effective_return_flight = (
+            update_data.get('returnFlightNumber')
+            or update_data.get('returnDepartureFlightNumber')
+            or existing_booking.get('returnFlightNumber')
+            or existing_booking.get('returnDepartureFlightNumber')
+            or ''
+        )
+
+        if (
+            ('airport' in effective_service_type or 'shuttle' in effective_service_type)
+            and effective_book_return
+            and not str(effective_return_flight).strip()
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="Return flight number is required for airport shuttle return bookings."
+            )
         
         # Sync totalPrice when pricing is updated
         if 'pricing' in update_data and update_data['pricing']:
@@ -1802,10 +1853,9 @@ async def update_booking(booking_id: str, update_data: dict, current_admin: dict
         # Also sync if totalPrice is updated directly
         if 'totalPrice' in update_data and update_data['totalPrice']:
             # Update pricing.totalPrice as well if pricing exists
-            existing = await db.bookings.find_one({"id": booking_id}, {"_id": 0, "pricing": 1})
-            if existing and existing.get('pricing'):
+            if existing_booking.get('pricing'):
                 if 'pricing' not in update_data:
-                    update_data['pricing'] = existing['pricing']
+                    update_data['pricing'] = existing_booking['pricing']
                 update_data['pricing']['totalPrice'] = update_data['totalPrice']
         
         result = await db.bookings.update_one(
@@ -8818,11 +8868,28 @@ class ManualBooking(BaseModel):
     bookReturn: Optional[bool] = False
     returnDate: Optional[str] = ""
     returnTime: Optional[str] = ""
+    returnFlightNumber: Optional[str] = ""
+    returnDepartureFlightNumber: Optional[str] = ""
+    returnDepartureTime: Optional[str] = ""
+    returnArrivalFlightNumber: Optional[str] = ""
+    returnArrivalTime: Optional[str] = ""
     skipNotifications: Optional[bool] = False  # Skip sending email/SMS notifications
     referenceNumber: Optional[str] = None  # Allow setting custom reference number
     driver_name: Optional[str] = ""  # Pre-assign driver
     payment_status: Optional[str] = None  # Override payment status (paid, unpaid, etc.)
     status: Optional[str] = "confirmed"  # Booking status
+
+    @model_validator(mode='after')
+    def validate_return_flight_for_airport_shuttle(self):
+        """Require return flight number for airport/shuttle return trips."""
+        service_type = (self.serviceType or "").lower()
+        is_airport_shuttle = "airport" in service_type or "shuttle" in service_type
+
+        if is_airport_shuttle and self.bookReturn:
+            return_flight = (self.returnDepartureFlightNumber or self.returnFlightNumber or "").strip()
+            if not return_flight:
+                raise ValueError("Return flight number is required for airport shuttle return bookings.")
+        return self
 
 @api_router.post("/bookings/manual")
 async def create_manual_booking(booking: ManualBooking, background_tasks: BackgroundTasks):
@@ -8849,6 +8916,12 @@ async def create_manual_booking(booking: ManualBooking, background_tasks: Backgr
         # Determine payment status
         payment_status = booking.payment_status if booking.payment_status else booking.paymentMethod
         
+        has_return = bool(booking.bookReturn)
+        return_flight_number = (
+            (booking.returnDepartureFlightNumber or booking.returnFlightNumber or "").strip()
+            if has_return else ""
+        )
+
         new_booking = {
             "id": str(uuid.uuid4()),
             "referenceNumber": ref_number,  # Sequential reference number
@@ -8874,9 +8947,14 @@ async def create_manual_booking(booking: ManualBooking, background_tasks: Backgr
             "flightArrivalTime": booking.flightArrivalTime or "",
             "flightDepartureNumber": booking.flightDepartureNumber or "",
             "flightDepartureTime": booking.flightDepartureTime or "",
-            "bookReturn": booking.bookReturn or False,
+            "bookReturn": has_return,
             "returnDate": booking.returnDate or "",
             "returnTime": booking.returnTime or "",
+            "returnFlightNumber": return_flight_number,
+            "returnDepartureFlightNumber": return_flight_number,
+            "returnDepartureTime": booking.returnDepartureTime or "",
+            "returnArrivalFlightNumber": booking.returnArrivalFlightNumber or "",
+            "returnArrivalTime": booking.returnArrivalTime or "",
             "notifications_sent": booking.skipNotifications,  # Mark as sent if skipping
             "createdAt": datetime.now(timezone.utc)
         }
@@ -13045,16 +13123,13 @@ async def startup_event():
             })
             logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Default admin user created")
         else:
-            # Update password and email to ensure they're correct
-            hashed_pw = "$2b$12$C6UzMDM.H6dfI/f/IKcEeO8m8Y4YkQkQ1h6s4H6c3Z8Y5G7c8Y4r2"
-            await db.admin_users.update_one(
-                {"username": "admin"},
-                {"$set": {
-                    "hashed_password": hashed_pw,
-                    "email": "info@bookaride.co.nz"
-                }}
-            )
-            logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Admin password reset and email updated to info@bookaride.co.nz")
+            # Never overwrite existing admin passwords on startup.
+            if not default_admin.get("email"):
+                await db.admin_users.update_one(
+                    {"username": "admin"},
+                    {"$set": {"email": "info@bookaride.co.nz"}}
+                )
+                logger.info("Backfilled missing default admin email")
     except Exception as e:
         logger.warning(f"Admin bootstrap skipped due DB error: {str(e)}")
     
