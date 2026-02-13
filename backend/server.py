@@ -1,4 +1,3 @@
-print('PROOF:D8_SLEDGEHAMMER_20260213_063450')
 # -*- coding: utf-8 -*-
 from fastapi import FastAPI, APIRouter, HTTPException, Request, Depends, Body, UploadFile, File, Form, BackgroundTasks
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -19,9 +18,8 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionResponse, CheckoutStatusResponse, CheckoutSessionRequest
-# D8_SLEDGEHAMMER_20260213_063450
 try:
-# twilio disabled
+    from twilio.rest import Client
 except Exception:
     Client = None
 import requests
@@ -77,9 +75,12 @@ sys.path.insert(0, str(ROOT_DIR))
 load_dotenv(ROOT_DIR / '.env')
 
 # MongoDB connection
-mongo_url = os.environ['MONGO_URL']
+mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
+db_name = os.environ.get('DB_NAME', 'bookaride')
+if 'MONGO_URL' not in os.environ or 'DB_NAME' not in os.environ:
+    logging.warning("MONGO_URL or DB_NAME missing; using fallback values for startup.")
 client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=2000, connectTimeoutMS=2000)
-db = client[os.environ['DB_NAME']]
+db = client[db_name]
 
 # Authentication configuration
 SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'your-secret-key-change-in-production-' + str(uuid.uuid4()))
