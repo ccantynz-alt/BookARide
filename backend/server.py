@@ -77,8 +77,12 @@ load_dotenv(ROOT_DIR / '.env')
 # MongoDB connection
 mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
 db_name = os.environ.get('DB_NAME', 'bookaride')
-if 'MONGO_URL' not in os.environ or 'DB_NAME' not in os.environ:
-    logging.warning("MONGO_URL or DB_NAME missing; using fallback values for startup.")
+DB_ENV_CONFIGURED = bool(os.environ.get('MONGO_URL') and os.environ.get('DB_NAME'))
+if not DB_ENV_CONFIGURED:
+    logging.warning(
+        "MONGO_URL or DB_NAME missing; using fallback values for startup. "
+        "Set both env vars in Render to connect production MongoDB."
+    )
 client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=2000, connectTimeoutMS=2000)
 db = client[db_name]
 
@@ -960,8 +964,26 @@ async def root():
 
 @api_router.get("/health")
 async def health_check():
-    """Health check endpoint for Kubernetes"""
-    return {"status": "healthy", "service": "bookaride-api"}
+    """Health check endpoint with DB status visibility."""
+    db_status = "unknown"
+    db_detail = ""
+
+    if not DB_ENV_CONFIGURED:
+        db_status = "missing_env"
+        db_detail = "MONGO_URL or DB_NAME not set"
+    else:
+        try:
+            await client.admin.command("ping")
+            db_status = "connected"
+        except Exception as e:
+            db_status = "unavailable"
+            db_detail = str(e)[:180]
+
+    overall_status = "healthy" if db_status == "connected" else "degraded"
+    response = {"status": overall_status, "service": "bookaride-api", "database": db_status}
+    if db_detail:
+        response["database_detail"] = db_detail
+    return response
 
 
 # Google Reviews Endpoint - Fetches reviews from Google Places API
@@ -13253,6 +13275,10 @@ def create_arrival_email_html(customer_name: str, booking_date: str, pickup_time
 @app.on_event("startup")
 async def startup_event():
     """Start the scheduler when the app starts and ensure default admin exists"""
+    if not DB_ENV_CONFIGURED:
+        logger.warning("MONGO_URL/DB_NAME missing; skipping DB bootstrap and scheduler startup.")
+        return
+
     # If DB is unavailable (e.g. missing Render env vars), do not crash startup.
     db_available = True
     try:
