@@ -21,7 +21,7 @@ from email.mime.multipart import MIMEMultipart
 from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionResponse, CheckoutStatusResponse, CheckoutSessionRequest
 # D8_SLEDGEHAMMER_20260213_063450
 try:
-# twilio disabled
+    from twilio.rest import Client
 except Exception:
     Client = None
 import requests
@@ -77,7 +77,15 @@ sys.path.insert(0, str(ROOT_DIR))
 load_dotenv(ROOT_DIR / '.env')
 
 # MongoDB connection
-mongo_url = os.environ['MONGO_URL']
+mongo_url = os.environ.get("MONGO_URL") or os.environ.get("MONGODB_URI")
+if not mongo_url:
+    raise RuntimeError("MongoDB connection string missing. Set MONGO_URL (or MONGODB_URI).")
+
+if (os.environ.get("RENDER") or os.environ.get("RENDER_EXTERNAL_URL")) and (
+    "localhost" in mongo_url or "127.0.0.1" in mongo_url
+):
+    print("WARN: MONGO_URL points to localhost on Render; use an external MongoDB URI.")
+
 client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=2000, connectTimeoutMS=2000)
 db = client[os.environ['DB_NAME']]
 
@@ -2297,7 +2305,11 @@ def send_customer_confirmation(booking: dict):
     if booking_id:
         try:
             from pymongo import MongoClient
-            sync_client = MongoClient(os.environ.get('MONGO_URL', 'mongodb://localhost:27017'))
+            sync_client = MongoClient(
+                mongo_url,
+                serverSelectionTimeoutMS=2000,
+                connectTimeoutMS=2000
+            )
             sync_db = sync_client[os.environ.get('DB_NAME', 'test_database')]
             
             nz_tz = pytz.timezone('Pacific/Auckland')
@@ -3734,7 +3746,11 @@ Price: ${booking.get('totalPrice', 0):.2f}
             # Store booking ID in database for SMS reply matching (using sync client)
             try:
                 from pymongo import MongoClient
-                sync_client = MongoClient(os.environ.get('MONGO_URL', 'mongodb://localhost:27017'))
+                sync_client = MongoClient(
+                    mongo_url,
+                    serverSelectionTimeoutMS=2000,
+                    connectTimeoutMS=2000
+                )
                 sync_db = sync_client[os.environ.get('DB_NAME', 'test_database')]
                 sync_db.pending_approvals.update_one(
                     {"admin_phone": admin_phone},
@@ -12902,57 +12918,68 @@ def create_arrival_email_html(customer_name: str, booking_date: str, pickup_time
 @app.on_event("startup")
 async def startup_event():
     """Start the scheduler when the app starts and ensure default admin exists"""
-    # Ensure default admin exists with correct email for Google OAuth
+    db_available = True
     try:
-        default_admin = await db.admin_users.find_one({"username": "admin"})
+        await db.command("ping")
     except Exception as e:
-        print("WARN: admin seed skipped (db unavailable):", repr(e))
-        default_admin = {"_skip": True}
-    if not default_admin:
-        hashed_pw = "$2b$12$C6UzMDM.H6dfI/f/IKcEeO8m8Y4YkQkQ1h6s4H6c3Z8Y5G7c8Y4r2"
-        await db.admin_users.insert_one({
-            "id": str(uuid.uuid4()),
-            "username": "admin",
-            "email": "info@bookaride.co.nz",
-            "hashed_password": hashed_pw,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "is_active": True
-        })
-        logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Default admin user created")
-    else:
-        # Update password and email to ensure they're correct
-        hashed_pw = "$2b$12$C6UzMDM.H6dfI/f/IKcEeO8m8Y4YkQkQ1h6s4H6c3Z8Y5G7c8Y4r2"
-        await db.admin_users.update_one(
-            {"username": "admin"},
-            {"$set": {
-                "hashed_password": hashed_pw,
-                "email": "info@bookaride.co.nz"
-            }}
-        )
-        logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Admin password reset and email updated to info@bookaride.co.nz")
-    
+        db_available = False
+        logger.warning(f"MongoDB unavailable during startup bootstrap: {repr(e)}")
+
+    if db_available:
+        # Ensure default admin exists with correct email for Google OAuth
+        try:
+            default_admin = await db.admin_users.find_one({"username": "admin"})
+            hashed_pw = "$2b$12$C6UzMDM.H6dfI/f/IKcEeO8m8Y4YkQkQ1h6s4H6c3Z8Y5G7c8Y4r2"
+
+            if not default_admin:
+                await db.admin_users.insert_one({
+                    "id": str(uuid.uuid4()),
+                    "username": "admin",
+                    "email": "info@bookaride.co.nz",
+                    "hashed_password": hashed_pw,
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "is_active": True
+                })
+                logger.info("Default admin user created")
+            else:
+                # Update password and email to ensure they're correct
+                await db.admin_users.update_one(
+                    {"username": "admin"},
+                    {"$set": {
+                        "hashed_password": hashed_pw,
+                        "email": "info@bookaride.co.nz"
+                    }}
+                )
+                logger.info("Admin password reset and email updated to info@bookaride.co.nz")
+        except Exception as e:
+            db_available = False
+            logger.warning(f"Admin bootstrap skipped (db unavailable): {repr(e)}")
+
     # Create database indexes for faster queries
-    try:
-        await db.bookings.create_index("date")
-        await db.bookings.create_index("status")
-        await db.bookings.create_index("name")
-        await db.bookings.create_index("email")
-        await db.bookings.create_index("referenceNumber")
-        await db.bookings.create_index("original_booking_id")
-        await db.bookings.create_index([("date", -1), ("status", 1)])
-        logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Database indexes created for faster queries")
-    except Exception as e:
-        logger.warning(f"Index creation note: {str(e)}")
-    
-    # Create index for archive collection
-    try:
-        await db.bookings_archive.create_index("archivedAt")
-        await db.bookings_archive.create_index("name")
-        await db.bookings_archive.create_index("email")
-        await db.bookings_archive.create_index("referenceNumber")
-        logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Archive indexes created")
-    except Exception as e:
-        logger.warning(f"Archive index creation note: {str(e)}")
+    if db_available:
+        try:
+            await db.bookings.create_index("date")
+            await db.bookings.create_index("status")
+            await db.bookings.create_index("name")
+            await db.bookings.create_index("email")
+            await db.bookings.create_index("referenceNumber")
+            await db.bookings.create_index("original_booking_id")
+            await db.bookings.create_index([("date", -1), ("status", 1)])
+            logger.info("Database indexes created for faster queries")
+        except Exception as e:
+            logger.warning(f"Index creation note: {str(e)}")
+
+        # Create index for archive collection
+        try:
+            await db.bookings_archive.create_index("archivedAt")
+            await db.bookings_archive.create_index("name")
+            await db.bookings_archive.create_index("email")
+            await db.bookings_archive.create_index("referenceNumber")
+            logger.info("Archive indexes created")
+        except Exception as e:
+            logger.warning(f"Archive index creation note: {str(e)}")
+    else:
+        logger.warning("Skipping admin/index bootstrap because MongoDB is unavailable at startup.")
     
     # ============================================
     # RELIABLE REMINDER SYSTEM - 3 LAYERS
@@ -13057,7 +13084,10 @@ async def startup_event():
     logger.info("   ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ Startup reminder check (running now...)")
     
     # Layer 3: Immediate startup check
-    await startup_reminder_check()
+    if db_available:
+        await startup_reminder_check()
+    else:
+        logger.warning("Skipping startup reminder check because MongoDB is unavailable.")
 
 
 @app.on_event("shutdown")
