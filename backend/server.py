@@ -2270,6 +2270,136 @@ def send_booking_confirmation_email(booking: dict, include_payment_link: bool = 
     return send_via_smtp(booking)
 
 
+def build_confirmation_subject(booking: dict) -> str:
+    """Standardized, clear subject line for all booking confirmations."""
+    booking_ref = get_booking_reference(booking)
+    date_raw = booking.get('date', '')
+    date_label = format_date_ddmmyyyy(date_raw) if date_raw else "scheduled date"
+    if not date_label or date_label in ['N/A', '']:
+        date_label = "scheduled date"
+    return f"[BookaRide] Confirmation: Your ride on {date_label} (Ref #{booking_ref})"
+
+
+def build_calendar_links(booking: dict) -> dict:
+    """Build Google/Outlook add-to-calendar links from booking date/time."""
+    date_str = (booking.get('date') or '').strip()
+    time_str = (booking.get('time') or '').strip()
+    if not date_str or not time_str:
+        return {"google": "", "outlook": ""}
+
+    booking_date = None
+    for fmt in ['%Y-%m-%d', '%d/%m/%Y', '%d-%m-%Y']:
+        try:
+            booking_date = datetime.strptime(date_str, fmt).date()
+            break
+        except Exception:
+            continue
+
+    booking_time = None
+    for fmt in ['%H:%M', '%I:%M %p', '%I:%M%p']:
+        try:
+            booking_time = datetime.strptime(time_str, fmt).time()
+            break
+        except Exception:
+            continue
+
+    if not booking_date or not booking_time:
+        return {"google": "", "outlook": ""}
+
+    nz_tz = pytz.timezone('Pacific/Auckland')
+    start_local = nz_tz.localize(datetime.combine(booking_date, booking_time))
+    end_local = start_local + timedelta(minutes=90)
+    start_utc = start_local.astimezone(timezone.utc)
+    end_utc = end_local.astimezone(timezone.utc)
+
+    from urllib.parse import quote_plus
+
+    booking_ref = get_booking_reference(booking)
+    title = f"BookaRide Transfer - Ref #{booking_ref}"
+    pickup = booking.get('pickupAddress', 'Pickup location')
+    dropoff = booking.get('dropoffAddress', 'Drop-off location')
+    details = (
+        f"Booking Ref: #{booking_ref}\n"
+        f"Pickup: {pickup}\n"
+        f"Drop-off: {dropoff}\n"
+        f"Passengers: {booking.get('passengers', '1')}\n"
+        f"Service: {booking.get('serviceType', 'Airport Transfer')}"
+    )
+
+    google_dates = f"{start_utc.strftime('%Y%m%dT%H%M%SZ')}/{end_utc.strftime('%Y%m%dT%H%M%SZ')}"
+    google_url = (
+        "https://calendar.google.com/calendar/render?action=TEMPLATE"
+        f"&text={quote_plus(title)}"
+        f"&dates={google_dates}"
+        f"&details={quote_plus(details)}"
+        f"&location={quote_plus(pickup)}"
+    )
+
+    outlook_url = (
+        "https://outlook.office.com/calendar/0/deeplink/compose?path=/calendar/action/compose&rru=addevent"
+        f"&subject={quote_plus(title)}"
+        f"&startdt={quote_plus(start_local.isoformat())}"
+        f"&enddt={quote_plus(end_local.isoformat())}"
+        f"&body={quote_plus(details)}"
+        f"&location={quote_plus(pickup)}"
+    )
+
+    return {"google": google_url, "outlook": outlook_url}
+
+
+def generate_confirmation_email_text(booking: dict) -> str:
+    """Plain-text fallback for clients that block HTML/images."""
+    booking_ref = get_booking_reference(booking)
+    pickup_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
+    pickup_time = format_time_ampm(booking.get('time', 'N/A'))
+    pickup = booking.get('pickupAddress', 'N/A')
+    dropoff = booking.get('dropoffAddress', 'N/A')
+    total_price = booking.get('totalPrice', 0) or booking.get('pricing', {}).get('totalPrice', 0)
+    payment_status = (booking.get('payment_status', 'unpaid') or 'unpaid').upper()
+    return_flight = booking.get('returnFlightNumber') or booking.get('returnDepartureFlightNumber') or ''
+
+    lines = [
+        "BOOK A RIDE NZ",
+        "Booking Confirmation",
+        "",
+        f"Reference: #{booking_ref}",
+        f"Passenger: {booking.get('name', 'N/A')}",
+        f"Date: {pickup_date}",
+        f"Time: {pickup_time}",
+        f"Pickup: {pickup}",
+        f"Drop-off: {dropoff}",
+        f"Passengers: {booking.get('passengers', '1')}",
+        f"Total: ${total_price:.2f} NZD",
+        f"Payment Status: {payment_status}",
+    ]
+
+    if booking.get('bookReturn') or booking.get('returnDate'):
+        lines.extend([
+            "",
+            "RETURN JOURNEY",
+            f"Return Date: {format_date_ddmmyyyy(booking.get('returnDate', 'N/A'))}",
+            f"Return Time: {format_time_ampm(booking.get('returnTime', 'N/A'))}",
+        ])
+        if return_flight:
+            lines.append(f"Return Flight Number: {return_flight}")
+
+    calendar_links = build_calendar_links(booking)
+    if calendar_links.get("google") or calendar_links.get("outlook"):
+        lines.extend(["", "Add to your calendar:"])
+        if calendar_links.get("google"):
+            lines.append(f"Google: {calendar_links['google']}")
+        if calendar_links.get("outlook"):
+            lines.append(f"Outlook: {calendar_links['outlook']}")
+
+    lines.extend([
+        "",
+        "Need help? Reply to this email or call 021 743 321.",
+        "Thank you for choosing BookaRide.",
+    ])
+
+    return "\n".join(lines)
+
+
 def send_via_mailgun(booking: dict):
     """Try sending via Mailgun with beautiful email template"""
     try:
@@ -2281,27 +2411,20 @@ def send_via_mailgun(booking: dict):
             logger.warning("Mailgun credentials not configured")
             return False
         
-        # Get booking reference for subject line
-        booking_ref = get_booking_reference(booking)
-        
-        # Get language preference for subject (default to English)
-        lang = booking.get('language', 'en')
-        if lang not in EMAIL_TRANSLATIONS:
-            lang = 'en'
-        t = EMAIL_TRANSLATIONS[lang]
-        
-        subject = f"{t['subject']} - Ref: {booking_ref}"
+        subject = build_confirmation_subject(booking)
         recipient_email = booking.get('email')
         
         # Use the beautiful email template
         html_content = generate_confirmation_email_html(booking)
+        text_content = generate_confirmation_email_text(booking)
         
         # Build email data with CC support
         email_data = {
             "from": f"BookaRide <{sender_email}>",
             "to": recipient_email,
             "subject": subject,
-            "html": html_content
+            "html": html_content,
+            "text": text_content
         }
         
         # Add CC if provided
@@ -2341,12 +2464,12 @@ def send_via_smtp(booking: dict):
             return False
         
         # Create email content using the beautiful template
-        booking_ref = get_booking_reference(booking)
-        subject = f"Booking Confirmation - Ref: {booking_ref}"
+        subject = build_confirmation_subject(booking)
         recipient_email = booking.get('email')
         
         # Use the beautiful email template
         html_content = generate_confirmation_email_html(booking)
+        text_content = generate_confirmation_email_text(booking)
         
         # Create message
         message = MIMEMultipart('alternative')
@@ -2354,8 +2477,10 @@ def send_via_smtp(booking: dict):
         message['From'] = sender_email
         message['To'] = recipient_email
         
-        # Attach HTML
+        # Attach plain text + HTML
+        text_part = MIMEText(text_content, 'plain')
         html_part = MIMEText(html_content, 'html')
+        message.attach(text_part)
         message.attach(html_part)
         
         # Send via SMTP
@@ -4785,6 +4910,28 @@ def generate_confirmation_email_html(booking: dict) -> str:
     # Passengers
     passengers = booking.get('passengers', '1')
     payment_color = '#22c55e' if payment_status == 'PAID' else '#f59e0b'
+
+    # Calendar links for reliability and customer reminders
+    calendar_links = build_calendar_links(booking)
+    google_calendar_url = calendar_links.get('google', '')
+    outlook_calendar_url = calendar_links.get('outlook', '')
+    calendar_actions_html = ""
+    if google_calendar_url or outlook_calendar_url:
+        buttons = ""
+        if google_calendar_url:
+            buttons += f'''
+                            <a href="{google_calendar_url}" style="display: inline-block; padding: 8px 12px; margin-right: 8px; margin-top: 8px; background: #1a1a2e; color: #ffffff; text-decoration: none; border-radius: 6px; font-size: 12px; font-weight: 600;">Add to Google Calendar</a>
+            '''
+        if outlook_calendar_url:
+            buttons += f'''
+                            <a href="{outlook_calendar_url}" style="display: inline-block; padding: 8px 12px; margin-top: 8px; background: #0f6cbd; color: #ffffff; text-decoration: none; border-radius: 6px; font-size: 12px; font-weight: 600;">Add to Outlook Calendar</a>
+            '''
+        calendar_actions_html = f'''
+                <div style="padding: 0 20px 16px 20px; background: #fffaf0;">
+                    <p style="margin: 0 0 4px 0; color: #7c5f1a; font-size: 12px; font-weight: 600;">Save this trip to your calendar</p>
+                    {buttons}
+                </div>
+        '''
     
     # Build return trip section
     return_section_html = ""
@@ -4899,6 +5046,15 @@ def generate_confirmation_email_html(booking: dict) -> str:
                     <p style="margin: 0; color: #1a1a2e; font-size: 13px; text-transform: uppercase; letter-spacing: 1px;">Booking Confirmed</p>
                     <p style="margin: 5px 0 0 0; color: #1a1a2e; font-size: 28px; font-weight: 700;">#{booking_ref}</p>
                 </div>
+
+                <!-- Top Fold Summary -->
+                <div style="padding: 18px 20px; background: #fffaf0; border-bottom: 1px solid #f3e8c8;">
+                    <p style="margin: 0 0 8px 0; color: #7c5f1a; font-size: 12px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase;">Your ride summary</p>
+                    <p style="margin: 0 0 6px 0; color: #1a1a1a; font-size: 18px; font-weight: 700;">{formatted_date} at {formatted_time}</p>
+                    <p style="margin: 0 0 2px 0; color: #374151; font-size: 13px;"><strong>Pickup:</strong> {primary_pickup}</p>
+                    <p style="margin: 0; color: #374151; font-size: 13px;"><strong>Drop-off:</strong> {dropoff_address}</p>
+                </div>
+                {calendar_actions_html}
                 
                 <!-- Main Content -->
                 <div style="padding: 0;">

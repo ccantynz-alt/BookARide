@@ -14,12 +14,10 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import CurrencyConverter from '../components/CurrencyConverter';
 import TripCostSplitter from '../components/TripCostSplitter';
 import WeatherWidget from '../components/WeatherWidget';
-import LiveJourneyVisualizer from '../components/LiveJourneyVisualizer';
 import { CustomDatePicker, CustomTimePicker } from '../components/DateTimePicker';
 import PriceComparison from '../components/PriceComparison';
 import BookingAddOns, { addOns } from '../components/BookingAddOns';
 import TrustBadges from '../components/TrustBadges';
-import GoogleReviewsWidget from '../components/GoogleReviewsWidget';
 import SocialProofCounter from '../components/SocialProofCounter';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -435,6 +433,8 @@ export const BookNow = () => {
           <img 
             src="https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=1920&q=80" 
             alt="Road trip scenic drive" 
+            fetchPriority="high"
+            decoding="async"
             className="w-full h-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-b from-gray-900/70 via-gray-900/60 to-gray-900" />
@@ -461,12 +461,13 @@ export const BookNow = () => {
         <div className="container mx-auto px-4">
           <div className="max-w-5xl mx-auto">
             <form onSubmit={handleSubmit}>
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <div className="grid grid-cols-1 gap-8">
                 {/* Main Form - Left Side */}
-                <div className="lg:col-span-2 space-y-6">
+                <div className="space-y-6">
                   <Card className="border-2 border-gray-200 shadow-lg">
                     <CardContent className="p-8">
-                      <h2 className="text-2xl font-bold text-gray-900 mb-6">Trip Details</h2>
+                      <h2 className="text-2xl font-bold text-gray-900 mb-2">Step 1 of 3: Trip Details</h2>
+                      <p className="text-sm text-gray-600 mb-6">Tell us when and where you need the ride.</p>
 
                       {/* Service Type */}
                       <div className="space-y-2 mb-6">
@@ -475,7 +476,7 @@ export const BookNow = () => {
                           <span>Service Type *</span>
                         </Label>
                         <Select onValueChange={(value) => handleSelectChange('serviceType', value)} required>
-                          <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-gold">
+                          <SelectTrigger className="min-h-[44px] transition-all duration-200 focus:ring-2 focus:ring-gold">
                             <SelectValue placeholder="Select service" />
                           </SelectTrigger>
                           <SelectContent>
@@ -499,7 +500,7 @@ export const BookNow = () => {
                           onChange={handleChange}
                           placeholder="Start typing address..."
                           required
-                          className="transition-all duration-200 focus:ring-2 focus:ring-gold"
+                          className="min-h-[44px] transition-all duration-200 focus:ring-2 focus:ring-gold"
                         />
                         <p className="text-xs text-gray-500">Enter full street address for accurate pricing</p>
                       </div>
@@ -564,13 +565,13 @@ export const BookNow = () => {
                           onChange={handleChange}
                           placeholder="Start typing address..."
                           required
-                          className="transition-all duration-200 focus:ring-2 focus:ring-gold"
+                          className="min-h-[44px] transition-all duration-200 focus:ring-2 focus:ring-gold"
                         />
                         <p className="text-xs text-gray-500">Enter full street address for accurate pricing</p>
                       </div>
 
                       {/* Date and Time */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                      <div className="grid grid-cols-1 gap-6 mb-6">
                         <div className="space-y-2">
                           <Label className="flex items-center space-x-2">
                             <Calendar className="w-4 h-4 text-gold" />
@@ -688,7 +689,7 @@ export const BookNow = () => {
                           onValueChange={(value) => handleSelectChange('passengers', value)} 
                           required
                         >
-                          <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-gold">
+                          <SelectTrigger className="min-h-[44px] transition-all duration-200 focus:ring-2 focus:ring-gold">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -893,7 +894,7 @@ export const BookNow = () => {
                   <Card className="border-2 border-gray-200 shadow-lg">
                     <CardContent className="p-8">
                       <div className="flex items-center justify-between mb-6">
-                        <h2 className="text-2xl font-bold text-gray-900">Contact Information</h2>
+                        <h2 className="text-2xl font-bold text-gray-900">Step 2 of 3: Contact Information</h2>
                         {isReturningCustomer && (
                           <div className="flex items-center gap-2">
                             <span className="text-sm text-green-600 font-medium">👋 Welcome back!</span>
@@ -921,11 +922,11 @@ export const BookNow = () => {
                             onChange={handleChange}
                             placeholder="John Doe"
                             required
-                            className="transition-all duration-200 focus:ring-2 focus:ring-gold"
+                            className="min-h-[44px] transition-all duration-200 focus:ring-2 focus:ring-gold"
                           />
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 gap-6">
                           <div className="space-y-2">
                             <Label htmlFor="email" className="flex items-center space-x-2">
                               <Mail className="w-4 h-4 text-gold" />
@@ -939,7 +940,7 @@ export const BookNow = () => {
                               onChange={handleChange}
                               placeholder="john@example.com"
                               required
-                              className="transition-all duration-200 focus:ring-2 focus:ring-gold"
+                              className="min-h-[44px] transition-all duration-200 focus:ring-2 focus:ring-gold"
                             />
                           </div>
                           <div className="space-y-2">
@@ -955,7 +956,7 @@ export const BookNow = () => {
                               onChange={handleChange}
                               placeholder="+64 21 123 4567"
                               required
-                              className="transition-all duration-200 focus:ring-2 focus:ring-gold"
+                              className="min-h-[44px] transition-all duration-200 focus:ring-2 focus:ring-gold"
                             />
                           </div>
                         </div>
@@ -1010,12 +1011,12 @@ export const BookNow = () => {
                 </div>
 
                 {/* Price Summary - Right Side */}
-                <div className="lg:col-span-1">
-                  <Card className="border-2 border-gold/30 sticky top-24 shadow-lg">
+                <div>
+                  <Card className="border-2 border-gold/30 shadow-lg">
                     <CardContent className="p-8">
                       <div className="flex items-center space-x-2 mb-6">
                         <DollarSign className="w-6 h-6 text-gold" />
-                        <h2 className="text-2xl font-bold text-gray-900">Price Estimate</h2>
+                        <h2 className="text-2xl font-bold text-gray-900">Step 3 of 3: Review & Pay</h2>
                       </div>
 
                       {pricing.calculating ? (
@@ -1134,8 +1135,8 @@ export const BookNow = () => {
                           Pay securely with credit/debit card via Stripe
                         </p>
                         <div className="flex items-center gap-2">
-                          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Visa_Inc._logo.svg/100px-Visa_Inc._logo.svg.png" alt="Visa" className="h-6 object-contain" />
-                          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Mastercard-logo.svg/100px-Mastercard-logo.svg.png" alt="Mastercard" className="h-6 object-contain" />
+                          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Visa_Inc._logo.svg/100px-Visa_Inc._logo.svg.png" alt="Visa" loading="lazy" decoding="async" className="h-6 object-contain" />
+                          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Mastercard-logo.svg/100px-Mastercard-logo.svg.png" alt="Mastercard" loading="lazy" decoding="async" className="h-6 object-contain" />
                           <span className="text-xs text-gray-400 ml-2">Powered by Stripe</span>
                         </div>
                       </div>
