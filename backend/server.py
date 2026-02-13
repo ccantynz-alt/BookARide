@@ -1084,6 +1084,179 @@ def get_fallback_reviews():
         'isFallback': True
     }
 
+
+def _build_route_stops(pickup_address: str, pickup_addresses: Optional[List[str]], dropoff_address: str) -> List[str]:
+    """Build ordered route stops: pickup(s) then final dropoff."""
+    stops = [pickup_address]
+    if pickup_addresses:
+        stops.extend([addr for addr in pickup_addresses if addr and addr.strip()])
+    stops.append(dropoff_address)
+    return [stop.strip() for stop in stops if stop and stop.strip()]
+
+
+def _geocode_geoapify(address: str, api_key: str) -> Optional[tuple]:
+    """Geocode address via Geoapify. Returns (lat, lon) or None."""
+    try:
+        response = requests.get(
+            "https://api.geoapify.com/v1/geocode/search",
+            params={
+                "text": address,
+                "format": "json",
+                "limit": 1,
+                "countrycode": "nz",
+                "apiKey": api_key,
+            },
+            timeout=12,
+        )
+        data = response.json()
+        results = data.get("results", [])
+        if not results:
+            return None
+        lat = results[0].get("lat")
+        lon = results[0].get("lon")
+        if lat is None or lon is None:
+            return None
+        return float(lat), float(lon)
+    except Exception:
+        return None
+
+
+def _route_distance_geoapify(coords: List[tuple], api_key: str) -> Optional[float]:
+    """Route distance in km via Geoapify routing."""
+    try:
+        if len(coords) < 2:
+            return 0.0
+        waypoints = "|".join(f"{lat},{lon}" for lat, lon in coords)
+        response = requests.get(
+            "https://api.geoapify.com/v1/routing",
+            params={
+                "waypoints": waypoints,
+                "mode": "drive",
+                "apiKey": api_key,
+            },
+            timeout=15,
+        )
+        data = response.json()
+        features = data.get("features", [])
+        if not features:
+            return None
+        distance_meters = features[0].get("properties", {}).get("distance")
+        if not distance_meters:
+            return None
+        return round(float(distance_meters) / 1000, 2)
+    except Exception:
+        return None
+
+
+def _geocode_nominatim(address: str) -> Optional[tuple]:
+    """Fallback geocoder using OpenStreetMap Nominatim. Returns (lat, lon) or None."""
+    try:
+        response = requests.get(
+            "https://nominatim.openstreetmap.org/search",
+            params={
+                "q": address,
+                "format": "jsonv2",
+                "limit": 1,
+                "countrycodes": "nz",
+                "addressdetails": 0,
+            },
+            headers={"User-Agent": "BookARide/1.0 (support@bookaride.co.nz)"},
+            timeout=12,
+        )
+        data = response.json()
+        if not data:
+            return None
+        lat = data[0].get("lat")
+        lon = data[0].get("lon")
+        if lat is None or lon is None:
+            return None
+        return float(lat), float(lon)
+    except Exception:
+        return None
+
+
+def _route_distance_osrm(coords: List[tuple]) -> Optional[float]:
+    """Fallback route distance in km via public OSRM."""
+    try:
+        if len(coords) < 2:
+            return 0.0
+        # OSRM expects lon,lat order.
+        coord_string = ";".join(f"{lon},{lat}" for lat, lon in coords)
+        response = requests.get(
+            f"https://router.project-osrm.org/route/v1/driving/{coord_string}",
+            params={"overview": "false", "alternatives": "false", "steps": "false"},
+            timeout=15,
+        )
+        data = response.json()
+        routes = data.get("routes", [])
+        if not routes:
+            return None
+        distance_meters = routes[0].get("distance")
+        if not distance_meters:
+            return None
+        return round(float(distance_meters) / 1000, 2)
+    except Exception:
+        return None
+
+
+def calculate_route_distance_km(pickup_address: str, pickup_addresses: Optional[List[str]], dropoff_address: str) -> float:
+    """
+    Calculate route distance without Google Maps billing.
+    Provider order:
+      1) Geoapify (if GEOAPIFY_API_KEY present)
+      2) OpenStreetMap Nominatim + OSRM public routing
+      3) Estimation fallback
+    """
+    stops = _build_route_stops(pickup_address, pickup_addresses, dropoff_address)
+    stop_count = max(1, len(stops) - 1)
+    estimated_distance = 25.0 * stop_count
+
+    if len(stops) < 2:
+        return 0.0
+
+    geoapify_api_key = (
+        os.environ.get("GEOAPIFY_API_KEY")
+        or os.environ.get("ALTERNATIVE_MAPS_API_KEY")
+        or os.environ.get("CHEAP_MAPS_API_KEY")
+    )
+
+    if geoapify_api_key:
+        geoapify_coords = []
+        for stop in stops:
+            coord = _geocode_geoapify(stop, geoapify_api_key)
+            if not coord:
+                geoapify_coords = []
+                break
+            geoapify_coords.append(coord)
+
+        if geoapify_coords:
+            geoapify_distance = _route_distance_geoapify(geoapify_coords, geoapify_api_key)
+            if geoapify_distance is not None:
+                logger.info(f"Distance calculated via Geoapify: {geoapify_distance}km for {len(stops)} stops")
+                return geoapify_distance
+
+        logger.warning("Geoapify distance calculation failed; falling back to OSM route calculation.")
+
+    osrm_coords = []
+    for stop in stops:
+        coord = _geocode_nominatim(stop)
+        if not coord:
+            osrm_coords = []
+            break
+        osrm_coords.append(coord)
+
+    if osrm_coords:
+        osrm_distance = _route_distance_osrm(osrm_coords)
+        if osrm_distance is not None:
+            logger.info(f"Distance calculated via OSM/OSRM: {osrm_distance}km for {len(stops)} stops")
+            return osrm_distance
+
+    logger.warning(
+        f"Route distance APIs unavailable. Using estimated distance: {estimated_distance}km for {stop_count} legs."
+    )
+    return estimated_distance
+
+
 @api_router.post("/status", response_model=StatusCheck)
 async def create_status_check(input: StatusCheckCreate):
     status_dict = input.model_dump()
@@ -1112,69 +1285,12 @@ async def get_status_checks():
 @api_router.post("/calculate-price", response_model=PricingBreakdown)
 async def calculate_price(request: PriceCalculationRequest):
     try:
-        # Use Google Maps API to calculate distance for multiple stops
-        google_api_key = os.environ.get('GOOGLE_MAPS_API_KEY', '')
-        
-        if google_api_key:
-            # Build list of all stops: first pickup + additional pickups + dropoff
-            all_pickups = [request.pickupAddress]
-            if request.pickupAddresses:
-                all_pickups.extend([addr for addr in request.pickupAddresses if addr])
-            
-            # If multiple pickups, use Directions API for route optimization
-            if len(all_pickups) > 1:
-                # Use Directions API with waypoints for multi-stop route
-                url = "https://maps.googleapis.com/maps/api/directions/json"
-                waypoints = "|".join(all_pickups[1:])  # All pickups except first
-                params = {
-                    'origin': all_pickups[0],  # First pickup
-                    'destination': request.dropoffAddress,  # Final dropoff
-                    'waypoints': waypoints,  # Intermediate pickups
-                    'key': google_api_key
-                }
-                response = requests.get(url, params=params)
-                data = response.json()
-                
-                logger.info(f"Google Maps Directions API (multi-stop) response status: {data.get('status')}")
-                
-                if data['status'] == 'OK' and len(data['routes']) > 0:
-                    route = data['routes'][0]
-                    # Sum all leg distances
-                    total_distance_meters = sum(leg['distance']['value'] for leg in route['legs'])
-                    distance_km = round(total_distance_meters / 1000, 2)
-                    logger.info(f"Multi-stop route: {len(all_pickups)} pickups ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ dropoff, total: {distance_km}km")
-                else:
-                    logger.warning(f"Google Maps Directions API error: {data.get('error_message', data.get('status'))}")
-                    distance_km = 25.0 * len(all_pickups)  # Fallback: estimate per stop
-            else:
-                # Single pickup - use Distance Matrix API
-                url = "https://maps.googleapis.com/maps/api/distancematrix/json"
-                params = {
-                    'origins': request.pickupAddress,
-                    'destinations': request.dropoffAddress,
-                    'key': google_api_key
-                }
-                response = requests.get(url, params=params)
-                data = response.json()
-                
-                logger.info(f"Google Maps Distance Matrix API response: {data}")
-                
-                if data['status'] == 'OK' and len(data['rows']) > 0 and len(data['rows'][0]['elements']) > 0:
-                    element = data['rows'][0]['elements'][0]
-                    if element['status'] == 'OK':
-                        distance_meters = element['distance']['value']
-                        distance_km = round(distance_meters / 1000, 2)
-                    else:
-                        logger.warning(f"Google Maps element status: {element.get('status')}")
-                        distance_km = 25.0  # Fallback
-                else:
-                    logger.warning(f"Google Maps API error: {data.get('error_message', data.get('status'))}")
-                    distance_km = 25.0  # Fallback
-        else:
-            # Fallback: estimate based on number of stops
-            pickup_count = 1 + len([addr for addr in (request.pickupAddresses or []) if addr])
-            distance_km = 25.0 * pickup_count  # Default estimate per stop
-            logger.warning(f"Google Maps API key not found. Using default distance estimate: {distance_km}km for {pickup_count} stops")
+        # Cost-optimized route distance calculation without Google Maps billing.
+        distance_km = calculate_route_distance_km(
+            pickup_address=request.pickupAddress,
+            pickup_addresses=request.pickupAddresses,
+            dropoff_address=request.dropoffAddress,
+        )
         
         # Calculate pricing with tiered rates - FLAT RATE per bracket
         # The rate is determined by which distance bracket the trip falls into
