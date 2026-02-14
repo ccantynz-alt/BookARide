@@ -7,6 +7,7 @@ from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
+import re
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict, model_validator
 from typing import List, Optional, Dict
@@ -106,6 +107,25 @@ db_name = resolve_db_name_with_existing_case(mongo_url, db_name)
 os.environ['DB_NAME'] = db_name
 client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=2000, connectTimeoutMS=2000)
 db = client[db_name]
+
+DB_CASE_CONFLICT_RE = re.compile(r"already have:\s*\[([^\]]+)\]\s*trying to create:?\s*\[[^\]]+\]")
+
+def extract_existing_db_name_from_case_error(error: Exception) -> Optional[str]:
+    """Extract canonical DB name from MongoDB case-conflict write errors."""
+    match = DB_CASE_CONFLICT_RE.search(str(error))
+    if match:
+        return match.group(1)
+    return None
+
+def apply_resolved_db_name(resolved_name: str) -> None:
+    """Update global DB handles to use corrected DB name casing."""
+    global db_name, db
+    if not resolved_name or resolved_name == db_name:
+        return
+    logging.warning("Switching DB_NAME from '%s' to existing '%s'.", db_name, resolved_name)
+    db_name = resolved_name
+    os.environ['DB_NAME'] = resolved_name
+    db = client[resolved_name]
 
 # Authentication configuration
 SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'your-secret-key-change-in-production-' + str(uuid.uuid4()))
@@ -12928,34 +12948,38 @@ def create_arrival_email_html(customer_name: str, booking_date: str, pickup_time
 @app.on_event("startup")
 async def startup_event():
     """Start the scheduler when the app starts and ensure default admin exists"""
-    # Ensure default admin exists with correct email for Google OAuth
-    try:
-        default_admin = await db.admin_users.find_one({"username": "admin"})
-    except Exception as e:
-        print("WARN: admin seed skipped (db unavailable):", repr(e))
-        default_admin = {"_skip": True}
-    if not default_admin:
-        hashed_pw = "$2b$12$C6UzMDM.H6dfI/f/IKcEeO8m8Y4YkQkQ1h6s4H6c3Z8Y5G7c8Y4r2"
-        await db.admin_users.insert_one({
-            "id": str(uuid.uuid4()),
-            "username": "admin",
-            "email": "info@bookaride.co.nz",
-            "hashed_password": hashed_pw,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "is_active": True
-        })
-        logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Default admin user created")
-    else:
-        # Update password and email to ensure they're correct
-        hashed_pw = "$2b$12$C6UzMDM.H6dfI/f/IKcEeO8m8Y4YkQkQ1h6s4H6c3Z8Y5G7c8Y4r2"
-        await db.admin_users.update_one(
-            {"username": "admin"},
-            {"$set": {
-                "hashed_password": hashed_pw,
-                "email": "info@bookaride.co.nz"
-            }}
-        )
-        logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Admin password reset and email updated to info@bookaride.co.nz")
+    # Ensure default admin exists with correct email for Google OAuth.
+    hashed_pw = "$2b$12$C6UzMDM.H6dfI/f/IKcEeO8m8Y4YkQkQ1h6s4H6c3Z8Y5G7c8Y4r2"
+    for attempt in range(2):
+        try:
+            result = await db.admin_users.update_one(
+                {"username": "admin"},
+                {
+                    "$set": {
+                        "hashed_password": hashed_pw,
+                        "email": "info@bookaride.co.nz",
+                        "is_active": True
+                    },
+                    "$setOnInsert": {
+                        "id": str(uuid.uuid4()),
+                        "username": "admin",
+                        "created_at": datetime.now(timezone.utc).isoformat()
+                    }
+                },
+                upsert=True
+            )
+            if result.upserted_id:
+                logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Default admin user created")
+            else:
+                logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Admin password reset and email updated to info@bookaride.co.nz")
+            break
+        except Exception as e:
+            corrected_name = extract_existing_db_name_from_case_error(e)
+            if attempt == 0 and corrected_name and corrected_name != db_name:
+                apply_resolved_db_name(corrected_name)
+                continue
+            print("WARN: admin seed skipped (db unavailable):", repr(e))
+            break
     
     # Create database indexes for faster queries
     try:
