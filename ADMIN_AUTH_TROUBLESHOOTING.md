@@ -63,6 +63,30 @@ Admin users are stored in the `admin_users` collection. Ensure:
 - `MONGO_URL` is correct in `backend/.env`
 - `DB_NAME` matches (default: `bookaride`)
 
+### 5. Google login button not showing / `{"detail":"Not Found"}` on Google auth
+
+**Cause:** Render backend may be serving an old deployment that doesn't have the admin Google OAuth routes.
+
+**Fix – force a Render redeploy:**
+1. Go to https://dashboard.render.com
+2. Open your **bookaride-backend** service
+3. Click **Manual Deploy** → **Deploy latest commit**
+4. Wait for the build to finish (2–5 minutes)
+5. Verify: `curl https://bookaride-backend.onrender.com/api/admin/google-auth/start` should redirect (302), not return 404
+
+**Backend env vars for Google OAuth** (in Render → Environment):
+| Variable | Description |
+|----------|-------------|
+| `GOOGLE_CLIENT_ID` | From Google Cloud Console OAuth client |
+| `GOOGLE_CLIENT_SECRET` | From Google Cloud Console |
+| `BACKEND_URL` or `RENDER_EXTERNAL_URL` | Backend URL for OAuth redirect (e.g. `https://bookaride-backend.onrender.com`) |
+
+**Frontend:** If `REACT_APP_BACKEND_URL` is not set in Vercel, the frontend now falls back to `https://bookaride-backend.onrender.com` when on bookaride.co.nz.
+
+### 6. Render backend returns 404 for all routes
+
+If `/`, `/healthz`, and `/api/admin/google-auth/start` all return 404, the deployed code is outdated. Trigger a **Manual Deploy** in the Render dashboard (see §5 above). Ensure the service is configured to deploy from the `main` branch.
+
 ---
 
 ## Summary of fixes applied
