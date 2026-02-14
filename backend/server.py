@@ -5300,8 +5300,8 @@ async def create_payment_checkout(request: PaymentCheckoutRequest, http_request:
         if not booking:
             raise HTTPException(status_code=404, detail="Booking not found")
         
-        # Get Stripe API key
-        stripe_api_key = os.environ.get('STRIPE_API_KEY')
+        # Get Stripe API key (support both env var names)
+        stripe_api_key = os.environ.get('STRIPE_API_KEY') or os.environ.get('STRIPE_SECRET_KEY')
         if not stripe_api_key:
             raise HTTPException(status_code=500, detail="Stripe API key not configured")
         
@@ -5319,15 +5319,16 @@ async def create_payment_checkout(request: PaymentCheckoutRequest, http_request:
         if amount <= 0:
             raise HTTPException(status_code=400, detail="Invalid booking amount")
         
+        # Stripe expects amount in cents
+        amount_cents = int(round(amount * 100))
+        
         # Create checkout session with Apple Pay, Google Pay, Afterpay enabled
-        # Note: Apple Pay and Google Pay work through 'card' payment method with Payment Request Button
-        # Adding 'link' enables Stripe Link for faster checkout
         checkout_request = CheckoutSessionRequest(
-            amount=amount,
+            amount_total=amount_cents,
             currency="nzd",
             success_url=success_url,
             cancel_url=cancel_url,
-            payment_methods=["card", "afterpay_clearpay", "link"],  # card includes Apple Pay/Google Pay via Payment Request
+            customer_email=booking.get('email') or None,
             metadata={
                 "booking_id": request.booking_id,
                 "customer_email": booking.get('email', ''),
@@ -8196,12 +8197,12 @@ async def export_csv():
 async def generate_stripe_payment_link(booking: dict) -> str:
     """Generate a Stripe payment link for a booking"""
     try:
-        stripe_api_key = os.environ.get('STRIPE_API_KEY')
+        stripe_api_key = os.environ.get('STRIPE_API_KEY') or os.environ.get('STRIPE_SECRET_KEY')
         if not stripe_api_key:
-            logger.error("Stripe API key not configured")
+            logger.error("Stripe API key not configured (set STRIPE_API_KEY or STRIPE_SECRET_KEY)")
             return None
         
-        public_url = os.environ.get('PUBLIC_URL', 'https://bookaride.co.nz')
+        public_url = os.environ.get('PUBLIC_URL') or os.environ.get('PUBLIC_DOMAIN', 'https://www.bookaride.co.nz').rstrip('/')
         webhook_url = f"{public_url}/api/webhook/stripe"
         stripe_checkout = StripeCheckout(api_key=stripe_api_key, webhook_url=webhook_url)
         
@@ -8219,14 +8220,16 @@ async def generate_stripe_payment_link(booking: dict) -> str:
             logger.error(f"Invalid amount for payment link: {amount}")
             return None
         
+        # Stripe expects amount in cents (smallest currency unit)
+        amount_cents = int(round(amount * 100))
         logger.info(f"Generating Stripe payment link for ${amount:.2f} (booking #{booking.get('referenceNumber')})")
         
         checkout_request = CheckoutSessionRequest(
-            amount=amount,
+            amount_total=amount_cents,
             currency="nzd",
             success_url=success_url,
             cancel_url=cancel_url,
-            payment_methods=["card", "afterpay_clearpay"],  # Enable Afterpay/Clearpay
+            customer_email=booking.get('email') or None,
             metadata={
                 "booking_id": booking.get('id', ''),
                 "customer_email": booking.get('email', ''),
@@ -8235,7 +8238,7 @@ async def generate_stripe_payment_link(booking: dict) -> str:
         )
         
         session = await stripe_checkout.create_checkout_session(checkout_request)
-        return session.url  # Fixed: attribute is 'url' not 'checkout_url'
+        return session.url
     except Exception as e:
         logger.error(f"Error generating Stripe payment link: {str(e)}")
         return None
