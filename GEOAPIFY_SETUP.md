@@ -28,7 +28,10 @@ Geoapify replaces Google Maps for address autocomplete and distance calculation.
 
 - **Address autocomplete** – Pickup and drop-off fields on the booking form
 - **Distance calculation** – Price calculation uses Geoapify Routing API
+- **Route map** – Interactive map with route preview (when `REACT_APP_GEOAPIFY_API_KEY` is set)
 
-## Optional: Google Maps
+## Map Display
 
-If you still have `REACT_APP_GOOGLE_MAPS_API_KEY` set, the route map will use it. If not set, a simple route summary is shown instead of the interactive map. Address autocomplete and pricing use Geoapify regardless.
+- **Google Maps key set** → Uses Google Maps for the route preview
+- **Geoapify key set (no Google)** → Uses Geoapify map tiles + routing for the route preview
+- **Neither set** → Simple text route summary
