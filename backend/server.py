@@ -105,6 +105,32 @@ async def root_health_check():
     """Root health check endpoint for Kubernetes/Render liveness/readiness probes"""
     return {"status": "healthy", "service": "bookaride-api"}
 
+# Google auth start - also at app level so /api/admin/google-auth/start is guaranteed
+@app.get("/api/admin/google-auth/start")
+async def admin_google_auth_start_app():
+    """Start Google OAuth - app-level route for reliability"""
+    client_id = os.environ.get('GOOGLE_CLIENT_ID')
+    client_secret = os.environ.get('GOOGLE_CLIENT_SECRET')
+    if not client_id or not client_secret:
+        raise HTTPException(status_code=500, detail="Google OAuth not configured. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.")
+    public_domain = os.environ.get('PUBLIC_DOMAIN', 'https://bookaride.co.nz')
+    backend_url = os.environ.get('BACKEND_URL') or os.environ.get('RENDER_EXTERNAL_URL') or public_domain
+    redirect_uri = f"{backend_url.rstrip('/')}/api/admin/google-auth/callback"
+    state = f"bookaride_admin_oauth_{uuid.uuid4().hex}"
+    auth_url = (
+        "https://accounts.google.com/o/oauth2/v2/auth?"
+        f"client_id={client_id}&"
+        f"redirect_uri={requests.utils.quote(redirect_uri)}&"
+        "response_type=code&"
+        "scope=openid%20email%20profile&"
+        f"state={state}&"
+        "access_type=offline&"
+        "prompt=select_account"
+    )
+    response = RedirectResponse(url=auth_url)
+    response.set_cookie(key="admin_oauth_state", value=state, httponly=True, max_age=600, samesite="lax")
+    return response
+
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
