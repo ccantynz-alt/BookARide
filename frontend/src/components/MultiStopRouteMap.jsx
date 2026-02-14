@@ -31,6 +31,8 @@ const mapOptions = {
   ]
 };
 
+const HAS_GOOGLE_MAPS = !!(process.env.REACT_APP_GOOGLE_MAPS_API_KEY);
+
 const MultiStopRouteMap = ({ 
   pickupAddress, 
   pickupAddresses = [], 
@@ -39,9 +41,10 @@ const MultiStopRouteMap = ({
   pickupDate
 }) => {
   const { isLoaded, loadError } = useLoadScript({
-    googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY,
-    libraries
+    googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY || '',
+    libraries: HAS_GOOGLE_MAPS ? libraries : []
   });
+  const showMap = HAS_GOOGLE_MAPS && isLoaded && !loadError;
 
   const [directions, setDirections] = useState(null);
   const [isExpanded, setIsExpanded] = useState(true);
@@ -204,8 +207,9 @@ const MultiStopRouteMap = ({
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.3 }}
           >
-            {/* Map */}
+            {/* Map or route summary */}
             <div className="px-4 pb-4">
+              {showMap ? (
               <div className="rounded-xl overflow-hidden shadow-inner border border-emerald-200">
                 <GoogleMap
                   mapContainerStyle={mapContainerStyle}
@@ -268,6 +272,11 @@ const MultiStopRouteMap = ({
                   )}
                 </GoogleMap>
               </div>
+              ) : (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4">
+                <p className="text-sm text-gray-600 text-center">Route preview (map requires Google Maps API)</p>
+              </div>
+              )}
 
               {/* Stop List */}
               <div className="mt-3 space-y-2">

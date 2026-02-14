@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MapPin, Calendar, Users, DollarSign, Clock, Mail, Phone, User } from 'lucide-react';
-import { useLoadScript } from '@react-google-maps/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -18,27 +17,16 @@ import WeatherWidget from '../components/WeatherWidget';
 import LiveJourneyVisualizer from '../components/LiveJourneyVisualizer';
 import MultiStopRouteMap from '../components/MultiStopRouteMap';
 import { CustomDatePicker, CustomTimePicker } from '../components/DateTimePicker';
-import { initAutocompleteWithFix } from '../utils/fixGoogleAutocomplete';
+import { GeoapifyAutocomplete } from '../components/GeoapifyAutocomplete';
 import PriceComparison from '../components/PriceComparison';
 import BookingAddOns, { addOns } from '../components/BookingAddOns';
 import TrustBadges from '../components/TrustBadges';
 import GoogleReviewsWidget from '../components/GoogleReviewsWidget';
 import SocialProofCounter from '../components/SocialProofCounter';
-
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
-
-const libraries = ['places'];
+import { API } from '../config/api';
 
 export const BookNow = () => {
   const { i18n } = useTranslation();
-  const { isLoaded } = useLoadScript({
-    googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY,
-    libraries: libraries
-  });
-
-  const pickupRef = useRef(null);
-  const dropoffRef = useRef(null);
 
   const [formData, setFormData] = useState({
     serviceType: '',
@@ -173,37 +161,6 @@ export const BookNow = () => {
     { value: 'airport-shuttle', label: 'Airport Shuttle' },
     { value: 'private-transfer', label: 'Private Shuttle Transfer' }
   ];
-
-  // Initialize Google Places Autocomplete
-  useEffect(() => {
-    if (!isLoaded || !pickupRef.current || !dropoffRef.current) return;
-
-    const pickupSetup = initAutocompleteWithFix(pickupRef.current);
-    const dropoffSetup = initAutocompleteWithFix(dropoffRef.current);
-
-    if (pickupSetup && pickupSetup.autocomplete) {
-      pickupSetup.autocomplete.addListener('place_changed', () => {
-        const place = pickupSetup.autocomplete.getPlace();
-        if (place.formatted_address) {
-          setFormData(prev => ({ ...prev, pickupAddress: place.formatted_address }));
-        }
-      });
-    }
-
-    if (dropoffSetup && dropoffSetup.autocomplete) {
-      dropoffSetup.autocomplete.addListener('place_changed', () => {
-        const place = dropoffSetup.autocomplete.getPlace();
-        if (place.formatted_address) {
-          setFormData(prev => ({ ...prev, dropoffAddress: place.formatted_address }));
-        }
-      });
-    }
-
-    return () => {
-      if (pickupSetup) pickupSetup.cleanup();
-      if (dropoffSetup) dropoffSetup.cleanup();
-    };
-  }, [isLoaded]);
 
   // Calculate price when addresses, passengers, VIP service, oversized luggage, or return trip changes
   useEffect(() => {
@@ -535,17 +492,16 @@ export const BookNow = () => {
                           <MapPin className="w-4 h-4 text-gold" />
                           <span>Pickup Location 1 *</span>
                         </Label>
-                        <Input
-                          ref={pickupRef}
+                        <GeoapifyAutocomplete
                           id="pickupAddress"
                           name="pickupAddress"
                           value={formData.pickupAddress}
-                          onChange={handleChange}
+                          onChange={(v) => setFormData(prev => ({ ...prev, pickupAddress: v }))}
                           placeholder="Start typing address..."
                           required
                           className="transition-all duration-200 focus:ring-2 focus:ring-gold"
                         />
-                        <p className="text-xs text-gray-500">Google will suggest addresses as you type</p>
+                        <p className="text-xs text-gray-500">Address suggestions as you type</p>
                       </div>
 
                       {/* Additional Pickup Addresses */}
@@ -556,9 +512,9 @@ export const BookNow = () => {
                             <span>Pickup Location {index + 2}</span>
                           </Label>
                           <div className="flex gap-2">
-                            <Input
+                            <GeoapifyAutocomplete
                               value={pickup}
-                              onChange={(e) => handlePickupAddressChange(index, e.target.value)}
+                              onChange={(v) => handlePickupAddressChange(index, v)}
                               placeholder="Start typing address..."
                               className="flex-1 transition-all duration-200 focus:ring-2 focus:ring-gold"
                             />
@@ -601,17 +557,16 @@ export const BookNow = () => {
                           <MapPin className="w-4 h-4 text-gold" />
                           <span>Drop-off Address *</span>
                         </Label>
-                        <Input
-                          ref={dropoffRef}
+                        <GeoapifyAutocomplete
                           id="dropoffAddress"
                           name="dropoffAddress"
                           value={formData.dropoffAddress}
-                          onChange={handleChange}
+                          onChange={(v) => setFormData(prev => ({ ...prev, dropoffAddress: v }))}
                           placeholder="Start typing address..."
                           required
                           className="transition-all duration-200 focus:ring-2 focus:ring-gold"
                         />
-                        <p className="text-xs text-gray-500">Google will suggest addresses as you type</p>
+                        <p className="text-xs text-gray-500">Address suggestions as you type</p>
                       </div>
 
                       {/* Date and Time */}
@@ -1152,6 +1107,7 @@ export const BookNow = () => {
                           {/* Multi-Stop Route Map with Visual Preview */}
                           {formData.pickupAddress && formData.dropoffAddress && (
                             <div className="mt-4" data-testid="route-map-container">
+                              {process.env.REACT_APP_GOOGLE_MAPS_API_KEY ? (
                               <MultiStopRouteMap 
                                 pickupAddress={formData.pickupAddress}
                                 pickupAddresses={formData.pickupAddresses}
@@ -1159,6 +1115,16 @@ export const BookNow = () => {
                                 pickupTime={formData.time}
                                 pickupDate={formData.date}
                               />
+                              ) : (
+                              <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 space-y-2">
+                                <p className="text-sm font-medium text-gray-700">Your route</p>
+                                <p className="text-sm text-gray-600">Pickup: {formData.pickupAddress}</p>
+                                {formData.pickupAddresses?.filter(Boolean).map((addr, i) => (
+                                  <p key={i} className="text-sm text-gray-600">+ Stop: {addr}</p>
+                                ))}
+                                <p className="text-sm text-gray-600">Drop-off: {formData.dropoffAddress}</p>
+                              </div>
+                              )}
                             </div>
                           )}
 

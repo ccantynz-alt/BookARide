@@ -1237,14 +1237,73 @@ async def get_status_checks():
     
     return status_checks
 
+def _geocode_geoapify(address: str, api_key: str) -> tuple:
+    """Geocode address via Geoapify. Returns (lat, lon) or (None, None)."""
+    try:
+        url = "https://api.geoapify.com/v1/geocode/search"
+        params = {"text": address, "apiKey": api_key, "limit": 1, "filter": "countrycode:nz"}
+        r = requests.get(url, params=params, timeout=10)
+        data = r.json()
+        features = data.get("features", [])
+        if features:
+            coords = features[0].get("geometry", {}).get("coordinates", [])
+            if len(coords) >= 2:
+                return (coords[1], coords[0])  # GeoJSON is [lon, lat]
+    except Exception as e:
+        logger.warning(f"Geoapify geocode error for '{address[:50]}...': {e}")
+    return (None, None)
+
+
+def _get_distance_geoapify(pickup_address: str, dropoff_address: str, waypoint_addresses: list, api_key: str) -> float | None:
+    """Get driving distance in km via Geoapify Routing API. Returns None on failure."""
+    try:
+        waypoints = [pickup_address] + (waypoint_addresses or []) + [dropoff_address]
+        coords_list = []
+        for addr in waypoints:
+            if not addr or not addr.strip():
+                continue
+            lat, lon = _geocode_geoapify(addr.strip(), api_key)
+            if lat is None:
+                return None
+            coords_list.append(f"{lat},{lon}")
+        if len(coords_list) < 2:
+            return None
+        waypoints_str = "|".join(coords_list)
+        url = f"https://api.geoapify.com/v1/routing?waypoints={waypoints_str}&mode=drive&apiKey={api_key}"
+        r = requests.get(url, timeout=15)
+        data = r.json()
+        features = data.get("features", [])
+        if features:
+            props = features[0].get("properties", {})
+            dist_m = props.get("distance", 0)
+            return round(dist_m / 1000, 2)
+    except Exception as e:
+        logger.warning(f"Geoapify routing error: {e}")
+    return None
+
+
 # Price Calculation Endpoint
 @api_router.post("/calculate-price", response_model=PricingBreakdown)
 async def calculate_price(request: PriceCalculationRequest):
     try:
-        # Use Google Maps API to calculate distance for multiple stops
+        # Prefer Geoapify, then Google Maps, then fallback estimate
+        geoapify_key = os.environ.get('GEOAPIFY_API_KEY', '')
         google_api_key = os.environ.get('GOOGLE_MAPS_API_KEY', '')
         
-        if google_api_key:
+        distance_km = None
+        if geoapify_key:
+            # Route: pickup -> additional pickups -> dropoff
+            waypoint_addrs = [a for a in (request.pickupAddresses or []) if a and a.strip()]
+            distance_km = _get_distance_geoapify(
+                request.pickupAddress,
+                request.dropoffAddress,
+                waypoint_addrs,
+                geoapify_key
+            )
+            if distance_km is not None:
+                logger.info(f"Geoapify route distance: {distance_km}km")
+        
+        if distance_km is None and google_api_key:
             # Build list of all stops: first pickup + additional pickups + dropoff
             all_pickups = [request.pickupAddress]
             if request.pickupAddresses:
