@@ -90,6 +90,22 @@ Admin users are stored in the `admin_users` collection. Ensure:
 
 If `/`, `/healthz`, and `/api/admin/google-auth/start` all return 404, the deployed code is outdated. Trigger a **Manual Deploy** in the Render dashboard (see §5 above). Ensure the service is configured to deploy from the `main` branch.
 
+### 7. Failed to send Stripe link
+
+**Cause:** Stripe payment link generation or email delivery failed.
+
+**Check Render → Environment:**
+| Variable | Description |
+|----------|-------------|
+| `STRIPE_API_KEY` or `STRIPE_SECRET_KEY` | Secret key from [Stripe Dashboard](https://dashboard.stripe.com/apikeys) (starts with `sk_`) |
+| `MAILGUN_API_KEY`, `MAILGUN_DOMAIN` | Required to email the payment link to the customer |
+| `PUBLIC_URL` or `PUBLIC_DOMAIN` | Site URL for Stripe redirects (e.g. `https://www.bookaride.co.nz`) |
+
+**Common causes:**
+- Stripe key missing or wrong (use Secret key, not Publishable)
+- Booking has $0 or invalid amount
+- Mailgun not configured (link is generated but email fails)
+
 ---
 
 ## Summary of fixes applied
