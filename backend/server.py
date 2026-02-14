@@ -74,11 +74,36 @@ ROOT_DIR = Path(__file__).parent
 sys.path.insert(0, str(ROOT_DIR))
 load_dotenv(ROOT_DIR / '.env')
 
+def resolve_db_name_with_existing_case(mongo_url: str, configured_name: str) -> str:
+    """Use an existing database name's casing when only case differs."""
+    sync_client = None
+    try:
+        from pymongo import MongoClient
+        sync_client = MongoClient(mongo_url, serverSelectionTimeoutMS=2000, connectTimeoutMS=2000)
+        for existing_name in sync_client.list_database_names():
+            if existing_name.lower() == configured_name.lower():
+                if existing_name != configured_name:
+                    logging.warning(
+                        "DB_NAME case mismatch: configured '%s', using existing '%s'.",
+                        configured_name,
+                        existing_name,
+                    )
+                return existing_name
+    except Exception as exc:
+        logging.warning("Could not verify DB_NAME casing via MongoDB: %s", exc)
+    finally:
+        if sync_client is not None:
+            sync_client.close()
+    return configured_name
+
+
 # MongoDB connection
 mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
 db_name = os.environ.get('DB_NAME', 'bookaride')
 if 'MONGO_URL' not in os.environ or 'DB_NAME' not in os.environ:
     logging.warning("MONGO_URL or DB_NAME missing; using fallback values for startup.")
+db_name = resolve_db_name_with_existing_case(mongo_url, db_name)
+os.environ['DB_NAME'] = db_name
 client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=2000, connectTimeoutMS=2000)
 db = client[db_name]
 
@@ -2299,7 +2324,7 @@ def send_customer_confirmation(booking: dict):
         try:
             from pymongo import MongoClient
             sync_client = MongoClient(os.environ.get('MONGO_URL', 'mongodb://localhost:27017'))
-            sync_db = sync_client[os.environ.get('DB_NAME', 'test_database')]
+            sync_db = sync_client[db_name]
             
             nz_tz = pytz.timezone('Pacific/Auckland')
             now = datetime.now(nz_tz).isoformat()
@@ -3736,7 +3761,7 @@ Price: ${booking.get('totalPrice', 0):.2f}
             try:
                 from pymongo import MongoClient
                 sync_client = MongoClient(os.environ.get('MONGO_URL', 'mongodb://localhost:27017'))
-                sync_db = sync_client[os.environ.get('DB_NAME', 'test_database')]
+                sync_db = sync_client[db_name]
                 sync_db.pending_approvals.update_one(
                     {"admin_phone": admin_phone},
                     {"$set": {

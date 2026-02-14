@@ -18,11 +18,36 @@ load_dotenv(ROOT_DIR / '.env')
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+
+def resolve_db_name_with_existing_case(mongo_url: str, configured_name: str) -> str:
+    """Use existing DB casing when only case differs."""
+    sync_client = None
+    try:
+        from pymongo import MongoClient
+        sync_client = MongoClient(mongo_url, serverSelectionTimeoutMS=2000, connectTimeoutMS=2000)
+        for existing_name in sync_client.list_database_names():
+            if existing_name.lower() == configured_name.lower():
+                if existing_name != configured_name:
+                    print(
+                        f"⚠️  DB_NAME case mismatch: configured '{configured_name}', "
+                        f"using existing '{existing_name}'."
+                    )
+                return existing_name
+    except Exception as exc:
+        print(f"⚠️  Could not verify DB_NAME casing via MongoDB: {exc}")
+    finally:
+        if sync_client is not None:
+            sync_client.close()
+    return configured_name
+
+
 async def create_admin():
     # Connect to MongoDB
     mongo_url = os.environ['MONGO_URL']
+    db_name = resolve_db_name_with_existing_case(mongo_url, os.environ['DB_NAME'])
+    os.environ['DB_NAME'] = db_name
     client = AsyncIOMotorClient(mongo_url)
-    db = client[os.environ['DB_NAME']]
+    db = client[db_name]
     
     print("\n=== Create Admin User ===\n")
     
