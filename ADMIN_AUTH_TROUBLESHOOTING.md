@@ -45,21 +45,16 @@
 
 ### 3. Frontend can't reach backend (API errors)
 
-**Required frontend env vars** (in `frontend/.env` or Vercel Environment Variables):
+**Moving off Emergent:** The proxy to Emergent has been removed. You must point the frontend to your own backend.
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `REACT_APP_BACKEND_URL` | Backend API base URL | `https://bookaride.co.nz` or `https://www.bookaride.co.nz` |
+**In Vercel → Settings → Environment Variables**, add:
+| Variable | Value |
+|----------|-------|
+| `REACT_APP_BACKEND_URL` | Your backend URL, e.g. `https://api.bookaride.co.nz` or `https://your-app.onrender.com` |
 
-**Note:** Do NOT include `/api` in the URL – the frontend adds it.  
-Correct: `https://bookaride.co.nz`  
-Wrong: `https://bookaride.co.nz/api`
+Do NOT include `/api` at the end – the frontend adds it. Redeploy after adding.
 
-**If you get 405 Method Not Allowed:** The Vercel proxy may not be matching. **Quick fix:** In Vercel → Project → Settings → Environment Variables, add:
-```
-REACT_APP_BACKEND_URL=https://dazzling-leakey.preview.emergentagent.com
-```
-(No `/api` at the end.) This makes the frontend call the backend directly; CORS already allows bookaride.co.nz. Redeploy after adding the variable.
+**If your backend is on the same domain** (e.g. `bookaride.co.nz/api`), set `REACT_APP_BACKEND_URL=https://www.bookaride.co.nz` so API calls go to the same origin.
 
 ### 4. MongoDB connection
 
