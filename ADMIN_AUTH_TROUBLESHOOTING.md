@@ -55,7 +55,11 @@
 Correct: `https://bookaride.co.nz`  
 Wrong: `https://bookaride.co.nz/api`
 
-**Fallback:** If `REACT_APP_BACKEND_URL` is not set, the app uses `window.location.origin`. API calls go to the same domain (e.g. `https://www.bookaride.co.nz/api`). **Vercel proxy:** `vercel.json` rewrites `/api/*` to the backend. If your backend URL differs from `dazzling-leakey.preview.emergentagent.com`, update the `destination` in `frontend/vercel.json`.
+**If you get 405 Method Not Allowed:** The Vercel proxy may not be matching. **Quick fix:** In Vercel → Project → Settings → Environment Variables, add:
+```
+REACT_APP_BACKEND_URL=https://dazzling-leakey.preview.emergentagent.com
+```
+(No `/api` at the end.) This makes the frontend call the backend directly; CORS already allows bookaride.co.nz. Redeploy after adding the variable.
 
 ### 4. MongoDB connection
 

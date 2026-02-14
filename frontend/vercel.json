@@ -1,8 +1,8 @@
 {
   "rewrites": [
     {
-      "source": "/api/:path*",
-      "destination": "https://dazzling-leakey.preview.emergentagent.com/api/:path*"
+      "source": "/api/(.*)",
+      "destination": "https://dazzling-leakey.preview.emergentagent.com/api/$1"
     },
     {
       "source": "/(.*)",
