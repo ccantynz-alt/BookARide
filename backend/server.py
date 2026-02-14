@@ -101,7 +101,14 @@ def _extract_existing_db_name_from_case_conflict(exc: Exception) -> Optional[str
     """
     details = getattr(exc, "details", None)
     if isinstance(details, dict):
+        # Write errors can be nested depending on the driver/path.
         errmsg = details.get("errmsg") or details.get("message") or ""
+        if not errmsg:
+            write_errors = details.get("writeErrors")
+            if isinstance(write_errors, list) and write_errors:
+                first = write_errors[0]
+                if isinstance(first, dict):
+                    errmsg = first.get("errmsg") or ""
     else:
         errmsg = ""
 
@@ -112,6 +119,36 @@ def _extract_existing_db_name_from_case_conflict(exc: Exception) -> Optional[str
     if not match:
         return None
     return match.group("existing")
+
+
+def _set_db_name(new_db_name: str) -> None:
+    """Update global DB binding and keep env var aligned."""
+    global db_name, db
+    db_name = new_db_name
+    db = client[db_name]
+    os.environ["DB_NAME"] = db_name
+
+
+async def _retry_startup_op_on_db_case_conflict(make_awaitable, op_name: str = "mongo op"):
+    """
+    Run a startup DB operation; if it fails due to case conflict (13297),
+    switch to the existing DB name and retry once.
+    """
+    try:
+        return await make_awaitable()
+    except Exception as exc:
+        configured = get_db_name()
+        existing = _extract_existing_db_name_from_case_conflict(exc)
+        if existing and existing.lower() == configured.lower() and existing != configured:
+            logging.warning(
+                "DB_NAME case conflict during %s: configured '%s' but existing is '%s'. Switching and retrying.",
+                op_name,
+                configured,
+                existing,
+            )
+            _set_db_name(existing)
+            return await make_awaitable()
+        raise
 
 
 async def resolve_db_name_case_conflict() -> str:
@@ -174,15 +211,10 @@ async def resolve_db_name_case_conflict() -> str:
             configured_db_name,
             matched_db_name
         )
-        db_name = matched_db_name
-        db = client[db_name]
-        # Keep environment value aligned for sync MongoClient usages.
-        os.environ['DB_NAME'] = db_name
+        _set_db_name(matched_db_name)
         return db_name
 
-    db_name = configured_db_name
-    db = client[db_name]
-    os.environ['DB_NAME'] = db_name
+    _set_db_name(configured_db_name)
     return db_name
 
 # Authentication configuration
@@ -13007,6 +13039,10 @@ def create_arrival_email_html(customer_name: str, booking_date: str, pickup_time
 async def startup_event():
     """Start the scheduler when the app starts and ensure default admin exists"""
     await resolve_db_name_case_conflict()
+    try:
+        logger.info(f"MongoDB startup: using database '{get_db_name()}'")
+    except Exception:
+        pass
 
     # Ensure default admin exists with correct email for Google OAuth
     try:
@@ -13016,46 +13052,64 @@ async def startup_event():
         default_admin = {"_skip": True}
     if not default_admin:
         hashed_pw = "$2b$12$C6UzMDM.H6dfI/f/IKcEeO8m8Y4YkQkQ1h6s4H6c3Z8Y5G7c8Y4r2"
-        await db.admin_users.insert_one({
-            "id": str(uuid.uuid4()),
-            "username": "admin",
-            "email": "info@bookaride.co.nz",
-            "hashed_password": hashed_pw,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "is_active": True
-        })
+        await _retry_startup_op_on_db_case_conflict(
+            lambda: db.admin_users.insert_one({
+                "id": str(uuid.uuid4()),
+                "username": "admin",
+                "email": "info@bookaride.co.nz",
+                "hashed_password": hashed_pw,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "is_active": True
+            }),
+            op_name="admin seed insert_one",
+        )
         logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Default admin user created")
     else:
         # Update password and email to ensure they're correct
         hashed_pw = "$2b$12$C6UzMDM.H6dfI/f/IKcEeO8m8Y4YkQkQ1h6s4H6c3Z8Y5G7c8Y4r2"
-        await db.admin_users.update_one(
-            {"username": "admin"},
-            {"$set": {
-                "hashed_password": hashed_pw,
-                "email": "info@bookaride.co.nz"
-            }}
+        await _retry_startup_op_on_db_case_conflict(
+            lambda: db.admin_users.update_one(
+                {"username": "admin"},
+                {"$set": {
+                    "hashed_password": hashed_pw,
+                    "email": "info@bookaride.co.nz"
+                }}
+            ),
+            op_name="admin seed update_one",
         )
         logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Admin password reset and email updated to info@bookaride.co.nz")
     
     # Create database indexes for faster queries
     try:
-        await db.bookings.create_index("date")
-        await db.bookings.create_index("status")
-        await db.bookings.create_index("name")
-        await db.bookings.create_index("email")
-        await db.bookings.create_index("referenceNumber")
-        await db.bookings.create_index("original_booking_id")
-        await db.bookings.create_index([("date", -1), ("status", 1)])
+        for spec, name in [
+            ("date", "bookings date"),
+            ("status", "bookings status"),
+            ("name", "bookings name"),
+            ("email", "bookings email"),
+            ("referenceNumber", "bookings referenceNumber"),
+            ("original_booking_id", "bookings original_booking_id"),
+            ([("date", -1), ("status", 1)], "bookings date/status compound"),
+        ]:
+            await _retry_startup_op_on_db_case_conflict(
+                lambda spec=spec: db.bookings.create_index(spec),
+                op_name=f"create_index {name}",
+            )
         logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Database indexes created for faster queries")
     except Exception as e:
         logger.warning(f"Index creation note: {str(e)}")
     
     # Create index for archive collection
     try:
-        await db.bookings_archive.create_index("archivedAt")
-        await db.bookings_archive.create_index("name")
-        await db.bookings_archive.create_index("email")
-        await db.bookings_archive.create_index("referenceNumber")
+        for spec, name in [
+            ("archivedAt", "archive archivedAt"),
+            ("name", "archive name"),
+            ("email", "archive email"),
+            ("referenceNumber", "archive referenceNumber"),
+        ]:
+            await _retry_startup_op_on_db_case_conflict(
+                lambda spec=spec: db.bookings_archive.create_index(spec),
+                op_name=f"create_index {name}",
+            )
         logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Archive indexes created")
     except Exception as e:
         logger.warning(f"Archive index creation note: {str(e)}")
