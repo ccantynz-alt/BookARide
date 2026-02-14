@@ -94,7 +94,11 @@ security = HTTPBearer()
 # Create the main app without a prefix
 app = FastAPI()
 
-# Root-level health check for Kubernetes/Render - MUST be at root, not under /api
+# Root and health - Render/Kubernetes may check / or /health or /healthz
+@app.get("/")
+async def root():
+    return {"status": "ok", "service": "bookaride-api", "docs": "/docs"}
+
 @app.get("/health")
 @app.get("/healthz")
 async def root_health_check():
