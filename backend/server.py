@@ -3670,86 +3670,49 @@ async def send_booking_notification_to_admin(booking: dict):
     """Automatically send booking notification to admin email"""
     try:
         admin_email = os.environ.get('ADMIN_EMAIL', 'bookings@bookaride.co.nz')
-        mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
-        mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
-        sender_email = os.environ.get('SENDER_EMAIL', 'noreply@mg.bookaride.co.nz')
-        
-        if not mailgun_api_key or not mailgun_domain:
-            logger.warning("Mailgun not configured - cannot send admin notification")
-            return False
-        
-        # Format booking details
-        total_price = booking.get('totalPrice', 0)
         formatted_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
         booking_ref = get_booking_reference(booking)
-        full_booking_id = get_full_booking_reference(booking)
         
-        # Create simplified email for quick notification
-        html_content = f"""
-        <html>
-            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <div style="background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%); color: white; padding: 20px; text-align: center; border-radius: 10px 10px 0 0;">
-                    <h1 style="margin: 0;">BookaRide.co.nz</h1>
-                    <p style="margin: 5px 0; font-size: 14px; color: rgba(255,255,255,0.9);">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â New Booking Received</p>
-                </div>
-                
-                <div style="padding: 20px; background-color: #ffffff; border: 1px solid #e8e4d9; border-top: none;">
-                    <div style="background-color: #fff8e6; padding: 15px; border-radius: 8px; border-left: 4px solid #D4AF37; margin-bottom: 20px;">
-                        <p style="margin: 0; font-size: 18px; font-weight: bold; color: #333;">New booking from {booking.get('name', 'Customer')}</p>
-                        <p style="margin: 5px 0 0 0; font-size: 14px; color: #666;">Booking Reference: {booking_ref}</p>
-                        <p style="margin: 5px 0 0 0; font-size: 11px; color: #999;">Full ID: {full_booking_id}</p>
-                    </div>
-                    
-                    <div style="background-color: #faf8f3; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #D4AF37;">
-                        <h3 style="margin-top: 0; color: #333;">Quick Details</h3>
-                        <p style="margin: 5px 0;"><strong>Customer:</strong> {booking.get('name', 'N/A')}</p>
-                        <p style="margin: 5px 0;"><strong>Phone:</strong> {booking.get('phone', 'N/A')}</p>
-                        <p style="margin: 5px 0;"><strong>Email:</strong> {booking.get('email', 'N/A')}</p>
-                        <hr style="border: 0; border-top: 1px solid #e8e4d9; margin: 15px 0;">
-                        <p style="margin: 5px 0;"><strong>Service:</strong> {booking.get('serviceType', 'N/A').replace('-', ' ').title()}</p>
-                        <p style="margin: 5px 0;"><strong>Date:</strong> {formatted_date} at {format_time_ampm(booking.get('time', 'N/A'))}</p>
-                        <p style="margin: 5px 0;"><strong>Passengers:</strong> {booking.get('passengers', 'N/A')}</p>
-                        <p style="margin: 5px 0;"><strong>Pickup:</strong> {booking.get('pickupAddress', 'N/A')}</p>
-                        <p style="margin: 5px 0;"><strong>Drop-off:</strong> {booking.get('dropoffAddress', 'N/A')}</p>
-                        {'<hr style="border: 0; border-top: 1px solid #e8e4d9; margin: 15px 0;"><div style="background-color: #e3f2fd; padding: 10px; border-radius: 5px; border-left: 4px solid #2196F3;"><p style="margin: 0; font-weight: bold; color: #1565C0;">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã¢â‚¬Â¹ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â FLIGHT INFORMATION</p><p style="margin: 5px 0 0 0;"><strong>Flight Number:</strong> ' + (booking.get('flightNumber') or booking.get('departureFlightNumber') or booking.get('arrivalFlightNumber') or 'N/A') + '</p></div>' if (booking.get('flightNumber') or booking.get('departureFlightNumber') or booking.get('arrivalFlightNumber')) else ''}
-                        {'<hr style="border: 0; border-top: 1px solid #e8e4d9; margin: 15px 0;"><div style="background-color: #f3e5f5; padding: 10px; border-radius: 5px; border-left: 4px solid #9C27B0;"><p style="margin: 0; font-weight: bold; color: #7B1FA2;">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¾ RETURN TRIP BOOKED</p><p style="margin: 5px 0 0 0;"><strong>Return Date:</strong> ' + format_date_ddmmyyyy(booking.get('returnDate', '')) + ' at ' + format_time_ampm(booking.get('returnTime', '')) + '</p><p style="margin: 5px 0 0 0;"><strong>Return Flight:</strong> ' + (booking.get('returnFlightNumber') or booking.get('returnDepartureFlightNumber') or 'NOT PROVIDED - FOLLOW UP REQUIRED') + '</p></div>' if booking.get('bookReturn') or booking.get('returnDate') else ''}
-                        <hr style="border: 0; border-top: 2px solid #D4AF37; margin: 15px 0;">
-                        <p style="margin: 5px 0; font-size: 18px;"><strong>Total:</strong> <span style="color: #D4AF37;">${total_price:.2f} NZD</span></p>
-                        <p style="margin: 5px 0;"><strong>Payment Status:</strong> {booking.get('payment_status', 'N/A')}</p>
-                    </div>
-                    
-                    <div style="margin-top: 20px; padding: 15px; background-color: #fff8e6; border-radius: 8px; border-left: 4px solid #D4AF37;">
-                        <p style="margin: 0; font-weight: bold; color: #333;">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ Action Required:</p>
-                        <p style="margin: 5px 0 0 0; font-size: 14px;">Review and assign a driver in your <a href="https://bookaride.co.nz/admin/login" style="color: #D4AF37; text-decoration: none; font-weight: bold;">Admin Dashboard</a></p>
-                    </div>
-                </div>
-                
-                <div style="background: #faf8f3; color: #666; padding: 15px; text-align: center; font-size: 12px; border-radius: 0 0 10px 10px; border: 1px solid #e8e4d9; border-top: none;">
-                    <p style="margin: 0;"><span style="color: #D4AF37; font-weight: bold;">BookaRide NZ</span> Admin System</p>
-                    <p style="margin: 5px 0;">Automatic Booking Notification</p>
-                </div>
-            </body>
-        </html>
-        """
+        # Use same full confirmation as customer - notes, flights, return, all details
+        html_content = generate_confirmation_email_html(booking, for_admin=True)
         
-        # Send email via Mailgun API
-        response = requests.post(
-            f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
-            auth=("api", mailgun_api_key),
-            data={
-                "from": f"BookaRide System <{sender_email}>",
-                "to": admin_email,
-                "subject": f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â New Booking - {booking.get('name', 'Customer')} - {formatted_date} - Ref: {booking_ref}",
-                "html": html_content
-            }
-        )
-        
-        if response.status_code == 200:
-            logger.info(f"Auto-notification sent to admin: {admin_email} for booking: {booking_ref}")
-            email_sent = True
+        subject = f"New Booking - {booking.get('name', 'Customer')} - {formatted_date} - Ref: {booking_ref}"
+        if send_email_unified:
+            email_sent = send_email_unified(
+                admin_email,
+                subject,
+                html_content,
+                from_email=get_noreply_email(),
+                from_name="BookaRide System",
+                reply_to=os.environ.get("ADMIN_EMAIL", "info@bookaride.co.nz"),
+            )
+            if email_sent:
+                logger.info(f"Auto-notification sent to admin: {admin_email} for booking: {booking_ref}")
+            else:
+                logger.error("Failed to send admin notification via unified email sender")
         else:
-            logger.error(f"Failed to send admin notification: {response.status_code} - {response.text}")
-            email_sent = False
+            mailgun_api_key = os.environ.get("MAILGUN_API_KEY")
+            mailgun_domain = os.environ.get("MAILGUN_DOMAIN")
+            sender_email = get_noreply_email()
+            if mailgun_api_key and mailgun_domain:
+                response = requests.post(
+                    f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
+                    auth=("api", mailgun_api_key),
+                    data={
+                        "from": f"BookaRide System <{sender_email}>",
+                        "to": admin_email,
+                        "subject": subject,
+                        "html": html_content,
+                    },
+                )
+                email_sent = response.status_code == 200
+                if email_sent:
+                    logger.info(f"Auto-notification sent to admin: {admin_email} for booking: {booking_ref}")
+                else:
+                    logger.error(f"Failed to send admin notification: {response.status_code} - {response.text}")
+            else:
+                logger.error("No email provider configured for admin notification")
+                email_sent = False
             
     except Exception as e:
         logger.error(f"Error sending admin notification: {str(e)}")
@@ -4768,55 +4731,95 @@ async def preview_booking_confirmation(booking_id: str, current_admin: dict = De
         raise HTTPException(status_code=500, detail=f"Error previewing confirmation: {str(e)}")
 
 
-def generate_confirmation_email_html(booking: dict) -> str:
-    """Generate the confirmation email HTML for preview or sending - Clean professional design"""
-    sender_email = os.environ.get('SENDER_EMAIL', 'bookings@bookaride.co.nz')
-    
-    # Get pricing
-    total_price = booking.get('totalPrice', 0) or booking.get('pricing', {}).get('totalPrice', 0)
-    distance = booking.get('pricing', {}).get('distance', booking.get('distance', 0))
-    
-    # Format date and time with AM/PM
-    formatted_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
-    formatted_time = format_time_ampm(booking.get('time', 'N/A'))
-    booking_ref = get_booking_reference(booking)
-    
-    # Get all addresses
+def _get_booking_email_data(booking: dict) -> dict:
+    """Extract all booking fields for email display. Used by both customer and admin confirmations."""
+    pricing = booking.get('pricing', {})
+    total_price = booking.get('totalPrice', 0) or pricing.get('totalPrice', 0)
+    distance = pricing.get('distance', booking.get('distance', 0))
     primary_pickup = booking.get('pickupAddress', 'N/A')
-    pickup_addresses = booking.get('pickupAddresses', [])
+    pickup_addresses = [a for a in (booking.get('pickupAddresses') or []) if a and a.strip()]
     dropoff_address = booking.get('dropoffAddress', 'N/A')
+    # Flight info - check all possible field names
+    departure_flight = (booking.get('departureFlightNumber') or booking.get('flightNumber') or '').strip()
+    arrival_flight = (booking.get('arrivalFlightNumber') or booking.get('flightNumber') or '').strip()
+    if not arrival_flight and departure_flight:
+        arrival_flight = departure_flight  # Fallback
+    departure_time = (booking.get('departureTime') or '').strip()
+    arrival_time = (booking.get('arrivalTime') or '').strip()
+    return_flight = (booking.get('returnFlightNumber') or booking.get('returnDepartureFlightNumber') or '').strip()
+    return_arrival = (booking.get('returnArrivalFlightNumber') or '').strip()
+    return_departure_time = (booking.get('returnDepartureTime') or '').strip()
+    return_arrival_time = (booking.get('returnArrivalTime') or '').strip()
+    notes = (booking.get('notes') or booking.get('specialRequests') or '').strip()
+    pm = booking.get('paymentMethod') or ''
+    payment_method = (pm if pm else ('Stripe' if booking.get('payment_status') == 'paid' else 'Pending'))
+    return {
+        'total_price': total_price,
+        'distance': distance,
+        'formatted_date': format_date_ddmmyyyy(booking.get('date', 'N/A')),
+        'formatted_time': format_time_ampm(booking.get('time', 'N/A')),
+        'booking_ref': get_booking_reference(booking),
+        'primary_pickup': primary_pickup,
+        'pickup_addresses': pickup_addresses,
+        'dropoff_address': dropoff_address,
+        'departure_flight': departure_flight,
+        'arrival_flight': arrival_flight,
+        'departure_time': departure_time,
+        'arrival_time': arrival_time,
+        'return_flight': return_flight,
+        'return_arrival': return_arrival,
+        'return_departure_time': return_departure_time,
+        'return_arrival_time': return_arrival_time,
+        'notes': notes,
+        'payment_method': payment_method,
+        'payment_status': (booking.get('payment_status') or 'unpaid').upper(),
+        'service_display': (booking.get('serviceType') or 'airport-shuttle').replace('-', ' ').title(),
+        'has_return': bool(booking.get('bookReturn') or booking.get('returnDate')),
+        'return_date': booking.get('returnDate', ''),
+        'return_time': booking.get('returnTime', ''),
+        'passengers': booking.get('passengers', '1'),
+        'name': booking.get('name', 'N/A'),
+        'email': booking.get('email', 'N/A'),
+        'phone': booking.get('phone', 'N/A'),
+    }
+
+
+def generate_confirmation_email_html(booking: dict, for_admin: bool = False) -> str:
+    """Generate the confirmation email HTML for preview or sending - Clean professional design.
+    Includes all booking details: flights, return trip, notes, route, payment.
+    Set for_admin=True to add admin copy banner (same content, both get full details)."""
+    sender_email = os.environ.get('SENDER_EMAIL', 'bookings@bookaride.co.nz')
+    d = _get_booking_email_data(booking)
     
-    # Get flight numbers
-    departure_flight = booking.get('departureFlightNumber') or ''
-    arrival_flight = booking.get('arrivalFlightNumber') or booking.get('flightNumber') or ''
-    departure_time = booking.get('departureTime') or ''
-    arrival_time_flight = booking.get('arrivalTime') or ''
+    total_price = d['total_price']
+    distance = d['distance']
+    formatted_date = d['formatted_date']
+    formatted_time = d['formatted_time']
+    booking_ref = d['booking_ref']
+    primary_pickup = d['primary_pickup']
+    pickup_addresses = d['pickup_addresses']
+    dropoff_address = d['dropoff_address']
+    departure_flight = d['departure_flight']
+    arrival_flight = d['arrival_flight']
+    departure_time = d['departure_time']
+    arrival_time_flight = d['arrival_time']
     
-    # Service type display
-    service_type = booking.get('serviceType', 'airport-shuttle')
-    service_display = service_type.replace('-', ' ').title()
-    
-    # Transfer type
-    has_return = booking.get('bookReturn', False) or booking.get('returnDate', '')
+    service_display = d['service_display']
+    has_return = d['has_return']
     transfer_type = "Return Trip" if has_return else "One Way"
-    
-    # Payment status
-    payment_status = booking.get('payment_status', 'unpaid').upper()
-    
-    # Notes/Special requests
-    notes = booking.get('notes') or booking.get('specialRequests') or ''
-    
-    # Passengers
-    passengers = booking.get('passengers', '1')
+    payment_status = d['payment_status']
+    notes = d['notes']
+    passengers = d['passengers']
     payment_color = '#22c55e' if payment_status == 'PAID' else '#f59e0b'
+    payment_method = d['payment_method']
     
     # Build return trip section
     return_section_html = ""
     if has_return:
-        return_date = booking.get('returnDate', '')
-        return_time = booking.get('returnTime', '')
-        return_flight = booking.get('returnFlightNumber') or booking.get('returnDepartureFlightNumber') or ''
-        return_arrival_flight = booking.get('returnArrivalFlightNumber') or ''
+        return_date = d['return_date']
+        return_time = d['return_time']
+        return_flight = d['return_flight']
+        return_arrival_flight = d['return_arrival']
         
         formatted_return_date = format_date_ddmmyyyy(return_date) if return_date else 'TBC'
         formatted_return_time = format_time_ampm(return_time) if return_time else 'TBC'
@@ -4846,7 +4849,8 @@ def generate_confirmation_email_html(booking: dict) -> str:
                             <td style="padding: 12px 20px; color: #666; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Drop-off</td>
                             <td style="padding: 12px 20px; color: #1a1a1a; font-size: 14px; border-bottom: 1px solid #f0f0f0;">{primary_pickup}</td>
                         </tr>
-                        {'<tr><td style="padding: 12px 20px; color: #666; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Flight Number</td><td style="padding: 12px 20px; color: #1a1a1a; font-size: 14px; font-weight: 600; border-bottom: 1px solid #f0f0f0;">' + return_flight + '</td></tr>' if return_flight else ''}
+                        {'<tr><td style="padding: 12px 20px; color: #666; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Return Flight</td><td style="padding: 12px 20px; color: #1a1a1a; font-size: 14px; font-weight: 600; border-bottom: 1px solid #f0f0f0;">' + return_flight + '</td></tr>' if return_flight else ''}
+                        {'<tr><td style="padding: 12px 20px; color: #666; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Return Arrival Flight</td><td style="padding: 12px 20px; color: #1a1a1a; font-size: 14px; font-weight: 600; border-bottom: 1px solid #f0f0f0;">' + return_arrival_flight + '</td></tr>' if return_arrival_flight and return_arrival_flight != return_flight else ''}
         '''
     
     # Build additional stops for outbound
@@ -4902,6 +4906,13 @@ def generate_confirmation_email_html(booking: dict) -> str:
                         </tr>
             '''
     
+    admin_banner = '''
+                <div style="background: #1a365d; color: #D4AF37; padding: 12px 20px; text-align: center; border-bottom: 2px solid #D4AF37;">
+                    <p style="margin: 0; font-size: 13px; font-weight: 600;">ADMIN COPY - New Booking</p>
+                    <p style="margin: 4px 0 0 0; font-size: 11px; color: #94a3b8;">Assign driver in <a href="https://bookaride.co.nz/admin/login" style="color: #D4AF37;">Admin Dashboard</a></p>
+                </div>
+    ''' if for_admin else ''
+    
     html_content = f'''
     <!DOCTYPE html>
     <html>
@@ -4911,7 +4922,7 @@ def generate_confirmation_email_html(booking: dict) -> str:
         </head>
         <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 0; background-color: #f5f5f5; line-height: 1.6;">
             <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                
+                {admin_banner}
                 <!-- Header -->
                 <div style="background: #1a1a2e; padding: 30px 20px; text-align: center;">
                     <h1 style="margin: 0; color: #D4AF37; font-size: 24px; font-weight: 600; letter-spacing: 2px;">BOOK A RIDE</h1>
@@ -4991,9 +5002,14 @@ def generate_confirmation_email_html(booking: dict) -> str:
                         <tr>
                             <td colspan="2" style="padding: 25px 20px; background: #faf9f6;">
                                 <table style="width: 100%; border-collapse: collapse;">
+                                    {f'<tr><td style="color: #666; font-size: 13px;">Distance</td><td style="text-align: right; color: #1a1a1a; font-size: 14px;">{distance} km</td></tr>' if distance else ''}
                                     <tr>
                                         <td style="color: #666; font-size: 14px;">Total Fare</td>
                                         <td style="text-align: right; color: #1a1a1a; font-size: 24px; font-weight: 700;">${total_price:.2f} <span style="font-size: 12px; color: #666;">NZD</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="color: #666; font-size: 13px; padding-top: 8px;">Payment</td>
+                                        <td style="text-align: right; padding-top: 8px; font-size: 14px;">{payment_method}</td>
                                     </tr>
                                     <tr>
                                         <td style="color: #666; font-size: 13px; padding-top: 8px;">Payment Status</td>
