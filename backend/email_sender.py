@@ -12,6 +12,11 @@ from email.mime.multipart import MIMEMultipart
 logger = logging.getLogger(__name__)
 
 
+def get_noreply_email() -> str:
+    """Address for customer-facing transactional emails (confirmations, payment links, etc.)."""
+    return os.environ.get("NOREPLY_EMAIL") or os.environ.get("SENDER_EMAIL", "noreply@bookaride.co.nz")
+
+
 def send_email(
     to_email: str,
     subject: str,
@@ -24,7 +29,7 @@ def send_email(
     Send email via Mailgun (if configured) or Google Workspace SMTP (fallback).
     Returns True if sent successfully, False otherwise.
     """
-    from_email = from_email or os.environ.get("SENDER_EMAIL", "noreply@bookaride.co.nz")
+    from_email = from_email or get_noreply_email()
 
     # Try Mailgun first
     if _send_via_mailgun(to_email, subject, html_content, from_email, from_name, reply_to):
