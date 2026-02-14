@@ -86,6 +86,39 @@ if not DB_ENV_CONFIGURED:
 client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=2000, connectTimeoutMS=2000)
 db = client[db_name]
 
+
+async def align_db_name_case_if_needed():
+    """Align DB handle to existing Atlas database name casing, if needed."""
+    global db_name, db
+    if not DB_ENV_CONFIGURED or not db_name:
+        return
+
+    requested_name = db_name.strip()
+    if not requested_name:
+        return
+
+    try:
+        existing_names = await client.list_database_names()
+    except Exception as e:
+        # Connectivity/auth issues are handled by startup ping checks.
+        logger.warning(f"Skipping DB name case alignment: {str(e)}")
+        return
+
+    if requested_name in existing_names:
+        return
+
+    case_insensitive_match = next(
+        (name for name in existing_names if name.lower() == requested_name.lower()),
+        None
+    )
+    if case_insensitive_match:
+        logger.warning(
+            f"DB_NAME case mismatch detected: requested '{requested_name}', "
+            f"using existing database '{case_insensitive_match}'."
+        )
+        db_name = case_insensitive_match
+        db = client[db_name]
+
 # Authentication configuration
 SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'your-secret-key-change-in-production-' + str(uuid.uuid4()))
 ALGORITHM = "HS256"
@@ -2618,7 +2651,7 @@ def send_customer_confirmation(booking: dict):
         try:
             from pymongo import MongoClient
             sync_client = MongoClient(os.environ.get('MONGO_URL', 'mongodb://localhost:27017'))
-            sync_db = sync_client[os.environ.get('DB_NAME', 'test_database')]
+            sync_db = sync_client[db_name]
             
             nz_tz = pytz.timezone('Pacific/Auckland')
             now = datetime.now(nz_tz).isoformat()
@@ -4055,7 +4088,7 @@ Price: ${booking.get('totalPrice', 0):.2f}
             try:
                 from pymongo import MongoClient
                 sync_client = MongoClient(os.environ.get('MONGO_URL', 'mongodb://localhost:27017'))
-                sync_db = sync_client[os.environ.get('DB_NAME', 'test_database')]
+                sync_db = sync_client[db_name]
                 sync_db.pending_approvals.update_one(
                     {"admin_phone": admin_phone},
                     {"$set": {
@@ -13284,6 +13317,9 @@ async def startup_event():
     if not DB_ENV_CONFIGURED:
         logger.warning("MONGO_URL/DB_NAME missing; skipping DB bootstrap and scheduler startup.")
         return
+
+    # Prevent startup failures when env var casing differs from existing DB name.
+    await align_db_name_case_if_needed()
 
     # If DB is unavailable (e.g. missing Render env vars), do not crash startup.
     db_available = True
