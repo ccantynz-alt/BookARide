@@ -151,6 +151,17 @@ def apply_resolved_db_name(resolved_name: str) -> None:
     os.environ['DB_NAME'] = resolved_name
     db = client[resolved_name]
 
+
+def recover_db_case_conflict_if_needed(error: Exception, context: str = "") -> bool:
+    """Detect DB case-conflict errors, switch DB handle, and report recovery status."""
+    corrected_name = extract_existing_db_name_from_case_error(error)
+    if not corrected_name or corrected_name == db_name:
+        return False
+    apply_resolved_db_name(corrected_name)
+    if context:
+        logging.warning("Recovered DB case mismatch during %s; retrying operation.", context)
+    return True
+
 # Authentication configuration
 SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'your-secret-key-change-in-production-' + str(uuid.uuid4()))
 ALGORITHM = "HS256"
@@ -249,7 +260,17 @@ async def get_current_admin(credentials: HTTPAuthorizationCredentials = Depends(
     except JWTError:
         raise credentials_exception
     
-    admin = await db.admin_users.find_one({"username": token_data.username}, {"_id": 0})
+    admin = None
+    for attempt in range(2):
+        try:
+            admin = await db.admin_users.find_one({"username": token_data.username}, {"_id": 0})
+            break
+        except Exception as db_error:
+            if attempt == 0 and recover_db_case_conflict_if_needed(db_error, "get_current_admin"):
+                continue
+            logger.error("Admin lookup failed during auth: %s", db_error)
+            raise HTTPException(status_code=500, detail="Authentication service temporarily unavailable")
+
     if admin is None:
         raise credentials_exception
     return admin
@@ -811,109 +832,110 @@ class PasswordResetConfirm(BaseModel):
 @api_router.post("/admin/password-reset/request")
 async def request_password_reset(reset_request: PasswordResetRequest):
     """Request a password reset email for admin"""
-    try:
-        email = reset_request.email.lower().strip()
-        
-        # Check if admin exists with this email
-        admin = await db.admin_users.find_one({"email": email}, {"_id": 0})
-        
-        # Always return success (security - don't reveal if email exists)
-        if not admin:
-            logger.info(f"Password reset requested for non-existent email: {email}")
-            return {"message": "If this email is registered, you will receive a password reset link."}
-        
-        # Generate reset token
-        reset_token = uuid.uuid4().hex
-        expires_at = datetime.now(timezone.utc) + timedelta(hours=1)  # 1 hour expiry
-        
-        # Store reset token
-        await db.password_reset_tokens.insert_one({
-            "admin_id": admin["id"],
-            "username": admin["username"],
-            "email": email,
-            "token": reset_token,
-            "expires_at": expires_at.isoformat(),
-            "used": False,
-            "created_at": datetime.now(timezone.utc).isoformat()
-        })
-        
-        # Send reset email via Mailgun
-        public_domain = os.environ.get('PUBLIC_DOMAIN', 'https://bookaride.co.nz')
-        reset_link = f"{public_domain}/admin/reset-password?token={reset_token}"
-        
-        mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
-        mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
-        sender_email = os.environ.get('SENDER_EMAIL', 'noreply@bookaride.co.nz')
-        
-        if mailgun_api_key and mailgun_domain:
-            email_html = f"""
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <style>
-                    body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
-                    .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-                    .header {{ background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
-                    .header h1 {{ color: white; margin: 0; font-size: 28px; }}
-                    .content {{ background: #fff; padding: 30px; border: 1px solid #e5e5e5; }}
-                    .button {{ display: inline-block; background: #d4af37; color: #000 !important; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; margin: 20px 0; }}
-                    .footer {{ text-align: center; padding: 20px; color: #666; font-size: 12px; background: #faf8f3; }}
-                    .warning {{ background: #fff8e6; border: 1px solid #D4AF37; padding: 10px; border-radius: 5px; margin: 15px 0; }}
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <div class="header">
-                        <h1>ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â Password Reset Request</h1>
-                    </div>
-                    <div class="content">
-                        <p>Hello <strong>{admin['username']}</strong>,</p>
-                        <p>We received a request to reset your admin password for Book A Ride NZ.</p>
-                        <p>Click the button below to reset your password:</p>
-                        <p style="text-align: center;">
-                            <a href="{reset_link}" class="button">Reset Password</a>
-                        </p>
-                        <div class="warning">
-                            ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â° <strong>This link will expire in 1 hour.</strong><br>
-                            If you didn't request this reset, please ignore this email.
-                        </div>
-                        <p>Or copy and paste this link into your browser:</p>
-                        <p style="word-break: break-all; background: #faf8f3; padding: 10px; border-radius: 5px; font-size: 12px; border: 1px solid #e8e4d9;">{reset_link}</p>
-                    </div>
-                    <div class="footer">
-                        <p>Book A Ride NZ | Premium Airport Transfers</p>
-                        <p>This is an automated message. Please do not reply.</p>
-                    </div>
-                </div>
-            </body>
-            </html>
-            """
+    email = reset_request.email.lower().strip()
+    for attempt in range(2):
+        try:
+            # Check if admin exists with this email
+            admin = await db.admin_users.find_one({"email": email}, {"_id": 0})
             
-            try:
-                mailgun_response = requests.post(
-                    f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
-                    auth=("api", mailgun_api_key),
-                    data={
-                        "from": f"Book A Ride NZ <{sender_email}>",
-                        "to": email,
-                        "subject": "Password Reset Request - Book A Ride NZ Admin",
-                        "html": email_html
-                    }
-                )
+            # Always return success (security - don't reveal if email exists)
+            if not admin:
+                logger.info(f"Password reset requested for non-existent email: {email}")
+                return {"message": "If this email is registered, you will receive a password reset link."}
+            
+            # Generate reset token
+            reset_token = uuid.uuid4().hex
+            expires_at = datetime.now(timezone.utc) + timedelta(hours=1)  # 1 hour expiry
+            
+            # Store reset token
+            await db.password_reset_tokens.insert_one({
+                "admin_id": admin["id"],
+                "username": admin["username"],
+                "email": email,
+                "token": reset_token,
+                "expires_at": expires_at.isoformat(),
+                "used": False,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            })
+            
+            # Send reset email via Mailgun
+            public_domain = os.environ.get('PUBLIC_DOMAIN', 'https://bookaride.co.nz')
+            reset_link = f"{public_domain}/admin/reset-password?token={reset_token}"
+            
+            mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
+            mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
+            sender_email = os.environ.get('SENDER_EMAIL', 'noreply@bookaride.co.nz')
+            
+            if mailgun_api_key and mailgun_domain:
+                email_html = f"""
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <style>
+                        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                        .header {{ background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+                        .header h1 {{ color: white; margin: 0; font-size: 28px; }}
+                        .content {{ background: #fff; padding: 30px; border: 1px solid #e5e5e5; }}
+                        .button {{ display: inline-block; background: #d4af37; color: #000 !important; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; margin: 20px 0; }}
+                        .footer {{ text-align: center; padding: 20px; color: #666; font-size: 12px; background: #faf8f3; }}
+                        .warning {{ background: #fff8e6; border: 1px solid #D4AF37; padding: 10px; border-radius: 5px; margin: 15px 0; }}
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header">
+                            <h1>ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â Password Reset Request</h1>
+                        </div>
+                        <div class="content">
+                            <p>Hello <strong>{admin['username']}</strong>,</p>
+                            <p>We received a request to reset your admin password for Book A Ride NZ.</p>
+                            <p>Click the button below to reset your password:</p>
+                            <p style="text-align: center;">
+                                <a href="{reset_link}" class="button">Reset Password</a>
+                            </p>
+                            <div class="warning">
+                                ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â° <strong>This link will expire in 1 hour.</strong><br>
+                                If you didn't request this reset, please ignore this email.
+                            </div>
+                            <p>Or copy and paste this link into your browser:</p>
+                            <p style="word-break: break-all; background: #faf8f3; padding: 10px; border-radius: 5px; font-size: 12px; border: 1px solid #e8e4d9;">{reset_link}</p>
+                        </div>
+                        <div class="footer">
+                            <p>Book A Ride NZ | Premium Airport Transfers</p>
+                            <p>This is an automated message. Please do not reply.</p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+                """
                 
-                if mailgun_response.status_code == 200:
-                    logger.info(f"Password reset email sent to: {email}")
-                else:
-                    logger.error(f"Mailgun error: {mailgun_response.text}")
+                try:
+                    mailgun_response = requests.post(
+                        f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
+                        auth=("api", mailgun_api_key),
+                        data={
+                            "from": f"Book A Ride NZ <{sender_email}>",
+                            "to": email,
+                            "subject": "Password Reset Request - Book A Ride NZ Admin",
+                            "html": email_html
+                        }
+                    )
                     
-            except Exception as mail_error:
-                logger.error(f"Failed to send reset email: {str(mail_error)}")
-        
-        return {"message": "If this email is registered, you will receive a password reset link."}
-        
-    except Exception as e:
-        logger.error(f"Password reset request error: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to process password reset request")
+                    if mailgun_response.status_code == 200:
+                        logger.info(f"Password reset email sent to: {email}")
+                    else:
+                        logger.error(f"Mailgun error: {mailgun_response.text}")
+                        
+                except Exception as mail_error:
+                    logger.error(f"Failed to send reset email: {str(mail_error)}")
+            
+            return {"message": "If this email is registered, you will receive a password reset link."}
+        except Exception as e:
+            if attempt == 0 and recover_db_case_conflict_if_needed(e, "password_reset_request"):
+                continue
+            logger.error(f"Password reset request error: {str(e)}")
+            raise HTTPException(status_code=500, detail="Failed to process password reset request")
 
 
 @api_router.post("/admin/password-reset/confirm")
@@ -1645,69 +1667,72 @@ async def get_bookings(
     date_to: str = None
 ):
     """Get bookings with pagination and filtering for faster loading"""
-    try:
-        # Build query
-        query = {}
-        
-        # Status filter
-        if status and status != 'all':
-            query['status'] = status
-        
-        # Search filter (name, email, phone, reference)
-        if search:
-            query['$or'] = [
-                {'name': {'$regex': search, '$options': 'i'}},
-                {'email': {'$regex': search, '$options': 'i'}},
-                {'phone': {'$regex': search, '$options': 'i'}},
-                {'referenceNumber': {'$regex': search, '$options': 'i'}},
-                {'original_booking_id': {'$regex': search, '$options': 'i'}}
-            ]
-        
-        # Date range filter
-        if date_from:
-            query['date'] = query.get('date', {})
-            query['date']['$gte'] = date_from
-        if date_to:
-            query.setdefault('date', {})['$lte'] = date_to
-        
-        # Calculate skip for pagination
-        skip = (page - 1) * limit
-        
-        # Get total count for pagination info
-        total = await db.bookings.count_documents(query)
-        
-        # Get current date in NZ timezone for sorting priority
-        nz_tz = pytz.timezone('Pacific/Auckland')
-        now_nz = datetime.now(nz_tz)
-        today_str = now_nz.strftime('%Y-%m-%d')
-        
-        # Fetch ALL matching bookings to sort properly (needed for smart date ordering)
-        all_bookings = await db.bookings.find(query, {"_id": 0}).to_list(None)
-        
-        # Custom sort: prioritize today, then tomorrow, then upcoming dates, then past dates
-        def sort_key(b):
-            date = b.get('date', '9999-99-99')
-            time = b.get('time', '00:00')
-            if date == today_str:
-                return (0, time)  # Today first
-            elif date > today_str:
-                return (1, date, time)  # Future dates in ascending order
-            else:
-                return (2, date, time)  # Past dates last
-        
-        all_bookings.sort(key=sort_key)
-        logger.info(f"Today: {today_str}, First 3 bookings after sort: {[b.get('date') for b in all_bookings[:3]]}")
-        
-        # Apply pagination
-        bookings = all_bookings[skip:skip + limit]
-        
-        # Add pagination headers via response
-        logger.info(f"Fetched {len(bookings)} bookings (page {page}, total {total})")
-        
-        return [Booking(**booking) for booking in bookings]
-    except Exception as e:
-        logger.error(f"Error fetching bookings: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error fetching bookings: {str(e)}")
+    for attempt in range(2):
+        try:
+            # Build query
+            query = {}
+            
+            # Status filter
+            if status and status != 'all':
+                query['status'] = status
+            
+            # Search filter (name, email, phone, reference)
+            if search:
+                query['$or'] = [
+                    {'name': {'$regex': search, '$options': 'i'}},
+                    {'email': {'$regex': search, '$options': 'i'}},
+                    {'phone': {'$regex': search, '$options': 'i'}},
+                    {'referenceNumber': {'$regex': search, '$options': 'i'}},
+                    {'original_booking_id': {'$regex': search, '$options': 'i'}}
+                ]
+            
+            # Date range filter
+            if date_from:
+                query['date'] = query.get('date', {})
+                query['date']['$gte'] = date_from
+            if date_to:
+                query.setdefault('date', {})['$lte'] = date_to
+            
+            # Calculate skip for pagination
+            skip = (page - 1) * limit
+            
+            # Get total count for pagination info
+            total = await db.bookings.count_documents(query)
+            
+            # Get current date in NZ timezone for sorting priority
+            nz_tz = pytz.timezone('Pacific/Auckland')
+            now_nz = datetime.now(nz_tz)
+            today_str = now_nz.strftime('%Y-%m-%d')
+            
+            # Fetch ALL matching bookings to sort properly (needed for smart date ordering)
+            all_bookings = await db.bookings.find(query, {"_id": 0}).to_list(None)
+            
+            # Custom sort: prioritize today, then tomorrow, then upcoming dates, then past dates
+            def sort_key(b):
+                date = b.get('date', '9999-99-99')
+                time = b.get('time', '00:00')
+                if date == today_str:
+                    return (0, time)  # Today first
+                elif date > today_str:
+                    return (1, date, time)  # Future dates in ascending order
+                else:
+                    return (2, date, time)  # Past dates last
+            
+            all_bookings.sort(key=sort_key)
+            logger.info(f"Today: {today_str}, First 3 bookings after sort: {[b.get('date') for b in all_bookings[:3]]}")
+            
+            # Apply pagination
+            bookings = all_bookings[skip:skip + limit]
+            
+            # Add pagination headers via response
+            logger.info(f"Fetched {len(bookings)} bookings (page {page}, total {total})")
+            
+            return [Booking(**booking) for booking in bookings]
+        except Exception as e:
+            if attempt == 0 and recover_db_case_conflict_if_needed(e, "get_bookings"):
+                continue
+            logger.error(f"Error fetching bookings: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Error fetching bookings: {str(e)}")
 
 
 @api_router.get("/bookings/count")
@@ -10656,11 +10681,14 @@ if cors_origins_env == '*':
     cors_origins = [
         "https://bookaride.co.nz",
         "https://www.bookaride.co.nz",
+        "https://bookaridenz.com",
+        "https://www.bookaridenz.com",
         "https://dazzling-leakey.preview.emergentagent.com",
+        "https://bookaride-frontend.onrender.com",
         "http://localhost:3000"
     ]
 else:
-    cors_origins = cors_origins_env.split(',')
+    cors_origins = [origin.strip() for origin in cors_origins_env.split(',') if origin.strip()]
 
 app.add_middleware(
     CORSMiddleware,
