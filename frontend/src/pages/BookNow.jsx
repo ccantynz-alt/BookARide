@@ -16,6 +16,7 @@ import TripCostSplitter from '../components/TripCostSplitter';
 import WeatherWidget from '../components/WeatherWidget';
 import LiveJourneyVisualizer from '../components/LiveJourneyVisualizer';
 import MultiStopRouteMap from '../components/MultiStopRouteMap';
+import GeoapifyRouteMap from '../components/GeoapifyRouteMap';
 import { CustomDatePicker, CustomTimePicker } from '../components/DateTimePicker';
 import { GeoapifyAutocomplete } from '../components/GeoapifyAutocomplete';
 import PriceComparison from '../components/PriceComparison';
@@ -1102,22 +1103,30 @@ export const BookNow = () => {
                           {formData.pickupAddress && formData.dropoffAddress && (
                             <div className="mt-4" data-testid="route-map-container">
                               {process.env.REACT_APP_GOOGLE_MAPS_API_KEY ? (
-                              <MultiStopRouteMap 
-                                pickupAddress={formData.pickupAddress}
-                                pickupAddresses={formData.pickupAddresses}
-                                dropoffAddress={formData.dropoffAddress}
-                                pickupTime={formData.time}
-                                pickupDate={formData.date}
-                              />
+                                <MultiStopRouteMap 
+                                  pickupAddress={formData.pickupAddress}
+                                  pickupAddresses={formData.pickupAddresses}
+                                  dropoffAddress={formData.dropoffAddress}
+                                  pickupTime={formData.time}
+                                  pickupDate={formData.date}
+                                />
+                              ) : process.env.REACT_APP_GEOAPIFY_API_KEY ? (
+                                <GeoapifyRouteMap 
+                                  pickupAddress={formData.pickupAddress}
+                                  pickupAddresses={formData.pickupAddresses}
+                                  dropoffAddress={formData.dropoffAddress}
+                                  pickupTime={formData.time}
+                                  pickupDate={formData.date}
+                                />
                               ) : (
-                              <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 space-y-2">
-                                <p className="text-sm font-medium text-gray-700">Your route</p>
-                                <p className="text-sm text-gray-600">Pickup: {formData.pickupAddress}</p>
-                                {formData.pickupAddresses?.filter(Boolean).map((addr, i) => (
-                                  <p key={i} className="text-sm text-gray-600">+ Stop: {addr}</p>
-                                ))}
-                                <p className="text-sm text-gray-600">Drop-off: {formData.dropoffAddress}</p>
-                              </div>
+                                <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 space-y-2">
+                                  <p className="text-sm font-medium text-gray-700">Your route</p>
+                                  <p className="text-sm text-gray-600">Pickup: {formData.pickupAddress}</p>
+                                  {formData.pickupAddresses?.filter(Boolean).map((addr, i) => (
+                                    <p key={i} className="text-sm text-gray-600">+ Stop: {addr}</p>
+                                  ))}
+                                  <p className="text-sm text-gray-600">Drop-off: {formData.dropoffAddress}</p>
+                                </div>
                               )}
                             </div>
                           )}
