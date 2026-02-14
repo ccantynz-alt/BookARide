@@ -38,9 +38,10 @@ import vobject
 import asyncio
 
 try:
-    from email_sender import send_email as send_email_unified
+    from email_sender import send_email as send_email_unified, get_noreply_email
 except ImportError:
     send_email_unified = None
+    get_noreply_email = lambda: os.environ.get("NOREPLY_EMAIL") or os.environ.get("SENDER_EMAIL", "noreply@bookaride.co.nz")
 
 # Global lock to prevent concurrent reminder sending
 reminder_lock = asyncio.Lock()
@@ -2237,7 +2238,7 @@ def send_via_mailgun(booking: dict):
     try:
         mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
         mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
-        sender_email = os.environ.get('SENDER_EMAIL', 'noreply@bookaride.co.nz')
+        sender_email = get_noreply_email()
         
         if not mailgun_api_key or not mailgun_domain:
             logger.warning("Mailgun credentials not configured")
@@ -2296,7 +2297,7 @@ def send_via_smtp(booking: dict):
     try:
         smtp_user = os.environ.get('SMTP_USER')
         smtp_pass = os.environ.get('SMTP_PASS')
-        sender_email = os.environ.get('SENDER_EMAIL', 'noreply@bookaride.co.nz')
+        sender_email = get_noreply_email()
         
         if not smtp_user or not smtp_pass:
             logger.warning("SMTP credentials not configured")
@@ -2485,7 +2486,7 @@ def send_reminder_email(booking: dict):
         
         mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
         mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
-        sender_email = os.environ.get('SENDER_EMAIL', 'noreply@bookaride.co.nz')
+        sender_email = get_noreply_email()
         
         if not mailgun_api_key or not mailgun_domain:
             logger.warning("Mailgun credentials not configured for reminder")
@@ -8617,11 +8618,12 @@ async def send_payment_link_email(booking: dict, payment_link: str, payment_type
         </html>
         '''
         
-        # Send via Mailgun or Google Workspace SMTP
+        # Send via Mailgun or Google Workspace SMTP (from noreply address)
         if send_email_unified and send_email_unified(
             customer_email,
             f"Payment Link - Booking {booking_ref} - ${total_price:.2f} NZD",
-            html_content
+            html_content,
+            from_email=get_noreply_email()
         ):
             logger.info(f"Payment link email sent to {customer_email}")
         else:
@@ -9640,10 +9642,10 @@ async def send_cancellation_notifications(booking: dict):
             logger.error(f"Failed to send cancellation SMS: {str(e)}")
 
 async def send_cancellation_email(booking: dict, to_email: str, customer_name: str):
-    """Send cancellation email via Mailgun"""
+    """Send cancellation email via Mailgun (from noreply address)"""
     mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
     mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
-    sender_email = os.environ.get('SENDER_EMAIL', 'bookings@bookaride.co.nz')
+    sender_email = get_noreply_email()
     
     if not mailgun_api_key or not mailgun_domain:
         logger.warning("Mailgun credentials not configured for cancellation email")

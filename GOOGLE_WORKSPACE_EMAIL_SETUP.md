@@ -22,7 +22,8 @@ In **Render** → your backend service → **Environment**, add:
 |----------|-------|
 | `SMTP_USER` | Your Google Workspace email (e.g. `info@bookaride.co.nz`) |
 | `SMTP_PASS` | The 16-character App Password (no spaces) |
-| `SENDER_EMAIL` | Same as SMTP_USER (e.g. `info@bookaride.co.nz`) |
+| `NOREPLY_EMAIL` | Address for customer confirmations (e.g. `noreply@bookaride.co.nz`) |
+| `SENDER_EMAIL` | Fallback if NOREPLY_EMAIL not set (e.g. `noreply@bookaride.co.nz`) |
 
 **Optional** (defaults work for most setups):
 
@@ -42,6 +43,14 @@ Click **Manual Deploy** in Render so the new env vars are picked up.
 - **Mailgun** is used first if `MAILGUN_API_KEY` and `MAILGUN_DOMAIN` are set.
 - **Google Workspace SMTP** is used if Mailgun is not configured but `SMTP_USER` and `SMTP_PASS` are set.
 - You can use either Mailgun or Google Workspace; you don’t need both.
+
+## Sending from noreply@
+
+Customer confirmations, payment links, and reminders are sent from `noreply@bookaride.co.nz` (or whatever you set in `NOREPLY_EMAIL`). With Google Workspace:
+
+- Add `noreply@bookaride.co.nz` as an **alias** for your user in Admin Console → Users → [your user] → User information → Email aliases
+- Or create a **Group** `noreply@bookaride.co.nz` and add your user as owner
+- If your domain is verified, sending from `noreply@` works once the alias is added
 
 ## Sending Limits
 
