@@ -19,13 +19,10 @@ import { DriversTab } from '../components/admin/DriversTab';
 import { DriverApplicationsTab } from '../components/admin/DriverApplicationsTab';
 import { LandingPagesTab } from '../components/admin/LandingPagesTab';
 import { AdminBreadcrumb } from '../components/admin/AdminBreadcrumb';
-import UrgentReturnsPanel from '../components/admin/UrgentReturnsPanel';
-import DashboardStatsPanel from '../components/admin/DashboardStatsPanel';
-import TodaysOperationsPanel from '../components/admin/TodaysOperationsPanel';
 import ProfessionalStatsBar from '../components/admin/ProfessionalStatsBar';
-import UrgentNotificationsCenter from '../components/admin/UrgentNotificationsCenter';
-import ConfirmationStatusPanel from '../components/admin/ConfirmationStatusPanel';
-import ReturnsOverviewPanel from '../components/admin/ReturnsOverviewPanel';
+import MissionControlTab from '../components/admin/MissionControlTab';
+import CommsCenterTab from '../components/admin/CommsCenterTab';
+import GrowthOpsTab from '../components/admin/GrowthOpsTab';
 import { initAutocompleteWithFix } from '../utils/fixGoogleAutocomplete';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -515,7 +512,7 @@ export const AdminDashboard = () => {
   const pickupInputRef = useRef(null);
   const dropoffInputRef = useRef(null);
   const additionalPickupRefs = useRef([]);
-  const [activeTab, setActiveTab] = useState('bookings');
+  const [activeTab, setActiveTab] = useState('mission-control');
   const [bookings, setBookings] = useState([]);
   const [filteredBookings, setFilteredBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -2296,13 +2293,18 @@ export const AdminDashboard = () => {
         />
 
         {/* Tabs Navigation */}
-        <Tabs defaultValue="bookings" value={activeTab} onValueChange={(val) => {
+        <Tabs defaultValue="mission-control" value={activeTab} onValueChange={(val) => {
           setActiveTab(val);
           if (val === 'deleted') fetchDeletedBookings();
           if (val === 'shuttle') fetchShuttleData();
           if (val === 'archive') fetchArchivedBookings(1, '');
         }} className="w-full">
           <TabsList className="flex flex-wrap w-full gap-1 mb-4 md:mb-8 bg-transparent">
+            <TabsTrigger value="mission-control" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 text-red-600">
+              <AlertTriangle className="w-3 h-3 md:w-4 md:h-4" />
+              <span className="hidden sm:inline">Mission</span>
+              <span className="sm:hidden">MC</span>
+            </TabsTrigger>
             <TabsTrigger value="bookings" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4">
               <BookOpen className="w-3 h-3 md:w-4 md:h-4" />
               <span className="hidden sm:inline">Bookings</span>
@@ -2344,6 +2346,14 @@ export const AdminDashboard = () => {
               <Globe className="w-3 h-3 md:w-4 md:h-4" />
               <span>Marketing</span>
             </TabsTrigger>
+            <TabsTrigger value="comms" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 hidden xl:flex text-indigo-600">
+              <Mail className="w-3 h-3 md:w-4 md:h-4" />
+              <span>Comms</span>
+            </TabsTrigger>
+            <TabsTrigger value="ops-intel" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 hidden xl:flex text-emerald-600">
+              <BarChart3 className="w-3 h-3 md:w-4 md:h-4" />
+              <span>Ops Intel</span>
+            </TabsTrigger>
             <TabsTrigger value="import" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 hidden xl:flex text-purple-600">
               <FileText className="w-3 h-3 md:w-4 md:h-4" />
               <span>Import</span>
@@ -2351,50 +2361,28 @@ export const AdminDashboard = () => {
           </TabsList>
 
 
+          {/* Mission Control Tab */}
+          <TabsContent value="mission-control" className="space-y-6">
+            <MissionControlTab
+              bookings={bookings}
+              drivers={drivers}
+              onAssignDriver={(booking) => {
+                setSelectedBooking(booking);
+                setShowBookingDetails(true);
+              }}
+              onViewBooking={(booking) => {
+                setSelectedBooking(booking);
+                setShowBookingDetails(true);
+              }}
+              onSendReminder={(bookingId) => handleResendConfirmation(bookingId)}
+            />
+          </TabsContent>
+
           {/* Bookings Tab */}
           <TabsContent value="bookings" className="space-y-6">
         
         {/* PROFESSIONAL STATS BAR - Clean white theme */}
         <ProfessionalStatsBar bookings={bookings} drivers={drivers} />
-        
-        {/* URGENT NOTIFICATIONS CENTER - Action required items */}
-        <UrgentNotificationsCenter 
-          bookings={bookings} 
-          drivers={drivers}
-          onAssignDriver={(booking) => {
-            setSelectedBooking(booking);
-            setShowBookingDetails(true);
-          }}
-          onViewBooking={(booking) => {
-            setSelectedBooking(booking);
-            setShowBookingDetails(true);
-          }}
-        />
-        
-        {/* Two Column Layout for Confirmations and Returns */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* CONFIRMATION STATUS PANEL - Track email/SMS confirmations */}
-          <ConfirmationStatusPanel bookings={bookings} />
-          
-          {/* RETURNS OVERVIEW PANEL - All upcoming returns */}
-          <ReturnsOverviewPanel 
-            bookings={bookings}
-            drivers={drivers}
-            onViewBooking={(booking) => {
-              setSelectedBooking(booking);
-              setShowBookingDetails(true);
-            }}
-          />
-        </div>
-        
-        {/* TODAY'S OPERATIONS - Unified view of all pickups */}
-        <TodaysOperationsPanel 
-          bookings={bookings} 
-          onViewBooking={(booking) => {
-            setSelectedBooking(booking);
-            setShowBookingDetails(true);
-          }}
-        />
         
         {/* Stats Cards - Professional Light Theme */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
@@ -3081,6 +3069,16 @@ export const AdminDashboard = () => {
           {/* Marketing Tab - Landing Pages & Social */}
           <TabsContent value="marketing">
             <LandingPagesTab />
+          </TabsContent>
+
+          {/* Comms Center */}
+          <TabsContent value="comms">
+            <CommsCenterTab />
+          </TabsContent>
+
+          {/* Growth + Ops Intelligence */}
+          <TabsContent value="ops-intel">
+            <GrowthOpsTab />
           </TabsContent>
 
           {/* Deleted Bookings Tab */}

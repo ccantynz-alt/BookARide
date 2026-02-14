@@ -202,6 +202,11 @@ def get_endpoint_secret(name: str) -> str:
     return value
 
 
+def get_llm_api_key() -> Optional[str]:
+    """Resolve LLM API key from environment."""
+    return os.environ.get("OPENAI_API_KEY") or os.environ.get("EMERGENT_LLM_API_KEY")
+
+
 # Authentication configuration
 SECRET_KEY = get_required_runtime_secret('JWT_SECRET_KEY')
 ALGORITHM = "HS256"
@@ -2230,6 +2235,110 @@ def get_full_booking_reference(booking: dict) -> str:
     return booking.get('id', 'N/A')
 
 
+def record_notification_event(
+    booking: dict,
+    event_type: str,
+    channel: str,
+    status: str,
+    recipient: str = "",
+    provider: str = "",
+    error_message: str = "",
+    meta: Optional[dict] = None,
+    parent_event_id: Optional[str] = None,
+) -> str:
+    """Persist notification delivery events for Comms Center visibility."""
+    event_id = str(uuid.uuid4())
+    try:
+        from pymongo import MongoClient
+        sync_client = MongoClient(os.environ.get('MONGO_URL', 'mongodb://localhost:27017'))
+        sync_db = sync_client[db_name]
+        sync_db.notification_logs.insert_one({
+            "id": event_id,
+            "booking_id": booking.get("id"),
+            "booking_ref": get_booking_reference(booking),
+            "customer_name": booking.get("name"),
+            "event_type": event_type,
+            "channel": channel,
+            "status": status,
+            "recipient": recipient,
+            "provider": provider,
+            "error": error_message or None,
+            "meta": meta or {},
+            "retry_count": int((meta or {}).get("retry_count", 0)),
+            "parent_event_id": parent_event_id,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        })
+        sync_client.close()
+    except Exception as exc:
+        logger.warning("Failed to record notification event: %s", exc)
+    return event_id
+
+
+DEFAULT_NOTIFICATION_TEMPLATES = [
+    {
+        "key": "confirmation_email_subject",
+        "channel": "email",
+        "event_type": "confirmation",
+        "description": "Email subject for booking confirmations",
+        "content": "Booking Confirmation - Ref: {booking_ref}",
+    },
+    {
+        "key": "reminder_email_subject",
+        "channel": "email",
+        "event_type": "reminder",
+        "description": "Email subject for day-before reminders",
+        "content": "Your Ride Tomorrow - {date} at {time} - Ref: {booking_ref}",
+    },
+    {
+        "key": "confirmation_sms_body",
+        "channel": "sms",
+        "event_type": "confirmation",
+        "description": "SMS body for booking confirmations",
+        "content": "Book A Ride NZ - Booking Confirmed!\n\nRef: {booking_ref}\nPickup: {pickup}\nDate: {date} at {time}{flight_text}\nTotal: ${total_price:.2f} NZD{return_text}\n\nThank you for booking with us!",
+    },
+    {
+        "key": "reminder_sms_standard",
+        "channel": "sms",
+        "event_type": "reminder",
+        "description": "SMS body for standard day-before reminders",
+        "content": "BookaRide - Tomorrow\n\n{customer_name}, your ride is confirmed for TOMORROW.\n\nDate: {date}\nTime: {time}\nPickup: {pickup_short}\n{driver_line}\nPlease be ready 5 mins early.\nRef: {booking_ref}\nQuestions? +64 21 743 321",
+    },
+    {
+        "key": "reminder_sms_airport",
+        "channel": "sms",
+        "event_type": "reminder",
+        "description": "SMS body for airport pickup reminders",
+        "content": "BookaRide - Tomorrow\n\n{customer_name}, your transfer is confirmed for TOMORROW at {time}.\n\nMEETING POINT:\nYour driver will hold either a BOOK A RIDE sign or an iPad with your name.\n\nDIRECTIONS:\n1. Exit Customs into Arrivals Hall\n2. TURN LEFT immediately\n3. Walk to Allpress Espresso Cafe\n4. All drivers wait in front of the cafe\n\nRef: {booking_ref}\nQuestions? +64 21 743 321",
+    },
+]
+
+
+def get_notification_template_content(template_key: str, fallback: str, context: Optional[dict] = None) -> str:
+    """Fetch admin-managed template content and render with context."""
+    try:
+        from pymongo import MongoClient
+        sync_client = MongoClient(os.environ.get('MONGO_URL', 'mongodb://localhost:27017'))
+        sync_db = sync_client[db_name]
+        template_doc = sync_db.notification_templates.find_one(
+            {"key": template_key, "is_active": {"$ne": False}},
+            {"_id": 0, "content": 1},
+        )
+        sync_client.close()
+        if not template_doc or not template_doc.get("content"):
+            return fallback
+        content = template_doc["content"]
+        if context:
+            try:
+                return content.format(**context)
+            except Exception as fmt_err:
+                logger.warning("Template render failed for %s: %s", template_key, fmt_err)
+                return content
+        return content
+    except Exception as exc:
+        logger.warning("Template lookup failed for %s: %s", template_key, exc)
+        return fallback
+
+
 # Email and SMS Notification Services
 
 # Email translations
@@ -2346,14 +2455,34 @@ EMAIL_TRANSLATIONS = {
 
 def send_booking_confirmation_email(booking: dict, include_payment_link: bool = True):
     """Send booking confirmation email via Mailgun or SMTP fallback"""
+    recipient_email = booking.get('email', '')
+
     # Try Mailgun first
     mailgun_success = send_via_mailgun(booking)
     if mailgun_success:
+        record_notification_event(
+            booking,
+            event_type="confirmation",
+            channel="email",
+            status="sent",
+            recipient=recipient_email,
+            provider="mailgun",
+        )
         return True
     
     # Fallback to SMTP if Mailgun fails
     logger.warning("Mailgun failed, trying SMTP fallback...")
-    return send_via_smtp(booking)
+    smtp_success = send_via_smtp(booking)
+    record_notification_event(
+        booking,
+        event_type="confirmation",
+        channel="email",
+        status="sent" if smtp_success else "failed",
+        recipient=recipient_email,
+        provider="smtp_fallback",
+        error_message="" if smtp_success else "Mailgun and SMTP delivery failed",
+    )
+    return smtp_success
 
 
 def send_via_mailgun(booking: dict):
@@ -2376,7 +2505,17 @@ def send_via_mailgun(booking: dict):
             lang = 'en'
         t = EMAIL_TRANSLATIONS[lang]
         
-        subject = f"{t['subject']} - Ref: {booking_ref}"
+        default_subject = f"{t['subject']} - Ref: {booking_ref}"
+        subject = get_notification_template_content(
+            "confirmation_email_subject",
+            default_subject,
+            context={
+                "booking_ref": booking_ref,
+                "customer_name": booking.get('name', 'Customer'),
+                "date": format_date_ddmmyyyy(booking.get('date', '')),
+                "time": format_time_ampm(booking.get('time', '')),
+            },
+        )
         recipient_email = booking.get('email')
         
         # Use the beautiful email template
@@ -2428,7 +2567,16 @@ def send_via_smtp(booking: dict):
         
         # Create email content using the beautiful template
         booking_ref = get_booking_reference(booking)
-        subject = f"Booking Confirmation - Ref: {booking_ref}"
+        subject = get_notification_template_content(
+            "confirmation_email_subject",
+            f"Booking Confirmation - Ref: {booking_ref}",
+            context={
+                "booking_ref": booking_ref,
+                "customer_name": booking.get('name', 'Customer'),
+                "date": format_date_ddmmyyyy(booking.get('date', '')),
+                "time": format_time_ampm(booking.get('time', '')),
+            },
+        )
         recipient_email = booking.get('email')
         
         # Use the beautiful email template
@@ -2462,6 +2610,7 @@ def send_via_smtp(booking: dict):
 
 def send_booking_confirmation_sms(booking: dict):
     """Send booking confirmation SMS via Twilio"""
+    recipient_phone = format_nz_phone(booking.get('phone', ''))
     try:
         account_sid = os.environ.get('TWILIO_ACCOUNT_SID')
         auth_token = os.environ.get('TWILIO_AUTH_TOKEN')
@@ -2469,6 +2618,15 @@ def send_booking_confirmation_sms(booking: dict):
         
         if not account_sid or not auth_token or not twilio_phone:
             logger.warning("Twilio credentials not configured")
+            record_notification_event(
+                booking,
+                event_type="confirmation",
+                channel="sms",
+                status="failed",
+                recipient=recipient_phone,
+                provider="twilio",
+                error_message="Twilio credentials not configured",
+            )
             return False
         
         client = Client(account_sid, auth_token)
@@ -2496,34 +2654,72 @@ def send_booking_confirmation_sms(booking: dict):
         pricing = booking.get('pricing', {})
         total_price = pricing.get('totalPrice') or booking.get('totalPrice', 0)
         
-        # Create SMS message
-        message_body = f"""Book A Ride NZ - Booking Confirmed!
+        # Create SMS message (template-governed)
+        message_body = get_notification_template_content(
+            "confirmation_sms_body",
+            f"""Book A Ride NZ - Booking Confirmed!
 
 Ref: {booking_ref}
 Pickup: {booking.get('pickupAddress', 'N/A')}
 Date: {formatted_date} at {formatted_time}{flight_text}
 Total: ${total_price:.2f} NZD{return_text}
 
-Thank you for booking with us!"""
+Thank you for booking with us!""",
+            context={
+                "booking_ref": booking_ref,
+                "pickup": booking.get('pickupAddress', 'N/A'),
+                "date": formatted_date,
+                "time": formatted_time,
+                "flight_text": flight_text,
+                "total_price": float(total_price or 0),
+                "return_text": return_text,
+            },
+        )
         
-        formatted_phone = format_nz_phone(booking.get('phone', ''))
-        if not formatted_phone:
+        if not recipient_phone:
             logger.warning("No phone number provided for confirmation SMS")
+            record_notification_event(
+                booking,
+                event_type="confirmation",
+                channel="sms",
+                status="failed",
+                recipient="",
+                provider="twilio",
+                error_message="Missing customer phone number",
+            )
             return False
         
-        logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â± Sending confirmation SMS to: {formatted_phone}")
+        logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â± Sending confirmation SMS to: {recipient_phone}")
         
         message = client.messages.create(
             body=message_body,
             from_=twilio_phone,
-            to=formatted_phone
+            to=recipient_phone
         )
         
-        logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Confirmation SMS sent to {formatted_phone} - SID: {message.sid}")
+        logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Confirmation SMS sent to {recipient_phone} - SID: {message.sid}")
+        record_notification_event(
+            booking,
+            event_type="confirmation",
+            channel="sms",
+            status="sent",
+            recipient=recipient_phone,
+            provider="twilio",
+            meta={"sid": getattr(message, "sid", None)},
+        )
         return True
         
     except Exception as e:
         logger.error(f"Error sending confirmation SMS: {str(e)}")
+        record_notification_event(
+            booking,
+            event_type="confirmation",
+            channel="sms",
+            status="failed",
+            recipient=recipient_phone,
+            provider="twilio",
+            error_message=str(e),
+        )
         return False
 
 
@@ -2598,11 +2794,21 @@ async def update_confirmation_status(booking_id: str, results: dict):
 
 def send_reminder_email(booking: dict):
     """Send day-before reminder email to customer with professional pickup instructions"""
+    recipient_email = booking.get('email', '')
     try:
         # SAFETY CHECK: Don't send reminders for cancelled bookings
         booking_status = booking.get('status', '').lower()
         if booking_status in ['cancelled', 'canceled', 'deleted']:
             logger.warning(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â Skipping reminder email for CANCELLED booking: {booking.get('name')} (Ref: {booking.get('referenceNumber')})")
+            record_notification_event(
+                booking,
+                event_type="reminder",
+                channel="email",
+                status="skipped",
+                recipient=recipient_email,
+                provider="mailgun",
+                error_message="Booking is cancelled",
+            )
             return False
         
         mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
@@ -2611,12 +2817,20 @@ def send_reminder_email(booking: dict):
         
         if not mailgun_api_key or not mailgun_domain:
             logger.warning("Mailgun credentials not configured for reminder")
+            record_notification_event(
+                booking,
+                event_type="reminder",
+                channel="email",
+                status="failed",
+                recipient=recipient_email,
+                provider="mailgun",
+                error_message="Mailgun credentials not configured",
+            )
             return False
         
         booking_ref = get_booking_reference(booking)
         formatted_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
         formatted_time = format_time_ampm(booking.get('time', 'N/A'))
-        recipient_email = booking.get('email')
         customer_name = booking.get('name', 'Customer')
         driver_name = booking.get('driver_name', '')
         
@@ -2753,36 +2967,83 @@ def send_reminder_email(booking: dict):
         </html>
         '''
         
+        reminder_subject = get_notification_template_content(
+            "reminder_email_subject",
+            f"Your Ride Tomorrow - {formatted_date} at {formatted_time} - Ref: {booking_ref}",
+            context={
+                "booking_ref": booking_ref,
+                "customer_name": customer_name,
+                "date": formatted_date,
+                "time": formatted_time,
+            },
+        )
+
         response = requests.post(
             f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
             auth=("api", mailgun_api_key),
             data={
                 "from": f"BookaRide <{sender_email}>",
                 "to": recipient_email,
-                "subject": f"Your Ride Tomorrow - {formatted_date} at {formatted_time} - Ref: {booking_ref}",
+                "subject": reminder_subject,
                 "html": html_content
             }
         )
         
         if response.status_code == 200:
             logger.info(f"Reminder email sent to {recipient_email}")
+            record_notification_event(
+                booking,
+                event_type="reminder",
+                channel="email",
+                status="sent",
+                recipient=recipient_email,
+                provider="mailgun",
+            )
             return True
         else:
             logger.error(f"Reminder email failed: {response.status_code} - {response.text}")
+            record_notification_event(
+                booking,
+                event_type="reminder",
+                channel="email",
+                status="failed",
+                recipient=recipient_email,
+                provider="mailgun",
+                error_message=f"{response.status_code}: {response.text[:300]}",
+            )
             return False
             
     except Exception as e:
         logger.error(f"Error sending reminder email: {str(e)}")
+        record_notification_event(
+            booking,
+            event_type="reminder",
+            channel="email",
+            status="failed",
+            recipient=recipient_email,
+            provider="mailgun",
+            error_message=str(e),
+        )
         return False
 
 
 def send_reminder_sms(booking: dict):
     """Send day-before reminder SMS to customer"""
+    recipient_phone = format_nz_phone(booking.get('phone', ''))
     try:
         # SAFETY CHECK: Don't send reminders for cancelled bookings
         booking_status = booking.get('status', '').lower()
         if booking_status in ['cancelled', 'canceled', 'deleted']:
             logger.warning(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â Skipping reminder SMS for CANCELLED booking: {booking.get('name')} (Ref: {booking.get('referenceNumber')})")
+            record_notification_event(
+                booking,
+                event_type="reminder",
+                channel="sms",
+                status="skipped",
+                recipient=recipient_phone,
+                provider="twilio",
+                error_message="Booking is cancelled",
+            )
             return False
         
         account_sid = os.environ.get('TWILIO_ACCOUNT_SID')
@@ -2791,6 +3052,15 @@ def send_reminder_sms(booking: dict):
         
         if not account_sid or not auth_token or not twilio_phone:
             logger.warning("Twilio credentials not configured for reminder")
+            record_notification_event(
+                booking,
+                event_type="reminder",
+                channel="sms",
+                status="failed",
+                recipient=recipient_phone,
+                provider="twilio",
+                error_message="Twilio credentials not configured",
+            )
             return False
         
         client = Client(account_sid, auth_token)
@@ -2807,7 +3077,9 @@ def send_reminder_sms(booking: dict):
         
         if is_airport_pickup:
             # Professional airport pickup SMS with meeting point instructions
-            message_body = f"""BookaRide - Tomorrow
+            message_body = get_notification_template_content(
+                "reminder_sms_airport",
+                f"""BookaRide - Tomorrow
 
 {customer_name}, your transfer is confirmed for TOMORROW at {formatted_time}.
 
@@ -2817,14 +3089,22 @@ Your driver will hold either a BOOK A RIDE sign or an iPad with your name.
 DIRECTIONS:
 1. Exit Customs into Arrivals Hall
 2. TURN LEFT immediately  
-3. Walk to Allpress Espresso CafÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©
-4. All drivers wait in front of the cafÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©
+3. Walk to Allpress Espresso Cafe
+4. All drivers wait in front of the cafe
 
 Ref: {booking_ref}
-Questions? +64 21 743 321"""
+Questions? +64 21 743 321""",
+                context={
+                    "customer_name": customer_name,
+                    "time": formatted_time,
+                    "booking_ref": booking_ref,
+                },
+            )
         else:
             # Standard reminder SMS
-            message_body = f"""BookaRide - Tomorrow
+            message_body = get_notification_template_content(
+                "reminder_sms_standard",
+                f"""BookaRide - Tomorrow
 
 {customer_name}, your ride is confirmed for TOMORROW.
 
@@ -2835,26 +3115,61 @@ Pickup: {booking.get('pickupAddress', 'N/A')[:60]}
 
 Please be ready 5 mins early.
 Ref: {booking_ref}
-Questions? +64 21 743 321"""
+Questions? +64 21 743 321""",
+                context={
+                    "customer_name": customer_name,
+                    "date": formatted_date,
+                    "time": formatted_time,
+                    "pickup_short": booking.get('pickupAddress', 'N/A')[:60],
+                    "driver_line": f"Driver: {driver_name}" if driver_name else "",
+                    "booking_ref": booking_ref,
+                },
+            )
         
-        formatted_phone = format_nz_phone(booking.get('phone', ''))
-        if not formatted_phone:
+        if not recipient_phone:
             logger.warning("No phone number for reminder SMS")
+            record_notification_event(
+                booking,
+                event_type="reminder",
+                channel="sms",
+                status="failed",
+                recipient="",
+                provider="twilio",
+                error_message="Missing customer phone number",
+            )
             return False
         
-        logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â± Sending reminder SMS to: {formatted_phone}")
+        logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â± Sending reminder SMS to: {recipient_phone}")
         
         message = client.messages.create(
             body=message_body,
             from_=twilio_phone,
-            to=formatted_phone
+            to=recipient_phone
         )
         
-        logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Reminder SMS sent to {formatted_phone} - SID: {message.sid}")
+        logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Reminder SMS sent to {recipient_phone} - SID: {message.sid}")
+        record_notification_event(
+            booking,
+            event_type="reminder",
+            channel="sms",
+            status="sent",
+            recipient=recipient_phone,
+            provider="twilio",
+            meta={"sid": getattr(message, "sid", None)},
+        )
         return True
         
     except Exception as e:
         logger.error(f"Error sending reminder SMS: {str(e)}")
+        record_notification_event(
+            booking,
+            event_type="reminder",
+            channel="sms",
+            status="failed",
+            recipient=recipient_phone,
+            provider="twilio",
+            error_message=str(e),
+        )
         return False
 
 
@@ -3250,8 +3565,13 @@ FORMAT:
 - Sign: "Best regards,\nBookaRide Team"
 """
         
+        llm_api_key = get_llm_api_key()
+        if not llm_api_key:
+            logger.error("Missing LLM API key for autoresponder")
+            return {"status": "error", "reason": "LLM API key not configured"}
+
         llm = LlmChat(
-            api_key="sk-emergent-1221fFe2cB790B632B",
+            api_key=llm_api_key,
             session_id=str(uuid.uuid4()),
             system_message=email_system_prompt
         )
@@ -3351,6 +3671,205 @@ async def get_email_logs(current_admin: dict = Depends(get_current_admin), limit
         return {"logs": logs, "count": len(logs)}
     except Exception as e:
         logger.error(f"Error fetching email logs: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class NotificationRetryRequest(BaseModel):
+    event_id: str
+    channel: Optional[str] = None
+
+
+class NotificationTemplateUpdateRequest(BaseModel):
+    content: str
+    description: Optional[str] = None
+    channel: Optional[str] = None
+    event_type: Optional[str] = None
+    is_active: bool = True
+
+
+async def ensure_default_notification_templates() -> None:
+    """Seed default template definitions for governance UI."""
+    for template in DEFAULT_NOTIFICATION_TEMPLATES:
+        await db.notification_templates.update_one(
+            {"key": template["key"]},
+            {"$setOnInsert": {
+                "id": str(uuid.uuid4()),
+                "key": template["key"],
+                "channel": template["channel"],
+                "event_type": template["event_type"],
+                "description": template["description"],
+                "content": template["content"],
+                "is_active": True,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }},
+            upsert=True
+        )
+
+
+@api_router.get("/admin/notification-logs")
+async def get_notification_logs(
+    current_admin: dict = Depends(get_current_admin),
+    limit: int = 100,
+    status: Optional[str] = None,
+    channel: Optional[str] = None,
+):
+    """Delivery log for customer comms (queued/sent/failed/skipped)."""
+    try:
+        query: Dict[str, str] = {}
+        if status:
+            query["status"] = status
+        if channel:
+            query["channel"] = channel
+        logs = await db.notification_logs.find(query, {"_id": 0}).sort("created_at", -1).limit(limit).to_list(limit)
+        return {"logs": logs, "count": len(logs)}
+    except Exception as e:
+        logger.error(f"Error fetching notification logs: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/admin/notification-retry-queue")
+async def get_notification_retry_queue(
+    current_admin: dict = Depends(get_current_admin),
+    limit: int = 100,
+):
+    """Get latest failed notification per booking/channel/event for manual retry."""
+    try:
+        pipeline = [
+            {"$sort": {"created_at": -1}},
+            {"$group": {
+                "_id": {
+                    "booking_id": "$booking_id",
+                    "event_type": "$event_type",
+                    "channel": "$channel",
+                },
+                "latest": {"$first": "$$ROOT"},
+            }},
+            {"$replaceRoot": {"newRoot": "$latest"}},
+            {"$match": {"status": "failed"}},
+            {"$sort": {"created_at": -1}},
+            {"$limit": limit},
+            {"$project": {"_id": 0}},
+        ]
+        queue = await db.notification_logs.aggregate(pipeline).to_list(limit)
+        for item in queue:
+            retry_count = int(item.get("retry_count", 0))
+            item["can_retry"] = retry_count < 5
+            item["max_retries"] = 5
+        return {"queue": queue, "count": len(queue)}
+    except Exception as e:
+        logger.error(f"Error fetching retry queue: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/admin/notifications/retry")
+async def retry_notification(
+    request: NotificationRetryRequest,
+    current_admin: dict = Depends(get_current_admin),
+):
+    """Manual resend control for failed notification events."""
+    try:
+        event = await db.notification_logs.find_one({"id": request.event_id}, {"_id": 0})
+        if not event:
+            raise HTTPException(status_code=404, detail="Notification event not found")
+
+        retry_count = int(event.get("retry_count", 0))
+        if retry_count >= 5:
+            raise HTTPException(status_code=429, detail="Retry limit reached for this event")
+
+        booking_id = event.get("booking_id")
+        booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+        if not booking:
+            raise HTTPException(status_code=404, detail="Booking for this event was not found")
+
+        event_type = event.get("event_type")
+        channel = request.channel or event.get("channel")
+        success = False
+        error_text = ""
+
+        try:
+            if event_type == "confirmation" and channel == "email":
+                success = send_booking_confirmation_email(booking)
+            elif event_type == "confirmation" and channel == "sms":
+                success = send_booking_confirmation_sms(booking)
+            elif event_type == "reminder" and channel == "email":
+                success = send_reminder_email(booking)
+            elif event_type == "reminder" and channel == "sms":
+                success = send_reminder_sms(booking)
+            else:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Unsupported retry target: event_type={event_type}, channel={channel}",
+                )
+        except HTTPException:
+            raise
+        except Exception as retry_exc:
+            success = False
+            error_text = str(retry_exc)
+
+        await db.notification_logs.update_one(
+            {"id": request.event_id},
+            {"$set": {
+                "retry_count": retry_count + 1,
+                "last_retry_at": datetime.now(timezone.utc).isoformat(),
+                "last_retry_success": success,
+                "last_retry_channel": channel,
+                "last_retry_by": current_admin.get("username"),
+                "last_retry_error": error_text if error_text else None,
+                "status": "resolved" if success else "failed",
+            }}
+        )
+
+        if not success:
+            raise HTTPException(status_code=502, detail=error_text or "Retry send failed")
+
+        return {"success": True, "message": f"{event_type} {channel} resent successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error retrying notification: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/admin/notification-templates")
+async def get_notification_templates(current_admin: dict = Depends(get_current_admin)):
+    """List templates used by outbound comms."""
+    try:
+        await ensure_default_notification_templates()
+        templates = await db.notification_templates.find({}, {"_id": 0}).sort("key", 1).to_list(200)
+        return {"templates": templates, "count": len(templates)}
+    except Exception as e:
+        logger.error(f"Error fetching notification templates: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.put("/admin/notification-templates/{template_key}")
+async def update_notification_template(
+    template_key: str,
+    request: NotificationTemplateUpdateRequest,
+    current_admin: dict = Depends(get_current_admin),
+):
+    """Update template body/metadata and activation state."""
+    try:
+        await db.notification_templates.update_one(
+            {"key": template_key},
+            {"$set": {
+                "key": template_key,
+                "content": request.content,
+                "description": request.description,
+                "channel": request.channel,
+                "event_type": request.event_type,
+                "is_active": request.is_active,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "updated_by": current_admin.get("username"),
+            }, "$setOnInsert": {
+                "id": str(uuid.uuid4()),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }},
+            upsert=True,
+        )
+        return {"success": True, "message": "Template updated"}
+    except Exception as e:
+        logger.error(f"Error updating notification template: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -3563,8 +4082,12 @@ IMPORTANT:
 - Explain WHY we can't give exact prices without addresses (every house is different distance!)
 - The booking form has a LIVE PRICE CALCULATOR - they see the price instantly when they enter addresses"""
 
+        llm_api_key = get_llm_api_key()
+        if not llm_api_key:
+            raise RuntimeError("LLM API key not configured for chatbot")
+
         llm = LlmChat(
-            api_key="sk-emergent-1221fFe2cB790B632B",
+            api_key=llm_api_key,
             session_id=str(uuid.uuid4()),
             system_message=system_prompt
         )
@@ -4393,8 +4916,12 @@ async def translate_to_english_async(text: str) -> str:
         from emergentintegrations.llm.openai import LlmChat, UserMessage
         import uuid
         
+        llm_api_key = get_llm_api_key()
+        if not llm_api_key:
+            return text
+
         llm = LlmChat(
-            api_key="sk-emergent-1221fFe2cB790B632B",
+            api_key=llm_api_key,
             session_id=str(uuid.uuid4()),
             system_message="You are a translator. Translate text to English. Only return the translation, nothing else. Keep any English text as-is."
         )
@@ -8044,6 +8571,217 @@ async def get_urgent_return_bookings(current_admin: dict = Depends(get_current_a
         
     except Exception as e:
         logger.error(f"Error getting urgent returns: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/admin/mission-control")
+async def get_mission_control(
+    current_admin: dict = Depends(get_current_admin),
+    limit: int = 60,
+):
+    """Mission Control urgent queue with operational actions."""
+    try:
+        nz_tz = pytz.timezone('Pacific/Auckland')
+        now_nz = datetime.now(nz_tz)
+        today_str = now_nz.strftime('%Y-%m-%d')
+        tomorrow_str = (now_nz + timedelta(days=1)).strftime('%Y-%m-%d')
+
+        active_bookings = await db.bookings.find(
+            {"status": {"$nin": ["cancelled", "completed"]}},
+            {"_id": 0}
+        ).to_list(1200)
+
+        urgent_queue = []
+        for booking in active_bookings:
+            try:
+                reasons = []
+                priority_score = 0
+
+                status = (booking.get("status") or "").lower()
+                booking_date = booking.get("date", "")
+                booking_time = booking.get("time", "")
+                has_driver = bool(booking.get("driver_id") or booking.get("driver_name") or booking.get("assignedDriver"))
+
+                if status == "pending_approval":
+                    reasons.append("Manual approval required")
+                    priority_score += 120
+
+                if booking_date == today_str and not has_driver:
+                    reasons.append("Today pickup has no driver assigned")
+                    priority_score += 100
+
+                if booking_date == today_str and status in {"pending", "pending_payment"}:
+                    reasons.append("Today booking still pending")
+                    priority_score += 70
+
+                if booking_date == tomorrow_str and not booking.get("reminderSentForDate"):
+                    reasons.append("Reminder not yet sent for tomorrow booking")
+                    priority_score += 40
+
+                if booking.get("returnDate") == today_str and not booking.get("return_driver_id"):
+                    reasons.append("Return trip today without assigned return driver")
+                    priority_score += 80
+
+                if booking.get("bookReturn") and not booking.get("returnDate"):
+                    reasons.append("Return trip selected but return details incomplete")
+                    priority_score += 50
+
+                if not reasons:
+                    continue
+
+                primary_reason = reasons[0]
+                if "approval" in primary_reason.lower():
+                    action = "Review & approve/reject"
+                elif "driver" in primary_reason.lower():
+                    action = "Assign driver now"
+                elif "reminder" in primary_reason.lower():
+                    action = "Send reminder"
+                else:
+                    action = "Open booking"
+
+                urgent_queue.append({
+                    "booking_id": booking.get("id"),
+                    "booking_ref": get_booking_reference(booking),
+                    "customer_name": booking.get("name", "Unknown"),
+                    "date": booking_date,
+                    "time": booking_time,
+                    "status": booking.get("status", "unknown"),
+                    "priority_score": priority_score,
+                    "reasons": reasons,
+                    "suggested_action": action,
+                    "has_driver": has_driver,
+                })
+            except Exception as item_err:
+                logger.warning("Mission control item failed: %s", item_err)
+                continue
+
+        urgent_queue.sort(
+            key=lambda item: (
+                -item.get("priority_score", 0),
+                item.get("date", "9999-99-99"),
+                item.get("time", "23:59"),
+            )
+        )
+        urgent_queue = urgent_queue[:limit]
+
+        return {
+            "urgent_queue": urgent_queue,
+            "summary": {
+                "total_items": len(urgent_queue),
+                "requires_driver_assignment": sum(1 for item in urgent_queue if not item.get("has_driver")),
+                "manual_approval_required": sum(1 for item in urgent_queue if item.get("status") == "pending_approval"),
+            },
+            "generated_at": now_nz.isoformat(),
+        }
+    except Exception as e:
+        logger.error(f"Error building mission control queue: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/admin/ops-intelligence")
+async def get_ops_intelligence(current_admin: dict = Depends(get_current_admin)):
+    """Growth + operations intelligence metrics for Admin Panel v2."""
+    try:
+        bookings = await db.bookings.find({}, {"_id": 0}).to_list(5000)
+
+        # ---------- Customer value flags ----------
+        customer_rollup: Dict[str, dict] = {}
+        for booking in bookings:
+            email = (booking.get("email") or "").strip().lower()
+            if not email:
+                continue
+            row = customer_rollup.setdefault(email, {
+                "email": email,
+                "name": booking.get("name") or "Unknown",
+                "total_spend": 0.0,
+                "trip_count": 0,
+                "cancelled_count": 0,
+                "last_trip_date": "",
+            })
+            total_price = float(booking.get("totalPrice") or 0)
+            row["total_spend"] += total_price
+            row["trip_count"] += 1
+            if (booking.get("status") or "").lower() == "cancelled":
+                row["cancelled_count"] += 1
+            trip_date = booking.get("date") or ""
+            if trip_date and trip_date > row["last_trip_date"]:
+                row["last_trip_date"] = trip_date
+
+        customer_flags = []
+        for row in customer_rollup.values():
+            if row["total_spend"] >= 1200 or row["trip_count"] >= 10:
+                tier = "VIP"
+            elif row["total_spend"] >= 500 or row["trip_count"] >= 5:
+                tier = "High Value"
+            elif row["trip_count"] == 1:
+                tier = "First-Time"
+            else:
+                tier = "Active"
+
+            churn_risk = row["cancelled_count"] >= 2
+            customer_flags.append({
+                **row,
+                "tier": tier,
+                "churn_risk": churn_risk,
+            })
+        customer_flags.sort(key=lambda x: (-x["total_spend"], -x["trip_count"]))
+
+        # ---------- Driver SLA metrics ----------
+        active_jobs = [b for b in bookings if (b.get("status") or "").lower() not in {"cancelled"}]
+        assigned_jobs = [
+            b for b in active_jobs if (b.get("driver_id") or b.get("driver_name") or b.get("assignedDriver"))
+        ]
+        assignment_coverage = round((len(assigned_jobs) / max(len(active_jobs), 1)) * 100, 2)
+
+        driver_rollup: Dict[str, dict] = {}
+        for booking in assigned_jobs:
+            driver_key = booking.get("driver_id") or booking.get("driver_name") or "unmapped"
+            row = driver_rollup.setdefault(driver_key, {
+                "driver_key": driver_key,
+                "driver_name": booking.get("driver_name") or booking.get("assignedDriver") or "Unknown",
+                "assigned_jobs": 0,
+                "completed_jobs": 0,
+                "pending_jobs": 0,
+            })
+            row["assigned_jobs"] += 1
+            status = (booking.get("status") or "").lower()
+            if status == "completed":
+                row["completed_jobs"] += 1
+            elif status in {"pending", "pending_approval"}:
+                row["pending_jobs"] += 1
+
+        driver_metrics = list(driver_rollup.values())
+        driver_metrics.sort(key=lambda x: (-x["assigned_jobs"], x["driver_name"]))
+
+        # ---------- Funnel / conversion ----------
+        total_bookings = len(bookings)
+        confirmed_or_completed = sum(
+            1 for b in bookings if (b.get("status") or "").lower() in {"confirmed", "completed"}
+        )
+        completed = sum(1 for b in bookings if (b.get("status") or "").lower() == "completed")
+        abandoned = await db.abandoned_bookings.count_documents({"recovered": False})
+        leads = total_bookings + abandoned
+
+        funnel = {
+            "leads": leads,
+            "bookings_created": total_bookings,
+            "confirmed_or_completed": confirmed_or_completed,
+            "completed": completed,
+            "lead_to_booking_rate": round((total_bookings / max(leads, 1)) * 100, 2),
+            "booking_to_completion_rate": round((completed / max(total_bookings, 1)) * 100, 2),
+        }
+
+        return {
+            "customer_value_flags": customer_flags[:100],
+            "driver_sla_metrics": {
+                "assignment_coverage_percent": assignment_coverage,
+                "drivers": driver_metrics[:100],
+            },
+            "funnel_conversion": funnel,
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+        }
+    except Exception as e:
+        logger.error(f"Error generating ops intelligence: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
