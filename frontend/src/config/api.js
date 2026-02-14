@@ -15,6 +15,10 @@ const getBackendUrl = () => {
     if (origin.includes('bookaride.co.nz')) {
       return RENDER_BACKEND;
     }
+    // Local dev: use Render backend so API calls work without proxy
+    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      return RENDER_BACKEND;
+    }
     return origin;
   }
   return '';
