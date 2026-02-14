@@ -42,7 +42,6 @@ export const BookNow = () => {
     departureTime: '',
     arrivalFlightNumber: '',
     arrivalTime: '',
-    bookReturn: false,
     returnDate: '',
     returnTime: '',
     returnDepartureFlightNumber: '',
@@ -167,7 +166,7 @@ export const BookNow = () => {
     if (formData.pickupAddress && formData.dropoffAddress && formData.serviceType) {
       calculatePrice();
     }
-  }, [formData.pickupAddress, formData.dropoffAddress, formData.pickupAddresses, formData.passengers, formData.serviceType, formData.bookReturn, formData.vipAirportPickup, formData.oversizedLuggage]);
+  }, [formData.pickupAddress, formData.dropoffAddress, formData.pickupAddresses, formData.passengers, formData.serviceType, formData.returnDate, formData.returnTime, formData.vipAirportPickup, formData.oversizedLuggage]);
 
   const calculatePrice = async () => {
     setPricing(prev => ({ ...prev, calculating: true }));
@@ -183,8 +182,9 @@ export const BookNow = () => {
         oversizedLuggage: formData.oversizedLuggage
       });
 
-      // If return trip is booked, double the price (round trip)
-      const multiplier = formData.bookReturn ? 2 : 1;
+      // If return trip is booked (return date + time filled), double the price (round trip)
+      const hasReturnTrip = !!(formData.returnDate && formData.returnTime);
+      const multiplier = hasReturnTrip ? 2 : 1;
       
       // Calculate Stripe fee for the multiplied amount
       const subtotal = response.data.subtotal * multiplier;
@@ -334,16 +334,13 @@ export const BookNow = () => {
       return;
     }
 
-    // Validate return flight number for airport shuttle return bookings
+    // Validate return flight number for airport shuttle return bookings (when return date/time filled)
+    const hasReturnTrip = !!(formData.returnDate && formData.returnTime);
     const isAirportShuttle = formData.serviceType?.toLowerCase().includes('airport') || 
                             formData.serviceType?.toLowerCase().includes('shuttle');
-    if (isAirportShuttle && formData.bookReturn) {
+    if (isAirportShuttle && hasReturnTrip) {
       if (!formData.returnDepartureFlightNumber || !formData.returnDepartureFlightNumber.trim()) {
         toast.error('Flight number is mandatory for return trips. Bookings without flight numbers may face cancellation.');
-        return;
-      }
-      if (!formData.returnDate || !formData.returnTime) {
-        toast.error('Please select return date and time for your return trip');
         return;
       }
     }
@@ -363,8 +360,10 @@ export const BookNow = () => {
     setIsProcessingPayment(true);
 
     try {
+      const hasReturnTrip = !!(formData.returnDate && formData.returnTime);
       const bookingData = {
         ...formData,
+        bookReturn: hasReturnTrip,
         pricing: pricing,
         status: 'pending',
         language: i18n.language, // Capture selected language
@@ -723,7 +722,7 @@ export const BookNow = () => {
                         <p className="text-xs text-gray-500 mt-1">1st passenger included, $5 per additional passenger</p>
                       </div>
 
-                      {/* VIP Airport Pickup Service */}
+                      {/* VIP Parking Service */}
                       <div className="mb-6 bg-gold/5 p-4 rounded-lg border border-gold/20">
                         <div className="flex items-start space-x-3">
                           <input
@@ -736,10 +735,10 @@ export const BookNow = () => {
                           />
                           <div className="flex-1">
                             <Label htmlFor="vipAirportPickup" className="cursor-pointer font-semibold text-gray-900">
-                              VIP Airport Pickup Service - $15
+                              VIP Parking Service - $15
                             </Label>
                             <p className="text-xs text-gray-600 mt-1">
-                              VIP parking close to door eleven
+                              Driver meets you outside door eleven
                             </p>
                           </div>
                         </div>
@@ -767,34 +766,16 @@ export const BookNow = () => {
                         </div>
                       </div>
 
-                      {/* Return Trip Option */}
-                      <div className="mb-6">
-                        <div className="flex items-center space-x-2">
-                          <input
-                            type="checkbox"
-                            id="bookReturn"
-                            name="bookReturn"
-                            checked={formData.bookReturn}
-                            onChange={(e) => setFormData(prev => ({ ...prev, bookReturn: e.target.checked }))}
-                            className="w-4 h-4 text-gold border-gray-300 rounded focus:ring-gold"
-                          />
-                          <Label htmlFor="bookReturn" className="cursor-pointer">
-                            Book a return trip
-                          </Label>
-                        </div>
-                      </div>
-
-                      {/* Return Trip Details - Conditional */}
-                      {formData.bookReturn && (
-                        <div className="bg-gold/10 p-6 rounded-lg mb-6 border-2 border-gold/30">
-                          <h3 className="text-lg font-semibold text-gray-900 mb-4">Return Trip Details</h3>
+                      {/* Return Journey - Always visible, optional */}
+                      <div className="bg-gray-50 p-6 rounded-lg mb-6 border border-gray-200">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Return Journey <span className="text-sm font-normal text-gray-500">(Optional – leave blank for one-way)</span></h3>
                           
                           {/* Return Date and Time */}
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                             <div className="space-y-2">
                               <Label className="flex items-center space-x-2">
                                 <Calendar className="w-4 h-4 text-gold" />
-                                <span>Return Date *</span>
+                                <span>Return Date</span>
                               </Label>
                               <CustomDatePicker
                                 selected={returnDatePicker}
@@ -811,13 +792,12 @@ export const BookNow = () => {
                                 }}
                                 placeholder="Select return date"
                                 minDate={pickupDate || new Date()}
-                                required={formData.bookReturn}
                               />
                             </div>
                             <div className="space-y-2">
                               <Label className="flex items-center space-x-2">
                                 <Clock className="w-4 h-4 text-gold" />
-                                <span>Return Time *</span>
+                                <span>Return Time</span>
                               </Label>
                               <CustomTimePicker
                                 selected={returnTimePicker}
@@ -830,35 +810,27 @@ export const BookNow = () => {
                                   }
                                 }}
                                 placeholder="Select return time"
-                                required={formData.bookReturn}
                               />
                             </div>
                           </div>
 
                           {/* Return Flight Information */}
-                          <div className="bg-white p-4 rounded-lg border-2 border-purple-200">
+                          <div className="bg-white p-4 rounded-lg border border-gray-200 mt-4">
                             <h4 className="text-md font-semibold text-gray-900 mb-3">
-                              Return Flight Information 
-                              <span className="text-red-500 ml-1">*</span>
-                              <span className="text-sm font-normal text-gray-500 ml-2">(Required for return trips)</span>
+                              Return Flight Information
+                              <span className="text-sm font-normal text-gray-500 ml-2">(Required if booking return)</span>
                             </h4>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div className="space-y-2">
-                                <Label htmlFor="returnDepartureFlightNumber">
-                                  Return Flight Number <span className="text-red-500">*</span>
-                                </Label>
+                                <Label htmlFor="returnDepartureFlightNumber">Return Flight Number</Label>
                                 <Input
                                   id="returnDepartureFlightNumber"
                                   name="returnDepartureFlightNumber"
                                   value={formData.returnDepartureFlightNumber}
                                   onChange={handleChange}
                                   placeholder="e.g., NZ123"
-                                  required={formData.bookReturn}
-                                  className={`transition-all duration-200 focus:ring-2 focus:ring-gold ${!formData.returnDepartureFlightNumber && formData.bookReturn ? 'border-red-300 bg-red-50' : ''}`}
+                                  className="transition-all duration-200 focus:ring-2 focus:ring-gold"
                                 />
-                                {!formData.returnDepartureFlightNumber && formData.bookReturn && (
-                                  <p className="text-xs text-red-500 font-medium">⚠️ Flight number is mandatory for return trips. Bookings without flight numbers may face cancellation.</p>
-                                )}
                               </div>
                               <div className="space-y-2">
                                 <Label>Departure Time</Label>
@@ -908,7 +880,6 @@ export const BookNow = () => {
                             Return trip will be from <strong>{formData.dropoffAddress || 'drop-off location'}</strong> back to <strong>{formData.pickupAddress || 'pickup location'}</strong>
                           </p>
                         </div>
-                      )}
                     </CardContent>
                   </Card>
 
@@ -1087,8 +1058,8 @@ export const BookNow = () => {
                           
                           <div className="bg-gray-50 rounded-lg p-4 text-center">
                             <p className="text-sm text-gray-600">
-                              {formData.bookReturn ? `${pricing.distance / 2} km each way` : `${pricing.distance} km`} • {formData.passengers} passenger{parseInt(formData.passengers) > 1 ? 's' : ''}
-                              {formData.bookReturn && ' • Round trip (both ways)'}
+                              {(formData.returnDate && formData.returnTime) ? `${pricing.distance / 2} km each way` : `${pricing.distance} km`} • {formData.passengers} passenger{parseInt(formData.passengers) > 1 ? 's' : ''}
+                              {(formData.returnDate && formData.returnTime) && ' • Round trip (both ways)'}
                             </p>
                           </div>
 
