@@ -1,0 +1,88 @@
+name: Production Smoke Monitor
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Every 15 minutes (UTC)
+    - cron: "*/15 * * * *"
+
+jobs:
+  smoke-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      FRONTEND_URL: ${{ secrets.PROD_FRONTEND_URL }}
+      BACKEND_URL: ${{ secrets.PROD_BACKEND_URL }}
+    steps:
+      - name: Validate monitor configuration
+        run: |
+          if [ -z "$FRONTEND_URL" ]; then
+            echo "Missing required secret: PROD_FRONTEND_URL"
+            exit 1
+          fi
+          if [ -z "$BACKEND_URL" ]; then
+            echo "Missing required secret: PROD_BACKEND_URL"
+            exit 1
+          fi
+
+      - name: Check frontend homepage
+        run: |
+          echo "Checking frontend: $FRONTEND_URL"
+          curl --fail --show-error --silent --location \
+            --max-time 20 --retry 2 --retry-delay 2 \
+            "$FRONTEND_URL" > /tmp/frontend.html
+          echo "Frontend check passed."
+
+      - name: Check backend health endpoints
+        run: |
+          backend_base="${BACKEND_URL%/}"
+          echo "Checking backend: $backend_base"
+
+          root_health="$(curl --fail --show-error --silent --location \
+            --max-time 20 --retry 2 --retry-delay 2 \
+            "$backend_base/health")"
+          api_health="$(curl --fail --show-error --silent --location \
+            --max-time 20 --retry 2 --retry-delay 2 \
+            "$backend_base/api/health")"
+
+          echo "Root health: $root_health"
+          echo "API health: $api_health"
+
+          if [[ "$root_health" != *"healthy"* ]]; then
+            echo "Root /health response did not look healthy."
+            exit 1
+          fi
+          if [[ "$api_health" != *"healthy"* ]]; then
+            echo "API /api/health response did not look healthy."
+            exit 1
+          fi
+
+      - name: Check forgot-password endpoint reachability
+        run: |
+          backend_base="${BACKEND_URL%/}"
+          response_file=/tmp/forgot-password.json
+          status_code=$(curl --silent --show-error --location \
+            --max-time 20 --retry 2 --retry-delay 2 \
+            -o "$response_file" -w "%{http_code}" \
+            -X POST "$backend_base/api/admin/password-reset/request" \
+            -H "Content-Type: application/json" \
+            -d '{"email":"monitor-noaccount@bookaride.co.nz"}')
+
+          echo "Forgot-password status: $status_code"
+          cat "$response_file"
+
+          if [ "$status_code" -ne 200 ]; then
+            echo "Forgot-password endpoint is not healthy."
+            exit 1
+          fi
+
+      - name: Publish summary
+        if: always()
+        run: |
+          {
+            echo "## Production smoke monitor"
+            echo ""
+            echo "- Frontend: $FRONTEND_URL"
+            echo "- Backend: ${BACKEND_URL%/}"
+            echo "- Run status: ${{ job.status }}"
+          } >> "$GITHUB_STEP_SUMMARY"
