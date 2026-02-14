@@ -7,6 +7,7 @@ from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
+import re
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict, model_validator
 from typing import List, Optional, Dict
@@ -88,6 +89,31 @@ def get_db_name() -> str:
     return db_name
 
 
+_DB_CASE_CONFLICT_RE = re.compile(
+    r"db already exists with different case already have:\s*\[(?P<existing>[^\]]+)\]\s*trying to create\s*\[(?P<requested>[^\]]+)\]",
+    re.IGNORECASE,
+)
+
+
+def _extract_existing_db_name_from_case_conflict(exc: Exception) -> Optional[str]:
+    """
+    If `exc` is a MongoDB case-conflict error, return the existing DB name.
+    """
+    details = getattr(exc, "details", None)
+    if isinstance(details, dict):
+        errmsg = details.get("errmsg") or details.get("message") or ""
+    else:
+        errmsg = ""
+
+    if not errmsg:
+        errmsg = str(exc)
+
+    match = _DB_CASE_CONFLICT_RE.search(errmsg or "")
+    if not match:
+        return None
+    return match.group("existing")
+
+
 async def resolve_db_name_case_conflict() -> str:
     """
     Resolve DB names that differ only by case.
@@ -101,9 +127,39 @@ async def resolve_db_name_case_conflict() -> str:
     try:
         existing_db_names = await client.list_database_names()
     except Exception as exc:
+        # Many hosted MongoDB roles (e.g. Atlas readWrite on a single DB) cannot
+        # run listDatabases. In that case, trigger a tiny idempotent write to
+        # surface the 13297 case-conflict error (which includes the correct DB).
         logging.warning("Could not list databases for DB_NAME case check: %s", exc)
+        try:
+            await client[configured_db_name]["__app_meta"].update_one(
+                {"_id": "db_case_probe"},
+                {"$setOnInsert": {"created_at": datetime.now(timezone.utc).isoformat()}},
+                upsert=True,
+            )
+        except Exception as probe_exc:
+            existing = _extract_existing_db_name_from_case_conflict(probe_exc)
+            if existing and existing.lower() == configured_db_name.lower() and existing != configured_db_name:
+                logging.warning(
+                    "DB_NAME case mismatch detected via probe: configured '%s' but existing database is '%s'. "
+                    "Using existing database name.",
+                    configured_db_name,
+                    existing,
+                )
+                db_name = existing
+                db = client[db_name]
+                os.environ['DB_NAME'] = db_name
+                return db_name
+
+            logging.warning(
+                "DB_NAME case probe failed (continuing with '%s'): %s",
+                configured_db_name,
+                probe_exc,
+            )
+
         db_name = configured_db_name
         db = client[db_name]
+        os.environ['DB_NAME'] = db_name
         return db_name
 
     matched_db_name = next(
@@ -126,6 +182,7 @@ async def resolve_db_name_case_conflict() -> str:
 
     db_name = configured_db_name
     db = client[db_name]
+    os.environ['DB_NAME'] = db_name
     return db_name
 
 # Authentication configuration
