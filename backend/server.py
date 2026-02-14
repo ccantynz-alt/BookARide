@@ -81,11 +81,35 @@ def resolve_db_name_with_existing_case(mongo_url: str, configured_name: str) -> 
     try:
         from pymongo import MongoClient
         sync_client = MongoClient(mongo_url, serverSelectionTimeoutMS=2000, connectTimeoutMS=2000)
-        for existing_name in sync_client.list_database_names():
-            if existing_name.lower() == configured_name.lower():
+        try:
+            for existing_name in sync_client.list_database_names():
+                if existing_name.lower() == configured_name.lower():
+                    if existing_name != configured_name:
+                        logging.warning(
+                            "DB_NAME case mismatch: configured '%s', using existing '%s'.",
+                            configured_name,
+                            existing_name,
+                        )
+                    return existing_name
+        except Exception as exc:
+            logging.warning("Could not verify DB_NAME casing via list_database_names: %s", exc)
+
+        # Fallback when listDatabases privilege is unavailable:
+        # trigger a tiny probe write to recover canonical name from Mongo's case-conflict error.
+        try:
+            probe_coll = sync_client[configured_name]["__startup_db_case_probe__"]
+            probe_coll.update_one({"_id": "probe"}, {"$set": {"ok": True}}, upsert=True)
+            probe_coll.delete_one({"_id": "probe"})
+        except Exception as exc:
+            match = re.search(
+                r"already have:\s*\[([^\]]+)\]\s*trying to create:?\s*\[[^\]]+\]",
+                str(exc),
+            )
+            if match:
+                existing_name = match.group(1)
                 if existing_name != configured_name:
                     logging.warning(
-                        "DB_NAME case mismatch: configured '%s', using existing '%s'.",
+                        "DB_NAME case mismatch recovered from write error: configured '%s', using existing '%s'.",
                         configured_name,
                         existing_name,
                     )
@@ -13114,3 +13138,33 @@ async def startup_event():
 async def shutdown_db_client():
     scheduler.shutdown()
     client.close()
+
+
+_original_startup_event = startup_event
+
+
+async def _startup_event_safe_wrapper():
+    """
+    Keep service booting even if startup initialization raises unexpectedly.
+    Render requires binding to a port; failing startup prevents that entirely.
+    """
+    try:
+        await _original_startup_event()
+    except Exception as exc:
+        corrected_name = extract_existing_db_name_from_case_error(exc)
+        if corrected_name and corrected_name != db_name:
+            apply_resolved_db_name(corrected_name)
+            logger.warning("Recovered DB case mismatch during startup wrapper; retrying startup init once.")
+            try:
+                await _original_startup_event()
+                return
+            except Exception as retry_exc:
+                logger.exception("Startup retry failed after DB_NAME correction: %s", retry_exc)
+        else:
+            logger.exception("Startup initialization failed; continuing in degraded mode: %s", exc)
+
+
+for index, handler in enumerate(list(app.router.on_startup)):
+    if handler is _original_startup_event:
+        app.router.on_startup[index] = _startup_event_safe_wrapper
+        break

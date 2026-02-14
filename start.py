@@ -52,6 +52,8 @@ def _normalize_db_name_case_for_startup():
                     f"BOOT: DB_NAME recovered from error as '{existing_name}'",
                     flush=True,
                 )
+    except Exception as exc:
+        print(f"BOOT: DB_NAME normalization skipped due error: {exc}", flush=True)
     finally:
         if sync_client is not None:
             sync_client.close()
