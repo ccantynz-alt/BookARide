@@ -55,7 +55,7 @@
 Correct: `https://bookaride.co.nz`  
 Wrong: `https://bookaride.co.nz/api`
 
-**Fallback:** If `REACT_APP_BACKEND_URL` is not set in production (e.g. Vercel), the app now uses `window.location.origin` – so when you visit `https://www.bookaride.co.nz/admin/login`, API calls go to `https://www.bookaride.co.nz/api`. Ensure your backend is served at the same domain or set the env var explicitly.
+**Fallback:** If `REACT_APP_BACKEND_URL` is not set, the app uses `window.location.origin`. API calls go to the same domain (e.g. `https://www.bookaride.co.nz/api`). **Vercel proxy:** `vercel.json` rewrites `/api/*` to the backend. If your backend URL differs from `dazzling-leakey.preview.emergentagent.com`, update the `destination` in `frontend/vercel.json`.
 
 ### 4. MongoDB connection
 
