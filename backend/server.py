@@ -75,8 +75,28 @@ ROOT_DIR = Path(__file__).parent
 sys.path.insert(0, str(ROOT_DIR))
 load_dotenv(ROOT_DIR / '.env')
 
+KNOWN_DB_NAME_CASE_MAP = {
+    "bookaride_db": "Bookaride_db",
+}
+
+
+def canonicalize_known_db_name_case(configured_name: str) -> str:
+    """Force known production DB names to their canonical case."""
+    if not configured_name:
+        return configured_name
+    canonical_name = KNOWN_DB_NAME_CASE_MAP.get(configured_name.lower(), configured_name)
+    if canonical_name != configured_name:
+        logging.warning(
+            "DB_NAME normalized via known mapping: configured '%s', using '%s'.",
+            configured_name,
+            canonical_name,
+        )
+    return canonical_name
+
+
 def resolve_db_name_with_existing_case(mongo_url: str, configured_name: str) -> str:
     """Use an existing database name's casing when only case differs."""
+    configured_name = canonicalize_known_db_name_case(configured_name)
     sync_client = None
     try:
         from pymongo import MongoClient
@@ -127,6 +147,7 @@ mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
 db_name = os.environ.get('DB_NAME', 'bookaride')
 if 'MONGO_URL' not in os.environ or 'DB_NAME' not in os.environ:
     logging.warning("MONGO_URL or DB_NAME missing; using fallback values for startup.")
+db_name = canonicalize_known_db_name_case(db_name)
 db_name = resolve_db_name_with_existing_case(mongo_url, db_name)
 os.environ['DB_NAME'] = db_name
 client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=2000, connectTimeoutMS=2000)

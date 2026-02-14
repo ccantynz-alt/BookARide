@@ -4,6 +4,9 @@ import re
 
 
 DB_CASE_CONFLICT_RE = re.compile(r"already have:\s*\[([^\]]+)\]\s*trying to create:?\s*\[[^\]]+\]")
+KNOWN_DB_NAME_CASE_MAP = {
+    "bookaride_db": "Bookaride_db",
+}
 
 
 def _extract_existing_db_name(error: Exception):
@@ -19,6 +22,15 @@ def _normalize_db_name_case_for_startup():
     configured_name = os.environ.get("DB_NAME")
     if not mongo_url or not configured_name:
         return
+    original_name = configured_name
+    canonical_name = KNOWN_DB_NAME_CASE_MAP.get(configured_name.lower(), configured_name)
+    if canonical_name != configured_name:
+        os.environ["DB_NAME"] = canonical_name
+        configured_name = canonical_name
+        print(
+            f"BOOT: DB_NAME normalized from '{original_name}' to '{canonical_name}'",
+            flush=True,
+        )
 
     sync_client = None
     try:
