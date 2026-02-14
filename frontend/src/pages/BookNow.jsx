@@ -417,13 +417,26 @@ export const BookNow = () => {
       }
     } catch (error) {
       console.error('Error submitting booking:', error);
+      console.error('API URL:', API, '| Status:', error.response?.status, '| Detail:', error.response?.data);
       setIsProcessingPayment(false);
+      const status = error.response?.status;
       const detail = error.response?.data?.detail;
       let msg = 'Failed to submit booking. Please try again.';
-      if (Array.isArray(detail)) {
-        msg = detail.map((e) => e.msg || e.loc?.join('.')).filter(Boolean).join('; ') || msg;
+      // Network error (backend unreachable, CORS, etc.)
+      if (!error.response) {
+        msg = 'Cannot reach server. Check your connection or try again later.';
+      } else if (Array.isArray(detail)) {
+        const parts = detail.map((e) => {
+          const field = Array.isArray(e.loc) ? e.loc[e.loc.length - 1] : null;
+          return field && e.msg ? `${field}: ${e.msg}` : (e.msg || e.loc?.join('.'));
+        }).filter(Boolean);
+        msg = parts.length ? parts.slice(0, 3).join('. ') : msg;
       } else if (typeof detail === 'string') {
         msg = detail;
+      } else if (status === 500 && detail) {
+        msg = typeof detail === 'object' ? JSON.stringify(detail) : String(detail);
+      } else if (status === 404) {
+        msg = 'Booking service unavailable. Please contact us.';
       }
       toast.error(msg);
     }
