@@ -19,60 +19,56 @@ export const AdminAuthCallback = () => {
     hasProcessed.current = true;
 
     const processAuth = async () => {
-      try {
-        // Extract session_id from URL fragment
-        const hash = window.location.hash;
-        const sessionIdMatch = hash.match(/session_id=([^&]+)/);
-        
-        if (!sessionIdMatch) {
-          setStatus('error');
-          setErrorMessage('No session ID found. Please try logging in again.');
-          return;
-        }
+      const hash = window.location.hash;
+      const params = new URLSearchParams(window.location.search);
 
-        const sessionId = sessionIdMatch[1];
+      // Handle error from backend redirect (e.g. non-admin email)
+      if (params.get('error') === 'unauthorized') {
+        setStatus('error');
+        setErrorMessage(params.get('message') || 'This Google account is not authorized as an admin.');
+        return;
+      }
 
-        // Send session_id to backend for verification
-        const response = await axios.post(
-          `${API}/admin/google-auth/session`,
-          { session_id: sessionId },
-          { withCredentials: true }
-        );
-
-        // Store JWT token for backward compatibility
-        if (response.data.access_token) {
-          localStorage.setItem('adminToken', response.data.access_token);
-          localStorage.setItem('adminAuth', 'true');
-        }
-
-        // Store admin info
-        if (response.data.admin) {
-          localStorage.setItem('adminInfo', JSON.stringify(response.data.admin));
-        }
-
+      // New flow: token in URL hash from backend redirect
+      const tokenMatch = hash.match(/token=([^&]+)/);
+      if (tokenMatch) {
+        const token = tokenMatch[1];
+        localStorage.setItem('adminToken', token);
+        localStorage.setItem('adminAuth', 'true');
         setStatus('success');
         toast.success('Google login successful!');
-
-        // Redirect to dashboard after brief delay
-        setTimeout(() => {
-          navigate('/admin/dashboard', { 
-            state: { user: response.data.admin },
-            replace: true 
-          });
-        }, 1000);
-
-      } catch (error) {
-        console.error('Auth callback error:', error);
-        setStatus('error');
-        
-        if (error.response?.status === 403) {
-          setErrorMessage(error.response.data.detail || 'This Google account is not authorized as an admin.');
-        } else if (error.response?.status === 401) {
-          setErrorMessage('Authentication failed. Please try again.');
-        } else {
-          setErrorMessage('An error occurred during authentication. Please try again.');
-        }
+        setTimeout(() => navigate('/admin/dashboard', { replace: true }), 1000);
+        return;
       }
+
+      // Legacy flow: session_id from Emergent
+      const sessionIdMatch = hash.match(/session_id=([^&]+)/);
+      if (sessionIdMatch) {
+        try {
+          const response = await axios.post(
+            `${API}/admin/google-auth/session`,
+            { session_id: sessionIdMatch[1] },
+            { withCredentials: true }
+          );
+          if (response.data.access_token) {
+            localStorage.setItem('adminToken', response.data.access_token);
+            localStorage.setItem('adminAuth', 'true');
+          }
+          if (response.data.admin) {
+            localStorage.setItem('adminInfo', JSON.stringify(response.data.admin));
+          }
+          setStatus('success');
+          toast.success('Google login successful!');
+          setTimeout(() => navigate('/admin/dashboard', { state: { user: response.data.admin }, replace: true }), 1000);
+        } catch (error) {
+          setStatus('error');
+          setErrorMessage(error.response?.data?.detail || 'Authentication failed.');
+        }
+        return;
+      }
+
+      setStatus('error');
+      setErrorMessage('No session found. Please try logging in again.');
     };
 
     processAuth();
