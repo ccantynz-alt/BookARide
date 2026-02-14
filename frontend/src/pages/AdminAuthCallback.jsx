@@ -4,9 +4,7 @@ import { Loader2, CheckCircle, XCircle } from 'lucide-react';
 import { Card, CardContent } from '../components/ui/card';
 import { toast } from 'sonner';
 import axios from 'axios';
-
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+import { API } from '../config/api';
 
 export const AdminAuthCallback = () => {
   const navigate = useNavigate();

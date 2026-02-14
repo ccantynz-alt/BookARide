@@ -45,15 +45,17 @@
 
 ### 3. Frontend can't reach backend (API errors)
 
-**Required frontend env vars** (in `frontend/.env` or build config):
+**Required frontend env vars** (in `frontend/.env` or Vercel Environment Variables):
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `REACT_APP_BACKEND_URL` | Backend API base URL | `https://your-api.com` or `https://dazzling-leakey.preview.emergentagent.com` |
+| `REACT_APP_BACKEND_URL` | Backend API base URL | `https://bookaride.co.nz` or `https://www.bookaride.co.nz` |
 
 **Note:** Do NOT include `/api` in the URL – the frontend adds it.  
-Correct: `https://your-api.com`  
-Wrong: `https://your-api.com/api`
+Correct: `https://bookaride.co.nz`  
+Wrong: `https://bookaride.co.nz/api`
+
+**Fallback:** If `REACT_APP_BACKEND_URL` is not set in production (e.g. Vercel), the app now uses `window.location.origin` – so when you visit `https://www.bookaride.co.nz/admin/login`, API calls go to `https://www.bookaride.co.nz/api`. Ensure your backend is served at the same domain or set the env var explicitly.
 
 ### 4. MongoDB connection
 

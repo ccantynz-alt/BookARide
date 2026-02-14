@@ -6,8 +6,7 @@ import {
 import { Card, CardContent } from '../ui/card';
 import { Button } from '../ui/button';
 import axios from 'axios';
-
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+import { API } from '../../config/api';
 
 const DashboardStatsPanel = ({ bookings = [], drivers = [] }) => {
   const [systemHealth, setSystemHealth] = useState(null);
