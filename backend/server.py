@@ -37,6 +37,11 @@ from apscheduler.triggers.interval import IntervalTrigger
 import vobject
 import asyncio
 
+try:
+    from email_sender import send_email as send_email_unified
+except ImportError:
+    send_email_unified = None
+
 # Global lock to prevent concurrent reminder sending
 reminder_lock = asyncio.Lock()
 
@@ -910,20 +915,11 @@ async def request_password_reset(reset_request: PasswordResetRequest):
             "created_at": datetime.now(timezone.utc).isoformat()
         })
         
-        # Send reset email via Mailgun
+        # Send reset email (Mailgun or Google Workspace SMTP)
         public_domain = os.environ.get('PUBLIC_DOMAIN', 'https://www.bookaride.co.nz').rstrip('/')
         reset_link = f"{public_domain}/admin/reset-password?token={reset_token}"
         
-        mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
-        mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
-        sender_email = os.environ.get('SENDER_EMAIL', 'noreply@bookaride.co.nz')
-        
-        if not mailgun_api_key or not mailgun_domain:
-            logger.warning(
-                "Password reset email NOT sent: MAILGUN_API_KEY or MAILGUN_DOMAIN missing. "
-                "Add these to backend/.env - see ADMIN_AUTH_TROUBLESHOOTING.md"
-            )
-        if mailgun_api_key and mailgun_domain:
+        if True:  # Build email and send via unified sender
             email_html = f"""
             <!DOCTYPE html>
             <html>
@@ -967,25 +963,10 @@ async def request_password_reset(reset_request: PasswordResetRequest):
             </html>
             """
             
-            try:
-                mailgun_response = requests.post(
-                    f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
-                    auth=("api", mailgun_api_key),
-                    data={
-                        "from": f"Book A Ride NZ <{sender_email}>",
-                        "to": email,
-                        "subject": "Password Reset Request - Book A Ride NZ Admin",
-                        "html": email_html
-                    }
-                )
-                
-                if mailgun_response.status_code == 200:
-                    logger.info(f"Password reset email sent to: {email}")
-                else:
-                    logger.error(f"Mailgun error: {mailgun_response.text}")
-                    
-            except Exception as mail_error:
-                logger.error(f"Failed to send reset email: {str(mail_error)}")
+            if send_email_unified and send_email_unified(email, "Password Reset Request - Book A Ride NZ Admin", email_html):
+                logger.info(f"Password reset email sent to: {email}")
+            else:
+                logger.warning("Password reset email NOT sent - configure Mailgun or SMTP (see GOOGLE_WORKSPACE_EMAIL_SETUP.md)")
         
         return {"message": "If this email is registered, you will receive a password reset link."}
         
@@ -2339,8 +2320,10 @@ def send_via_smtp(booking: dict):
         html_part = MIMEText(html_content, 'html')
         message.attach(html_part)
         
-        # Send via SMTP
-        with smtplib.SMTP('smtp.gmail.com', 587) as server:
+        # Send via SMTP (Google Workspace / Gmail)
+        smtp_host = os.environ.get('SMTP_HOST', 'smtp.gmail.com')
+        smtp_port = int(os.environ.get('SMTP_PORT', '587'))
+        with smtplib.SMTP(smtp_host, smtp_port) as server:
             server.starttls()
             server.login(smtp_user, smtp_pass)
             server.send_message(message)
@@ -8634,25 +8617,15 @@ async def send_payment_link_email(booking: dict, payment_link: str, payment_type
         </html>
         '''
         
-        # Send via Mailgun
-        mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
-        mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
-        sender_email = os.environ.get('SENDER_EMAIL', 'noreply@bookaride.co.nz')
-        
-        if mailgun_api_key and mailgun_domain:
-            response = requests.post(
-                f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
-                auth=("api", mailgun_api_key),
-                data={
-                    "from": f"Book A Ride NZ <{sender_email}>",
-                    "to": customer_email,
-                    "subject": f"Payment Link - Booking {booking_ref} - ${total_price:.2f} NZD",
-                    "html": html_content
-                }
-            )
-            logger.info(f"Payment link email sent to {customer_email} - Status: {response.status_code}")
+        # Send via Mailgun or Google Workspace SMTP
+        if send_email_unified and send_email_unified(
+            customer_email,
+            f"Payment Link - Booking {booking_ref} - ${total_price:.2f} NZD",
+            html_content
+        ):
+            logger.info(f"Payment link email sent to {customer_email}")
         else:
-            logger.warning("Mailgun not configured - payment link email not sent")
+            logger.warning("Email not configured - payment link not sent (see GOOGLE_WORKSPACE_EMAIL_SETUP.md)")
             
     except Exception as e:
         logger.error(f"Error sending payment link email: {str(e)}")

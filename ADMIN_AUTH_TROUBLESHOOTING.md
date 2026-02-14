@@ -25,7 +25,11 @@
 
 **Workaround – set password while logged in:** If you're logged in (e.g. via Google), go to **Settings** in the admin dashboard and click **Change Password**. Click **"Forgot current password? Set a new one instead."** – you can set a new password without entering the current one.
 
-**To fix the email flow**, add these to **Render → Environment** (or `backend/.env` for local):
+**To fix the email flow**, add one of these to **Render → Environment**:
+
+**Option A – Google Workspace** (no extra cost): See [GOOGLE_WORKSPACE_EMAIL_SETUP.md](GOOGLE_WORKSPACE_EMAIL_SETUP.md) for setup. You need `SMTP_USER`, `SMTP_PASS`, and `SENDER_EMAIL`.
+
+**Option B – Mailgun:**
 
 | Variable | Description | Example |
 |----------|-------------|---------|
