@@ -2299,7 +2299,7 @@ def send_customer_confirmation(booking: dict):
         try:
             from pymongo import MongoClient
             sync_client = MongoClient(os.environ.get('MONGO_URL', 'mongodb://localhost:27017'))
-            sync_db = sync_client[os.environ.get('DB_NAME', 'test_database')]
+            sync_db = sync_client[db_name]
             
             nz_tz = pytz.timezone('Pacific/Auckland')
             now = datetime.now(nz_tz).isoformat()
@@ -3736,7 +3736,7 @@ Price: ${booking.get('totalPrice', 0):.2f}
             try:
                 from pymongo import MongoClient
                 sync_client = MongoClient(os.environ.get('MONGO_URL', 'mongodb://localhost:27017'))
-                sync_db = sync_client[os.environ.get('DB_NAME', 'test_database')]
+                sync_db = sync_client[db_name]
                 sync_db.pending_approvals.update_one(
                     {"admin_phone": admin_phone},
                     {"$set": {
@@ -12903,6 +12903,30 @@ def create_arrival_email_html(customer_name: str, booking_date: str, pickup_time
 @app.on_event("startup")
 async def startup_event():
     """Start the scheduler when the app starts and ensure default admin exists"""
+    # MongoDB database names can conflict by casing (e.g. "Bookaride_db" vs "bookaride_db").
+    # If the database already exists with different case, the first write (insert/index)
+    # can fail with error code 13297: "db already exists with different case ...".
+    #
+    # Resolve DB_NAME to an existing database name by case-insensitive match before
+    # performing any writes so startup is robust across environments.
+    global db, db_name
+    try:
+        existing_db_names = await client.list_database_names()
+        desired_folded = (db_name or "").casefold()
+        if desired_folded and db_name not in existing_db_names:
+            for existing in existing_db_names:
+                if existing.casefold() == desired_folded:
+                    logger.warning(
+                        f"DB_NAME casing mismatch: configured '{db_name}' but existing database is '{existing}'. "
+                        f"Using '{existing}' to avoid Mongo error 13297."
+                    )
+                    db_name = existing
+                    os.environ["DB_NAME"] = existing  # keep any sync/pymongo helpers consistent
+                    db = client[db_name]
+                    break
+    except Exception as e:
+        logger.warning(f"Could not resolve DB_NAME case-insensitively; continuing with '{db_name}': {e}")
+
     # Ensure default admin exists with correct email for Google OAuth
     try:
         default_admin = await db.admin_users.find_one({"username": "admin"})
