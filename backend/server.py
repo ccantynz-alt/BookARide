@@ -103,6 +103,12 @@ async def root_health_check():
     """Root health check endpoint for Kubernetes liveness/readiness probes"""
     return {"status": "healthy", "service": "bookaride-api"}
 
+
+@app.get("/healthz")
+async def root_healthz_check():
+    """Compatibility health endpoint for Render/default probe paths."""
+    return {"status": "healthy", "service": "bookaride-api"}
+
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
