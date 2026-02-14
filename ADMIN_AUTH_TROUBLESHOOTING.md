@@ -19,18 +19,20 @@
   python create_admin.py
   ```
 
-### 2. Password reset email not arriving
+### 2. Password reset email not arriving / Forgot password link not working
 
-**Cause:** Mailgun API keys missing or incorrect.
+**Cause:** Mailgun API keys missing or incorrect in your backend deployment (e.g. Render).
 
-**Required backend env vars** (in `backend/.env` or your deployment):
+**Workaround – set password while logged in:** If you're logged in (e.g. via Google), go to **Settings** in the admin dashboard and click **Change Password**. Click **"Forgot current password? Set a new one instead."** – you can set a new password without entering the current one.
+
+**To fix the email flow**, add these to **Render → Environment** (or `backend/.env` for local):
 
 | Variable | Description | Example |
 |----------|-------------|---------|
 | `MAILGUN_API_KEY` | Private API key from Mailgun | `key-abc123...` |
 | `MAILGUN_DOMAIN` | Sending domain | `mg.bookaride.co.nz` or `sandboxXXX.mailgun.org` |
 | `SENDER_EMAIL` | From address (optional) | `noreply@bookaride.co.nz` |
-| `PUBLIC_DOMAIN` | Site URL for reset links (optional) | `https://bookaride.co.nz` |
+| `PUBLIC_DOMAIN` | Site URL for reset links | `https://www.bookaride.co.nz` |
 
 **Check your Mailgun setup:**
 1. Log in at https://app.mailgun.com
@@ -42,6 +44,7 @@
 - Using the **Public** key instead of **Private**
 - Wrong domain (e.g. `bookaride.co.nz` instead of `mg.bookaride.co.nz`)
 - Domain not verified in Mailgun
+- `PUBLIC_DOMAIN` missing – reset links will use `https://www.bookaride.co.nz` by default
 
 ### 3. Frontend can't reach backend (API errors)
 

@@ -105,8 +105,9 @@ async def root_health_check():
     """Root health check endpoint for Kubernetes/Render liveness/readiness probes"""
     return {"status": "healthy", "service": "bookaride-api"}
 
-# Google auth start - also at app level so /api/admin/google-auth/start is guaranteed
+# Google auth start - app-level routes (try multiple paths for compatibility)
 @app.get("/api/admin/google-auth/start")
+@app.get("/api/google-auth-start")  # Simpler path fallback
 async def admin_google_auth_start_app():
     """Start Google OAuth - app-level route for reliability"""
     client_id = os.environ.get('GOOGLE_CLIENT_ID')
@@ -540,7 +541,7 @@ async def change_password(
     new_password: str = Body(...),
     current_admin: dict = Depends(get_current_admin)
 ):
-    """Change admin password"""
+    """Change admin password (requires current password)"""
     try:
         # Get admin from database
         admin = await db.admin_users.find_one({"username": current_admin["username"]}, {"_id": 0})
@@ -575,6 +576,34 @@ async def change_password(
     except Exception as e:
         logger.error(f"Error changing password: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error changing password: {str(e)}")
+
+
+@api_router.post("/admin/set-password")
+async def set_password(
+    new_password: str = Body(..., embed=True),
+    current_admin: dict = Depends(get_current_admin)
+):
+    """Set password for logged-in admin (no current password required).
+    Use when logged in via Google or when you forgot your current password."""
+    try:
+        if len(new_password) < 8:
+            raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+        
+        hashed = get_password_hash(new_password)
+        await db.admin_users.update_one(
+            {"username": current_admin["username"]},
+            {"$set": {
+                "hashed_password": hashed,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        logger.info(f"Password set for admin: {current_admin['username']}")
+        return {"message": "Password set successfully. You can now log in with username and password."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error setting password: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to set password")
 
 
 # ============================================
@@ -882,7 +911,7 @@ async def request_password_reset(reset_request: PasswordResetRequest):
         })
         
         # Send reset email via Mailgun
-        public_domain = os.environ.get('PUBLIC_DOMAIN', 'https://bookaride.co.nz')
+        public_domain = os.environ.get('PUBLIC_DOMAIN', 'https://www.bookaride.co.nz').rstrip('/')
         reset_link = f"{public_domain}/admin/reset-password?token={reset_token}"
         
         mailgun_api_key = os.environ.get('MAILGUN_API_KEY')

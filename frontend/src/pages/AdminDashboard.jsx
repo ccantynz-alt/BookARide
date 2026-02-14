@@ -544,6 +544,7 @@ export const AdminDashboard = () => {
   const [emailCC, setEmailCC] = useState('');
   const [priceOverride, setPriceOverride] = useState('');
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [setPasswordMode, setSetPasswordMode] = useState(false);  // true = set without current (forgot/Google)
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -1956,9 +1957,13 @@ export const AdminDashboard = () => {
 
   const handleChangePassword = async () => {
     try {
-      // Validation
-      if (!currentPassword || !newPassword || !confirmPassword) {
+      const needsCurrent = !setPasswordMode;
+      if (needsCurrent && (!currentPassword || !newPassword || !confirmPassword)) {
         toast.error('Please fill in all fields');
+        return;
+      }
+      if (!needsCurrent && (!newPassword || !confirmPassword)) {
+        toast.error('Please fill in new password and confirmation');
         return;
       }
       
@@ -1972,14 +1977,18 @@ export const AdminDashboard = () => {
         return;
       }
       
-      // Call backend API to change password
-      await axios.post(`${API}/auth/change-password`, {
-        current_password: currentPassword,
-        new_password: newPassword
-      }, getAuthHeaders());
-      
-      toast.success('Password changed successfully!');
+      if (setPasswordMode) {
+        await axios.post(`${API}/admin/set-password`, { new_password: newPassword }, getAuthHeaders());
+        toast.success('Password set successfully! You can now log in with username and password.');
+      } else {
+        await axios.post(`${API}/auth/change-password`, {
+          current_password: currentPassword,
+          new_password: newPassword
+        }, getAuthHeaders());
+        toast.success('Password changed successfully!');
+      }
       setShowPasswordModal(false);
+      setSetPasswordMode(false);
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
@@ -4000,23 +4009,45 @@ export const AdminDashboard = () => {
       </Dialog>
 
       {/* Change Password Modal */}
-      <Dialog open={showPasswordModal} onOpenChange={setShowPasswordModal}>
+      <Dialog open={showPasswordModal} onOpenChange={(open) => {
+        setShowPasswordModal(open);
+        if (!open) {
+          setSetPasswordMode(false);
+          setCurrentPassword('');
+          setNewPassword('');
+          setConfirmPassword('');
+        }
+      }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Change Password</DialogTitle>
+            <DialogTitle>{setPasswordMode ? 'Set New Password' : 'Change Password'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-4">
-            <div>
-              <Label htmlFor="currentPassword">Current Password</Label>
-              <Input
-                id="currentPassword"
-                type="password"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                placeholder="Enter current password"
-                className="mt-1"
-              />
-            </div>
+            {!setPasswordMode && (
+              <div>
+                <Label htmlFor="currentPassword">Current Password</Label>
+                <Input
+                  id="currentPassword"
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="Enter current password"
+                  className="mt-1"
+                />
+                <button
+                  type="button"
+                  onClick={() => setSetPasswordMode(true)}
+                  className="text-sm text-gold hover:text-gold/80 mt-1"
+                >
+                  Forgot current password? Set a new one instead.
+                </button>
+              </div>
+            )}
+            {setPasswordMode && (
+              <p className="text-sm text-gray-600">
+                You&apos;re logged in. Set a new password below (no current password needed).
+              </p>
+            )}
             
             <div>
               <Label htmlFor="newPassword">New Password</Label>
@@ -4043,10 +4074,19 @@ export const AdminDashboard = () => {
             </div>
             
             <div className="flex justify-end gap-2 pt-4">
+              {setPasswordMode && (
+                <Button
+                  variant="ghost"
+                  onClick={() => setSetPasswordMode(false)}
+                >
+                  Back
+                </Button>
+              )}
               <Button
                 variant="outline"
                 onClick={() => {
                   setShowPasswordModal(false);
+                  setSetPasswordMode(false);
                   setCurrentPassword('');
                   setNewPassword('');
                   setConfirmPassword('');
@@ -4058,7 +4098,7 @@ export const AdminDashboard = () => {
                 onClick={handleChangePassword}
                 className="bg-gold hover:bg-gold/90 text-black"
               >
-                Change Password
+                {setPasswordMode ? 'Set Password' : 'Change Password'}
               </Button>
             </div>
           </div>
