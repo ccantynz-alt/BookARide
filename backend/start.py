@@ -89,15 +89,55 @@ def _pick_app_target():
     # Fallback (will error clearly)
     return "server:app"
 
+
+def _ensure_probe_routes(app):
+    """Ensure Render/K8s probe routes always exist on runtime app."""
+    existing_paths = {
+        getattr(route, "path", "")
+        for route in getattr(app, "routes", [])
+        if getattr(route, "path", None)
+    }
+
+    probe_payload = {"status": "healthy", "service": "bookaride-api"}
+
+    if "/" not in existing_paths:
+        @app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
+        async def _probe_root():
+            return probe_payload
+
+    if "/health" not in existing_paths:
+        @app.api_route("/health", methods=["GET", "HEAD"], include_in_schema=False)
+        async def _probe_health():
+            return probe_payload
+
+    if "/healthz" not in existing_paths:
+        @app.api_route("/healthz", methods=["GET", "HEAD"], include_in_schema=False)
+        async def _probe_healthz():
+            return probe_payload
+
+    if "/api/health" not in existing_paths:
+        @app.api_route("/api/health", methods=["GET", "HEAD"], include_in_schema=False)
+        async def _probe_api_health():
+            return probe_payload
+
+
 def main():
     port = int(os.environ.get("PORT", "8000"))
     target = "server:app"  # forced: Render-safe import target
     _normalize_db_name_case_for_startup()
     print(f"BOOT: uvicorn target={target} host=0.0.0.0 port={port}", flush=True)
 
+    # Import the app object directly so we can enforce probe routes before serving.
+    if os.path.exists(os.path.join(os.path.dirname(__file__), "server.py")):
+        from server import app as runtime_app  # type: ignore
+    else:
+        from backend.server import app as runtime_app  # type: ignore
+
+    _ensure_probe_routes(runtime_app)
+
     import uvicorn
     uvicorn.run(
-        target,
+        runtime_app,
         host="0.0.0.0",
         port=port,
         log_level=os.environ.get("LOG_LEVEL", "info"),

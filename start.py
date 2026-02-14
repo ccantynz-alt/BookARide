@@ -70,23 +70,53 @@ def _normalize_db_name_case_for_startup():
         if sync_client is not None:
             sync_client.close()
 
+
+def _ensure_probe_routes(app):
+    """Ensure probe routes exist regardless of selected import target."""
+    existing_paths = {
+        getattr(route, "path", "")
+        for route in getattr(app, "routes", [])
+        if getattr(route, "path", None)
+    }
+    probe_payload = {"status": "healthy", "service": "bookaride-api"}
+
+    if "/" not in existing_paths:
+        @app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
+        async def _probe_root():
+            return probe_payload
+
+    if "/health" not in existing_paths:
+        @app.api_route("/health", methods=["GET", "HEAD"], include_in_schema=False)
+        async def _probe_health():
+            return probe_payload
+
+    if "/healthz" not in existing_paths:
+        @app.api_route("/healthz", methods=["GET", "HEAD"], include_in_schema=False)
+        async def _probe_healthz():
+            return probe_payload
+
+    if "/api/health" not in existing_paths:
+        @app.api_route("/api/health", methods=["GET", "HEAD"], include_in_schema=False)
+        async def _probe_api_health():
+            return probe_payload
+
+
 def main():
     port = int(os.environ.get("PORT", "10000"))
     host = "0.0.0.0"
     _normalize_db_name_case_for_startup()
-    # Prefer "app" if server.py exposes it; fall back to "app" anyway.
-    target = "backend.server:app"
-    # Some layouts might be "server:app" if PYTHONPATH includes backend; try that if import fails.
+    # Prefer backend.server app object and enforce probe routes before serving.
     try:
-        import backend.server  # noqa: F401
-        target = "backend.server:app"
+        from backend.server import app as runtime_app  # type: ignore
     except Exception:
-        target = "server:app"
+        from server import app as runtime_app  # type: ignore
+
+    _ensure_probe_routes(runtime_app)
 
     import uvicorn
-    print(f"BOOT: starting uvicorn target={target} host={host} port={port}", flush=True)
+    print(f"BOOT: starting uvicorn host={host} port={port}", flush=True)
     uvicorn.run(
-        target,
+        runtime_app,
         host=host,
         port=port,
         log_level=os.environ.get("LOG_LEVEL", "info"),

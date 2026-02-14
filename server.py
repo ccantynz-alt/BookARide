@@ -73,6 +73,38 @@ def _normalize_db_name_case_for_startup():
             sync_client.close()
 
 
+def _ensure_probe_routes(app):
+    """Ensure root probe routes exist even if upstream app differs."""
+    existing_paths = {
+        getattr(route, "path", "")
+        for route in getattr(app, "routes", [])
+        if getattr(route, "path", None)
+    }
+    probe_payload = {"status": "healthy", "service": "bookaride-api"}
+
+    if "/" not in existing_paths:
+        @app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
+        async def _probe_root():
+            return probe_payload
+
+    if "/health" not in existing_paths:
+        @app.api_route("/health", methods=["GET", "HEAD"], include_in_schema=False)
+        async def _probe_health():
+            return probe_payload
+
+    if "/healthz" not in existing_paths:
+        @app.api_route("/healthz", methods=["GET", "HEAD"], include_in_schema=False)
+        async def _probe_healthz():
+            return probe_payload
+
+    if "/api/health" not in existing_paths:
+        @app.api_route("/api/health", methods=["GET", "HEAD"], include_in_schema=False)
+        async def _probe_api_health():
+            return probe_payload
+
+
 _normalize_db_name_case_for_startup()
 
 from backend.server import app  # noqa: F401
+
+_ensure_probe_routes(app)
