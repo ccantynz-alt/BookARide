@@ -1710,13 +1710,14 @@ async def get_bookings(
                 query['status'] = status
             
             # Search filter (name, email, phone, reference)
-            if search:
+            if search and search.strip():
+                safe_search = re.escape(search.strip())
                 query['$or'] = [
-                    {'name': {'$regex': search, '$options': 'i'}},
-                    {'email': {'$regex': search, '$options': 'i'}},
-                    {'phone': {'$regex': search, '$options': 'i'}},
-                    {'referenceNumber': {'$regex': search, '$options': 'i'}},
-                    {'original_booking_id': {'$regex': search, '$options': 'i'}}
+                    {'name': {'$regex': safe_search, '$options': 'i'}},
+                    {'email': {'$regex': safe_search, '$options': 'i'}},
+                    {'phone': {'$regex': safe_search, '$options': 'i'}},
+                    {'referenceNumber': {'$regex': safe_search, '$options': 'i'}},
+                    {'original_booking_id': {'$regex': safe_search, '$options': 'i'}}
                 ]
             
             # Date range filter
@@ -1737,30 +1738,47 @@ async def get_bookings(
             now_nz = datetime.now(nz_tz)
             today_str = now_nz.strftime('%Y-%m-%d')
             
-            # Fetch ALL matching bookings to sort properly (needed for smart date ordering)
-            all_bookings = await db.bookings.find(query, {"_id": 0}).to_list(None)
-            
-            # Custom sort: prioritize today, then tomorrow, then upcoming dates, then past dates
-            def sort_key(b):
-                date = b.get('date', '9999-99-99')
-                time = b.get('time', '00:00')
-                if date == today_str:
-                    return (0, time)  # Today first
-                elif date > today_str:
-                    return (1, date, time)  # Future dates in ascending order
-                else:
-                    return (2, date, time)  # Past dates last
-            
-            all_bookings.sort(key=sort_key)
-            logger.info(f"Today: {today_str}, First 3 bookings after sort: {[b.get('date') for b in all_bookings[:3]]}")
-            
-            # Apply pagination
-            bookings = all_bookings[skip:skip + limit]
-            
-            # Add pagination headers via response
-            logger.info(f"Fetched {len(bookings)} bookings (page {page}, total {total})")
-            
-            return [Booking(**booking) for booking in bookings]
+            # Sort in MongoDB and fetch only requested page
+            pipeline = [
+                {"$match": query},
+                {"$addFields": {
+                    "_sort_date": {"$ifNull": ["$date", "9999-99-99"]},
+                    "_sort_time": {"$ifNull": ["$time", "00:00"]},
+                    "_sort_bucket": {
+                        "$switch": {
+                            "branches": [
+                                {"case": {"$eq": [{"$ifNull": ["$date", ""]}, today_str]}, "then": 0},
+                                {"case": {"$gt": [{"$ifNull": ["$date", ""]}, today_str]}, "then": 1},
+                            ],
+                            "default": 2,
+                        }
+                    },
+                }},
+                {"$sort": {"_sort_bucket": 1, "_sort_date": 1, "_sort_time": 1}},
+                {"$project": {"_id": 0, "_sort_bucket": 0, "_sort_date": 0, "_sort_time": 0}},
+                {"$skip": skip},
+                {"$limit": limit},
+            ]
+            bookings = await db.bookings.aggregate(pipeline, allowDiskUse=True).to_list(limit)
+
+            validated_bookings = []
+            skipped_invalid = 0
+            for booking in bookings:
+                try:
+                    validated_bookings.append(Booking(**booking))
+                except Exception as validation_error:
+                    skipped_invalid += 1
+                    logger.warning(
+                        "Skipping invalid booking payload id=%s: %s",
+                        booking.get("id", "unknown"),
+                        validation_error,
+                    )
+
+            if skipped_invalid:
+                logger.warning("Skipped %s invalid bookings while fetching page %s.", skipped_invalid, page)
+
+            logger.info(f"Fetched {len(validated_bookings)} bookings (page {page}, total {total})")
+            return validated_bookings
         except Exception as e:
             if attempt == 0 and recover_db_case_conflict_if_needed(e, "get_bookings"):
                 continue
