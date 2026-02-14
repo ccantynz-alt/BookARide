@@ -5,3 +5,13 @@ app = FastAPI(title="BookARide Backend (Minimal Fallback)")
 @app.get("/health")
 def health():
     return {"ok": True, "service": "backend", "mode": "minimal_fallback"}
+
+
+@app.get("/healthz")
+def healthz():
+    return {"ok": True, "service": "backend", "mode": "minimal_fallback"}
+
+
+@app.get("/")
+def root():
+    return {"ok": True, "service": "backend", "mode": "minimal_fallback"}
