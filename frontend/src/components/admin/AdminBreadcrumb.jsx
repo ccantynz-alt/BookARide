@@ -1,9 +1,12 @@
 import React from 'react';
-import { ChevronRight, Home, BookOpen, BarChart3, Users, Car, FileText, Globe } from 'lucide-react';
+import { ChevronRight, Home, BookOpen, BarChart3, Users, Car, FileText, Globe, AlertTriangle, MessageSquare, Activity } from 'lucide-react';
 
 const tabConfig = {
+  'mission-control': { label: 'Mission Control', icon: AlertTriangle },
   bookings: { label: 'Bookings', icon: BookOpen },
   analytics: { label: 'Analytics', icon: BarChart3 },
+  comms: { label: 'Comms Center', icon: MessageSquare },
+  'ops-intel': { label: 'Ops Intelligence', icon: Activity },
   customers: { label: 'Customers', icon: Users },
   drivers: { label: 'Drivers', icon: Car },
   applications: { label: 'Driver Applications', icon: FileText },

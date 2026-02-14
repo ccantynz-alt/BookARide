@@ -22,6 +22,9 @@ export const AdminLogin = () => {
     setLoading(true);
 
     try {
+      if (!BACKEND_URL || BACKEND_URL.includes('localhost')) {
+        console.warn('AdminLogin BACKEND_URL looks suspicious:', BACKEND_URL);
+      }
       const response = await axios.post(`${API}/admin/login`, {
         username: username,
         password: password
@@ -34,11 +37,22 @@ export const AdminLogin = () => {
       toast.success('Login successful!');
       navigate('/admin/dashboard');
     } catch (error) {
-      console.error('Login error:', error);
-      if (error.response?.status === 401) {
+      const status = error.response?.status;
+      const detail = error.response?.data?.detail;
+      console.error('Login error:', {
+        backendUrl: BACKEND_URL,
+        apiBase: API,
+        status,
+        detail,
+        data: error.response?.data,
+        message: error.message
+      });
+      if (status === 401) {
         toast.error('Incorrect username or password');
+      } else if (!status) {
+        toast.error('Network/CORS error reaching backend. Check REACT_APP_BACKEND_URL.');
       } else {
-        toast.error('Login failed. Please try again.');
+        toast.error(detail || `Login failed (HTTP ${status}). Please try again.`);
       }
     } finally {
       setLoading(false);
@@ -115,6 +129,9 @@ export const AdminLogin = () => {
 
           <p className="text-xs text-gray-500 text-center mt-6">
             Secure admin authentication
+          </p>
+          <p className="text-[10px] text-gray-400 text-center mt-2 break-all">
+            API: {API}
           </p>
         </CardContent>
       </Card>

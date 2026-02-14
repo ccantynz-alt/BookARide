@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from fastapi import FastAPI, APIRouter, HTTPException, Request, Depends, Body, UploadFile, File, Form, BackgroundTasks
+from fastapi import FastAPI, APIRouter, HTTPException, Request, Depends, Body, UploadFile, File, Form, BackgroundTasks, Header
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import Response
 from dotenv import load_dotenv
@@ -7,6 +7,8 @@ from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
+import re
+import hmac
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict, model_validator
 from typing import List, Optional, Dict
@@ -24,7 +26,8 @@ except Exception:
     Client = None
 import requests
 from passlib.context import CryptContext
-from jose import JWTError, jwt
+from jose import JWTError, ExpiredSignatureError, jwt
+from urllib.parse import quote
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
@@ -74,20 +77,143 @@ ROOT_DIR = Path(__file__).parent
 sys.path.insert(0, str(ROOT_DIR))
 load_dotenv(ROOT_DIR / '.env')
 
+KNOWN_DB_NAME_CASE_MAP = {
+    "bookaride_db": "Bookaride_db",
+}
+
+
+def canonicalize_known_db_name_case(configured_name: str) -> str:
+    """Force known production DB names to their canonical case."""
+    if not configured_name:
+        return configured_name
+    canonical_name = KNOWN_DB_NAME_CASE_MAP.get(configured_name.lower(), configured_name)
+    if canonical_name != configured_name:
+        logging.warning(
+            "DB_NAME normalized via known mapping: configured '%s', using '%s'.",
+            configured_name,
+            canonical_name,
+        )
+    return canonical_name
+
+
+def resolve_db_name_with_existing_case(mongo_url: str, configured_name: str) -> str:
+    """Use an existing database name's casing when only case differs."""
+    configured_name = canonicalize_known_db_name_case(configured_name)
+    sync_client = None
+    try:
+        from pymongo import MongoClient
+        sync_client = MongoClient(mongo_url, serverSelectionTimeoutMS=2000, connectTimeoutMS=2000)
+        try:
+            for existing_name in sync_client.list_database_names():
+                if existing_name.lower() == configured_name.lower():
+                    if existing_name != configured_name:
+                        logging.warning(
+                            "DB_NAME case mismatch: configured '%s', using existing '%s'.",
+                            configured_name,
+                            existing_name,
+                        )
+                    return existing_name
+        except Exception as exc:
+            logging.warning("Could not verify DB_NAME casing via list_database_names: %s", exc)
+
+        # Fallback when listDatabases privilege is unavailable:
+        # trigger a tiny probe write to recover canonical name from Mongo's case-conflict error.
+        try:
+            probe_coll = sync_client[configured_name]["__startup_db_case_probe__"]
+            probe_coll.update_one({"_id": "probe"}, {"$set": {"ok": True}}, upsert=True)
+            probe_coll.delete_one({"_id": "probe"})
+        except Exception as exc:
+            match = re.search(
+                r"already have:\s*\[([^\]]+)\]\s*trying to create:?\s*\[[^\]]+\]",
+                str(exc),
+            )
+            if match:
+                existing_name = match.group(1)
+                if existing_name != configured_name:
+                    logging.warning(
+                        "DB_NAME case mismatch recovered from write error: configured '%s', using existing '%s'.",
+                        configured_name,
+                        existing_name,
+                    )
+                return existing_name
+    except Exception as exc:
+        logging.warning("Could not verify DB_NAME casing via MongoDB: %s", exc)
+    finally:
+        if sync_client is not None:
+            sync_client.close()
+    return configured_name
+
+
 # MongoDB connection
 mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
 db_name = os.environ.get('DB_NAME', 'bookaride')
 if 'MONGO_URL' not in os.environ or 'DB_NAME' not in os.environ:
     logging.warning("MONGO_URL or DB_NAME missing; using fallback values for startup.")
+db_name = canonicalize_known_db_name_case(db_name)
+db_name = resolve_db_name_with_existing_case(mongo_url, db_name)
+os.environ['DB_NAME'] = db_name
 client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=2000, connectTimeoutMS=2000)
 db = client[db_name]
 
+DB_CASE_CONFLICT_RE = re.compile(r"already have:\s*\[([^\]]+)\]\s*trying to create:?\s*\[[^\]]+\]")
+
+def extract_existing_db_name_from_case_error(error: Exception) -> Optional[str]:
+    """Extract canonical DB name from MongoDB case-conflict write errors."""
+    match = DB_CASE_CONFLICT_RE.search(str(error))
+    if match:
+        return match.group(1)
+    return None
+
+def apply_resolved_db_name(resolved_name: str) -> None:
+    """Update global DB handles to use corrected DB name casing."""
+    global db_name, db
+    if not resolved_name or resolved_name == db_name:
+        return
+    logging.warning("Switching DB_NAME from '%s' to existing '%s'.", db_name, resolved_name)
+    db_name = resolved_name
+    os.environ['DB_NAME'] = resolved_name
+    db = client[resolved_name]
+
+
+def recover_db_case_conflict_if_needed(error: Exception, context: str = "") -> bool:
+    """Detect DB case-conflict errors, switch DB handle, and report recovery status."""
+    corrected_name = extract_existing_db_name_from_case_error(error)
+    if not corrected_name or corrected_name == db_name:
+        return False
+    apply_resolved_db_name(corrected_name)
+    if context:
+        logging.warning("Recovered DB case mismatch during %s; retrying operation.", context)
+    return True
+
+
+def get_required_runtime_secret(name: str) -> str:
+    """Load a required secret and fail fast if missing."""
+    value = os.environ.get(name)
+    if not value:
+        raise RuntimeError(f"Missing required environment variable: {name}")
+    return value
+
+
+def get_endpoint_secret(name: str) -> str:
+    """Load required secret for endpoint handlers."""
+    value = os.environ.get(name)
+    if not value:
+        raise HTTPException(status_code=503, detail=f"{name} is not configured")
+    return value
+
+
+def get_llm_api_key() -> Optional[str]:
+    """Resolve LLM API key from environment."""
+    return os.environ.get("OPENAI_API_KEY") or os.environ.get("EMERGENT_LLM_API_KEY")
+
+
 # Authentication configuration
-SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'your-secret-key-change-in-production-' + str(uuid.uuid4()))
+SECRET_KEY = get_required_runtime_secret('JWT_SECRET_KEY')
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 1440  # 24 hours
+QUICK_APPROVAL_TOKEN_TTL_MINUTES = int(os.environ.get("QUICK_APPROVAL_TOKEN_TTL_MINUTES", "1440"))
 
-pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
+pwd_context = CryptContext(schemes=["bcrypt", "pbkdf2_sha256"], deprecated="auto")
 security = HTTPBearer()
 
 # Create the main app without a prefix
@@ -97,6 +223,18 @@ app = FastAPI()
 @app.get("/health")
 async def root_health_check():
     """Root health check endpoint for Kubernetes liveness/readiness probes"""
+    return {"status": "healthy", "service": "bookaride-api"}
+
+
+@app.get("/healthz")
+async def root_healthz_check():
+    """Compatibility health endpoint for platforms probing /healthz."""
+    return {"status": "healthy", "service": "bookaride-api"}
+
+
+@app.get("/")
+async def root_status():
+    """Simple root endpoint so platform HEAD/GET probes return 200."""
     return {"status": "healthy", "service": "bookaride-api"}
 
 # Create a router with the /api prefix
@@ -129,8 +267,22 @@ class TokenData(BaseModel):
     username: Optional[str] = None
 
 # Authentication utility functions
-def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
+def verify_password_and_update(plain_password: str, hashed_password: str):
+    """
+    Verify a password and optionally return an updated hash if the stored hash
+    uses a deprecated scheme.
+    """
+    try:
+        return pwd_context.verify_and_update(plain_password, hashed_password)
+    except Exception:
+        # Treat unknown/invalid hashes as auth failure (not 500).
+        return False, None
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Backward-compatible boolean password verification."""
+    valid, _updated_hash = verify_password_and_update(plain_password, hashed_password)
+    return bool(valid)
 
 def get_password_hash(password):
     return pwd_context.hash(password)
@@ -144,6 +296,42 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
+
+
+def create_quick_approval_token(booking_id: str, action: str) -> str:
+    """Create short-lived signed token for quick-approve links."""
+    expire = datetime.now(timezone.utc) + timedelta(minutes=QUICK_APPROVAL_TOKEN_TTL_MINUTES)
+    token_data = {
+        "sub": "quick_approval",
+        "booking_id": booking_id,
+        "action": action,
+        "jti": uuid.uuid4().hex,
+        "exp": expire,
+    }
+    return jwt.encode(token_data, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def validate_quick_approval_token(token: str, booking_id: str, action: str) -> dict:
+    """Validate quick-approve token and ensure payload matches URL params."""
+    if not token:
+        raise HTTPException(status_code=401, detail="Missing approval token")
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Approval link has expired")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid approval token")
+
+    if payload.get("sub") != "quick_approval":
+        raise HTTPException(status_code=403, detail="Invalid token scope")
+    if payload.get("booking_id") != booking_id:
+        raise HTTPException(status_code=403, detail="Token booking mismatch")
+    if payload.get("action") != action:
+        raise HTTPException(status_code=403, detail="Token action mismatch")
+    if not payload.get("jti"):
+        raise HTTPException(status_code=403, detail="Invalid token identifier")
+    return payload
+
 
 def format_nz_phone(phone: str) -> str:
     """Format phone number to E.164 format for Twilio (NZ numbers)"""
@@ -180,7 +368,17 @@ async def get_current_admin(credentials: HTTPAuthorizationCredentials = Depends(
     except JWTError:
         raise credentials_exception
     
-    admin = await db.admin_users.find_one({"username": token_data.username}, {"_id": 0})
+    admin = None
+    for attempt in range(2):
+        try:
+            admin = await db.admin_users.find_one({"username": token_data.username}, {"_id": 0})
+            break
+        except Exception as db_error:
+            if attempt == 0 and recover_db_case_conflict_if_needed(db_error, "get_current_admin"):
+                continue
+            logger.error("Admin lookup failed during auth: %s", db_error)
+            raise HTTPException(status_code=500, detail="Authentication service temporarily unavailable")
+
     if admin is None:
         raise credentials_exception
     return admin
@@ -472,8 +670,15 @@ async def login_admin(login_data: AdminLogin):
             raise HTTPException(status_code=401, detail="Incorrect username or password")
         
         # Verify password
-        if not verify_password(login_data.password, admin["hashed_password"]):
+        valid, updated_hash = verify_password_and_update(login_data.password, admin.get("hashed_password", ""))
+        if not valid:
             raise HTTPException(status_code=401, detail="Incorrect username or password")
+        if updated_hash:
+            # Opportunistic migration to the preferred hash scheme.
+            await db.admin_users.update_one(
+                {"username": admin["username"]},
+                {"$set": {"hashed_password": updated_hash, "password_updated_at": datetime.now(timezone.utc).isoformat()}}
+            )
         
         # Check if admin is active
         if not admin.get("is_active", True):
@@ -516,7 +721,8 @@ async def change_password(
             raise HTTPException(status_code=404, detail="Admin user not found")
         
         # Verify current password
-        if not verify_password(current_password, admin["hashed_password"]):
+        valid, _updated_hash = verify_password_and_update(current_password, admin.get("hashed_password", ""))
+        if not valid:
             raise HTTPException(status_code=401, detail="Current password is incorrect")
         
         # Validate new password
@@ -739,112 +945,233 @@ class PasswordResetConfirm(BaseModel):
     token: str
     new_password: str
 
+
+class BreakGlassResetPasswordRequest(BaseModel):
+    username: Optional[str] = "admin"
+    email: Optional[str] = None
+    new_password: str
+
+
+def _send_html_email_via_smtp(subject: str, recipient_email: str, html_content: str) -> bool:
+    """Send an HTML email via SMTP if configured."""
+    try:
+        smtp_user = os.environ.get('SMTP_USER')
+        smtp_pass = os.environ.get('SMTP_PASS')
+        sender_email = os.environ.get('SENDER_EMAIL', 'noreply@bookaride.co.nz')
+
+        if not smtp_user or not smtp_pass:
+            logger.warning("SMTP credentials not configured")
+            return False
+
+        message = MIMEMultipart('alternative')
+        message['Subject'] = subject
+        message['From'] = sender_email
+        message['To'] = recipient_email
+        message.attach(MIMEText(html_content, 'html'))
+
+        with smtplib.SMTP('smtp.gmail.com', 587) as server:
+            server.starttls()
+            server.login(smtp_user, smtp_pass)
+            server.send_message(message)
+        return True
+    except Exception as exc:
+        logger.error("SMTP send failed: %s", exc)
+        return False
+
+
 @api_router.post("/admin/password-reset/request")
 async def request_password_reset(reset_request: PasswordResetRequest):
     """Request a password reset email for admin"""
-    try:
-        email = reset_request.email.lower().strip()
-        
-        # Check if admin exists with this email
-        admin = await db.admin_users.find_one({"email": email}, {"_id": 0})
-        
-        # Always return success (security - don't reveal if email exists)
-        if not admin:
-            logger.info(f"Password reset requested for non-existent email: {email}")
-            return {"message": "If this email is registered, you will receive a password reset link."}
-        
-        # Generate reset token
-        reset_token = uuid.uuid4().hex
-        expires_at = datetime.now(timezone.utc) + timedelta(hours=1)  # 1 hour expiry
-        
-        # Store reset token
-        await db.password_reset_tokens.insert_one({
-            "admin_id": admin["id"],
-            "username": admin["username"],
-            "email": email,
-            "token": reset_token,
-            "expires_at": expires_at.isoformat(),
-            "used": False,
-            "created_at": datetime.now(timezone.utc).isoformat()
-        })
-        
-        # Send reset email via Mailgun
-        public_domain = os.environ.get('PUBLIC_DOMAIN', 'https://bookaride.co.nz')
-        reset_link = f"{public_domain}/admin/reset-password?token={reset_token}"
-        
-        mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
-        mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
-        sender_email = os.environ.get('SENDER_EMAIL', 'noreply@bookaride.co.nz')
-        
-        if mailgun_api_key and mailgun_domain:
-            email_html = f"""
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <style>
-                    body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
-                    .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-                    .header {{ background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
-                    .header h1 {{ color: white; margin: 0; font-size: 28px; }}
-                    .content {{ background: #fff; padding: 30px; border: 1px solid #e5e5e5; }}
-                    .button {{ display: inline-block; background: #d4af37; color: #000 !important; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; margin: 20px 0; }}
-                    .footer {{ text-align: center; padding: 20px; color: #666; font-size: 12px; background: #faf8f3; }}
-                    .warning {{ background: #fff8e6; border: 1px solid #D4AF37; padding: 10px; border-radius: 5px; margin: 15px 0; }}
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <div class="header">
-                        <h1>ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â Password Reset Request</h1>
-                    </div>
-                    <div class="content">
-                        <p>Hello <strong>{admin['username']}</strong>,</p>
-                        <p>We received a request to reset your admin password for Book A Ride NZ.</p>
-                        <p>Click the button below to reset your password:</p>
-                        <p style="text-align: center;">
-                            <a href="{reset_link}" class="button">Reset Password</a>
-                        </p>
-                        <div class="warning">
-                            ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â° <strong>This link will expire in 1 hour.</strong><br>
-                            If you didn't request this reset, please ignore this email.
-                        </div>
-                        <p>Or copy and paste this link into your browser:</p>
-                        <p style="word-break: break-all; background: #faf8f3; padding: 10px; border-radius: 5px; font-size: 12px; border: 1px solid #e8e4d9;">{reset_link}</p>
-                    </div>
-                    <div class="footer">
-                        <p>Book A Ride NZ | Premium Airport Transfers</p>
-                        <p>This is an automated message. Please do not reply.</p>
-                    </div>
-                </div>
-            </body>
-            </html>
-            """
+    email = reset_request.email.lower().strip()
+    for attempt in range(2):
+        try:
+            # Check if admin exists with this email
+            admin = await db.admin_users.find_one({"email": email}, {"_id": 0})
             
-            try:
-                mailgun_response = requests.post(
-                    f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
-                    auth=("api", mailgun_api_key),
-                    data={
-                        "from": f"Book A Ride NZ <{sender_email}>",
-                        "to": email,
-                        "subject": "Password Reset Request - Book A Ride NZ Admin",
-                        "html": email_html
-                    }
-                )
-                
-                if mailgun_response.status_code == 200:
-                    logger.info(f"Password reset email sent to: {email}")
-                else:
-                    logger.error(f"Mailgun error: {mailgun_response.text}")
+            # Always return success (security - don't reveal if email exists)
+            if not admin:
+                logger.info(f"Password reset requested for non-existent email: {email}")
+                return {"message": "If this email is registered, you will receive a password reset link."}
+            
+            # Generate reset token
+            reset_token = uuid.uuid4().hex
+            expires_at = datetime.now(timezone.utc) + timedelta(hours=1)  # 1 hour expiry
+            
+            # Store reset token
+            await db.password_reset_tokens.insert_one({
+                "admin_id": admin["id"],
+                "username": admin["username"],
+                "email": email,
+                "token": reset_token,
+                "expires_at": expires_at.isoformat(),
+                "used": False,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            })
+            
+            # Send reset email via Mailgun
+            public_domain = os.environ.get('PUBLIC_DOMAIN', 'https://bookaride.co.nz')
+            reset_link = f"{public_domain}/admin/reset-password?token={reset_token}"
+            
+            mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
+            mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
+            sender_email = os.environ.get('SENDER_EMAIL', 'noreply@bookaride.co.nz')
+            
+            email_html = f"""
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <style>
+                        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                        .header {{ background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+                        .header h1 {{ color: white; margin: 0; font-size: 28px; }}
+                        .content {{ background: #fff; padding: 30px; border: 1px solid #e5e5e5; }}
+                        .button {{ display: inline-block; background: #d4af37; color: #000 !important; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; margin: 20px 0; }}
+                        .footer {{ text-align: center; padding: 20px; color: #666; font-size: 12px; background: #faf8f3; }}
+                        .warning {{ background: #fff8e6; border: 1px solid #D4AF37; padding: 10px; border-radius: 5px; margin: 15px 0; }}
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header">
+                            <h1>ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â Password Reset Request</h1>
+                        </div>
+                        <div class="content">
+                            <p>Hello <strong>{admin['username']}</strong>,</p>
+                            <p>We received a request to reset your admin password for Book A Ride NZ.</p>
+                            <p>Click the button below to reset your password:</p>
+                            <p style="text-align: center;">
+                                <a href="{reset_link}" class="button">Reset Password</a>
+                            </p>
+                            <div class="warning">
+                                ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â° <strong>This link will expire in 1 hour.</strong><br>
+                                If you didn't request this reset, please ignore this email.
+                            </div>
+                            <p>Or copy and paste this link into your browser:</p>
+                            <p style="word-break: break-all; background: #faf8f3; padding: 10px; border-radius: 5px; font-size: 12px; border: 1px solid #e8e4d9;">{reset_link}</p>
+                        </div>
+                        <div class="footer">
+                            <p>Book A Ride NZ | Premium Airport Transfers</p>
+                            <p>This is an automated message. Please do not reply.</p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+                """
+
+            email_sent = False
+            if mailgun_api_key and mailgun_domain:
+                try:
+                    mailgun_response = requests.post(
+                        f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
+                        auth=("api", mailgun_api_key),
+                        data={
+                            "from": f"Book A Ride NZ <{sender_email}>",
+                            "to": email,
+                            "subject": "Password Reset Request - Book A Ride NZ Admin",
+                            "html": email_html
+                        }
+                    )
                     
-            except Exception as mail_error:
-                logger.error(f"Failed to send reset email: {str(mail_error)}")
-        
-        return {"message": "If this email is registered, you will receive a password reset link."}
-        
-    except Exception as e:
-        logger.error(f"Password reset request error: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to process password reset request")
+                    if mailgun_response.status_code == 200:
+                        logger.info(f"Password reset email sent to: {email}")
+                        email_sent = True
+                    else:
+                        logger.error(f"Mailgun error: {mailgun_response.text}")
+                        
+                except Exception as mail_error:
+                    logger.error(f"Failed to send reset email: {str(mail_error)}")
+            if not email_sent:
+                # SMTP fallback (optional)
+                smtp_ok = _send_html_email_via_smtp(
+                    subject="Password Reset Request - Book A Ride NZ Admin",
+                    recipient_email=email,
+                    html_content=email_html,
+                )
+                if smtp_ok:
+                    logger.info("Password reset email sent via SMTP fallback to: %s", email)
+            
+            return {"message": "If this email is registered, you will receive a password reset link."}
+        except Exception as e:
+            if attempt == 0 and recover_db_case_conflict_if_needed(e, "password_reset_request"):
+                continue
+            logger.error(f"Password reset request error: {str(e)}")
+            raise HTTPException(status_code=500, detail="Failed to process password reset request")
+
+
+@api_router.post("/admin/break-glass/reset-password")
+async def break_glass_reset_password(
+    request: BreakGlassResetPasswordRequest,
+    x_break_glass_key: Optional[str] = Header(default=None, alias="X-Break-Glass-Key"),
+    http_request: Request = None,
+):
+    """
+    Emergency password reset without email delivery.
+
+    SECURITY:
+    - Disabled unless ADMIN_BREAK_GLASS_KEY env var is set.
+    - Requires X-Break-Glass-Key header (constant-time compare).
+    - Rate limited server-side.
+    """
+    secret = os.environ.get("ADMIN_BREAK_GLASS_KEY")
+    if not secret:
+        raise HTTPException(status_code=503, detail="Break-glass is not enabled")
+    if not x_break_glass_key or not hmac.compare_digest(x_break_glass_key, secret):
+        raise HTTPException(status_code=401, detail="Invalid break-glass key")
+
+    if not request.new_password or len(request.new_password) < 12:
+        raise HTTPException(status_code=400, detail="New password must be at least 12 characters")
+
+    # Simple DB-backed rate limit: max 3 uses per hour.
+    try:
+        one_hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
+        recent = await db.break_glass_events.count_documents({"created_at_dt": {"$gte": one_hour_ago}})
+        if recent >= 3:
+            raise HTTPException(status_code=429, detail="Break-glass rate limit exceeded")
+    except HTTPException:
+        raise
+    except Exception:
+        # If rate limit check fails, allow but log.
+        logger.warning("Break-glass rate limit check failed; allowing request.")
+
+    query = {}
+    if request.email:
+        query["email"] = request.email.lower().strip()
+    else:
+        query["username"] = (request.username or "admin").strip()
+
+    admin = await db.admin_users.find_one(query, {"_id": 0})
+    if not admin:
+        raise HTTPException(status_code=404, detail="Admin user not found")
+
+    new_hash = get_password_hash(request.new_password)
+    await db.admin_users.update_one(
+        {"username": admin["username"]},
+        {"$set": {
+            "hashed_password": new_hash,
+            "password_updated_at": datetime.now(timezone.utc).isoformat(),
+            "is_active": True,
+            "force_password_change": True,
+        }}
+    )
+
+    # Audit trail
+    try:
+        client_ip = None
+        if http_request is not None:
+            client_ip = getattr(http_request.client, "host", None)
+        await db.break_glass_events.insert_one({
+            "id": str(uuid.uuid4()),
+            "admin_username": admin["username"],
+            "admin_email": admin.get("email"),
+            "client_ip": client_ip,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_at_dt": datetime.now(timezone.utc),
+        })
+    except Exception as exc:
+        logger.warning("Failed to write break-glass audit record: %s", exc)
+
+    return {"success": True, "message": "Password reset successfully. Please log in and change it immediately."}
 
 
 @api_router.post("/admin/password-reset/confirm")
@@ -944,6 +1271,12 @@ async def root():
 @api_router.get("/health")
 async def health_check():
     """Health check endpoint for Kubernetes"""
+    return {"status": "healthy", "service": "bookaride-api"}
+
+
+@api_router.get("/healthz")
+async def healthz_check():
+    """Compatibility API health endpoint."""
     return {"status": "healthy", "service": "bookaride-api"}
 
 
@@ -1461,14 +1794,45 @@ async def create_booking(booking: BookingCreate, background_tasks: BackgroundTas
 
 # Quick Approve/Reject Endpoint (for email links - no auth required, uses secure token)
 @api_router.get("/booking/quick-approve/{booking_id}")
-async def quick_approve_booking(booking_id: str, action: str = "approve"):
+async def quick_approve_booking(booking_id: str, action: str = "approve", token: str = ""):
     """
     Quick approve or reject a booking directly from email link.
-    No authentication required - accessed via unique booking ID from email.
+    Requires signed token with expiration.
     """
     from fastapi.responses import HTMLResponse
     
     try:
+        if action not in {"approve", "reject"}:
+            return HTMLResponse(content="""
+                <html><body style="font-family: Arial; text-align: center; padding: 50px;">
+                    <h1 style="color: #f59e0b;">Invalid Action</h1>
+                    <p>Please use the approve or reject buttons from the email.</p>
+                </body></html>
+            """, status_code=400)
+
+        try:
+            token_payload = validate_quick_approval_token(token, booking_id, action)
+        except HTTPException as token_error:
+            return HTMLResponse(content=f"""
+                <html><body style="font-family: Arial; text-align: center; padding: 50px; background-color: #fef2f2;">
+                    <h1 style="color: #DC2626;">Approval Link Invalid</h1>
+                    <p>{token_error.detail}</p>
+                    <p>Please open the admin dashboard to process this booking.</p>
+                    <a href="https://bookaride.co.nz/admin/dashboard" style="display: inline-block; margin-top: 20px; padding: 15px 30px; background-color: #f59e0b; color: white; text-decoration: none; border-radius: 8px;">Go to Admin Dashboard</a>
+                </body></html>
+            """, status_code=token_error.status_code)
+
+        token_jti = token_payload.get("jti")
+        token_state = await db.quick_approval_tokens.find_one({"jti": token_jti}, {"_id": 0})
+        if token_state and token_state.get("used"):
+            return HTMLResponse(content="""
+                <html><body style="font-family: Arial; text-align: center; padding: 50px; background-color: #fff7ed;">
+                    <h1 style="color: #c2410c;">Link Already Used</h1>
+                    <p>This approval link has already been used.</p>
+                    <a href="https://bookaride.co.nz/admin/dashboard" style="display: inline-block; margin-top: 20px; padding: 15px 30px; background-color: #f59e0b; color: white; text-decoration: none; border-radius: 8px;">Go to Admin Dashboard</a>
+                </body></html>
+            """, status_code=409)
+
         # Find the booking
         booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
         
@@ -1503,6 +1867,17 @@ async def quick_approve_booking(booking_id: str, action: str = "approve"):
                 logger.error(f"Failed to send confirmation: {e}")
             
             logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Booking {booking_ref} APPROVED via email quick-approve")
+            await db.quick_approval_tokens.update_one(
+                {"jti": token_jti},
+                {"$set": {
+                    "jti": token_jti,
+                    "used": True,
+                    "booking_id": booking_id,
+                    "action": action,
+                    "used_at": datetime.now(timezone.utc).isoformat()
+                }},
+                upsert=True
+            )
             
             return HTMLResponse(content=f"""
                 <html><body style="font-family: Arial; text-align: center; padding: 50px; background-color: #f0fdf4;">
@@ -1532,6 +1907,17 @@ async def quick_approve_booking(booking_id: str, action: str = "approve"):
             # TODO: Optionally send rejection email to customer
             
             logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Booking {booking_ref} REJECTED via email quick-approve")
+            await db.quick_approval_tokens.update_one(
+                {"jti": token_jti},
+                {"$set": {
+                    "jti": token_jti,
+                    "used": True,
+                    "booking_id": booking_id,
+                    "action": action,
+                    "used_at": datetime.now(timezone.utc).isoformat()
+                }},
+                upsert=True
+            )
             
             return HTMLResponse(content=f"""
                 <html><body style="font-family: Arial; text-align: center; padding: 50px; background-color: #fef2f2;">
@@ -1545,14 +1931,6 @@ async def quick_approve_booking(booking_id: str, action: str = "approve"):
                     </div>
                 </body></html>
             """)
-        else:
-            return HTMLResponse(content="""
-                <html><body style="font-family: Arial; text-align: center; padding: 50px;">
-                    <h1 style="color: #f59e0b;">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â Invalid Action</h1>
-                    <p>Please use the approve or reject buttons from the email.</p>
-                </body></html>
-            """, status_code=400)
-            
     except Exception as e:
         logger.error(f"Error in quick approve: {str(e)}")
         return HTMLResponse(content=f"""
@@ -1576,69 +1954,90 @@ async def get_bookings(
     date_to: str = None
 ):
     """Get bookings with pagination and filtering for faster loading"""
-    try:
-        # Build query
-        query = {}
-        
-        # Status filter
-        if status and status != 'all':
-            query['status'] = status
-        
-        # Search filter (name, email, phone, reference)
-        if search:
-            query['$or'] = [
-                {'name': {'$regex': search, '$options': 'i'}},
-                {'email': {'$regex': search, '$options': 'i'}},
-                {'phone': {'$regex': search, '$options': 'i'}},
-                {'referenceNumber': {'$regex': search, '$options': 'i'}},
-                {'original_booking_id': {'$regex': search, '$options': 'i'}}
+    for attempt in range(2):
+        try:
+            # Build query
+            query = {}
+            
+            # Status filter
+            if status and status != 'all':
+                query['status'] = status
+            
+            # Search filter (name, email, phone, reference)
+            if search and search.strip():
+                safe_search = re.escape(search.strip())
+                query['$or'] = [
+                    {'name': {'$regex': safe_search, '$options': 'i'}},
+                    {'email': {'$regex': safe_search, '$options': 'i'}},
+                    {'phone': {'$regex': safe_search, '$options': 'i'}},
+                    {'referenceNumber': {'$regex': safe_search, '$options': 'i'}},
+                    {'original_booking_id': {'$regex': safe_search, '$options': 'i'}}
+                ]
+            
+            # Date range filter
+            if date_from:
+                query['date'] = query.get('date', {})
+                query['date']['$gte'] = date_from
+            if date_to:
+                query.setdefault('date', {})['$lte'] = date_to
+            
+            # Calculate skip for pagination
+            skip = (page - 1) * limit
+            
+            # Get total count for pagination info
+            total = await db.bookings.count_documents(query)
+            
+            # Get current date in NZ timezone for sorting priority
+            nz_tz = pytz.timezone('Pacific/Auckland')
+            now_nz = datetime.now(nz_tz)
+            today_str = now_nz.strftime('%Y-%m-%d')
+            
+            # Sort in MongoDB and fetch only requested page
+            pipeline = [
+                {"$match": query},
+                {"$addFields": {
+                    "_sort_date": {"$ifNull": ["$date", "9999-99-99"]},
+                    "_sort_time": {"$ifNull": ["$time", "00:00"]},
+                    "_sort_bucket": {
+                        "$switch": {
+                            "branches": [
+                                {"case": {"$eq": [{"$ifNull": ["$date", ""]}, today_str]}, "then": 0},
+                                {"case": {"$gt": [{"$ifNull": ["$date", ""]}, today_str]}, "then": 1},
+                            ],
+                            "default": 2,
+                        }
+                    },
+                }},
+                {"$sort": {"_sort_bucket": 1, "_sort_date": 1, "_sort_time": 1}},
+                {"$project": {"_id": 0, "_sort_bucket": 0, "_sort_date": 0, "_sort_time": 0}},
+                {"$skip": skip},
+                {"$limit": limit},
             ]
-        
-        # Date range filter
-        if date_from:
-            query['date'] = query.get('date', {})
-            query['date']['$gte'] = date_from
-        if date_to:
-            query.setdefault('date', {})['$lte'] = date_to
-        
-        # Calculate skip for pagination
-        skip = (page - 1) * limit
-        
-        # Get total count for pagination info
-        total = await db.bookings.count_documents(query)
-        
-        # Get current date in NZ timezone for sorting priority
-        nz_tz = pytz.timezone('Pacific/Auckland')
-        now_nz = datetime.now(nz_tz)
-        today_str = now_nz.strftime('%Y-%m-%d')
-        
-        # Fetch ALL matching bookings to sort properly (needed for smart date ordering)
-        all_bookings = await db.bookings.find(query, {"_id": 0}).to_list(None)
-        
-        # Custom sort: prioritize today, then tomorrow, then upcoming dates, then past dates
-        def sort_key(b):
-            date = b.get('date', '9999-99-99')
-            time = b.get('time', '00:00')
-            if date == today_str:
-                return (0, time)  # Today first
-            elif date > today_str:
-                return (1, date, time)  # Future dates in ascending order
-            else:
-                return (2, date, time)  # Past dates last
-        
-        all_bookings.sort(key=sort_key)
-        logger.info(f"Today: {today_str}, First 3 bookings after sort: {[b.get('date') for b in all_bookings[:3]]}")
-        
-        # Apply pagination
-        bookings = all_bookings[skip:skip + limit]
-        
-        # Add pagination headers via response
-        logger.info(f"Fetched {len(bookings)} bookings (page {page}, total {total})")
-        
-        return [Booking(**booking) for booking in bookings]
-    except Exception as e:
-        logger.error(f"Error fetching bookings: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error fetching bookings: {str(e)}")
+            bookings = await db.bookings.aggregate(pipeline, allowDiskUse=True).to_list(limit)
+
+            validated_bookings = []
+            skipped_invalid = 0
+            for booking in bookings:
+                try:
+                    validated_bookings.append(Booking(**booking))
+                except Exception as validation_error:
+                    skipped_invalid += 1
+                    logger.warning(
+                        "Skipping invalid booking payload id=%s: %s",
+                        booking.get("id", "unknown"),
+                        validation_error,
+                    )
+
+            if skipped_invalid:
+                logger.warning("Skipped %s invalid bookings while fetching page %s.", skipped_invalid, page)
+
+            logger.info(f"Fetched {len(validated_bookings)} bookings (page {page}, total {total})")
+            return validated_bookings
+        except Exception as e:
+            if attempt == 0 and recover_db_case_conflict_if_needed(e, "get_bookings"):
+                continue
+            logger.error(f"Error fetching bookings: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Error fetching bookings: {str(e)}")
 
 
 @api_router.get("/bookings/count")
@@ -1978,6 +2377,110 @@ def get_full_booking_reference(booking: dict) -> str:
     return booking.get('id', 'N/A')
 
 
+def record_notification_event(
+    booking: dict,
+    event_type: str,
+    channel: str,
+    status: str,
+    recipient: str = "",
+    provider: str = "",
+    error_message: str = "",
+    meta: Optional[dict] = None,
+    parent_event_id: Optional[str] = None,
+) -> str:
+    """Persist notification delivery events for Comms Center visibility."""
+    event_id = str(uuid.uuid4())
+    try:
+        from pymongo import MongoClient
+        sync_client = MongoClient(os.environ.get('MONGO_URL', 'mongodb://localhost:27017'))
+        sync_db = sync_client[db_name]
+        sync_db.notification_logs.insert_one({
+            "id": event_id,
+            "booking_id": booking.get("id"),
+            "booking_ref": get_booking_reference(booking),
+            "customer_name": booking.get("name"),
+            "event_type": event_type,
+            "channel": channel,
+            "status": status,
+            "recipient": recipient,
+            "provider": provider,
+            "error": error_message or None,
+            "meta": meta or {},
+            "retry_count": int((meta or {}).get("retry_count", 0)),
+            "parent_event_id": parent_event_id,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        })
+        sync_client.close()
+    except Exception as exc:
+        logger.warning("Failed to record notification event: %s", exc)
+    return event_id
+
+
+DEFAULT_NOTIFICATION_TEMPLATES = [
+    {
+        "key": "confirmation_email_subject",
+        "channel": "email",
+        "event_type": "confirmation",
+        "description": "Email subject for booking confirmations",
+        "content": "Booking Confirmation - Ref: {booking_ref}",
+    },
+    {
+        "key": "reminder_email_subject",
+        "channel": "email",
+        "event_type": "reminder",
+        "description": "Email subject for day-before reminders",
+        "content": "Your Ride Tomorrow - {date} at {time} - Ref: {booking_ref}",
+    },
+    {
+        "key": "confirmation_sms_body",
+        "channel": "sms",
+        "event_type": "confirmation",
+        "description": "SMS body for booking confirmations",
+        "content": "Book A Ride NZ - Booking Confirmed!\n\nRef: {booking_ref}\nPickup: {pickup}\nDate: {date} at {time}{flight_text}\nTotal: ${total_price:.2f} NZD{return_text}\n\nThank you for booking with us!",
+    },
+    {
+        "key": "reminder_sms_standard",
+        "channel": "sms",
+        "event_type": "reminder",
+        "description": "SMS body for standard day-before reminders",
+        "content": "BookaRide - Tomorrow\n\n{customer_name}, your ride is confirmed for TOMORROW.\n\nDate: {date}\nTime: {time}\nPickup: {pickup_short}\n{driver_line}\nPlease be ready 5 mins early.\nRef: {booking_ref}\nQuestions? +64 21 743 321",
+    },
+    {
+        "key": "reminder_sms_airport",
+        "channel": "sms",
+        "event_type": "reminder",
+        "description": "SMS body for airport pickup reminders",
+        "content": "BookaRide - Tomorrow\n\n{customer_name}, your transfer is confirmed for TOMORROW at {time}.\n\nMEETING POINT:\nYour driver will hold either a BOOK A RIDE sign or an iPad with your name.\n\nDIRECTIONS:\n1. Exit Customs into Arrivals Hall\n2. TURN LEFT immediately\n3. Walk to Allpress Espresso Cafe\n4. All drivers wait in front of the cafe\n\nRef: {booking_ref}\nQuestions? +64 21 743 321",
+    },
+]
+
+
+def get_notification_template_content(template_key: str, fallback: str, context: Optional[dict] = None) -> str:
+    """Fetch admin-managed template content and render with context."""
+    try:
+        from pymongo import MongoClient
+        sync_client = MongoClient(os.environ.get('MONGO_URL', 'mongodb://localhost:27017'))
+        sync_db = sync_client[db_name]
+        template_doc = sync_db.notification_templates.find_one(
+            {"key": template_key, "is_active": {"$ne": False}},
+            {"_id": 0, "content": 1},
+        )
+        sync_client.close()
+        if not template_doc or not template_doc.get("content"):
+            return fallback
+        content = template_doc["content"]
+        if context:
+            try:
+                return content.format(**context)
+            except Exception as fmt_err:
+                logger.warning("Template render failed for %s: %s", template_key, fmt_err)
+                return content
+        return content
+    except Exception as exc:
+        logger.warning("Template lookup failed for %s: %s", template_key, exc)
+        return fallback
+
+
 # Email and SMS Notification Services
 
 # Email translations
@@ -2094,14 +2597,34 @@ EMAIL_TRANSLATIONS = {
 
 def send_booking_confirmation_email(booking: dict, include_payment_link: bool = True):
     """Send booking confirmation email via Mailgun or SMTP fallback"""
+    recipient_email = booking.get('email', '')
+
     # Try Mailgun first
     mailgun_success = send_via_mailgun(booking)
     if mailgun_success:
+        record_notification_event(
+            booking,
+            event_type="confirmation",
+            channel="email",
+            status="sent",
+            recipient=recipient_email,
+            provider="mailgun",
+        )
         return True
     
     # Fallback to SMTP if Mailgun fails
     logger.warning("Mailgun failed, trying SMTP fallback...")
-    return send_via_smtp(booking)
+    smtp_success = send_via_smtp(booking)
+    record_notification_event(
+        booking,
+        event_type="confirmation",
+        channel="email",
+        status="sent" if smtp_success else "failed",
+        recipient=recipient_email,
+        provider="smtp_fallback",
+        error_message="" if smtp_success else "Mailgun and SMTP delivery failed",
+    )
+    return smtp_success
 
 
 def send_via_mailgun(booking: dict):
@@ -2124,7 +2647,17 @@ def send_via_mailgun(booking: dict):
             lang = 'en'
         t = EMAIL_TRANSLATIONS[lang]
         
-        subject = f"{t['subject']} - Ref: {booking_ref}"
+        default_subject = f"{t['subject']} - Ref: {booking_ref}"
+        subject = get_notification_template_content(
+            "confirmation_email_subject",
+            default_subject,
+            context={
+                "booking_ref": booking_ref,
+                "customer_name": booking.get('name', 'Customer'),
+                "date": format_date_ddmmyyyy(booking.get('date', '')),
+                "time": format_time_ampm(booking.get('time', '')),
+            },
+        )
         recipient_email = booking.get('email')
         
         # Use the beautiful email template
@@ -2176,7 +2709,16 @@ def send_via_smtp(booking: dict):
         
         # Create email content using the beautiful template
         booking_ref = get_booking_reference(booking)
-        subject = f"Booking Confirmation - Ref: {booking_ref}"
+        subject = get_notification_template_content(
+            "confirmation_email_subject",
+            f"Booking Confirmation - Ref: {booking_ref}",
+            context={
+                "booking_ref": booking_ref,
+                "customer_name": booking.get('name', 'Customer'),
+                "date": format_date_ddmmyyyy(booking.get('date', '')),
+                "time": format_time_ampm(booking.get('time', '')),
+            },
+        )
         recipient_email = booking.get('email')
         
         # Use the beautiful email template
@@ -2210,6 +2752,7 @@ def send_via_smtp(booking: dict):
 
 def send_booking_confirmation_sms(booking: dict):
     """Send booking confirmation SMS via Twilio"""
+    recipient_phone = format_nz_phone(booking.get('phone', ''))
     try:
         account_sid = os.environ.get('TWILIO_ACCOUNT_SID')
         auth_token = os.environ.get('TWILIO_AUTH_TOKEN')
@@ -2217,6 +2760,15 @@ def send_booking_confirmation_sms(booking: dict):
         
         if not account_sid or not auth_token or not twilio_phone:
             logger.warning("Twilio credentials not configured")
+            record_notification_event(
+                booking,
+                event_type="confirmation",
+                channel="sms",
+                status="failed",
+                recipient=recipient_phone,
+                provider="twilio",
+                error_message="Twilio credentials not configured",
+            )
             return False
         
         client = Client(account_sid, auth_token)
@@ -2244,34 +2796,72 @@ def send_booking_confirmation_sms(booking: dict):
         pricing = booking.get('pricing', {})
         total_price = pricing.get('totalPrice') or booking.get('totalPrice', 0)
         
-        # Create SMS message
-        message_body = f"""Book A Ride NZ - Booking Confirmed!
+        # Create SMS message (template-governed)
+        message_body = get_notification_template_content(
+            "confirmation_sms_body",
+            f"""Book A Ride NZ - Booking Confirmed!
 
 Ref: {booking_ref}
 Pickup: {booking.get('pickupAddress', 'N/A')}
 Date: {formatted_date} at {formatted_time}{flight_text}
 Total: ${total_price:.2f} NZD{return_text}
 
-Thank you for booking with us!"""
+Thank you for booking with us!""",
+            context={
+                "booking_ref": booking_ref,
+                "pickup": booking.get('pickupAddress', 'N/A'),
+                "date": formatted_date,
+                "time": formatted_time,
+                "flight_text": flight_text,
+                "total_price": float(total_price or 0),
+                "return_text": return_text,
+            },
+        )
         
-        formatted_phone = format_nz_phone(booking.get('phone', ''))
-        if not formatted_phone:
+        if not recipient_phone:
             logger.warning("No phone number provided for confirmation SMS")
+            record_notification_event(
+                booking,
+                event_type="confirmation",
+                channel="sms",
+                status="failed",
+                recipient="",
+                provider="twilio",
+                error_message="Missing customer phone number",
+            )
             return False
         
-        logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â± Sending confirmation SMS to: {formatted_phone}")
+        logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â± Sending confirmation SMS to: {recipient_phone}")
         
         message = client.messages.create(
             body=message_body,
             from_=twilio_phone,
-            to=formatted_phone
+            to=recipient_phone
         )
         
-        logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Confirmation SMS sent to {formatted_phone} - SID: {message.sid}")
+        logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Confirmation SMS sent to {recipient_phone} - SID: {message.sid}")
+        record_notification_event(
+            booking,
+            event_type="confirmation",
+            channel="sms",
+            status="sent",
+            recipient=recipient_phone,
+            provider="twilio",
+            meta={"sid": getattr(message, "sid", None)},
+        )
         return True
         
     except Exception as e:
         logger.error(f"Error sending confirmation SMS: {str(e)}")
+        record_notification_event(
+            booking,
+            event_type="confirmation",
+            channel="sms",
+            status="failed",
+            recipient=recipient_phone,
+            provider="twilio",
+            error_message=str(e),
+        )
         return False
 
 
@@ -2299,7 +2889,7 @@ def send_customer_confirmation(booking: dict):
         try:
             from pymongo import MongoClient
             sync_client = MongoClient(os.environ.get('MONGO_URL', 'mongodb://localhost:27017'))
-            sync_db = sync_client[os.environ.get('DB_NAME', 'test_database')]
+            sync_db = sync_client[db_name]
             
             nz_tz = pytz.timezone('Pacific/Auckland')
             now = datetime.now(nz_tz).isoformat()
@@ -2346,11 +2936,21 @@ async def update_confirmation_status(booking_id: str, results: dict):
 
 def send_reminder_email(booking: dict):
     """Send day-before reminder email to customer with professional pickup instructions"""
+    recipient_email = booking.get('email', '')
     try:
         # SAFETY CHECK: Don't send reminders for cancelled bookings
         booking_status = booking.get('status', '').lower()
         if booking_status in ['cancelled', 'canceled', 'deleted']:
             logger.warning(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â Skipping reminder email for CANCELLED booking: {booking.get('name')} (Ref: {booking.get('referenceNumber')})")
+            record_notification_event(
+                booking,
+                event_type="reminder",
+                channel="email",
+                status="skipped",
+                recipient=recipient_email,
+                provider="mailgun",
+                error_message="Booking is cancelled",
+            )
             return False
         
         mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
@@ -2359,12 +2959,20 @@ def send_reminder_email(booking: dict):
         
         if not mailgun_api_key or not mailgun_domain:
             logger.warning("Mailgun credentials not configured for reminder")
+            record_notification_event(
+                booking,
+                event_type="reminder",
+                channel="email",
+                status="failed",
+                recipient=recipient_email,
+                provider="mailgun",
+                error_message="Mailgun credentials not configured",
+            )
             return False
         
         booking_ref = get_booking_reference(booking)
         formatted_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
         formatted_time = format_time_ampm(booking.get('time', 'N/A'))
-        recipient_email = booking.get('email')
         customer_name = booking.get('name', 'Customer')
         driver_name = booking.get('driver_name', '')
         
@@ -2501,36 +3109,83 @@ def send_reminder_email(booking: dict):
         </html>
         '''
         
+        reminder_subject = get_notification_template_content(
+            "reminder_email_subject",
+            f"Your Ride Tomorrow - {formatted_date} at {formatted_time} - Ref: {booking_ref}",
+            context={
+                "booking_ref": booking_ref,
+                "customer_name": customer_name,
+                "date": formatted_date,
+                "time": formatted_time,
+            },
+        )
+
         response = requests.post(
             f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
             auth=("api", mailgun_api_key),
             data={
                 "from": f"BookaRide <{sender_email}>",
                 "to": recipient_email,
-                "subject": f"Your Ride Tomorrow - {formatted_date} at {formatted_time} - Ref: {booking_ref}",
+                "subject": reminder_subject,
                 "html": html_content
             }
         )
         
         if response.status_code == 200:
             logger.info(f"Reminder email sent to {recipient_email}")
+            record_notification_event(
+                booking,
+                event_type="reminder",
+                channel="email",
+                status="sent",
+                recipient=recipient_email,
+                provider="mailgun",
+            )
             return True
         else:
             logger.error(f"Reminder email failed: {response.status_code} - {response.text}")
+            record_notification_event(
+                booking,
+                event_type="reminder",
+                channel="email",
+                status="failed",
+                recipient=recipient_email,
+                provider="mailgun",
+                error_message=f"{response.status_code}: {response.text[:300]}",
+            )
             return False
             
     except Exception as e:
         logger.error(f"Error sending reminder email: {str(e)}")
+        record_notification_event(
+            booking,
+            event_type="reminder",
+            channel="email",
+            status="failed",
+            recipient=recipient_email,
+            provider="mailgun",
+            error_message=str(e),
+        )
         return False
 
 
 def send_reminder_sms(booking: dict):
     """Send day-before reminder SMS to customer"""
+    recipient_phone = format_nz_phone(booking.get('phone', ''))
     try:
         # SAFETY CHECK: Don't send reminders for cancelled bookings
         booking_status = booking.get('status', '').lower()
         if booking_status in ['cancelled', 'canceled', 'deleted']:
             logger.warning(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â Skipping reminder SMS for CANCELLED booking: {booking.get('name')} (Ref: {booking.get('referenceNumber')})")
+            record_notification_event(
+                booking,
+                event_type="reminder",
+                channel="sms",
+                status="skipped",
+                recipient=recipient_phone,
+                provider="twilio",
+                error_message="Booking is cancelled",
+            )
             return False
         
         account_sid = os.environ.get('TWILIO_ACCOUNT_SID')
@@ -2539,6 +3194,15 @@ def send_reminder_sms(booking: dict):
         
         if not account_sid or not auth_token or not twilio_phone:
             logger.warning("Twilio credentials not configured for reminder")
+            record_notification_event(
+                booking,
+                event_type="reminder",
+                channel="sms",
+                status="failed",
+                recipient=recipient_phone,
+                provider="twilio",
+                error_message="Twilio credentials not configured",
+            )
             return False
         
         client = Client(account_sid, auth_token)
@@ -2555,7 +3219,9 @@ def send_reminder_sms(booking: dict):
         
         if is_airport_pickup:
             # Professional airport pickup SMS with meeting point instructions
-            message_body = f"""BookaRide - Tomorrow
+            message_body = get_notification_template_content(
+                "reminder_sms_airport",
+                f"""BookaRide - Tomorrow
 
 {customer_name}, your transfer is confirmed for TOMORROW at {formatted_time}.
 
@@ -2565,14 +3231,22 @@ Your driver will hold either a BOOK A RIDE sign or an iPad with your name.
 DIRECTIONS:
 1. Exit Customs into Arrivals Hall
 2. TURN LEFT immediately  
-3. Walk to Allpress Espresso CafÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©
-4. All drivers wait in front of the cafÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©
+3. Walk to Allpress Espresso Cafe
+4. All drivers wait in front of the cafe
 
 Ref: {booking_ref}
-Questions? +64 21 743 321"""
+Questions? +64 21 743 321""",
+                context={
+                    "customer_name": customer_name,
+                    "time": formatted_time,
+                    "booking_ref": booking_ref,
+                },
+            )
         else:
             # Standard reminder SMS
-            message_body = f"""BookaRide - Tomorrow
+            message_body = get_notification_template_content(
+                "reminder_sms_standard",
+                f"""BookaRide - Tomorrow
 
 {customer_name}, your ride is confirmed for TOMORROW.
 
@@ -2583,26 +3257,61 @@ Pickup: {booking.get('pickupAddress', 'N/A')[:60]}
 
 Please be ready 5 mins early.
 Ref: {booking_ref}
-Questions? +64 21 743 321"""
+Questions? +64 21 743 321""",
+                context={
+                    "customer_name": customer_name,
+                    "date": formatted_date,
+                    "time": formatted_time,
+                    "pickup_short": booking.get('pickupAddress', 'N/A')[:60],
+                    "driver_line": f"Driver: {driver_name}" if driver_name else "",
+                    "booking_ref": booking_ref,
+                },
+            )
         
-        formatted_phone = format_nz_phone(booking.get('phone', ''))
-        if not formatted_phone:
+        if not recipient_phone:
             logger.warning("No phone number for reminder SMS")
+            record_notification_event(
+                booking,
+                event_type="reminder",
+                channel="sms",
+                status="failed",
+                recipient="",
+                provider="twilio",
+                error_message="Missing customer phone number",
+            )
             return False
         
-        logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â± Sending reminder SMS to: {formatted_phone}")
+        logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â± Sending reminder SMS to: {recipient_phone}")
         
         message = client.messages.create(
             body=message_body,
             from_=twilio_phone,
-            to=formatted_phone
+            to=recipient_phone
         )
         
-        logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Reminder SMS sent to {formatted_phone} - SID: {message.sid}")
+        logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Reminder SMS sent to {recipient_phone} - SID: {message.sid}")
+        record_notification_event(
+            booking,
+            event_type="reminder",
+            channel="sms",
+            status="sent",
+            recipient=recipient_phone,
+            provider="twilio",
+            meta={"sid": getattr(message, "sid", None)},
+        )
         return True
         
     except Exception as e:
         logger.error(f"Error sending reminder SMS: {str(e)}")
+        record_notification_event(
+            booking,
+            event_type="reminder",
+            channel="sms",
+            status="failed",
+            recipient=recipient_phone,
+            provider="twilio",
+            error_message=str(e),
+        )
         return False
 
 
@@ -2998,8 +3707,13 @@ FORMAT:
 - Sign: "Best regards,\nBookaRide Team"
 """
         
+        llm_api_key = get_llm_api_key()
+        if not llm_api_key:
+            logger.error("Missing LLM API key for autoresponder")
+            return {"status": "error", "reason": "LLM API key not configured"}
+
         llm = LlmChat(
-            api_key="sk-emergent-1221fFe2cB790B632B",
+            api_key=llm_api_key,
             session_id=str(uuid.uuid4()),
             system_message=email_system_prompt
         )
@@ -3099,6 +3813,205 @@ async def get_email_logs(current_admin: dict = Depends(get_current_admin), limit
         return {"logs": logs, "count": len(logs)}
     except Exception as e:
         logger.error(f"Error fetching email logs: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class NotificationRetryRequest(BaseModel):
+    event_id: str
+    channel: Optional[str] = None
+
+
+class NotificationTemplateUpdateRequest(BaseModel):
+    content: str
+    description: Optional[str] = None
+    channel: Optional[str] = None
+    event_type: Optional[str] = None
+    is_active: bool = True
+
+
+async def ensure_default_notification_templates() -> None:
+    """Seed default template definitions for governance UI."""
+    for template in DEFAULT_NOTIFICATION_TEMPLATES:
+        await db.notification_templates.update_one(
+            {"key": template["key"]},
+            {"$setOnInsert": {
+                "id": str(uuid.uuid4()),
+                "key": template["key"],
+                "channel": template["channel"],
+                "event_type": template["event_type"],
+                "description": template["description"],
+                "content": template["content"],
+                "is_active": True,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }},
+            upsert=True
+        )
+
+
+@api_router.get("/admin/notification-logs")
+async def get_notification_logs(
+    current_admin: dict = Depends(get_current_admin),
+    limit: int = 100,
+    status: Optional[str] = None,
+    channel: Optional[str] = None,
+):
+    """Delivery log for customer comms (queued/sent/failed/skipped)."""
+    try:
+        query: Dict[str, str] = {}
+        if status:
+            query["status"] = status
+        if channel:
+            query["channel"] = channel
+        logs = await db.notification_logs.find(query, {"_id": 0}).sort("created_at", -1).limit(limit).to_list(limit)
+        return {"logs": logs, "count": len(logs)}
+    except Exception as e:
+        logger.error(f"Error fetching notification logs: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/admin/notification-retry-queue")
+async def get_notification_retry_queue(
+    current_admin: dict = Depends(get_current_admin),
+    limit: int = 100,
+):
+    """Get latest failed notification per booking/channel/event for manual retry."""
+    try:
+        pipeline = [
+            {"$sort": {"created_at": -1}},
+            {"$group": {
+                "_id": {
+                    "booking_id": "$booking_id",
+                    "event_type": "$event_type",
+                    "channel": "$channel",
+                },
+                "latest": {"$first": "$$ROOT"},
+            }},
+            {"$replaceRoot": {"newRoot": "$latest"}},
+            {"$match": {"status": "failed"}},
+            {"$sort": {"created_at": -1}},
+            {"$limit": limit},
+            {"$project": {"_id": 0}},
+        ]
+        queue = await db.notification_logs.aggregate(pipeline).to_list(limit)
+        for item in queue:
+            retry_count = int(item.get("retry_count", 0))
+            item["can_retry"] = retry_count < 5
+            item["max_retries"] = 5
+        return {"queue": queue, "count": len(queue)}
+    except Exception as e:
+        logger.error(f"Error fetching retry queue: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/admin/notifications/retry")
+async def retry_notification(
+    request: NotificationRetryRequest,
+    current_admin: dict = Depends(get_current_admin),
+):
+    """Manual resend control for failed notification events."""
+    try:
+        event = await db.notification_logs.find_one({"id": request.event_id}, {"_id": 0})
+        if not event:
+            raise HTTPException(status_code=404, detail="Notification event not found")
+
+        retry_count = int(event.get("retry_count", 0))
+        if retry_count >= 5:
+            raise HTTPException(status_code=429, detail="Retry limit reached for this event")
+
+        booking_id = event.get("booking_id")
+        booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+        if not booking:
+            raise HTTPException(status_code=404, detail="Booking for this event was not found")
+
+        event_type = event.get("event_type")
+        channel = request.channel or event.get("channel")
+        success = False
+        error_text = ""
+
+        try:
+            if event_type == "confirmation" and channel == "email":
+                success = send_booking_confirmation_email(booking)
+            elif event_type == "confirmation" and channel == "sms":
+                success = send_booking_confirmation_sms(booking)
+            elif event_type == "reminder" and channel == "email":
+                success = send_reminder_email(booking)
+            elif event_type == "reminder" and channel == "sms":
+                success = send_reminder_sms(booking)
+            else:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Unsupported retry target: event_type={event_type}, channel={channel}",
+                )
+        except HTTPException:
+            raise
+        except Exception as retry_exc:
+            success = False
+            error_text = str(retry_exc)
+
+        await db.notification_logs.update_one(
+            {"id": request.event_id},
+            {"$set": {
+                "retry_count": retry_count + 1,
+                "last_retry_at": datetime.now(timezone.utc).isoformat(),
+                "last_retry_success": success,
+                "last_retry_channel": channel,
+                "last_retry_by": current_admin.get("username"),
+                "last_retry_error": error_text if error_text else None,
+                "status": "resolved" if success else "failed",
+            }}
+        )
+
+        if not success:
+            raise HTTPException(status_code=502, detail=error_text or "Retry send failed")
+
+        return {"success": True, "message": f"{event_type} {channel} resent successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error retrying notification: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/admin/notification-templates")
+async def get_notification_templates(current_admin: dict = Depends(get_current_admin)):
+    """List templates used by outbound comms."""
+    try:
+        await ensure_default_notification_templates()
+        templates = await db.notification_templates.find({}, {"_id": 0}).sort("key", 1).to_list(200)
+        return {"templates": templates, "count": len(templates)}
+    except Exception as e:
+        logger.error(f"Error fetching notification templates: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.put("/admin/notification-templates/{template_key}")
+async def update_notification_template(
+    template_key: str,
+    request: NotificationTemplateUpdateRequest,
+    current_admin: dict = Depends(get_current_admin),
+):
+    """Update template body/metadata and activation state."""
+    try:
+        await db.notification_templates.update_one(
+            {"key": template_key},
+            {"$set": {
+                "key": template_key,
+                "content": request.content,
+                "description": request.description,
+                "channel": request.channel,
+                "event_type": request.event_type,
+                "is_active": request.is_active,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "updated_by": current_admin.get("username"),
+            }, "$setOnInsert": {
+                "id": str(uuid.uuid4()),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }},
+            upsert=True,
+        )
+        return {"success": True, "message": "Template updated"}
+    except Exception as e:
+        logger.error(f"Error updating notification template: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -3311,8 +4224,12 @@ IMPORTANT:
 - Explain WHY we can't give exact prices without addresses (every house is different distance!)
 - The booking form has a LIVE PRICE CALCULATOR - they see the price instantly when they enter addresses"""
 
+        llm_api_key = get_llm_api_key()
+        if not llm_api_key:
+            raise RuntimeError("LLM API key not configured for chatbot")
+
         llm = LlmChat(
-            api_key="sk-emergent-1221fFe2cB790B632B",
+            api_key=llm_api_key,
             session_id=str(uuid.uuid4()),
             system_message=system_prompt
         )
@@ -3461,9 +4378,9 @@ async def send_daily_reminders_core(source: str = "unknown"):
 async def cron_send_reminders(api_key: str = None):
     """Endpoint for external cron service to trigger reminders (requires API key)"""
     try:
-        expected_key = os.environ.get('CRON_API_KEY', 'bookaride-cron-secret-2024')
+        expected_key = get_endpoint_secret('CRON_API_KEY')
         
-        if api_key != expected_key:
+        if not api_key or not hmac.compare_digest(api_key, expected_key):
             raise HTTPException(status_code=401, detail="Invalid API key")
         
         result = await send_daily_reminders_core(source="cron_endpoint")
@@ -3493,6 +4410,11 @@ async def send_booking_notification_to_admin(booking: dict):
         formatted_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
         booking_ref = get_booking_reference(booking)
         full_booking_id = get_full_booking_reference(booking)
+        public_domain = os.environ.get('PUBLIC_DOMAIN', 'https://bookaride.co.nz').rstrip('/')
+        approve_token = quote(create_quick_approval_token(booking.get('id', ''), "approve"), safe="")
+        reject_token = quote(create_quick_approval_token(booking.get('id', ''), "reject"), safe="")
+        approve_url = f"{public_domain}/api/booking/quick-approve/{booking.get('id')}?action=approve&token={approve_token}"
+        reject_url = f"{public_domain}/api/booking/quick-approve/{booking.get('id')}?action=reject&token={reject_token}"
         
         # Create simplified email for quick notification
         html_content = f"""
@@ -3652,8 +4574,8 @@ async def send_urgent_approval_notification(booking: dict):
                         <p style="margin: 10px 0 0 0; font-size: 14px; color: #7F1D1D;">Approve or reject this booking:</p>
                         
                         <div style="margin-top: 20px;">
-                            <a href="https://bookaride.co.nz/api/booking/quick-approve/{booking.get('id')}?action=approve" style="display: inline-block; margin: 5px; padding: 15px 40px; background-color: #16a34a; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ APPROVE</a>
-                            <a href="https://bookaride.co.nz/api/booking/quick-approve/{booking.get('id')}?action=reject" style="display: inline-block; margin: 5px; padding: 15px 40px; background-color: #DC2626; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ REJECT</a>
+                            <a href="{approve_url}" style="display: inline-block; margin: 5px; padding: 15px 40px; background-color: #16a34a; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ APPROVE</a>
+                            <a href="{reject_url}" style="display: inline-block; margin: 5px; padding: 15px 40px; background-color: #DC2626; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ REJECT</a>
                         </div>
                         
                         <p style="margin: 15px 0 0 0; font-size: 12px; color: #7F1D1D;">Or open the admin dashboard for more options:</p>
@@ -3736,7 +4658,7 @@ Price: ${booking.get('totalPrice', 0):.2f}
             try:
                 from pymongo import MongoClient
                 sync_client = MongoClient(os.environ.get('MONGO_URL', 'mongodb://localhost:27017'))
-                sync_db = sync_client[os.environ.get('DB_NAME', 'test_database')]
+                sync_db = sync_client[db_name]
                 sync_db.pending_approvals.update_one(
                     {"admin_phone": admin_phone},
                     {"$set": {
@@ -4136,8 +5058,12 @@ async def translate_to_english_async(text: str) -> str:
         from emergentintegrations.llm.openai import LlmChat, UserMessage
         import uuid
         
+        llm_api_key = get_llm_api_key()
+        if not llm_api_key:
+            return text
+
         llm = LlmChat(
-            api_key="sk-emergent-1221fFe2cB790B632B",
+            api_key=llm_api_key,
             session_id=str(uuid.uuid4()),
             system_message="You are a translator. Translate text to English. Only return the translation, nothing else. Keep any English text as-is."
         )
@@ -4441,9 +5367,28 @@ async def sync_booking_to_calendar(booking_id: str, current_admin: dict = Depend
 @api_router.post("/bookings/{booking_id}/resend-confirmation")
 async def resend_booking_confirmation(booking_id: str, current_admin: dict = Depends(get_current_admin)):
     """Resend confirmation email and SMS to customer - with rate limiting"""
+    lock_acquired = False
     try:
-        booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+        now_iso = datetime.now(timezone.utc).isoformat()
+        booking = await db.bookings.find_one_and_update(
+            {
+                "id": booking_id,
+                "confirmationResendInProgress": {"$ne": True}
+            },
+            {
+                "$set": {
+                    "confirmationResendInProgress": True,
+                    "confirmationResendStartedAt": now_iso
+                }
+            },
+            projection={"_id": 0},
+            return_document=True
+        )
+        lock_acquired = booking is not None
         if not booking:
+            existing = await db.bookings.find_one({"id": booking_id}, {"_id": 0, "id": 1})
+            if existing:
+                raise HTTPException(status_code=409, detail="A resend is already in progress for this booking")
             raise HTTPException(status_code=404, detail="Booking not found")
         
         # RATE LIMIT: Check if confirmation was sent in the last 5 minutes
@@ -4463,6 +5408,7 @@ async def resend_booking_confirmation(booking_id: str, current_admin: dict = Dep
         
         email_sent = False
         sms_sent = False
+        retry_count = int(booking.get("confirmationRetryCount", 0)) + 1
         
         # Send confirmation email
         try:
@@ -4483,7 +5429,15 @@ async def resend_booking_confirmation(booking_id: str, current_admin: dict = Dep
         # Track resend time
         await db.bookings.update_one(
             {"id": booking_id},
-            {"$set": {"lastConfirmationResent": datetime.now(timezone.utc).isoformat()}}
+            {"$set": {
+                "lastConfirmationResent": datetime.now(timezone.utc).isoformat(),
+                "confirmationRetryCount": retry_count,
+                "lastConfirmationRetryResult": {
+                    "email_sent": email_sent,
+                    "sms_sent": sms_sent,
+                    "at": datetime.now(timezone.utc).isoformat()
+                }
+            }}
         )
         
         if email_sent and sms_sent:
@@ -4500,6 +5454,12 @@ async def resend_booking_confirmation(booking_id: str, current_admin: dict = Dep
     except Exception as e:
         logger.error(f"Error resending confirmation: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error resending confirmation: {str(e)}")
+    finally:
+        if lock_acquired:
+            await db.bookings.update_one(
+                {"id": booking_id},
+                {"$unset": {"confirmationResendInProgress": "", "confirmationResendStartedAt": ""}}
+            )
 
 
 @api_router.post("/bookings/{booking_id}/resend-payment-link")
@@ -7392,17 +8352,27 @@ Customers will be auto-notified 5 mins before their pickup. Drive safe! ÃƒÆ�
 
 # Production Database Sync Endpoint
 PRODUCTION_API_URL = "https://bookaride.co.nz/api"
-SYNC_SECRET_KEY = os.environ.get("SYNC_SECRET_KEY", "bookaride-sync-2024-secret")
+SYNC_SECRET_KEY = os.environ.get("SYNC_SECRET_KEY")
+
+
+def get_sync_secret_or_none() -> Optional[str]:
+    """Return sync secret if configured."""
+    return SYNC_SECRET_KEY
 
 # Background auto-sync function
 async def auto_sync_from_production():
     """Automatically sync data from production every 5 minutes"""
     try:
+        sync_secret = get_sync_secret_or_none()
+        if not sync_secret:
+            logger.warning("Auto-sync skipped: SYNC_SECRET_KEY is not configured.")
+            return
+
         logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¾ Auto-sync: Starting sync from production...")
         
         response = requests.get(
             f"{PRODUCTION_API_URL}/sync/export",
-            params={"secret": SYNC_SECRET_KEY},
+            params={"secret": sync_secret},
             timeout=60
         )
         
@@ -7746,11 +8716,223 @@ async def get_urgent_return_bookings(current_admin: dict = Depends(get_current_a
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@api_router.get("/admin/mission-control")
+async def get_mission_control(
+    current_admin: dict = Depends(get_current_admin),
+    limit: int = 60,
+):
+    """Mission Control urgent queue with operational actions."""
+    try:
+        nz_tz = pytz.timezone('Pacific/Auckland')
+        now_nz = datetime.now(nz_tz)
+        today_str = now_nz.strftime('%Y-%m-%d')
+        tomorrow_str = (now_nz + timedelta(days=1)).strftime('%Y-%m-%d')
+
+        active_bookings = await db.bookings.find(
+            {"status": {"$nin": ["cancelled", "completed"]}},
+            {"_id": 0}
+        ).to_list(1200)
+
+        urgent_queue = []
+        for booking in active_bookings:
+            try:
+                reasons = []
+                priority_score = 0
+
+                status = (booking.get("status") or "").lower()
+                booking_date = booking.get("date", "")
+                booking_time = booking.get("time", "")
+                has_driver = bool(booking.get("driver_id") or booking.get("driver_name") or booking.get("assignedDriver"))
+
+                if status == "pending_approval":
+                    reasons.append("Manual approval required")
+                    priority_score += 120
+
+                if booking_date == today_str and not has_driver:
+                    reasons.append("Today pickup has no driver assigned")
+                    priority_score += 100
+
+                if booking_date == today_str and status in {"pending", "pending_payment"}:
+                    reasons.append("Today booking still pending")
+                    priority_score += 70
+
+                if booking_date == tomorrow_str and not booking.get("reminderSentForDate"):
+                    reasons.append("Reminder not yet sent for tomorrow booking")
+                    priority_score += 40
+
+                if booking.get("returnDate") == today_str and not booking.get("return_driver_id"):
+                    reasons.append("Return trip today without assigned return driver")
+                    priority_score += 80
+
+                if booking.get("bookReturn") and not booking.get("returnDate"):
+                    reasons.append("Return trip selected but return details incomplete")
+                    priority_score += 50
+
+                if not reasons:
+                    continue
+
+                primary_reason = reasons[0]
+                if "approval" in primary_reason.lower():
+                    action = "Review & approve/reject"
+                elif "driver" in primary_reason.lower():
+                    action = "Assign driver now"
+                elif "reminder" in primary_reason.lower():
+                    action = "Send reminder"
+                else:
+                    action = "Open booking"
+
+                urgent_queue.append({
+                    "booking_id": booking.get("id"),
+                    "booking_ref": get_booking_reference(booking),
+                    "customer_name": booking.get("name", "Unknown"),
+                    "date": booking_date,
+                    "time": booking_time,
+                    "status": booking.get("status", "unknown"),
+                    "priority_score": priority_score,
+                    "reasons": reasons,
+                    "suggested_action": action,
+                    "has_driver": has_driver,
+                })
+            except Exception as item_err:
+                logger.warning("Mission control item failed: %s", item_err)
+                continue
+
+        urgent_queue.sort(
+            key=lambda item: (
+                -item.get("priority_score", 0),
+                item.get("date", "9999-99-99"),
+                item.get("time", "23:59"),
+            )
+        )
+        urgent_queue = urgent_queue[:limit]
+
+        return {
+            "urgent_queue": urgent_queue,
+            "summary": {
+                "total_items": len(urgent_queue),
+                "requires_driver_assignment": sum(1 for item in urgent_queue if not item.get("has_driver")),
+                "manual_approval_required": sum(1 for item in urgent_queue if item.get("status") == "pending_approval"),
+            },
+            "generated_at": now_nz.isoformat(),
+        }
+    except Exception as e:
+        logger.error(f"Error building mission control queue: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/admin/ops-intelligence")
+async def get_ops_intelligence(current_admin: dict = Depends(get_current_admin)):
+    """Growth + operations intelligence metrics for Admin Panel v2."""
+    try:
+        bookings = await db.bookings.find({}, {"_id": 0}).to_list(5000)
+
+        # ---------- Customer value flags ----------
+        customer_rollup: Dict[str, dict] = {}
+        for booking in bookings:
+            email = (booking.get("email") or "").strip().lower()
+            if not email:
+                continue
+            row = customer_rollup.setdefault(email, {
+                "email": email,
+                "name": booking.get("name") or "Unknown",
+                "total_spend": 0.0,
+                "trip_count": 0,
+                "cancelled_count": 0,
+                "last_trip_date": "",
+            })
+            total_price = float(booking.get("totalPrice") or 0)
+            row["total_spend"] += total_price
+            row["trip_count"] += 1
+            if (booking.get("status") or "").lower() == "cancelled":
+                row["cancelled_count"] += 1
+            trip_date = booking.get("date") or ""
+            if trip_date and trip_date > row["last_trip_date"]:
+                row["last_trip_date"] = trip_date
+
+        customer_flags = []
+        for row in customer_rollup.values():
+            if row["total_spend"] >= 1200 or row["trip_count"] >= 10:
+                tier = "VIP"
+            elif row["total_spend"] >= 500 or row["trip_count"] >= 5:
+                tier = "High Value"
+            elif row["trip_count"] == 1:
+                tier = "First-Time"
+            else:
+                tier = "Active"
+
+            churn_risk = row["cancelled_count"] >= 2
+            customer_flags.append({
+                **row,
+                "tier": tier,
+                "churn_risk": churn_risk,
+            })
+        customer_flags.sort(key=lambda x: (-x["total_spend"], -x["trip_count"]))
+
+        # ---------- Driver SLA metrics ----------
+        active_jobs = [b for b in bookings if (b.get("status") or "").lower() not in {"cancelled"}]
+        assigned_jobs = [
+            b for b in active_jobs if (b.get("driver_id") or b.get("driver_name") or b.get("assignedDriver"))
+        ]
+        assignment_coverage = round((len(assigned_jobs) / max(len(active_jobs), 1)) * 100, 2)
+
+        driver_rollup: Dict[str, dict] = {}
+        for booking in assigned_jobs:
+            driver_key = booking.get("driver_id") or booking.get("driver_name") or "unmapped"
+            row = driver_rollup.setdefault(driver_key, {
+                "driver_key": driver_key,
+                "driver_name": booking.get("driver_name") or booking.get("assignedDriver") or "Unknown",
+                "assigned_jobs": 0,
+                "completed_jobs": 0,
+                "pending_jobs": 0,
+            })
+            row["assigned_jobs"] += 1
+            status = (booking.get("status") or "").lower()
+            if status == "completed":
+                row["completed_jobs"] += 1
+            elif status in {"pending", "pending_approval"}:
+                row["pending_jobs"] += 1
+
+        driver_metrics = list(driver_rollup.values())
+        driver_metrics.sort(key=lambda x: (-x["assigned_jobs"], x["driver_name"]))
+
+        # ---------- Funnel / conversion ----------
+        total_bookings = len(bookings)
+        confirmed_or_completed = sum(
+            1 for b in bookings if (b.get("status") or "").lower() in {"confirmed", "completed"}
+        )
+        completed = sum(1 for b in bookings if (b.get("status") or "").lower() == "completed")
+        abandoned = await db.abandoned_bookings.count_documents({"recovered": False})
+        leads = total_bookings + abandoned
+
+        funnel = {
+            "leads": leads,
+            "bookings_created": total_bookings,
+            "confirmed_or_completed": confirmed_or_completed,
+            "completed": completed,
+            "lead_to_booking_rate": round((total_bookings / max(leads, 1)) * 100, 2),
+            "booking_to_completion_rate": round((completed / max(total_bookings, 1)) * 100, 2),
+        }
+
+        return {
+            "customer_value_flags": customer_flags[:100],
+            "driver_sla_metrics": {
+                "assignment_coverage_percent": assignment_coverage,
+                "drivers": driver_metrics[:100],
+            },
+            "funnel_conversion": funnel,
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+        }
+    except Exception as e:
+        logger.error(f"Error generating ops intelligence: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # Endpoint to EXPORT data (called by other environments to fetch data)
 @api_router.get("/sync/export")
 async def export_data_for_sync(secret: str = ""):
     """Export bookings and drivers for sync - requires secret key"""
-    if secret != SYNC_SECRET_KEY:
+    sync_secret = get_endpoint_secret("SYNC_SECRET_KEY")
+    if not secret or not hmac.compare_digest(secret, sync_secret):
         raise HTTPException(status_code=403, detail="Invalid sync key")
     
     try:
@@ -7768,9 +8950,10 @@ async def export_data_for_sync(secret: str = ""):
 
 
 @api_router.post("/admin/sync")
-async def sync_from_production():
+async def sync_from_production(current_admin: dict = Depends(get_current_admin)):
     """Sync bookings and drivers from production database via deployed API"""
     try:
+        sync_secret = get_endpoint_secret("SYNC_SECRET_KEY")
         sync_results = {
             "bookings_synced": 0,
             "bookings_updated": 0,
@@ -7784,7 +8967,7 @@ async def sync_from_production():
             logger.info("Starting sync from production...")
             response = requests.get(
                 f"{PRODUCTION_API_URL}/sync/export",
-                params={"secret": SYNC_SECRET_KEY},
+                params={"secret": sync_secret},
                 timeout=60
             )
             
@@ -9332,8 +10515,14 @@ async def driver_login(credentials: DriverLogin):
             raise HTTPException(status_code=401, detail="Password not set. Please contact admin.")
         
         # Verify password
-        if not verify_password(credentials.password, driver["password"]):
+        valid, updated_hash = verify_password_and_update(credentials.password, driver.get("password", ""))
+        if not valid:
             raise HTTPException(status_code=401, detail="Invalid email or password")
+        if updated_hash:
+            await db.drivers.update_one(
+                {"id": driver["id"]},
+                {"$set": {"password": updated_hash, "password_updated_at": datetime.now(timezone.utc).isoformat()}}
+            )
         
         # Check if driver is active
         if driver.get("status") != "active":
@@ -10587,16 +11776,27 @@ if cors_origins_env == '*':
     cors_origins = [
         "https://bookaride.co.nz",
         "https://www.bookaride.co.nz",
+        "https://bookaridenz.com",
+        "https://www.bookaridenz.com",
         "https://dazzling-leakey.preview.emergentagent.com",
+        "https://bookaride-frontend.onrender.com",
         "http://localhost:3000"
     ]
 else:
-    cors_origins = cors_origins_env.split(',')
+    cors_origins = [origin.strip() for origin in cors_origins_env.split(',') if origin.strip()]
+
+# Optional regex support for preview deployments (e.g., Vercel).
+cors_origin_regex = os.environ.get("CORS_ORIGIN_REGEX")
+if not cors_origin_regex:
+    allow_vercel = os.environ.get("CORS_ALLOW_VERCEL_APP", "").lower() in ("1", "true", "yes")
+    if allow_vercel:
+        cors_origin_regex = r"^https://.*\.vercel\.app$"
 
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
     allow_origins=cors_origins,
+    allow_origin_regex=cors_origin_regex,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -11902,7 +13102,7 @@ async def hotel_login(request: HotelLoginRequest):
             "hotel_code": hotel["code"],
             "exp": datetime.now(timezone.utc) + timedelta(hours=24)
         }
-        token = jwt.encode(token_data, os.environ.get("SECRET_KEY", "hotel-secret-key"), algorithm="HS256")
+        token = jwt.encode(token_data, SECRET_KEY, algorithm="HS256")
         
         return {
             "success": True,
@@ -11928,11 +13128,11 @@ async def get_current_hotel(request: Request):
     
     token = auth_header.split(" ")[1]
     try:
-        payload = jwt.decode(token, os.environ.get("SECRET_KEY", "hotel-secret-key"), algorithms=["HS256"])
+        payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
         return payload
-    except jwt.ExpiredSignatureError:
+    except ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
-    except jwt.InvalidTokenError:
+    except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
 @api_router.get("/hotel/bookings")
@@ -12903,34 +14103,47 @@ def create_arrival_email_html(customer_name: str, booking_date: str, pickup_time
 @app.on_event("startup")
 async def startup_event():
     """Start the scheduler when the app starts and ensure default admin exists"""
-    # Ensure default admin exists with correct email for Google OAuth
-    try:
-        default_admin = await db.admin_users.find_one({"username": "admin"})
-    except Exception as e:
-        print("WARN: admin seed skipped (db unavailable):", repr(e))
-        default_admin = {"_skip": True}
-    if not default_admin:
-        hashed_pw = "$2b$12$C6UzMDM.H6dfI/f/IKcEeO8m8Y4YkQkQ1h6s4H6c3Z8Y5G7c8Y4r2"
-        await db.admin_users.insert_one({
-            "id": str(uuid.uuid4()),
-            "username": "admin",
-            "email": "info@bookaride.co.nz",
-            "hashed_password": hashed_pw,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "is_active": True
-        })
-        logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Default admin user created")
-    else:
-        # Update password and email to ensure they're correct
-        hashed_pw = "$2b$12$C6UzMDM.H6dfI/f/IKcEeO8m8Y4YkQkQ1h6s4H6c3Z8Y5G7c8Y4r2"
-        await db.admin_users.update_one(
-            {"username": "admin"},
-            {"$set": {
-                "hashed_password": hashed_pw,
-                "email": "info@bookaride.co.nz"
-            }}
-        )
-        logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Admin password reset and email updated to info@bookaride.co.nz")
+    # Ensure default admin exists with correct email for Google OAuth.
+    #
+    # SECURITY:
+    # - Do NOT reset passwords on every restart.
+    # - Only create a default admin if ADMIN_BOOTSTRAP_PASSWORD is explicitly provided.
+    bootstrap_username = os.environ.get("ADMIN_BOOTSTRAP_USERNAME", "admin")
+    bootstrap_email = os.environ.get("ADMIN_BOOTSTRAP_EMAIL", "info@bookaride.co.nz")
+    bootstrap_password = os.environ.get("ADMIN_BOOTSTRAP_PASSWORD")
+    for attempt in range(2):
+        try:
+            existing_admin = await db.admin_users.find_one({"username": bootstrap_username}, {"_id": 0})
+            if existing_admin:
+                await db.admin_users.update_one(
+                    {"username": bootstrap_username},
+                    {"$set": {"email": bootstrap_email, "is_active": True}}
+                )
+                logger.info("Admin bootstrap: ensured %s is active and email updated.", bootstrap_username)
+            else:
+                if not bootstrap_password:
+                    logger.warning(
+                        "Admin bootstrap: no '%s' user exists and ADMIN_BOOTSTRAP_PASSWORD is not set; skipping admin creation.",
+                        bootstrap_username,
+                    )
+                    break
+                await db.admin_users.insert_one({
+                    "id": str(uuid.uuid4()),
+                    "username": bootstrap_username,
+                    "email": bootstrap_email,
+                    "hashed_password": get_password_hash(bootstrap_password),
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "is_active": True,
+                })
+                logger.info("Admin bootstrap: created '%s' user from env bootstrap password.", bootstrap_username)
+            break
+        except Exception as e:
+            corrected_name = extract_existing_db_name_from_case_error(e)
+            if attempt == 0 and corrected_name and corrected_name != db_name:
+                apply_resolved_db_name(corrected_name)
+                continue
+            print("WARN: admin seed skipped (db unavailable):", repr(e))
+            break
     
     # Create database indexes for faster queries
     try:
@@ -13065,3 +14278,33 @@ async def startup_event():
 async def shutdown_db_client():
     scheduler.shutdown()
     client.close()
+
+
+_original_startup_event = startup_event
+
+
+async def _startup_event_safe_wrapper():
+    """
+    Keep service booting even if startup initialization raises unexpectedly.
+    Render requires binding to a port; failing startup prevents that entirely.
+    """
+    try:
+        await _original_startup_event()
+    except Exception as exc:
+        corrected_name = extract_existing_db_name_from_case_error(exc)
+        if corrected_name and corrected_name != db_name:
+            apply_resolved_db_name(corrected_name)
+            logger.warning("Recovered DB case mismatch during startup wrapper; retrying startup init once.")
+            try:
+                await _original_startup_event()
+                return
+            except Exception as retry_exc:
+                logger.exception("Startup retry failed after DB_NAME correction: %s", retry_exc)
+        else:
+            logger.exception("Startup initialization failed; continuing in degraded mode: %s", exc)
+
+
+for index, handler in enumerate(list(app.router.on_startup)):
+    if handler is _original_startup_event:
+        app.router.on_startup[index] = _startup_event_safe_wrapper
+        break

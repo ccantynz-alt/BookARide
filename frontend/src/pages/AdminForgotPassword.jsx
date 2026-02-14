@@ -21,6 +21,9 @@ export const AdminForgotPassword = () => {
     setLoading(true);
 
     try {
+      if (!BACKEND_URL || BACKEND_URL.includes('localhost')) {
+        console.warn('AdminForgotPassword BACKEND_URL looks suspicious:', BACKEND_URL);
+      }
       await axios.post(`${API}/admin/password-reset/request`, {
         email: email
       });
@@ -28,8 +31,21 @@ export const AdminForgotPassword = () => {
       setSubmitted(true);
       toast.success('If this email is registered, you will receive a reset link.');
     } catch (error) {
-      console.error('Password reset error:', error);
-      toast.error('Failed to send reset email. Please try again.');
+      const status = error.response?.status;
+      const detail = error.response?.data?.detail;
+      console.error('Password reset error:', {
+        backendUrl: BACKEND_URL,
+        apiBase: API,
+        status,
+        detail,
+        data: error.response?.data,
+        message: error.message
+      });
+      if (!status) {
+        toast.error('Network/CORS error reaching backend. Check REACT_APP_BACKEND_URL.');
+      } else {
+        toast.error(detail || `Failed to request reset (HTTP ${status}).`);
+      }
     } finally {
       setLoading(false);
     }
@@ -115,6 +131,9 @@ export const AdminForgotPassword = () => {
               Back to Login
             </Link>
           </div>
+          <p className="text-[10px] text-gray-400 text-center mt-4 break-all">
+            API: {API}
+          </p>
         </CardContent>
       </Card>
     </div>
