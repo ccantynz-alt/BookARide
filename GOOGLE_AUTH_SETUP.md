@@ -55,3 +55,5 @@ MONGO_URL='...' python create_admin.py
 - **"Google OAuth not configured"** – Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in Render
 - **"This Google account is not authorized"** – Admin not found for that email. Create admin with `create_admin.py` using that email
 - **Redirect URI mismatch** – Ensure the redirect URI in Google Console exactly matches `BACKEND_URL/api/admin/google-auth/callback`
+- **Google button not showing** – Ensure `REACT_APP_BACKEND_URL=https://bookaride-backend.onrender.com` is set in Vercel and redeploy the frontend
+- **Render 404 on health check** – In Render → Service → Settings → Health Check Path, set to `/health` or `/` or `/healthz`. Root `/` now returns 200.
