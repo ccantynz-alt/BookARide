@@ -87,7 +87,8 @@ SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'your-secret-key-change-in-product
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 1440  # 24 hours
 
-pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
+# Support both bcrypt (legacy from create_admin.py) and pbkdf2_sha256 for backward compatibility
+pwd_context = CryptContext(schemes=["pbkdf2_sha256", "bcrypt"], deprecated="auto")
 security = HTTPBearer()
 
 # Create the main app without a prefix
@@ -776,6 +777,11 @@ async def request_password_reset(reset_request: PasswordResetRequest):
         mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
         sender_email = os.environ.get('SENDER_EMAIL', 'noreply@bookaride.co.nz')
         
+        if not mailgun_api_key or not mailgun_domain:
+            logger.warning(
+                "Password reset email NOT sent: MAILGUN_API_KEY or MAILGUN_DOMAIN missing. "
+                "Add these to backend/.env - see ADMIN_AUTH_TROUBLESHOOTING.md"
+            )
         if mailgun_api_key and mailgun_domain:
             email_html = f"""
             <!DOCTYPE html>
