@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from fastapi import FastAPI, APIRouter, HTTPException, Request, Depends, Body, UploadFile, File, Form, BackgroundTasks
+from fastapi import FastAPI, APIRouter, HTTPException, Request, Depends, Body, UploadFile, File, Form, BackgroundTasks, Header
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import Response
 from dotenv import load_dotenv
@@ -213,7 +213,7 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 1440  # 24 hours
 QUICK_APPROVAL_TOKEN_TTL_MINUTES = int(os.environ.get("QUICK_APPROVAL_TOKEN_TTL_MINUTES", "1440"))
 
-pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
+pwd_context = CryptContext(schemes=["bcrypt", "pbkdf2_sha256"], deprecated="auto")
 security = HTTPBearer()
 
 # Create the main app without a prefix
@@ -267,8 +267,22 @@ class TokenData(BaseModel):
     username: Optional[str] = None
 
 # Authentication utility functions
-def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
+def verify_password_and_update(plain_password: str, hashed_password: str):
+    """
+    Verify a password and optionally return an updated hash if the stored hash
+    uses a deprecated scheme.
+    """
+    try:
+        return pwd_context.verify_and_update(plain_password, hashed_password)
+    except Exception:
+        # Treat unknown/invalid hashes as auth failure (not 500).
+        return False, None
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Backward-compatible boolean password verification."""
+    valid, _updated_hash = verify_password_and_update(plain_password, hashed_password)
+    return bool(valid)
 
 def get_password_hash(password):
     return pwd_context.hash(password)
@@ -656,8 +670,15 @@ async def login_admin(login_data: AdminLogin):
             raise HTTPException(status_code=401, detail="Incorrect username or password")
         
         # Verify password
-        if not verify_password(login_data.password, admin["hashed_password"]):
+        valid, updated_hash = verify_password_and_update(login_data.password, admin.get("hashed_password", ""))
+        if not valid:
             raise HTTPException(status_code=401, detail="Incorrect username or password")
+        if updated_hash:
+            # Opportunistic migration to the preferred hash scheme.
+            await db.admin_users.update_one(
+                {"username": admin["username"]},
+                {"$set": {"hashed_password": updated_hash, "password_updated_at": datetime.now(timezone.utc).isoformat()}}
+            )
         
         # Check if admin is active
         if not admin.get("is_active", True):
@@ -700,7 +721,8 @@ async def change_password(
             raise HTTPException(status_code=404, detail="Admin user not found")
         
         # Verify current password
-        if not verify_password(current_password, admin["hashed_password"]):
+        valid, _updated_hash = verify_password_and_update(current_password, admin.get("hashed_password", ""))
+        if not valid:
             raise HTTPException(status_code=401, detail="Current password is incorrect")
         
         # Validate new password
@@ -923,6 +945,40 @@ class PasswordResetConfirm(BaseModel):
     token: str
     new_password: str
 
+
+class BreakGlassResetPasswordRequest(BaseModel):
+    username: Optional[str] = "admin"
+    email: Optional[str] = None
+    new_password: str
+
+
+def _send_html_email_via_smtp(subject: str, recipient_email: str, html_content: str) -> bool:
+    """Send an HTML email via SMTP if configured."""
+    try:
+        smtp_user = os.environ.get('SMTP_USER')
+        smtp_pass = os.environ.get('SMTP_PASS')
+        sender_email = os.environ.get('SENDER_EMAIL', 'noreply@bookaride.co.nz')
+
+        if not smtp_user or not smtp_pass:
+            logger.warning("SMTP credentials not configured")
+            return False
+
+        message = MIMEMultipart('alternative')
+        message['Subject'] = subject
+        message['From'] = sender_email
+        message['To'] = recipient_email
+        message.attach(MIMEText(html_content, 'html'))
+
+        with smtplib.SMTP('smtp.gmail.com', 587) as server:
+            server.starttls()
+            server.login(smtp_user, smtp_pass)
+            server.send_message(message)
+        return True
+    except Exception as exc:
+        logger.error("SMTP send failed: %s", exc)
+        return False
+
+
 @api_router.post("/admin/password-reset/request")
 async def request_password_reset(reset_request: PasswordResetRequest):
     """Request a password reset email for admin"""
@@ -960,8 +1016,7 @@ async def request_password_reset(reset_request: PasswordResetRequest):
             mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
             sender_email = os.environ.get('SENDER_EMAIL', 'noreply@bookaride.co.nz')
             
-            if mailgun_api_key and mailgun_domain:
-                email_html = f"""
+            email_html = f"""
                 <!DOCTYPE html>
                 <html>
                 <head>
@@ -1003,7 +1058,9 @@ async def request_password_reset(reset_request: PasswordResetRequest):
                 </body>
                 </html>
                 """
-                
+
+            email_sent = False
+            if mailgun_api_key and mailgun_domain:
                 try:
                     mailgun_response = requests.post(
                         f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
@@ -1018,11 +1075,21 @@ async def request_password_reset(reset_request: PasswordResetRequest):
                     
                     if mailgun_response.status_code == 200:
                         logger.info(f"Password reset email sent to: {email}")
+                        email_sent = True
                     else:
                         logger.error(f"Mailgun error: {mailgun_response.text}")
                         
                 except Exception as mail_error:
                     logger.error(f"Failed to send reset email: {str(mail_error)}")
+            if not email_sent:
+                # SMTP fallback (optional)
+                smtp_ok = _send_html_email_via_smtp(
+                    subject="Password Reset Request - Book A Ride NZ Admin",
+                    recipient_email=email,
+                    html_content=email_html,
+                )
+                if smtp_ok:
+                    logger.info("Password reset email sent via SMTP fallback to: %s", email)
             
             return {"message": "If this email is registered, you will receive a password reset link."}
         except Exception as e:
@@ -1030,6 +1097,81 @@ async def request_password_reset(reset_request: PasswordResetRequest):
                 continue
             logger.error(f"Password reset request error: {str(e)}")
             raise HTTPException(status_code=500, detail="Failed to process password reset request")
+
+
+@api_router.post("/admin/break-glass/reset-password")
+async def break_glass_reset_password(
+    request: BreakGlassResetPasswordRequest,
+    x_break_glass_key: Optional[str] = Header(default=None, alias="X-Break-Glass-Key"),
+    http_request: Request = None,
+):
+    """
+    Emergency password reset without email delivery.
+
+    SECURITY:
+    - Disabled unless ADMIN_BREAK_GLASS_KEY env var is set.
+    - Requires X-Break-Glass-Key header (constant-time compare).
+    - Rate limited server-side.
+    """
+    secret = os.environ.get("ADMIN_BREAK_GLASS_KEY")
+    if not secret:
+        raise HTTPException(status_code=503, detail="Break-glass is not enabled")
+    if not x_break_glass_key or not hmac.compare_digest(x_break_glass_key, secret):
+        raise HTTPException(status_code=401, detail="Invalid break-glass key")
+
+    if not request.new_password or len(request.new_password) < 12:
+        raise HTTPException(status_code=400, detail="New password must be at least 12 characters")
+
+    # Simple DB-backed rate limit: max 3 uses per hour.
+    try:
+        one_hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
+        recent = await db.break_glass_events.count_documents({"created_at_dt": {"$gte": one_hour_ago}})
+        if recent >= 3:
+            raise HTTPException(status_code=429, detail="Break-glass rate limit exceeded")
+    except HTTPException:
+        raise
+    except Exception:
+        # If rate limit check fails, allow but log.
+        logger.warning("Break-glass rate limit check failed; allowing request.")
+
+    query = {}
+    if request.email:
+        query["email"] = request.email.lower().strip()
+    else:
+        query["username"] = (request.username or "admin").strip()
+
+    admin = await db.admin_users.find_one(query, {"_id": 0})
+    if not admin:
+        raise HTTPException(status_code=404, detail="Admin user not found")
+
+    new_hash = get_password_hash(request.new_password)
+    await db.admin_users.update_one(
+        {"username": admin["username"]},
+        {"$set": {
+            "hashed_password": new_hash,
+            "password_updated_at": datetime.now(timezone.utc).isoformat(),
+            "is_active": True,
+            "force_password_change": True,
+        }}
+    )
+
+    # Audit trail
+    try:
+        client_ip = None
+        if http_request is not None:
+            client_ip = getattr(http_request.client, "host", None)
+        await db.break_glass_events.insert_one({
+            "id": str(uuid.uuid4()),
+            "admin_username": admin["username"],
+            "admin_email": admin.get("email"),
+            "client_ip": client_ip,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_at_dt": datetime.now(timezone.utc),
+        })
+    except Exception as exc:
+        logger.warning("Failed to write break-glass audit record: %s", exc)
+
+    return {"success": True, "message": "Password reset successfully. Please log in and change it immediately."}
 
 
 @api_router.post("/admin/password-reset/confirm")
@@ -10373,8 +10515,14 @@ async def driver_login(credentials: DriverLogin):
             raise HTTPException(status_code=401, detail="Password not set. Please contact admin.")
         
         # Verify password
-        if not verify_password(credentials.password, driver["password"]):
+        valid, updated_hash = verify_password_and_update(credentials.password, driver.get("password", ""))
+        if not valid:
             raise HTTPException(status_code=401, detail="Invalid email or password")
+        if updated_hash:
+            await db.drivers.update_one(
+                {"id": driver["id"]},
+                {"$set": {"password": updated_hash, "password_updated_at": datetime.now(timezone.utc).isoformat()}}
+            )
         
         # Check if driver is active
         if driver.get("status") != "active":
@@ -11637,10 +11785,18 @@ if cors_origins_env == '*':
 else:
     cors_origins = [origin.strip() for origin in cors_origins_env.split(',') if origin.strip()]
 
+# Optional regex support for preview deployments (e.g., Vercel).
+cors_origin_regex = os.environ.get("CORS_ORIGIN_REGEX")
+if not cors_origin_regex:
+    allow_vercel = os.environ.get("CORS_ALLOW_VERCEL_APP", "").lower() in ("1", "true", "yes")
+    if allow_vercel:
+        cors_origin_regex = r"^https://.*\.vercel\.app$"
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
     allow_origins=cors_origins,
+    allow_origin_regex=cors_origin_regex,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -13948,29 +14104,38 @@ def create_arrival_email_html(customer_name: str, booking_date: str, pickup_time
 async def startup_event():
     """Start the scheduler when the app starts and ensure default admin exists"""
     # Ensure default admin exists with correct email for Google OAuth.
-    hashed_pw = "$2b$12$C6UzMDM.H6dfI/f/IKcEeO8m8Y4YkQkQ1h6s4H6c3Z8Y5G7c8Y4r2"
+    #
+    # SECURITY:
+    # - Do NOT reset passwords on every restart.
+    # - Only create a default admin if ADMIN_BOOTSTRAP_PASSWORD is explicitly provided.
+    bootstrap_username = os.environ.get("ADMIN_BOOTSTRAP_USERNAME", "admin")
+    bootstrap_email = os.environ.get("ADMIN_BOOTSTRAP_EMAIL", "info@bookaride.co.nz")
+    bootstrap_password = os.environ.get("ADMIN_BOOTSTRAP_PASSWORD")
     for attempt in range(2):
         try:
-            result = await db.admin_users.update_one(
-                {"username": "admin"},
-                {
-                    "$set": {
-                        "hashed_password": hashed_pw,
-                        "email": "info@bookaride.co.nz",
-                        "is_active": True
-                    },
-                    "$setOnInsert": {
-                        "id": str(uuid.uuid4()),
-                        "username": "admin",
-                        "created_at": datetime.now(timezone.utc).isoformat()
-                    }
-                },
-                upsert=True
-            )
-            if result.upserted_id:
-                logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Default admin user created")
+            existing_admin = await db.admin_users.find_one({"username": bootstrap_username}, {"_id": 0})
+            if existing_admin:
+                await db.admin_users.update_one(
+                    {"username": bootstrap_username},
+                    {"$set": {"email": bootstrap_email, "is_active": True}}
+                )
+                logger.info("Admin bootstrap: ensured %s is active and email updated.", bootstrap_username)
             else:
-                logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Admin password reset and email updated to info@bookaride.co.nz")
+                if not bootstrap_password:
+                    logger.warning(
+                        "Admin bootstrap: no '%s' user exists and ADMIN_BOOTSTRAP_PASSWORD is not set; skipping admin creation.",
+                        bootstrap_username,
+                    )
+                    break
+                await db.admin_users.insert_one({
+                    "id": str(uuid.uuid4()),
+                    "username": bootstrap_username,
+                    "email": bootstrap_email,
+                    "hashed_password": get_password_hash(bootstrap_password),
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "is_active": True,
+                })
+                logger.info("Admin bootstrap: created '%s' user from env bootstrap password.", bootstrap_username)
             break
         except Exception as e:
             corrected_name = extract_existing_db_name_from_case_error(e)
