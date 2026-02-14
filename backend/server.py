@@ -8,6 +8,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 import re
+import hmac
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict, model_validator
 from typing import List, Optional, Dict
@@ -25,7 +26,8 @@ except Exception:
     Client = None
 import requests
 from passlib.context import CryptContext
-from jose import JWTError, jwt
+from jose import JWTError, ExpiredSignatureError, jwt
+from urllib.parse import quote
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
@@ -183,10 +185,28 @@ def recover_db_case_conflict_if_needed(error: Exception, context: str = "") -> b
         logging.warning("Recovered DB case mismatch during %s; retrying operation.", context)
     return True
 
+
+def get_required_runtime_secret(name: str) -> str:
+    """Load a required secret and fail fast if missing."""
+    value = os.environ.get(name)
+    if not value:
+        raise RuntimeError(f"Missing required environment variable: {name}")
+    return value
+
+
+def get_endpoint_secret(name: str) -> str:
+    """Load required secret for endpoint handlers."""
+    value = os.environ.get(name)
+    if not value:
+        raise HTTPException(status_code=503, detail=f"{name} is not configured")
+    return value
+
+
 # Authentication configuration
-SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'your-secret-key-change-in-production-' + str(uuid.uuid4()))
+SECRET_KEY = get_required_runtime_secret('JWT_SECRET_KEY')
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 1440  # 24 hours
+QUICK_APPROVAL_TOKEN_TTL_MINUTES = int(os.environ.get("QUICK_APPROVAL_TOKEN_TTL_MINUTES", "1440"))
 
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 security = HTTPBearer()
@@ -257,6 +277,42 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
+
+
+def create_quick_approval_token(booking_id: str, action: str) -> str:
+    """Create short-lived signed token for quick-approve links."""
+    expire = datetime.now(timezone.utc) + timedelta(minutes=QUICK_APPROVAL_TOKEN_TTL_MINUTES)
+    token_data = {
+        "sub": "quick_approval",
+        "booking_id": booking_id,
+        "action": action,
+        "jti": uuid.uuid4().hex,
+        "exp": expire,
+    }
+    return jwt.encode(token_data, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def validate_quick_approval_token(token: str, booking_id: str, action: str) -> dict:
+    """Validate quick-approve token and ensure payload matches URL params."""
+    if not token:
+        raise HTTPException(status_code=401, detail="Missing approval token")
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Approval link has expired")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid approval token")
+
+    if payload.get("sub") != "quick_approval":
+        raise HTTPException(status_code=403, detail="Invalid token scope")
+    if payload.get("booking_id") != booking_id:
+        raise HTTPException(status_code=403, detail="Token booking mismatch")
+    if payload.get("action") != action:
+        raise HTTPException(status_code=403, detail="Token action mismatch")
+    if not payload.get("jti"):
+        raise HTTPException(status_code=403, detail="Invalid token identifier")
+    return payload
+
 
 def format_nz_phone(phone: str) -> str:
     """Format phone number to E.164 format for Twilio (NZ numbers)"""
@@ -1071,6 +1127,12 @@ async def health_check():
     return {"status": "healthy", "service": "bookaride-api"}
 
 
+@api_router.get("/healthz")
+async def healthz_check():
+    """Compatibility API health endpoint."""
+    return {"status": "healthy", "service": "bookaride-api"}
+
+
 # Google Reviews Endpoint - Fetches reviews from Google Places API
 @api_router.get("/google-reviews")
 async def get_google_reviews():
@@ -1585,14 +1647,45 @@ async def create_booking(booking: BookingCreate, background_tasks: BackgroundTas
 
 # Quick Approve/Reject Endpoint (for email links - no auth required, uses secure token)
 @api_router.get("/booking/quick-approve/{booking_id}")
-async def quick_approve_booking(booking_id: str, action: str = "approve"):
+async def quick_approve_booking(booking_id: str, action: str = "approve", token: str = ""):
     """
     Quick approve or reject a booking directly from email link.
-    No authentication required - accessed via unique booking ID from email.
+    Requires signed token with expiration.
     """
     from fastapi.responses import HTMLResponse
     
     try:
+        if action not in {"approve", "reject"}:
+            return HTMLResponse(content="""
+                <html><body style="font-family: Arial; text-align: center; padding: 50px;">
+                    <h1 style="color: #f59e0b;">Invalid Action</h1>
+                    <p>Please use the approve or reject buttons from the email.</p>
+                </body></html>
+            """, status_code=400)
+
+        try:
+            token_payload = validate_quick_approval_token(token, booking_id, action)
+        except HTTPException as token_error:
+            return HTMLResponse(content=f"""
+                <html><body style="font-family: Arial; text-align: center; padding: 50px; background-color: #fef2f2;">
+                    <h1 style="color: #DC2626;">Approval Link Invalid</h1>
+                    <p>{token_error.detail}</p>
+                    <p>Please open the admin dashboard to process this booking.</p>
+                    <a href="https://bookaride.co.nz/admin/dashboard" style="display: inline-block; margin-top: 20px; padding: 15px 30px; background-color: #f59e0b; color: white; text-decoration: none; border-radius: 8px;">Go to Admin Dashboard</a>
+                </body></html>
+            """, status_code=token_error.status_code)
+
+        token_jti = token_payload.get("jti")
+        token_state = await db.quick_approval_tokens.find_one({"jti": token_jti}, {"_id": 0})
+        if token_state and token_state.get("used"):
+            return HTMLResponse(content="""
+                <html><body style="font-family: Arial; text-align: center; padding: 50px; background-color: #fff7ed;">
+                    <h1 style="color: #c2410c;">Link Already Used</h1>
+                    <p>This approval link has already been used.</p>
+                    <a href="https://bookaride.co.nz/admin/dashboard" style="display: inline-block; margin-top: 20px; padding: 15px 30px; background-color: #f59e0b; color: white; text-decoration: none; border-radius: 8px;">Go to Admin Dashboard</a>
+                </body></html>
+            """, status_code=409)
+
         # Find the booking
         booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
         
@@ -1627,6 +1720,17 @@ async def quick_approve_booking(booking_id: str, action: str = "approve"):
                 logger.error(f"Failed to send confirmation: {e}")
             
             logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Booking {booking_ref} APPROVED via email quick-approve")
+            await db.quick_approval_tokens.update_one(
+                {"jti": token_jti},
+                {"$set": {
+                    "jti": token_jti,
+                    "used": True,
+                    "booking_id": booking_id,
+                    "action": action,
+                    "used_at": datetime.now(timezone.utc).isoformat()
+                }},
+                upsert=True
+            )
             
             return HTMLResponse(content=f"""
                 <html><body style="font-family: Arial; text-align: center; padding: 50px; background-color: #f0fdf4;">
@@ -1656,6 +1760,17 @@ async def quick_approve_booking(booking_id: str, action: str = "approve"):
             # TODO: Optionally send rejection email to customer
             
             logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Booking {booking_ref} REJECTED via email quick-approve")
+            await db.quick_approval_tokens.update_one(
+                {"jti": token_jti},
+                {"$set": {
+                    "jti": token_jti,
+                    "used": True,
+                    "booking_id": booking_id,
+                    "action": action,
+                    "used_at": datetime.now(timezone.utc).isoformat()
+                }},
+                upsert=True
+            )
             
             return HTMLResponse(content=f"""
                 <html><body style="font-family: Arial; text-align: center; padding: 50px; background-color: #fef2f2;">
@@ -1669,14 +1784,6 @@ async def quick_approve_booking(booking_id: str, action: str = "approve"):
                     </div>
                 </body></html>
             """)
-        else:
-            return HTMLResponse(content="""
-                <html><body style="font-family: Arial; text-align: center; padding: 50px;">
-                    <h1 style="color: #f59e0b;">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â Invalid Action</h1>
-                    <p>Please use the approve or reject buttons from the email.</p>
-                </body></html>
-            """, status_code=400)
-            
     except Exception as e:
         logger.error(f"Error in quick approve: {str(e)}")
         return HTMLResponse(content=f"""
@@ -3606,9 +3713,9 @@ async def send_daily_reminders_core(source: str = "unknown"):
 async def cron_send_reminders(api_key: str = None):
     """Endpoint for external cron service to trigger reminders (requires API key)"""
     try:
-        expected_key = os.environ.get('CRON_API_KEY', 'bookaride-cron-secret-2024')
+        expected_key = get_endpoint_secret('CRON_API_KEY')
         
-        if api_key != expected_key:
+        if not api_key or not hmac.compare_digest(api_key, expected_key):
             raise HTTPException(status_code=401, detail="Invalid API key")
         
         result = await send_daily_reminders_core(source="cron_endpoint")
@@ -3638,6 +3745,11 @@ async def send_booking_notification_to_admin(booking: dict):
         formatted_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
         booking_ref = get_booking_reference(booking)
         full_booking_id = get_full_booking_reference(booking)
+        public_domain = os.environ.get('PUBLIC_DOMAIN', 'https://bookaride.co.nz').rstrip('/')
+        approve_token = quote(create_quick_approval_token(booking.get('id', ''), "approve"), safe="")
+        reject_token = quote(create_quick_approval_token(booking.get('id', ''), "reject"), safe="")
+        approve_url = f"{public_domain}/api/booking/quick-approve/{booking.get('id')}?action=approve&token={approve_token}"
+        reject_url = f"{public_domain}/api/booking/quick-approve/{booking.get('id')}?action=reject&token={reject_token}"
         
         # Create simplified email for quick notification
         html_content = f"""
@@ -3797,8 +3909,8 @@ async def send_urgent_approval_notification(booking: dict):
                         <p style="margin: 10px 0 0 0; font-size: 14px; color: #7F1D1D;">Approve or reject this booking:</p>
                         
                         <div style="margin-top: 20px;">
-                            <a href="https://bookaride.co.nz/api/booking/quick-approve/{booking.get('id')}?action=approve" style="display: inline-block; margin: 5px; padding: 15px 40px; background-color: #16a34a; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ APPROVE</a>
-                            <a href="https://bookaride.co.nz/api/booking/quick-approve/{booking.get('id')}?action=reject" style="display: inline-block; margin: 5px; padding: 15px 40px; background-color: #DC2626; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ REJECT</a>
+                            <a href="{approve_url}" style="display: inline-block; margin: 5px; padding: 15px 40px; background-color: #16a34a; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ APPROVE</a>
+                            <a href="{reject_url}" style="display: inline-block; margin: 5px; padding: 15px 40px; background-color: #DC2626; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ REJECT</a>
                         </div>
                         
                         <p style="margin: 15px 0 0 0; font-size: 12px; color: #7F1D1D;">Or open the admin dashboard for more options:</p>
@@ -4586,9 +4698,28 @@ async def sync_booking_to_calendar(booking_id: str, current_admin: dict = Depend
 @api_router.post("/bookings/{booking_id}/resend-confirmation")
 async def resend_booking_confirmation(booking_id: str, current_admin: dict = Depends(get_current_admin)):
     """Resend confirmation email and SMS to customer - with rate limiting"""
+    lock_acquired = False
     try:
-        booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+        now_iso = datetime.now(timezone.utc).isoformat()
+        booking = await db.bookings.find_one_and_update(
+            {
+                "id": booking_id,
+                "confirmationResendInProgress": {"$ne": True}
+            },
+            {
+                "$set": {
+                    "confirmationResendInProgress": True,
+                    "confirmationResendStartedAt": now_iso
+                }
+            },
+            projection={"_id": 0},
+            return_document=True
+        )
+        lock_acquired = booking is not None
         if not booking:
+            existing = await db.bookings.find_one({"id": booking_id}, {"_id": 0, "id": 1})
+            if existing:
+                raise HTTPException(status_code=409, detail="A resend is already in progress for this booking")
             raise HTTPException(status_code=404, detail="Booking not found")
         
         # RATE LIMIT: Check if confirmation was sent in the last 5 minutes
@@ -4608,6 +4739,7 @@ async def resend_booking_confirmation(booking_id: str, current_admin: dict = Dep
         
         email_sent = False
         sms_sent = False
+        retry_count = int(booking.get("confirmationRetryCount", 0)) + 1
         
         # Send confirmation email
         try:
@@ -4628,7 +4760,15 @@ async def resend_booking_confirmation(booking_id: str, current_admin: dict = Dep
         # Track resend time
         await db.bookings.update_one(
             {"id": booking_id},
-            {"$set": {"lastConfirmationResent": datetime.now(timezone.utc).isoformat()}}
+            {"$set": {
+                "lastConfirmationResent": datetime.now(timezone.utc).isoformat(),
+                "confirmationRetryCount": retry_count,
+                "lastConfirmationRetryResult": {
+                    "email_sent": email_sent,
+                    "sms_sent": sms_sent,
+                    "at": datetime.now(timezone.utc).isoformat()
+                }
+            }}
         )
         
         if email_sent and sms_sent:
@@ -4645,6 +4785,12 @@ async def resend_booking_confirmation(booking_id: str, current_admin: dict = Dep
     except Exception as e:
         logger.error(f"Error resending confirmation: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error resending confirmation: {str(e)}")
+    finally:
+        if lock_acquired:
+            await db.bookings.update_one(
+                {"id": booking_id},
+                {"$unset": {"confirmationResendInProgress": "", "confirmationResendStartedAt": ""}}
+            )
 
 
 @api_router.post("/bookings/{booking_id}/resend-payment-link")
@@ -7537,17 +7683,27 @@ Customers will be auto-notified 5 mins before their pickup. Drive safe! ÃƒÆ�
 
 # Production Database Sync Endpoint
 PRODUCTION_API_URL = "https://bookaride.co.nz/api"
-SYNC_SECRET_KEY = os.environ.get("SYNC_SECRET_KEY", "bookaride-sync-2024-secret")
+SYNC_SECRET_KEY = os.environ.get("SYNC_SECRET_KEY")
+
+
+def get_sync_secret_or_none() -> Optional[str]:
+    """Return sync secret if configured."""
+    return SYNC_SECRET_KEY
 
 # Background auto-sync function
 async def auto_sync_from_production():
     """Automatically sync data from production every 5 minutes"""
     try:
+        sync_secret = get_sync_secret_or_none()
+        if not sync_secret:
+            logger.warning("Auto-sync skipped: SYNC_SECRET_KEY is not configured.")
+            return
+
         logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¾ Auto-sync: Starting sync from production...")
         
         response = requests.get(
             f"{PRODUCTION_API_URL}/sync/export",
-            params={"secret": SYNC_SECRET_KEY},
+            params={"secret": sync_secret},
             timeout=60
         )
         
@@ -7895,7 +8051,8 @@ async def get_urgent_return_bookings(current_admin: dict = Depends(get_current_a
 @api_router.get("/sync/export")
 async def export_data_for_sync(secret: str = ""):
     """Export bookings and drivers for sync - requires secret key"""
-    if secret != SYNC_SECRET_KEY:
+    sync_secret = get_endpoint_secret("SYNC_SECRET_KEY")
+    if not secret or not hmac.compare_digest(secret, sync_secret):
         raise HTTPException(status_code=403, detail="Invalid sync key")
     
     try:
@@ -7913,9 +8070,10 @@ async def export_data_for_sync(secret: str = ""):
 
 
 @api_router.post("/admin/sync")
-async def sync_from_production():
+async def sync_from_production(current_admin: dict = Depends(get_current_admin)):
     """Sync bookings and drivers from production database via deployed API"""
     try:
+        sync_secret = get_endpoint_secret("SYNC_SECRET_KEY")
         sync_results = {
             "bookings_synced": 0,
             "bookings_updated": 0,
@@ -7929,7 +8087,7 @@ async def sync_from_production():
             logger.info("Starting sync from production...")
             response = requests.get(
                 f"{PRODUCTION_API_URL}/sync/export",
-                params={"secret": SYNC_SECRET_KEY},
+                params={"secret": sync_secret},
                 timeout=60
             )
             
@@ -12050,7 +12208,7 @@ async def hotel_login(request: HotelLoginRequest):
             "hotel_code": hotel["code"],
             "exp": datetime.now(timezone.utc) + timedelta(hours=24)
         }
-        token = jwt.encode(token_data, os.environ.get("SECRET_KEY", "hotel-secret-key"), algorithm="HS256")
+        token = jwt.encode(token_data, SECRET_KEY, algorithm="HS256")
         
         return {
             "success": True,
@@ -12076,11 +12234,11 @@ async def get_current_hotel(request: Request):
     
     token = auth_header.split(" ")[1]
     try:
-        payload = jwt.decode(token, os.environ.get("SECRET_KEY", "hotel-secret-key"), algorithms=["HS256"])
+        payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
         return payload
-    except jwt.ExpiredSignatureError:
+    except ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
-    except jwt.InvalidTokenError:
+    except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
 @api_router.get("/hotel/bookings")
