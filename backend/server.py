@@ -82,6 +82,52 @@ if 'MONGO_URL' not in os.environ or 'DB_NAME' not in os.environ:
 client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=2000, connectTimeoutMS=2000)
 db = client[db_name]
 
+
+def get_db_name() -> str:
+    """Return the database name currently used by this process."""
+    return db_name
+
+
+async def resolve_db_name_case_conflict() -> str:
+    """
+    Resolve DB names that differ only by case.
+
+    MongoDB can raise write error 13297 if a database already exists with
+    different letter casing. This ensures we reuse the existing name.
+    """
+    global db_name, db
+
+    configured_db_name = os.environ.get('DB_NAME', db_name)
+    try:
+        existing_db_names = await client.list_database_names()
+    except Exception as exc:
+        logging.warning("Could not list databases for DB_NAME case check: %s", exc)
+        db_name = configured_db_name
+        db = client[db_name]
+        return db_name
+
+    matched_db_name = next(
+        (name for name in existing_db_names if name.lower() == configured_db_name.lower()),
+        None
+    )
+
+    if matched_db_name and matched_db_name != configured_db_name:
+        logging.warning(
+            "DB_NAME case mismatch detected: configured '%s' but existing database is '%s'. "
+            "Using existing database name.",
+            configured_db_name,
+            matched_db_name
+        )
+        db_name = matched_db_name
+        db = client[db_name]
+        # Keep environment value aligned for sync MongoClient usages.
+        os.environ['DB_NAME'] = db_name
+        return db_name
+
+    db_name = configured_db_name
+    db = client[db_name]
+    return db_name
+
 # Authentication configuration
 SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'your-secret-key-change-in-production-' + str(uuid.uuid4()))
 ALGORITHM = "HS256"
@@ -2299,7 +2345,7 @@ def send_customer_confirmation(booking: dict):
         try:
             from pymongo import MongoClient
             sync_client = MongoClient(os.environ.get('MONGO_URL', 'mongodb://localhost:27017'))
-            sync_db = sync_client[os.environ.get('DB_NAME', 'test_database')]
+            sync_db = sync_client[get_db_name()]
             
             nz_tz = pytz.timezone('Pacific/Auckland')
             now = datetime.now(nz_tz).isoformat()
@@ -3736,7 +3782,7 @@ Price: ${booking.get('totalPrice', 0):.2f}
             try:
                 from pymongo import MongoClient
                 sync_client = MongoClient(os.environ.get('MONGO_URL', 'mongodb://localhost:27017'))
-                sync_db = sync_client[os.environ.get('DB_NAME', 'test_database')]
+                sync_db = sync_client[get_db_name()]
                 sync_db.pending_approvals.update_one(
                     {"admin_phone": admin_phone},
                     {"$set": {
@@ -12903,6 +12949,8 @@ def create_arrival_email_html(customer_name: str, booking_date: str, pickup_time
 @app.on_event("startup")
 async def startup_event():
     """Start the scheduler when the app starts and ensure default admin exists"""
+    await resolve_db_name_case_conflict()
+
     # Ensure default admin exists with correct email for Google OAuth
     try:
         default_admin = await db.admin_users.find_one({"username": "admin"})
