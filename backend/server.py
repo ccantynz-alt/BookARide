@@ -1268,6 +1268,42 @@ def _normalize_address_for_routing(address: str) -> str:
     return address.strip()
 
 
+def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Straight-line distance in km. Road distance is typically 1.2-1.5x this."""
+    import math
+    R = 6371  # Earth radius km
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlam = math.radians(lon2 - lon1)
+    a = math.sin(dphi/2)**2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlam/2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return R * c
+
+
+def _haversine_fallback_or_25(pickup: str, dropoff: str, waypoints: list, geoapify_key: str, pickup_count: int) -> float:
+    """When routing APIs fail, try Geoapify geocode + haversine. Else 25km per stop."""
+    if geoapify_key and pickup and dropoff:
+        try:
+            coords = []
+            for addr in [pickup] + (waypoints or []) + [dropoff]:
+                if not addr or not str(addr).strip():
+                    continue
+                lat, lon = _geocode_geoapify(str(addr).strip(), geoapify_key)
+                if lat is not None:
+                    coords.append((lat, lon))
+            if len(coords) >= 2:
+                total = 0
+                for i in range(len(coords) - 1):
+                    total += _haversine_km(coords[i][0], coords[i][1], coords[i+1][0], coords[i+1][1])
+                estimated = round(total * 1.35, 2)  # Road factor
+                if estimated > 25.0:
+                    logger.info(f"Haversine fallback: {estimated}km (straight-line {round(total, 2)}km)")
+                    return estimated
+        except Exception as e:
+            logger.warning(f"Haversine fallback error: {e}")
+    return 25.0 * pickup_count
+
+
 def _get_distance_geoapify(pickup_address: str, dropoff_address: str, waypoint_addresses: list, api_key: str) -> float | None:
     """Get driving distance in km via Geoapify Routing API. Returns None on failure."""
     try:
@@ -1281,10 +1317,10 @@ def _get_distance_geoapify(pickup_address: str, dropoff_address: str, waypoint_a
             lat, lon = _geocode_geoapify(addr.strip(), api_key)
             if lat is None:
                 return None
-            coords_list.append(f"{lat},{lon}")
+            coords_list.append((lat, lon))
         if len(coords_list) < 2:
             return None
-        waypoints_str = "|".join(coords_list)
+        waypoints_str = "|".join(f"{lat},{lon}" for lat, lon in coords_list)
         url = f"https://api.geoapify.com/v1/routing?waypoints={waypoints_str}&mode=drive&apiKey={api_key}"
         r = requests.get(url, timeout=15)
         data = r.json()
@@ -1293,6 +1329,14 @@ def _get_distance_geoapify(pickup_address: str, dropoff_address: str, waypoint_a
             props = features[0].get("properties", {})
             dist_m = props.get("distance", 0)
             return round(dist_m / 1000, 2)
+        # Routing failed - use haversine * 1.35 (typical NZ road factor) as fallback
+        total_km = 0
+        for i in range(len(coords_list) - 1):
+            total_km += _haversine_km(coords_list[i][0], coords_list[i][1], coords_list[i+1][0], coords_list[i+1][1])
+        if total_km > 0:
+            estimated_road = round(total_km * 1.35, 2)
+            logger.info(f"Geoapify routing failed - using haversine estimate: {estimated_road}km (straight-line {total_km}km)")
+            return estimated_road
     except Exception as e:
         logger.warning(f"Geoapify routing error: {e}")
     return None
@@ -1349,7 +1393,7 @@ async def calculate_price(request: PriceCalculationRequest):
                     logger.info(f"Multi-stop route: {len(all_pickups)} pickups ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ dropoff, total: {distance_km}km")
                 else:
                     logger.warning(f"Google Maps Directions API error: {data.get('error_message', data.get('status'))}")
-                    distance_km = 25.0 * len(all_pickups)  # Fallback: estimate per stop
+                    distance_km = _haversine_fallback_or_25(request.pickupAddress, request.dropoffAddress, request.pickupAddresses, geoapify_key, len(all_pickups))
             else:
                 # Single pickup - use Distance Matrix API
                 url = "https://maps.googleapis.com/maps/api/distancematrix/json"
@@ -1370,15 +1414,16 @@ async def calculate_price(request: PriceCalculationRequest):
                         distance_km = round(distance_meters / 1000, 2)
                     else:
                         logger.warning(f"Google Maps element status: {element.get('status')}")
-                        distance_km = 25.0  # Fallback
+                        distance_km = _haversine_fallback_or_25(request.pickupAddress, request.dropoffAddress, request.pickupAddresses, geoapify_key, 1)
                 else:
                     logger.warning(f"Google Maps API error: {data.get('error_message', data.get('status'))}")
-                    distance_km = 25.0  # Fallback
+                    distance_km = _haversine_fallback_or_25(request.pickupAddress, request.dropoffAddress, request.pickupAddresses, geoapify_key, 1)
         else:
-            # Fallback: estimate based on number of stops
+            # Fallback: try haversine via Geoapify geocode, else estimate per stop
             pickup_count = 1 + len([addr for addr in (request.pickupAddresses or []) if addr])
-            distance_km = 25.0 * pickup_count  # Default estimate per stop
-            logger.warning(f"Google Maps API key not found. Using default distance estimate: {distance_km}km for {pickup_count} stops")
+            distance_km = _haversine_fallback_or_25(request.pickupAddress, request.dropoffAddress, request.pickupAddresses, geoapify_key, pickup_count)
+            if distance_km <= 25.0:
+                logger.warning(f"No distance API available. Using default estimate: {distance_km}km for {pickup_count} stops")
         
         # Calculate pricing with tiered rates - FLAT RATE per bracket
         # The rate is determined by which distance bracket the trip falls into
@@ -3706,13 +3751,13 @@ async def cron_send_reminders(api_key: str = None):
 
 
 def _get_booking_notification_emails() -> list:
-    """Emails to receive new booking copies. BOOKINGS_NOTIFICATION_EMAIL or ADMIN_EMAIL, default bookings@"""
-    raw = os.environ.get('BOOKINGS_NOTIFICATION_EMAIL') or os.environ.get('ADMIN_EMAIL', 'bookings@bookaride.co.nz')
+    """Emails to receive new booking copies. BOOKINGS_NOTIFICATION_EMAIL or ADMIN_EMAIL, default bookings@bookerride.co.nz"""
+    raw = os.environ.get('BOOKINGS_NOTIFICATION_EMAIL') or os.environ.get('ADMIN_EMAIL', 'bookings@bookerride.co.nz')
     return [e.strip() for e in str(raw).split(',') if e.strip()]
 
 
 async def send_booking_notification_to_admin(booking: dict):
-    """Automatically send booking notification to admin email(s) - bookings@bookaride.co.nz by default"""
+    """Automatically send booking notification to admin email(s) - bookings@bookerride.co.nz by default"""
     try:
         admin_emails = _get_booking_notification_emails()
         formatted_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
@@ -3874,7 +3919,7 @@ async def send_urgent_approval_notification(booking: dict):
         """
         
         subject = f"URGENT APPROVAL - {booking.get('name', 'Customer')} - {formatted_date} {booking.get('time', '')} - Ref: {booking_ref}"
-        recipient = admin_emails[0] if admin_emails else "bookings@bookaride.co.nz"
+        recipient = admin_emails[0] if admin_emails else "bookings@bookerride.co.nz"
         email_sent = False
         
         # Try unified sender first (SMTP/Mailgun)
@@ -5950,7 +5995,7 @@ async def twilio_sms_webhook(request: Request):
                     
                     # Notify admin of driver acknowledgment
                     try:
-                        admin_email = os.environ.get('ADMIN_EMAIL', 'bookings@bookaride.co.nz')
+                        admin_email = os.environ.get('ADMIN_EMAIL', 'bookings@bookerride.co.nz')
                         mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
                         mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
                         sender_email = os.environ.get('SENDER_EMAIL', 'noreply@mg.bookaride.co.nz')
@@ -9184,7 +9229,7 @@ async def submit_driver_application(application: DriverApplication):
         # Send notification email to admin
         mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
         mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
-        admin_email = os.environ.get('ADMIN_EMAIL', 'bookings@bookaride.co.nz')
+        admin_email = os.environ.get('ADMIN_EMAIL', 'bookings@bookerride.co.nz')
         
         if mailgun_api_key and mailgun_domain:
             html_content = f"""
