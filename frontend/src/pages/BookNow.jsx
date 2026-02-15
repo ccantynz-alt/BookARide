@@ -461,29 +461,23 @@ export const BookNow = () => {
         keywords="book airport shuttle, book airport transfer, online shuttle booking, airport shuttle booking online, instant quote shuttle, book shuttle Auckland, airport transfer booking, shuttle service booking"
         canonical="/book-now"
       />
-      {/* Hero Section with Professional Image */}
-      <section className="pt-32 pb-16 bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
-        {/* Background Image - Luxury Travel */}
+      {/* Hero Section */}
+      <section className="pt-32 pb-12 bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
         <div className="absolute inset-0">
           <img 
             src="https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=1920&q=80" 
             alt="Road trip scenic drive" 
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-gray-900/70 via-gray-900/60 to-gray-900" />
+          <div className="absolute inset-0 bg-gradient-to-b from-gray-900/80 via-gray-900/70 to-gray-900" />
         </div>
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-3xl mx-auto text-center">
-            <div className="inline-block mb-4">
-              <span className="bg-gold/20 text-gold text-sm font-semibold px-4 py-2 rounded-full border border-gold/30">
-                ✨ INSTANT ONLINE BOOKING
-              </span>
-            </div>
-            <h1 className="text-5xl md:text-6xl font-bold text-white mb-4">
+            <h1 className="text-4xl md:text-5xl font-bold text-white mb-3">
               Book Your <span className="text-gold">Ride</span>
             </h1>
-            <p className="text-xl text-white/80">
-              Get instant pricing with our live calculator • No hidden fees
+            <p className="text-lg text-white/70">
+              Instant pricing • No hidden fees • Door-to-door service
             </p>
           </div>
         </div>
@@ -497,9 +491,12 @@ export const BookNow = () => {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Main Form - Left Side */}
                 <div className="lg:col-span-2 space-y-6">
-                  <Card className="border-2 border-gray-200 shadow-lg">
+                  <Card className="border-2 border-gray-200 shadow-lg rounded-2xl overflow-hidden">
                     <CardContent className="p-8">
-                      <h2 className="text-2xl font-bold text-gray-900 mb-6">Trip Details</h2>
+                      <div className="flex items-center gap-3 mb-6">
+                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gold text-black font-bold text-sm">1</div>
+                        <h2 className="text-2xl font-bold text-gray-900">Trip Details</h2>
+                      </div>
 
                       {/* Service Type */}
                       <div className="space-y-2 mb-6">
@@ -649,11 +646,10 @@ export const BookNow = () => {
                       </div>
 
                       {/* Flight Information */}
-                      <div className="bg-gray-50 p-6 rounded-lg mb-6">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Flight Information</h3>
-                        <p className="text-sm text-gray-600 mb-2">Enter your flight number so our driver knows which flight to meet.</p>
-                        <p className="text-xs text-amber-700 bg-amber-50 p-2 rounded mb-4">
-                          ⚠️ <strong>Important:</strong> Flight numbers are required for airport pickups so our driver can meet you on time.
+                      <div className="bg-gray-50 p-6 rounded-xl mb-6 border border-gray-200">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-1">Flight Details</h3>
+                        <p className="text-sm text-gray-500 mb-4">
+                          Enter your flight number so we can track your flight and ensure timely pickup.
                         </p>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           <div className="space-y-2">
@@ -734,48 +730,47 @@ export const BookNow = () => {
                         <p className="text-xs text-gray-500 mt-1">1st passenger included, $5 per additional passenger</p>
                       </div>
 
-                      {/* VIP Parking Service */}
-                      <div className="mb-6 bg-gold/5 p-4 rounded-lg border border-gold/20">
-                        <div className="flex items-start space-x-3">
+                      {/* Service Add-ons */}
+                      <div className="mb-6 space-y-3">
+                        <h3 className="text-lg font-semibold text-gray-900">Optional Extras</h3>
+                        
+                        {/* VIP Parking Service */}
+                        <label htmlFor="vipAirportPickup" className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 ${
+                          formData.vipAirportPickup ? 'border-gold bg-gold/5 shadow-sm' : 'border-gray-200 hover:border-gold/40'
+                        }`}>
                           <input
                             type="checkbox"
                             id="vipAirportPickup"
                             name="vipAirportPickup"
                             checked={formData.vipAirportPickup}
                             onChange={(e) => setFormData(prev => ({ ...prev, vipAirportPickup: e.target.checked }))}
-                            className="w-4 h-4 text-gold border-gray-300 rounded focus:ring-gold mt-1"
+                            className="w-5 h-5 text-gold border-gray-300 rounded focus:ring-gold accent-[#D4AF37]"
                           />
                           <div className="flex-1">
-                            <Label htmlFor="vipAirportPickup" className="cursor-pointer font-semibold text-gray-900">
-                              VIP Parking Service - $15
-                            </Label>
-                            <p className="text-xs text-gray-600 mt-1">
-                              Driver meets you outside door eleven
-                            </p>
+                            <span className="font-semibold text-gray-900">VIP Parking Service</span>
+                            <p className="text-xs text-gray-500 mt-0.5">Driver meets you outside door eleven</p>
                           </div>
-                        </div>
-                      </div>
+                          <span className="text-sm font-bold text-gold whitespace-nowrap">+$15</span>
+                        </label>
 
-                      {/* Oversized Luggage Service */}
-                      <div className="mb-6 bg-blue-50 p-4 rounded-lg border border-blue-200">
-                        <div className="flex items-start space-x-3">
+                        {/* Oversized Luggage Service */}
+                        <label htmlFor="oversizedLuggage" className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 ${
+                          formData.oversizedLuggage ? 'border-gold bg-gold/5 shadow-sm' : 'border-gray-200 hover:border-gold/40'
+                        }`}>
                           <input
                             type="checkbox"
                             id="oversizedLuggage"
                             name="oversizedLuggage"
                             checked={formData.oversizedLuggage}
                             onChange={(e) => setFormData(prev => ({ ...prev, oversizedLuggage: e.target.checked }))}
-                            className="w-4 h-4 text-gold border-gray-300 rounded focus:ring-gold mt-1"
+                            className="w-5 h-5 text-gold border-gray-300 rounded focus:ring-gold accent-[#D4AF37]"
                           />
                           <div className="flex-1">
-                            <Label htmlFor="oversizedLuggage" className="cursor-pointer font-semibold text-gray-900">
-                              Oversized Luggage Service - $25
-                            </Label>
-                            <p className="text-xs text-gray-600 mt-1">
-                              For skis, snowboards, surfboards, golf clubs, bikes, or extra-large suitcases
-                            </p>
+                            <span className="font-semibold text-gray-900">Oversized Luggage</span>
+                            <p className="text-xs text-gray-500 mt-0.5">Skis, surfboards, golf clubs, bikes, or extra-large suitcases</p>
                           </div>
-                        </div>
+                          <span className="text-sm font-bold text-gold whitespace-nowrap">+$25</span>
+                        </label>
                       </div>
 
                       {/* Return Journey section removed - one-way bookings only */}
@@ -783,10 +778,13 @@ export const BookNow = () => {
                   </Card>
 
                   {/* Contact Information */}
-                  <Card className="border-2 border-gray-200 shadow-lg">
+                  <Card className="border-2 border-gray-200 shadow-lg rounded-2xl overflow-hidden">
                     <CardContent className="p-8">
                       <div className="flex items-center justify-between mb-6">
-                        <h2 className="text-2xl font-bold text-gray-900">Contact Information</h2>
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gold text-black font-bold text-sm">2</div>
+                          <h2 className="text-2xl font-bold text-gray-900">Contact Information</h2>
+                        </div>
                         {isReturningCustomer && (
                           <div className="flex items-center gap-2">
                             <span className="text-sm text-green-600 font-medium">👋 Welcome back!</span>
@@ -904,12 +902,14 @@ export const BookNow = () => {
 
                 {/* Price Summary - Right Side */}
                 <div className="lg:col-span-1">
-                  <Card className="border-2 border-gold/30 sticky top-24 shadow-lg">
-                    <CardContent className="p-8">
-                      <div className="flex items-center space-x-2 mb-6">
+                  <Card className="border-2 border-gold/30 sticky top-24 shadow-xl rounded-2xl overflow-hidden">
+                    <div className="bg-gradient-to-r from-gray-900 to-gray-800 p-6">
+                      <div className="flex items-center space-x-2">
                         <DollarSign className="w-6 h-6 text-gold" />
-                        <h2 className="text-2xl font-bold text-gray-900">Price Estimate</h2>
+                        <h2 className="text-xl font-bold text-white">Your Price Quote</h2>
                       </div>
+                    </div>
+                    <CardContent className="p-6">
 
                       {pricing.calculating ? (
                         <div className="text-center py-8">
@@ -1066,11 +1066,14 @@ export const BookNow = () => {
 
                       <Button 
                         type="submit" 
-                        className="w-full mt-6 bg-gold hover:bg-gold/90 text-black font-semibold py-6 text-lg transition-colors duration-200"
+                        className="w-full mt-6 bg-gold hover:bg-gold/90 text-black font-bold py-6 text-lg rounded-xl transition-all duration-200 shadow-md hover:shadow-lg hover:scale-[1.02]"
                         disabled={pricing.calculating || pricing.totalPrice === 0}
                       >
-                        Book Now
+                        {isProcessingPayment ? 'Processing...' : 'Book Now — Secure Your Ride'}
                       </Button>
+                      <p className="text-xs text-gray-400 text-center mt-3">
+                        You won't be charged until you complete payment
+                      </p>
                     </CardContent>
                   </Card>
                 </div>
