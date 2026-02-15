@@ -1374,11 +1374,12 @@ async def calculate_price(request: PriceCalculationRequest):
                 else:
                     logger.warning(f"Google Maps API error: {data.get('error_message', data.get('status'))}")
                     distance_km = 25.0  # Fallback
-        else:
-            # Fallback: estimate based on number of stops
+        
+        # Final fallback: only if BOTH Geoapify and Google Maps failed to return a distance
+        if distance_km is None:
             pickup_count = 1 + len([addr for addr in (request.pickupAddresses or []) if addr])
             distance_km = 25.0 * pickup_count  # Default estimate per stop
-            logger.warning(f"Google Maps API key not found. Using default distance estimate: {distance_km}km for {pickup_count} stops")
+            logger.warning(f"No distance API returned a result. Using default distance estimate: {distance_km}km for {pickup_count} stops")
         
         # Calculate pricing with tiered rates - FLAT RATE per bracket
         # The rate is determined by which distance bracket the trip falls into
@@ -4886,6 +4887,12 @@ def generate_confirmation_email_html(booking: dict, for_admin: bool = False) -> 
         formatted_return_date = format_date_ddmmyyyy(return_date) if return_date else 'TBC'
         formatted_return_time = format_time_ampm(return_time) if return_time else 'TBC'
         
+        # Format return departure and arrival times
+        return_dep_time = d.get('return_departure_time', '')
+        return_arr_time = d.get('return_arrival_time', '')
+        formatted_return_dep_time = format_time_ampm(return_dep_time) if return_dep_time else ''
+        formatted_return_arr_time = format_time_ampm(return_arr_time) if return_arr_time else ''
+        
         return_section_html = f'''
                         <!-- Return Trip -->
                         <tr>
@@ -4911,8 +4918,8 @@ def generate_confirmation_email_html(booking: dict, for_admin: bool = False) -> 
                             <td style="padding: 12px 20px; color: #666; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Drop-off</td>
                             <td style="padding: 12px 20px; color: #1a1a1a; font-size: 14px; border-bottom: 1px solid #f0f0f0;">{primary_pickup}</td>
                         </tr>
-                        {'<tr><td style="padding: 12px 20px; color: #666; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Return Flight</td><td style="padding: 12px 20px; color: #1a1a1a; font-size: 14px; font-weight: 600; border-bottom: 1px solid #f0f0f0;">' + return_flight + '</td></tr>' if return_flight else ''}
-                        {'<tr><td style="padding: 12px 20px; color: #666; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Return Arrival Flight</td><td style="padding: 12px 20px; color: #1a1a1a; font-size: 14px; font-weight: 600; border-bottom: 1px solid #f0f0f0;">' + return_arrival_flight + '</td></tr>' if return_arrival_flight and return_arrival_flight != return_flight else ''}
+                        {'<tr><td style="padding: 12px 20px; color: #666; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Return Flight</td><td style="padding: 12px 20px; color: #1a1a1a; font-size: 14px; font-weight: 600; border-bottom: 1px solid #f0f0f0;">' + return_flight + (' at ' + formatted_return_dep_time if formatted_return_dep_time else '') + '</td></tr>' if return_flight else ''}
+                        {'<tr><td style="padding: 12px 20px; color: #666; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Return Arrival Flight</td><td style="padding: 12px 20px; color: #1a1a1a; font-size: 14px; font-weight: 600; border-bottom: 1px solid #f0f0f0;">' + return_arrival_flight + (' at ' + formatted_return_arr_time if formatted_return_arr_time else '') + '</td></tr>' if return_arrival_flight and return_arrival_flight != return_flight else ''}
         '''
     
     # Build additional stops for outbound
