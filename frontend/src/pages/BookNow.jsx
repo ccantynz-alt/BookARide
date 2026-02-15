@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MapPin, Calendar, Users, DollarSign, Clock, Mail, Phone, User } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { MapPin, Calendar, Users, DollarSign, Clock, Mail, Phone, User, Wrench } from 'lucide-react';
+import siteConfig from '../config/siteConfig';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -18,7 +20,7 @@ import LiveJourneyVisualizer from '../components/LiveJourneyVisualizer';
 import MultiStopRouteMap from '../components/MultiStopRouteMap';
 import GeoapifyRouteMap from '../components/GeoapifyRouteMap';
 import { CustomDatePicker, CustomTimePicker } from '../components/DateTimePicker';
-import { GeoapifyAutocomplete } from '../components/GeoapifyAutocomplete';
+import { GeoapifyAutocomplete, QUICK_ADDRESSES } from '../components/GeoapifyAutocomplete';
 import PriceComparison from '../components/PriceComparison';
 import BookingAddOns, { addOns } from '../components/BookingAddOns';
 import TrustBadges from '../components/TrustBadges';
@@ -444,6 +446,30 @@ export const BookNow = () => {
     }
   };
 
+  if (siteConfig.maintenanceMode === true) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 flex items-center justify-center px-4">
+        <SEO title="Under Maintenance - Book A Ride NZ" description="Online booking is temporarily under maintenance." canonical="/book-now" />
+        <div className="max-w-lg text-center">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-amber-500/20 mb-8">
+            <Wrench className="w-10 h-10 text-amber-400" />
+          </div>
+          <h1 className="text-3xl md:text-4xl font-bold text-white mb-4">Under Maintenance</h1>
+          <p className="text-xl text-gray-300 mb-8">
+            Online booking is temporarily unavailable while we update our systems. Please call or email us to make your booking.
+          </p>
+          <div className="space-y-4 text-gray-400">
+            <p><a href={`mailto:${siteConfig.email}`} className="text-gold hover:underline">{siteConfig.email}</a></p>
+            {siteConfig.phone && <p><a href={`tel:${siteConfig.phone}`} className="text-gold hover:underline">{siteConfig.phone}</a></p>}
+          </div>
+          <Link to="/" className="inline-block mt-10 px-8 py-3 bg-gold text-black font-semibold rounded-lg hover:bg-yellow-500 transition-colors">
+            Return to Home
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-white">
       {isProcessingPayment && <LoadingSpinner message="Processing your booking..." />}
@@ -589,6 +615,12 @@ export const BookNow = () => {
                           onChange={(v) => setFormData(prev => ({ ...prev, dropoffAddress: v }))}
                           placeholder="Start typing address..."
                           required
+                          quickSelectOptions={[
+                            { label: 'Auckland Airport', address: QUICK_ADDRESSES.aucklandAirport },
+                            { label: 'Auckland Domestic', address: QUICK_ADDRESSES.aucklandDomestic },
+                            { label: 'Hamilton Airport', address: QUICK_ADDRESSES.hamiltonAirport },
+                            { label: 'Whangarei Airport', address: QUICK_ADDRESSES.whangareiAirport },
+                          ]}
                           className="transition-all duration-200 focus:ring-2 focus:ring-gold"
                         />
                         <p className="text-xs text-gray-500">Address suggestions as you type</p>
