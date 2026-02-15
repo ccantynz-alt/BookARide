@@ -4541,6 +4541,22 @@ export const AdminDashboard = () => {
                             />
                           </div>
                           <div>
+                            <Label className="text-xs">Return Departure Time</Label>
+                            <div className="mt-1">
+                              <CustomTimePicker
+                                selected={null}
+                                onChange={(time) => {
+                                  if (time) {
+                                    const hours = time.getHours().toString().padStart(2, '0');
+                                    const minutes = time.getMinutes().toString().padStart(2, '0');
+                                    setNewBooking(prev => ({...prev, returnDepartureTime: `${hours}:${minutes}`}));
+                                  }
+                                }}
+                                placeholder="Select departure time"
+                              />
+                            </div>
+                          </div>
+                          <div>
                             <Label className="text-xs">Return Arrival Flight (optional)</Label>
                             <Input
                               value={newBooking.returnArrivalFlightNumber || ''}
@@ -4548,6 +4564,22 @@ export const AdminDashboard = () => {
                               placeholder="e.g. NZ789"
                               className="mt-1"
                             />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Return Arrival Time (optional)</Label>
+                            <div className="mt-1">
+                              <CustomTimePicker
+                                selected={null}
+                                onChange={(time) => {
+                                  if (time) {
+                                    const hours = time.getHours().toString().padStart(2, '0');
+                                    const minutes = time.getMinutes().toString().padStart(2, '0');
+                                    setNewBooking(prev => ({...prev, returnArrivalTime: `${hours}:${minutes}`}));
+                                  }
+                                }}
+                                placeholder="Select arrival time"
+                              />
+                            </div>
                           </div>
                         </div>
                       </div>

@@ -309,6 +309,10 @@ class BookingCreate(BaseModel):
     pricing: dict
     status: str = "pending"
     payment_status: Optional[str] = "unpaid"
+    paymentMethod: Optional[str] = "card"  # 'card', 'afterpay', 'stripe', 'xero', etc.
+    # Service add-ons
+    vipAirportPickup: Optional[bool] = False
+    oversizedLuggage: Optional[bool] = False
     # Return trip fields
     bookReturn: Optional[bool] = False
     returnDate: Optional[str] = ""
@@ -321,6 +325,7 @@ class BookingCreate(BaseModel):
     # Notification preference: 'email', 'sms', or 'both'
     notificationPreference: Optional[str] = "both"
     skipNotifications: Optional[bool] = False
+    language: Optional[str] = "en"  # Language for email templates
     createdAt: datetime = Field(default_factory=datetime.utcnow)
     
     @model_validator(mode='after')
