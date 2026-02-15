@@ -626,6 +626,8 @@ export const AdminDashboard = () => {
   const [adminReturnTime, setAdminReturnTime] = useState(null);
   const [adminFlightArrivalTime, setAdminFlightArrivalTime] = useState(null);
   const [adminFlightDepartureTime, setAdminFlightDepartureTime] = useState(null);
+  const [adminReturnDepartureTime, setAdminReturnDepartureTime] = useState(null);
+  const [adminReturnArrivalTime, setAdminReturnArrivalTime] = useState(null);
 
   useEffect(() => {
     // Check authentication
@@ -2203,8 +2205,14 @@ export const AdminDashboard = () => {
         returnArrivalFlightNumber: '',
         returnArrivalTime: ''
       });
+      setAdminPickupDate(null);
+      setAdminPickupTime(null);
       setAdminReturnDate(null);
       setAdminReturnTime(null);
+      setAdminFlightArrivalTime(null);
+      setAdminFlightDepartureTime(null);
+      setAdminReturnDepartureTime(null);
+      setAdminReturnArrivalTime(null);
       setBookingPricing({
         distance: 0,
         basePrice: 0,
@@ -4550,6 +4558,40 @@ export const AdminDashboard = () => {
                               className="mt-1"
                             />
                           </div>
+                          <div>
+                            <Label className="text-xs">Return Flight Time</Label>
+                            <div className="mt-1">
+                              <CustomTimePicker
+                                selected={adminReturnDepartureTime}
+                                onChange={(time) => {
+                                  setAdminReturnDepartureTime(time);
+                                  if (time) {
+                                    const hours = time.getHours().toString().padStart(2, '0');
+                                    const minutes = time.getMinutes().toString().padStart(2, '0');
+                                    setNewBooking(prev => ({...prev, returnDepartureTime: `${hours}:${minutes}`}));
+                                  }
+                                }}
+                                placeholder="Select flight time"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <Label className="text-xs">Return Arrival Time</Label>
+                            <div className="mt-1">
+                              <CustomTimePicker
+                                selected={adminReturnArrivalTime}
+                                onChange={(time) => {
+                                  setAdminReturnArrivalTime(time);
+                                  if (time) {
+                                    const hours = time.getHours().toString().padStart(2, '0');
+                                    const minutes = time.getMinutes().toString().padStart(2, '0');
+                                    setNewBooking(prev => ({...prev, returnArrivalTime: `${hours}:${minutes}`}));
+                                  }
+                                }}
+                                placeholder="Select arrival time"
+                              />
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -4679,16 +4721,37 @@ export const AdminDashboard = () => {
                   setNewBooking({
                     name: '',
                     email: '',
+                    ccEmail: '',
                     phone: '',
                     serviceType: 'airport-shuttle',
                     pickupAddress: '',
+                    pickupAddresses: [],
                     dropoffAddress: '',
                     date: '',
                     time: '',
                     passengers: '1',
                     paymentMethod: 'stripe',  // Default to Stripe payment link
-                    notes: ''
+                    notes: '',
+                    flightArrivalNumber: '',
+                    flightArrivalTime: '',
+                    flightDepartureNumber: '',
+                    flightDepartureTime: '',
+                    bookReturn: false,
+                    returnDate: '',
+                    returnTime: '',
+                    returnDepartureFlightNumber: '',
+                    returnDepartureTime: '',
+                    returnArrivalFlightNumber: '',
+                    returnArrivalTime: ''
                   });
+                  setAdminPickupDate(null);
+                  setAdminPickupTime(null);
+                  setAdminReturnDate(null);
+                  setAdminReturnTime(null);
+                  setAdminFlightArrivalTime(null);
+                  setAdminFlightDepartureTime(null);
+                  setAdminReturnDepartureTime(null);
+                  setAdminReturnArrivalTime(null);
                   setBookingPricing({
                     distance: 0,
                     basePrice: 0,
