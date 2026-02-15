@@ -1349,7 +1349,7 @@ async def calculate_price(request: PriceCalculationRequest):
                     logger.info(f"Multi-stop route: {len(all_pickups)} pickups ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ dropoff, total: {distance_km}km")
                 else:
                     logger.warning(f"Google Maps Directions API error: {data.get('error_message', data.get('status'))}")
-                    distance_km = 25.0 * len(all_pickups)  # Fallback: estimate per stop
+                    distance_km = None  # Google Maps multi-stop failed; let final fallback handle it
             else:
                 # Single pickup - use Distance Matrix API
                 url = "https://maps.googleapis.com/maps/api/distancematrix/json"
@@ -1370,15 +1370,18 @@ async def calculate_price(request: PriceCalculationRequest):
                         distance_km = round(distance_meters / 1000, 2)
                     else:
                         logger.warning(f"Google Maps element status: {element.get('status')}")
-                        distance_km = 25.0  # Fallback
+                        distance_km = None  # Google Maps element failed; let final fallback handle it
                 else:
                     logger.warning(f"Google Maps API error: {data.get('error_message', data.get('status'))}")
-                    distance_km = 25.0  # Fallback
-        else:
-            # Fallback: estimate based on number of stops
+                    distance_km = None  # Google Maps API failed; let final fallback handle it
+        
+        # Final fallback: only if NO distance provider returned a valid distance
+        if distance_km is None:
             pickup_count = 1 + len([addr for addr in (request.pickupAddresses or []) if addr])
             distance_km = 25.0 * pickup_count  # Default estimate per stop
-            logger.warning(f"Google Maps API key not found. Using default distance estimate: {distance_km}km for {pickup_count} stops")
+            logger.warning(f"All distance APIs failed (Geoapify + Google Maps). Using fallback estimate: {distance_km}km for {pickup_count} stops")
+        
+        logger.info(f"PRICE CALC - Final distance: {distance_km}km | Pickup: {request.pickupAddress[:60]} | Dropoff: {request.dropoffAddress[:60]}")
         
         # Calculate pricing with tiered rates - FLAT RATE per bracket
         # The rate is determined by which distance bracket the trip falls into
