@@ -3702,10 +3702,16 @@ async def cron_send_reminders(api_key: str = None):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+def _get_booking_notification_emails() -> list:
+    """Emails to receive new booking copies. BOOKINGS_NOTIFICATION_EMAIL or ADMIN_EMAIL, default bookings@"""
+    raw = os.environ.get('BOOKINGS_NOTIFICATION_EMAIL') or os.environ.get('ADMIN_EMAIL', 'bookings@bookaride.co.nz')
+    return [e.strip() for e in str(raw).split(',') if e.strip()]
+
+
 async def send_booking_notification_to_admin(booking: dict):
-    """Automatically send booking notification to admin email"""
+    """Automatically send booking notification to admin email(s) - bookings@bookaride.co.nz by default"""
     try:
-        admin_email = os.environ.get('ADMIN_EMAIL', 'bookings@bookaride.co.nz')
+        admin_emails = _get_booking_notification_emails()
         formatted_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
         booking_ref = get_booking_reference(booking)
         
@@ -3713,42 +3719,52 @@ async def send_booking_notification_to_admin(booking: dict):
         html_content = generate_confirmation_email_html(booking, for_admin=True)
         
         subject = f"New Booking - {booking.get('name', 'Customer')} - {formatted_date} - Ref: {booking_ref}"
+        reply_to = os.environ.get("ADMIN_EMAIL", "info@bookaride.co.nz").split(',')[0].strip()
+        email_sent = False
         if send_email_unified:
-            email_sent = send_email_unified(
-                admin_email,
-                subject,
-                html_content,
-                from_email=get_noreply_email(),
-                from_name="BookaRide System",
-                reply_to=os.environ.get("ADMIN_EMAIL", "info@bookaride.co.nz"),
-            )
-            if email_sent:
-                logger.info(f"Auto-notification sent to admin: {admin_email} for booking: {booking_ref}")
-            else:
-                logger.error("Failed to send admin notification via unified email sender")
+            for admin_email in admin_emails:
+                try:
+                    if send_email_unified(
+                        admin_email,
+                        subject,
+                        html_content,
+                        from_email=get_noreply_email(),
+                        from_name="BookaRide System",
+                        reply_to=reply_to,
+                    ):
+                        logger.info(f"Auto-notification sent to {admin_email} for booking: {booking_ref}")
+                        email_sent = True
+                    else:
+                        logger.error(f"Failed to send admin notification to {admin_email}")
+                except Exception as e:
+                    logger.error(f"Error sending to {admin_email}: {e}")
         else:
             mailgun_api_key = os.environ.get("MAILGUN_API_KEY")
             mailgun_domain = os.environ.get("MAILGUN_DOMAIN")
             sender_email = get_noreply_email()
             if mailgun_api_key and mailgun_domain:
-                response = requests.post(
-                    f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
-                    auth=("api", mailgun_api_key),
-                    data={
-                        "from": f"BookaRide System <{sender_email}>",
-                        "to": admin_email,
-                        "subject": subject,
-                        "html": html_content,
-                    },
-                )
-                email_sent = response.status_code == 200
-                if email_sent:
-                    logger.info(f"Auto-notification sent to admin: {admin_email} for booking: {booking_ref}")
-                else:
-                    logger.error(f"Failed to send admin notification: {response.status_code} - {response.text}")
+                for admin_email in admin_emails:
+                    try:
+                        response = requests.post(
+                            f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
+                            auth=("api", mailgun_api_key),
+                            data={
+                                "from": f"BookaRide System <{sender_email}>",
+                                "to": admin_email,
+                                "subject": subject,
+                                "html": html_content,
+                            },
+                            timeout=15,
+                        )
+                        if response.status_code == 200:
+                            logger.info(f"Auto-notification sent to {admin_email} for booking: {booking_ref}")
+                            email_sent = True
+                        else:
+                            logger.error(f"Failed to send to {admin_email}: {response.status_code} - {response.text}")
+                    except Exception as e:
+                        logger.error(f"Error sending to {admin_email}: {e}")
             else:
-                logger.error("No email provider configured for admin notification")
-                email_sent = False
+                logger.error("No email provider configured (Mailgun or SMTP) - admin notifications not sent")
             
     except Exception as e:
         logger.error(f"Error sending admin notification: {str(e)}")
@@ -3788,14 +3804,10 @@ async def send_booking_notification_to_admin(booking: dict):
 async def send_urgent_approval_notification(booking: dict):
     """Send urgent notification for bookings requiring manual approval (within 24 hours)"""
     try:
-        admin_email = os.environ.get('ADMIN_EMAIL', 'bookings@bookaride.co.nz')
+        admin_emails = _get_booking_notification_emails()
         mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
         mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
         sender_email = os.environ.get('SENDER_EMAIL', 'noreply@mg.bookaride.co.nz')
-        
-        if not mailgun_api_key or not mailgun_domain:
-            logger.warning("Mailgun not configured - cannot send urgent approval notification")
-            return False
         
         # Format booking details
         total_price = booking.get('totalPrice', 0)
@@ -3858,20 +3870,31 @@ async def send_urgent_approval_notification(booking: dict):
         </html>
         """
         
-        # Send email via Mailgun API
-        response = requests.post(
+        subject = f"URGENT APPROVAL - {booking.get('name', 'Customer')} - {formatted_date} {booking.get('time', '')} - Ref: {booking_ref}"
+        recipient = admin_emails[0] if admin_emails else "bookings@bookaride.co.nz"
+        email_sent = False
+        
+        # Try unified sender first (SMTP/Mailgun)
+        if send_email_unified:
+            if send_email_unified(recipient, subject, html_content, from_email=sender_email or get_noreply_email(), from_name="BookaRide URGENT"):
+                logger.info(f"Urgent approval notification sent to {recipient} for booking: {booking_ref}")
+                email_sent = True
+        
+        # Fallback to Mailgun API
+        if not email_sent and mailgun_api_key and mailgun_domain:
+            response = requests.post(
             f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
             auth=("api", mailgun_api_key),
             data={
                 "from": f"BookaRide URGENT <{sender_email}>",
-                "to": admin_email,
+                "to": recipient,
                 "subject": f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¨ URGENT APPROVAL - {booking.get('name', 'Customer')} - {formatted_date} {booking.get('time', '')} - Ref: {booking_ref}",
                 "html": html_content
             }
         )
         
         if response.status_code == 200:
-            logger.info(f"Urgent approval notification sent to admin: {admin_email} for booking: {booking_ref}")
+            logger.info(f"Urgent approval notification sent to {recipient} for booking: {booking_ref}")
             email_sent = True
         else:
             logger.error(f"Failed to send urgent approval notification: {response.status_code} - {response.text}")
