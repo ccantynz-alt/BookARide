@@ -1,76 +1,143 @@
-# Send Emails via Google Workspace (Gmail)
+# Send Emails via Google Workspace (Gmail API or SMTP)
 
-You can use your Google Workspace account (e.g. `info@bookaride.co.nz`) to send emails from the website instead of Mailgun. No extra cost – it uses your existing Google account.
+All booking confirmations, reminders, admin notifications, and other transactional emails are now sent using your existing Google Workspace account - no extra cost on top of what you already pay for Google.
 
-## Quick Setup (about 5 minutes)
+## Email Provider Priority
 
-### 1. Create an App Password
+The system tries providers in this order:
 
-1. Go to [Google Account](https://myaccount.google.com/) → **Security**
-2. Turn on **2-Step Verification** if it’s not already on
-3. Go to **2-Step Verification** → **App passwords**
-4. Create a new app password:
-   - App: **Mail**
-   - Device: **Other** → name it "Book A Ride"
-5. Copy the 16-character password (e.g. `abcd efgh ijkl mnop`)
+1. **Gmail API** (recommended) - Uses a service account with domain-wide delegation
+2. **Google Workspace SMTP** - Uses an App Password
+3. **Mailgun** - Kept as last-resort fallback only
 
-### 2. Add Environment Variables to Render
+You only need **one** of these configured. Gmail API is the best option.
 
-In **Render** → your backend service → **Environment**, add:
+---
+
+## Option A: Gmail API (Recommended)
+
+This is the most secure and reliable method. Uses OAuth 2.0 via a service account.
+
+### Setup Steps
+
+1. **Enable Gmail API** in Google Cloud Console
+   - Go to [APIs & Services](https://console.cloud.google.com/apis/library)
+   - Search for "Gmail API" and enable it
+
+2. **Create or reuse a Service Account**
+   - You can use the existing `service_account.json` (already set up for Calendar)
+   - Or create a dedicated one at [IAM & Admin > Service Accounts](https://console.cloud.google.com/iam-admin/serviceaccounts)
+
+3. **Enable Domain-Wide Delegation**
+   - In the service account details, enable "Domain-wide delegation"
+   - Copy the **Client ID**
+
+4. **Authorize in Google Admin Console**
+   - Go to [admin.google.com](https://admin.google.com) > Security > API controls > Domain-wide delegation
+   - Click "Add new"
+   - **Client ID**: paste from step 3
+   - **OAuth scopes**: `https://www.googleapis.com/auth/gmail.send`
+   - Click "Authorize"
+
+5. **Add Environment Variables** (in Render or your hosting):
+
+| Variable | Value | Required? |
+|----------|-------|-----------|
+| `GMAIL_DELEGATED_USER` | `noreply@bookaride.co.nz` (the Google Workspace user to send as) | Yes |
+| `GOOGLE_SERVICE_ACCOUNT_FILE` | Path to service account JSON (e.g. `/app/backend/service_account.json`) | Only if not using default |
+
+If the service account JSON is at `backend/service_account.json`, it will be found automatically.
+
+### Environment Variable Alternatives
+
+- `GOOGLE_SERVICE_ACCOUNT_JSON` - Raw JSON string (useful for Render secrets / Docker)
+- `NOREPLY_EMAIL` or `SENDER_EMAIL` - Fallback sender address if `GMAIL_DELEGATED_USER` is not set
+
+---
+
+## Option B: Google Workspace SMTP (Simpler but less secure)
+
+Uses a Gmail App Password. Simpler to set up but Google is phasing out App Passwords.
+
+### Setup Steps
+
+1. Go to [Google Account](https://myaccount.google.com/) > Security
+2. Turn on **2-Step Verification**
+3. Go to 2-Step Verification > **App passwords**
+4. Create a new app password (name it "Book A Ride")
+5. Copy the 16-character password
+
+### Environment Variables
 
 | Variable | Value |
 |----------|-------|
 | `SMTP_USER` | Your Google Workspace email (e.g. `info@bookaride.co.nz`) |
 | `SMTP_PASS` | The 16-character App Password (no spaces) |
 | `NOREPLY_EMAIL` | Address for customer confirmations (e.g. `noreply@bookaride.co.nz`) |
-| `SENDER_EMAIL` | Fallback if NOREPLY_EMAIL not set (e.g. `noreply@bookaride.co.nz`) |
 
-**Optional** (defaults work for most setups):
+Optional (defaults work for Gmail):
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `SMTP_HOST` | `smtp.gmail.com` | Use for Gmail/Google Workspace |
+| `SMTP_HOST` | `smtp.gmail.com` | SMTP server |
 | `SMTP_PORT` | `587` | TLS port |
-
-### 3. Redeploy
-
-Click **Manual Deploy** in Render so the new env vars are picked up.
 
 ---
 
-## How It Works
-
-- **Mailgun** is used first if `MAILGUN_API_KEY` and `MAILGUN_DOMAIN` are set.
-- **Google Workspace SMTP** is used if Mailgun is not configured but `SMTP_USER` and `SMTP_PASS` are set.
-- You can use either Mailgun or Google Workspace; you don’t need both.
-
 ## Sending from noreply@
 
-Customer confirmations, payment links, and reminders are sent from `noreply@bookaride.co.nz` (or whatever you set in `NOREPLY_EMAIL`). With Google Workspace:
+To send emails from `noreply@bookaride.co.nz`:
 
-- Add `noreply@bookaride.co.nz` as an **alias** for your user in Admin Console → Users → [your user] → User information → Email aliases
-- Or create a **Group** `noreply@bookaride.co.nz` and add your user as owner
-- If your domain is verified, sending from `noreply@` works once the alias is added
+- **Gmail API**: Set `GMAIL_DELEGATED_USER=noreply@bookaride.co.nz` and ensure the service account has delegation permission for that user
+- **SMTP**: Add `noreply@bookaride.co.nz` as an alias in Admin Console > Users > [your user] > Email aliases
 
-## Sending Limits
+---
 
-- **Google Workspace**: about 2,000 emails/day (varies by plan)
-- **Gmail (free)**: about 500/day
+## Email Sending Limits
 
-For a typical booking site, Google Workspace limits are usually enough.
+- **Google Workspace**: ~2,000 emails/day per user
+- **Gmail (free)**: ~500/day
+
+For a booking site, Google Workspace limits are typically more than enough.
+
+---
 
 ## Troubleshooting
 
-**"Username and Password not accepted"**
-- Use an **App Password**, not your normal Google password
+### Gmail API: "Delegation denied"
+- Complete step 4 above (Domain-wide delegation in Admin Console)
+- Check Client ID matches exactly
+- Check scope is `https://www.googleapis.com/auth/gmail.send`
+
+### Gmail API: "File not found"
+- Check `GOOGLE_SERVICE_ACCOUNT_FILE` path or ensure `service_account.json` exists in `backend/`
+
+### SMTP: "Username and Password not accepted"
+- Use an **App Password**, not your Google password
 - Remove spaces from the App Password
 - Ensure 2-Step Verification is enabled
 
-**Emails not arriving**
-- Check spam/junk
-- Confirm `SENDER_EMAIL` matches your Google Workspace address
-- Check Render logs for SMTP errors
+### Emails not arriving
+- Check spam/junk folder
+- Check Render logs for errors (search for "email" or "Gmail")
 
-**"Less secure app" errors**
-- Google no longer supports “less secure apps”
-- Use an App Password instead of your normal password
+---
+
+## Checking Configuration
+
+The backend logs which email provider is configured at startup. You can also check:
+
+```python
+from email_sender import is_email_configured, get_configured_provider
+
+print(f"Email configured: {is_email_configured()}")
+print(f"Provider: {get_configured_provider()}")
+```
+
+---
+
+## Migration from Mailgun
+
+If you previously used Mailgun, you can now remove the `MAILGUN_API_KEY` and `MAILGUN_DOMAIN` environment variables from Render. The system no longer needs Mailgun and won't use it unless Gmail API and SMTP are both unconfigured.
+
+All email sending now goes through the unified sender in `backend/email_sender.py`.
