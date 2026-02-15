@@ -30,6 +30,15 @@ def send_email(
     Returns True if sent successfully, False otherwise.
     """
     from_email = from_email or get_noreply_email()
+    
+    # Ensure from_email domain matches Mailgun domain for deliverability
+    mailgun_domain = os.environ.get("MAILGUN_DOMAIN", "")
+    if mailgun_domain and from_email and mailgun_domain not in from_email:
+        original_from = from_email
+        from_email = f"noreply@{mailgun_domain}"
+        logger.info(f"Adjusted from_email from {original_from} to {from_email} to match Mailgun domain")
+
+    logger.info(f"EMAIL SEND - To: {to_email}, Subject: {subject[:60]}..., From: {from_email}")
 
     # Try Mailgun first
     if _send_via_mailgun(to_email, subject, html_content, from_email, from_name, reply_to):
@@ -39,7 +48,9 @@ def send_email(
     if _send_via_smtp(to_email, subject, html_content, from_email, from_name):
         return True
 
-    logger.warning("No email provider configured (Mailgun or SMTP)")
+    logger.error(f"EMAIL SEND FAILED - No email provider delivered to {to_email}. "
+                 f"Mailgun configured: {bool(os.environ.get('MAILGUN_API_KEY') and os.environ.get('MAILGUN_DOMAIN'))}, "
+                 f"SMTP configured: {bool(os.environ.get('SMTP_USER') and os.environ.get('SMTP_PASS'))}")
     return False
 
 
@@ -55,6 +66,7 @@ def _send_via_mailgun(
     api_key = os.environ.get("MAILGUN_API_KEY")
     domain = os.environ.get("MAILGUN_DOMAIN")
     if not api_key or not domain:
+        logger.info(f"Mailgun not configured (API_KEY: {'set' if api_key else 'MISSING'}, DOMAIN: {'set' if domain else 'MISSING'})")
         return False
 
     try:
@@ -67,6 +79,7 @@ def _send_via_mailgun(
         if reply_to:
             data["h:Reply-To"] = reply_to
 
+        logger.info(f"Mailgun sending to {to_email} via domain {domain}, from: {from_email}")
         resp = requests.post(
             f"https://api.mailgun.net/v3/{domain}/messages",
             auth=("api", api_key),
@@ -74,12 +87,12 @@ def _send_via_mailgun(
             timeout=15,
         )
         if resp.status_code == 200:
-            logger.info(f"Email sent to {to_email} via Mailgun")
+            logger.info(f"Mailgun SUCCESS - Email sent to {to_email}, response: {resp.text[:100]}")
             return True
-        logger.error(f"Mailgun error: {resp.status_code} - {resp.text}")
+        logger.error(f"Mailgun FAILED - Status {resp.status_code} for {to_email}: {resp.text[:200]}")
         return False
     except Exception as e:
-        logger.error(f"Mailgun send error: {e}")
+        logger.error(f"Mailgun EXCEPTION sending to {to_email}: {e}", exc_info=True)
         return False
 
 
