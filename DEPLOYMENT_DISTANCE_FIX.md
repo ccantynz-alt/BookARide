@@ -15,4 +15,4 @@ The zone distance fixes (Hibiscus Coast 73km, Whangarei 182km, airport address n
 
 3. **Set `GEOAPIFY_API_KEY`** on Render so Geoapify routing is used instead of the 25km fallback.
 
-4. **Set `BOOKINGS_NOTIFICATION_EMAIL=bookings@bookaride.co.nz`** for admin booking copies.
+4. **Set `BOOKINGS_NOTIFICATION_EMAIL=bookings@bookerride.co.nz`** for admin booking copies.
