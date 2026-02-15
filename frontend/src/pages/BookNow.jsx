@@ -673,13 +673,24 @@ export const BookNow = () => {
                         </div>
                       </div>
 
-                      {/* Flight Information */}
-                      <div className="bg-gray-50 p-6 rounded-lg mb-6">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Flight Information</h3>
-                        <p className="text-sm text-gray-600 mb-2">Enter your flight number so our driver knows which flight to meet.</p>
-                        <p className="text-xs text-amber-700 bg-amber-50 p-2 rounded mb-4">
-                          ⚠️ <strong>Important:</strong> Flight numbers are required for airport pickups so our driver can meet you on time.
-                        </p>
+                      {/* Flight Information - Enhanced styling */}
+                      <div className="bg-gradient-to-br from-blue-50 to-indigo-50/30 p-6 rounded-xl mb-6 border-2 border-blue-200/60">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-blue-500/10">
+                            <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                            </svg>
+                          </div>
+                          <div>
+                            <h3 className="text-lg font-semibold text-gray-900">Flight Information</h3>
+                            <p className="text-sm text-gray-600">Track your flight for on-time pickup</p>
+                          </div>
+                        </div>
+                        <div className="bg-amber-50 border-l-4 border-amber-400 p-3 rounded mb-4">
+                          <p className="text-sm text-amber-800">
+                            <strong>✈️ Important:</strong> Flight numbers help us track delays and ensure timely pickup
+                          </p>
+                        </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           <div className="space-y-2">
                             <Label htmlFor="departureFlightNumber">Departure Flight Number</Label>
@@ -759,53 +770,77 @@ export const BookNow = () => {
                         <p className="text-xs text-gray-500 mt-1">1st passenger included, $5 per additional passenger</p>
                       </div>
 
-                      {/* VIP Parking Service */}
-                      <div className="mb-6 bg-gold/5 p-4 rounded-lg border border-gold/20">
-                        <div className="flex items-start space-x-3">
+                      {/* VIP Parking Service - Enhanced design */}
+                      <div className="mb-6 bg-gradient-to-r from-gold/5 via-gold/10 to-gold/5 p-5 rounded-xl border-2 border-gold/30 hover:border-gold/50 transition-all duration-300 cursor-pointer" onClick={() => setFormData(prev => ({ ...prev, vipAirportPickup: !prev.vipAirportPickup }))}>
+                        <div className="flex items-start space-x-4">
                           <input
                             type="checkbox"
                             id="vipAirportPickup"
                             name="vipAirportPickup"
                             checked={formData.vipAirportPickup}
-                            onChange={(e) => setFormData(prev => ({ ...prev, vipAirportPickup: e.target.checked }))}
-                            className="w-4 h-4 text-gold border-gray-300 rounded focus:ring-gold mt-1"
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              setFormData(prev => ({ ...prev, vipAirportPickup: e.target.checked }));
+                            }}
+                            className="w-5 h-5 text-gold border-gray-300 rounded focus:ring-gold mt-1 cursor-pointer"
                           />
                           <div className="flex-1">
-                            <Label htmlFor="vipAirportPickup" className="cursor-pointer font-semibold text-gray-900">
-                              VIP Parking Service - $15
-                            </Label>
-                            <p className="text-xs text-gray-600 mt-1">
-                              Driver meets you outside door eleven
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-2xl">⭐</span>
+                              <Label htmlFor="vipAirportPickup" className="cursor-pointer font-bold text-gray-900 text-base">
+                                VIP Parking Service
+                              </Label>
+                              <span className="ml-auto text-gold font-bold text-lg">+$15</span>
+                            </div>
+                            <p className="text-sm text-gray-700 font-medium">
+                              Driver meets you outside door eleven for hassle-free pickup
                             </p>
                           </div>
                         </div>
                       </div>
 
-                      {/* Oversized Luggage Service */}
-                      <div className="mb-6 bg-blue-50 p-4 rounded-lg border border-blue-200">
-                        <div className="flex items-start space-x-3">
+                      {/* Oversized Luggage Service - Enhanced design */}
+                      <div className="mb-6 bg-gradient-to-r from-blue-50 via-blue-100/50 to-blue-50 p-5 rounded-xl border-2 border-blue-300/60 hover:border-blue-400/70 transition-all duration-300 cursor-pointer" onClick={() => setFormData(prev => ({ ...prev, oversizedLuggage: !prev.oversizedLuggage }))}>
+                        <div className="flex items-start space-x-4">
                           <input
                             type="checkbox"
                             id="oversizedLuggage"
                             name="oversizedLuggage"
                             checked={formData.oversizedLuggage}
-                            onChange={(e) => setFormData(prev => ({ ...prev, oversizedLuggage: e.target.checked }))}
-                            className="w-4 h-4 text-gold border-gray-300 rounded focus:ring-gold mt-1"
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              setFormData(prev => ({ ...prev, oversizedLuggage: e.target.checked }));
+                            }}
+                            className="w-5 h-5 text-gold border-gray-300 rounded focus:ring-gold mt-1 cursor-pointer"
                           />
                           <div className="flex-1">
-                            <Label htmlFor="oversizedLuggage" className="cursor-pointer font-semibold text-gray-900">
-                              Oversized Luggage Service - $25
-                            </Label>
-                            <p className="text-xs text-gray-600 mt-1">
-                              For skis, snowboards, surfboards, golf clubs, bikes, or extra-large suitcases
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-2xl">🧳</span>
+                              <Label htmlFor="oversizedLuggage" className="cursor-pointer font-bold text-gray-900 text-base">
+                                Oversized Luggage Service
+                              </Label>
+                              <span className="ml-auto text-blue-600 font-bold text-lg">+$25</span>
+                            </div>
+                            <p className="text-sm text-gray-700 font-medium">
+                              Skis, snowboards, surfboards, golf clubs, bikes, or extra-large suitcases
                             </p>
                           </div>
                         </div>
                       </div>
 
-                      {/* Return Journey - Always visible, optional */}
-                      <div className="bg-gray-50 p-6 rounded-lg mb-6 border border-gray-200">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Return Journey <span className="text-sm font-normal text-gray-500">(Optional – leave blank for one-way)</span></h3>
+                      {/* Return Journey - Clean, optional section */}
+                      <div className="bg-gradient-to-br from-gray-50 to-gray-100/50 p-6 rounded-xl mb-6 border-2 border-gray-200/60 hover:border-gold/30 transition-all duration-300">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gold/10">
+                            <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                            </svg>
+                          </div>
+                          <div>
+                            <h3 className="text-lg font-semibold text-gray-900">Return Journey</h3>
+                            <p className="text-sm text-gray-600">Optional – leave blank for one-way trip</p>
+                          </div>
+                        </div>
                           
                           {/* Return Date and Time */}
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
