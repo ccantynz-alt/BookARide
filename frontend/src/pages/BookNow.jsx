@@ -225,7 +225,8 @@ export const BookNow = () => {
     } catch (error) {
       console.error('Error calculating price:', error);
       setPricing(prev => ({ ...prev, calculating: false }));
-      toast.error('Unable to calculate distance. Please check addresses.');
+      const detail = error.response?.data?.detail;
+      toast.error(typeof detail === 'string' && detail.trim() ? detail : 'Unable to calculate distance. Please check addresses.');
     }
   };
 
