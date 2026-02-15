@@ -1374,11 +1374,13 @@ async def calculate_price(request: PriceCalculationRequest):
                 else:
                     logger.warning(f"Google Maps API error: {data.get('error_message', data.get('status'))}")
                     distance_km = 25.0  # Fallback
-        else:
+        
+        # Final fallback check - if distance is still None, use fallback
+        if distance_km is None:
             # Fallback: estimate based on number of stops
             pickup_count = 1 + len([addr for addr in (request.pickupAddresses or []) if addr])
             distance_km = 25.0 * pickup_count  # Default estimate per stop
-            logger.warning(f"Google Maps API key not found. Using default distance estimate: {distance_km}km for {pickup_count} stops")
+            logger.error(f"PRICING FALLBACK: No API keys configured. Using default distance estimate: {distance_km}km for {pickup_count} stops. Configure GEOAPIFY_API_KEY or GOOGLE_MAPS_API_KEY for accurate pricing.")
         
         # Calculate pricing with tiered rates - FLAT RATE per bracket
         # The rate is determined by which distance bracket the trip falls into
@@ -1537,8 +1539,13 @@ async def calculate_price(request: PriceCalculationRequest):
             ratePerKm=round(rate_per_km, 2)
         )
     except Exception as e:
-        logger.error(f"Error calculating price: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error calculating price: {str(e)}")
+        logger.error(f"❌ Error calculating price: {str(e)}")
+        # Provide more helpful error message
+        error_msg = "Error calculating distance. Please check addresses and try again."
+        if "API" in str(e).upper() or "KEY" in str(e).upper():
+            error_msg = "Distance calculation service temporarily unavailable. Using estimated pricing."
+            logger.warning("⚠️ API keys not configured. Configure GEOAPIFY_API_KEY or GOOGLE_MAPS_API_KEY for accurate pricing.")
+        raise HTTPException(status_code=500, detail=error_msg)
 
 # Validate and apply promo code
 @api_router.post("/validate-promo")
@@ -1606,8 +1613,12 @@ async def create_booking(booking: BookingCreate, background_tasks: BackgroundTas
             logger.info(f"Booking #{ref_number} requires manual approval (within 24 hours)")
         
         # Extract totalPrice from pricing for payment processing
-        booking_dict['totalPrice'] = booking.pricing.get('totalPrice', 0)
+        total_price = booking.pricing.get('totalPrice', 0)
+        booking_dict['totalPrice'] = total_price
         booking_dict['payment_status'] = 'unpaid'
+        
+        # Log pricing for debugging
+        logger.info(f"Booking #{ref_number} pricing - Distance: {booking.pricing.get('distance', 0)}km, Total: ${total_price}, Pricing dict: {booking.pricing}")
         
         # Critical: Verify the database write succeeded
         result = await db.bookings.insert_one(booking_dict)
@@ -2321,14 +2332,24 @@ EMAIL_TRANSLATIONS = {
 
 def send_booking_confirmation_email(booking: dict, include_payment_link: bool = True):
     """Send booking confirmation email via Mailgun or SMTP fallback"""
+    booking_ref = get_booking_reference(booking)
+    customer_email = booking.get('email', 'unknown')
+    
     # Try Mailgun first
     mailgun_success = send_via_mailgun(booking)
     if mailgun_success:
+        logger.info(f"✅ Email confirmation sent via Mailgun to {customer_email} for booking {booking_ref}")
         return True
     
     # Fallback to SMTP if Mailgun fails
-    logger.warning("Mailgun failed, trying SMTP fallback...")
-    return send_via_smtp(booking)
+    logger.warning(f"Mailgun failed for booking {booking_ref}, trying SMTP fallback...")
+    smtp_success = send_via_smtp(booking)
+    if smtp_success:
+        logger.info(f"✅ Email confirmation sent via SMTP to {customer_email} for booking {booking_ref}")
+        return True
+    
+    logger.error(f"❌ FAILED to send email confirmation to {customer_email} for booking {booking_ref}. Configure MAILGUN or SMTP credentials.")
+    return False
 
 
 def send_via_mailgun(booking: dict):
@@ -2509,14 +2530,24 @@ def send_customer_confirmation(booking: dict):
     preference = booking.get('notificationPreference', 'both')
     results = {'email': False, 'sms': False}
     booking_id = booking.get('id')
+    booking_ref = get_booking_reference(booking)
+    customer_email = booking.get('email', 'unknown')
+    
+    logger.info(f"🔔 Sending customer confirmation for booking {booking_ref} to {customer_email} (preference: {preference})")
     
     if preference in ['email', 'both']:
         results['email'] = send_booking_confirmation_email(booking)
-        logger.info(f"Email confirmation {'sent' if results['email'] else 'failed'} for booking {get_booking_reference(booking)}")
+        status = '✅ sent' if results['email'] else '❌ FAILED'
+        logger.info(f"Email confirmation {status} for booking {booking_ref}")
+        if not results['email']:
+            logger.error(f"❌ EMAIL FAILED for booking {booking_ref}. Customer {customer_email} did NOT receive confirmation email!")
     
     if preference in ['sms', 'both']:
         results['sms'] = send_booking_confirmation_sms(booking)
-        logger.info(f"SMS confirmation {'sent' if results['sms'] else 'failed'} for booking {get_booking_reference(booking)}")
+        status = '✅ sent' if results['sms'] else '❌ FAILED'
+        logger.info(f"SMS confirmation {status} for booking {booking_ref}")
+        if not results['sms']:
+            logger.warning(f"⚠️ SMS FAILED for booking {booking_ref}. Customer may not receive SMS notification.")
     
     if preference == 'email':
         logger.info(f"Customer prefers EMAIL only - skipping SMS for booking {get_booking_reference(booking)}")
