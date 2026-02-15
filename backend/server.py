@@ -1307,78 +1307,98 @@ async def calculate_price(request: PriceCalculationRequest):
         google_api_key = os.environ.get('GOOGLE_MAPS_API_KEY', '')
         
         distance_km = None
-        if geoapify_key:
-            # Route: pickup -> additional pickups -> dropoff
-            waypoint_addrs = [a for a in (request.pickupAddresses or []) if a and a.strip()]
-            distance_km = _get_distance_geoapify(
-                request.pickupAddress,
-                request.dropoffAddress,
-                waypoint_addrs,
-                geoapify_key
-            )
-            if distance_km is not None:
-                logger.info(f"Geoapify route distance: {distance_km}km")
+        distance_source = "none"
         
+        # --- ATTEMPT 1: Geoapify (with retry) ---
+        if geoapify_key:
+            waypoint_addrs = [a for a in (request.pickupAddresses or []) if a and a.strip()]
+            for _attempt in range(2):
+                distance_km = _get_distance_geoapify(
+                    request.pickupAddress,
+                    request.dropoffAddress,
+                    waypoint_addrs,
+                    geoapify_key
+                )
+                if distance_km is not None:
+                    distance_source = "geoapify"
+                    logger.info(f"Geoapify route distance: {distance_km}km (attempt {_attempt + 1})")
+                    break
+                elif _attempt == 0:
+                    logger.warning("Geoapify attempt 1 failed, retrying...")
+                    import time as _time; _time.sleep(1)
+        
+        # --- ATTEMPT 2: Google Maps (with retry) ---
         if distance_km is None and google_api_key:
-            # Build list of all stops: first pickup + additional pickups + dropoff
             all_pickups = [request.pickupAddress]
             if request.pickupAddresses:
                 all_pickups.extend([addr for addr in request.pickupAddresses if addr])
             
-            # If multiple pickups, use Directions API for route optimization
-            if len(all_pickups) > 1:
-                # Use Directions API with waypoints for multi-stop route
-                url = "https://maps.googleapis.com/maps/api/directions/json"
-                waypoints = "|".join(all_pickups[1:])  # All pickups except first
-                params = {
-                    'origin': all_pickups[0],  # First pickup
-                    'destination': request.dropoffAddress,  # Final dropoff
-                    'waypoints': waypoints,  # Intermediate pickups
-                    'key': google_api_key
-                }
-                response = requests.get(url, params=params)
-                data = response.json()
+            for _attempt in range(2):
+              try:
+                if len(all_pickups) > 1:
+                    url = "https://maps.googleapis.com/maps/api/directions/json"
+                    waypoints = "|".join(all_pickups[1:])
+                    params = {
+                        'origin': all_pickups[0],
+                        'destination': request.dropoffAddress,
+                        'waypoints': waypoints,
+                        'key': google_api_key
+                    }
+                    response = requests.get(url, params=params, timeout=15)
+                    data = response.json()
                 
-                logger.info(f"Google Maps Directions API (multi-stop) response status: {data.get('status')}")
-                
-                if data['status'] == 'OK' and len(data['routes']) > 0:
-                    route = data['routes'][0]
-                    # Sum all leg distances
-                    total_distance_meters = sum(leg['distance']['value'] for leg in route['legs'])
-                    distance_km = round(total_distance_meters / 1000, 2)
-                    logger.info(f"Multi-stop route: {len(all_pickups)} pickups ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ dropoff, total: {distance_km}km")
-                else:
-                    logger.warning(f"Google Maps Directions API error: {data.get('error_message', data.get('status'))}")
-                    distance_km = 25.0 * len(all_pickups)  # Fallback: estimate per stop
-            else:
-                # Single pickup - use Distance Matrix API
-                url = "https://maps.googleapis.com/maps/api/distancematrix/json"
-                params = {
-                    'origins': request.pickupAddress,
-                    'destinations': request.dropoffAddress,
-                    'key': google_api_key
-                }
-                response = requests.get(url, params=params)
-                data = response.json()
-                
-                logger.info(f"Google Maps Distance Matrix API response: {data}")
-                
-                if data['status'] == 'OK' and len(data['rows']) > 0 and len(data['rows'][0]['elements']) > 0:
-                    element = data['rows'][0]['elements'][0]
-                    if element['status'] == 'OK':
-                        distance_meters = element['distance']['value']
-                        distance_km = round(distance_meters / 1000, 2)
+                    logger.info(f"Google Maps Directions API (multi-stop) response status: {data.get('status')} (attempt {_attempt + 1})")
+                    
+                    if data['status'] == 'OK' and len(data['routes']) > 0:
+                        route = data['routes'][0]
+                        total_distance_meters = sum(leg['distance']['value'] for leg in route['legs'])
+                        distance_km = round(total_distance_meters / 1000, 2)
+                        distance_source = "google_directions"
+                        logger.info(f"Multi-stop route: {len(all_pickups)} pickups -> dropoff, total: {distance_km}km")
+                        break
                     else:
-                        logger.warning(f"Google Maps element status: {element.get('status')}")
-                        distance_km = 25.0  # Fallback
+                        logger.warning(f"Google Maps Directions API error: {data.get('error_message', data.get('status'))}")
                 else:
-                    logger.warning(f"Google Maps API error: {data.get('error_message', data.get('status'))}")
-                    distance_km = 25.0  # Fallback
-        else:
-            # Fallback: estimate based on number of stops
-            pickup_count = 1 + len([addr for addr in (request.pickupAddresses or []) if addr])
-            distance_km = 25.0 * pickup_count  # Default estimate per stop
-            logger.warning(f"Google Maps API key not found. Using default distance estimate: {distance_km}km for {pickup_count} stops")
+                    # Single pickup - use Distance Matrix API
+                    url = "https://maps.googleapis.com/maps/api/distancematrix/json"
+                    params = {
+                        'origins': request.pickupAddress,
+                        'destinations': request.dropoffAddress,
+                        'key': google_api_key
+                    }
+                    response = requests.get(url, params=params, timeout=15)
+                    data = response.json()
+                    
+                    logger.info(f"Google Maps Distance Matrix API response status: {data.get('status')} (attempt {_attempt + 1})")
+                    
+                    if data['status'] == 'OK' and len(data['rows']) > 0 and len(data['rows'][0]['elements']) > 0:
+                        element = data['rows'][0]['elements'][0]
+                        if element['status'] == 'OK':
+                            distance_meters = element['distance']['value']
+                            distance_km = round(distance_meters / 1000, 2)
+                            distance_source = "google_distance_matrix"
+                            logger.info(f"Google Maps distance: {distance_km}km")
+                            break
+                        else:
+                            logger.warning(f"Google Maps element status: {element.get('status')}")
+                    else:
+                        logger.warning(f"Google Maps API error: {data.get('error_message', data.get('status'))}")
+              except Exception as _api_err:
+                logger.warning(f"Google Maps API attempt {_attempt + 1} exception: {_api_err}")
+              
+              if _attempt == 0 and distance_km is None:
+                import time as _time; _time.sleep(1)
+        
+        # --- FAIL: No distance could be calculated from any API ---
+        if distance_km is None:
+            logger.error(f"DISTANCE CALCULATION FAILED for route: {request.pickupAddress} -> {request.dropoffAddress}. "
+                        f"Geoapify key: {bool(geoapify_key)}, Google key: {bool(google_api_key)}")
+            raise HTTPException(
+                status_code=422,
+                detail="Unable to calculate distance for this route. Please check the addresses are valid New Zealand locations and try again. If the problem persists, please contact us directly."
+            )
+        
+        logger.info(f"Final distance: {distance_km}km (source: {distance_source}) for route: {request.pickupAddress} -> {request.dropoffAddress}")
         
         # Calculate pricing with tiered rates - FLAT RATE per bracket
         # The rate is determined by which distance bracket the trip falls into
