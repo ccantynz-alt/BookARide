@@ -3707,7 +3707,7 @@ async def cron_send_reminders(api_key: str = None):
 
 def _get_booking_notification_emails() -> list:
     """Emails to receive new booking copies. BOOKINGS_NOTIFICATION_EMAIL or ADMIN_EMAIL, default bookings@"""
-    raw = os.environ.get('BOOKINGS_NOTIFICATION_EMAIL') or os.environ.get('ADMIN_EMAIL', 'bookings@bookaride.co.nz')
+    raw = os.environ.get('BOOKINGS_NOTIFICATION_EMAIL') or os.environ.get('ADMIN_EMAIL', 'bookings@bookerride.co.nz')
     return [e.strip() for e in str(raw).split(',') if e.strip()]
 
 
@@ -4450,6 +4450,9 @@ CUSTOMER
 {customer_email}
 {passengers} passenger(s)
 
+DISTANCE
+{booking.get('pricing', {}).get('distance', 0):.1f} km
+
 PICKUP: {formatted_date} at {booking_time}
 {chr(10).join(pickup_list)}
 
@@ -4516,6 +4519,9 @@ CUSTOMER
 {customer_phone}
 {customer_email}
 {passengers} passenger(s)
+
+DISTANCE
+{booking.get('pricing', {}).get('distance', 0)/2:.1f} km (one-way, {booking.get('pricing', {}).get('distance', 0):.1f} km total round trip)
 
 PICKUP: {formatted_return_date} at {return_time}
 {eng['dropoff']}
@@ -5950,7 +5956,7 @@ async def twilio_sms_webhook(request: Request):
                     
                     # Notify admin of driver acknowledgment
                     try:
-                        admin_email = os.environ.get('ADMIN_EMAIL', 'bookings@bookaride.co.nz')
+                        admin_email = os.environ.get('ADMIN_EMAIL', 'bookings@bookerride.co.nz')
                         mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
                         mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
                         sender_email = os.environ.get('SENDER_EMAIL', 'noreply@mg.bookaride.co.nz')
