@@ -4,8 +4,9 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from models import BulkEmailRequest
 from typing import List
 import os
-import requests
 import logging
+
+from email_sender import send_email as send_email_unified, get_noreply_email
 
 bulk_router = APIRouter(prefix="/bulk", tags=["Bulk Operations"])
 logger = logging.getLogger(__name__)
@@ -37,35 +38,20 @@ async def bulk_delete(booking_ids: List[str]):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-def send_email_via_mailgun(email: str, subject: str, message: str):
-    """Send email using Mailgun"""
+def send_email_via_provider(email: str, subject: str, message: str):
+    """Send email using the unified email sender (Gmail API → SMTP → Mailgun)."""
     try:
-        mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
-        mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
-        sender_email = os.environ.get('SENDER_EMAIL', 'noreply@bookaride.co.nz')
-        
-        if not mailgun_api_key or not mailgun_domain:
-            logger.error("Mailgun not configured")
-            return False
-        
-        response = requests.post(
-            f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
-            auth=("api", mailgun_api_key),
-            data={
-                "from": f"BookaRide <{sender_email}>",
-                "to": email,
-                "subject": subject,
-                "text": message
-            }
+        # Wrap plain-text message in a simple HTML wrapper
+        html_content = f"""<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="white-space: pre-wrap; line-height: 1.6; color: #333;">{message}</div>
+        </div>"""
+        return send_email_unified(
+            to_email=email,
+            subject=subject,
+            html_content=html_content,
+            from_name="BookaRide",
+            text_content=message,
         )
-        
-        if response.status_code == 200:
-            logger.info(f"Email sent to {email}")
-            return True
-        else:
-            logger.error(f"Mailgun error: {response.status_code} - {response.text}")
-            return False
-            
     except Exception as e:
         logger.error(f"Error sending email: {str(e)}")
         return False
@@ -90,7 +76,7 @@ async def bulk_email(request: BulkEmailRequest, background_tasks: BackgroundTask
                 personalized_message = personalized_message.replace('{{booking_id}}', booking.get('id', ''))
                 
                 # Add to background tasks
-                background_tasks.add_task(send_email_via_mailgun, email, request.subject, personalized_message)
+                background_tasks.add_task(send_email_via_provider, email, request.subject, personalized_message)
                 sent_count += 1
         
         return {
