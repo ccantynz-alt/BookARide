@@ -8,7 +8,7 @@ import os
 sys.path.append('/app/backend')
 
 # Import the email functions from server.py
-from server import send_booking_confirmation_email, send_via_mailgun, EMAIL_TRANSLATIONS
+from server import send_booking_confirmation_email, EMAIL_TRANSLATIONS
 
 def test_email_functions():
     """Test email functions directly"""
@@ -46,16 +46,16 @@ def test_email_functions():
     else:
         print("❌ Chinese translations not found")
     
-    # Test 2: Test Mailgun function directly
-    print("\n2. Testing Mailgun Email Function...")
+    # Test 2: Test unified email function (Google SMTP or Mailgun)
+    print("\n2. Testing Email Function (Google/Mailgun)...")
     try:
-        result = send_via_mailgun(test_booking)
+        result = send_booking_confirmation_email(test_booking)
         if result:
-            print("✅ Mailgun email function executed successfully")
+            print("✅ Email function executed successfully")
         else:
-            print("⚠️ Mailgun email function returned False (check credentials)")
+            print("⚠️ Email function returned False (check SMTP_USER/SMTP_PASS or MAILGUN)")
     except Exception as e:
-        print(f"❌ Mailgun email function error: {str(e)}")
+        print(f"❌ Email function error: {str(e)}")
     
     # Test 3: Test main email function
     print("\n3. Testing Main Email Function...")
@@ -78,7 +78,7 @@ def test_email_functions():
         test_booking_lang['email'] = f'test-{lang}@bookaride.co.nz'
         
         try:
-            result = send_via_mailgun(test_booking_lang)
+            result = send_booking_confirmation_email(test_booking_lang)
             status = "✅" if result else "⚠️"
             print(f"   {status} {lang.upper()} email test: {'Success' if result else 'Failed'}")
         except Exception as e:
