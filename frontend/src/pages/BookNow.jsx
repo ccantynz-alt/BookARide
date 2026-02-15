@@ -52,12 +52,6 @@ export const BookNow = () => {
     departureTime: '',
     arrivalFlightNumber: '',
     arrivalTime: '',
-    returnDate: '',
-    returnTime: '',
-    returnDepartureFlightNumber: '',
-    returnDepartureTime: '',
-    returnArrivalFlightNumber: '',
-    returnArrivalTime: '',
     name: '',
     email: '',
     phone: '',
@@ -168,7 +162,7 @@ export const BookNow = () => {
     { value: 'private-transfer', label: 'Private Shuttle Transfer' }
   ];
 
-  // Calculate price when addresses, passengers, VIP service, oversized luggage, or return trip changes
+  // Calculate price when trip details change
   useEffect(() => {
     if (formData.pickupAddress && formData.dropoffAddress && formData.serviceType) {
       calculatePrice();
@@ -189,19 +183,15 @@ export const BookNow = () => {
         oversizedLuggage: formData.oversizedLuggage
       });
 
-      // One-way trip pricing (no return trip multiplier)
-      const multiplier = 1;
-      
-      // Calculate Stripe fee
-      const subtotal = response.data.subtotal * multiplier;
+      const subtotal = response.data.subtotal;
       const stripeFee = (subtotal * 0.029) + 0.30;
       
       setPricing({
-        distance: response.data.distance * multiplier,
-        basePrice: response.data.basePrice * multiplier,
-        airportFee: response.data.airportFee * multiplier,
-        oversizedLuggageFee: response.data.oversizedLuggageFee * multiplier,
-        passengerFee: response.data.passengerFee * multiplier,
+        distance: response.data.distance,
+        basePrice: response.data.basePrice,
+        airportFee: response.data.airportFee,
+        oversizedLuggageFee: response.data.oversizedLuggageFee,
+        passengerFee: response.data.passengerFee,
         stripeFee: Math.round(stripeFee * 100) / 100,
         subtotal: subtotal,
         totalPrice: Math.round((subtotal + stripeFee) * 100) / 100,
@@ -221,7 +211,8 @@ export const BookNow = () => {
     } catch (error) {
       console.error('Error calculating price:', error);
       setPricing(prev => ({ ...prev, calculating: false }));
-      toast.error('Unable to calculate distance. Please check addresses.');
+      const errorMsg = error.response?.data?.detail || 'Unable to calculate distance. Please check addresses and try again.';
+      toast.error(errorMsg);
     }
   };
 
@@ -470,29 +461,22 @@ export const BookNow = () => {
         keywords="book airport shuttle, book airport transfer, online shuttle booking, airport shuttle booking online, instant quote shuttle, book shuttle Auckland, airport transfer booking, shuttle service booking"
         canonical="/book-now"
       />
-      {/* Hero Section with Professional Image */}
-      <section className="pt-32 pb-16 bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
-        {/* Background Image - Luxury Travel */}
+      {/* Clean Hero Section */}
+      <section className="pt-32 pb-12 bg-gradient-to-br from-gray-900 via-gray-900 to-black relative overflow-hidden">
         <div className="absolute inset-0">
           <img 
             src="https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=1920&q=80" 
-            alt="Road trip scenic drive" 
-            className="w-full h-full object-cover"
+            alt="Premium airport transfers" 
+            className="w-full h-full object-cover opacity-30"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-gray-900/70 via-gray-900/60 to-gray-900" />
         </div>
         <div className="container mx-auto px-4 relative z-10">
-          <div className="max-w-3xl mx-auto text-center">
-            <div className="inline-block mb-4">
-              <span className="bg-gold/20 text-gold text-sm font-semibold px-4 py-2 rounded-full border border-gold/30">
-                ✨ INSTANT ONLINE BOOKING
-              </span>
-            </div>
-            <h1 className="text-5xl md:text-6xl font-bold text-white mb-4">
-              Book Your <span className="text-gold">Ride</span>
+          <div className="max-w-2xl mx-auto text-center">
+            <h1 className="text-4xl md:text-5xl font-bold text-white mb-3">
+              Book Your <span className="text-gold">Transfer</span>
             </h1>
-            <p className="text-xl text-white/80">
-              Get instant pricing with our live calculator • No hidden fees
+            <p className="text-lg text-white/70">
+              Instant pricing · Fixed rates · No hidden fees
             </p>
           </div>
         </div>
@@ -571,26 +555,16 @@ export const BookNow = () => {
                         </div>
                       ))}
 
-                      {/* Add Pickup Button - Elegant Design */}
+                      {/* Add Another Pickup */}
                       <div className="mb-6">
                         <button
                           type="button"
                           onClick={handleAddPickup}
-                          className="group w-full flex items-center justify-center gap-3 px-6 py-4 bg-gradient-to-r from-gold/10 to-gold/5 hover:from-gold/20 hover:to-gold/10 border-2 border-dashed border-gold/40 hover:border-gold/60 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-[1.02] hover:shadow-md"
+                          className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium text-gold hover:text-gold/80 border border-dashed border-gold/30 hover:border-gold/50 rounded-lg transition-colors"
                         >
-                          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gold/20 group-hover:bg-gold/30 transition-colors">
-                            <MapPin className="w-4 h-4 text-gold" />
-                          </div>
-                          <span className="text-sm font-semibold text-gray-700 group-hover:text-gray-900">
-                            Add Another Pickup Location
-                          </span>
-                          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-gold text-white text-xs font-bold group-hover:scale-110 transition-transform">
-                            +
-                          </div>
+                          <span>+</span>
+                          <span>Add another pickup location</span>
                         </button>
-                        <p className="text-xs text-gray-500 mt-2 text-center">
-                          Need multiple pickups? Add as many locations as you need!
-                        </p>
                       </div>
 
                       {/* Dropoff Address */}
@@ -658,12 +632,9 @@ export const BookNow = () => {
                       </div>
 
                       {/* Flight Information */}
-                      <div className="bg-gray-50 p-6 rounded-lg mb-6">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Flight Information</h3>
-                        <p className="text-sm text-gray-600 mb-2">Enter your flight number so our driver knows which flight to meet.</p>
-                        <p className="text-xs text-amber-700 bg-amber-50 p-2 rounded mb-4">
-                          ⚠️ <strong>Important:</strong> Flight numbers are required for airport pickups so our driver can meet you on time.
-                        </p>
+                      <div className="bg-gray-50 p-5 rounded-lg mb-6 border border-gray-100">
+                        <h3 className="text-base font-semibold text-gray-900 mb-1">Flight Details</h3>
+                        <p className="text-xs text-gray-500 mb-4">Required for airport transfers so your driver can track your flight.</p>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           <div className="space-y-2">
                             <Label htmlFor="departureFlightNumber">Departure Flight Number</Label>
@@ -743,48 +714,39 @@ export const BookNow = () => {
                         <p className="text-xs text-gray-500 mt-1">1st passenger included, $5 per additional passenger</p>
                       </div>
 
-                      {/* VIP Parking Service */}
-                      <div className="mb-6 bg-gold/5 p-4 rounded-lg border border-gold/20">
-                        <div className="flex items-start space-x-3">
+                      {/* Optional Extras */}
+                      <div className="mb-6 space-y-3">
+                        <p className="text-sm font-medium text-gray-700">Optional extras</p>
+                        <label htmlFor="vipAirportPickup" className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-gold/40 cursor-pointer transition-colors">
                           <input
                             type="checkbox"
                             id="vipAirportPickup"
                             name="vipAirportPickup"
                             checked={formData.vipAirportPickup}
                             onChange={(e) => setFormData(prev => ({ ...prev, vipAirportPickup: e.target.checked }))}
-                            className="w-4 h-4 text-gold border-gray-300 rounded focus:ring-gold mt-1"
+                            className="w-4 h-4 text-gold border-gray-300 rounded focus:ring-gold"
                           />
                           <div className="flex-1">
-                            <Label htmlFor="vipAirportPickup" className="cursor-pointer font-semibold text-gray-900">
-                              VIP Parking Service - $15
-                            </Label>
-                            <p className="text-xs text-gray-600 mt-1">
-                              Driver meets you outside door eleven
-                            </p>
+                            <span className="text-sm font-medium text-gray-900">VIP Parking Service</span>
+                            <span className="text-xs text-gray-500 ml-2">Driver meets you at door 11</span>
                           </div>
-                        </div>
-                      </div>
-
-                      {/* Oversized Luggage Service */}
-                      <div className="mb-6 bg-blue-50 p-4 rounded-lg border border-blue-200">
-                        <div className="flex items-start space-x-3">
+                          <span className="text-sm font-semibold text-gold">+$15</span>
+                        </label>
+                        <label htmlFor="oversizedLuggage" className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-gold/40 cursor-pointer transition-colors">
                           <input
                             type="checkbox"
                             id="oversizedLuggage"
                             name="oversizedLuggage"
                             checked={formData.oversizedLuggage}
                             onChange={(e) => setFormData(prev => ({ ...prev, oversizedLuggage: e.target.checked }))}
-                            className="w-4 h-4 text-gold border-gray-300 rounded focus:ring-gold mt-1"
+                            className="w-4 h-4 text-gold border-gray-300 rounded focus:ring-gold"
                           />
                           <div className="flex-1">
-                            <Label htmlFor="oversizedLuggage" className="cursor-pointer font-semibold text-gray-900">
-                              Oversized Luggage Service - $25
-                            </Label>
-                            <p className="text-xs text-gray-600 mt-1">
-                              For skis, snowboards, surfboards, golf clubs, bikes, or extra-large suitcases
-                            </p>
+                            <span className="text-sm font-medium text-gray-900">Oversized Luggage</span>
+                            <span className="text-xs text-gray-500 ml-2">Skis, bikes, golf clubs, etc.</span>
                           </div>
-                        </div>
+                          <span className="text-sm font-semibold text-gold">+$25</span>
+                        </label>
                       </div>
                     </CardContent>
                   </Card>
@@ -861,20 +823,20 @@ export const BookNow = () => {
                         </div>
 
                         {/* Notification Preference */}
-                        <div className="space-y-3">
-                          <Label className="text-base font-medium">How would you like to receive confirmations?</Label>
-                          <div className="flex flex-wrap gap-3">
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Confirmation preference</Label>
+                          <div className="flex gap-2">
                             {[
-                              { value: 'both', label: '📧 Email & SMS', desc: 'Get both' },
-                              { value: 'sms', label: '📱 SMS Only', desc: 'Text messages only' },
-                              { value: 'email', label: '✉️ Email Only', desc: 'No text messages' }
+                              { value: 'both', label: 'Email & SMS' },
+                              { value: 'email', label: 'Email only' },
+                              { value: 'sms', label: 'SMS only' }
                             ].map((option) => (
                               <label
                                 key={option.value}
-                                className={`flex-1 min-w-[140px] cursor-pointer rounded-lg border-2 p-3 transition-all ${
+                                className={`flex-1 cursor-pointer rounded-lg border p-2.5 text-center transition-all text-sm ${
                                   formData.notificationPreference === option.value
-                                    ? 'border-gold bg-gold/10'
-                                    : 'border-gray-200 hover:border-gold/50'
+                                    ? 'border-gold bg-gold/10 font-medium'
+                                    : 'border-gray-200 hover:border-gold/40 text-gray-600'
                                 }`}
                               >
                                 <input
@@ -885,15 +847,14 @@ export const BookNow = () => {
                                   onChange={handleChange}
                                   className="sr-only"
                                 />
-                                <span className="block text-sm font-medium">{option.label}</span>
-                                <span className="block text-xs text-gray-500">{option.desc}</span>
+                                {option.label}
                               </label>
                             ))}
                           </div>
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="notes">Special Requests / Notes</Label>
+                          <Label htmlFor="notes">Special requests (optional)</Label>
                           <Textarea
                             id="notes"
                             name="notes"
