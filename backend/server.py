@@ -1411,6 +1411,16 @@ async def calculate_price(request: PriceCalculationRequest):
             logger.info(f"Zone distance: Hibiscus Coast <-> Airport applying minimum 73 km (API returned {distance_km} km)")
             distance_km = 73.0
         
+        # Minimum distance for Auckland Airport <-> Whangarei (Geoapify often fails, falls back to 25 km)
+        # Old system: 181.7 km = ~$646 for 2 passengers
+        whangarei_keywords = ['whangarei', 'onerahi', 'kensington', 'tikipunga', 'regent', 'whangarei heads']
+        is_to_whangarei = any(kw in dropoff_lower for kw in whangarei_keywords)
+        is_from_whangarei = any(kw in pickup_lower for kw in whangarei_keywords)
+        airport_to_whangarei = (is_from_airport and is_to_whangarei) or (is_to_airport and is_from_whangarei)
+        if airport_to_whangarei and distance_km < 182.0:
+            logger.info(f"Zone distance: Auckland Airport <-> Whangarei applying minimum 182 km (API returned {distance_km} km)")
+            distance_km = 182.0
+        
         # Concert pricing structure (ONLY for Matakana Country Park):
         # - From Hibiscus Coast to concert venue: Flat $550 (return)
         # - From elsewhere in Auckland to concert venue: km rate to Hibiscus Coast + $550
