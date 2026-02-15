@@ -1385,6 +1385,16 @@ async def calculate_price(request: PriceCalculationRequest):
         is_from_hibiscus_coast = any(keyword in pickup_lower for keyword in hibiscus_coast_keywords)
         is_to_hibiscus_coast = any(keyword in dropoff_lower for keyword in hibiscus_coast_keywords)
         
+        # Minimum distance for Hibiscus Coast <-> Auckland Airport (Geoapify returns shorter than Google)
+        # Old system: 73.3 km for Gulf Harbour -> Airport = ~$186. Use 73 km minimum for this route.
+        airport_keywords = ['airport', 'auckland airport', 'international airport', 'domestic airport', 'akl', 'ray emery']
+        is_to_airport = any(kw in dropoff_lower for kw in airport_keywords)
+        is_from_airport = any(kw in pickup_lower for kw in airport_keywords)
+        hibiscus_to_airport = (is_from_hibiscus_coast and is_to_airport) or (is_to_hibiscus_coast and is_from_airport)
+        if hibiscus_to_airport and distance_km < 73.0:
+            logger.info(f"Zone distance: Hibiscus Coast <-> Airport applying minimum 73 km (API returned {distance_km} km)")
+            distance_km = 73.0
+        
         # Concert pricing structure (ONLY for Matakana Country Park):
         # - From Hibiscus Coast to concert venue: Flat $550 (return)
         # - From elsewhere in Auckland to concert venue: km rate to Hibiscus Coast + $550
@@ -1476,19 +1486,9 @@ async def calculate_price(request: PriceCalculationRequest):
                 total_price = price_to_hibiscus + matakana_concert_base + airport_fee + oversized_luggage_fee + passenger_fee
                 
                 logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â½ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âµ Auckland ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ Matakana Country Park: {distance_to_hibiscus}km @ ${rate_to_hibiscus}/km = ${price_to_hibiscus:.2f} + ${matakana_concert_base} = ${total_price:.2f}")
-        else:
-            # Zone-based minimum: Hibiscus Coast (incl. Gulf Harbour) to Auckland Airport
-            airport_keywords = ['airport', 'auckland airport', 'international airport', 'domestic airport', 'akl']
-            is_to_airport = any(kw in dropoff_lower for kw in airport_keywords)
-            is_from_airport = any(kw in pickup_lower for kw in airport_keywords)
-            hibiscus_to_airport = (is_from_hibiscus_coast and is_to_airport) or (is_to_hibiscus_coast and is_from_airport)
-            hibiscus_airport_min = 190.0  # Gulf Harbour / Hibiscus Coast to Airport (historical rate)
-            if hibiscus_to_airport and total_price < hibiscus_airport_min:
-                logger.info(f"Zone pricing: Hibiscus Coast <-> Airport applying minimum ${hibiscus_airport_min}")
-                total_price = hibiscus_airport_min
-            elif total_price < 100.0:
-                # Standard minimum of $100 for regular trips
-                total_price = 100.0
+        elif total_price < 100.0:
+            # Standard minimum of $100 for regular trips
+            total_price = 100.0
         
         # Calculate Stripe processing fee (2.9% + $0.30 NZD) and add to customer total
         # This ensures drivers get the full base amount
