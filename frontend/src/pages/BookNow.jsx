@@ -52,12 +52,6 @@ export const BookNow = () => {
     departureTime: '',
     arrivalFlightNumber: '',
     arrivalTime: '',
-    returnDate: '',
-    returnTime: '',
-    returnDepartureFlightNumber: '',
-    returnDepartureTime: '',
-    returnArrivalFlightNumber: '',
-    returnArrivalTime: '',
     name: '',
     email: '',
     phone: '',
@@ -117,10 +111,7 @@ export const BookNow = () => {
   const [pickupTime, setPickupTime] = useState(null);
   const [departureTimeDate, setDepartureTimeDate] = useState(null);
   const [arrivalTimeDate, setArrivalTimeDate] = useState(null);
-  const [returnDatePicker, setReturnDatePicker] = useState(null);
-  const [returnTimePicker, setReturnTimePicker] = useState(null);
-  const [returnDepartureTimeDate, setReturnDepartureTimeDate] = useState(null);
-  const [returnArrivalTimeDate, setReturnArrivalTimeDate] = useState(null);
+  // Return trip state removed - customers book one-way only
 
   const [pricing, setPricing] = useState({
     distance: 0,
@@ -171,12 +162,12 @@ export const BookNow = () => {
     { value: 'private-transfer', label: 'Private Shuttle Transfer' }
   ];
 
-  // Calculate price when addresses, passengers, VIP service, oversized luggage, or return trip changes
+  // Calculate price when addresses, passengers, VIP service, or oversized luggage changes
   useEffect(() => {
     if (formData.pickupAddress && formData.dropoffAddress && formData.serviceType) {
       calculatePrice();
     }
-  }, [formData.pickupAddress, formData.dropoffAddress, formData.pickupAddresses, formData.passengers, formData.serviceType, formData.returnDate, formData.returnTime, formData.vipAirportPickup, formData.oversizedLuggage]);
+  }, [formData.pickupAddress, formData.dropoffAddress, formData.pickupAddresses, formData.passengers, formData.serviceType, formData.vipAirportPickup, formData.oversizedLuggage]);
 
   const calculatePrice = async () => {
     setPricing(prev => ({ ...prev, calculating: true }));
@@ -192,20 +183,16 @@ export const BookNow = () => {
         oversizedLuggage: formData.oversizedLuggage
       });
 
-      // If return trip is booked (return date + time filled), double the price (round trip)
-      const hasReturnTrip = !!(formData.returnDate && formData.returnTime);
-      const multiplier = hasReturnTrip ? 2 : 1;
-      
-      // Calculate Stripe fee for the multiplied amount
-      const subtotal = response.data.subtotal * multiplier;
+      // Calculate Stripe fee
+      const subtotal = response.data.subtotal;
       const stripeFee = (subtotal * 0.029) + 0.30;
       
       setPricing({
-        distance: response.data.distance * multiplier,
-        basePrice: response.data.basePrice * multiplier,
-        airportFee: response.data.airportFee * multiplier,
-        oversizedLuggageFee: response.data.oversizedLuggageFee * multiplier,
-        passengerFee: response.data.passengerFee * multiplier,
+        distance: response.data.distance,
+        basePrice: response.data.basePrice,
+        airportFee: response.data.airportFee,
+        oversizedLuggageFee: response.data.oversizedLuggageFee,
+        passengerFee: response.data.passengerFee,
         stripeFee: Math.round(stripeFee * 100) / 100,
         subtotal: subtotal,
         totalPrice: Math.round((subtotal + stripeFee) * 100) / 100,
@@ -344,17 +331,6 @@ export const BookNow = () => {
       return;
     }
 
-    // Validate return flight number for airport shuttle return bookings (when return date/time filled)
-    const hasReturnTrip = !!(formData.returnDate && formData.returnTime);
-    const isAirportShuttle = formData.serviceType?.toLowerCase().includes('airport') || 
-                            formData.serviceType?.toLowerCase().includes('shuttle');
-    if (isAirportShuttle && hasReturnTrip) {
-      if (!formData.returnDepartureFlightNumber || !formData.returnDepartureFlightNumber.trim()) {
-        toast.error('Flight number is mandatory for return trips. Bookings without flight numbers may face cancellation.');
-        return;
-      }
-    }
-
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
@@ -370,10 +346,9 @@ export const BookNow = () => {
     setIsProcessingPayment(true);
 
     try {
-      const hasReturnTrip = !!(formData.returnDate && formData.returnTime);
       const bookingData = {
         ...formData,
-        bookReturn: hasReturnTrip,
+        bookReturn: false,
         pricing: pricing,
         status: 'pending',
         language: i18n.language, // Capture selected language
@@ -486,29 +461,23 @@ export const BookNow = () => {
         keywords="book airport shuttle, book airport transfer, online shuttle booking, airport shuttle booking online, instant quote shuttle, book shuttle Auckland, airport transfer booking, shuttle service booking"
         canonical="/book-now"
       />
-      {/* Hero Section with Professional Image */}
-      <section className="pt-32 pb-16 bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
-        {/* Background Image - Luxury Travel */}
+      {/* Hero Section */}
+      <section className="pt-32 pb-12 bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
         <div className="absolute inset-0">
           <img 
             src="https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=1920&q=80" 
             alt="Road trip scenic drive" 
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-gray-900/70 via-gray-900/60 to-gray-900" />
+          <div className="absolute inset-0 bg-gradient-to-b from-gray-900/80 via-gray-900/70 to-gray-900" />
         </div>
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-3xl mx-auto text-center">
-            <div className="inline-block mb-4">
-              <span className="bg-gold/20 text-gold text-sm font-semibold px-4 py-2 rounded-full border border-gold/30">
-                ✨ INSTANT ONLINE BOOKING
-              </span>
-            </div>
-            <h1 className="text-5xl md:text-6xl font-bold text-white mb-4">
+            <h1 className="text-4xl md:text-5xl font-bold text-white mb-3">
               Book Your <span className="text-gold">Ride</span>
             </h1>
-            <p className="text-xl text-white/80">
-              Get instant pricing with our live calculator • No hidden fees
+            <p className="text-lg text-white/70">
+              Instant pricing • No hidden fees • Door-to-door service
             </p>
           </div>
         </div>
@@ -522,9 +491,12 @@ export const BookNow = () => {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Main Form - Left Side */}
                 <div className="lg:col-span-2 space-y-6">
-                  <Card className="border-2 border-gray-200 shadow-lg">
+                  <Card className="border-2 border-gray-200 shadow-lg rounded-2xl overflow-hidden">
                     <CardContent className="p-8">
-                      <h2 className="text-2xl font-bold text-gray-900 mb-6">Trip Details</h2>
+                      <div className="flex items-center gap-3 mb-6">
+                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gold text-black font-bold text-sm">1</div>
+                        <h2 className="text-2xl font-bold text-gray-900">Trip Details</h2>
+                      </div>
 
                       {/* Service Type */}
                       <div className="space-y-2 mb-6">
@@ -674,11 +646,10 @@ export const BookNow = () => {
                       </div>
 
                       {/* Flight Information */}
-                      <div className="bg-gray-50 p-6 rounded-lg mb-6">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Flight Information</h3>
-                        <p className="text-sm text-gray-600 mb-2">Enter your flight number so our driver knows which flight to meet.</p>
-                        <p className="text-xs text-amber-700 bg-amber-50 p-2 rounded mb-4">
-                          ⚠️ <strong>Important:</strong> Flight numbers are required for airport pickups so our driver can meet you on time.
+                      <div className="bg-gray-50 p-6 rounded-xl mb-6 border border-gray-200">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-1">Flight Details</h3>
+                        <p className="text-sm text-gray-500 mb-4">
+                          Enter your flight number so we can track your flight and ensure timely pickup.
                         </p>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           <div className="space-y-2">
@@ -759,172 +730,61 @@ export const BookNow = () => {
                         <p className="text-xs text-gray-500 mt-1">1st passenger included, $5 per additional passenger</p>
                       </div>
 
-                      {/* VIP Parking Service */}
-                      <div className="mb-6 bg-gold/5 p-4 rounded-lg border border-gold/20">
-                        <div className="flex items-start space-x-3">
+                      {/* Service Add-ons */}
+                      <div className="mb-6 space-y-3">
+                        <h3 className="text-lg font-semibold text-gray-900">Optional Extras</h3>
+                        
+                        {/* VIP Parking Service */}
+                        <label htmlFor="vipAirportPickup" className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 ${
+                          formData.vipAirportPickup ? 'border-gold bg-gold/5 shadow-sm' : 'border-gray-200 hover:border-gold/40'
+                        }`}>
                           <input
                             type="checkbox"
                             id="vipAirportPickup"
                             name="vipAirportPickup"
                             checked={formData.vipAirportPickup}
                             onChange={(e) => setFormData(prev => ({ ...prev, vipAirportPickup: e.target.checked }))}
-                            className="w-4 h-4 text-gold border-gray-300 rounded focus:ring-gold mt-1"
+                            className="w-5 h-5 text-gold border-gray-300 rounded focus:ring-gold accent-[#D4AF37]"
                           />
                           <div className="flex-1">
-                            <Label htmlFor="vipAirportPickup" className="cursor-pointer font-semibold text-gray-900">
-                              VIP Parking Service - $15
-                            </Label>
-                            <p className="text-xs text-gray-600 mt-1">
-                              Driver meets you outside door eleven
-                            </p>
+                            <span className="font-semibold text-gray-900">VIP Parking Service</span>
+                            <p className="text-xs text-gray-500 mt-0.5">Driver meets you outside door eleven</p>
                           </div>
-                        </div>
-                      </div>
+                          <span className="text-sm font-bold text-gold whitespace-nowrap">+$15</span>
+                        </label>
 
-                      {/* Oversized Luggage Service */}
-                      <div className="mb-6 bg-blue-50 p-4 rounded-lg border border-blue-200">
-                        <div className="flex items-start space-x-3">
+                        {/* Oversized Luggage Service */}
+                        <label htmlFor="oversizedLuggage" className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 ${
+                          formData.oversizedLuggage ? 'border-gold bg-gold/5 shadow-sm' : 'border-gray-200 hover:border-gold/40'
+                        }`}>
                           <input
                             type="checkbox"
                             id="oversizedLuggage"
                             name="oversizedLuggage"
                             checked={formData.oversizedLuggage}
                             onChange={(e) => setFormData(prev => ({ ...prev, oversizedLuggage: e.target.checked }))}
-                            className="w-4 h-4 text-gold border-gray-300 rounded focus:ring-gold mt-1"
+                            className="w-5 h-5 text-gold border-gray-300 rounded focus:ring-gold accent-[#D4AF37]"
                           />
                           <div className="flex-1">
-                            <Label htmlFor="oversizedLuggage" className="cursor-pointer font-semibold text-gray-900">
-                              Oversized Luggage Service - $25
-                            </Label>
-                            <p className="text-xs text-gray-600 mt-1">
-                              For skis, snowboards, surfboards, golf clubs, bikes, or extra-large suitcases
-                            </p>
+                            <span className="font-semibold text-gray-900">Oversized Luggage</span>
+                            <p className="text-xs text-gray-500 mt-0.5">Skis, surfboards, golf clubs, bikes, or extra-large suitcases</p>
                           </div>
-                        </div>
+                          <span className="text-sm font-bold text-gold whitespace-nowrap">+$25</span>
+                        </label>
                       </div>
 
-                      {/* Return Journey - Always visible, optional */}
-                      <div className="bg-gray-50 p-6 rounded-lg mb-6 border border-gray-200">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Return Journey <span className="text-sm font-normal text-gray-500">(Optional – leave blank for one-way)</span></h3>
-                          
-                          {/* Return Date and Time */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                            <div className="space-y-2">
-                              <Label className="flex items-center space-x-2">
-                                <Calendar className="w-4 h-4 text-gold" />
-                                <span>Return Date</span>
-                              </Label>
-                              <CustomDatePicker
-                                selected={returnDatePicker}
-                                onChange={(date) => {
-                                  setReturnDatePicker(date);
-                                  if (date) {
-                                    // Use local date to avoid timezone issues
-                                    const year = date.getFullYear();
-                                    const month = String(date.getMonth() + 1).padStart(2, '0');
-                                    const day = String(date.getDate()).padStart(2, '0');
-                                    const formattedDate = `${year}-${month}-${day}`;
-                                    setFormData(prev => ({ ...prev, returnDate: formattedDate }));
-                                  }
-                                }}
-                                placeholder="Select return date"
-                                minDate={pickupDate || new Date()}
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label className="flex items-center space-x-2">
-                                <Clock className="w-4 h-4 text-gold" />
-                                <span>Return Time</span>
-                              </Label>
-                              <CustomTimePicker
-                                selected={returnTimePicker}
-                                onChange={(time) => {
-                                  setReturnTimePicker(time);
-                                  if (time) {
-                                    const hours = time.getHours().toString().padStart(2, '0');
-                                    const minutes = time.getMinutes().toString().padStart(2, '0');
-                                    setFormData(prev => ({ ...prev, returnTime: `${hours}:${minutes}` }));
-                                  }
-                                }}
-                                placeholder="Select return time"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Return Flight Information */}
-                          <div className="bg-white p-4 rounded-lg border border-gray-200 mt-4">
-                            <h4 className="text-md font-semibold text-gray-900 mb-3">
-                              Return Flight Information
-                              <span className="text-sm font-normal text-gray-500 ml-2">(Required if booking return)</span>
-                            </h4>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div className="space-y-2">
-                                <Label htmlFor="returnDepartureFlightNumber">Return Flight Number</Label>
-                                <Input
-                                  id="returnDepartureFlightNumber"
-                                  name="returnDepartureFlightNumber"
-                                  value={formData.returnDepartureFlightNumber}
-                                  onChange={handleChange}
-                                  placeholder="e.g., NZ123"
-                                  className="transition-all duration-200 focus:ring-2 focus:ring-gold"
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label>Departure Time</Label>
-                                <CustomTimePicker
-                                  selected={returnDepartureTimeDate}
-                                  onChange={(time) => {
-                                    setReturnDepartureTimeDate(time);
-                                    if (time) {
-                                      const hours = time.getHours().toString().padStart(2, '0');
-                                      const minutes = time.getMinutes().toString().padStart(2, '0');
-                                      setFormData(prev => ({ ...prev, returnDepartureTime: `${hours}:${minutes}` }));
-                                    }
-                                  }}
-                                  placeholder="Select departure time"
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label htmlFor="returnArrivalFlightNumber">Arrival Flight Number (Optional)</Label>
-                                <Input
-                                  id="returnArrivalFlightNumber"
-                                  name="returnArrivalFlightNumber"
-                                  value={formData.returnArrivalFlightNumber}
-                                  onChange={handleChange}
-                                  placeholder="e.g., NZ456"
-                                  className="transition-all duration-200 focus:ring-2 focus:ring-gold"
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label>Arrival Time</Label>
-                                <CustomTimePicker
-                                  selected={returnArrivalTimeDate}
-                                  onChange={(time) => {
-                                    setReturnArrivalTimeDate(time);
-                                    if (time) {
-                                      const hours = time.getHours().toString().padStart(2, '0');
-                                      const minutes = time.getMinutes().toString().padStart(2, '0');
-                                      setFormData(prev => ({ ...prev, returnArrivalTime: `${hours}:${minutes}` }));
-                                    }
-                                  }}
-                                  placeholder="Select arrival time"
-                                />
-                              </div>
-                            </div>
-                          </div>
-                          
-                          <p className="text-xs text-gray-600 mt-4">
-                            Return trip will be from <strong>{formData.dropoffAddress || 'drop-off location'}</strong> back to <strong>{formData.pickupAddress || 'pickup location'}</strong>
-                          </p>
-                        </div>
+                      {/* Return Journey section removed - one-way bookings only */}
                     </CardContent>
                   </Card>
 
                   {/* Contact Information */}
-                  <Card className="border-2 border-gray-200 shadow-lg">
+                  <Card className="border-2 border-gray-200 shadow-lg rounded-2xl overflow-hidden">
                     <CardContent className="p-8">
                       <div className="flex items-center justify-between mb-6">
-                        <h2 className="text-2xl font-bold text-gray-900">Contact Information</h2>
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gold text-black font-bold text-sm">2</div>
+                          <h2 className="text-2xl font-bold text-gray-900">Contact Information</h2>
+                        </div>
                         {isReturningCustomer && (
                           <div className="flex items-center gap-2">
                             <span className="text-sm text-green-600 font-medium">👋 Welcome back!</span>
@@ -1042,12 +902,14 @@ export const BookNow = () => {
 
                 {/* Price Summary - Right Side */}
                 <div className="lg:col-span-1">
-                  <Card className="border-2 border-gold/30 sticky top-24 shadow-lg">
-                    <CardContent className="p-8">
-                      <div className="flex items-center space-x-2 mb-6">
+                  <Card className="border-2 border-gold/30 sticky top-24 shadow-xl rounded-2xl overflow-hidden">
+                    <div className="bg-gradient-to-r from-gray-900 to-gray-800 p-6">
+                      <div className="flex items-center space-x-2">
                         <DollarSign className="w-6 h-6 text-gold" />
-                        <h2 className="text-2xl font-bold text-gray-900">Price Estimate</h2>
+                        <h2 className="text-xl font-bold text-white">Your Price Quote</h2>
                       </div>
+                    </div>
+                    <CardContent className="p-6">
 
                       {pricing.calculating ? (
                         <div className="text-center py-8">
@@ -1095,8 +957,7 @@ export const BookNow = () => {
                           
                           <div className="bg-gray-50 rounded-lg p-4 text-center">
                             <p className="text-sm text-gray-600">
-                              {(formData.returnDate && formData.returnTime) ? `${pricing.distance / 2} km each way` : `${pricing.distance} km`} • {formData.passengers} passenger{parseInt(formData.passengers) > 1 ? 's' : ''}
-                              {(formData.returnDate && formData.returnTime) && ' • Round trip (both ways)'}
+                              {pricing.distance} km • {formData.passengers} passenger{parseInt(formData.passengers) > 1 ? 's' : ''} • One-way trip
                             </p>
                           </div>
 
@@ -1205,11 +1066,14 @@ export const BookNow = () => {
 
                       <Button 
                         type="submit" 
-                        className="w-full mt-6 bg-gold hover:bg-gold/90 text-black font-semibold py-6 text-lg transition-colors duration-200"
+                        className="w-full mt-6 bg-gold hover:bg-gold/90 text-black font-bold py-6 text-lg rounded-xl transition-all duration-200 shadow-md hover:shadow-lg hover:scale-[1.02]"
                         disabled={pricing.calculating || pricing.totalPrice === 0}
                       >
-                        Book Now
+                        {isProcessingPayment ? 'Processing...' : 'Book Now — Secure Your Ride'}
                       </Button>
+                      <p className="text-xs text-gray-400 text-center mt-3">
+                        You won't be charged until you complete payment
+                      </p>
                     </CardContent>
                   </Card>
                 </div>

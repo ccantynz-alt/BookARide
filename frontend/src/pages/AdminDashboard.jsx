@@ -2664,6 +2664,9 @@ export const AdminDashboard = () => {
                               <span className="text-red-600 font-bold">↓</span>
                               <span className="text-gray-700 truncate" title={booking.dropoffAddress}>{booking.dropoffAddress?.slice(0, 35)}...</span>
                             </div>
+                            {booking.pricing?.distance > 0 && (
+                              <span className="text-[9px] text-gray-500 mt-0.5 font-medium">{booking.pricing.distance} km</span>
+                            )}
                           </div>
                         </td>
                         {/* FLIGHT COLUMN */}
