@@ -1268,6 +1268,45 @@ def _normalize_address_for_routing(address: str) -> str:
     return address.strip()
 
 
+def _zone_based_distance_fallback(pickup_address: str, dropoff_address: str, pickup_count: int = 1) -> float | None:
+    """When APIs fail, use known route zones to estimate distance. Returns None if no zone match."""
+    def _norm(s):
+        return (s or '').lower().replace('\u0101', 'a').replace('ā', 'a')
+    pickup_lower = _norm(pickup_address)
+    dropoff_lower = _norm(dropoff_address)
+    airport_kw = ['airport', 'auckland airport', 'international airport', 'domestic airport', 'akl', 'ray emery', 'mangere']
+    hibiscus_kw = ['orewa', 'whangaparaoa', 'whangaparāoa', 'silverdale', 'red beach', 'stanmore bay', 'army bay', 'gulf harbour', 'manly', 'hibiscus coast', 'millwater', 'hatfields beach', 'waiwera', 'alec craig']
+    whangarei_kw = ['whangarei', 'onerahi', 'kensington', 'tikipunga', 'regent', 'whangarei heads']
+    northshore_kw = ['takapuna', 'albany', 'browns bay', 'devonport', 'north shore']
+    south_auckland_kw = ['coatesville', 'riverhead', 'kaukapakapa', 'helensville']
+    is_to_airport = any(kw in dropoff_lower for kw in airport_kw)
+    is_from_airport = any(kw in pickup_lower for kw in airport_kw)
+    is_from_hibiscus = any(kw in pickup_lower for kw in hibiscus_kw)
+    is_to_hibiscus = any(kw in dropoff_lower for kw in hibiscus_kw)
+    is_from_whangarei = any(kw in pickup_lower for kw in whangarei_kw)
+    is_to_whangarei = any(kw in dropoff_lower for kw in whangarei_kw)
+    is_from_northshore = any(kw in pickup_lower for kw in northshore_kw)
+    is_to_northshore = any(kw in dropoff_lower for kw in northshore_kw)
+    is_from_south = any(kw in pickup_lower for kw in south_auckland_kw)
+    is_to_south = any(kw in dropoff_lower for kw in south_auckland_kw)
+    # Hibiscus Coast <-> Airport: ~60-75km
+    if (is_from_hibiscus and is_to_airport) or (is_to_hibiscus and is_from_airport):
+        return max(65.0 * pickup_count, 73.0)  # Minimum 73 for single, scale for multi-stop
+    # Airport <-> Whangarei: ~165-190km
+    if (is_from_airport and is_to_whangarei) or (is_to_airport and is_from_whangarei):
+        return max(165.0 * pickup_count, 182.0)
+    # Hibiscus/Gulf Harbour to CBD or North Shore: ~45-55km
+    if is_from_hibiscus or is_to_hibiscus:
+        return 50.0 * pickup_count
+    # Coatesville/Riverhead to Airport: ~45-55km
+    if (is_from_south or is_to_south) and (is_to_airport or is_from_airport):
+        return 50.0 * pickup_count
+    # North Shore to Airport: ~35-45km
+    if (is_from_northshore or is_to_northshore) and (is_to_airport or is_from_airport):
+        return 40.0 * pickup_count
+    return None
+
+
 def _get_distance_geoapify(pickup_address: str, dropoff_address: str, waypoint_addresses: list, api_key: str) -> float | None:
     """Get driving distance in km via Geoapify Routing API. Returns None on failure."""
     try:
@@ -1349,7 +1388,8 @@ async def calculate_price(request: PriceCalculationRequest):
                     logger.info(f"Multi-stop route: {len(all_pickups)} pickups ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ dropoff, total: {distance_km}km")
                 else:
                     logger.warning(f"Google Maps Directions API error: {data.get('error_message', data.get('status'))}")
-                    distance_km = 25.0 * len(all_pickups)  # Fallback: estimate per stop
+                    zone_est = _zone_based_distance_fallback(request.pickupAddress, request.dropoffAddress, len(all_pickups))
+                    distance_km = zone_est if zone_est else 35.0 * len(all_pickups)  # Smarter fallback
             else:
                 # Single pickup - use Distance Matrix API
                 url = "https://maps.googleapis.com/maps/api/distancematrix/json"
@@ -1369,16 +1409,44 @@ async def calculate_price(request: PriceCalculationRequest):
                         distance_meters = element['distance']['value']
                         distance_km = round(distance_meters / 1000, 2)
                     else:
-                        logger.warning(f"Google Maps element status: {element.get('status')}")
-                        distance_km = 25.0  # Fallback
+                        logger.warning(f"Google Maps Distance Matrix element status: {element.get('status')} - trying Directions API fallback")
+                        # Try Directions API when Distance Matrix fails (e.g. ZERO_RESULTS for some addresses)
+                        dir_url = "https://maps.googleapis.com/maps/api/directions/json"
+                        dir_params = {'origin': request.pickupAddress, 'destination': request.dropoffAddress, 'key': google_api_key}
+                        dir_response = requests.get(dir_url, params=dir_params)
+                        dir_data = dir_response.json()
+                        if dir_data.get('status') == 'OK' and len(dir_data.get('routes', [])) > 0:
+                            leg_distance = sum(leg['distance']['value'] for leg in dir_data['routes'][0]['legs'])
+                            distance_km = round(leg_distance / 1000, 2)
+                            logger.info(f"Directions API fallback succeeded: {distance_km}km")
+                        else:
+                            zone_est = _zone_based_distance_fallback(request.pickupAddress, request.dropoffAddress, 1)
+                            distance_km = zone_est if zone_est is not None else 35.0
                 else:
-                    logger.warning(f"Google Maps API error: {data.get('error_message', data.get('status'))}")
-                    distance_km = 25.0  # Fallback
+                    logger.warning(f"Google Maps Distance Matrix API error: {data.get('error_message', data.get('status'))} - trying Directions API fallback")
+                    # Try Directions API when Distance Matrix fails entirely
+                    if google_api_key:
+                        dir_url = "https://maps.googleapis.com/maps/api/directions/json"
+                        dir_params = {'origin': request.pickupAddress, 'destination': request.dropoffAddress, 'key': google_api_key}
+                        dir_response = requests.get(dir_url, params=dir_params)
+                        dir_data = dir_response.json()
+                        if dir_data.get('status') == 'OK' and len(dir_data.get('routes', [])) > 0:
+                            leg_distance = sum(leg['distance']['value'] for leg in dir_data['routes'][0]['legs'])
+                            distance_km = round(leg_distance / 1000, 2)
+                            logger.info(f"Directions API fallback succeeded: {distance_km}km")
+                        else:
+                            zone_est = _zone_based_distance_fallback(request.pickupAddress, request.dropoffAddress, 1)
+                            distance_km = zone_est if zone_est is not None else 35.0
+                    else:
+                        zone_est = _zone_based_distance_fallback(request.pickupAddress, request.dropoffAddress, 1)
+                        distance_km = zone_est if zone_est is not None else 35.0
         else:
-            # Fallback: estimate based on number of stops
+            # Fallback: use zone-based estimate when no API keys, or estimate per stop
             pickup_count = 1 + len([addr for addr in (request.pickupAddresses or []) if addr])
-            distance_km = 25.0 * pickup_count  # Default estimate per stop
-            logger.warning(f"Google Maps API key not found. Using default distance estimate: {distance_km}km for {pickup_count} stops")
+            distance_km = _zone_based_distance_fallback(request.pickupAddress, request.dropoffAddress, pickup_count)
+            if distance_km is None:
+                distance_km = 35.0 * pickup_count  # Smarter default: 35km per stop (was 25, too low for typical routes)
+            logger.warning(f"Using fallback distance estimate: {distance_km}km for {pickup_count} stop(s)")
         
         # Calculate pricing with tiered rates - FLAT RATE per bracket
         # The rate is determined by which distance bracket the trip falls into
@@ -3706,13 +3774,13 @@ async def cron_send_reminders(api_key: str = None):
 
 
 def _get_booking_notification_emails() -> list:
-    """Emails to receive new booking copies. BOOKINGS_NOTIFICATION_EMAIL or ADMIN_EMAIL, default bookings@"""
-    raw = os.environ.get('BOOKINGS_NOTIFICATION_EMAIL') or os.environ.get('ADMIN_EMAIL', 'bookings@bookaride.co.nz')
+    """Emails to receive new booking copies. BOOKINGS_NOTIFICATION_EMAIL or ADMIN_EMAIL, default bookings@bookerride.co.nz"""
+    raw = os.environ.get('BOOKINGS_NOTIFICATION_EMAIL') or os.environ.get('ADMIN_EMAIL', 'bookings@bookerride.co.nz')
     return [e.strip() for e in str(raw).split(',') if e.strip()]
 
 
 async def send_booking_notification_to_admin(booking: dict):
-    """Automatically send booking notification to admin email(s) - bookings@bookaride.co.nz by default"""
+    """Automatically send booking notification to admin email(s) - bookings@bookerride.co.nz by default"""
     try:
         admin_emails = _get_booking_notification_emails()
         formatted_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
@@ -3874,7 +3942,7 @@ async def send_urgent_approval_notification(booking: dict):
         """
         
         subject = f"URGENT APPROVAL - {booking.get('name', 'Customer')} - {formatted_date} {booking.get('time', '')} - Ref: {booking_ref}"
-        recipient = admin_emails[0] if admin_emails else "bookings@bookaride.co.nz"
+        recipient = admin_emails[0] if admin_emails else "bookings@bookerride.co.nz"
         email_sent = False
         
         # Try unified sender first (SMTP/Mailgun)

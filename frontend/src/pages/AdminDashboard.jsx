@@ -2110,14 +2110,6 @@ export const AdminDashboard = () => {
       return;
     }
 
-    // Infer return trip from filled return date + time
-    const hasReturnTrip = !!(newBooking.returnDate && newBooking.returnTime);
-    const isAirportShuttle = (newBooking.serviceType || '').toLowerCase().includes('airport') || (newBooking.serviceType || '').toLowerCase().includes('shuttle');
-    if (hasReturnTrip && isAirportShuttle && !(newBooking.returnDepartureFlightNumber || '').trim()) {
-      toast.error('Return flight number is required for airport shuttle return trips');
-      return;
-    }
-
     // Check if either calculated price or manual override is provided
     const hasCalculatedPrice = bookingPricing.totalPrice > 0;
     const hasManualPrice = manualPriceOverride && parseFloat(manualPriceOverride) > 0;
@@ -2128,13 +2120,7 @@ export const AdminDashboard = () => {
     }
 
     try {
-      // Calculate final price (double if return trip)
-      let finalPrice = hasManualPrice ? parseFloat(manualPriceOverride) : bookingPricing.totalPrice;
-      if (hasReturnTrip && !hasManualPrice) {
-        finalPrice = finalPrice * 2; // Double for return trip
-      }
-      
-      const priceOverride = hasManualPrice ? parseFloat(manualPriceOverride) : (hasReturnTrip ? finalPrice : null);
+      const priceOverride = hasManualPrice ? parseFloat(manualPriceOverride) : null;
       
       await axios.post(`${API}/bookings/manual`, {
         name: newBooking.name,
@@ -2148,7 +2134,7 @@ export const AdminDashboard = () => {
         date: newBooking.date,
         time: newBooking.time,
         passengers: newBooking.passengers,
-        pricing: hasReturnTrip ? { ...bookingPricing, totalPrice: finalPrice } : bookingPricing,
+        pricing: bookingPricing,
         paymentMethod: newBooking.paymentMethod,
         notes: newBooking.notes,
         priceOverride: priceOverride,
@@ -2157,14 +2143,14 @@ export const AdminDashboard = () => {
         flightArrivalTime: newBooking.flightArrivalTime,
         flightDepartureNumber: newBooking.flightDepartureNumber,
         flightDepartureTime: newBooking.flightDepartureTime,
-        // Return trip details
-        bookReturn: hasReturnTrip,
-        returnDate: newBooking.returnDate,
-        returnTime: newBooking.returnTime,
-        returnDepartureFlightNumber: newBooking.returnDepartureFlightNumber,
-        returnDepartureTime: newBooking.returnDepartureTime,
-        returnArrivalFlightNumber: newBooking.returnArrivalFlightNumber,
-        returnArrivalTime: newBooking.returnArrivalTime
+        // One-way only (return section removed for cleaner form)
+        bookReturn: false,
+        returnDate: '',
+        returnTime: '',
+        returnDepartureFlightNumber: '',
+        returnDepartureTime: '',
+        returnArrivalFlightNumber: '',
+        returnArrivalTime: ''
       }, getAuthHeaders());
 
       toast.success('Booking created successfully! Customer will receive email & SMS confirmation.');
@@ -4461,87 +4447,6 @@ export const AdminDashboard = () => {
                   </p>
                 </div>
 
-                {/* Return Journey - Always visible, optional (no checkbox) */}
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                  <h4 className="font-semibold text-gray-900 mb-2">Return Journey <span className="text-sm font-normal text-gray-500">(Optional – leave blank for one-way)</span></h4>
-
-                  <div className="space-y-4 mt-4">
-                      <p className="text-sm text-gray-600">
-                        Return trip: Drop-off → Pickup (reverse of outbound journey)
-                      </p>
-                      
-                      {/* Return Date and Time */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <Label>Return Date *</Label>
-                          <div className="mt-1">
-                            <CustomDatePicker
-                              selected={adminReturnDate}
-                              onChange={(date) => {
-                                setAdminReturnDate(date);
-                                if (date) {
-                                  // Use local date to avoid timezone issues
-                                  const year = date.getFullYear();
-                                  const month = String(date.getMonth() + 1).padStart(2, '0');
-                                  const day = String(date.getDate()).padStart(2, '0');
-                                  const formattedDate = `${year}-${month}-${day}`;
-                                  setNewBooking(prev => ({...prev, returnDate: formattedDate}));
-                                }
-                              }}
-                              placeholder="Select return date"
-                              minDate={new Date('2020-01-01')}
-                              maxDate={new Date('2030-12-31')}
-                              showMonthDropdown
-                              showYearDropdown
-                              dropdownMode="select"
-                            />
-                          </div>
-                        </div>
-                        <div>
-                          <Label>Return Time *</Label>
-                          <div className="mt-1">
-                            <CustomTimePicker
-                              selected={adminReturnTime}
-                              onChange={(time) => {
-                                setAdminReturnTime(time);
-                                if (time) {
-                                  const hours = time.getHours().toString().padStart(2, '0');
-                                  const minutes = time.getMinutes().toString().padStart(2, '0');
-                                  setNewBooking(prev => ({...prev, returnTime: `${hours}:${minutes}`}));
-                                }
-                              }}
-                              placeholder="Select return time"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                      {/* Return Flight Information */}
-                      <div className="mt-4 pt-4 border-t border-gray-200">
-                        <Label className="text-sm font-medium text-gray-700 mb-2 block">Return Flight Information (required if booking return)</Label>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <Label className="text-xs">Return Flight Number</Label>
-                            <Input
-                              value={newBooking.returnDepartureFlightNumber || ''}
-                              onChange={(e) => setNewBooking(prev => ({...prev, returnDepartureFlightNumber: e.target.value}))}
-                              placeholder="e.g. NZ456"
-                              className="mt-1"
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-xs">Return Arrival Flight (optional)</Label>
-                            <Input
-                              value={newBooking.returnArrivalFlightNumber || ''}
-                              onChange={(e) => setNewBooking(prev => ({...prev, returnArrivalFlightNumber: e.target.value}))}
-                              placeholder="e.g. NZ789"
-                              className="mt-1"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                </div>
-
                 <div>
                   <Label>Special Notes</Label>
                   <Textarea
@@ -4581,23 +4486,12 @@ export const AdminDashboard = () => {
                         <span className="font-medium">${bookingPricing.passengerFee.toFixed(2)}</span>
                       </div>
                     )}
-                    {(newBooking.returnDate && newBooking.returnTime) && (
-                      <div className="flex justify-between text-green-700">
-                        <span>🔄 Return Trip:</span>
-                        <span className="font-medium">x2</span>
-                      </div>
-                    )}
                     <div className="flex justify-between pt-2 border-t font-semibold text-base">
                       <span>Total:</span>
                       <span className="text-gold">
-                        ${((newBooking.returnDate && newBooking.returnTime) ? bookingPricing.totalPrice * 2 : bookingPricing.totalPrice).toFixed(2)}
+                        ${bookingPricing.totalPrice.toFixed(2)}
                       </span>
                     </div>
-                    {(newBooking.returnDate && newBooking.returnTime) && (
-                      <p className="text-xs text-green-600 text-center mt-1">
-                        Includes return trip (outbound + return)
-                      </p>
-                    )}
                   </div>
                 ) : (
                   <p className="text-sm text-gray-600 text-center">
