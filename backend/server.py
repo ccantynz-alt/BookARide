@@ -1254,10 +1254,26 @@ def _geocode_geoapify(address: str, api_key: str) -> tuple:
     return (None, None)
 
 
+# Canonical addresses for reliable routing (Geoapify can mis-geocode variants like "Shared Path")
+_CANONICAL_AIRPORT = "Auckland Airport, Ray Emery Drive, Mangere, Auckland 2022, New Zealand"
+_CANONICAL_AIRPORT_LOWER = "auckland airport"
+
+def _normalize_address_for_routing(address: str) -> str:
+    """Use canonical airport address when user selects airport variants (avoids mis-geocoding)."""
+    if not address or not address.strip():
+        return address
+    lower = address.lower()
+    if _CANONICAL_AIRPORT_LOWER in lower or 'akl' in lower or 'ray emery' in lower or 'george bolt' in lower:
+        return _CANONICAL_AIRPORT
+    return address.strip()
+
+
 def _get_distance_geoapify(pickup_address: str, dropoff_address: str, waypoint_addresses: list, api_key: str) -> float | None:
     """Get driving distance in km via Geoapify Routing API. Returns None on failure."""
     try:
-        waypoints = [pickup_address] + (waypoint_addresses or []) + [dropoff_address]
+        pickup_norm = _normalize_address_for_routing(pickup_address)
+        dropoff_norm = _normalize_address_for_routing(dropoff_address)
+        waypoints = [pickup_norm] + [_normalize_address_for_routing(a) for a in (waypoint_addresses or [])] + [dropoff_norm]
         coords_list = []
         for addr in waypoints:
             if not addr or not addr.strip():
