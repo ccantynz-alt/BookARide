@@ -2051,7 +2051,7 @@ async def send_booking_to_admin(booking_id: str, current_admin: dict = Depends(g
             raise HTTPException(status_code=404, detail="Booking not found")
         
         # Get admin email from environment or use default
-        admin_email = os.environ.get('ADMIN_EMAIL', 'admin@bookaride.co.nz')
+        admin_email = os.environ.get('ADMIN_EMAIL', 'bookings@bookaride.co.nz')
         
         # Send via Mailgun
         mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
