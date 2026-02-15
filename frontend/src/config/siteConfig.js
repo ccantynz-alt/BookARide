@@ -5,7 +5,7 @@ const configs = {
   'bookaride.co.nz': {
     siteName: 'Book A Ride NZ',
     domain: 'bookaride.co.nz',
-    maintenanceMode: true,  // Set to false when ready to accept bookings
+    maintenanceMode: false,  // Set to true to block bookings during maintenance
     siteUrl: 'https://bookaride.co.nz',
     email: 'info@bookaride.co.nz',
     phone: '', // Removed - encourage online booking instead
