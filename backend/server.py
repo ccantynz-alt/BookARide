@@ -1263,7 +1263,7 @@ def _normalize_address_for_routing(address: str) -> str:
     if not address or not address.strip():
         return address
     lower = address.lower()
-    if _CANONICAL_AIRPORT_LOWER in lower or 'akl' in lower or 'ray emery' in lower or 'george bolt' in lower:
+    if _CANONICAL_AIRPORT_LOWER in lower or 'akl' in lower or 'ray emery' in lower or 'george bolt' in lower or 'mangere' in lower.replace('\u0101', 'a'):
         return _CANONICAL_AIRPORT
     return address.strip()
 
@@ -1393,8 +1393,11 @@ async def calculate_price(request: PriceCalculationRequest):
         hibiscus_coast_keywords = ['orewa', 'whangaparaoa', 'silverdale', 'red beach', 'stanmore bay', 'army bay', 'gulf harbour', 'manly', 'hibiscus coast', 'millwater', 'milldale', 'hatfields beach', 'waiwera', 'alec craig']
         
         # Check if this is specifically the concert venue (not general Matakana)
-        pickup_lower = request.pickupAddress.lower()
-        dropoff_lower = request.dropoffAddress.lower()
+        # Normalize macrons for matching (Māngere -> Mangere)
+        def _norm(s):
+            return (s or '').lower().replace('\u0101', 'a').replace('ā', 'a')
+        pickup_lower = _norm(request.pickupAddress)
+        dropoff_lower = _norm(request.dropoffAddress)
         
         is_concert_venue_destination = any(keyword in dropoff_lower for keyword in matakana_concert_keywords)
         is_concert_venue_pickup = any(keyword in pickup_lower for keyword in matakana_concert_keywords)
@@ -1403,7 +1406,7 @@ async def calculate_price(request: PriceCalculationRequest):
         
         # Minimum distance for Hibiscus Coast <-> Auckland Airport (Geoapify returns shorter than Google)
         # Old system: 73.3 km for Gulf Harbour -> Airport = ~$186. Use 73 km minimum for this route.
-        airport_keywords = ['airport', 'auckland airport', 'international airport', 'domestic airport', 'akl', 'ray emery']
+        airport_keywords = ['airport', 'auckland airport', 'international airport', 'domestic airport', 'akl', 'ray emery', 'mangere']
         is_to_airport = any(kw in dropoff_lower for kw in airport_keywords)
         is_from_airport = any(kw in pickup_lower for kw in airport_keywords)
         hibiscus_to_airport = (is_from_hibiscus_coast and is_to_airport) or (is_to_hibiscus_coast and is_from_airport)
