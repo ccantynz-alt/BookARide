@@ -2112,6 +2112,11 @@ export const AdminDashboard = () => {
 
     // Infer return trip from filled return date + time
     const hasReturnTrip = !!(newBooking.returnDate && newBooking.returnTime);
+    const isAirportShuttle = (newBooking.serviceType || '').toLowerCase().includes('airport') || (newBooking.serviceType || '').toLowerCase().includes('shuttle');
+    if (hasReturnTrip && isAirportShuttle && !(newBooking.returnDepartureFlightNumber || '').trim()) {
+      toast.error('Return flight number is required for airport shuttle return trips');
+      return;
+    }
 
     // Check if either calculated price or manual override is provided
     const hasCalculatedPrice = bookingPricing.totalPrice > 0;
@@ -2204,7 +2209,11 @@ export const AdminDashboard = () => {
       fetchBookings(); // Refresh bookings list
     } catch (error) {
       console.error('Error creating booking:', error);
-      toast.error(error.response?.data?.detail || 'Failed to create booking');
+      const detail = error.response?.data?.detail;
+      const msg = Array.isArray(detail)
+        ? detail.map((e) => e.msg || e.loc?.join('.')).filter(Boolean).slice(0, 2).join('. ')
+        : (typeof detail === 'string' ? detail : null) || 'Failed to create booking';
+      toast.error(msg);
     }
   };
 
@@ -4502,6 +4511,30 @@ export const AdminDashboard = () => {
                                 }
                               }}
                               placeholder="Select return time"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      {/* Return Flight Information */}
+                      <div className="mt-4 pt-4 border-t border-gray-200">
+                        <Label className="text-sm font-medium text-gray-700 mb-2 block">Return Flight Information (required if booking return)</Label>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <Label className="text-xs">Return Flight Number</Label>
+                            <Input
+                              value={newBooking.returnDepartureFlightNumber || ''}
+                              onChange={(e) => setNewBooking(prev => ({...prev, returnDepartureFlightNumber: e.target.value}))}
+                              placeholder="e.g. NZ456"
+                              className="mt-1"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Return Arrival Flight (optional)</Label>
+                            <Input
+                              value={newBooking.returnArrivalFlightNumber || ''}
+                              onChange={(e) => setNewBooking(prev => ({...prev, returnArrivalFlightNumber: e.target.value}))}
+                              placeholder="e.g. NZ789"
+                              className="mt-1"
                             />
                           </div>
                         </div>

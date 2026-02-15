@@ -8902,6 +8902,10 @@ class ManualBooking(BaseModel):
     bookReturn: Optional[bool] = False
     returnDate: Optional[str] = ""
     returnTime: Optional[str] = ""
+    returnDepartureFlightNumber: Optional[str] = ""
+    returnDepartureTime: Optional[str] = ""
+    returnArrivalFlightNumber: Optional[str] = ""
+    returnArrivalTime: Optional[str] = ""
     skipNotifications: Optional[bool] = False  # Skip sending email/SMS notifications
     referenceNumber: Optional[str] = None  # Allow setting custom reference number
     driver_name: Optional[str] = ""  # Pre-assign driver
@@ -8961,6 +8965,11 @@ async def create_manual_booking(booking: ManualBooking, background_tasks: Backgr
             "bookReturn": booking.bookReturn or False,
             "returnDate": booking.returnDate or "",
             "returnTime": booking.returnTime or "",
+            "returnDepartureFlightNumber": booking.returnDepartureFlightNumber or "",
+            "returnDepartureTime": booking.returnDepartureTime or "",
+            "returnArrivalFlightNumber": booking.returnArrivalFlightNumber or "",
+            "returnArrivalTime": booking.returnArrivalTime or "",
+            "returnFlightNumber": booking.returnDepartureFlightNumber or "",  # Alias for email templates
             "notifications_sent": booking.skipNotifications,  # Mark as sent if skipping
             "createdAt": datetime.now(timezone.utc)
         }
