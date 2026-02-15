@@ -11,6 +11,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict, model_validator
 from typing import List, Optional, Dict
 import uuid
+import math
 from datetime import datetime, timezone, timedelta
 import requests
 import httpx
@@ -1298,6 +1299,52 @@ def _get_distance_geoapify(pickup_address: str, dropoff_address: str, waypoint_a
     return None
 
 
+def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Great-circle distance between two points in km."""
+    # Mean Earth radius in km
+    r = 6371.0088
+    phi1 = math.radians(lat1)
+    phi2 = math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlambda = math.radians(lon2 - lon1)
+    a = (math.sin(dphi / 2) ** 2) + math.cos(phi1) * math.cos(phi2) * (math.sin(dlambda / 2) ** 2)
+    return 2 * r * math.asin(math.sqrt(a))
+
+
+def _estimate_distance_geoapify_geocode(
+    pickup_address: str, dropoff_address: str, waypoint_addresses: list, api_key: str, road_factor: float = 1.25
+) -> float | None:
+    """
+    Fallback distance estimate (km) using Geoapify geocoding + haversine sum across legs.
+    Uses a road_factor multiplier to approximate driving distance.
+    Returns None if geocoding fails for any waypoint.
+    """
+    try:
+        pickup_norm = _normalize_address_for_routing(pickup_address)
+        dropoff_norm = _normalize_address_for_routing(dropoff_address)
+        waypoints = [pickup_norm] + [_normalize_address_for_routing(a) for a in (waypoint_addresses or [])] + [dropoff_norm]
+        coords = []
+        for addr in waypoints:
+            if not addr or not addr.strip():
+                continue
+            lat, lon = _geocode_geoapify(addr.strip(), api_key)
+            if lat is None or lon is None:
+                return None
+            coords.append((lat, lon))
+        if len(coords) < 2:
+            return None
+        direct_km = 0.0
+        for (lat1, lon1), (lat2, lon2) in zip(coords, coords[1:]):
+            direct_km += _haversine_km(lat1, lon1, lat2, lon2)
+        if direct_km <= 0:
+            return None
+        est = direct_km * max(1.0, float(road_factor))
+        return round(est, 2)
+    except Exception as e:
+        logger.warning(f"Geoapify geocode/haversine fallback error: {e}")
+        return None
+
+
 # Price Calculation Endpoint
 @api_router.post("/calculate-price", response_model=PricingBreakdown)
 async def calculate_price(request: PriceCalculationRequest):
@@ -1307,78 +1354,86 @@ async def calculate_price(request: PriceCalculationRequest):
         google_api_key = os.environ.get('GOOGLE_MAPS_API_KEY', '')
         
         distance_km = None
+        waypoint_addrs = [a for a in (request.pickupAddresses or []) if a and a.strip()]
+
+        # 1) Try Geoapify routing (best when configured)
         if geoapify_key:
-            # Route: pickup -> additional pickups -> dropoff
-            waypoint_addrs = [a for a in (request.pickupAddresses or []) if a and a.strip()]
             distance_km = _get_distance_geoapify(
                 request.pickupAddress,
                 request.dropoffAddress,
                 waypoint_addrs,
-                geoapify_key
+                geoapify_key,
             )
             if distance_km is not None:
                 logger.info(f"Geoapify route distance: {distance_km}km")
-        
+
+        # 2) Try Google Maps if Geoapify failed/unavailable
         if distance_km is None and google_api_key:
             # Build list of all stops: first pickup + additional pickups + dropoff
             all_pickups = [request.pickupAddress]
             if request.pickupAddresses:
                 all_pickups.extend([addr for addr in request.pickupAddresses if addr])
-            
-            # If multiple pickups, use Directions API for route optimization
-            if len(all_pickups) > 1:
-                # Use Directions API with waypoints for multi-stop route
-                url = "https://maps.googleapis.com/maps/api/directions/json"
-                waypoints = "|".join(all_pickups[1:])  # All pickups except first
-                params = {
-                    'origin': all_pickups[0],  # First pickup
-                    'destination': request.dropoffAddress,  # Final dropoff
-                    'waypoints': waypoints,  # Intermediate pickups
-                    'key': google_api_key
-                }
-                response = requests.get(url, params=params)
-                data = response.json()
-                
-                logger.info(f"Google Maps Directions API (multi-stop) response status: {data.get('status')}")
-                
-                if data['status'] == 'OK' and len(data['routes']) > 0:
-                    route = data['routes'][0]
-                    # Sum all leg distances
-                    total_distance_meters = sum(leg['distance']['value'] for leg in route['legs'])
-                    distance_km = round(total_distance_meters / 1000, 2)
-                    logger.info(f"Multi-stop route: {len(all_pickups)} pickups ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ dropoff, total: {distance_km}km")
-                else:
-                    logger.warning(f"Google Maps Directions API error: {data.get('error_message', data.get('status'))}")
-                    distance_km = 25.0 * len(all_pickups)  # Fallback: estimate per stop
-            else:
-                # Single pickup - use Distance Matrix API
-                url = "https://maps.googleapis.com/maps/api/distancematrix/json"
-                params = {
-                    'origins': request.pickupAddress,
-                    'destinations': request.dropoffAddress,
-                    'key': google_api_key
-                }
-                response = requests.get(url, params=params)
-                data = response.json()
-                
-                logger.info(f"Google Maps Distance Matrix API response: {data}")
-                
-                if data['status'] == 'OK' and len(data['rows']) > 0 and len(data['rows'][0]['elements']) > 0:
-                    element = data['rows'][0]['elements'][0]
-                    if element['status'] == 'OK':
-                        distance_meters = element['distance']['value']
-                        distance_km = round(distance_meters / 1000, 2)
+
+            try:
+                # If multiple pickups, use Directions API for multi-stop route
+                if len(all_pickups) > 1:
+                    url = "https://maps.googleapis.com/maps/api/directions/json"
+                    waypoints = "|".join(all_pickups[1:])  # All pickups except first
+                    params = {
+                        "origin": all_pickups[0],
+                        "destination": request.dropoffAddress,
+                        "waypoints": waypoints,
+                        "key": google_api_key,
+                    }
+                    response = requests.get(url, params=params, timeout=15)
+                    data = response.json()
+
+                    logger.info(f"Google Maps Directions API (multi-stop) response status: {data.get('status')}")
+
+                    if data.get("status") == "OK" and data.get("routes"):
+                        route = data["routes"][0]
+                        total_distance_meters = sum(leg["distance"]["value"] for leg in route.get("legs", []) if leg.get("distance"))
+                        if total_distance_meters:
+                            distance_km = round(total_distance_meters / 1000, 2)
+                            logger.info(f"Multi-stop route: {len(all_pickups)} pickups -> dropoff, total: {distance_km}km")
                     else:
-                        logger.warning(f"Google Maps element status: {element.get('status')}")
-                        distance_km = 25.0  # Fallback
+                        logger.warning(f"Google Maps Directions API error: {data.get('error_message', data.get('status'))}")
                 else:
-                    logger.warning(f"Google Maps API error: {data.get('error_message', data.get('status'))}")
-                    distance_km = 25.0  # Fallback
-        else:
-            # Fallback: estimate based on number of stops
-            pickup_count = 1 + len([addr for addr in (request.pickupAddresses or []) if addr])
-            distance_km = 25.0 * pickup_count  # Default estimate per stop
-            logger.warning(f"Google Maps API key not found. Using default distance estimate: {distance_km}km for {pickup_count} stops")
+                    # Single pickup - use Distance Matrix API
+                    url = "https://maps.googleapis.com/maps/api/distancematrix/json"
+                    params = {
+                        "origins": request.pickupAddress,
+                        "destinations": request.dropoffAddress,
+                        "key": google_api_key,
+                    }
+                    response = requests.get(url, params=params, timeout=15)
+                    data = response.json()
+
+                    if data.get("status") == "OK" and data.get("rows") and data["rows"][0].get("elements"):
+                        element = data["rows"][0]["elements"][0]
+                        if element.get("status") == "OK" and element.get("distance"):
+                            distance_meters = element["distance"]["value"]
+                            distance_km = round(distance_meters / 1000, 2)
+                        else:
+                            logger.warning(f"Google Maps element status: {element.get('status')}")
+                    else:
+                        logger.warning(f"Google Maps API error: {data.get('error_message', data.get('status'))}")
+            except Exception as e:
+                logger.warning(f"Google Maps distance lookup error: {e}")
+
+        # 3) Last resort: Geoapify geocode + haversine estimate (prevents silent 25km defaults)
+        if distance_km is None and geoapify_key:
+            distance_km = _estimate_distance_geoapify_geocode(
+                request.pickupAddress,
+                request.dropoffAddress,
+                waypoint_addrs,
+                geoapify_key,
+            )
+            if distance_km is not None:
+                logger.info(f"Fallback distance estimate (geocode+haversine): {distance_km}km")
+
+        if distance_km is None:
+            raise HTTPException(status_code=400, detail="Unable to calculate distance. Please check addresses and try again.")
         
         # Calculate pricing with tiered rates - FLAT RATE per bracket
         # The rate is determined by which distance bracket the trip falls into
@@ -2320,15 +2375,49 @@ EMAIL_TRANSLATIONS = {
 }
 
 def send_booking_confirmation_email(booking: dict, include_payment_link: bool = True):
-    """Send booking confirmation email via Mailgun or SMTP fallback"""
-    # Try Mailgun first
-    mailgun_success = send_via_mailgun(booking)
-    if mailgun_success:
-        return True
-    
-    # Fallback to SMTP if Mailgun fails
-    logger.warning("Mailgun failed, trying SMTP fallback...")
-    return send_via_smtp(booking)
+    """Send booking confirmation email (customer + optional CC)."""
+    try:
+        booking_ref = get_booking_reference(booking)
+
+        # Get language preference for subject (default to English)
+        lang = booking.get("language", "en")
+        if lang not in EMAIL_TRANSLATIONS:
+            lang = "en"
+        t = EMAIL_TRANSLATIONS[lang]
+
+        subject = f"{t['subject']} - Ref: {booking_ref}"
+        recipient_email = (booking.get("email") or "").strip()
+        if not recipient_email:
+            logger.warning(f"No recipient email found for booking {booking_ref}")
+            return False
+
+        html_content = generate_confirmation_email_html(booking)
+        cc_email = (booking.get("ccEmail") or "").strip()
+        reply_to = os.environ.get("ADMIN_EMAIL", "info@bookaride.co.nz").split(",")[0].strip()
+
+        # Prefer unified sender (Mailgun or SMTP fallback) when available
+        if send_email_unified:
+            return bool(
+                send_email_unified(
+                    recipient_email,
+                    subject,
+                    html_content,
+                    from_email=get_noreply_email(),
+                    from_name="Book A Ride NZ",
+                    reply_to=reply_to,
+                    cc=(cc_email or None),
+                )
+            )
+
+        # Legacy fallback path (kept for safety)
+        mailgun_success = send_via_mailgun(booking)
+        if mailgun_success:
+            return True
+        logger.warning("Mailgun failed, trying SMTP fallback...")
+        return send_via_smtp(booking)
+    except Exception as e:
+        logger.error(f"Error sending booking confirmation email: {e}")
+        return False
 
 
 def send_via_mailgun(booking: dict):
@@ -4882,6 +4971,8 @@ def generate_confirmation_email_html(booking: dict, for_admin: bool = False) -> 
         return_time = d['return_time']
         return_flight = d['return_flight']
         return_arrival_flight = d['return_arrival']
+        return_departure_time = d.get('return_departure_time', '')
+        return_arrival_time = d.get('return_arrival_time', '')
         
         formatted_return_date = format_date_ddmmyyyy(return_date) if return_date else 'TBC'
         formatted_return_time = format_time_ampm(return_time) if return_time else 'TBC'
@@ -4912,7 +5003,9 @@ def generate_confirmation_email_html(booking: dict, for_admin: bool = False) -> 
                             <td style="padding: 12px 20px; color: #1a1a1a; font-size: 14px; border-bottom: 1px solid #f0f0f0;">{primary_pickup}</td>
                         </tr>
                         {'<tr><td style="padding: 12px 20px; color: #666; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Return Flight</td><td style="padding: 12px 20px; color: #1a1a1a; font-size: 14px; font-weight: 600; border-bottom: 1px solid #f0f0f0;">' + return_flight + '</td></tr>' if return_flight else ''}
+                        {'<tr><td style="padding: 12px 20px; color: #666; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Return Flight Departure Time</td><td style="padding: 12px 20px; color: #1a1a1a; font-size: 14px; font-weight: 600; border-bottom: 1px solid #f0f0f0;">' + format_time_ampm(return_departure_time) + '</td></tr>' if return_departure_time else ''}
                         {'<tr><td style="padding: 12px 20px; color: #666; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Return Arrival Flight</td><td style="padding: 12px 20px; color: #1a1a1a; font-size: 14px; font-weight: 600; border-bottom: 1px solid #f0f0f0;">' + return_arrival_flight + '</td></tr>' if return_arrival_flight and return_arrival_flight != return_flight else ''}
+                        {'<tr><td style="padding: 12px 20px; color: #666; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Return Arrival Time</td><td style="padding: 12px 20px; color: #1a1a1a; font-size: 14px; font-weight: 600; border-bottom: 1px solid #f0f0f0;">' + format_time_ampm(return_arrival_time) + '</td></tr>' if return_arrival_time else ''}
         '''
     
     # Build additional stops for outbound
