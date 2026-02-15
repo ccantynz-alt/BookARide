@@ -309,6 +309,10 @@ class BookingCreate(BaseModel):
     pricing: dict
     status: str = "pending"
     payment_status: Optional[str] = "unpaid"
+    paymentMethod: Optional[str] = "card"  # 'card', 'afterpay', 'stripe', 'xero', etc.
+    # Service add-ons
+    vipAirportPickup: Optional[bool] = False
+    oversizedLuggage: Optional[bool] = False
     # Return trip fields
     bookReturn: Optional[bool] = False
     returnDate: Optional[str] = ""
@@ -321,6 +325,7 @@ class BookingCreate(BaseModel):
     # Notification preference: 'email', 'sms', or 'both'
     notificationPreference: Optional[str] = "both"
     skipNotifications: Optional[bool] = False
+    language: Optional[str] = "en"  # Language for email templates
     createdAt: datetime = Field(default_factory=datetime.utcnow)
     
     @model_validator(mode='after')
@@ -1374,11 +1379,12 @@ async def calculate_price(request: PriceCalculationRequest):
                 else:
                     logger.warning(f"Google Maps API error: {data.get('error_message', data.get('status'))}")
                     distance_km = 25.0  # Fallback
-        else:
-            # Fallback: estimate based on number of stops
+        
+        # Final fallback: only if BOTH Geoapify and Google Maps failed to return a distance
+        if distance_km is None:
             pickup_count = 1 + len([addr for addr in (request.pickupAddresses or []) if addr])
             distance_km = 25.0 * pickup_count  # Default estimate per stop
-            logger.warning(f"Google Maps API key not found. Using default distance estimate: {distance_km}km for {pickup_count} stops")
+            logger.warning(f"No distance API returned a result. Using default distance estimate: {distance_km}km for {pickup_count} stops")
         
         # Calculate pricing with tiered rates - FLAT RATE per bracket
         # The rate is determined by which distance bracket the trip falls into
@@ -4801,13 +4807,13 @@ def _get_booking_email_data(booking: dict) -> dict:
     primary_pickup = booking.get('pickupAddress', 'N/A')
     pickup_addresses = [a for a in (booking.get('pickupAddresses') or []) if a and a.strip()]
     dropoff_address = booking.get('dropoffAddress', 'N/A')
-    # Flight info - check all possible field names
-    departure_flight = (booking.get('departureFlightNumber') or booking.get('flightNumber') or '').strip()
-    arrival_flight = (booking.get('arrivalFlightNumber') or booking.get('flightNumber') or '').strip()
+    # Flight info - check all possible field names (customer form uses departureFlightNumber, admin uses flightDepartureNumber)
+    departure_flight = (booking.get('departureFlightNumber') or booking.get('flightDepartureNumber') or booking.get('flightNumber') or '').strip()
+    arrival_flight = (booking.get('arrivalFlightNumber') or booking.get('flightArrivalNumber') or booking.get('flightNumber') or '').strip()
     if not arrival_flight and departure_flight:
         arrival_flight = departure_flight  # Fallback
-    departure_time = (booking.get('departureTime') or '').strip()
-    arrival_time = (booking.get('arrivalTime') or '').strip()
+    departure_time = (booking.get('departureTime') or booking.get('flightDepartureTime') or '').strip()
+    arrival_time = (booking.get('arrivalTime') or booking.get('flightArrivalTime') or '').strip()
     return_flight = (booking.get('returnFlightNumber') or booking.get('returnDepartureFlightNumber') or '').strip()
     return_arrival = (booking.get('returnArrivalFlightNumber') or '').strip()
     return_departure_time = (booking.get('returnDepartureTime') or '').strip()
@@ -4886,6 +4892,12 @@ def generate_confirmation_email_html(booking: dict, for_admin: bool = False) -> 
         formatted_return_date = format_date_ddmmyyyy(return_date) if return_date else 'TBC'
         formatted_return_time = format_time_ampm(return_time) if return_time else 'TBC'
         
+        # Format return departure and arrival times
+        return_dep_time = d.get('return_departure_time', '')
+        return_arr_time = d.get('return_arrival_time', '')
+        formatted_return_dep_time = format_time_ampm(return_dep_time) if return_dep_time else ''
+        formatted_return_arr_time = format_time_ampm(return_arr_time) if return_arr_time else ''
+        
         return_section_html = f'''
                         <!-- Return Trip -->
                         <tr>
@@ -4911,8 +4923,8 @@ def generate_confirmation_email_html(booking: dict, for_admin: bool = False) -> 
                             <td style="padding: 12px 20px; color: #666; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Drop-off</td>
                             <td style="padding: 12px 20px; color: #1a1a1a; font-size: 14px; border-bottom: 1px solid #f0f0f0;">{primary_pickup}</td>
                         </tr>
-                        {'<tr><td style="padding: 12px 20px; color: #666; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Return Flight</td><td style="padding: 12px 20px; color: #1a1a1a; font-size: 14px; font-weight: 600; border-bottom: 1px solid #f0f0f0;">' + return_flight + '</td></tr>' if return_flight else ''}
-                        {'<tr><td style="padding: 12px 20px; color: #666; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Return Arrival Flight</td><td style="padding: 12px 20px; color: #1a1a1a; font-size: 14px; font-weight: 600; border-bottom: 1px solid #f0f0f0;">' + return_arrival_flight + '</td></tr>' if return_arrival_flight and return_arrival_flight != return_flight else ''}
+                        {'<tr><td style="padding: 12px 20px; color: #666; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Return Flight</td><td style="padding: 12px 20px; color: #1a1a1a; font-size: 14px; font-weight: 600; border-bottom: 1px solid #f0f0f0;">' + return_flight + (' at ' + formatted_return_dep_time if formatted_return_dep_time else '') + '</td></tr>' if return_flight else ''}
+                        {'<tr><td style="padding: 12px 20px; color: #666; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Return Arrival Flight</td><td style="padding: 12px 20px; color: #1a1a1a; font-size: 14px; font-weight: 600; border-bottom: 1px solid #f0f0f0;">' + return_arrival_flight + (' at ' + formatted_return_arr_time if formatted_return_arr_time else '') + '</td></tr>' if return_arrival_flight and return_arrival_flight != return_flight else ''}
         '''
     
     # Build additional stops for outbound
@@ -9024,6 +9036,11 @@ async def create_manual_booking(booking: ManualBooking, background_tasks: Backgr
             "flightArrivalTime": booking.flightArrivalTime or "",
             "flightDepartureNumber": booking.flightDepartureNumber or "",
             "flightDepartureTime": booking.flightDepartureTime or "",
+            # Also store standard field names used by customer form (for consistent email templates)
+            "departureFlightNumber": booking.flightDepartureNumber or "",
+            "arrivalFlightNumber": booking.flightArrivalNumber or "",
+            "departureTime": booking.flightDepartureTime or "",
+            "arrivalTime": booking.flightArrivalTime or "",
             "bookReturn": booking.bookReturn or False,
             "returnDate": booking.returnDate or "",
             "returnTime": booking.returnTime or "",

@@ -1750,14 +1750,23 @@ export const AdminDashboard = () => {
         time: editingBooking.time,
         passengers: editingBooking.passengers,
         notes: editingBooking.notes,
-        flightArrivalNumber: editingBooking.flightArrivalNumber,
-        flightArrivalTime: editingBooking.flightArrivalTime,
-        flightDepartureNumber: editingBooking.flightDepartureNumber,
-        flightDepartureTime: editingBooking.flightDepartureTime,
+        // Flight details (store both field name formats for consistency)
+        flightArrivalNumber: editingBooking.flightArrivalNumber || editingBooking.arrivalFlightNumber || '',
+        flightArrivalTime: editingBooking.flightArrivalTime || editingBooking.arrivalTime || '',
+        flightDepartureNumber: editingBooking.flightDepartureNumber || editingBooking.departureFlightNumber || '',
+        flightDepartureTime: editingBooking.flightDepartureTime || editingBooking.departureTime || '',
+        departureFlightNumber: editingBooking.departureFlightNumber || editingBooking.flightDepartureNumber || '',
+        arrivalFlightNumber: editingBooking.arrivalFlightNumber || editingBooking.flightArrivalNumber || '',
+        departureTime: editingBooking.departureTime || editingBooking.flightDepartureTime || '',
+        arrivalTime: editingBooking.arrivalTime || editingBooking.flightArrivalTime || '',
         // Return trip - inferred from filled return date + time
         bookReturn: !!(editingBooking.returnDate && editingBooking.returnTime),
-        returnDate: editingBooking.returnDate,
-        returnTime: editingBooking.returnTime
+        returnDate: editingBooking.returnDate || '',
+        returnTime: editingBooking.returnTime || '',
+        returnDepartureFlightNumber: editingBooking.returnDepartureFlightNumber || editingBooking.returnFlightNumber || '',
+        returnDepartureTime: editingBooking.returnDepartureTime || '',
+        returnArrivalFlightNumber: editingBooking.returnArrivalFlightNumber || '',
+        returnArrivalTime: editingBooking.returnArrivalTime || ''
       }, getAuthHeaders());
 
       toast.success('Booking updated successfully!');
@@ -2600,7 +2609,7 @@ export const AdminDashboard = () => {
                       const hasReturn = booking.returnDate && booking.returnTime;
                       const isUnassigned = !booking.driver_id && !booking.driver_name && !booking.assignedDriver;
                       const isUrgentUnassigned = isToday(booking.date) && isUnassigned;
-                      const flightNum = booking.flightNumber || booking.flight_number || '';
+                      const flightNum = booking.departureFlightNumber || booking.arrivalFlightNumber || booking.flightDepartureNumber || booking.flightArrivalNumber || booking.flightNumber || booking.flight_number || '';
                       
                       return (
                       <tr key={booking.id} className={`border-b hover:bg-gray-50 transition-colors
@@ -2650,6 +2659,9 @@ export const AdminDashboard = () => {
                             <span className="text-[10px] text-gray-500 truncate max-w-[120px]">{booking.email}</span>
                             {booking.passengers > 1 && (
                               <span className="text-[10px] bg-gray-100 px-1 rounded mt-0.5 w-fit">👥 {booking.passengers} pax</span>
+                            )}
+                            {booking.notes && (
+                              <span className="text-[10px] bg-amber-100 text-amber-700 px-1 rounded mt-0.5 w-fit" title={booking.notes}>📝 Notes</span>
                             )}
                           </div>
                         </td>
@@ -3509,8 +3521,8 @@ export const AdminDashboard = () => {
                     </div>
                   </div>
                   
-                  {/* Return Trip Info - Inline */}
-                  {selectedBooking.bookReturn && (
+                  {/* Return Trip Info - show when bookReturn flag is set OR returnDate exists */}
+                  {(selectedBooking.bookReturn || selectedBooking.returnDate) && (
                     <div className="mt-4 bg-amber-50 p-3 rounded-lg border border-amber-200">
                       <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2 text-sm">
                         🔄 Return Trip
@@ -3541,10 +3553,22 @@ export const AdminDashboard = () => {
                                   <p className="font-medium text-blue-700">{selectedBooking.returnDepartureFlightNumber || selectedBooking.returnFlightNumber}</p>
                                 </div>
                               )}
+                              {selectedBooking.returnDepartureTime && (
+                                <div>
+                                  <span className="text-gray-500 text-xs">Departure Time:</span>
+                                  <p className="font-medium text-blue-700">{selectedBooking.returnDepartureTime}</p>
+                                </div>
+                              )}
                               {selectedBooking.returnArrivalFlightNumber && (
                                 <div>
                                   <span className="text-gray-500 text-xs">Arrival Flight:</span>
                                   <p className="font-medium text-blue-700">{selectedBooking.returnArrivalFlightNumber}</p>
+                                </div>
+                              )}
+                              {selectedBooking.returnArrivalTime && (
+                                <div>
+                                  <span className="text-gray-500 text-xs">Arrival Time:</span>
+                                  <p className="font-medium text-blue-700">{selectedBooking.returnArrivalTime}</p>
                                 </div>
                               )}
                             </div>
@@ -3561,32 +3585,32 @@ export const AdminDashboard = () => {
                 </div>
               </div>
 
-              {/* Flight Info */}
-              {(selectedBooking.flightArrivalNumber || selectedBooking.flightDepartureNumber || selectedBooking.flightNumber) && (
+              {/* Flight Info - check both old field names (flightArrivalNumber) and new field names (arrivalFlightNumber) */}
+              {(selectedBooking.flightArrivalNumber || selectedBooking.flightDepartureNumber || selectedBooking.flightNumber || selectedBooking.departureFlightNumber || selectedBooking.arrivalFlightNumber) && (
                 <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                   <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
                     ✈️ Flight Information
                   </h3>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     {/* Show flightNumber from WordPress imports */}
-                    {selectedBooking.flightNumber && !selectedBooking.flightArrivalNumber && !selectedBooking.flightDepartureNumber && (
+                    {selectedBooking.flightNumber && !selectedBooking.flightArrivalNumber && !selectedBooking.flightDepartureNumber && !selectedBooking.departureFlightNumber && !selectedBooking.arrivalFlightNumber && (
                       <div>
                         <span className="text-gray-600">Flight:</span>
                         <p className="font-medium">{selectedBooking.flightNumber}</p>
                       </div>
                     )}
-                    {selectedBooking.flightArrivalNumber && (
-                      <div>
-                        <span className="text-gray-600">Arrival Flight:</span>
-                        <p className="font-medium">{selectedBooking.flightArrivalNumber}</p>
-                        {selectedBooking.flightArrivalTime && <p className="text-xs text-gray-500">Arrival: {selectedBooking.flightArrivalTime}</p>}
-                      </div>
-                    )}
-                    {selectedBooking.flightDepartureNumber && (
+                    {(selectedBooking.departureFlightNumber || selectedBooking.flightDepartureNumber) && (
                       <div>
                         <span className="text-gray-600">Departure Flight:</span>
-                        <p className="font-medium">{selectedBooking.flightDepartureNumber}</p>
-                        {selectedBooking.flightDepartureTime && <p className="text-xs text-gray-500">Departure: {selectedBooking.flightDepartureTime}</p>}
+                        <p className="font-medium">{selectedBooking.departureFlightNumber || selectedBooking.flightDepartureNumber}</p>
+                        {(selectedBooking.departureTime || selectedBooking.flightDepartureTime) && <p className="text-xs text-gray-500">Departure: {selectedBooking.departureTime || selectedBooking.flightDepartureTime}</p>}
+                      </div>
+                    )}
+                    {(selectedBooking.arrivalFlightNumber || selectedBooking.flightArrivalNumber) && (
+                      <div>
+                        <span className="text-gray-600">Arrival Flight:</span>
+                        <p className="font-medium">{selectedBooking.arrivalFlightNumber || selectedBooking.flightArrivalNumber}</p>
+                        {(selectedBooking.arrivalTime || selectedBooking.flightArrivalTime) && <p className="text-xs text-gray-500">Arrival: {selectedBooking.arrivalTime || selectedBooking.flightArrivalTime}</p>}
                       </div>
                     )}
                   </div>
@@ -3648,7 +3672,7 @@ export const AdminDashboard = () => {
               {/* Driver Assignment - OUTBOUND */}
               <div>
                 <h3 className="font-semibold text-gray-900 mb-3">
-                  🚗 Outbound Driver {selectedBooking.bookReturn && <span className="text-sm font-normal text-gray-500">(One-way to destination)</span>}
+                  🚗 Outbound Driver {(selectedBooking.bookReturn || selectedBooking.returnDate) && <span className="text-sm font-normal text-gray-500">(One-way to destination)</span>}
                 </h3>
                 {(selectedBooking.driver_id || selectedBooking.driver_name) ? (
                   <div className="bg-green-50 border border-green-200 rounded-lg p-4">
@@ -3739,8 +3763,8 @@ export const AdminDashboard = () => {
                 )}
               </div>
 
-              {/* Driver Assignment - RETURN (only if return trip booked) */}
-              {selectedBooking.bookReturn && (
+              {/* Driver Assignment - RETURN (show when bookReturn flag is set OR returnDate exists) */}
+              {(selectedBooking.bookReturn || selectedBooking.returnDate) && (
                 <div className="mt-4 pt-4 border-t border-dashed">
                   <h3 className="font-semibold text-gray-900 mb-3">
                     🔄 Return Driver <span className="text-sm font-normal text-gray-500">(Return on {formatDate(selectedBooking.returnDate)} at {selectedBooking.returnTime})</span>
@@ -4529,6 +4553,22 @@ export const AdminDashboard = () => {
                             />
                           </div>
                           <div>
+                            <Label className="text-xs">Return Departure Time</Label>
+                            <div className="mt-1">
+                              <CustomTimePicker
+                                selected={null}
+                                onChange={(time) => {
+                                  if (time) {
+                                    const hours = time.getHours().toString().padStart(2, '0');
+                                    const minutes = time.getMinutes().toString().padStart(2, '0');
+                                    setNewBooking(prev => ({...prev, returnDepartureTime: `${hours}:${minutes}`}));
+                                  }
+                                }}
+                                placeholder="Select departure time"
+                              />
+                            </div>
+                          </div>
+                          <div>
                             <Label className="text-xs">Return Arrival Flight (optional)</Label>
                             <Input
                               value={newBooking.returnArrivalFlightNumber || ''}
@@ -4536,6 +4576,22 @@ export const AdminDashboard = () => {
                               placeholder="e.g. NZ789"
                               className="mt-1"
                             />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Return Arrival Time (optional)</Label>
+                            <div className="mt-1">
+                              <CustomTimePicker
+                                selected={null}
+                                onChange={(time) => {
+                                  if (time) {
+                                    const hours = time.getHours().toString().padStart(2, '0');
+                                    const minutes = time.getMinutes().toString().padStart(2, '0');
+                                    setNewBooking(prev => ({...prev, returnArrivalTime: `${hours}:${minutes}`}));
+                                  }
+                                }}
+                                placeholder="Select arrival time"
+                              />
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -4854,38 +4910,38 @@ export const AdminDashboard = () => {
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <Label>Flight Arrival Number</Label>
+                        <Label>Departure Flight Number</Label>
                         <Input
-                          value={editingBooking.flightArrivalNumber || ''}
-                          onChange={(e) => setEditingBooking(prev => ({...prev, flightArrivalNumber: e.target.value}))}
+                          value={editingBooking.departureFlightNumber || editingBooking.flightDepartureNumber || ''}
+                          onChange={(e) => setEditingBooking(prev => ({...prev, departureFlightNumber: e.target.value, flightDepartureNumber: e.target.value}))}
                           placeholder="e.g., NZ123"
                           className="mt-1 bg-white"
                         />
                       </div>
                       <div>
-                        <Label>Flight Arrival Time</Label>
+                        <Label>Departure Time</Label>
                         <Input
                           type="time"
-                          value={editingBooking.flightArrivalTime || ''}
-                          onChange={(e) => setEditingBooking(prev => ({...prev, flightArrivalTime: e.target.value}))}
+                          value={editingBooking.departureTime || editingBooking.flightDepartureTime || ''}
+                          onChange={(e) => setEditingBooking(prev => ({...prev, departureTime: e.target.value, flightDepartureTime: e.target.value}))}
                           className="mt-1 bg-white"
                         />
                       </div>
                       <div>
-                        <Label>Flight Departure Number</Label>
+                        <Label>Arrival Flight Number</Label>
                         <Input
-                          value={editingBooking.flightDepartureNumber || ''}
-                          onChange={(e) => setEditingBooking(prev => ({...prev, flightDepartureNumber: e.target.value}))}
+                          value={editingBooking.arrivalFlightNumber || editingBooking.flightArrivalNumber || ''}
+                          onChange={(e) => setEditingBooking(prev => ({...prev, arrivalFlightNumber: e.target.value, flightArrivalNumber: e.target.value}))}
                           placeholder="e.g., NZ456"
                           className="mt-1 bg-white"
                         />
                       </div>
                       <div>
-                        <Label>Flight Departure Time</Label>
+                        <Label>Arrival Time</Label>
                         <Input
                           type="time"
-                          value={editingBooking.flightDepartureTime || ''}
-                          onChange={(e) => setEditingBooking(prev => ({...prev, flightDepartureTime: e.target.value}))}
+                          value={editingBooking.arrivalTime || editingBooking.flightArrivalTime || ''}
+                          onChange={(e) => setEditingBooking(prev => ({...prev, arrivalTime: e.target.value, flightArrivalTime: e.target.value}))}
                           className="mt-1 bg-white"
                         />
                       </div>
@@ -4894,10 +4950,10 @@ export const AdminDashboard = () => {
 
                   {/* Return Journey - Always visible, optional */}
                   <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                    <h4 className="font-semibold text-gray-900 mb-2">Return Journey <span className="text-sm font-normal text-gray-500">(Optional)</span></h4>
+                    <h4 className="font-semibold text-gray-900 mb-2">Return Journey <span className="text-sm font-normal text-gray-500">(Optional – leave blank for one-way)</span></h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
                         <div>
-                          <Label>Return Date *</Label>
+                          <Label>Return Date</Label>
                           <Input
                             type="date"
                             value={editingBooking.returnDate || ''}
@@ -4907,7 +4963,7 @@ export const AdminDashboard = () => {
                           />
                         </div>
                         <div>
-                          <Label>Return Time *</Label>
+                          <Label>Return Time</Label>
                           <Input
                             type="time"
                             value={editingBooking.returnTime || ''}
@@ -4915,21 +4971,52 @@ export const AdminDashboard = () => {
                             className="mt-1 bg-white"
                           />
                         </div>
-                        <div>
-                          <Label>Return Flight Number</Label>
-                          <Input
-                            value={editingBooking.returnFlightNumber || editingBooking.returnDepartureFlightNumber || ''}
-                            onChange={(e) => setEditingBooking(prev => ({...prev, returnFlightNumber: e.target.value, returnDepartureFlightNumber: e.target.value}))}
-                            placeholder="e.g. NZ456"
-                            className="mt-1 bg-white"
-                          />
-                        </div>
-                        <div className="md:col-span-2">
-                          <p className="text-xs text-gray-600 italic">
-                            Return route: {editingBooking.dropoffAddress?.split(',')[0]} → {editingBooking.pickupAddress?.split(',')[0]}
-                          </p>
+                      </div>
+                      {/* Return Flight Information */}
+                      <div className="mt-4 pt-4 border-t border-gray-200">
+                        <Label className="text-sm font-medium text-gray-700 mb-2 block">Return Flight Information</Label>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <Label className="text-xs">Return Flight Number</Label>
+                            <Input
+                              value={editingBooking.returnDepartureFlightNumber || editingBooking.returnFlightNumber || ''}
+                              onChange={(e) => setEditingBooking(prev => ({...prev, returnDepartureFlightNumber: e.target.value, returnFlightNumber: e.target.value}))}
+                              placeholder="e.g. NZ456"
+                              className="mt-1 bg-white"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Return Departure Time</Label>
+                            <Input
+                              type="time"
+                              value={editingBooking.returnDepartureTime || ''}
+                              onChange={(e) => setEditingBooking(prev => ({...prev, returnDepartureTime: e.target.value}))}
+                              className="mt-1 bg-white"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Return Arrival Flight (optional)</Label>
+                            <Input
+                              value={editingBooking.returnArrivalFlightNumber || ''}
+                              onChange={(e) => setEditingBooking(prev => ({...prev, returnArrivalFlightNumber: e.target.value}))}
+                              placeholder="e.g. NZ789"
+                              className="mt-1 bg-white"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Return Arrival Time (optional)</Label>
+                            <Input
+                              type="time"
+                              value={editingBooking.returnArrivalTime || ''}
+                              onChange={(e) => setEditingBooking(prev => ({...prev, returnArrivalTime: e.target.value}))}
+                              className="mt-1 bg-white"
+                            />
+                          </div>
                         </div>
                       </div>
+                      <p className="text-xs text-gray-600 italic mt-3">
+                        Return route: {editingBooking.dropoffAddress?.split(',')[0]} → {editingBooking.pickupAddress?.split(',')[0]}
+                      </p>
                   </div>
 
                   <div>
