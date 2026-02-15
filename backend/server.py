@@ -1348,8 +1348,8 @@ async def calculate_price(request: PriceCalculationRequest):
                     distance_km = round(total_distance_meters / 1000, 2)
                     logger.info(f"Multi-stop route: {len(all_pickups)} pickups ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ dropoff, total: {distance_km}km")
                 else:
-                    logger.warning(f"Google Maps Directions API error: {data.get('error_message', data.get('status'))}")
-                    distance_km = 25.0 * len(all_pickups)  # Fallback: estimate per stop
+                    logger.error(f"Google Maps Directions API error: {data.get('error_message', data.get('status'))} - Cannot calculate accurate distance")
+                    raise HTTPException(status_code=500, detail="Unable to calculate distance. Please verify addresses are correct.")
             else:
                 # Single pickup - use Distance Matrix API
                 url = "https://maps.googleapis.com/maps/api/distancematrix/json"
@@ -1369,16 +1369,15 @@ async def calculate_price(request: PriceCalculationRequest):
                         distance_meters = element['distance']['value']
                         distance_km = round(distance_meters / 1000, 2)
                     else:
-                        logger.warning(f"Google Maps element status: {element.get('status')}")
-                        distance_km = 25.0  # Fallback
+                        logger.error(f"⚠️ Google Maps element status: {element.get('status')} - Cannot calculate accurate distance")
+                        raise HTTPException(status_code=500, detail=f"Unable to calculate distance. Please verify addresses are correct.")
                 else:
-                    logger.warning(f"Google Maps API error: {data.get('error_message', data.get('status'))}")
-                    distance_km = 25.0  # Fallback
+                    logger.error(f"⚠️ Google Maps API error: {data.get('error_message', data.get('status'))}")
+                    raise HTTPException(status_code=500, detail=f"Unable to calculate distance. Please verify addresses are correct.")
         else:
-            # Fallback: estimate based on number of stops
-            pickup_count = 1 + len([addr for addr in (request.pickupAddresses or []) if addr])
-            distance_km = 25.0 * pickup_count  # Default estimate per stop
-            logger.warning(f"Google Maps API key not found. Using default distance estimate: {distance_km}km for {pickup_count} stops")
+            # No API key configured - cannot calculate distance
+            logger.error(f"⚠️ CRITICAL: No distance calculation API configured. Set GEOAPIFY_API_KEY or GOOGLE_MAPS_API_KEY environment variable.")
+            raise HTTPException(status_code=500, detail="Distance calculation service not configured. Please contact support.")
         
         # Calculate pricing with tiered rates - FLAT RATE per bracket
         # The rate is determined by which distance bracket the trip falls into
@@ -3712,9 +3711,10 @@ def _get_booking_notification_emails() -> list:
 
 
 async def send_booking_notification_to_admin(booking: dict):
-    """Automatically send booking notification to admin email(s) - bookings@bookaride.co.nz by default"""
+    """Automatically send booking notification to admin email(s) - bookings@bookerride.co.nz by default"""
     try:
         admin_emails = _get_booking_notification_emails()
+        logger.info(f"📧 Attempting to send admin notification to: {', '.join(admin_emails)}")
         formatted_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
         booking_ref = get_booking_reference(booking)
         
@@ -3767,7 +3767,7 @@ async def send_booking_notification_to_admin(booking: dict):
                     except Exception as e:
                         logger.error(f"Error sending to {admin_email}: {e}")
             else:
-                logger.error("No email provider configured (Mailgun or SMTP) - admin notifications not sent")
+                logger.error("❌ CRITICAL: No email provider configured (Mailgun or SMTP) - admin notifications not sent! Set MAILGUN_API_KEY/MAILGUN_DOMAIN or SMTP credentials.")
             
     except Exception as e:
         logger.error(f"Error sending admin notification: {str(e)}")

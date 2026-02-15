@@ -4461,9 +4461,19 @@ export const AdminDashboard = () => {
                   </p>
                 </div>
 
-                {/* Return Journey - Always visible, optional (no checkbox) */}
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                  <h4 className="font-semibold text-gray-900 mb-2">Return Journey <span className="text-sm font-normal text-gray-500">(Optional – leave blank for one-way)</span></h4>
+                {/* Return Journey - Clean, optional section */}
+                <div className="bg-gradient-to-br from-gray-50 to-gray-100/50 p-5 rounded-xl border-2 border-gray-200/60">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="flex items-center justify-center w-9 h-9 rounded-full bg-gold/10">
+                      <svg className="w-4 h-4 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-gray-900">Return Journey</h4>
+                      <p className="text-xs text-gray-600">Optional – leave blank for one-way trip</p>
+                    </div>
+                  </div>
 
                   <div className="space-y-4 mt-4">
                       <p className="text-sm text-gray-600">
