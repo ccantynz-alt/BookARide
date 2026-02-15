@@ -1380,6 +1380,42 @@ async def calculate_price(request: PriceCalculationRequest):
             distance_km = 25.0 * pickup_count  # Default estimate per stop
             logger.warning(f"Google Maps API key not found. Using default distance estimate: {distance_km}km for {pickup_count} stops")
         
+        # Apply zone-based minimums BEFORE tiered pricing (handles API failures for long routes)
+        def _norm(s):
+            return (s or '').lower().replace('\u0101', 'a').replace('ā', 'a')
+        pickup_lower = _norm(request.pickupAddress)
+        dropoff_lower = _norm(request.dropoffAddress)
+        airport_keywords = ['airport', 'auckland airport', 'international airport', 'domestic airport', 'akl', 'ray emery', 'mangere']
+        hibiscus_coast_keywords = ['orewa', 'whangaparaoa', 'silverdale', 'red beach', 'stanmore bay', 'army bay', 'gulf harbour', 'manly', 'hibiscus coast', 'millwater', 'milldale', 'hatfields beach', 'waiwera', 'alec craig', 'tindalls', 'snells beach']
+        whangarei_keywords = ['whangarei', 'onerahi', 'kensington', 'tikipunga', 'regent', 'whangarei heads']
+        hamilton_keywords = ['hamilton', 'cambridge', 'te awamutu', 'ngaruawahia', 'huntly']
+        pukekohe_keywords = ['pukekohe', 'patumahoe', 'bukelon', 'karaka']
+        is_to_airport = any(kw in dropoff_lower for kw in airport_keywords)
+        is_from_airport = any(kw in pickup_lower for kw in airport_keywords)
+        is_from_hibiscus = any(kw in pickup_lower for kw in hibiscus_coast_keywords)
+        is_to_hibiscus = any(kw in dropoff_lower for kw in hibiscus_coast_keywords)
+        is_from_whangarei = any(kw in pickup_lower for kw in whangarei_keywords)
+        is_to_whangarei = any(kw in dropoff_lower for kw in whangarei_keywords)
+        is_from_hamilton = any(kw in pickup_lower for kw in hamilton_keywords)
+        is_to_hamilton = any(kw in dropoff_lower for kw in hamilton_keywords)
+        is_from_pukekohe = any(kw in pickup_lower for kw in pukekohe_keywords)
+        is_to_pukekohe = any(kw in dropoff_lower for kw in pukekohe_keywords)
+        
+        # Zone minimums when API returns low/wrong distance (e.g. 25km fallback for 60-70km routes)
+        old_d = distance_km
+        if (is_from_hibiscus or is_to_hibiscus) and (is_to_airport or is_from_airport) and distance_km < 65.0:
+            distance_km = 65.0
+            logger.info(f"Zone minimum: Hibiscus Coast <-> Airport route, enforcing 65 km (API returned {old_d} km)")
+        if (is_from_whangarei or is_to_whangarei) and (is_to_airport or is_from_airport) and distance_km < 165.0:
+            distance_km = 165.0
+            logger.info(f"Zone minimum: Airport <-> Whangarei route, enforcing 165 km (API returned {old_d} km)")
+        if (is_from_hamilton or is_to_hamilton) and (is_to_airport or is_from_airport) and distance_km < 100.0:
+            distance_km = 100.0
+            logger.info(f"Zone minimum: Airport <-> Hamilton route, enforcing 100 km (API returned {old_d} km)")
+        if (is_from_pukekohe or is_to_pukekohe) and (is_to_airport or is_from_airport) and distance_km < 35.0:
+            distance_km = 35.0
+            logger.info(f"Zone minimum: Airport <-> Pukekohe/Karaka route, enforcing 35 km (API returned {old_d} km)")
+        
         # Calculate pricing with tiered rates - FLAT RATE per bracket
         # The rate is determined by which distance bracket the trip falls into
         # Then that rate is applied to the ENTIRE distance
@@ -3707,12 +3743,12 @@ async def cron_send_reminders(api_key: str = None):
 
 def _get_booking_notification_emails() -> list:
     """Emails to receive new booking copies. BOOKINGS_NOTIFICATION_EMAIL or ADMIN_EMAIL, default bookings@"""
-    raw = os.environ.get('BOOKINGS_NOTIFICATION_EMAIL') or os.environ.get('ADMIN_EMAIL', 'bookings@bookaride.co.nz')
+    raw = os.environ.get('BOOKINGS_NOTIFICATION_EMAIL') or os.environ.get('ADMIN_EMAIL', 'bookings@bookerride.co.nz')
     return [e.strip() for e in str(raw).split(',') if e.strip()]
 
 
 async def send_booking_notification_to_admin(booking: dict):
-    """Automatically send booking notification to admin email(s) - bookings@bookaride.co.nz by default"""
+    """Automatically send booking notification to admin email(s) - bookings@bookerride.co.nz by default"""
     try:
         admin_emails = _get_booking_notification_emails()
         formatted_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
@@ -3874,7 +3910,7 @@ async def send_urgent_approval_notification(booking: dict):
         """
         
         subject = f"URGENT APPROVAL - {booking.get('name', 'Customer')} - {formatted_date} {booking.get('time', '')} - Ref: {booking_ref}"
-        recipient = admin_emails[0] if admin_emails else "bookings@bookaride.co.nz"
+        recipient = admin_emails[0] if admin_emails else "bookings@bookerride.co.nz"
         email_sent = False
         
         # Try unified sender first (SMTP/Mailgun)
@@ -4850,7 +4886,7 @@ def generate_confirmation_email_html(booking: dict, for_admin: bool = False) -> 
     """Generate the confirmation email HTML for preview or sending - Clean professional design.
     Includes all booking details: flights, return trip, notes, route, payment.
     Set for_admin=True to add admin copy banner (same content, both get full details)."""
-    sender_email = os.environ.get('SENDER_EMAIL', 'bookings@bookaride.co.nz')
+    sender_email = os.environ.get('SENDER_EMAIL', 'bookings@bookerride.co.nz')
     d = _get_booking_email_data(booking)
     
     total_price = d['total_price']
@@ -5950,7 +5986,7 @@ async def twilio_sms_webhook(request: Request):
                     
                     # Notify admin of driver acknowledgment
                     try:
-                        admin_email = os.environ.get('ADMIN_EMAIL', 'bookings@bookaride.co.nz')
+                        admin_email = os.environ.get('ADMIN_EMAIL', 'bookings@bookerride.co.nz')
                         mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
                         mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
                         sender_email = os.environ.get('SENDER_EMAIL', 'noreply@mg.bookaride.co.nz')
@@ -8740,7 +8776,7 @@ async def send_payment_link_email(booking: dict, payment_link: str, payment_type
                     <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
                     
                     <p style="font-size: 14px; color: #666;">
-                        If you have any questions, please contact us at bookings@bookaride.co.nz
+                        If you have any questions, please contact us at bookings@bookerride.co.nz
                     </p>
                 </div>
                 
@@ -9184,7 +9220,7 @@ async def submit_driver_application(application: DriverApplication):
         # Send notification email to admin
         mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
         mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
-        admin_email = os.environ.get('ADMIN_EMAIL', 'bookings@bookaride.co.nz')
+        admin_email = os.environ.get('ADMIN_EMAIL', 'bookings@bookerride.co.nz')
         
         if mailgun_api_key and mailgun_domain:
             html_content = f"""

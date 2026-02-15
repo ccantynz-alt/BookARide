@@ -2,6 +2,25 @@
 // This file controls branding for different domains
 
 const configs = {
+  'bookerride.co.nz': {
+    siteName: 'Booker Ride NZ',
+    domain: 'bookerride.co.nz',
+    maintenanceMode: false,
+    siteUrl: 'https://bookerride.co.nz',
+    email: 'bookings@bookerride.co.nz',
+    phone: '',
+    tagline: 'Airport Shuttles & Private Transfers Across New Zealand',
+    description: 'Professional airport shuttle service in Auckland, Hamilton, and Whangarei. Book online for instant confirmation.',
+    keywords: 'airport shuttle, Auckland airport transfer, private shuttle, airport transport',
+    address: 'Auckland, New Zealand',
+    logo: '/logo.png',
+    favicon: '/favicon.svg',
+    primaryColor: 'gold',
+    facebook: '',
+    instagram: '',
+    twitter: '',
+  },
+
   'bookaride.co.nz': {
     siteName: 'Book A Ride NZ',
     domain: 'bookaride.co.nz',
@@ -68,8 +87,8 @@ const getCurrentDomain = () => {
     }
   }
   
-  // Default to bookaride.co.nz for localhost and unknown domains
-  return 'bookaride.co.nz';
+  // Default to bookerride.co.nz for localhost and unknown domains
+  return 'bookerride.co.nz';
 };
 
 // Get site configuration based on current domain
