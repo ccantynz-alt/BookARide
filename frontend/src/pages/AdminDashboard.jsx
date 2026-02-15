@@ -2609,7 +2609,7 @@ export const AdminDashboard = () => {
                       const hasReturn = booking.returnDate && booking.returnTime;
                       const isUnassigned = !booking.driver_id && !booking.driver_name && !booking.assignedDriver;
                       const isUrgentUnassigned = isToday(booking.date) && isUnassigned;
-                      const flightNum = booking.flightNumber || booking.flight_number || '';
+                      const flightNum = booking.departureFlightNumber || booking.arrivalFlightNumber || booking.flightDepartureNumber || booking.flightArrivalNumber || booking.flightNumber || booking.flight_number || '';
                       
                       return (
                       <tr key={booking.id} className={`border-b hover:bg-gray-50 transition-colors
@@ -2659,6 +2659,9 @@ export const AdminDashboard = () => {
                             <span className="text-[10px] text-gray-500 truncate max-w-[120px]">{booking.email}</span>
                             {booking.passengers > 1 && (
                               <span className="text-[10px] bg-gray-100 px-1 rounded mt-0.5 w-fit">👥 {booking.passengers} pax</span>
+                            )}
+                            {booking.notes && (
+                              <span className="text-[10px] bg-amber-100 text-amber-700 px-1 rounded mt-0.5 w-fit" title={booking.notes}>📝 Notes</span>
                             )}
                           </div>
                         </td>
