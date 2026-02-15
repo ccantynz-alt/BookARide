@@ -1280,9 +1280,11 @@ def _get_distance_geoapify(pickup_address: str, dropoff_address: str, waypoint_a
                 continue
             lat, lon = _geocode_geoapify(addr.strip(), api_key)
             if lat is None:
+                logger.warning(f"Geoapify: Failed to geocode address: {addr[:50]}...")
                 return None
             coords_list.append(f"{lat},{lon}")
         if len(coords_list) < 2:
+            logger.warning(f"Geoapify: Not enough waypoints ({len(coords_list)})")
             return None
         waypoints_str = "|".join(coords_list)
         url = f"https://api.geoapify.com/v1/routing?waypoints={waypoints_str}&mode=drive&apiKey={api_key}"
@@ -1292,10 +1294,79 @@ def _get_distance_geoapify(pickup_address: str, dropoff_address: str, waypoint_a
         if features:
             props = features[0].get("properties", {})
             dist_m = props.get("distance", 0)
-            return round(dist_m / 1000, 2)
+            if dist_m > 0:
+                return round(dist_m / 1000, 2)
+            logger.warning(f"Geoapify: Returned zero distance")
+        else:
+            logger.warning(f"Geoapify: No route features found")
     except Exception as e:
         logger.warning(f"Geoapify routing error: {e}")
     return None
+
+
+def _estimate_distance_from_addresses(pickup_address: str, dropoff_address: str, api_key: str = None) -> float:
+    """
+    Estimate distance using geocoding and straight-line distance.
+    Returns estimated driving distance (straight-line * 1.3 factor) or intelligent fallback.
+    """
+    import math
+    
+    # Try to geocode both addresses using Geoapify
+    if api_key:
+        pickup_lat, pickup_lon = _geocode_geoapify(pickup_address, api_key)
+        dropoff_lat, dropoff_lon = _geocode_geoapify(dropoff_address, api_key)
+        
+        if pickup_lat and dropoff_lat:
+            # Calculate straight-line distance using Haversine formula
+            R = 6371  # Earth radius in km
+            lat1, lon1 = math.radians(pickup_lat), math.radians(pickup_lon)
+            lat2, lon2 = math.radians(dropoff_lat), math.radians(dropoff_lon)
+            dlat = lat2 - lat1
+            dlon = lon2 - lon1
+            a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
+            c = 2 * math.asin(math.sqrt(a))
+            straight_line_km = R * c
+            
+            # Driving distance is typically 1.3x straight-line distance
+            estimated_km = round(straight_line_km * 1.3, 2)
+            logger.info(f"Estimated distance from geocoding: {estimated_km}km (straight-line: {straight_line_km:.2f}km)")
+            return estimated_km
+    
+    # Fallback: Intelligent estimate based on address keywords
+    def _norm(s):
+        return (s or '').lower().replace('\u0101', 'a').replace('ā', 'a')
+    
+    pickup_lower = _norm(pickup_address)
+    dropoff_lower = _norm(dropoff_address)
+    
+    # Check for known long-distance routes
+    whangarei_keywords = ['whangarei', 'onerahi', 'kensington', 'tikipunga', 'regent', 'whangarei heads']
+    hamilton_keywords = ['hamilton', 'frankton', 'hillcrest', 'rototuna', 'cambridge']
+    airport_keywords = ['airport', 'auckland airport', 'akl', 'ray emery', 'mangere']
+    hibiscus_keywords = ['orewa', 'whangaparaoa', 'silverdale', 'red beach', 'gulf harbour']
+    
+    is_whangarei = any(kw in pickup_lower or kw in dropoff_lower for kw in whangarei_keywords)
+    is_hamilton = any(kw in pickup_lower or kw in dropoff_lower for kw in hamilton_keywords)
+    is_airport = any(kw in pickup_lower or kw in dropoff_lower for kw in airport_keywords)
+    is_hibiscus = any(kw in pickup_lower or kw in dropoff_lower for kw in hibiscus_keywords)
+    
+    # Known route estimates
+    if is_whangarei and is_airport:
+        return 182.0  # Auckland Airport <-> Whangarei
+    elif is_hamilton and is_airport:
+        return 125.0  # Auckland Airport <-> Hamilton
+    elif is_hibiscus and is_airport:
+        return 73.0   # Hibiscus Coast <-> Airport
+    elif is_whangarei:
+        return 160.0  # Whangarei <-> Auckland area
+    elif is_hamilton:
+        return 110.0  # Hamilton <-> Auckland area
+    elif is_hibiscus:
+        return 50.0   # Hibiscus Coast <-> Auckland area
+    
+    # Default fallback for Auckland metro area
+    logger.warning(f"Using default distance estimate for: {pickup_address[:30]} -> {dropoff_address[:30]}")
+    return 35.0  # Reasonable Auckland metro estimate
 
 
 # Price Calculation Endpoint
@@ -1349,7 +1420,9 @@ async def calculate_price(request: PriceCalculationRequest):
                     logger.info(f"Multi-stop route: {len(all_pickups)} pickups ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ dropoff, total: {distance_km}km")
                 else:
                     logger.warning(f"Google Maps Directions API error: {data.get('error_message', data.get('status'))}")
-                    distance_km = 25.0 * len(all_pickups)  # Fallback: estimate per stop
+                    # Use intelligent fallback instead of fixed 25km per stop
+                    distance_km = _estimate_distance_from_addresses(request.pickupAddress, request.dropoffAddress, geoapify_key)
+                    logger.info(f"Using estimated distance for multi-stop route: {distance_km}km")
             else:
                 # Single pickup - use Distance Matrix API
                 url = "https://maps.googleapis.com/maps/api/distancematrix/json"
@@ -1368,17 +1441,22 @@ async def calculate_price(request: PriceCalculationRequest):
                     if element['status'] == 'OK':
                         distance_meters = element['distance']['value']
                         distance_km = round(distance_meters / 1000, 2)
+                        logger.info(f"Google Maps distance: {distance_km}km")
                     else:
                         logger.warning(f"Google Maps element status: {element.get('status')}")
-                        distance_km = 25.0  # Fallback
+                        # Use intelligent fallback instead of fixed 25km
+                        distance_km = _estimate_distance_from_addresses(request.pickupAddress, request.dropoffAddress, geoapify_key)
+                        logger.info(f"Using estimated distance: {distance_km}km")
                 else:
                     logger.warning(f"Google Maps API error: {data.get('error_message', data.get('status'))}")
-                    distance_km = 25.0  # Fallback
-        else:
-            # Fallback: estimate based on number of stops
-            pickup_count = 1 + len([addr for addr in (request.pickupAddresses or []) if addr])
-            distance_km = 25.0 * pickup_count  # Default estimate per stop
-            logger.warning(f"Google Maps API key not found. Using default distance estimate: {distance_km}km for {pickup_count} stops")
+                    # Use intelligent fallback instead of fixed 25km
+                    distance_km = _estimate_distance_from_addresses(request.pickupAddress, request.dropoffAddress, geoapify_key)
+                    logger.info(f"Using estimated distance: {distance_km}km")
+        
+        # Final fallback if no API keys are configured or all methods failed
+        if distance_km is None:
+            logger.warning(f"No distance APIs configured or all failed. Using intelligent estimate.")
+            distance_km = _estimate_distance_from_addresses(request.pickupAddress, request.dropoffAddress, geoapify_key)
         
         # Calculate pricing with tiered rates - FLAT RATE per bracket
         # The rate is determined by which distance bracket the trip falls into
