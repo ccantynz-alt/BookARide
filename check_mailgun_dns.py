@@ -7,15 +7,19 @@ Checks every 10 minutes if mg.bookaride.co.nz is verified
 import requests
 import time
 from datetime import datetime
+import os
 
 # Mailgun configuration
-MAILGUN_API_KEY = "151d31c4dd7cd9fd3015d140b2c58f76-235e4bb2-1ecf548a"
-MAILGUN_DOMAIN = "mg.bookaride.co.nz"
+MAILGUN_API_KEY = os.environ.get("MAILGUN_API_KEY", "")
+MAILGUN_DOMAIN = os.environ.get("MAILGUN_DOMAIN", "mg.bookaride.co.nz")
 CHECK_INTERVAL = 600  # 10 minutes in seconds
 
 def check_dns_status():
     """Check Mailgun domain verification status"""
     try:
+        if not MAILGUN_API_KEY:
+            print("❌ MAILGUN_API_KEY not set (set env var to use this script)")
+            return False
         response = requests.get(
             f"https://api.mailgun.net/v3/domains/{MAILGUN_DOMAIN}",
             auth=("api", MAILGUN_API_KEY),

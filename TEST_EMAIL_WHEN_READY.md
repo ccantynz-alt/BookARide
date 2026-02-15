@@ -52,9 +52,9 @@ cd /app/backend
 python3 << 'EOF'
 import requests
 
-api_key = "151d31c4dd7cd9fd3015d140b2c58f76-235e4bb2-1ecf548a"
+api_key = "<your-mailgun-api-key>"
 domain = "mg.bookaride.co.nz"
-from_email = "noreply@mg.bookaride.co.nz"
+from_email = "noreply@bookaride.co.nz"
 to_email = "YOUR_EMAIL@example.com"  # Replace with your email
 
 response = requests.post(

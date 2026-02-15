@@ -15,7 +15,7 @@ from server import send_booking_confirmation_email, send_booking_confirmation_sm
 
 BACKEND_URL = "https://dazzling-leakey.preview.emergentagent.com/api"
 ADMIN_USERNAME = "admin"
-ADMIN_PASSWORD = "BookARide2024!"
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
 
 def run_final_test():
     """Run final comprehensive test"""
@@ -62,27 +62,32 @@ def run_final_test():
         results.append("❌ Admin Authentication")
         return results
     
-    # 3. Direct Mailgun Test
-    print("\n3️⃣ DIRECT MAILGUN EMAIL TEST")
+    # 3. Direct Mailgun Test (optional)
+    print("\n3️⃣ DIRECT MAILGUN EMAIL TEST (OPTIONAL)")
     try:
-        mailgun_url = "https://api.mailgun.net/v3/mg.bookaride.co.nz/messages"
-        auth = ('api', '151d31c4dd7cd9fd3015d140b2c58f76-235e4bb2-1ecf548a')
-        
-        data = {
-            'from': 'Book A Ride <noreply@mg.bookaride.co.nz>',
-            'to': 'final-test@bookaride.co.nz',
-            'subject': 'Final Test - Mailgun DNS Verification',
-            'text': 'Final comprehensive test - Mailgun DNS is verified and working!'
-        }
-        
-        response = requests.post(mailgun_url, auth=auth, data=data, timeout=15)
-        
-        if response.status_code == 200:
-            print("✅ Mailgun Direct: EMAIL SENT")
-            results.append("✅ Mailgun Direct Email")
+        mailgun_api_key = os.environ.get("MAILGUN_API_KEY", "")
+        if not mailgun_api_key:
+            print("⏭️  Skipping Mailgun direct test (MAILGUN_API_KEY not set)")
+            results.append("⏭️ Mailgun Direct Email (skipped)")
         else:
-            print(f"❌ Mailgun Direct: FAILED ({response.status_code})")
-            results.append("❌ Mailgun Direct Email")
+            mailgun_url = "https://api.mailgun.net/v3/mg.bookaride.co.nz/messages"
+            auth = ('api', mailgun_api_key)
+            
+            data = {
+                'from': 'Book A Ride <noreply@mg.bookaride.co.nz>',
+                'to': 'final-test@bookaride.co.nz',
+                'subject': 'Final Test - Mailgun DNS Verification',
+                'text': 'Final comprehensive test - Mailgun DNS is verified and working!'
+            }
+            
+            response = requests.post(mailgun_url, auth=auth, data=data, timeout=15)
+            
+            if response.status_code == 200:
+                print("✅ Mailgun Direct: EMAIL SENT")
+                results.append("✅ Mailgun Direct Email")
+            else:
+                print(f"❌ Mailgun Direct: FAILED ({response.status_code})")
+                results.append("❌ Mailgun Direct Email")
     except Exception as e:
         print(f"❌ Mailgun Direct: ERROR - {str(e)}")
         results.append("❌ Mailgun Direct Email")
