@@ -1754,8 +1754,8 @@ export const AdminDashboard = () => {
         flightArrivalTime: editingBooking.flightArrivalTime,
         flightDepartureNumber: editingBooking.flightDepartureNumber,
         flightDepartureTime: editingBooking.flightDepartureTime,
-        // Return trip fields
-        bookReturn: editingBooking.bookReturn,
+        // Return trip - inferred from filled return date + time
+        bookReturn: !!(editingBooking.returnDate && editingBooking.returnTime),
         returnDate: editingBooking.returnDate,
         returnTime: editingBooking.returnTime
       }, getAuthHeaders());
@@ -2110,11 +2110,8 @@ export const AdminDashboard = () => {
       return;
     }
 
-    // Return trip validation
-    if (newBooking.bookReturn && (!newBooking.returnDate || !newBooking.returnTime)) {
-      toast.error('Please select return date and time for the return trip');
-      return;
-    }
+    // Infer return trip from filled return date + time
+    const hasReturnTrip = !!(newBooking.returnDate && newBooking.returnTime);
 
     // Check if either calculated price or manual override is provided
     const hasCalculatedPrice = bookingPricing.totalPrice > 0;
@@ -2128,11 +2125,11 @@ export const AdminDashboard = () => {
     try {
       // Calculate final price (double if return trip)
       let finalPrice = hasManualPrice ? parseFloat(manualPriceOverride) : bookingPricing.totalPrice;
-      if (newBooking.bookReturn && !hasManualPrice) {
+      if (hasReturnTrip && !hasManualPrice) {
         finalPrice = finalPrice * 2; // Double for return trip
       }
       
-      const priceOverride = hasManualPrice ? parseFloat(manualPriceOverride) : (newBooking.bookReturn ? finalPrice : null);
+      const priceOverride = hasManualPrice ? parseFloat(manualPriceOverride) : (hasReturnTrip ? finalPrice : null);
       
       await axios.post(`${API}/bookings/manual`, {
         name: newBooking.name,
@@ -2146,7 +2143,7 @@ export const AdminDashboard = () => {
         date: newBooking.date,
         time: newBooking.time,
         passengers: newBooking.passengers,
-        pricing: newBooking.bookReturn ? { ...bookingPricing, totalPrice: finalPrice } : bookingPricing,
+        pricing: hasReturnTrip ? { ...bookingPricing, totalPrice: finalPrice } : bookingPricing,
         paymentMethod: newBooking.paymentMethod,
         notes: newBooking.notes,
         priceOverride: priceOverride,
@@ -2156,7 +2153,7 @@ export const AdminDashboard = () => {
         flightDepartureNumber: newBooking.flightDepartureNumber,
         flightDepartureTime: newBooking.flightDepartureTime,
         // Return trip details
-        bookReturn: newBooking.bookReturn,
+        bookReturn: hasReturnTrip,
         returnDate: newBooking.returnDate,
         returnTime: newBooking.returnTime,
         returnDepartureFlightNumber: newBooking.returnDepartureFlightNumber,
@@ -4455,23 +4452,11 @@ export const AdminDashboard = () => {
                   </p>
                 </div>
 
-                {/* Return Trip Section */}
-                <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                  <div className="flex items-center space-x-2 mb-4">
-                    <input
-                      type="checkbox"
-                      id="adminBookReturn"
-                      checked={newBooking.bookReturn}
-                      onChange={(e) => setNewBooking(prev => ({...prev, bookReturn: e.target.checked}))}
-                      className="w-4 h-4 text-gold border-gray-300 rounded focus:ring-gold"
-                    />
-                    <Label htmlFor="adminBookReturn" className="cursor-pointer font-semibold text-gray-900">
-                      🔄 Book a Return Trip
-                    </Label>
-                  </div>
+                {/* Return Journey - Always visible, optional (no checkbox) */}
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                  <h4 className="font-semibold text-gray-900 mb-2">Return Journey <span className="text-sm font-normal text-gray-500">(Optional – leave blank for one-way)</span></h4>
 
-                  {newBooking.bookReturn && (
-                    <div className="space-y-4 mt-4 pt-4 border-t border-green-200">
+                  <div className="space-y-4 mt-4">
                       <p className="text-sm text-gray-600">
                         Return trip: Drop-off → Pickup (reverse of outbound journey)
                       </p>
@@ -4522,7 +4507,6 @@ export const AdminDashboard = () => {
                         </div>
                       </div>
                     </div>
-                  )}
                 </div>
 
                 <div>
@@ -4564,7 +4548,7 @@ export const AdminDashboard = () => {
                         <span className="font-medium">${bookingPricing.passengerFee.toFixed(2)}</span>
                       </div>
                     )}
-                    {newBooking.bookReturn && (
+                    {(newBooking.returnDate && newBooking.returnTime) && (
                       <div className="flex justify-between text-green-700">
                         <span>🔄 Return Trip:</span>
                         <span className="font-medium">x2</span>
@@ -4573,10 +4557,10 @@ export const AdminDashboard = () => {
                     <div className="flex justify-between pt-2 border-t font-semibold text-base">
                       <span>Total:</span>
                       <span className="text-gold">
-                        ${(newBooking.bookReturn ? bookingPricing.totalPrice * 2 : bookingPricing.totalPrice).toFixed(2)}
+                        ${((newBooking.returnDate && newBooking.returnTime) ? bookingPricing.totalPrice * 2 : bookingPricing.totalPrice).toFixed(2)}
                       </span>
                     </div>
-                    {newBooking.bookReturn && (
+                    {(newBooking.returnDate && newBooking.returnTime) && (
                       <p className="text-xs text-green-600 text-center mt-1">
                         Includes return trip (outbound + return)
                       </p>
@@ -4875,22 +4859,10 @@ export const AdminDashboard = () => {
                     </div>
                   </div>
 
-                  {/* Return Trip Section */}
-                  <div className="bg-amber-50 p-4 rounded-lg border border-amber-200">
-                    <div className="flex items-center gap-3 mb-3">
-                      <input
-                        type="checkbox"
-                        id="editBookReturn"
-                        checked={editingBooking.bookReturn || false}
-                        onChange={(e) => setEditingBooking(prev => ({...prev, bookReturn: e.target.checked}))}
-                        className="w-4 h-4 rounded border-gray-300"
-                      />
-                      <Label htmlFor="editBookReturn" className="cursor-pointer font-semibold text-gray-900">
-                        🔄 Return Trip
-                      </Label>
-                    </div>
-                    {editingBooking.bookReturn && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                  {/* Return Journey - Always visible, optional */}
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <h4 className="font-semibold text-gray-900 mb-2">Return Journey <span className="text-sm font-normal text-gray-500">(Optional)</span></h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
                         <div>
                           <Label>Return Date *</Label>
                           <Input
@@ -4925,7 +4897,6 @@ export const AdminDashboard = () => {
                           </p>
                         </div>
                       </div>
-                    )}
                   </div>
 
                   <div>
