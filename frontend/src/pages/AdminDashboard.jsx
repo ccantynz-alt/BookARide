@@ -624,6 +624,8 @@ export const AdminDashboard = () => {
   const [adminPickupTime, setAdminPickupTime] = useState(null);
   const [adminReturnDate, setAdminReturnDate] = useState(null);
   const [adminReturnTime, setAdminReturnTime] = useState(null);
+  const [adminReturnDepartureTime, setAdminReturnDepartureTime] = useState(null);
+  const [adminReturnArrivalTime, setAdminReturnArrivalTime] = useState(null);
   const [adminFlightArrivalTime, setAdminFlightArrivalTime] = useState(null);
   const [adminFlightDepartureTime, setAdminFlightDepartureTime] = useState(null);
 
@@ -1757,7 +1759,12 @@ export const AdminDashboard = () => {
         // Return trip - inferred from filled return date + time
         bookReturn: !!(editingBooking.returnDate && editingBooking.returnTime),
         returnDate: editingBooking.returnDate,
-        returnTime: editingBooking.returnTime
+        returnTime: editingBooking.returnTime,
+        returnDepartureFlightNumber: editingBooking.returnDepartureFlightNumber || editingBooking.returnFlightNumber || '',
+        returnFlightNumber: editingBooking.returnDepartureFlightNumber || editingBooking.returnFlightNumber || '',
+        returnDepartureTime: editingBooking.returnDepartureTime || '',
+        returnArrivalFlightNumber: editingBooking.returnArrivalFlightNumber || '',
+        returnArrivalTime: editingBooking.returnArrivalTime || ''
       }, getAuthHeaders());
 
       toast.success('Booking updated successfully!');
@@ -2198,6 +2205,8 @@ export const AdminDashboard = () => {
       });
       setAdminReturnDate(null);
       setAdminReturnTime(null);
+      setAdminReturnDepartureTime(null);
+      setAdminReturnArrivalTime(null);
       setBookingPricing({
         distance: 0,
         basePrice: 0,
@@ -3541,10 +3550,22 @@ export const AdminDashboard = () => {
                                   <p className="font-medium text-blue-700">{selectedBooking.returnDepartureFlightNumber || selectedBooking.returnFlightNumber}</p>
                                 </div>
                               )}
+                              {selectedBooking.returnDepartureTime && (
+                                <div>
+                                  <span className="text-gray-500 text-xs">Departure Time:</span>
+                                  <p className="font-medium text-blue-700">{selectedBooking.returnDepartureTime}</p>
+                                </div>
+                              )}
                               {selectedBooking.returnArrivalFlightNumber && (
                                 <div>
                                   <span className="text-gray-500 text-xs">Arrival Flight:</span>
                                   <p className="font-medium text-blue-700">{selectedBooking.returnArrivalFlightNumber}</p>
+                                </div>
+                              )}
+                              {selectedBooking.returnArrivalTime && (
+                                <div>
+                                  <span className="text-gray-500 text-xs">Arrival Time:</span>
+                                  <p className="font-medium text-blue-700">{selectedBooking.returnArrivalTime}</p>
                                 </div>
                               )}
                             </div>
@@ -4529,6 +4550,23 @@ export const AdminDashboard = () => {
                             />
                           </div>
                           <div>
+                            <Label className="text-xs">Return Flight Departure Time</Label>
+                            <div className="mt-1">
+                              <CustomTimePicker
+                                selected={adminReturnDepartureTime}
+                                onChange={(time) => {
+                                  setAdminReturnDepartureTime(time);
+                                  if (time) {
+                                    const hours = time.getHours().toString().padStart(2, '0');
+                                    const minutes = time.getMinutes().toString().padStart(2, '0');
+                                    setNewBooking(prev => ({...prev, returnDepartureTime: `${hours}:${minutes}`}));
+                                  }
+                                }}
+                                placeholder="Select departure time"
+                              />
+                            </div>
+                          </div>
+                          <div>
                             <Label className="text-xs">Return Arrival Flight (optional)</Label>
                             <Input
                               value={newBooking.returnArrivalFlightNumber || ''}
@@ -4536,6 +4574,23 @@ export const AdminDashboard = () => {
                               placeholder="e.g. NZ789"
                               className="mt-1"
                             />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Return Arrival Time</Label>
+                            <div className="mt-1">
+                              <CustomTimePicker
+                                selected={adminReturnArrivalTime}
+                                onChange={(time) => {
+                                  setAdminReturnArrivalTime(time);
+                                  if (time) {
+                                    const hours = time.getHours().toString().padStart(2, '0');
+                                    const minutes = time.getMinutes().toString().padStart(2, '0');
+                                    setNewBooking(prev => ({...prev, returnArrivalTime: `${hours}:${minutes}`}));
+                                  }
+                                }}
+                                placeholder="Select arrival time"
+                              />
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -4921,6 +4976,33 @@ export const AdminDashboard = () => {
                             value={editingBooking.returnFlightNumber || editingBooking.returnDepartureFlightNumber || ''}
                             onChange={(e) => setEditingBooking(prev => ({...prev, returnFlightNumber: e.target.value, returnDepartureFlightNumber: e.target.value}))}
                             placeholder="e.g. NZ456"
+                            className="mt-1 bg-white"
+                          />
+                        </div>
+                        <div>
+                          <Label>Return Flight Departure Time</Label>
+                          <Input
+                            type="time"
+                            value={editingBooking.returnDepartureTime || ''}
+                            onChange={(e) => setEditingBooking(prev => ({...prev, returnDepartureTime: e.target.value}))}
+                            className="mt-1 bg-white"
+                          />
+                        </div>
+                        <div>
+                          <Label>Return Arrival Flight (optional)</Label>
+                          <Input
+                            value={editingBooking.returnArrivalFlightNumber || ''}
+                            onChange={(e) => setEditingBooking(prev => ({...prev, returnArrivalFlightNumber: e.target.value}))}
+                            placeholder="e.g. NZ789"
+                            className="mt-1 bg-white"
+                          />
+                        </div>
+                        <div>
+                          <Label>Return Arrival Time</Label>
+                          <Input
+                            type="time"
+                            value={editingBooking.returnArrivalTime || ''}
+                            onChange={(e) => setEditingBooking(prev => ({...prev, returnArrivalTime: e.target.value}))}
                             className="mt-1 bg-white"
                           />
                         </div>
