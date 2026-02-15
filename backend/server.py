@@ -1298,13 +1298,94 @@ def _get_distance_geoapify(pickup_address: str, dropoff_address: str, waypoint_a
     return None
 
 
+def _get_distance_google_distance_matrix(origin: str, destination: str, api_key: str) -> float | None:
+    """Get driving distance in km via Google Distance Matrix. Returns None on failure."""
+    try:
+        url = "https://maps.googleapis.com/maps/api/distancematrix/json"
+        params = {
+            "origins": origin,
+            "destinations": destination,
+            "region": "nz",
+            "units": "metric",
+            "key": api_key,
+        }
+        response = requests.get(url, params=params, timeout=15)
+        data = response.json()
+        if data.get("status") != "OK":
+            logger.warning(f"Google Maps Distance Matrix API error: {data.get('error_message', data.get('status'))}")
+            return None
+        rows = data.get("rows") or []
+        elements = (rows[0].get("elements") if rows else []) or []
+        element = elements[0] if elements else None
+        if not element or element.get("status") != "OK":
+            logger.warning(f"Google Maps element status: {(element or {}).get('status')}")
+            return None
+        distance_meters = element["distance"]["value"]
+        return round(distance_meters / 1000, 2)
+    except Exception as e:
+        logger.warning(f"Google Distance Matrix error: {e}")
+        return None
+
+
+def _get_distance_google_directions(origin: str, destination: str, waypoints: list, api_key: str) -> float | None:
+    """Get driving distance in km via Google Directions (supports waypoints). Returns None on failure."""
+    try:
+        url = "https://maps.googleapis.com/maps/api/directions/json"
+        params = {
+            "origin": origin,
+            "destination": destination,
+            "region": "nz",
+            "units": "metric",
+            "key": api_key,
+        }
+        wp = [w for w in (waypoints or []) if w and str(w).strip()]
+        if wp:
+            params["waypoints"] = "|".join(wp)
+        response = requests.get(url, params=params, timeout=20)
+        data = response.json()
+        status = data.get("status")
+        if status != "OK" or not (data.get("routes") or []):
+            logger.warning(f"Google Maps Directions API error: {data.get('error_message', status)}")
+            return None
+        route = data["routes"][0]
+        legs = route.get("legs") or []
+        if not legs:
+            return None
+        total_distance_meters = sum((leg.get("distance") or {}).get("value", 0) for leg in legs)
+        if total_distance_meters <= 0:
+            return None
+        return round(total_distance_meters / 1000, 2)
+    except Exception as e:
+        logger.warning(f"Google Directions error: {e}")
+        return None
+
+
+def _get_distance_google_multi_stop_segment_sum_km(stops: list, api_key: str) -> float | None:
+    """Fallback for multi-stop routes: sum Distance Matrix legs A->B->C... Returns None on failure."""
+    try:
+        cleaned = [s for s in (stops or []) if s and str(s).strip()]
+        if len(cleaned) < 2:
+            return None
+        total = 0.0
+        for i in range(len(cleaned) - 1):
+            leg = _get_distance_google_distance_matrix(cleaned[i], cleaned[i + 1], api_key)
+            if leg is None:
+                return None
+            total += float(leg)
+        return round(total, 2)
+    except Exception as e:
+        logger.warning(f"Google multi-stop segment sum error: {e}")
+        return None
+
+
 # Price Calculation Endpoint
 @api_router.post("/calculate-price", response_model=PricingBreakdown)
 async def calculate_price(request: PriceCalculationRequest):
     try:
         # Prefer Geoapify, then Google Maps, then fallback estimate
-        geoapify_key = os.environ.get('GEOAPIFY_API_KEY', '')
-        google_api_key = os.environ.get('GOOGLE_MAPS_API_KEY', '')
+        # Some deployments only set REACT_APP_* env vars (from the frontend build). Support both.
+        geoapify_key = os.environ.get('GEOAPIFY_API_KEY') or os.environ.get('REACT_APP_GEOAPIFY_API_KEY', '')
+        google_api_key = os.environ.get('GOOGLE_MAPS_API_KEY') or os.environ.get('REACT_APP_GOOGLE_MAPS_API_KEY', '')
         
         distance_km = None
         if geoapify_key:
@@ -1325,55 +1406,19 @@ async def calculate_price(request: PriceCalculationRequest):
             if request.pickupAddresses:
                 all_pickups.extend([addr for addr in request.pickupAddresses if addr])
             
-            # If multiple pickups, use Directions API for route optimization
+            # If multiple pickups, use Directions API first, then fall back to segment-summed Distance Matrix
             if len(all_pickups) > 1:
-                # Use Directions API with waypoints for multi-stop route
-                url = "https://maps.googleapis.com/maps/api/directions/json"
-                waypoints = "|".join(all_pickups[1:])  # All pickups except first
-                params = {
-                    'origin': all_pickups[0],  # First pickup
-                    'destination': request.dropoffAddress,  # Final dropoff
-                    'waypoints': waypoints,  # Intermediate pickups
-                    'key': google_api_key
-                }
-                response = requests.get(url, params=params)
-                data = response.json()
-                
-                logger.info(f"Google Maps Directions API (multi-stop) response status: {data.get('status')}")
-                
-                if data['status'] == 'OK' and len(data['routes']) > 0:
-                    route = data['routes'][0]
-                    # Sum all leg distances
-                    total_distance_meters = sum(leg['distance']['value'] for leg in route['legs'])
-                    distance_km = round(total_distance_meters / 1000, 2)
-                    logger.info(f"Multi-stop route: {len(all_pickups)} pickups ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ dropoff, total: {distance_km}km")
-                else:
-                    logger.warning(f"Google Maps Directions API error: {data.get('error_message', data.get('status'))}")
-                    distance_km = 25.0 * len(all_pickups)  # Fallback: estimate per stop
+                stops = all_pickups + [request.dropoffAddress]
+                distance_km = _get_distance_google_directions(all_pickups[0], request.dropoffAddress, all_pickups[1:], google_api_key)
+                if distance_km is None:
+                    distance_km = _get_distance_google_multi_stop_segment_sum_km(stops, google_api_key)
+                if distance_km is not None:
+                    logger.info(f"Multi-stop route: {len(all_pickups)} pickups → dropoff, total: {distance_km}km")
             else:
-                # Single pickup - use Distance Matrix API
-                url = "https://maps.googleapis.com/maps/api/distancematrix/json"
-                params = {
-                    'origins': request.pickupAddress,
-                    'destinations': request.dropoffAddress,
-                    'key': google_api_key
-                }
-                response = requests.get(url, params=params)
-                data = response.json()
-                
-                logger.info(f"Google Maps Distance Matrix API response: {data}")
-                
-                if data['status'] == 'OK' and len(data['rows']) > 0 and len(data['rows'][0]['elements']) > 0:
-                    element = data['rows'][0]['elements'][0]
-                    if element['status'] == 'OK':
-                        distance_meters = element['distance']['value']
-                        distance_km = round(distance_meters / 1000, 2)
-                    else:
-                        logger.warning(f"Google Maps element status: {element.get('status')}")
-                        distance_km = 25.0  # Fallback
-                else:
-                    logger.warning(f"Google Maps API error: {data.get('error_message', data.get('status'))}")
-                    distance_km = 25.0  # Fallback
+                # Single pickup - use Distance Matrix first, then Directions
+                distance_km = _get_distance_google_distance_matrix(request.pickupAddress, request.dropoffAddress, google_api_key)
+                if distance_km is None:
+                    distance_km = _get_distance_google_directions(request.pickupAddress, request.dropoffAddress, [], google_api_key)
         else:
             # Fallback: estimate based on number of stops
             pickup_count = 1 + len([addr for addr in (request.pickupAddresses or []) if addr])
@@ -3707,12 +3752,12 @@ async def cron_send_reminders(api_key: str = None):
 
 def _get_booking_notification_emails() -> list:
     """Emails to receive new booking copies. BOOKINGS_NOTIFICATION_EMAIL or ADMIN_EMAIL, default bookings@"""
-    raw = os.environ.get('BOOKINGS_NOTIFICATION_EMAIL') or os.environ.get('ADMIN_EMAIL', 'bookings@bookaride.co.nz')
+    raw = os.environ.get('BOOKINGS_NOTIFICATION_EMAIL') or os.environ.get('ADMIN_EMAIL', 'bookings@bookerride.co.nz')
     return [e.strip() for e in str(raw).split(',') if e.strip()]
 
 
 async def send_booking_notification_to_admin(booking: dict):
-    """Automatically send booking notification to admin email(s) - bookings@bookaride.co.nz by default"""
+    """Automatically send booking notification to admin email(s) - bookings@bookerride.co.nz by default"""
     try:
         admin_emails = _get_booking_notification_emails()
         formatted_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
@@ -3722,7 +3767,7 @@ async def send_booking_notification_to_admin(booking: dict):
         html_content = generate_confirmation_email_html(booking, for_admin=True)
         
         subject = f"New Booking - {booking.get('name', 'Customer')} - {formatted_date} - Ref: {booking_ref}"
-        reply_to = os.environ.get("ADMIN_EMAIL", "info@bookaride.co.nz").split(',')[0].strip()
+        reply_to = os.environ.get("ADMIN_EMAIL", "bookings@bookerride.co.nz").split(',')[0].strip()
         email_sent = False
         if send_email_unified:
             for admin_email in admin_emails:
@@ -3874,7 +3919,7 @@ async def send_urgent_approval_notification(booking: dict):
         """
         
         subject = f"URGENT APPROVAL - {booking.get('name', 'Customer')} - {formatted_date} {booking.get('time', '')} - Ref: {booking_ref}"
-        recipient = admin_emails[0] if admin_emails else "bookings@bookaride.co.nz"
+        recipient = admin_emails[0] if admin_emails else "bookings@bookerride.co.nz"
         email_sent = False
         
         # Try unified sender first (SMTP/Mailgun)
@@ -4850,7 +4895,7 @@ def generate_confirmation_email_html(booking: dict, for_admin: bool = False) -> 
     """Generate the confirmation email HTML for preview or sending - Clean professional design.
     Includes all booking details: flights, return trip, notes, route, payment.
     Set for_admin=True to add admin copy banner (same content, both get full details)."""
-    sender_email = os.environ.get('SENDER_EMAIL', 'bookings@bookaride.co.nz')
+    sender_email = os.environ.get('SENDER_EMAIL', 'bookings@bookerride.co.nz')
     d = _get_booking_email_data(booking)
     
     total_price = d['total_price']
@@ -5950,7 +5995,7 @@ async def twilio_sms_webhook(request: Request):
                     
                     # Notify admin of driver acknowledgment
                     try:
-                        admin_email = os.environ.get('ADMIN_EMAIL', 'bookings@bookaride.co.nz')
+                        admin_email = os.environ.get('ADMIN_EMAIL', 'bookings@bookerride.co.nz')
                         mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
                         mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
                         sender_email = os.environ.get('SENDER_EMAIL', 'noreply@mg.bookaride.co.nz')
@@ -8740,7 +8785,7 @@ async def send_payment_link_email(booking: dict, payment_link: str, payment_type
                     <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
                     
                     <p style="font-size: 14px; color: #666;">
-                        If you have any questions, please contact us at bookings@bookaride.co.nz
+                        If you have any questions, please contact us at bookings@bookerride.co.nz
                     </p>
                 </div>
                 
@@ -9184,7 +9229,7 @@ async def submit_driver_application(application: DriverApplication):
         # Send notification email to admin
         mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
         mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
-        admin_email = os.environ.get('ADMIN_EMAIL', 'bookings@bookaride.co.nz')
+        admin_email = os.environ.get('ADMIN_EMAIL', 'bookings@bookerride.co.nz')
         
         if mailgun_api_key and mailgun_domain:
             html_content = f"""
