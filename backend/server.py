@@ -1416,13 +1416,31 @@ async def calculate_price(request: PriceCalculationRequest):
         
         # Minimum distance for Auckland Airport <-> Whangarei (Geoapify often fails, falls back to 25 km)
         # Old system: 181.7 km = ~$646 for 2 passengers
-        whangarei_keywords = ['whangarei', 'onerahi', 'kensington', 'tikipunga', 'regent', 'whangarei heads']
+        whangarei_keywords = ['whangarei', 'onerahi', 'kensington', 'tikipunga', 'regent', 'whangarei heads', 'ruakaka', 'waipu', 'mangawhai']
         is_to_whangarei = any(kw in dropoff_lower for kw in whangarei_keywords)
         is_from_whangarei = any(kw in pickup_lower for kw in whangarei_keywords)
         airport_to_whangarei = (is_from_airport and is_to_whangarei) or (is_to_airport and is_from_whangarei)
         if airport_to_whangarei and distance_km < 182.0:
             logger.info(f"Zone distance: Auckland Airport <-> Whangarei applying minimum 182 km (API returned {distance_km} km)")
             distance_km = 182.0
+
+        # Minimum distance for Auckland Airport <-> Hamilton/Cambridge (60-75km bug: API often fails, falls back to 25 km)
+        hamilton_keywords = ['hamilton', 'cambridge', 'te awamutu', 'frankton', 'hillcrest', 'rototuna', 'chartwell']
+        is_to_hamilton = any(kw in dropoff_lower for kw in hamilton_keywords)
+        is_from_hamilton = any(kw in pickup_lower for kw in hamilton_keywords)
+        airport_to_hamilton = (is_from_airport and is_to_hamilton) or (is_to_airport and is_from_hamilton)
+        if airport_to_hamilton and distance_km < 110.0:
+            logger.info(f"Zone distance: Auckland Airport <-> Hamilton applying minimum 110 km (API returned {distance_km} km)")
+            distance_km = 110.0
+
+        # Pukekohe/Papakura area to Airport: ~45-55km - common 25km fallback bug
+        pukekohe_keywords = ['pukekohe', 'papakura', 'tuakau', 'pokeno', 'bombay']
+        is_to_pukekohe = any(kw in dropoff_lower for kw in pukekohe_keywords)
+        is_from_pukekohe = any(kw in pickup_lower for kw in pukekohe_keywords)
+        airport_to_pukekohe = (is_from_airport and is_to_pukekohe) or (is_to_airport and is_from_pukekohe)
+        if airport_to_pukekohe and distance_km < 40.0:
+            logger.info(f"Zone distance: Auckland Airport <-> Pukekohe applying minimum 40 km (API returned {distance_km} km)")
+            distance_km = 40.0
         
         # Concert pricing structure (ONLY for Matakana Country Park):
         # - From Hibiscus Coast to concert venue: Flat $550 (return)
@@ -4882,16 +4900,19 @@ def generate_confirmation_email_html(booking: dict, for_admin: bool = False) -> 
         return_time = d['return_time']
         return_flight = d['return_flight']
         return_arrival_flight = d['return_arrival']
+        return_departure_time = d['return_departure_time']
+        return_arrival_time = d['return_arrival_time']
         
         formatted_return_date = format_date_ddmmyyyy(return_date) if return_date else 'TBC'
         formatted_return_time = format_time_ampm(return_time) if return_time else 'TBC'
-        
+        formatted_return_departure = format_time_ampm(return_departure_time) if return_departure_time else ''
+        formatted_return_arrival = format_time_ampm(return_arrival_time) if return_arrival_time else ''
         return_section_html = f'''
                         <!-- Return Trip -->
                         <tr>
                             <td colspan="2" style="padding: 20px 0 10px 0;">
                                 <div style="background: #1a1a2e; color: #D4AF37; padding: 8px 15px; font-weight: 600; font-size: 14px; letter-spacing: 1px;">
-                                    RETURN JOURNEY
+                                    RETURN JOURNEY – Full Details
                                 </div>
                             </td>
                         </tr>
@@ -4904,15 +4925,15 @@ def generate_confirmation_email_html(booking: dict, for_admin: bool = False) -> 
                             <td style="padding: 12px 20px; color: #1a1a1a; font-size: 14px; font-weight: 600; border-bottom: 1px solid #f0f0f0;">{formatted_return_time}</td>
                         </tr>
                         <tr>
-                            <td style="padding: 12px 20px; color: #666; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Pickup</td>
+                            <td style="padding: 12px 20px; color: #666; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Pickup (return start)</td>
                             <td style="padding: 12px 20px; color: #1a1a1a; font-size: 14px; border-bottom: 1px solid #f0f0f0;">{dropoff_address}</td>
                         </tr>
                         <tr>
-                            <td style="padding: 12px 20px; color: #666; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Drop-off</td>
+                            <td style="padding: 12px 20px; color: #666; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Drop-off (return end)</td>
                             <td style="padding: 12px 20px; color: #1a1a1a; font-size: 14px; border-bottom: 1px solid #f0f0f0;">{primary_pickup}</td>
                         </tr>
-                        {'<tr><td style="padding: 12px 20px; color: #666; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Return Flight</td><td style="padding: 12px 20px; color: #1a1a1a; font-size: 14px; font-weight: 600; border-bottom: 1px solid #f0f0f0;">' + return_flight + '</td></tr>' if return_flight else ''}
-                        {'<tr><td style="padding: 12px 20px; color: #666; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Return Arrival Flight</td><td style="padding: 12px 20px; color: #1a1a1a; font-size: 14px; font-weight: 600; border-bottom: 1px solid #f0f0f0;">' + return_arrival_flight + '</td></tr>' if return_arrival_flight and return_arrival_flight != return_flight else ''}
+                        {'<tr><td style="padding: 12px 20px; color: #666; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Departure Flight</td><td style="padding: 12px 20px; color: #1a1a1a; font-size: 14px; font-weight: 600; border-bottom: 1px solid #f0f0f0;">' + (return_flight + (' at ' + formatted_return_departure if formatted_return_departure else '') if return_flight else formatted_return_departure or '-') + '</td></tr>' if return_flight or formatted_return_departure else ''}
+                        {'<tr><td style="padding: 12px 20px; color: #666; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Arrival Flight</td><td style="padding: 12px 20px; color: #1a1a1a; font-size: 14px; font-weight: 600; border-bottom: 1px solid #f0f0f0;">' + (return_arrival_flight + (' at ' + formatted_return_arrival if formatted_return_arrival else '') if return_arrival_flight else formatted_return_arrival or '-') + '</td></tr>' if return_arrival_flight or formatted_return_arrival else ''}
         '''
     
     # Build additional stops for outbound
@@ -13215,6 +13236,18 @@ async def startup_event():
         logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Database indexes created for faster queries")
     except Exception as e:
         logger.warning(f"Index creation note: {str(e)}")
+    
+    # Check email configuration for booking confirmations
+    try:
+        from email_sender import is_email_configured
+        if not is_email_configured():
+            logger.warning("EMAIL NOT CONFIGURED: Set MAILGUN_API_KEY+MAILGUN_DOMAIN or SMTP_USER+SMTP_PASS for booking confirmations. Admin copies need BOOKINGS_NOTIFICATION_EMAIL.")
+        else:
+            admin_emails = _get_booking_notification_emails()
+            logger.info(f"Email configured. Admin booking copies: {', '.join(admin_emails)}")
+    except ImportError:
+        if not os.environ.get('MAILGUN_API_KEY') or not os.environ.get('MAILGUN_DOMAIN'):
+            logger.warning("EMAIL: Configure MAILGUN_API_KEY and MAILGUN_DOMAIN (or SMTP_*) for confirmations. Set BOOKINGS_NOTIFICATION_EMAIL for admin copies.")
     
     # Create index for archive collection
     try:

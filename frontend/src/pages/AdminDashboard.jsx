@@ -624,6 +624,8 @@ export const AdminDashboard = () => {
   const [adminPickupTime, setAdminPickupTime] = useState(null);
   const [adminReturnDate, setAdminReturnDate] = useState(null);
   const [adminReturnTime, setAdminReturnTime] = useState(null);
+  const [adminReturnDepartureTime, setAdminReturnDepartureTime] = useState(null);
+  const [adminReturnArrivalTime, setAdminReturnArrivalTime] = useState(null);
   const [adminFlightArrivalTime, setAdminFlightArrivalTime] = useState(null);
   const [adminFlightDepartureTime, setAdminFlightDepartureTime] = useState(null);
 
@@ -2198,6 +2200,8 @@ export const AdminDashboard = () => {
       });
       setAdminReturnDate(null);
       setAdminReturnTime(null);
+      setAdminReturnDepartureTime(null);
+      setAdminReturnArrivalTime(null);
       setBookingPricing({
         distance: 0,
         basePrice: 0,
@@ -4461,14 +4465,12 @@ export const AdminDashboard = () => {
                   </p>
                 </div>
 
-                {/* Return Journey - Always visible, optional (no checkbox) */}
+                {/* Return Journey - Integrated, optional (no checkbox) */}
                 <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                  <h4 className="font-semibold text-gray-900 mb-2">Return Journey <span className="text-sm font-normal text-gray-500">(Optional – leave blank for one-way)</span></h4>
+                  <h4 className="font-semibold text-gray-900 mb-2">Return Journey</h4>
+                  <p className="text-sm text-gray-600 mb-4">Book both ways. Leave blank for one-way. Return: Drop-off → Pickup.</p>
 
                   <div className="space-y-4 mt-4">
-                      <p className="text-sm text-gray-600">
-                        Return trip: Drop-off → Pickup (reverse of outbound journey)
-                      </p>
                       
                       {/* Return Date and Time */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -4515,12 +4517,12 @@ export const AdminDashboard = () => {
                           </div>
                         </div>
                       </div>
-                      {/* Return Flight Information */}
+                      {/* Return Flight Information - full details for confirmation emails */}
                       <div className="mt-4 pt-4 border-t border-gray-200">
-                        <Label className="text-sm font-medium text-gray-700 mb-2 block">Return Flight Information (required if booking return)</Label>
+                        <Label className="text-sm font-medium text-gray-700 mb-2 block">Return Flight Details (required for airport returns)</Label>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
-                            <Label className="text-xs">Return Flight Number</Label>
+                            <Label className="text-xs">Departure Flight Number</Label>
                             <Input
                               value={newBooking.returnDepartureFlightNumber || ''}
                               onChange={(e) => setNewBooking(prev => ({...prev, returnDepartureFlightNumber: e.target.value}))}
@@ -4529,12 +4531,42 @@ export const AdminDashboard = () => {
                             />
                           </div>
                           <div>
-                            <Label className="text-xs">Return Arrival Flight (optional)</Label>
+                            <Label className="text-xs">Departure Time</Label>
+                            <CustomTimePicker
+                              selected={adminReturnDepartureTime}
+                              onChange={(time) => {
+                                setAdminReturnDepartureTime(time);
+                                if (time) {
+                                  const h = time.getHours().toString().padStart(2, '0');
+                                  const m = time.getMinutes().toString().padStart(2, '0');
+                                  setNewBooking(prev => ({...prev, returnDepartureTime: `${h}:${m}`}));
+                                }
+                              }}
+                              placeholder="Select time"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Arrival Flight Number (optional)</Label>
                             <Input
                               value={newBooking.returnArrivalFlightNumber || ''}
                               onChange={(e) => setNewBooking(prev => ({...prev, returnArrivalFlightNumber: e.target.value}))}
                               placeholder="e.g. NZ789"
                               className="mt-1"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Arrival Time (optional)</Label>
+                            <CustomTimePicker
+                              selected={adminReturnArrivalTime}
+                              onChange={(time) => {
+                                setAdminReturnArrivalTime(time);
+                                if (time) {
+                                  const h = time.getHours().toString().padStart(2, '0');
+                                  const m = time.getMinutes().toString().padStart(2, '0');
+                                  setNewBooking(prev => ({...prev, returnArrivalTime: `${h}:${m}`}));
+                                }
+                              }}
+                              placeholder="Select time"
                             />
                           </div>
                         </div>
