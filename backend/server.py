@@ -1238,9 +1238,11 @@ async def get_status_checks():
     return status_checks
 
 def _geocode_geoapify(address: str, api_key: str) -> tuple:
-    """Geocode address via Geoapify. Returns (lat, lon) or (None, None)."""
+    """Geocode address via Geoapify. Returns (lat, lon) or (None, None).
+    Tries with NZ country filter first, then retries without filter if no results."""
     try:
         url = "https://api.geoapify.com/v1/geocode/search"
+        # First try with NZ country filter
         params = {"text": address, "apiKey": api_key, "limit": 1, "filter": "countrycode:nz"}
         r = requests.get(url, params=params, timeout=10)
         data = r.json()
@@ -1249,6 +1251,19 @@ def _geocode_geoapify(address: str, api_key: str) -> tuple:
             coords = features[0].get("geometry", {}).get("coordinates", [])
             if len(coords) >= 2:
                 return (coords[1], coords[0])  # GeoJSON is [lon, lat]
+        
+        # Retry without country filter (some addresses fail with strict filter)
+        logger.info(f"Geoapify geocode retry without country filter for: {address[:60]}")
+        params_retry = {"text": address + ", New Zealand", "apiKey": api_key, "limit": 1}
+        r2 = requests.get(url, params=params_retry, timeout=10)
+        data2 = r2.json()
+        features2 = data2.get("features", [])
+        if features2:
+            coords2 = features2[0].get("geometry", {}).get("coordinates", [])
+            if len(coords2) >= 2:
+                return (coords2[1], coords2[0])
+        
+        logger.warning(f"Geoapify geocode failed for '{address[:60]}' - no results after retry")
     except Exception as e:
         logger.warning(f"Geoapify geocode error for '{address[:50]}...': {e}")
     return (None, None)
@@ -1268,22 +1283,184 @@ def _normalize_address_for_routing(address: str) -> str:
     return address.strip()
 
 
+# ==================== ZONE-BASED DISTANCE ESTIMATION ====================
+# Known route distances for common NZ routes (used when APIs fail)
+# These are approximate road distances in km
+
+_KNOWN_ZONE_DISTANCES = {
+    # Auckland Airport routes
+    ('auckland cbd', 'auckland airport'): 22,
+    ('auckland city', 'auckland airport'): 22,
+    ('ponsonby', 'auckland airport'): 24,
+    ('parnell', 'auckland airport'): 23,
+    ('newmarket', 'auckland airport'): 20,
+    ('epsom', 'auckland airport'): 18,
+    ('remuera', 'auckland airport'): 20,
+    ('mt eden', 'auckland airport'): 19,
+    ('grey lynn', 'auckland airport'): 23,
+    ('mt albert', 'auckland airport'): 18,
+    ('takapuna', 'auckland airport'): 30,
+    ('devonport', 'auckland airport'): 33,
+    ('albany', 'auckland airport'): 42,
+    ('north shore', 'auckland airport'): 35,
+    ('orewa', 'auckland airport'): 55,
+    ('whangaparaoa', 'auckland airport'): 52,
+    ('silverdale', 'auckland airport'): 58,
+    ('red beach', 'auckland airport'): 55,
+    ('stanmore bay', 'auckland airport'): 53,
+    ('army bay', 'auckland airport'): 55,
+    ('gulf harbour', 'auckland airport'): 58,
+    ('manly', 'auckland airport'): 54,
+    ('hibiscus coast', 'auckland airport'): 55,
+    ('millwater', 'auckland airport'): 55,
+    ('milldale', 'auckland airport'): 57,
+    ('hatfields beach', 'auckland airport'): 56,
+    ('waiwera', 'auckland airport'): 60,
+    ('warkworth', 'auckland airport'): 75,
+    ('matakana', 'auckland airport'): 85,
+    ('snells beach', 'auckland airport'): 80,
+    ('mangawhai', 'auckland airport'): 120,
+    ('wellsford', 'auckland airport'): 100,
+    ('hamilton', 'auckland airport'): 115,
+    ('hamilton city', 'auckland airport'): 115,
+    ('whangarei', 'auckland airport'): 182,
+    ('tauranga', 'auckland airport'): 210,
+    ('rotorua', 'auckland airport'): 230,
+    ('papakura', 'auckland airport'): 12,
+    ('manukau', 'auckland airport'): 10,
+    ('botany', 'auckland airport'): 20,
+    ('howick', 'auckland airport'): 25,
+    ('east tamaki', 'auckland airport'): 15,
+    ('pakuranga', 'auckland airport'): 22,
+    ('flat bush', 'auckland airport'): 18,
+    ('pukekohe', 'auckland airport'): 35,
+    ('kumeu', 'auckland airport'): 38,
+    ('helensville', 'auckland airport'): 55,
+    ('henderson', 'auckland airport'): 28,
+    ('west harbour', 'auckland airport'): 30,
+    ('te atatu', 'auckland airport'): 25,
+    ('avondale', 'auckland airport'): 20,
+    ('mission bay', 'auckland airport'): 24,
+    ('st heliers', 'auckland airport'): 25,
+    ('kohimarama', 'auckland airport'): 24,
+    ('ellerslie', 'auckland airport'): 14,
+    ('penrose', 'auckland airport'): 12,
+    ('onehunga', 'auckland airport'): 10,
+    ('mt roskill', 'auckland airport'): 14,
+    ('sandringham', 'auckland airport'): 18,
+    ('kingsland', 'auckland airport'): 20,
+    ('morningside', 'auckland airport'): 20,
+    # Hamilton Airport routes
+    ('hamilton', 'hamilton airport'): 12,
+    ('auckland cbd', 'hamilton airport'): 125,
+    ('auckland city', 'hamilton airport'): 125,
+    ('auckland airport', 'hamilton airport'): 115,
+    # Inter-city
+    ('auckland', 'hamilton'): 125,
+    ('auckland', 'whangarei'): 160,
+    ('auckland', 'tauranga'): 200,
+    ('auckland', 'rotorua'): 230,
+}
+
+
+def _estimate_distance_from_zones(pickup_address: str, dropoff_address: str) -> float:
+    """Estimate distance from known zone-based distances for common NZ routes.
+    Returns distance in km or None if no match found."""
+    def _norm(s):
+        return (s or '').lower().replace('\u0101', 'a').replace('\u014d', 'o').strip()
+    
+    pickup_lower = _norm(pickup_address)
+    dropoff_lower = _norm(dropoff_address)
+    
+    # Try matching each known zone pair
+    for (zone_a, zone_b), dist in _KNOWN_ZONE_DISTANCES.items():
+        # Check both directions
+        if (zone_a in pickup_lower and zone_b in dropoff_lower) or \
+           (zone_b in pickup_lower and zone_a in dropoff_lower):
+            return float(dist)
+    
+    # Check for airport keyword matches with suburb detection
+    airport_keywords = ['airport', 'auckland airport', 'akl', 'ray emery', 'mangere']
+    is_pickup_airport = any(kw in pickup_lower for kw in airport_keywords)
+    is_dropoff_airport = any(kw in dropoff_lower for kw in airport_keywords)
+    
+    if is_pickup_airport or is_dropoff_airport:
+        other_addr = dropoff_lower if is_pickup_airport else pickup_lower
+        # Try to find the suburb in our known distances
+        for (zone_a, zone_b), dist in _KNOWN_ZONE_DISTANCES.items():
+            if 'airport' in zone_b:
+                if zone_a in other_addr:
+                    return float(dist)
+    
+    return None
+
+
+def _conservative_distance_estimate(pickup_address: str, dropoff_address: str) -> float:
+    """Last-resort distance estimate when all APIs and zone lookups fail.
+    Analyses address text for city/region clues to provide a reasonable estimate
+    instead of defaulting to 25km which undercharges long-distance trips."""
+    def _norm(s):
+        return (s or '').lower().replace('\u0101', 'a').replace('\u014d', 'o').strip()
+    
+    pickup_lower = _norm(pickup_address)
+    dropoff_lower = _norm(dropoff_address)
+    
+    # Check for inter-city indicators
+    long_distance_pairs = [
+        (['whangarei', 'onerahi', 'tikipunga'], ['airport', 'auckland', 'mangere'], 182),
+        (['hamilton', 'te awamutu', 'cambridge'], ['airport', 'auckland', 'mangere'], 125),
+        (['tauranga', 'mount maunganui', 'papamoa'], ['airport', 'auckland', 'mangere'], 210),
+        (['rotorua'], ['airport', 'auckland', 'mangere'], 230),
+        (['warkworth', 'matakana', 'snells beach'], ['airport', 'auckland', 'mangere'], 80),
+        (['orewa', 'whangaparaoa', 'silverdale', 'hibiscus'], ['airport', 'auckland', 'mangere'], 55),
+    ]
+    
+    for words_a, words_b, dist in long_distance_pairs:
+        a_match = any(w in pickup_lower for w in words_a) and any(w in dropoff_lower for w in words_b)
+        b_match = any(w in dropoff_lower for w in words_a) and any(w in pickup_lower for w in words_b)
+        if a_match or b_match:
+            return float(dist)
+    
+    # If we still don't know, estimate 40km (roughly mid-range) rather than 25km
+    # This avoids undercharging for longer trips while being reasonable for shorter ones
+    logger.warning(f"Using default 40km estimate for unknown route: '{pickup_address[:50]}' -> '{dropoff_address[:50]}'")
+    return 40.0
+
+
+def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Calculate straight-line distance between two coordinates in km using the haversine formula."""
+    import math
+    R = 6371  # Earth radius in km
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
+    c = 2 * math.asin(math.sqrt(a))
+    return R * c
+
+
 def _get_distance_geoapify(pickup_address: str, dropoff_address: str, waypoint_addresses: list, api_key: str) -> float | None:
-    """Get driving distance in km via Geoapify Routing API. Returns None on failure."""
+    """Get driving distance in km via Geoapify Routing API.
+    Falls back to haversine * 1.35 if routing fails but geocoding succeeds.
+    Returns None only if geocoding completely fails."""
     try:
         pickup_norm = _normalize_address_for_routing(pickup_address)
         dropoff_norm = _normalize_address_for_routing(dropoff_address)
         waypoints = [pickup_norm] + [_normalize_address_for_routing(a) for a in (waypoint_addresses or [])] + [dropoff_norm]
         coords_list = []
+        coords_raw = []  # Store (lat, lon) tuples for haversine fallback
         for addr in waypoints:
             if not addr or not addr.strip():
                 continue
             lat, lon = _geocode_geoapify(addr.strip(), api_key)
             if lat is None:
+                logger.warning(f"Geoapify geocode failed for: {addr[:60]}")
                 return None
             coords_list.append(f"{lat},{lon}")
+            coords_raw.append((lat, lon))
         if len(coords_list) < 2:
             return None
+        
+        # Try routing API first
         waypoints_str = "|".join(coords_list)
         url = f"https://api.geoapify.com/v1/routing?waypoints={waypoints_str}&mode=drive&apiKey={api_key}"
         r = requests.get(url, timeout=15)
@@ -1292,7 +1469,22 @@ def _get_distance_geoapify(pickup_address: str, dropoff_address: str, waypoint_a
         if features:
             props = features[0].get("properties", {})
             dist_m = props.get("distance", 0)
-            return round(dist_m / 1000, 2)
+            if dist_m > 0:
+                route_km = round(dist_m / 1000, 2)
+                logger.info(f"Geoapify routing distance: {route_km}km")
+                return route_km
+        
+        # Routing API returned no route - fall back to haversine estimate
+        logger.warning("Geoapify routing returned no route, falling back to haversine estimate")
+        total_haversine = 0.0
+        for i in range(len(coords_raw) - 1):
+            total_haversine += _haversine_km(coords_raw[i][0], coords_raw[i][1], coords_raw[i+1][0], coords_raw[i+1][1])
+        
+        # Multiply by 1.35 to approximate road distance (roads are ~35% longer than straight line)
+        estimated_km = round(total_haversine * 1.35, 2)
+        logger.info(f"Haversine fallback: straight-line {total_haversine:.1f}km -> estimated road distance {estimated_km}km")
+        return estimated_km
+        
     except Exception as e:
         logger.warning(f"Geoapify routing error: {e}")
     return None
@@ -1346,10 +1538,10 @@ async def calculate_price(request: PriceCalculationRequest):
                     # Sum all leg distances
                     total_distance_meters = sum(leg['distance']['value'] for leg in route['legs'])
                     distance_km = round(total_distance_meters / 1000, 2)
-                    logger.info(f"Multi-stop route: {len(all_pickups)} pickups ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ dropoff, total: {distance_km}km")
+                    logger.info(f"Multi-stop route: {len(all_pickups)} pickups -> dropoff, total: {distance_km}km")
                 else:
                     logger.warning(f"Google Maps Directions API error: {data.get('error_message', data.get('status'))}")
-                    distance_km = 25.0 * len(all_pickups)  # Fallback: estimate per stop
+                    distance_km = None  # Don't default to 25km - let zone fallback handle it
             else:
                 # Single pickup - use Distance Matrix API
                 url = "https://maps.googleapis.com/maps/api/distancematrix/json"
@@ -1361,7 +1553,7 @@ async def calculate_price(request: PriceCalculationRequest):
                 response = requests.get(url, params=params)
                 data = response.json()
                 
-                logger.info(f"Google Maps Distance Matrix API response: {data}")
+                logger.info(f"Google Maps Distance Matrix API response status: {data.get('status')}")
                 
                 if data['status'] == 'OK' and len(data['rows']) > 0 and len(data['rows'][0]['elements']) > 0:
                     element = data['rows'][0]['elements'][0]
@@ -1370,15 +1562,21 @@ async def calculate_price(request: PriceCalculationRequest):
                         distance_km = round(distance_meters / 1000, 2)
                     else:
                         logger.warning(f"Google Maps element status: {element.get('status')}")
-                        distance_km = 25.0  # Fallback
+                        distance_km = None  # Don't default to 25km
                 else:
                     logger.warning(f"Google Maps API error: {data.get('error_message', data.get('status'))}")
-                    distance_km = 25.0  # Fallback
-        else:
-            # Fallback: estimate based on number of stops
-            pickup_count = 1 + len([addr for addr in (request.pickupAddresses or []) if addr])
-            distance_km = 25.0 * pickup_count  # Default estimate per stop
-            logger.warning(f"Google Maps API key not found. Using default distance estimate: {distance_km}km for {pickup_count} stops")
+                    distance_km = None  # Don't default to 25km
+        
+        # === ZONE-BASED FALLBACK: If all API calls failed, estimate from known NZ routes ===
+        if distance_km is None:
+            distance_km = _estimate_distance_from_zones(request.pickupAddress, request.dropoffAddress)
+            if distance_km is not None:
+                logger.info(f"Zone-based distance estimate: {distance_km}km")
+            else:
+                # Absolute last resort - use conservative estimate from address analysis
+                logger.error(f"ALL distance APIs failed for: \'{request.pickupAddress}\' -> \'{request.dropoffAddress}\'. No zone match. Investigate!")
+                distance_km = _conservative_distance_estimate(request.pickupAddress, request.dropoffAddress)
+                logger.warning(f"Conservative fallback distance estimate: {distance_km}km")
         
         # Calculate pricing with tiered rates - FLAT RATE per bracket
         # The rate is determined by which distance bracket the trip falls into
