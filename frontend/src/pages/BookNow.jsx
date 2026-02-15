@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { MapPin, Calendar, Users, DollarSign, Clock, Mail, Phone, User, Wrench } from 'lucide-react';
+import { MapPin, Calendar, Users, Clock, Mail, Phone, User, Wrench } from 'lucide-react';
 import siteConfig from '../config/siteConfig';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -13,14 +13,12 @@ import { toast } from 'sonner';
 import axios from 'axios';
 import SEO from '../components/SEO';
 import LoadingSpinner from '../components/LoadingSpinner';
-import CurrencyConverter from '../components/CurrencyConverter';
-import TripCostSplitter from '../components/TripCostSplitter';
-import WeatherWidget from '../components/WeatherWidget';
-import LiveJourneyVisualizer from '../components/LiveJourneyVisualizer';
 import MultiStopRouteMap from '../components/MultiStopRouteMap';
 import GeoapifyRouteMap from '../components/GeoapifyRouteMap';
 import { CustomDatePicker, CustomTimePicker } from '../components/DateTimePicker';
 import { GeoapifyAutocomplete } from '../components/GeoapifyAutocomplete';
+import BookingAddOns, { addOns } from '../components/BookingAddOns';
+import { API } from '../config/api';
 
 const DROPOFF_QUICK_ADDRESSES = [
   { label: 'Auckland Airport', address: 'Auckland Airport, Ray Emery Drive, Mangere, Auckland 2022, New Zealand' },
@@ -28,12 +26,6 @@ const DROPOFF_QUICK_ADDRESSES = [
   { label: 'Hamilton Airport', address: 'Hamilton Airport, 20 Airport Road, Hamilton 3281, New Zealand' },
   { label: 'Whangarei Airport', address: 'Whangarei Airport, Handforth Street, Whangarei 0110, New Zealand' },
 ];
-import PriceComparison from '../components/PriceComparison';
-import BookingAddOns, { addOns } from '../components/BookingAddOns';
-import TrustBadges from '../components/TrustBadges';
-import GoogleReviewsWidget from '../components/GoogleReviewsWidget';
-import SocialProofCounter from '../components/SocialProofCounter';
-import { API } from '../config/api';
 
 export const BookNow = () => {
   const { i18n } = useTranslation();
@@ -52,12 +44,6 @@ export const BookNow = () => {
     departureTime: '',
     arrivalFlightNumber: '',
     arrivalTime: '',
-    returnDate: '',
-    returnTime: '',
-    returnDepartureFlightNumber: '',
-    returnDepartureTime: '',
-    returnArrivalFlightNumber: '',
-    returnArrivalTime: '',
     name: '',
     email: '',
     phone: '',
@@ -467,29 +453,22 @@ export const BookNow = () => {
         keywords="book airport shuttle, book airport transfer, online shuttle booking, airport shuttle booking online, instant quote shuttle, book shuttle Auckland, airport transfer booking, shuttle service booking"
         canonical="/book-now"
       />
-      {/* Hero Section with Professional Image */}
-      <section className="pt-32 pb-16 bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
-        {/* Background Image - Luxury Travel */}
-        <div className="absolute inset-0">
+      {/* Hero Section - Clean and Compact */}
+      <section className="pt-28 pb-10 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 relative overflow-hidden">
+        <div className="absolute inset-0 opacity-20">
           <img 
             src="https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=1920&q=80" 
             alt="Road trip scenic drive" 
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-gray-900/70 via-gray-900/60 to-gray-900" />
         </div>
         <div className="container mx-auto px-4 relative z-10">
-          <div className="max-w-3xl mx-auto text-center">
-            <div className="inline-block mb-4">
-              <span className="bg-gold/20 text-gold text-sm font-semibold px-4 py-2 rounded-full border border-gold/30">
-                ✨ INSTANT ONLINE BOOKING
-              </span>
-            </div>
-            <h1 className="text-5xl md:text-6xl font-bold text-white mb-4">
+          <div className="max-w-2xl mx-auto text-center">
+            <h1 className="text-4xl md:text-5xl font-bold text-white mb-3">
               Book Your <span className="text-gold">Ride</span>
             </h1>
-            <p className="text-xl text-white/80">
-              Get instant pricing with our live calculator • No hidden fees
+            <p className="text-lg text-white/70">
+              Instant pricing • Fixed rates • No hidden fees
             </p>
           </div>
         </div>
@@ -529,18 +508,17 @@ export const BookNow = () => {
                       <div className="space-y-2 mb-6">
                         <Label htmlFor="pickupAddress" className="flex items-center space-x-2">
                           <MapPin className="w-4 h-4 text-gold" />
-                          <span>Pickup Location 1 *</span>
+                          <span>{formData.pickupAddresses.length > 0 ? 'Pickup Location 1 *' : 'Pickup Address *'}</span>
                         </Label>
                         <GeoapifyAutocomplete
                           id="pickupAddress"
                           name="pickupAddress"
                           value={formData.pickupAddress}
                           onChange={(v) => setFormData(prev => ({ ...prev, pickupAddress: v }))}
-                          placeholder="Start typing address..."
+                          placeholder="Enter your pickup address..."
                           required
                           className="transition-all duration-200 focus:ring-2 focus:ring-gold"
                         />
-                        <p className="text-xs text-gray-500">Address suggestions as you type</p>
                       </div>
 
                       {/* Additional Pickup Addresses */}
@@ -568,26 +546,16 @@ export const BookNow = () => {
                         </div>
                       ))}
 
-                      {/* Add Pickup Button - Elegant Design */}
+                      {/* Add Pickup Button */}
                       <div className="mb-6">
                         <button
                           type="button"
                           onClick={handleAddPickup}
-                          className="group w-full flex items-center justify-center gap-3 px-6 py-4 bg-gradient-to-r from-gold/10 to-gold/5 hover:from-gold/20 hover:to-gold/10 border-2 border-dashed border-gold/40 hover:border-gold/60 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-[1.02] hover:shadow-md"
+                          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gold hover:text-gold/80 border border-gold/30 hover:border-gold/50 rounded-lg transition-all duration-200 hover:bg-gold/5"
                         >
-                          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gold/20 group-hover:bg-gold/30 transition-colors">
-                            <MapPin className="w-4 h-4 text-gold" />
-                          </div>
-                          <span className="text-sm font-semibold text-gray-700 group-hover:text-gray-900">
-                            Add Another Pickup Location
-                          </span>
-                          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-gold text-white text-xs font-bold group-hover:scale-110 transition-transform">
-                            +
-                          </div>
+                          <MapPin className="w-4 h-4" />
+                          <span>Add Another Pickup</span>
                         </button>
-                        <p className="text-xs text-gray-500 mt-2 text-center">
-                          Need multiple pickups? Add as many locations as you need!
-                        </p>
                       </div>
 
                       {/* Dropoff Address */}
@@ -601,12 +569,11 @@ export const BookNow = () => {
                           name="dropoffAddress"
                           value={formData.dropoffAddress}
                           onChange={(v) => setFormData(prev => ({ ...prev, dropoffAddress: v }))}
-                          placeholder="Start typing address..."
+                          placeholder="Enter your destination..."
                           required
                           quickSelectOptions={DROPOFF_QUICK_ADDRESSES}
                           className="transition-all duration-200 focus:ring-2 focus:ring-gold"
                         />
-                        <p className="text-xs text-gray-500">Address suggestions as you type</p>
                       </div>
 
                       {/* Date and Time */}
@@ -655,12 +622,9 @@ export const BookNow = () => {
                       </div>
 
                       {/* Flight Information */}
-                      <div className="bg-gray-50 p-6 rounded-lg mb-6">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Flight Information</h3>
-                        <p className="text-sm text-gray-600 mb-2">Enter your flight number so our driver knows which flight to meet.</p>
-                        <p className="text-xs text-amber-700 bg-amber-50 p-2 rounded mb-4">
-                          ⚠️ <strong>Important:</strong> Flight numbers are required for airport pickups so our driver can meet you on time.
-                        </p>
+                      <div className="bg-gray-50 p-5 rounded-lg mb-6 border border-gray-100">
+                        <h3 className="text-base font-semibold text-gray-900 mb-1">Flight Details</h3>
+                        <p className="text-sm text-gray-500 mb-4">Help our driver meet you on time.</p>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           <div className="space-y-2">
                             <Label htmlFor="departureFlightNumber">Departure Flight Number</Label>
@@ -740,51 +704,40 @@ export const BookNow = () => {
                         <p className="text-xs text-gray-500 mt-1">1st passenger included, $5 per additional passenger</p>
                       </div>
 
-                      {/* VIP Parking Service */}
-                      <div className="mb-6 bg-gold/5 p-4 rounded-lg border border-gold/20">
-                        <div className="flex items-start space-x-3">
+                      {/* Optional Extras */}
+                      <div className="space-y-3 mb-2">
+                        <p className="text-sm font-medium text-gray-700">Optional Extras</p>
+                        <label htmlFor="vipAirportPickup" className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-gold/40 cursor-pointer transition-colors">
                           <input
                             type="checkbox"
                             id="vipAirportPickup"
                             name="vipAirportPickup"
                             checked={formData.vipAirportPickup}
                             onChange={(e) => setFormData(prev => ({ ...prev, vipAirportPickup: e.target.checked }))}
-                            className="w-4 h-4 text-gold border-gray-300 rounded focus:ring-gold mt-1"
+                            className="w-4 h-4 text-gold border-gray-300 rounded focus:ring-gold"
                           />
                           <div className="flex-1">
-                            <Label htmlFor="vipAirportPickup" className="cursor-pointer font-semibold text-gray-900">
-                              VIP Parking Service - $15
-                            </Label>
-                            <p className="text-xs text-gray-600 mt-1">
-                              Driver meets you outside door eleven
-                            </p>
+                            <span className="text-sm font-medium text-gray-900">VIP Parking Service</span>
+                            <span className="text-xs text-gray-500 ml-2">Driver meets you outside door eleven</span>
                           </div>
-                        </div>
-                      </div>
-
-                      {/* Oversized Luggage Service */}
-                      <div className="mb-6 bg-blue-50 p-4 rounded-lg border border-blue-200">
-                        <div className="flex items-start space-x-3">
+                          <span className="text-sm font-semibold text-gold">+$15</span>
+                        </label>
+                        <label htmlFor="oversizedLuggage" className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-gold/40 cursor-pointer transition-colors">
                           <input
                             type="checkbox"
                             id="oversizedLuggage"
                             name="oversizedLuggage"
                             checked={formData.oversizedLuggage}
                             onChange={(e) => setFormData(prev => ({ ...prev, oversizedLuggage: e.target.checked }))}
-                            className="w-4 h-4 text-gold border-gray-300 rounded focus:ring-gold mt-1"
+                            className="w-4 h-4 text-gold border-gray-300 rounded focus:ring-gold"
                           />
                           <div className="flex-1">
-                            <Label htmlFor="oversizedLuggage" className="cursor-pointer font-semibold text-gray-900">
-                              Oversized Luggage Service - $25
-                            </Label>
-                            <p className="text-xs text-gray-600 mt-1">
-                              For skis, snowboards, surfboards, golf clubs, bikes, or extra-large suitcases
-                            </p>
+                            <span className="text-sm font-medium text-gray-900">Oversized Luggage</span>
+                            <span className="text-xs text-gray-500 ml-2">Skis, bikes, golf clubs, etc.</span>
                           </div>
-                        </div>
+                          <span className="text-sm font-semibold text-gold">+$25</span>
+                        </label>
                       </div>
-
-                      {/* Return trip section removed - one-way bookings only */}
                     </CardContent>
                   </Card>
 
@@ -860,20 +813,20 @@ export const BookNow = () => {
                         </div>
 
                         {/* Notification Preference */}
-                        <div className="space-y-3">
-                          <Label className="text-base font-medium">How would you like to receive confirmations?</Label>
-                          <div className="flex flex-wrap gap-3">
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium text-gray-700">Confirmation Preference</Label>
+                          <div className="flex gap-2">
                             {[
-                              { value: 'both', label: '📧 Email & SMS', desc: 'Get both' },
-                              { value: 'sms', label: '📱 SMS Only', desc: 'Text messages only' },
-                              { value: 'email', label: '✉️ Email Only', desc: 'No text messages' }
+                              { value: 'both', label: 'Email & SMS' },
+                              { value: 'email', label: 'Email Only' },
+                              { value: 'sms', label: 'SMS Only' }
                             ].map((option) => (
                               <label
                                 key={option.value}
-                                className={`flex-1 min-w-[140px] cursor-pointer rounded-lg border-2 p-3 transition-all ${
+                                className={`flex-1 cursor-pointer rounded-lg border px-3 py-2 text-center text-sm transition-all ${
                                   formData.notificationPreference === option.value
-                                    ? 'border-gold bg-gold/10'
-                                    : 'border-gray-200 hover:border-gold/50'
+                                    ? 'border-gold bg-gold/10 font-medium text-gray-900'
+                                    : 'border-gray-200 text-gray-600 hover:border-gold/40'
                                 }`}
                               >
                                 <input
@@ -884,8 +837,7 @@ export const BookNow = () => {
                                   onChange={handleChange}
                                   className="sr-only"
                                 />
-                                <span className="block text-sm font-medium">{option.label}</span>
-                                <span className="block text-xs text-gray-500">{option.desc}</span>
+                                {option.label}
                               </label>
                             ))}
                           </div>
@@ -910,27 +862,23 @@ export const BookNow = () => {
 
                 {/* Price Summary - Right Side */}
                 <div className="lg:col-span-1">
-                  <Card className="border-2 border-gold/30 sticky top-24 shadow-lg">
-                    <CardContent className="p-8">
-                      <div className="flex items-center space-x-2 mb-6">
-                        <DollarSign className="w-6 h-6 text-gold" />
-                        <h2 className="text-2xl font-bold text-gray-900">Price Estimate</h2>
-                      </div>
+                  <Card className="border border-gray-200 sticky top-24 shadow-md rounded-xl">
+                    <CardContent className="p-6">
+                      <h2 className="text-lg font-bold text-gray-900 mb-4">Your Quote</h2>
 
                       {pricing.calculating ? (
-                        <div className="text-center py-8">
-                          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold mx-auto mb-4"></div>
-                          <p className="text-gray-600">Calculating your quote...</p>
+                        <div className="text-center py-6">
+                          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-gold mx-auto mb-3"></div>
+                          <p className="text-sm text-gray-500">Calculating...</p>
                         </div>
                       ) : pricing.totalPrice > 0 ? (
                         <div className="space-y-4">
-                          <div className="text-center py-6">
-                            <p className="text-gray-600 mb-2">Your Quote</p>
-                            <span className="text-5xl font-bold text-gold">${finalTotal.toFixed(2)}</span>
-                            <p className="text-gray-500 text-sm mt-2">NZD - Fixed Price, No Hidden Fees</p>
+                          <div className="text-center py-4">
+                            <span className="text-4xl font-bold text-gold">${finalTotal.toFixed(2)}</span>
+                            <p className="text-gray-500 text-xs mt-1">NZD - Fixed price, no hidden fees</p>
                             {promoApplied && (
                               <p className="text-xs text-green-600 mt-1 font-medium">
-                                🎉 You saved ${promoApplied.discountAmount.toFixed(2)} with {promoApplied.code}!
+                                You saved ${promoApplied.discountAmount.toFixed(2)} with {promoApplied.code}
                               </p>
                             )}
                           </div>
@@ -967,44 +915,9 @@ export const BookNow = () => {
                             </p>
                           </div>
 
-                          {/* Price Comparison - Show savings vs Uber/Taxi */}
-                          <PriceComparison 
-                            bookaridePrice={finalTotal} 
-                            distance={pricing.distance} 
-                          />
-
-                          {/* Booking Add-ons */}
-                          <div className="pt-4 border-t border-gray-200">
-                            <BookingAddOns
-                              selectedAddOns={selectedAddOns}
-                              onAddOnChange={setSelectedAddOns}
-                              showAll={false}
-                            />
-                          </div>
-                          
-                          {/* Currency Converter */}
-                          <div className="mt-6">
-                            <CurrencyConverter nzdPrice={finalTotal} />
-                          </div>
-
-                          {/* Trip Cost Splitter - for group bookings */}
-                          {formData.passengers > 1 && (
-                            <div className="mt-4">
-                              <TripCostSplitter 
-                                totalPrice={finalTotal} 
-                                passengers={parseInt(formData.passengers) || 2} 
-                              />
-                            </div>
-                          )}
-
-                          {/* Weather at Destination */}
-                          <div className="mt-4">
-                            <WeatherWidget location={formData.dropoffAddress || 'Auckland'} />
-                          </div>
-
-                          {/* Multi-Stop Route Map with Visual Preview */}
+                          {/* Route Map */}
                           {formData.pickupAddress && formData.dropoffAddress && (
-                            <div className="mt-4" data-testid="route-map-container">
+                            <div className="mt-3" data-testid="route-map-container">
                               {process.env.REACT_APP_GOOGLE_MAPS_API_KEY ? (
                                 <MultiStopRouteMap 
                                   pickupAddress={formData.pickupAddress}
@@ -1022,57 +935,51 @@ export const BookNow = () => {
                                   pickupDate={formData.date}
                                 />
                               ) : (
-                                <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 space-y-2">
-                                  <p className="text-sm font-medium text-gray-700">Your route</p>
-                                  <p className="text-sm text-gray-600">Pickup: {formData.pickupAddress}</p>
+                                <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 space-y-1 text-xs text-gray-600">
+                                  <p>From: {formData.pickupAddress}</p>
                                   {formData.pickupAddresses?.filter(Boolean).map((addr, i) => (
-                                    <p key={i} className="text-sm text-gray-600">+ Stop: {addr}</p>
+                                    <p key={i}>Stop: {addr}</p>
                                   ))}
-                                  <p className="text-sm text-gray-600">Drop-off: {formData.dropoffAddress}</p>
+                                  <p>To: {formData.dropoffAddress}</p>
                                 </div>
                               )}
                             </div>
                           )}
 
-                          {/* Social Proof */}
-                          <div className="mt-6">
-                            <SocialProofCounter variant="urgency" />
+                          {/* Booking Add-ons */}
+                          <div className="pt-3 border-t border-gray-100">
+                            <BookingAddOns
+                              selectedAddOns={selectedAddOns}
+                              onAddOnChange={setSelectedAddOns}
+                              showAll={false}
+                            />
                           </div>
                         </div>
                       ) : (
-                        <div className="text-center py-8">
-                          <MapPin className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                          <p className="text-gray-500 mb-4">Enter addresses to see price estimate</p>
+                        <div className="text-center py-6">
+                          <MapPin className="w-10 h-10 mx-auto mb-2 text-gray-300" />
+                          <p className="text-sm text-gray-500">Enter addresses to see your quote</p>
                         </div>
                       )}
 
-                      {/* Trust Badges */}
-                      <div className="mt-6">
-                        <TrustBadges variant="payment" />
-                      </div>
-
-                      {/* Secure Payment Info */}
-                      <div className="mt-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
-                        <div className="flex items-center gap-3 mb-2">
-                          <svg className="w-5 h-5 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      {/* Secure Payment */}
+                      <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                        <div className="flex items-center gap-2 mb-1">
+                          <svg className="w-4 h-4 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
                             <path d="M9 12l2 2 4-4"/>
                           </svg>
-                          <span className="font-semibold text-gray-800">Secure Payment</span>
+                          <span className="text-sm font-medium text-gray-700">Secure Payment via Stripe</span>
                         </div>
-                        <p className="text-sm text-gray-600 mb-3">
-                          Pay securely with credit/debit card via Stripe
-                        </p>
-                        <div className="flex items-center gap-2">
-                          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Visa_Inc._logo.svg/100px-Visa_Inc._logo.svg.png" alt="Visa" className="h-6 object-contain" />
-                          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Mastercard-logo.svg/100px-Mastercard-logo.svg.png" alt="Mastercard" className="h-6 object-contain" />
-                          <span className="text-xs text-gray-400 ml-2">Powered by Stripe</span>
+                        <div className="flex items-center gap-2 mt-2">
+                          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Visa_Inc._logo.svg/100px-Visa_Inc._logo.svg.png" alt="Visa" className="h-5 object-contain" />
+                          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Mastercard-logo.svg/100px-Mastercard-logo.svg.png" alt="Mastercard" className="h-5 object-contain" />
                         </div>
                       </div>
 
                       <Button 
                         type="submit" 
-                        className="w-full mt-6 bg-gold hover:bg-gold/90 text-black font-semibold py-6 text-lg transition-colors duration-200"
+                        className="w-full mt-4 bg-gold hover:bg-gold/90 text-black font-semibold py-5 text-base rounded-lg transition-colors duration-200"
                         disabled={pricing.calculating || pricing.totalPrice === 0}
                       >
                         Book Now
