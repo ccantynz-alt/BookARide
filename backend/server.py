@@ -3726,24 +3726,35 @@ async def cron_send_reminders(api_key: str = None):
 
 
 def _get_booking_notification_emails() -> list:
-    """Emails to receive new booking copies. BOOKINGS_NOTIFICATION_EMAIL or ADMIN_EMAIL, default bookings@"""
+    """Emails to receive new booking copies. BOOKINGS_NOTIFICATION_EMAIL or ADMIN_EMAIL, default bookings@bookaride.co.nz"""
     raw = os.environ.get('BOOKINGS_NOTIFICATION_EMAIL') or os.environ.get('ADMIN_EMAIL', 'bookings@bookaride.co.nz')
-    return [e.strip() for e in str(raw).split(',') if e.strip()]
+    emails = [e.strip() for e in str(raw).split(',') if e.strip()]
+    # Always ensure bookings@bookaride.co.nz is included
+    default_email = 'bookings@bookaride.co.nz'
+    if default_email not in emails:
+        emails.append(default_email)
+    return emails
 
 
 async def send_booking_notification_to_admin(booking: dict):
-    """Automatically send booking notification to admin email(s) - bookings@bookaride.co.nz by default"""
+    """Automatically send booking notification to admin email(s) - bookings@bookaride.co.nz by default.
+    Uses multiple methods: unified email sender, then direct Mailgun, then direct SMTP."""
     try:
         admin_emails = _get_booking_notification_emails()
         formatted_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
         booking_ref = get_booking_reference(booking)
         
+        logger.info(f"Sending admin notification for booking {booking_ref} to: {admin_emails}")
+        
         # Use same full confirmation as customer - notes, flights, return, all details
         html_content = generate_confirmation_email_html(booking, for_admin=True)
         
         subject = f"New Booking - {booking.get('name', 'Customer')} - {formatted_date} - Ref: {booking_ref}"
-        reply_to = os.environ.get("ADMIN_EMAIL", "info@bookaride.co.nz").split(',')[0].strip()
+        reply_to = os.environ.get("ADMIN_EMAIL", "bookings@bookaride.co.nz").split(',')[0].strip()
+        sender_email = get_noreply_email()
         email_sent = False
+        
+        # METHOD 1: Try unified email sender (Mailgun + SMTP fallback)
         if send_email_unified:
             for admin_email in admin_emails:
                 try:
@@ -3751,20 +3762,23 @@ async def send_booking_notification_to_admin(booking: dict):
                         admin_email,
                         subject,
                         html_content,
-                        from_email=get_noreply_email(),
+                        from_email=sender_email,
                         from_name="BookaRide System",
                         reply_to=reply_to,
                     ):
-                        logger.info(f"Auto-notification sent to {admin_email} for booking: {booking_ref}")
+                        logger.info(f"Admin notification sent to {admin_email} via unified sender for booking: {booking_ref}")
                         email_sent = True
                     else:
-                        logger.error(f"Failed to send admin notification to {admin_email}")
+                        logger.warning(f"Unified sender failed for {admin_email}, will try direct methods")
                 except Exception as e:
-                    logger.error(f"Error sending to {admin_email}: {e}")
+                    logger.error(f"Unified sender error for {admin_email}: {e}")
         else:
+            logger.warning("email_sender module not available (send_email_unified is None)")
+        
+        # METHOD 2: Direct Mailgun API (fallback if unified sender didn't work)
+        if not email_sent:
             mailgun_api_key = os.environ.get("MAILGUN_API_KEY")
             mailgun_domain = os.environ.get("MAILGUN_DOMAIN")
-            sender_email = get_noreply_email()
             if mailgun_api_key and mailgun_domain:
                 for admin_email in admin_emails:
                     try:
@@ -3776,18 +3790,51 @@ async def send_booking_notification_to_admin(booking: dict):
                                 "to": admin_email,
                                 "subject": subject,
                                 "html": html_content,
+                                "h:Reply-To": reply_to,
                             },
                             timeout=15,
                         )
                         if response.status_code == 200:
-                            logger.info(f"Auto-notification sent to {admin_email} for booking: {booking_ref}")
+                            logger.info(f"Admin notification sent to {admin_email} via direct Mailgun for booking: {booking_ref}")
                             email_sent = True
                         else:
-                            logger.error(f"Failed to send to {admin_email}: {response.status_code} - {response.text}")
+                            logger.error(f"Direct Mailgun failed for {admin_email}: {response.status_code} - {response.text}")
                     except Exception as e:
-                        logger.error(f"Error sending to {admin_email}: {e}")
+                        logger.error(f"Direct Mailgun error for {admin_email}: {e}")
             else:
-                logger.error("No email provider configured (Mailgun or SMTP) - admin notifications not sent")
+                logger.warning("Mailgun not configured (missing MAILGUN_API_KEY or MAILGUN_DOMAIN)")
+        
+        # METHOD 3: Direct SMTP (last resort fallback)
+        if not email_sent:
+            smtp_user = os.environ.get("SMTP_USER")
+            smtp_pass = os.environ.get("SMTP_PASS")
+            smtp_host = os.environ.get("SMTP_HOST", "smtp.gmail.com")
+            smtp_port = int(os.environ.get("SMTP_PORT", "587"))
+            if smtp_user and smtp_pass:
+                for admin_email in admin_emails:
+                    try:
+                        msg = MIMEMultipart("alternative")
+                        msg["Subject"] = subject
+                        msg["From"] = f"BookaRide System <{sender_email}>"
+                        msg["To"] = admin_email
+                        msg["Reply-To"] = reply_to
+                        msg.attach(MIMEText(html_content, "html"))
+                        
+                        with smtplib.SMTP(smtp_host, smtp_port) as server:
+                            server.starttls()
+                            server.login(smtp_user, smtp_pass)
+                            server.sendmail(sender_email, admin_email, msg.as_string())
+                        
+                        logger.info(f"Admin notification sent to {admin_email} via direct SMTP for booking: {booking_ref}")
+                        email_sent = True
+                    except Exception as e:
+                        logger.error(f"Direct SMTP error for {admin_email}: {e}")
+            else:
+                logger.warning("SMTP not configured (missing SMTP_USER or SMTP_PASS)")
+        
+        if not email_sent:
+            logger.error(f"FAILED to send admin notification for booking {booking_ref} - no email method succeeded. "
+                        f"Check MAILGUN_API_KEY, MAILGUN_DOMAIN, SMTP_USER, SMTP_PASS env vars.")
             
     except Exception as e:
         logger.error(f"Error sending admin notification: {str(e)}")
