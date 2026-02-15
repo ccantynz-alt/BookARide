@@ -14,7 +14,14 @@ logger = logging.getLogger(__name__)
 
 def get_noreply_email() -> str:
     """Address for customer-facing transactional emails (confirmations, payment links, etc.)."""
-    return os.environ.get("NOREPLY_EMAIL") or os.environ.get("SENDER_EMAIL", "noreply@bookaride.co.nz")
+    configured = os.environ.get("NOREPLY_EMAIL") or os.environ.get("SENDER_EMAIL")
+    if configured and str(configured).strip():
+        return str(configured).strip()
+    # If Mailgun is configured, default to a sender within the Mailgun domain (avoids "from" rejection).
+    mg_domain = os.environ.get("MAILGUN_DOMAIN")
+    if mg_domain and str(mg_domain).strip():
+        return f"noreply@{str(mg_domain).strip()}"
+    return "noreply@bookaride.co.nz"
 
 
 def send_email(

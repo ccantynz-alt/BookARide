@@ -36,12 +36,25 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 import vobject
 import asyncio
+import math
 
 try:
+    # When running with cwd=backend (Render start.py), this import works.
     from email_sender import send_email as send_email_unified, get_noreply_email
 except ImportError:
-    send_email_unified = None
-    get_noreply_email = lambda: os.environ.get("NOREPLY_EMAIL") or os.environ.get("SENDER_EMAIL", "noreply@bookaride.co.nz")
+    try:
+        # When running via repo-root wrapper (uvicorn server:app), import via namespace package.
+        from backend.email_sender import send_email as send_email_unified, get_noreply_email  # type: ignore
+    except ImportError:
+        send_email_unified = None
+        def get_noreply_email() -> str:
+            configured = os.environ.get("NOREPLY_EMAIL") or os.environ.get("SENDER_EMAIL")
+            if configured and str(configured).strip():
+                return str(configured).strip()
+            mg_domain = os.environ.get("MAILGUN_DOMAIN")
+            if mg_domain and str(mg_domain).strip():
+                return f"noreply@{str(mg_domain).strip()}"
+            return "noreply@bookaride.co.nz"
 
 # Global lock to prevent concurrent reminder sending
 reminder_lock = asyncio.Lock()
@@ -1268,6 +1281,47 @@ def _normalize_address_for_routing(address: str) -> str:
     return address.strip()
 
 
+def _get_env_first(*names: str, default: str = "") -> str:
+    """Return the first non-empty env var value from provided names."""
+    for name in names:
+        if not name:
+            continue
+        val = os.environ.get(name)
+        if val is None:
+            continue
+        val = str(val).strip()
+        if val:
+            return val
+    return default
+
+
+def _haversine_km(a: tuple[float, float], b: tuple[float, float]) -> float:
+    """Great-circle distance between two (lat, lon) points in km."""
+    lat1, lon1 = a
+    lat2, lon2 = b
+    r = 6371.0  # km
+    phi1 = math.radians(lat1)
+    phi2 = math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlambda = math.radians(lon2 - lon1)
+    h = (math.sin(dphi / 2) ** 2) + (math.cos(phi1) * math.cos(phi2) * (math.sin(dlambda / 2) ** 2))
+    return 2 * r * math.asin(math.sqrt(h))
+
+
+def _estimate_drive_distance_km(points: list[tuple[float, float]], factor: float = 1.25) -> float | None:
+    """
+    Estimate driving distance from geocoded points.
+    Uses straight-line (haversine) distances with a multiplier to approximate road distance.
+    """
+    if not points or len(points) < 2:
+        return None
+    total = 0.0
+    for i in range(len(points) - 1):
+        total += _haversine_km(points[i], points[i + 1])
+    est = max(0.0, total * factor)
+    return round(est, 2)
+
+
 def _get_distance_geoapify(pickup_address: str, dropoff_address: str, waypoint_addresses: list, api_key: str) -> float | None:
     """Get driving distance in km via Geoapify Routing API. Returns None on failure."""
     try:
@@ -1275,6 +1329,7 @@ def _get_distance_geoapify(pickup_address: str, dropoff_address: str, waypoint_a
         dropoff_norm = _normalize_address_for_routing(dropoff_address)
         waypoints = [pickup_norm] + [_normalize_address_for_routing(a) for a in (waypoint_addresses or [])] + [dropoff_norm]
         coords_list = []
+        coords_points: list[tuple[float, float]] = []
         for addr in waypoints:
             if not addr or not addr.strip():
                 continue
@@ -1282,17 +1337,30 @@ def _get_distance_geoapify(pickup_address: str, dropoff_address: str, waypoint_a
             if lat is None:
                 return None
             coords_list.append(f"{lat},{lon}")
+            coords_points.append((float(lat), float(lon)))
         if len(coords_list) < 2:
             return None
         waypoints_str = "|".join(coords_list)
         url = f"https://api.geoapify.com/v1/routing?waypoints={waypoints_str}&mode=drive&apiKey={api_key}"
-        r = requests.get(url, timeout=15)
-        data = r.json()
-        features = data.get("features", [])
-        if features:
-            props = features[0].get("properties", {})
-            dist_m = props.get("distance", 0)
-            return round(dist_m / 1000, 2)
+        try:
+            r = requests.get(url, timeout=15)
+            data = r.json()
+            features = data.get("features", [])
+            if features:
+                props = features[0].get("properties", {})
+                dist_m = props.get("distance", 0)
+                if isinstance(dist_m, (int, float)) and dist_m > 0:
+                    return round(dist_m / 1000, 2)
+            # If routing fails but geocoding succeeded, use a robust estimate rather than falling back to 25km.
+            est = _estimate_drive_distance_km(coords_points)
+            if est is not None and est > 0:
+                logger.warning(f"Geoapify routing returned no distance; using estimated distance {est}km")
+                return est
+        except Exception as routing_error:
+            est = _estimate_drive_distance_km(coords_points)
+            if est is not None and est > 0:
+                logger.warning(f"Geoapify routing error ({routing_error}); using estimated distance {est}km")
+                return est
     except Exception as e:
         logger.warning(f"Geoapify routing error: {e}")
     return None
@@ -1303,8 +1371,21 @@ def _get_distance_geoapify(pickup_address: str, dropoff_address: str, waypoint_a
 async def calculate_price(request: PriceCalculationRequest):
     try:
         # Prefer Geoapify, then Google Maps, then fallback estimate
-        geoapify_key = os.environ.get('GEOAPIFY_API_KEY', '')
-        google_api_key = os.environ.get('GOOGLE_MAPS_API_KEY', '')
+        # Support multiple common env var names (Render/React/Vite) to avoid silent 25km fallbacks
+        geoapify_key = _get_env_first(
+            'GEOAPIFY_API_KEY',
+            'GEOAPIFY_KEY',
+            'REACT_APP_GEOAPIFY_API_KEY',
+            'VITE_GEOAPIFY_API_KEY',
+            default='',
+        )
+        google_api_key = _get_env_first(
+            'GOOGLE_MAPS_API_KEY',
+            'GOOGLE_API_KEY',
+            'REACT_APP_GOOGLE_MAPS_API_KEY',
+            'VITE_GOOGLE_MAPS_API_KEY',
+            default='',
+        )
         
         distance_km = None
         if geoapify_key:
@@ -2025,110 +2106,79 @@ async def send_booking_email(email_data: dict, current_admin: dict = Depends(get
 async def send_booking_to_admin(booking_id: str, current_admin: dict = Depends(get_current_admin)):
     """Send booking details to admin mailbox"""
     try:
-        # Get booking details
         booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
         if not booking:
             raise HTTPException(status_code=404, detail="Booking not found")
-        
-        # Get admin email from environment or use default
-        admin_email = os.environ.get('ADMIN_EMAIL', 'admin@bookaride.co.nz')
-        
-        # Send via Mailgun
-        mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
-        mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
-        sender_email = os.environ.get('SENDER_EMAIL', 'noreply@mg.bookaride.co.nz')
-        
-        if not mailgun_api_key or not mailgun_domain:
-            raise HTTPException(status_code=500, detail="Mailgun not configured")
-        
-        # Format booking details
-        total_price = booking.get('totalPrice', 0)
-        pricing = booking.get('pricing', {})
-        is_overridden = pricing.get('isOverridden', False)
-        
-        # Create HTML email content with all booking details
-        html_content = f"""
-        <html>
-            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <div style="background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%); color: white; padding: 20px; text-align: center; border-radius: 10px 10px 0 0;">
-                    <h1 style="margin: 0;">BookaRide.co.nz</h1>
-                    <p style="margin: 5px 0; font-size: 14px; color: rgba(255,255,255,0.9);">Admin Booking Notification</p>
-                </div>
-                
-                <div style="padding: 20px; background-color: #ffffff; border: 1px solid #e8e4d9; border-top: none;">
-                    <h2 style="color: #333; margin-top: 0;">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¹ Booking Details</h2>
-                    
-                    <div style="background-color: #faf8f3; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #D4AF37;">
-                        <p style="margin: 5px 0;"><strong>Booking Reference:</strong> {booking.get('id', '')[:8].upper()}</p>
-                        <p style="margin: 5px 0;"><strong>Status:</strong> <span style="color: {'#16a34a' if booking.get('status') == 'confirmed' else '#ea580c'}; font-weight: bold;">{booking.get('status', 'N/A').upper()}</span></p>
-                        <p style="margin: 5px 0;"><strong>Payment Status:</strong> {booking.get('payment_status', 'N/A')}</p>
-                        <p style="margin: 5px 0;"><strong>Created:</strong> {booking.get('createdAt', 'N/A')}</p>
-                    </div>
-                    
-                    <h3 style="color: #333; margin-top: 30px;">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¹Ã…â€œÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¤ Customer Information</h3>
-                    <div style="background-color: #faf8f3; padding: 15px; border-radius: 8px; margin: 15px 0;">
-                        <p style="margin: 5px 0;"><strong>Name:</strong> {booking.get('name', 'N/A')}</p>
-                        <p style="margin: 5px 0;"><strong>Email:</strong> <a href="mailto:{booking.get('email', 'N/A')}" style="color: #D4AF37;">{booking.get('email', 'N/A')}</a></p>
-                        <p style="margin: 5px 0;"><strong>Phone:</strong> <a href="tel:{booking.get('phone', 'N/A')}" style="color: #D4AF37;">{booking.get('phone', 'N/A')}</a></p>
-                    </div>
-                    
-                    <h3 style="color: #333; margin-top: 30px;">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â Trip Details</h3>
-                    <div style="background-color: #faf8f3; padding: 15px; border-radius: 8px; margin: 15px 0;">
-                        <p style="margin: 5px 0;"><strong>Service Type:</strong> {booking.get('serviceType', 'N/A').replace('-', ' ').title()}</p>
-                        <p style="margin: 5px 0;"><strong>Pickup:</strong> {booking.get('pickupAddress', 'N/A')}</p>
-                        <p style="margin: 5px 0;"><strong>Drop-off:</strong> {booking.get('dropoffAddress', 'N/A')}</p>
-                        <p style="margin: 5px 0;"><strong>Date:</strong> {booking.get('date', 'N/A')}</p>
-                        <p style="margin: 5px 0;"><strong>Time:</strong> {booking.get('time', 'N/A')}</p>
-                        <p style="margin: 5px 0;"><strong>Passengers:</strong> {booking.get('passengers', 'N/A')}</p>
-                    </div>
-                    
-                    <h3 style="color: #333; margin-top: 30px;">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â° Pricing Details</h3>
-                    <div style="background-color: #faf8f3; padding: 15px; border-radius: 8px; margin: 15px 0;">
-                        <p style="margin: 5px 0;"><strong>Distance:</strong> {pricing.get('distance', 0)} km</p>
-                        <p style="margin: 5px 0;"><strong>Base Price:</strong> ${pricing.get('basePrice', 0):.2f} NZD</p>
-                        {'<p style="margin: 5px 0;"><strong>Airport Fee:</strong> $' + f"{pricing.get('airportFee', 0):.2f}" + ' NZD</p>' if pricing.get('airportFee', 0) > 0 else ''}
-                        {'<p style="margin: 5px 0;"><strong>Passenger Fee:</strong> $' + f"{pricing.get('passengerFee', 0):.2f}" + ' NZD</p>' if pricing.get('passengerFee', 0) > 0 else ''}
-                        <hr style="border: 0; border-top: 2px solid #D4AF37; margin: 15px 0;">
-                        <p style="margin: 5px 0; font-size: 18px;"><strong>Total Price:</strong> <span style="color: #D4AF37; font-size: 20px;">${total_price:.2f} NZD</span></p>
-                        {f'<p style="margin: 5px 0; color: #ea580c; font-size: 12px;">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â Price was manually overridden</p>' if is_overridden else ''}
-                    </div>
-                    
-                    {'<h3 style="color: #333; margin-top: 30px;">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã¢â‚¬Â¹ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â Flight Information</h3><div style="background-color: #faf8f3; padding: 15px; border-radius: 8px; margin: 15px 0;"><p style="margin: 5px 0;"><strong>Departure Flight:</strong> ' + booking.get('departureFlightNumber', 'N/A') + ' at ' + booking.get('departureTime', 'N/A') + '</p><p style="margin: 5px 0;"><strong>Arrival Flight:</strong> ' + booking.get('arrivalFlightNumber', 'N/A') + ' at ' + booking.get('arrivalTime', 'N/A') + '</p></div>' if booking.get('departureFlightNumber') or booking.get('arrivalFlightNumber') else ''}
-                    
-                    {f'<h3 style="color: #333; margin-top: 30px;">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â Special Notes</h3><div style="background-color: #fff8e6; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #D4AF37;"><p style="margin: 0;">{booking.get("notes", "")}</p></div>' if booking.get('notes') else ''}
-                    
-                    <div style="margin-top: 30px; padding: 15px; background-color: #fff8e6; border-radius: 8px; border-left: 4px solid #D4AF37;">
-                        <p style="margin: 0; color: #333;"><strong>ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ Quick Actions:</strong></p>
-                        <p style="margin: 5px 0; font-size: 14px;">Log in to your <a href="https://bookaride.co.nz/admin/login" style="color: #D4AF37; text-decoration: none; font-weight: bold;">Admin Dashboard</a> to manage this booking.</p>
-                    </div>
-                </div>
-                
-                <div style="background: #faf8f3; color: #666; padding: 15px; text-align: center; font-size: 12px; border-radius: 0 0 10px 10px; border: 1px solid #e8e4d9; border-top: none;">
-                    <p style="margin: 0;"><span style="color: #D4AF37; font-weight: bold;">BookaRide NZ</span> Admin System</p>
-                    <p style="margin: 5px 0;">bookaride.co.nz | +64 21 743 321</p>
-                </div>
-            </body>
-        </html>
-        """
-        
-        # Send email via Mailgun API
-        response = requests.post(
-            f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
-            auth=("api", mailgun_api_key),
-            data={
-                "from": f"BookaRide System <{sender_email}>",
-                "to": admin_email,
-                "subject": f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¹ Booking Details - {booking.get('name', 'Customer')} - {booking.get('id', '')[:8].upper()}",
-                "html": html_content
-            }
-        )
-        
-        if response.status_code == 200:
-            logger.info(f"Booking details sent to admin: {admin_email} - Booking: {booking_id}")
-            return {"message": f"Booking details sent to {admin_email}"}
+
+        admin_emails = _get_booking_notification_emails() or ["bookings@bookerride.co.nz"]
+        booking_ref = get_booking_reference(booking)
+        formatted_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
+
+        subject = f"Booking Details - {booking.get('name', 'Customer')} - {formatted_date} - Ref: {booking_ref}"
+        html_content = generate_confirmation_email_html(booking, for_admin=True)
+
+        reply_to = _get_env_first(
+            "REPLY_TO_EMAIL",
+            "ADMIN_EMAIL",
+            default=(admin_emails[0] if admin_emails else "bookings@bookerride.co.nz"),
+        ).split(',')[0].strip()
+
+        sender_email = get_noreply_email()
+        sent: list[str] = []
+        failed: list[str] = []
+
+        if send_email_unified:
+            for recipient in admin_emails:
+                try:
+                    ok = send_email_unified(
+                        recipient,
+                        subject,
+                        html_content,
+                        from_email=sender_email,
+                        from_name="BookaRide Admin",
+                        reply_to=reply_to,
+                    )
+                    if ok:
+                        sent.append(recipient)
+                    else:
+                        failed.append(recipient)
+                except Exception as e:
+                    logger.error(f"Error sending booking details to {recipient}: {e}")
+                    failed.append(recipient)
         else:
-            logger.error(f"Mailgun error: {response.status_code} - {response.text}")
-            raise HTTPException(status_code=500, detail=f"Failed to send email: {response.text}")
+            mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
+            mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
+            if not mailgun_api_key or not mailgun_domain:
+                raise HTTPException(status_code=500, detail="No email provider configured (Mailgun or SMTP)")
+
+            for recipient in admin_emails:
+                try:
+                    response = requests.post(
+                        f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
+                        auth=("api", mailgun_api_key),
+                        data={
+                            "from": f"BookaRide System <{sender_email}>",
+                            "to": recipient,
+                            "subject": subject,
+                            "html": html_content,
+                            "h:Reply-To": reply_to,
+                        },
+                        timeout=15,
+                    )
+                    if response.status_code == 200:
+                        sent.append(recipient)
+                    else:
+                        logger.error(f"Mailgun error sending to {recipient}: {response.status_code} - {response.text}")
+                        failed.append(recipient)
+                except Exception as e:
+                    logger.error(f"Error sending via Mailgun to {recipient}: {e}")
+                    failed.append(recipient)
+
+        if not sent:
+            raise HTTPException(status_code=500, detail=f"Failed to send booking details to admin mailbox: {', '.join(failed) if failed else 'unknown error'}")
+
+        logger.info(f"Booking details sent to admin mailbox: sent={sent}, failed={failed}, booking={booking_id}")
+        return {"message": f"Booking details sent to {', '.join(sent)}", "sent": sent, "failed": failed}
         
     except HTTPException:
         raise
@@ -3707,12 +3757,12 @@ async def cron_send_reminders(api_key: str = None):
 
 def _get_booking_notification_emails() -> list:
     """Emails to receive new booking copies. BOOKINGS_NOTIFICATION_EMAIL or ADMIN_EMAIL, default bookings@"""
-    raw = os.environ.get('BOOKINGS_NOTIFICATION_EMAIL') or os.environ.get('ADMIN_EMAIL', 'bookings@bookaride.co.nz')
+    raw = os.environ.get('BOOKINGS_NOTIFICATION_EMAIL') or os.environ.get('ADMIN_EMAIL', 'bookings@bookerride.co.nz')
     return [e.strip() for e in str(raw).split(',') if e.strip()]
 
 
 async def send_booking_notification_to_admin(booking: dict):
-    """Automatically send booking notification to admin email(s) - bookings@bookaride.co.nz by default"""
+    """Automatically send booking notification to admin email(s) - bookings@bookerride.co.nz by default"""
     try:
         admin_emails = _get_booking_notification_emails()
         formatted_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
@@ -3722,7 +3772,8 @@ async def send_booking_notification_to_admin(booking: dict):
         html_content = generate_confirmation_email_html(booking, for_admin=True)
         
         subject = f"New Booking - {booking.get('name', 'Customer')} - {formatted_date} - Ref: {booking_ref}"
-        reply_to = os.environ.get("ADMIN_EMAIL", "info@bookaride.co.nz").split(',')[0].strip()
+        # Prefer explicit ADMIN_EMAIL/REPLY_TO_EMAIL, otherwise reply to the first notification mailbox.
+        reply_to = _get_env_first("REPLY_TO_EMAIL", "ADMIN_EMAIL", default=(admin_emails[0] if admin_emails else "bookings@bookerride.co.nz")).split(',')[0].strip()
         email_sent = False
         if send_email_unified:
             for admin_email in admin_emails:
@@ -3874,7 +3925,7 @@ async def send_urgent_approval_notification(booking: dict):
         """
         
         subject = f"URGENT APPROVAL - {booking.get('name', 'Customer')} - {formatted_date} {booking.get('time', '')} - Ref: {booking_ref}"
-        recipient = admin_emails[0] if admin_emails else "bookings@bookaride.co.nz"
+        recipient = admin_emails[0] if admin_emails else "bookings@bookerride.co.nz"
         email_sent = False
         
         # Try unified sender first (SMTP/Mailgun)
@@ -4850,7 +4901,7 @@ def generate_confirmation_email_html(booking: dict, for_admin: bool = False) -> 
     """Generate the confirmation email HTML for preview or sending - Clean professional design.
     Includes all booking details: flights, return trip, notes, route, payment.
     Set for_admin=True to add admin copy banner (same content, both get full details)."""
-    sender_email = os.environ.get('SENDER_EMAIL', 'bookings@bookaride.co.nz')
+    sender_email = os.environ.get('SENDER_EMAIL', 'bookings@bookerride.co.nz')
     d = _get_booking_email_data(booking)
     
     total_price = d['total_price']
@@ -5950,7 +6001,8 @@ async def twilio_sms_webhook(request: Request):
                     
                     # Notify admin of driver acknowledgment
                     try:
-                        admin_email = os.environ.get('ADMIN_EMAIL', 'bookings@bookaride.co.nz')
+                        admin_emails = _get_booking_notification_emails()
+                        admin_email = admin_emails[0] if admin_emails else "bookings@bookerride.co.nz"
                         mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
                         mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
                         sender_email = os.environ.get('SENDER_EMAIL', 'noreply@mg.bookaride.co.nz')
@@ -9184,7 +9236,7 @@ async def submit_driver_application(application: DriverApplication):
         # Send notification email to admin
         mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
         mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
-        admin_email = os.environ.get('ADMIN_EMAIL', 'bookings@bookaride.co.nz')
+        admin_email = ",".join(_get_booking_notification_emails()) or "bookings@bookerride.co.nz"
         
         if mailgun_api_key and mailgun_domain:
             html_content = f"""
