@@ -674,11 +674,20 @@ export const BookNow = () => {
                       </div>
 
                       {/* Flight Information */}
-                      <div className="bg-gray-50 p-6 rounded-lg mb-6">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Flight Information</h3>
-                        <p className="text-sm text-gray-600 mb-2">Enter your flight number so our driver knows which flight to meet.</p>
-                        <p className="text-xs text-amber-700 bg-amber-50 p-2 rounded mb-4">
-                          ⚠️ <strong>Important:</strong> Flight numbers are required for airport pickups so our driver can meet you on time.
+                      <div className="bg-gradient-to-br from-amber-50 to-yellow-50 p-6 rounded-lg mb-6 border-2 border-amber-200">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-amber-500 text-white">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                            </svg>
+                          </div>
+                          <div>
+                            <h3 className="text-lg font-semibold text-gray-900">Flight Information</h3>
+                            <p className="text-sm text-gray-600">For airport transfers</p>
+                          </div>
+                        </div>
+                        <p className="text-xs text-amber-800 bg-amber-100 p-3 rounded mb-4 border-l-4 border-amber-500">
+                          ✈️ <strong>Important:</strong> Flight numbers help our driver track your arrival and meet you on time. Required for airport pickups.
                         </p>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           <div className="space-y-2">
@@ -804,8 +813,21 @@ export const BookNow = () => {
                       </div>
 
                       {/* Return Journey - Always visible, optional */}
-                      <div className="bg-gray-50 p-6 rounded-lg mb-6 border border-gray-200">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Return Journey <span className="text-sm font-normal text-gray-500">(Optional – leave blank for one-way)</span></h3>
+                      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-lg mb-6 border-2 border-blue-200">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-blue-500 text-white">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                            </svg>
+                          </div>
+                          <div>
+                            <h3 className="text-lg font-semibold text-gray-900">Return Journey</h3>
+                            <p className="text-sm text-gray-600">Optional – leave blank for one-way trip</p>
+                          </div>
+                        </div>
+                        <p className="text-xs text-blue-700 bg-blue-100 p-3 rounded mb-4">
+                          💡 <strong>Round Trip Discount:</strong> Book your return journey now and save! Just fill in the return date and time below.
+                        </p>
                           
                           {/* Return Date and Time */}
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -852,11 +874,16 @@ export const BookNow = () => {
                           </div>
 
                           {/* Return Flight Information */}
-                          <div className="bg-white p-4 rounded-lg border border-gray-200 mt-4">
-                            <h4 className="text-md font-semibold text-gray-900 mb-3">
-                              Return Flight Information
-                              <span className="text-sm font-normal text-gray-500 ml-2">(Required if booking return)</span>
-                            </h4>
+                          <div className="bg-white p-4 rounded-lg border-2 border-blue-200 mt-4">
+                            <div className="flex items-center gap-2 mb-3">
+                              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                              </svg>
+                              <h4 className="text-md font-semibold text-gray-900">
+                                Return Flight Information
+                                <span className="text-sm font-normal text-blue-600 ml-2">(Required if booking return)</span>
+                              </h4>
+                            </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div className="space-y-2">
                                 <Label htmlFor="returnDepartureFlightNumber">Return Flight Number</Label>
