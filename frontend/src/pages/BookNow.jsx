@@ -20,7 +20,14 @@ import LiveJourneyVisualizer from '../components/LiveJourneyVisualizer';
 import MultiStopRouteMap from '../components/MultiStopRouteMap';
 import GeoapifyRouteMap from '../components/GeoapifyRouteMap';
 import { CustomDatePicker, CustomTimePicker } from '../components/DateTimePicker';
-import { GeoapifyAutocomplete, QUICK_ADDRESSES } from '../components/GeoapifyAutocomplete';
+import { GeoapifyAutocomplete } from '../components/GeoapifyAutocomplete';
+
+const DROPOFF_QUICK_ADDRESSES = [
+  { label: 'Auckland Airport', address: 'Auckland Airport, Ray Emery Drive, Mangere, Auckland 2022, New Zealand' },
+  { label: 'Auckland Domestic', address: 'Auckland Airport, Ray Emery Drive, Mangere, Auckland 2022, New Zealand' },
+  { label: 'Hamilton Airport', address: 'Hamilton Airport, 20 Airport Road, Hamilton 3281, New Zealand' },
+  { label: 'Whangarei Airport', address: 'Whangarei Airport, Handforth Street, Whangarei 0110, New Zealand' },
+];
 import PriceComparison from '../components/PriceComparison';
 import BookingAddOns, { addOns } from '../components/BookingAddOns';
 import TrustBadges from '../components/TrustBadges';
@@ -615,12 +622,7 @@ export const BookNow = () => {
                           onChange={(v) => setFormData(prev => ({ ...prev, dropoffAddress: v }))}
                           placeholder="Start typing address..."
                           required
-                          quickSelectOptions={[
-                            { label: 'Auckland Airport', address: QUICK_ADDRESSES.aucklandAirport },
-                            { label: 'Auckland Domestic', address: QUICK_ADDRESSES.aucklandDomestic },
-                            { label: 'Hamilton Airport', address: QUICK_ADDRESSES.hamiltonAirport },
-                            { label: 'Whangarei Airport', address: QUICK_ADDRESSES.whangareiAirport },
-                          ]}
+                          quickSelectOptions={DROPOFF_QUICK_ADDRESSES}
                           className="transition-all duration-200 focus:ring-2 focus:ring-gold"
                         />
                         <p className="text-xs text-gray-500">Address suggestions as you type</p>
