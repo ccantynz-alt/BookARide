@@ -52,12 +52,6 @@ export const BookNow = () => {
     departureTime: '',
     arrivalFlightNumber: '',
     arrivalTime: '',
-    returnDate: '',
-    returnTime: '',
-    returnDepartureFlightNumber: '',
-    returnDepartureTime: '',
-    returnArrivalFlightNumber: '',
-    returnArrivalTime: '',
     name: '',
     email: '',
     phone: '',
@@ -117,10 +111,6 @@ export const BookNow = () => {
   const [pickupTime, setPickupTime] = useState(null);
   const [departureTimeDate, setDepartureTimeDate] = useState(null);
   const [arrivalTimeDate, setArrivalTimeDate] = useState(null);
-  const [returnDatePicker, setReturnDatePicker] = useState(null);
-  const [returnTimePicker, setReturnTimePicker] = useState(null);
-  const [returnDepartureTimeDate, setReturnDepartureTimeDate] = useState(null);
-  const [returnArrivalTimeDate, setReturnArrivalTimeDate] = useState(null);
 
   const [pricing, setPricing] = useState({
     distance: 0,
@@ -176,7 +166,7 @@ export const BookNow = () => {
     if (formData.pickupAddress && formData.dropoffAddress && formData.serviceType) {
       calculatePrice();
     }
-  }, [formData.pickupAddress, formData.dropoffAddress, formData.pickupAddresses, formData.passengers, formData.serviceType, formData.returnDate, formData.returnTime, formData.vipAirportPickup, formData.oversizedLuggage]);
+  }, [formData.pickupAddress, formData.dropoffAddress, formData.pickupAddresses, formData.passengers, formData.serviceType, formData.vipAirportPickup, formData.oversizedLuggage]);
 
   const calculatePrice = async () => {
     setPricing(prev => ({ ...prev, calculating: true }));
@@ -192,23 +182,16 @@ export const BookNow = () => {
         oversizedLuggage: formData.oversizedLuggage
       });
 
-      // If return trip is booked (return date + time filled), double the price (round trip)
-      const hasReturnTrip = !!(formData.returnDate && formData.returnTime);
-      const multiplier = hasReturnTrip ? 2 : 1;
-      
-      // Calculate Stripe fee for the multiplied amount
-      const subtotal = response.data.subtotal * multiplier;
-      const stripeFee = (subtotal * 0.029) + 0.30;
-      
+      // Use backend-calculated totals (avoids client-side drift)
       setPricing({
-        distance: response.data.distance * multiplier,
-        basePrice: response.data.basePrice * multiplier,
-        airportFee: response.data.airportFee * multiplier,
-        oversizedLuggageFee: response.data.oversizedLuggageFee * multiplier,
-        passengerFee: response.data.passengerFee * multiplier,
-        stripeFee: Math.round(stripeFee * 100) / 100,
-        subtotal: subtotal,
-        totalPrice: Math.round((subtotal + stripeFee) * 100) / 100,
+        distance: response.data.distance || 0,
+        basePrice: response.data.basePrice || 0,
+        airportFee: response.data.airportFee || 0,
+        oversizedLuggageFee: response.data.oversizedLuggageFee || 0,
+        passengerFee: response.data.passengerFee || 0,
+        stripeFee: response.data.stripeFee || 0,
+        subtotal: response.data.subtotal || 0,
+        totalPrice: response.data.totalPrice || 0,
         calculating: false
       });
       
@@ -216,7 +199,7 @@ export const BookNow = () => {
       if (promoCode.trim() && !promoApplied) {
         // Delay slightly to ensure state is updated
         setTimeout(() => {
-          handleApplyPromoWithSubtotal(promoCode.trim(), subtotal);
+          handleApplyPromoWithSubtotal(promoCode.trim(), response.data.subtotal || 0);
         }, 100);
       } else {
         // Reset promo if price changes and there's no pending code
@@ -344,17 +327,6 @@ export const BookNow = () => {
       return;
     }
 
-    // Validate return flight number for airport shuttle return bookings (when return date/time filled)
-    const hasReturnTrip = !!(formData.returnDate && formData.returnTime);
-    const isAirportShuttle = formData.serviceType?.toLowerCase().includes('airport') || 
-                            formData.serviceType?.toLowerCase().includes('shuttle');
-    if (isAirportShuttle && hasReturnTrip) {
-      if (!formData.returnDepartureFlightNumber || !formData.returnDepartureFlightNumber.trim()) {
-        toast.error('Flight number is mandatory for return trips. Bookings without flight numbers may face cancellation.');
-        return;
-      }
-    }
-
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
@@ -370,10 +342,8 @@ export const BookNow = () => {
     setIsProcessingPayment(true);
 
     try {
-      const hasReturnTrip = !!(formData.returnDate && formData.returnTime);
       const bookingData = {
         ...formData,
-        bookReturn: hasReturnTrip,
         pricing: pricing,
         status: 'pending',
         language: i18n.language, // Capture selected language
@@ -803,120 +773,7 @@ export const BookNow = () => {
                         </div>
                       </div>
 
-                      {/* Return Journey - Always visible, optional */}
-                      <div className="bg-gray-50 p-6 rounded-lg mb-6 border border-gray-200">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Return Journey <span className="text-sm font-normal text-gray-500">(Optional – leave blank for one-way)</span></h3>
-                          
-                          {/* Return Date and Time */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                            <div className="space-y-2">
-                              <Label className="flex items-center space-x-2">
-                                <Calendar className="w-4 h-4 text-gold" />
-                                <span>Return Date</span>
-                              </Label>
-                              <CustomDatePicker
-                                selected={returnDatePicker}
-                                onChange={(date) => {
-                                  setReturnDatePicker(date);
-                                  if (date) {
-                                    // Use local date to avoid timezone issues
-                                    const year = date.getFullYear();
-                                    const month = String(date.getMonth() + 1).padStart(2, '0');
-                                    const day = String(date.getDate()).padStart(2, '0');
-                                    const formattedDate = `${year}-${month}-${day}`;
-                                    setFormData(prev => ({ ...prev, returnDate: formattedDate }));
-                                  }
-                                }}
-                                placeholder="Select return date"
-                                minDate={pickupDate || new Date()}
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label className="flex items-center space-x-2">
-                                <Clock className="w-4 h-4 text-gold" />
-                                <span>Return Time</span>
-                              </Label>
-                              <CustomTimePicker
-                                selected={returnTimePicker}
-                                onChange={(time) => {
-                                  setReturnTimePicker(time);
-                                  if (time) {
-                                    const hours = time.getHours().toString().padStart(2, '0');
-                                    const minutes = time.getMinutes().toString().padStart(2, '0');
-                                    setFormData(prev => ({ ...prev, returnTime: `${hours}:${minutes}` }));
-                                  }
-                                }}
-                                placeholder="Select return time"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Return Flight Information */}
-                          <div className="bg-white p-4 rounded-lg border border-gray-200 mt-4">
-                            <h4 className="text-md font-semibold text-gray-900 mb-3">
-                              Return Flight Information
-                              <span className="text-sm font-normal text-gray-500 ml-2">(Required if booking return)</span>
-                            </h4>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div className="space-y-2">
-                                <Label htmlFor="returnDepartureFlightNumber">Return Flight Number</Label>
-                                <Input
-                                  id="returnDepartureFlightNumber"
-                                  name="returnDepartureFlightNumber"
-                                  value={formData.returnDepartureFlightNumber}
-                                  onChange={handleChange}
-                                  placeholder="e.g., NZ123"
-                                  className="transition-all duration-200 focus:ring-2 focus:ring-gold"
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label>Departure Time</Label>
-                                <CustomTimePicker
-                                  selected={returnDepartureTimeDate}
-                                  onChange={(time) => {
-                                    setReturnDepartureTimeDate(time);
-                                    if (time) {
-                                      const hours = time.getHours().toString().padStart(2, '0');
-                                      const minutes = time.getMinutes().toString().padStart(2, '0');
-                                      setFormData(prev => ({ ...prev, returnDepartureTime: `${hours}:${minutes}` }));
-                                    }
-                                  }}
-                                  placeholder="Select departure time"
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label htmlFor="returnArrivalFlightNumber">Arrival Flight Number (Optional)</Label>
-                                <Input
-                                  id="returnArrivalFlightNumber"
-                                  name="returnArrivalFlightNumber"
-                                  value={formData.returnArrivalFlightNumber}
-                                  onChange={handleChange}
-                                  placeholder="e.g., NZ456"
-                                  className="transition-all duration-200 focus:ring-2 focus:ring-gold"
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label>Arrival Time</Label>
-                                <CustomTimePicker
-                                  selected={returnArrivalTimeDate}
-                                  onChange={(time) => {
-                                    setReturnArrivalTimeDate(time);
-                                    if (time) {
-                                      const hours = time.getHours().toString().padStart(2, '0');
-                                      const minutes = time.getMinutes().toString().padStart(2, '0');
-                                      setFormData(prev => ({ ...prev, returnArrivalTime: `${hours}:${minutes}` }));
-                                    }
-                                  }}
-                                  placeholder="Select arrival time"
-                                />
-                              </div>
-                            </div>
-                          </div>
-                          
-                          <p className="text-xs text-gray-600 mt-4">
-                            Return trip will be from <strong>{formData.dropoffAddress || 'drop-off location'}</strong> back to <strong>{formData.pickupAddress || 'pickup location'}</strong>
-                          </p>
-                        </div>
+                      {/* Return trip removed for a cleaner one-way booking flow */}
                     </CardContent>
                   </Card>
 
@@ -1095,8 +952,7 @@ export const BookNow = () => {
                           
                           <div className="bg-gray-50 rounded-lg p-4 text-center">
                             <p className="text-sm text-gray-600">
-                              {(formData.returnDate && formData.returnTime) ? `${pricing.distance / 2} km each way` : `${pricing.distance} km`} • {formData.passengers} passenger{parseInt(formData.passengers) > 1 ? 's' : ''}
-                              {(formData.returnDate && formData.returnTime) && ' • Round trip (both ways)'}
+                              {pricing.distance} km • {formData.passengers} passenger{parseInt(formData.passengers) > 1 ? 's' : ''}
                             </p>
                           </div>
 
