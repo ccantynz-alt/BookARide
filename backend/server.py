@@ -4802,13 +4802,13 @@ def _get_booking_email_data(booking: dict) -> dict:
     primary_pickup = booking.get('pickupAddress', 'N/A')
     pickup_addresses = [a for a in (booking.get('pickupAddresses') or []) if a and a.strip()]
     dropoff_address = booking.get('dropoffAddress', 'N/A')
-    # Flight info - check all possible field names
-    departure_flight = (booking.get('departureFlightNumber') or booking.get('flightNumber') or '').strip()
-    arrival_flight = (booking.get('arrivalFlightNumber') or booking.get('flightNumber') or '').strip()
+    # Flight info - check all possible field names (customer form uses departureFlightNumber, admin uses flightDepartureNumber)
+    departure_flight = (booking.get('departureFlightNumber') or booking.get('flightDepartureNumber') or booking.get('flightNumber') or '').strip()
+    arrival_flight = (booking.get('arrivalFlightNumber') or booking.get('flightArrivalNumber') or booking.get('flightNumber') or '').strip()
     if not arrival_flight and departure_flight:
         arrival_flight = departure_flight  # Fallback
-    departure_time = (booking.get('departureTime') or '').strip()
-    arrival_time = (booking.get('arrivalTime') or '').strip()
+    departure_time = (booking.get('departureTime') or booking.get('flightDepartureTime') or '').strip()
+    arrival_time = (booking.get('arrivalTime') or booking.get('flightArrivalTime') or '').strip()
     return_flight = (booking.get('returnFlightNumber') or booking.get('returnDepartureFlightNumber') or '').strip()
     return_arrival = (booking.get('returnArrivalFlightNumber') or '').strip()
     return_departure_time = (booking.get('returnDepartureTime') or '').strip()
@@ -9031,6 +9031,11 @@ async def create_manual_booking(booking: ManualBooking, background_tasks: Backgr
             "flightArrivalTime": booking.flightArrivalTime or "",
             "flightDepartureNumber": booking.flightDepartureNumber or "",
             "flightDepartureTime": booking.flightDepartureTime or "",
+            # Also store standard field names used by customer form (for consistent email templates)
+            "departureFlightNumber": booking.flightDepartureNumber or "",
+            "arrivalFlightNumber": booking.flightArrivalNumber or "",
+            "departureTime": booking.flightDepartureTime or "",
+            "arrivalTime": booking.flightArrivalTime or "",
             "bookReturn": booking.bookReturn or False,
             "returnDate": booking.returnDate or "",
             "returnTime": booking.returnTime or "",

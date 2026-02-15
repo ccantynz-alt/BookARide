@@ -3509,8 +3509,8 @@ export const AdminDashboard = () => {
                     </div>
                   </div>
                   
-                  {/* Return Trip Info - Inline */}
-                  {selectedBooking.bookReturn && (
+                  {/* Return Trip Info - show when bookReturn flag is set OR returnDate exists */}
+                  {(selectedBooking.bookReturn || selectedBooking.returnDate) && (
                     <div className="mt-4 bg-amber-50 p-3 rounded-lg border border-amber-200">
                       <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2 text-sm">
                         🔄 Return Trip
@@ -3541,10 +3541,22 @@ export const AdminDashboard = () => {
                                   <p className="font-medium text-blue-700">{selectedBooking.returnDepartureFlightNumber || selectedBooking.returnFlightNumber}</p>
                                 </div>
                               )}
+                              {selectedBooking.returnDepartureTime && (
+                                <div>
+                                  <span className="text-gray-500 text-xs">Departure Time:</span>
+                                  <p className="font-medium text-blue-700">{selectedBooking.returnDepartureTime}</p>
+                                </div>
+                              )}
                               {selectedBooking.returnArrivalFlightNumber && (
                                 <div>
                                   <span className="text-gray-500 text-xs">Arrival Flight:</span>
                                   <p className="font-medium text-blue-700">{selectedBooking.returnArrivalFlightNumber}</p>
+                                </div>
+                              )}
+                              {selectedBooking.returnArrivalTime && (
+                                <div>
+                                  <span className="text-gray-500 text-xs">Arrival Time:</span>
+                                  <p className="font-medium text-blue-700">{selectedBooking.returnArrivalTime}</p>
                                 </div>
                               )}
                             </div>
@@ -3561,32 +3573,32 @@ export const AdminDashboard = () => {
                 </div>
               </div>
 
-              {/* Flight Info */}
-              {(selectedBooking.flightArrivalNumber || selectedBooking.flightDepartureNumber || selectedBooking.flightNumber) && (
+              {/* Flight Info - check both old field names (flightArrivalNumber) and new field names (arrivalFlightNumber) */}
+              {(selectedBooking.flightArrivalNumber || selectedBooking.flightDepartureNumber || selectedBooking.flightNumber || selectedBooking.departureFlightNumber || selectedBooking.arrivalFlightNumber) && (
                 <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                   <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
                     ✈️ Flight Information
                   </h3>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     {/* Show flightNumber from WordPress imports */}
-                    {selectedBooking.flightNumber && !selectedBooking.flightArrivalNumber && !selectedBooking.flightDepartureNumber && (
+                    {selectedBooking.flightNumber && !selectedBooking.flightArrivalNumber && !selectedBooking.flightDepartureNumber && !selectedBooking.departureFlightNumber && !selectedBooking.arrivalFlightNumber && (
                       <div>
                         <span className="text-gray-600">Flight:</span>
                         <p className="font-medium">{selectedBooking.flightNumber}</p>
                       </div>
                     )}
-                    {selectedBooking.flightArrivalNumber && (
-                      <div>
-                        <span className="text-gray-600">Arrival Flight:</span>
-                        <p className="font-medium">{selectedBooking.flightArrivalNumber}</p>
-                        {selectedBooking.flightArrivalTime && <p className="text-xs text-gray-500">Arrival: {selectedBooking.flightArrivalTime}</p>}
-                      </div>
-                    )}
-                    {selectedBooking.flightDepartureNumber && (
+                    {(selectedBooking.departureFlightNumber || selectedBooking.flightDepartureNumber) && (
                       <div>
                         <span className="text-gray-600">Departure Flight:</span>
-                        <p className="font-medium">{selectedBooking.flightDepartureNumber}</p>
-                        {selectedBooking.flightDepartureTime && <p className="text-xs text-gray-500">Departure: {selectedBooking.flightDepartureTime}</p>}
+                        <p className="font-medium">{selectedBooking.departureFlightNumber || selectedBooking.flightDepartureNumber}</p>
+                        {(selectedBooking.departureTime || selectedBooking.flightDepartureTime) && <p className="text-xs text-gray-500">Departure: {selectedBooking.departureTime || selectedBooking.flightDepartureTime}</p>}
+                      </div>
+                    )}
+                    {(selectedBooking.arrivalFlightNumber || selectedBooking.flightArrivalNumber) && (
+                      <div>
+                        <span className="text-gray-600">Arrival Flight:</span>
+                        <p className="font-medium">{selectedBooking.arrivalFlightNumber || selectedBooking.flightArrivalNumber}</p>
+                        {(selectedBooking.arrivalTime || selectedBooking.flightArrivalTime) && <p className="text-xs text-gray-500">Arrival: {selectedBooking.arrivalTime || selectedBooking.flightArrivalTime}</p>}
                       </div>
                     )}
                   </div>
@@ -3648,7 +3660,7 @@ export const AdminDashboard = () => {
               {/* Driver Assignment - OUTBOUND */}
               <div>
                 <h3 className="font-semibold text-gray-900 mb-3">
-                  🚗 Outbound Driver {selectedBooking.bookReturn && <span className="text-sm font-normal text-gray-500">(One-way to destination)</span>}
+                  🚗 Outbound Driver {(selectedBooking.bookReturn || selectedBooking.returnDate) && <span className="text-sm font-normal text-gray-500">(One-way to destination)</span>}
                 </h3>
                 {(selectedBooking.driver_id || selectedBooking.driver_name) ? (
                   <div className="bg-green-50 border border-green-200 rounded-lg p-4">
@@ -3739,8 +3751,8 @@ export const AdminDashboard = () => {
                 )}
               </div>
 
-              {/* Driver Assignment - RETURN (only if return trip booked) */}
-              {selectedBooking.bookReturn && (
+              {/* Driver Assignment - RETURN (show when bookReturn flag is set OR returnDate exists) */}
+              {(selectedBooking.bookReturn || selectedBooking.returnDate) && (
                 <div className="mt-4 pt-4 border-t border-dashed">
                   <h3 className="font-semibold text-gray-900 mb-3">
                     🔄 Return Driver <span className="text-sm font-normal text-gray-500">(Return on {formatDate(selectedBooking.returnDate)} at {selectedBooking.returnTime})</span>
