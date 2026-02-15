@@ -20,6 +20,7 @@ In **Render** → your backend service → **Environment**, add:
 
 | Variable | Value |
 |----------|-------|
+| `EMAIL_PROVIDER` | Set to `smtp` to force Google sending (recommended if you don’t want Mailgun used at all) |
 | `SMTP_USER` | Your Google Workspace email (e.g. `info@bookaride.co.nz`) |
 | `SMTP_PASS` | The 16-character App Password (no spaces) |
 | `NOREPLY_EMAIL` | Address for customer confirmations (e.g. `noreply@bookaride.co.nz`) |
@@ -40,8 +41,10 @@ Click **Manual Deploy** in Render so the new env vars are picked up.
 
 ## How It Works
 
-- **Mailgun** is used first if `MAILGUN_API_KEY` and `MAILGUN_DOMAIN` are set.
-- **Google Workspace SMTP** is used if Mailgun is not configured but `SMTP_USER` and `SMTP_PASS` are set.
+- Set `EMAIL_PROVIDER=smtp` to **always** send via Google Workspace/Gmail SMTP.
+- If `EMAIL_PROVIDER` is not set (defaults to `auto`):
+  - **Mailgun** is used first if `MAILGUN_API_KEY` and `MAILGUN_DOMAIN` are set.
+  - **Google Workspace SMTP** is used as fallback if `SMTP_USER` and `SMTP_PASS` are set.
 - You can use either Mailgun or Google Workspace; you don’t need both.
 
 ## Sending from noreply@
