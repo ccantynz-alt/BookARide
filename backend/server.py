@@ -11,6 +11,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict, model_validator
 from typing import List, Optional, Dict
 import uuid
+import math
 from datetime import datetime, timezone, timedelta
 import requests
 import httpx
@@ -79,6 +80,9 @@ def run_sync_task_with_args(sync_func, arg1, arg2, task_description="background 
 ROOT_DIR = Path(__file__).parent
 sys.path.insert(0, str(ROOT_DIR))
 load_dotenv(ROOT_DIR / '.env')
+
+# Defaults (can be overridden by env vars in production)
+DEFAULT_ADMIN_EMAIL = os.environ.get("DEFAULT_ADMIN_EMAIL", "bookings@bookerride.co.nz")
 
 # MongoDB connection
 mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
@@ -1253,6 +1257,99 @@ def _geocode_geoapify(address: str, api_key: str) -> tuple:
         logger.warning(f"Geoapify geocode error for '{address[:50]}...': {e}")
     return (None, None)
 
+def _geocode_nominatim(address: str) -> tuple:
+    """
+    Free fallback geocoder (OpenStreetMap Nominatim).
+    Returns (lat, lon) or (None, None).
+    Used only when paid routing APIs are unavailable/failing to avoid 25km defaults.
+    """
+    try:
+        if not address or not str(address).strip():
+            return (None, None)
+        url = "https://nominatim.openstreetmap.org/search"
+        params = {
+            "q": address,
+            "format": "json",
+            "limit": 1,
+            "countrycodes": "nz",
+        }
+        headers = {
+            # Nominatim requires an identifying User-Agent
+            "User-Agent": os.environ.get("NOMINATIM_USER_AGENT", "BookaRide/1.0 (ops@bookaride.co.nz)"),
+            "Accept-Language": "en-NZ,en;q=0.9",
+        }
+        r = requests.get(url, params=params, headers=headers, timeout=10)
+        data = r.json()
+        if isinstance(data, list) and data:
+            lat = float(data[0].get("lat"))
+            lon = float(data[0].get("lon"))
+            return (lat, lon)
+    except Exception as e:
+        logger.warning(f"Nominatim geocode error for '{str(address)[:50]}...': {e}")
+    return (None, None)
+
+
+def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Great-circle distance in kilometers."""
+    # Earth radius (km)
+    r = 6371.0
+    phi1 = math.radians(lat1)
+    phi2 = math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlambda = math.radians(lon2 - lon1)
+    a = math.sin(dphi / 2.0) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2.0) ** 2
+    c = 2.0 * math.asin(math.sqrt(a))
+    return r * c
+
+
+def _estimate_distance_km_from_waypoints(addresses: list, geoapify_key: str = "") -> float | None:
+    """
+    Estimate driving distance by:
+    - geocoding each waypoint (Geoapify if available, otherwise Nominatim)
+    - summing straight-line distances between consecutive waypoints
+    - applying a configurable multiplier to approximate road distance
+    """
+    try:
+        if not addresses:
+            return None
+        cleaned = [a.strip() for a in addresses if a and str(a).strip()]
+        if len(cleaned) < 2:
+            return None
+
+        coords: list[tuple[float, float]] = []
+        for addr in cleaned:
+            lat, lon = (None, None)
+            if geoapify_key:
+                lat, lon = _geocode_geoapify(addr, geoapify_key)
+            if lat is None or lon is None:
+                lat, lon = _geocode_nominatim(addr)
+            if lat is None or lon is None:
+                return None
+            coords.append((lat, lon))
+
+        if len(coords) < 2:
+            return None
+
+        crow_km = 0.0
+        for (lat1, lon1), (lat2, lon2) in zip(coords[:-1], coords[1:]):
+            crow_km += _haversine_km(lat1, lon1, lat2, lon2)
+
+        # Convert straight-line distance to approximate driving distance
+        factor_raw = os.environ.get("DISTANCE_ESTIMATE_FACTOR", "1.25")
+        try:
+            factor = max(1.05, float(factor_raw))
+        except Exception:
+            factor = 1.25
+
+        est = crow_km * factor
+        # Avoid pathological 0/near-0 results due to geocoder ambiguity
+        if est < 0.5:
+            return None
+        return round(est, 2)
+    except Exception as e:
+        logger.warning(f"Distance estimate fallback failed: {e}")
+        return None
+
 
 # Canonical addresses for reliable routing (Geoapify can mis-geocode variants like "Shared Path")
 _CANONICAL_AIRPORT = "Auckland Airport, Ray Emery Drive, Mangere, Auckland 2022, New Zealand"
@@ -1307,6 +1404,7 @@ async def calculate_price(request: PriceCalculationRequest):
         google_api_key = os.environ.get('GOOGLE_MAPS_API_KEY', '')
         
         distance_km = None
+        pickup_count = 1 + len([addr for addr in (request.pickupAddresses or []) if addr and str(addr).strip()])
         if geoapify_key:
             # Route: pickup -> additional pickups -> dropoff
             waypoint_addrs = [a for a in (request.pickupAddresses or []) if a and a.strip()]
@@ -1349,7 +1447,7 @@ async def calculate_price(request: PriceCalculationRequest):
                     logger.info(f"Multi-stop route: {len(all_pickups)} pickups ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ dropoff, total: {distance_km}km")
                 else:
                     logger.warning(f"Google Maps Directions API error: {data.get('error_message', data.get('status'))}")
-                    distance_km = 25.0 * len(all_pickups)  # Fallback: estimate per stop
+                    distance_km = None
             else:
                 # Single pickup - use Distance Matrix API
                 url = "https://maps.googleapis.com/maps/api/distancematrix/json"
@@ -1370,15 +1468,27 @@ async def calculate_price(request: PriceCalculationRequest):
                         distance_km = round(distance_meters / 1000, 2)
                     else:
                         logger.warning(f"Google Maps element status: {element.get('status')}")
-                        distance_km = 25.0  # Fallback
+                        distance_km = None
                 else:
                     logger.warning(f"Google Maps API error: {data.get('error_message', data.get('status'))}")
-                    distance_km = 25.0  # Fallback
-        else:
-            # Fallback: estimate based on number of stops
-            pickup_count = 1 + len([addr for addr in (request.pickupAddresses or []) if addr])
-            distance_km = 25.0 * pickup_count  # Default estimate per stop
-            logger.warning(f"Google Maps API key not found. Using default distance estimate: {distance_km}km for {pickup_count} stops")
+                    distance_km = None
+
+        # Final fallback: estimate via waypoint geocoding instead of hard 25km
+        if distance_km is None:
+            try:
+                waypoint_addrs = [request.pickupAddress] + [a for a in (request.pickupAddresses or []) if a and str(a).strip()] + [request.dropoffAddress]
+                waypoint_addrs = [_normalize_address_for_routing(a) for a in waypoint_addrs]
+                est_km = _estimate_distance_km_from_waypoints(waypoint_addrs, geoapify_key=geoapify_key or "")
+                if est_km is not None:
+                    distance_km = est_km
+                    logger.warning(f"Using estimated distance (geocode+haversine) because routing failed/unavailable: {distance_km}km for {pickup_count} stops")
+            except Exception as e:
+                logger.warning(f"Failed to compute estimated distance fallback: {e}")
+
+        # Absolute last resort (should be rare)
+        if distance_km is None:
+            distance_km = 25.0 * pickup_count
+            logger.error(f"Distance calculation failed (no Geoapify/Google/estimate). Using hard fallback: {distance_km}km for {pickup_count} stops")
         
         # Calculate pricing with tiered rates - FLAT RATE per bracket
         # The rate is determined by which distance bracket the trip falls into
@@ -2031,7 +2141,7 @@ async def send_booking_to_admin(booking_id: str, current_admin: dict = Depends(g
             raise HTTPException(status_code=404, detail="Booking not found")
         
         # Get admin email from environment or use default
-        admin_email = os.environ.get('ADMIN_EMAIL', 'admin@bookaride.co.nz')
+        admin_email = os.environ.get('ADMIN_EMAIL', DEFAULT_ADMIN_EMAIL)
         
         # Send via Mailgun
         mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
@@ -3707,12 +3817,12 @@ async def cron_send_reminders(api_key: str = None):
 
 def _get_booking_notification_emails() -> list:
     """Emails to receive new booking copies. BOOKINGS_NOTIFICATION_EMAIL or ADMIN_EMAIL, default bookings@"""
-    raw = os.environ.get('BOOKINGS_NOTIFICATION_EMAIL') or os.environ.get('ADMIN_EMAIL', 'bookings@bookaride.co.nz')
+    raw = os.environ.get('BOOKINGS_NOTIFICATION_EMAIL') or os.environ.get('ADMIN_EMAIL', DEFAULT_ADMIN_EMAIL)
     return [e.strip() for e in str(raw).split(',') if e.strip()]
 
 
 async def send_booking_notification_to_admin(booking: dict):
-    """Automatically send booking notification to admin email(s) - bookings@bookaride.co.nz by default"""
+    """Automatically send booking notification to admin email(s) - bookings@bookerride.co.nz by default"""
     try:
         admin_emails = _get_booking_notification_emails()
         formatted_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
@@ -3722,7 +3832,7 @@ async def send_booking_notification_to_admin(booking: dict):
         html_content = generate_confirmation_email_html(booking, for_admin=True)
         
         subject = f"New Booking - {booking.get('name', 'Customer')} - {formatted_date} - Ref: {booking_ref}"
-        reply_to = os.environ.get("ADMIN_EMAIL", "info@bookaride.co.nz").split(',')[0].strip()
+        reply_to = os.environ.get("ADMIN_EMAIL", DEFAULT_ADMIN_EMAIL).split(',')[0].strip()
         email_sent = False
         if send_email_unified:
             for admin_email in admin_emails:
@@ -3874,7 +3984,7 @@ async def send_urgent_approval_notification(booking: dict):
         """
         
         subject = f"URGENT APPROVAL - {booking.get('name', 'Customer')} - {formatted_date} {booking.get('time', '')} - Ref: {booking_ref}"
-        recipient = admin_emails[0] if admin_emails else "bookings@bookaride.co.nz"
+        recipient = admin_emails[0] if admin_emails else DEFAULT_ADMIN_EMAIL
         email_sent = False
         
         # Try unified sender first (SMTP/Mailgun)
@@ -5950,7 +6060,7 @@ async def twilio_sms_webhook(request: Request):
                     
                     # Notify admin of driver acknowledgment
                     try:
-                        admin_email = os.environ.get('ADMIN_EMAIL', 'bookings@bookaride.co.nz')
+                        admin_email = os.environ.get('ADMIN_EMAIL', DEFAULT_ADMIN_EMAIL)
                         mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
                         mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
                         sender_email = os.environ.get('SENDER_EMAIL', 'noreply@mg.bookaride.co.nz')
@@ -9184,7 +9294,7 @@ async def submit_driver_application(application: DriverApplication):
         # Send notification email to admin
         mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
         mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
-        admin_email = os.environ.get('ADMIN_EMAIL', 'bookings@bookaride.co.nz')
+        admin_email = os.environ.get('ADMIN_EMAIL', DEFAULT_ADMIN_EMAIL)
         
         if mailgun_api_key and mailgun_domain:
             html_content = f"""
