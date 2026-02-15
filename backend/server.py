@@ -36,6 +36,8 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 import vobject
 import asyncio
+import math
+from functools import lru_cache
 
 try:
     from email_sender import send_email as send_email_unified, get_noreply_email
@@ -1268,6 +1270,131 @@ def _normalize_address_for_routing(address: str) -> str:
     return address.strip()
 
 
+def _get_env_first(*names: str) -> str:
+    """Return the first non-empty environment variable value from names."""
+    for name in names:
+        val = os.environ.get(name)
+        if val is None:
+            continue
+        val = str(val).strip()
+        if val:
+            return val
+    return ""
+
+
+def _get_geoapify_key() -> str:
+    # Support both backend-style and frontend-style env names to reduce misconfig.
+    return _get_env_first("GEOAPIFY_API_KEY", "REACT_APP_GEOAPIFY_API_KEY", "GEOAPIFY_KEY")
+
+
+def _get_google_maps_key() -> str:
+    return _get_env_first("GOOGLE_MAPS_API_KEY", "REACT_APP_GOOGLE_MAPS_API_KEY", "GOOGLE_API_KEY")
+
+
+def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Great-circle distance between two points in km."""
+    # Earth radius (km)
+    r = 6371.0
+    phi1 = math.radians(lat1)
+    phi2 = math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlambda = math.radians(lon2 - lon1)
+    a = (math.sin(dphi / 2) ** 2) + math.cos(phi1) * math.cos(phi2) * (math.sin(dlambda / 2) ** 2)
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return r * c
+
+
+def _haversine_route_km(coords: list) -> float:
+    """Sum haversine distances over consecutive coordinate pairs."""
+    total = 0.0
+    for i in range(1, len(coords)):
+        lat1, lon1 = coords[i - 1]
+        lat2, lon2 = coords[i]
+        total += _haversine_km(lat1, lon1, lat2, lon2)
+    return total
+
+
+@lru_cache(maxsize=2000)
+def _geocode_nominatim(address: str) -> tuple:
+    """Geocode using OpenStreetMap Nominatim. Returns (lat, lon) or (None, None)."""
+    try:
+        if not address or not address.strip():
+            return (None, None)
+        url = "https://nominatim.openstreetmap.org/search"
+        params = {
+            "q": address,
+            "format": "json",
+            "limit": 1,
+            "countrycodes": "nz",
+        }
+        headers = {
+            "User-Agent": "bookaride-distance/1.0 (bookaride.co.nz)",
+        }
+        r = requests.get(url, params=params, headers=headers, timeout=12)
+        data = r.json()
+        if isinstance(data, list) and data:
+            return (float(data[0]["lat"]), float(data[0]["lon"]))
+    except Exception as e:
+        logger.warning(f"Nominatim geocode error for '{address[:50]}...': {e}")
+    return (None, None)
+
+
+@lru_cache(maxsize=2000)
+def _geocode_google(address: str, api_key: str) -> tuple:
+    """Geocode using Google Geocoding API. Returns (lat, lon) or (None, None)."""
+    try:
+        if not api_key:
+            return (None, None)
+        url = "https://maps.googleapis.com/maps/api/geocode/json"
+        params = {"address": address, "key": api_key}
+        r = requests.get(url, params=params, timeout=12)
+        data = r.json()
+        if data.get("status") == "OK" and data.get("results"):
+            loc = data["results"][0].get("geometry", {}).get("location", {})
+            lat = loc.get("lat")
+            lon = loc.get("lng")
+            if lat is not None and lon is not None:
+                return (float(lat), float(lon))
+    except Exception as e:
+        logger.warning(f"Google geocode error for '{address[:50]}...': {e}")
+    return (None, None)
+
+
+def _get_distance_osrm(coords_list: list) -> float | None:
+    """Driving distance in km using OSRM public routing. Returns None on failure."""
+    try:
+        if not coords_list or len(coords_list) < 2:
+            return None
+        # OSRM expects lon,lat pairs.
+        coord_str = ";".join([f"{lon},{lat}" for (lat, lon) in coords_list])
+        url = f"https://router.project-osrm.org/route/v1/driving/{coord_str}"
+        params = {"overview": "false"}
+        headers = {"User-Agent": "bookaride-distance/1.0 (bookaride.co.nz)"}
+        r = requests.get(url, params=params, headers=headers, timeout=15)
+        data = r.json()
+        if data.get("code") == "Ok" and data.get("routes"):
+            dist_m = data["routes"][0].get("distance")
+            if dist_m is not None:
+                return round(float(dist_m) / 1000.0, 2)
+    except Exception as e:
+        logger.warning(f"OSRM routing error: {e}")
+    return None
+
+
+def _geocode_best_effort(address: str, geoapify_key: str = "", google_api_key: str = "") -> tuple:
+    """Geocode using Geoapify -> Google -> Nominatim (last resort)."""
+    addr = _normalize_address_for_routing(address)
+    if geoapify_key:
+        lat, lon = _geocode_geoapify(addr, geoapify_key)
+        if lat is not None and lon is not None:
+            return (lat, lon)
+    if google_api_key:
+        lat, lon = _geocode_google(addr, google_api_key)
+        if lat is not None and lon is not None:
+            return (lat, lon)
+    return _geocode_nominatim(addr)
+
+
 def _get_distance_geoapify(pickup_address: str, dropoff_address: str, waypoint_addresses: list, api_key: str) -> float | None:
     """Get driving distance in km via Geoapify Routing API. Returns None on failure."""
     try:
@@ -1302,11 +1429,13 @@ def _get_distance_geoapify(pickup_address: str, dropoff_address: str, waypoint_a
 @api_router.post("/calculate-price", response_model=PricingBreakdown)
 async def calculate_price(request: PriceCalculationRequest):
     try:
-        # Prefer Geoapify, then Google Maps, then fallback estimate
-        geoapify_key = os.environ.get('GEOAPIFY_API_KEY', '')
-        google_api_key = os.environ.get('GOOGLE_MAPS_API_KEY', '')
-        
+        # Prefer Geoapify, then Google Maps, then OSRM/Nominatim fallback.
+        # IMPORTANT: Do NOT silently default to "25km" – that creates incorrect quotes.
+        geoapify_key = _get_geoapify_key()
+        google_api_key = _get_google_maps_key()
+
         distance_km = None
+        distance_source = None
         if geoapify_key:
             # Route: pickup -> additional pickups -> dropoff
             waypoint_addrs = [a for a in (request.pickupAddresses or []) if a and a.strip()]
@@ -1317,6 +1446,7 @@ async def calculate_price(request: PriceCalculationRequest):
                 geoapify_key
             )
             if distance_km is not None:
+                distance_source = "geoapify"
                 logger.info(f"Geoapify route distance: {distance_km}km")
         
         if distance_km is None and google_api_key:
@@ -1336,7 +1466,7 @@ async def calculate_price(request: PriceCalculationRequest):
                     'waypoints': waypoints,  # Intermediate pickups
                     'key': google_api_key
                 }
-                response = requests.get(url, params=params)
+                response = requests.get(url, params=params, timeout=15)
                 data = response.json()
                 
                 logger.info(f"Google Maps Directions API (multi-stop) response status: {data.get('status')}")
@@ -1346,10 +1476,10 @@ async def calculate_price(request: PriceCalculationRequest):
                     # Sum all leg distances
                     total_distance_meters = sum(leg['distance']['value'] for leg in route['legs'])
                     distance_km = round(total_distance_meters / 1000, 2)
+                    distance_source = "google_directions"
                     logger.info(f"Multi-stop route: {len(all_pickups)} pickups ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ dropoff, total: {distance_km}km")
                 else:
                     logger.warning(f"Google Maps Directions API error: {data.get('error_message', data.get('status'))}")
-                    distance_km = 25.0 * len(all_pickups)  # Fallback: estimate per stop
             else:
                 # Single pickup - use Distance Matrix API
                 url = "https://maps.googleapis.com/maps/api/distancematrix/json"
@@ -1358,27 +1488,52 @@ async def calculate_price(request: PriceCalculationRequest):
                     'destinations': request.dropoffAddress,
                     'key': google_api_key
                 }
-                response = requests.get(url, params=params)
+                response = requests.get(url, params=params, timeout=15)
                 data = response.json()
                 
-                logger.info(f"Google Maps Distance Matrix API response: {data}")
+                logger.info(f"Google Maps Distance Matrix API response status: {data.get('status')}")
                 
                 if data['status'] == 'OK' and len(data['rows']) > 0 and len(data['rows'][0]['elements']) > 0:
                     element = data['rows'][0]['elements'][0]
                     if element['status'] == 'OK':
                         distance_meters = element['distance']['value']
                         distance_km = round(distance_meters / 1000, 2)
+                        distance_source = "google_distance_matrix"
                     else:
                         logger.warning(f"Google Maps element status: {element.get('status')}")
-                        distance_km = 25.0  # Fallback
                 else:
                     logger.warning(f"Google Maps API error: {data.get('error_message', data.get('status'))}")
-                    distance_km = 25.0  # Fallback
-        else:
-            # Fallback: estimate based on number of stops
-            pickup_count = 1 + len([addr for addr in (request.pickupAddresses or []) if addr])
-            distance_km = 25.0 * pickup_count  # Default estimate per stop
-            logger.warning(f"Google Maps API key not found. Using default distance estimate: {distance_km}km for {pickup_count} stops")
+
+        # Last resort: OSRM route (geocode via Geoapify/Google/Nominatim)
+        if distance_km is None:
+            all_stops = [request.pickupAddress] + [a for a in (request.pickupAddresses or []) if a and a.strip()] + [request.dropoffAddress]
+            coords = []
+            for addr in all_stops:
+                lat, lon = _geocode_best_effort(addr, geoapify_key=geoapify_key, google_api_key=google_api_key)
+                if lat is None or lon is None:
+                    coords = []
+                    break
+                coords.append((lat, lon))
+
+            if len(coords) >= 2:
+                distance_km = _get_distance_osrm(coords)
+                if distance_km is not None:
+                    distance_source = "osrm"
+                else:
+                    # Absolute last resort: straight-line estimate (avoid returning 25km).
+                    # This is only used when routing fails; we inflate to approximate roads.
+                    est_km = _haversine_route_km(coords) * 1.25
+                    if est_km > 0:
+                        distance_km = round(est_km, 2)
+                        distance_source = "haversine_estimate"
+
+        if distance_km is None or distance_km <= 0:
+            raise HTTPException(
+                status_code=503,
+                detail="Unable to calculate distance. Please check the addresses and try again, or contact us for help."
+            )
+
+        logger.info(f"Route distance ({distance_source or 'unknown'}): {distance_km}km")
         
         # Calculate pricing with tiered rates - FLAT RATE per bracket
         # The rate is determined by which distance bracket the trip falls into
@@ -2029,106 +2184,59 @@ async def send_booking_to_admin(booking_id: str, current_admin: dict = Depends(g
         booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
         if not booking:
             raise HTTPException(status_code=404, detail="Booking not found")
-        
-        # Get admin email from environment or use default
-        admin_email = os.environ.get('ADMIN_EMAIL', 'admin@bookaride.co.nz')
-        
-        # Send via Mailgun
-        mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
-        mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
-        sender_email = os.environ.get('SENDER_EMAIL', 'noreply@mg.bookaride.co.nz')
-        
-        if not mailgun_api_key or not mailgun_domain:
-            raise HTTPException(status_code=500, detail="Mailgun not configured")
-        
-        # Format booking details
-        total_price = booking.get('totalPrice', 0)
-        pricing = booking.get('pricing', {})
-        is_overridden = pricing.get('isOverridden', False)
-        
-        # Create HTML email content with all booking details
-        html_content = f"""
-        <html>
-            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <div style="background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%); color: white; padding: 20px; text-align: center; border-radius: 10px 10px 0 0;">
-                    <h1 style="margin: 0;">BookaRide.co.nz</h1>
-                    <p style="margin: 5px 0; font-size: 14px; color: rgba(255,255,255,0.9);">Admin Booking Notification</p>
-                </div>
-                
-                <div style="padding: 20px; background-color: #ffffff; border: 1px solid #e8e4d9; border-top: none;">
-                    <h2 style="color: #333; margin-top: 0;">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¹ Booking Details</h2>
-                    
-                    <div style="background-color: #faf8f3; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #D4AF37;">
-                        <p style="margin: 5px 0;"><strong>Booking Reference:</strong> {booking.get('id', '')[:8].upper()}</p>
-                        <p style="margin: 5px 0;"><strong>Status:</strong> <span style="color: {'#16a34a' if booking.get('status') == 'confirmed' else '#ea580c'}; font-weight: bold;">{booking.get('status', 'N/A').upper()}</span></p>
-                        <p style="margin: 5px 0;"><strong>Payment Status:</strong> {booking.get('payment_status', 'N/A')}</p>
-                        <p style="margin: 5px 0;"><strong>Created:</strong> {booking.get('createdAt', 'N/A')}</p>
-                    </div>
-                    
-                    <h3 style="color: #333; margin-top: 30px;">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¹Ã…â€œÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¤ Customer Information</h3>
-                    <div style="background-color: #faf8f3; padding: 15px; border-radius: 8px; margin: 15px 0;">
-                        <p style="margin: 5px 0;"><strong>Name:</strong> {booking.get('name', 'N/A')}</p>
-                        <p style="margin: 5px 0;"><strong>Email:</strong> <a href="mailto:{booking.get('email', 'N/A')}" style="color: #D4AF37;">{booking.get('email', 'N/A')}</a></p>
-                        <p style="margin: 5px 0;"><strong>Phone:</strong> <a href="tel:{booking.get('phone', 'N/A')}" style="color: #D4AF37;">{booking.get('phone', 'N/A')}</a></p>
-                    </div>
-                    
-                    <h3 style="color: #333; margin-top: 30px;">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â Trip Details</h3>
-                    <div style="background-color: #faf8f3; padding: 15px; border-radius: 8px; margin: 15px 0;">
-                        <p style="margin: 5px 0;"><strong>Service Type:</strong> {booking.get('serviceType', 'N/A').replace('-', ' ').title()}</p>
-                        <p style="margin: 5px 0;"><strong>Pickup:</strong> {booking.get('pickupAddress', 'N/A')}</p>
-                        <p style="margin: 5px 0;"><strong>Drop-off:</strong> {booking.get('dropoffAddress', 'N/A')}</p>
-                        <p style="margin: 5px 0;"><strong>Date:</strong> {booking.get('date', 'N/A')}</p>
-                        <p style="margin: 5px 0;"><strong>Time:</strong> {booking.get('time', 'N/A')}</p>
-                        <p style="margin: 5px 0;"><strong>Passengers:</strong> {booking.get('passengers', 'N/A')}</p>
-                    </div>
-                    
-                    <h3 style="color: #333; margin-top: 30px;">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â° Pricing Details</h3>
-                    <div style="background-color: #faf8f3; padding: 15px; border-radius: 8px; margin: 15px 0;">
-                        <p style="margin: 5px 0;"><strong>Distance:</strong> {pricing.get('distance', 0)} km</p>
-                        <p style="margin: 5px 0;"><strong>Base Price:</strong> ${pricing.get('basePrice', 0):.2f} NZD</p>
-                        {'<p style="margin: 5px 0;"><strong>Airport Fee:</strong> $' + f"{pricing.get('airportFee', 0):.2f}" + ' NZD</p>' if pricing.get('airportFee', 0) > 0 else ''}
-                        {'<p style="margin: 5px 0;"><strong>Passenger Fee:</strong> $' + f"{pricing.get('passengerFee', 0):.2f}" + ' NZD</p>' if pricing.get('passengerFee', 0) > 0 else ''}
-                        <hr style="border: 0; border-top: 2px solid #D4AF37; margin: 15px 0;">
-                        <p style="margin: 5px 0; font-size: 18px;"><strong>Total Price:</strong> <span style="color: #D4AF37; font-size: 20px;">${total_price:.2f} NZD</span></p>
-                        {f'<p style="margin: 5px 0; color: #ea580c; font-size: 12px;">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â Price was manually overridden</p>' if is_overridden else ''}
-                    </div>
-                    
-                    {'<h3 style="color: #333; margin-top: 30px;">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã¢â‚¬Â¹ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â Flight Information</h3><div style="background-color: #faf8f3; padding: 15px; border-radius: 8px; margin: 15px 0;"><p style="margin: 5px 0;"><strong>Departure Flight:</strong> ' + booking.get('departureFlightNumber', 'N/A') + ' at ' + booking.get('departureTime', 'N/A') + '</p><p style="margin: 5px 0;"><strong>Arrival Flight:</strong> ' + booking.get('arrivalFlightNumber', 'N/A') + ' at ' + booking.get('arrivalTime', 'N/A') + '</p></div>' if booking.get('departureFlightNumber') or booking.get('arrivalFlightNumber') else ''}
-                    
-                    {f'<h3 style="color: #333; margin-top: 30px;">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â Special Notes</h3><div style="background-color: #fff8e6; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #D4AF37;"><p style="margin: 0;">{booking.get("notes", "")}</p></div>' if booking.get('notes') else ''}
-                    
-                    <div style="margin-top: 30px; padding: 15px; background-color: #fff8e6; border-radius: 8px; border-left: 4px solid #D4AF37;">
-                        <p style="margin: 0; color: #333;"><strong>ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ Quick Actions:</strong></p>
-                        <p style="margin: 5px 0; font-size: 14px;">Log in to your <a href="https://bookaride.co.nz/admin/login" style="color: #D4AF37; text-decoration: none; font-weight: bold;">Admin Dashboard</a> to manage this booking.</p>
-                    </div>
-                </div>
-                
-                <div style="background: #faf8f3; color: #666; padding: 15px; text-align: center; font-size: 12px; border-radius: 0 0 10px 10px; border: 1px solid #e8e4d9; border-top: none;">
-                    <p style="margin: 0;"><span style="color: #D4AF37; font-weight: bold;">BookaRide NZ</span> Admin System</p>
-                    <p style="margin: 5px 0;">bookaride.co.nz | +64 21 743 321</p>
-                </div>
-            </body>
-        </html>
-        """
-        
-        # Send email via Mailgun API
-        response = requests.post(
-            f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
-            auth=("api", mailgun_api_key),
-            data={
-                "from": f"BookaRide System <{sender_email}>",
-                "to": admin_email,
-                "subject": f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¹ Booking Details - {booking.get('name', 'Customer')} - {booking.get('id', '')[:8].upper()}",
-                "html": html_content
-            }
-        )
-        
-        if response.status_code == 200:
-            logger.info(f"Booking details sent to admin: {admin_email} - Booking: {booking_id}")
-            return {"message": f"Booking details sent to {admin_email}"}
+
+        booking_ref = get_booking_reference(booking)
+        admin_emails = _get_booking_notification_emails()
+        if not admin_emails:
+            admin_emails = [os.environ.get('ADMIN_EMAIL', 'bookings@bookaride.co.nz')]
+
+        subject = f"Booking Details - {booking.get('name', 'Customer')} - Ref: {booking_ref}"
+        html_content = generate_confirmation_email_html(booking, for_admin=True)
+        reply_to = os.environ.get("ADMIN_EMAIL", "info@bookaride.co.nz").split(',')[0].strip()
+
+        sent_any = False
+        if send_email_unified:
+            for admin_email in admin_emails:
+                try:
+                    if send_email_unified(
+                        admin_email,
+                        subject,
+                        html_content,
+                        from_email=get_noreply_email(),
+                        from_name="BookaRide System",
+                        reply_to=reply_to,
+                    ):
+                        sent_any = True
+                except Exception as e:
+                    logger.error(f"Error sending admin copy to {admin_email}: {e}")
         else:
-            logger.error(f"Mailgun error: {response.status_code} - {response.text}")
-            raise HTTPException(status_code=500, detail=f"Failed to send email: {response.text}")
+            mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
+            mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
+            sender_email = get_noreply_email()
+            if not mailgun_api_key or not mailgun_domain:
+                raise HTTPException(status_code=500, detail="Email not configured (Mailgun or SMTP)")
+            for admin_email in admin_emails:
+                response = requests.post(
+                    f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
+                    auth=("api", mailgun_api_key),
+                    data={
+                        "from": f"BookaRide System <{sender_email}>",
+                        "to": admin_email,
+                        "subject": subject,
+                        "html": html_content,
+                    },
+                    timeout=15,
+                )
+                if response.status_code == 200:
+                    sent_any = True
+                else:
+                    logger.error(f"Mailgun error sending to {admin_email}: {response.status_code} - {response.text}")
+
+        if not sent_any:
+            raise HTTPException(status_code=500, detail="Failed to send booking details to admin mailbox")
+
+        logger.info(f"Booking details sent to admin mailbox for booking {booking_ref}: {admin_emails}")
+        return {"message": f"Booking details sent to {', '.join(admin_emails)}"}
         
     except HTTPException:
         raise
@@ -2374,7 +2482,8 @@ def send_via_mailgun(booking: dict):
         response = requests.post(
             f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
             auth=("api", mailgun_api_key),
-            data=email_data
+            data=email_data,
+            timeout=15
         )
         
         if response.status_code == 200:
@@ -2455,19 +2564,45 @@ def send_booking_confirmation_sms(booking: dict):
         formatted_time = format_time_ampm(booking.get('time', 'N/A'))
         booking_ref = get_booking_reference(booking)
         
-        # Get flight number
-        flight_num = booking.get('flightNumber') or booking.get('departureFlightNumber') or booking.get('arrivalFlightNumber') or ''
-        flight_text = f"\nFlight: {flight_num}" if flight_num else ""
+        # Outbound flight details (support both customer + admin field names)
+        dep_flight = (booking.get('departureFlightNumber') or booking.get('flightDepartureNumber') or '').strip()
+        arr_flight = (booking.get('arrivalFlightNumber') or booking.get('flightArrivalNumber') or '').strip()
+        dep_time = (booking.get('departureTime') or booking.get('flightDepartureTime') or '').strip()
+        arr_time = (booking.get('arrivalTime') or booking.get('flightArrivalTime') or '').strip()
+        general_flight = (booking.get('flightNumber') or '').strip()
+
+        flight_text = ""
+        if dep_flight:
+            flight_text = f"\nFlight: {dep_flight}"
+            if dep_time:
+                flight_text += f" at {format_time_ampm(dep_time)}"
+        elif arr_flight:
+            flight_text = f"\nFlight: {arr_flight}"
+            if arr_time:
+                flight_text += f" at {format_time_ampm(arr_time)}"
+        elif general_flight:
+            flight_text = f"\nFlight: {general_flight}"
         
         # Get return trip info
         return_text = ""
         if booking.get('bookReturn') or booking.get('returnDate'):
             return_date = format_date_ddmmyyyy(booking.get('returnDate', ''))
             return_time = format_time_ampm(booking.get('returnTime', ''))
-            return_flight = booking.get('returnFlightNumber') or booking.get('returnDepartureFlightNumber') or ''
+            return_flight = (booking.get('returnFlightNumber') or booking.get('returnDepartureFlightNumber') or '').strip()
+            return_dep_time = (booking.get('returnDepartureTime') or '').strip()
+            return_arr_flight = (booking.get('returnArrivalFlightNumber') or '').strip()
+            return_arr_time = (booking.get('returnArrivalTime') or '').strip()
             return_text = f"\n\nÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¾ Return: {return_date} at {return_time}"
             if return_flight:
                 return_text += f"\nReturn Flight: {return_flight}"
+                if return_dep_time:
+                    return_text += f" at {format_time_ampm(return_dep_time)}"
+            if return_arr_flight and return_arr_flight != return_flight:
+                return_text += f"\nReturn Arrival: {return_arr_flight}"
+                if return_arr_time:
+                    return_text += f" at {format_time_ampm(return_arr_time)}"
+            elif return_arr_time and (not return_dep_time):
+                return_text += f"\nReturn Arrival Time: {format_time_ampm(return_arr_time)}"
         
         # Get pricing
         pricing = booking.get('pricing', {})
@@ -4681,17 +4816,15 @@ async def resend_booking_confirmation(booking_id: str, current_admin: dict = Dep
         
         # Send confirmation email
         try:
-            send_booking_confirmation_email(booking)
-            email_sent = True
-            logger.info(f"Confirmation email resent for booking {booking_id}")
+            email_sent = bool(send_booking_confirmation_email(booking))
+            logger.info(f"Confirmation email resend {'succeeded' if email_sent else 'failed'} for booking {booking_id}")
         except Exception as e:
             logger.error(f"Failed to resend email for booking {booking_id}: {str(e)}")
         
         # Send confirmation SMS
         try:
-            send_booking_confirmation_sms(booking)
-            sms_sent = True
-            logger.info(f"Confirmation SMS resent for booking {booking_id}")
+            sms_sent = bool(send_booking_confirmation_sms(booking))
+            logger.info(f"Confirmation SMS resend {'succeeded' if sms_sent else 'failed'} for booking {booking_id}")
         except Exception as e:
             logger.error(f"Failed to resend SMS for booking {booking_id}: {str(e)}")
         
@@ -4802,12 +4935,16 @@ def _get_booking_email_data(booking: dict) -> dict:
     pickup_addresses = [a for a in (booking.get('pickupAddresses') or []) if a and a.strip()]
     dropoff_address = booking.get('dropoffAddress', 'N/A')
     # Flight info - check all possible field names
-    departure_flight = (booking.get('departureFlightNumber') or booking.get('flightNumber') or '').strip()
-    arrival_flight = (booking.get('arrivalFlightNumber') or booking.get('flightNumber') or '').strip()
-    if not arrival_flight and departure_flight:
-        arrival_flight = departure_flight  # Fallback
-    departure_time = (booking.get('departureTime') or '').strip()
-    arrival_time = (booking.get('arrivalTime') or '').strip()
+    # Customer booking form uses departureFlightNumber/arrivalFlightNumber.
+    # Admin manual/edit flows use flightDepartureNumber/flightArrivalNumber.
+    general_flight = (booking.get('flightNumber') or '').strip()
+    departure_flight = (booking.get('departureFlightNumber') or booking.get('flightDepartureNumber') or '').strip()
+    arrival_flight = (booking.get('arrivalFlightNumber') or booking.get('flightArrivalNumber') or '').strip()
+    # Older imports may only have a single flightNumber; show it once.
+    if not departure_flight and not arrival_flight and general_flight:
+        departure_flight = general_flight
+    departure_time = (booking.get('departureTime') or booking.get('flightDepartureTime') or '').strip()
+    arrival_time = (booking.get('arrivalTime') or booking.get('flightArrivalTime') or '').strip()
     return_flight = (booking.get('returnFlightNumber') or booking.get('returnDepartureFlightNumber') or '').strip()
     return_arrival = (booking.get('returnArrivalFlightNumber') or '').strip()
     return_departure_time = (booking.get('returnDepartureTime') or '').strip()
@@ -4882,9 +5019,13 @@ def generate_confirmation_email_html(booking: dict, for_admin: bool = False) -> 
         return_time = d['return_time']
         return_flight = d['return_flight']
         return_arrival_flight = d['return_arrival']
+        return_departure_time = d.get('return_departure_time', '')
+        return_arrival_time = d.get('return_arrival_time', '')
         
         formatted_return_date = format_date_ddmmyyyy(return_date) if return_date else 'TBC'
         formatted_return_time = format_time_ampm(return_time) if return_time else 'TBC'
+        formatted_return_departure_time = format_time_ampm(return_departure_time) if return_departure_time else ''
+        formatted_return_arrival_time = format_time_ampm(return_arrival_time) if return_arrival_time else ''
         
         return_section_html = f'''
                         <!-- Return Trip -->
@@ -4912,7 +5053,9 @@ def generate_confirmation_email_html(booking: dict, for_admin: bool = False) -> 
                             <td style="padding: 12px 20px; color: #1a1a1a; font-size: 14px; border-bottom: 1px solid #f0f0f0;">{primary_pickup}</td>
                         </tr>
                         {'<tr><td style="padding: 12px 20px; color: #666; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Return Flight</td><td style="padding: 12px 20px; color: #1a1a1a; font-size: 14px; font-weight: 600; border-bottom: 1px solid #f0f0f0;">' + return_flight + '</td></tr>' if return_flight else ''}
+                        {'<tr><td style="padding: 12px 20px; color: #666; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Return Flight Time</td><td style="padding: 12px 20px; color: #1a1a1a; font-size: 14px; font-weight: 500; border-bottom: 1px solid #f0f0f0;">' + formatted_return_departure_time + '</td></tr>' if formatted_return_departure_time else ''}
                         {'<tr><td style="padding: 12px 20px; color: #666; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Return Arrival Flight</td><td style="padding: 12px 20px; color: #1a1a1a; font-size: 14px; font-weight: 600; border-bottom: 1px solid #f0f0f0;">' + return_arrival_flight + '</td></tr>' if return_arrival_flight and return_arrival_flight != return_flight else ''}
+                        {'<tr><td style="padding: 12px 20px; color: #666; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Return Arrival Time</td><td style="padding: 12px 20px; color: #1a1a1a; font-size: 14px; font-weight: 500; border-bottom: 1px solid #f0f0f0;">' + formatted_return_arrival_time + '</td></tr>' if formatted_return_arrival_time else ''}
         '''
     
     # Build additional stops for outbound
