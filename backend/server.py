@@ -1307,78 +1307,98 @@ async def calculate_price(request: PriceCalculationRequest):
         google_api_key = os.environ.get('GOOGLE_MAPS_API_KEY', '')
         
         distance_km = None
-        if geoapify_key:
-            # Route: pickup -> additional pickups -> dropoff
-            waypoint_addrs = [a for a in (request.pickupAddresses or []) if a and a.strip()]
-            distance_km = _get_distance_geoapify(
-                request.pickupAddress,
-                request.dropoffAddress,
-                waypoint_addrs,
-                geoapify_key
-            )
-            if distance_km is not None:
-                logger.info(f"Geoapify route distance: {distance_km}km")
+        distance_source = "none"
         
+        # --- ATTEMPT 1: Geoapify (with retry) ---
+        if geoapify_key:
+            waypoint_addrs = [a for a in (request.pickupAddresses or []) if a and a.strip()]
+            for _attempt in range(2):
+                distance_km = _get_distance_geoapify(
+                    request.pickupAddress,
+                    request.dropoffAddress,
+                    waypoint_addrs,
+                    geoapify_key
+                )
+                if distance_km is not None:
+                    distance_source = "geoapify"
+                    logger.info(f"Geoapify route distance: {distance_km}km (attempt {_attempt + 1})")
+                    break
+                elif _attempt == 0:
+                    logger.warning("Geoapify attempt 1 failed, retrying...")
+                    import time as _time; _time.sleep(1)
+        
+        # --- ATTEMPT 2: Google Maps (with retry) ---
         if distance_km is None and google_api_key:
-            # Build list of all stops: first pickup + additional pickups + dropoff
             all_pickups = [request.pickupAddress]
             if request.pickupAddresses:
                 all_pickups.extend([addr for addr in request.pickupAddresses if addr])
             
-            # If multiple pickups, use Directions API for route optimization
-            if len(all_pickups) > 1:
-                # Use Directions API with waypoints for multi-stop route
-                url = "https://maps.googleapis.com/maps/api/directions/json"
-                waypoints = "|".join(all_pickups[1:])  # All pickups except first
-                params = {
-                    'origin': all_pickups[0],  # First pickup
-                    'destination': request.dropoffAddress,  # Final dropoff
-                    'waypoints': waypoints,  # Intermediate pickups
-                    'key': google_api_key
-                }
-                response = requests.get(url, params=params)
-                data = response.json()
+            for _attempt in range(2):
+              try:
+                if len(all_pickups) > 1:
+                    url = "https://maps.googleapis.com/maps/api/directions/json"
+                    waypoints = "|".join(all_pickups[1:])
+                    params = {
+                        'origin': all_pickups[0],
+                        'destination': request.dropoffAddress,
+                        'waypoints': waypoints,
+                        'key': google_api_key
+                    }
+                    response = requests.get(url, params=params, timeout=15)
+                    data = response.json()
                 
-                logger.info(f"Google Maps Directions API (multi-stop) response status: {data.get('status')}")
-                
-                if data['status'] == 'OK' and len(data['routes']) > 0:
-                    route = data['routes'][0]
-                    # Sum all leg distances
-                    total_distance_meters = sum(leg['distance']['value'] for leg in route['legs'])
-                    distance_km = round(total_distance_meters / 1000, 2)
-                    logger.info(f"Multi-stop route: {len(all_pickups)} pickups ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ dropoff, total: {distance_km}km")
-                else:
-                    logger.warning(f"Google Maps Directions API error: {data.get('error_message', data.get('status'))}")
-                    distance_km = 25.0 * len(all_pickups)  # Fallback: estimate per stop
-            else:
-                # Single pickup - use Distance Matrix API
-                url = "https://maps.googleapis.com/maps/api/distancematrix/json"
-                params = {
-                    'origins': request.pickupAddress,
-                    'destinations': request.dropoffAddress,
-                    'key': google_api_key
-                }
-                response = requests.get(url, params=params)
-                data = response.json()
-                
-                logger.info(f"Google Maps Distance Matrix API response: {data}")
-                
-                if data['status'] == 'OK' and len(data['rows']) > 0 and len(data['rows'][0]['elements']) > 0:
-                    element = data['rows'][0]['elements'][0]
-                    if element['status'] == 'OK':
-                        distance_meters = element['distance']['value']
-                        distance_km = round(distance_meters / 1000, 2)
+                    logger.info(f"Google Maps Directions API (multi-stop) response status: {data.get('status')} (attempt {_attempt + 1})")
+                    
+                    if data['status'] == 'OK' and len(data['routes']) > 0:
+                        route = data['routes'][0]
+                        total_distance_meters = sum(leg['distance']['value'] for leg in route['legs'])
+                        distance_km = round(total_distance_meters / 1000, 2)
+                        distance_source = "google_directions"
+                        logger.info(f"Multi-stop route: {len(all_pickups)} pickups -> dropoff, total: {distance_km}km")
+                        break
                     else:
-                        logger.warning(f"Google Maps element status: {element.get('status')}")
-                        distance_km = 25.0  # Fallback
+                        logger.warning(f"Google Maps Directions API error: {data.get('error_message', data.get('status'))}")
                 else:
-                    logger.warning(f"Google Maps API error: {data.get('error_message', data.get('status'))}")
-                    distance_km = 25.0  # Fallback
-        else:
-            # Fallback: estimate based on number of stops
-            pickup_count = 1 + len([addr for addr in (request.pickupAddresses or []) if addr])
-            distance_km = 25.0 * pickup_count  # Default estimate per stop
-            logger.warning(f"Google Maps API key not found. Using default distance estimate: {distance_km}km for {pickup_count} stops")
+                    # Single pickup - use Distance Matrix API
+                    url = "https://maps.googleapis.com/maps/api/distancematrix/json"
+                    params = {
+                        'origins': request.pickupAddress,
+                        'destinations': request.dropoffAddress,
+                        'key': google_api_key
+                    }
+                    response = requests.get(url, params=params, timeout=15)
+                    data = response.json()
+                    
+                    logger.info(f"Google Maps Distance Matrix API response status: {data.get('status')} (attempt {_attempt + 1})")
+                    
+                    if data['status'] == 'OK' and len(data['rows']) > 0 and len(data['rows'][0]['elements']) > 0:
+                        element = data['rows'][0]['elements'][0]
+                        if element['status'] == 'OK':
+                            distance_meters = element['distance']['value']
+                            distance_km = round(distance_meters / 1000, 2)
+                            distance_source = "google_distance_matrix"
+                            logger.info(f"Google Maps distance: {distance_km}km")
+                            break
+                        else:
+                            logger.warning(f"Google Maps element status: {element.get('status')}")
+                    else:
+                        logger.warning(f"Google Maps API error: {data.get('error_message', data.get('status'))}")
+              except Exception as _api_err:
+                logger.warning(f"Google Maps API attempt {_attempt + 1} exception: {_api_err}")
+              
+              if _attempt == 0 and distance_km is None:
+                import time as _time; _time.sleep(1)
+        
+        # --- FAIL: No distance could be calculated from any API ---
+        if distance_km is None:
+            logger.error(f"DISTANCE CALCULATION FAILED for route: {request.pickupAddress} -> {request.dropoffAddress}. "
+                        f"Geoapify key: {bool(geoapify_key)}, Google key: {bool(google_api_key)}")
+            raise HTTPException(
+                status_code=422,
+                detail="Unable to calculate distance for this route. Please check the addresses are valid New Zealand locations and try again. If the problem persists, please contact us directly."
+            )
+        
+        logger.info(f"Final distance: {distance_km}km (source: {distance_source}) for route: {request.pickupAddress} -> {request.dropoffAddress}")
         
         # Calculate pricing with tiered rates - FLAT RATE per bracket
         # The rate is determined by which distance bracket the trip falls into
@@ -2031,7 +2051,7 @@ async def send_booking_to_admin(booking_id: str, current_admin: dict = Depends(g
             raise HTTPException(status_code=404, detail="Booking not found")
         
         # Get admin email from environment or use default
-        admin_email = os.environ.get('ADMIN_EMAIL', 'admin@bookaride.co.nz')
+        admin_email = os.environ.get('ADMIN_EMAIL', 'bookings@bookaride.co.nz')
         
         # Send via Mailgun
         mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
@@ -3706,24 +3726,35 @@ async def cron_send_reminders(api_key: str = None):
 
 
 def _get_booking_notification_emails() -> list:
-    """Emails to receive new booking copies. BOOKINGS_NOTIFICATION_EMAIL or ADMIN_EMAIL, default bookings@"""
+    """Emails to receive new booking copies. BOOKINGS_NOTIFICATION_EMAIL or ADMIN_EMAIL, default bookings@bookaride.co.nz"""
     raw = os.environ.get('BOOKINGS_NOTIFICATION_EMAIL') or os.environ.get('ADMIN_EMAIL', 'bookings@bookaride.co.nz')
-    return [e.strip() for e in str(raw).split(',') if e.strip()]
+    emails = [e.strip() for e in str(raw).split(',') if e.strip()]
+    # Always ensure bookings@bookaride.co.nz is included
+    default_email = 'bookings@bookaride.co.nz'
+    if default_email not in emails:
+        emails.append(default_email)
+    return emails
 
 
 async def send_booking_notification_to_admin(booking: dict):
-    """Automatically send booking notification to admin email(s) - bookings@bookaride.co.nz by default"""
+    """Automatically send booking notification to admin email(s) - bookings@bookaride.co.nz by default.
+    Uses multiple methods: unified email sender, then direct Mailgun, then direct SMTP."""
     try:
         admin_emails = _get_booking_notification_emails()
         formatted_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
         booking_ref = get_booking_reference(booking)
         
+        logger.info(f"Sending admin notification for booking {booking_ref} to: {admin_emails}")
+        
         # Use same full confirmation as customer - notes, flights, return, all details
         html_content = generate_confirmation_email_html(booking, for_admin=True)
         
         subject = f"New Booking - {booking.get('name', 'Customer')} - {formatted_date} - Ref: {booking_ref}"
-        reply_to = os.environ.get("ADMIN_EMAIL", "info@bookaride.co.nz").split(',')[0].strip()
+        reply_to = os.environ.get("ADMIN_EMAIL", "bookings@bookaride.co.nz").split(',')[0].strip()
+        sender_email = get_noreply_email()
         email_sent = False
+        
+        # METHOD 1: Try unified email sender (Mailgun + SMTP fallback)
         if send_email_unified:
             for admin_email in admin_emails:
                 try:
@@ -3731,20 +3762,23 @@ async def send_booking_notification_to_admin(booking: dict):
                         admin_email,
                         subject,
                         html_content,
-                        from_email=get_noreply_email(),
+                        from_email=sender_email,
                         from_name="BookaRide System",
                         reply_to=reply_to,
                     ):
-                        logger.info(f"Auto-notification sent to {admin_email} for booking: {booking_ref}")
+                        logger.info(f"Admin notification sent to {admin_email} via unified sender for booking: {booking_ref}")
                         email_sent = True
                     else:
-                        logger.error(f"Failed to send admin notification to {admin_email}")
+                        logger.warning(f"Unified sender failed for {admin_email}, will try direct methods")
                 except Exception as e:
-                    logger.error(f"Error sending to {admin_email}: {e}")
+                    logger.error(f"Unified sender error for {admin_email}: {e}")
         else:
+            logger.warning("email_sender module not available (send_email_unified is None)")
+        
+        # METHOD 2: Direct Mailgun API (fallback if unified sender didn't work)
+        if not email_sent:
             mailgun_api_key = os.environ.get("MAILGUN_API_KEY")
             mailgun_domain = os.environ.get("MAILGUN_DOMAIN")
-            sender_email = get_noreply_email()
             if mailgun_api_key and mailgun_domain:
                 for admin_email in admin_emails:
                     try:
@@ -3756,18 +3790,51 @@ async def send_booking_notification_to_admin(booking: dict):
                                 "to": admin_email,
                                 "subject": subject,
                                 "html": html_content,
+                                "h:Reply-To": reply_to,
                             },
                             timeout=15,
                         )
                         if response.status_code == 200:
-                            logger.info(f"Auto-notification sent to {admin_email} for booking: {booking_ref}")
+                            logger.info(f"Admin notification sent to {admin_email} via direct Mailgun for booking: {booking_ref}")
                             email_sent = True
                         else:
-                            logger.error(f"Failed to send to {admin_email}: {response.status_code} - {response.text}")
+                            logger.error(f"Direct Mailgun failed for {admin_email}: {response.status_code} - {response.text}")
                     except Exception as e:
-                        logger.error(f"Error sending to {admin_email}: {e}")
+                        logger.error(f"Direct Mailgun error for {admin_email}: {e}")
             else:
-                logger.error("No email provider configured (Mailgun or SMTP) - admin notifications not sent")
+                logger.warning("Mailgun not configured (missing MAILGUN_API_KEY or MAILGUN_DOMAIN)")
+        
+        # METHOD 3: Direct SMTP (last resort fallback)
+        if not email_sent:
+            smtp_user = os.environ.get("SMTP_USER")
+            smtp_pass = os.environ.get("SMTP_PASS")
+            smtp_host = os.environ.get("SMTP_HOST", "smtp.gmail.com")
+            smtp_port = int(os.environ.get("SMTP_PORT", "587"))
+            if smtp_user and smtp_pass:
+                for admin_email in admin_emails:
+                    try:
+                        msg = MIMEMultipart("alternative")
+                        msg["Subject"] = subject
+                        msg["From"] = f"BookaRide System <{sender_email}>"
+                        msg["To"] = admin_email
+                        msg["Reply-To"] = reply_to
+                        msg.attach(MIMEText(html_content, "html"))
+                        
+                        with smtplib.SMTP(smtp_host, smtp_port) as server:
+                            server.starttls()
+                            server.login(smtp_user, smtp_pass)
+                            server.sendmail(sender_email, admin_email, msg.as_string())
+                        
+                        logger.info(f"Admin notification sent to {admin_email} via direct SMTP for booking: {booking_ref}")
+                        email_sent = True
+                    except Exception as e:
+                        logger.error(f"Direct SMTP error for {admin_email}: {e}")
+            else:
+                logger.warning("SMTP not configured (missing SMTP_USER or SMTP_PASS)")
+        
+        if not email_sent:
+            logger.error(f"FAILED to send admin notification for booking {booking_ref} - no email method succeeded. "
+                        f"Check MAILGUN_API_KEY, MAILGUN_DOMAIN, SMTP_USER, SMTP_PASS env vars.")
             
     except Exception as e:
         logger.error(f"Error sending admin notification: {str(e)}")

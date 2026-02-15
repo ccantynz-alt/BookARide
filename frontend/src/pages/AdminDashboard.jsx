@@ -2110,14 +2110,6 @@ export const AdminDashboard = () => {
       return;
     }
 
-    // Infer return trip from filled return date + time
-    const hasReturnTrip = !!(newBooking.returnDate && newBooking.returnTime);
-    const isAirportShuttle = (newBooking.serviceType || '').toLowerCase().includes('airport') || (newBooking.serviceType || '').toLowerCase().includes('shuttle');
-    if (hasReturnTrip && isAirportShuttle && !(newBooking.returnDepartureFlightNumber || '').trim()) {
-      toast.error('Return flight number is required for airport shuttle return trips');
-      return;
-    }
-
     // Check if either calculated price or manual override is provided
     const hasCalculatedPrice = bookingPricing.totalPrice > 0;
     const hasManualPrice = manualPriceOverride && parseFloat(manualPriceOverride) > 0;
@@ -2128,13 +2120,8 @@ export const AdminDashboard = () => {
     }
 
     try {
-      // Calculate final price (double if return trip)
       let finalPrice = hasManualPrice ? parseFloat(manualPriceOverride) : bookingPricing.totalPrice;
-      if (hasReturnTrip && !hasManualPrice) {
-        finalPrice = finalPrice * 2; // Double for return trip
-      }
-      
-      const priceOverride = hasManualPrice ? parseFloat(manualPriceOverride) : (hasReturnTrip ? finalPrice : null);
+      const priceOverride = hasManualPrice ? parseFloat(manualPriceOverride) : null;
       
       await axios.post(`${API}/bookings/manual`, {
         name: newBooking.name,
@@ -2148,7 +2135,7 @@ export const AdminDashboard = () => {
         date: newBooking.date,
         time: newBooking.time,
         passengers: newBooking.passengers,
-        pricing: hasReturnTrip ? { ...bookingPricing, totalPrice: finalPrice } : bookingPricing,
+        pricing: hasManualPrice ? { ...bookingPricing, totalPrice: finalPrice } : bookingPricing,
         paymentMethod: newBooking.paymentMethod,
         notes: newBooking.notes,
         priceOverride: priceOverride,
@@ -2157,14 +2144,8 @@ export const AdminDashboard = () => {
         flightArrivalTime: newBooking.flightArrivalTime,
         flightDepartureNumber: newBooking.flightDepartureNumber,
         flightDepartureTime: newBooking.flightDepartureTime,
-        // Return trip details
-        bookReturn: hasReturnTrip,
-        returnDate: newBooking.returnDate,
-        returnTime: newBooking.returnTime,
-        returnDepartureFlightNumber: newBooking.returnDepartureFlightNumber,
-        returnDepartureTime: newBooking.returnDepartureTime,
-        returnArrivalFlightNumber: newBooking.returnArrivalFlightNumber,
-        returnArrivalTime: newBooking.returnArrivalTime
+        // No return trip (one-way only)
+        bookReturn: false
       }, getAuthHeaders());
 
       toast.success('Booking created successfully! Customer will receive email & SMS confirmation.');
