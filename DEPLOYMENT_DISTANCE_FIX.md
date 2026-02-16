@@ -1,18 +1,19 @@
 # Distance / 25km Fix – Deployment Required
 
-The zone distance fixes (Hibiscus Coast 73km, Whangarei 182km, airport address normalization) are on branch `cursor/composer-1-5-compatibility-6130`.
+## Root Cause
+When Geoapify and Google Maps APIs fail (or API keys are not set), the system used to fall back to **25km** – causing massive undercharging for 60–70km trips (e.g. Orewa/Hibiscus Coast to Airport).
 
-**Render deploys from `main`.** To fix the 25km default on the live site:
+## Fixes Applied
+1. **Fallback increased from 25km to 75km** – When both APIs fail, we now use 75km instead of 25km to avoid undercharging long trips.
+2. **Zone minimums expanded** – Hibiscus Coast (73km), North Auckland/Warkworth (65km), Hamilton (125km), Whangarei (182km).
+3. **More Hibiscus Coast keywords** – orewa beach, stillwater, coatesville.
 
-1. **Merge to main:**
-   ```bash
-   git checkout main
-   git merge cursor/composer-1-5-compatibility-6130
-   git push origin main
-   ```
+## CRITICAL: Set API Keys in Production
+**Render deploys from `main`.** To get accurate pricing (not the 75km fallback):
 
-2. **Trigger a redeploy** on Render (or wait for auto-deploy).
+1. **Set `GEOAPIFY_API_KEY`** on Render – Primary routing API.
+2. **Set `GOOGLE_MAPS_API_KEY`** on Render – Fallback when Geoapify fails.
 
-3. **Set `GEOAPIFY_API_KEY`** on Render so Geoapify routing is used instead of the 25km fallback.
+Without these, the system uses 75km as a conservative default (better than the old 25km, but still not ideal).
 
-4. **Set `BOOKINGS_NOTIFICATION_EMAIL=bookings@bookaride.co.nz`** for admin booking copies.
+3. **Set `BOOKINGS_NOTIFICATION_EMAIL=bookings@bookaride.co.nz`** for admin booking copies.
