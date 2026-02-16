@@ -1298,6 +1298,10 @@ def _get_distance_geoapify(pickup_address: str, dropoff_address: str, waypoint_a
     return None
 
 
+# Default distance when BOTH Geoapify and Google Maps fail (was 25km - caused massive undercharging for 60-70km trips)
+# Use 75km to cover common long routes (Orewa, Hibiscus Coast, Warkworth) - better to slightly overcharge than lose money
+DEFAULT_FALLBACK_DISTANCE_KM = 75.0
+
 # Price Calculation Endpoint
 @api_router.post("/calculate-price", response_model=PricingBreakdown)
 async def calculate_price(request: PriceCalculationRequest):
@@ -1349,7 +1353,7 @@ async def calculate_price(request: PriceCalculationRequest):
                     logger.info(f"Multi-stop route: {len(all_pickups)} pickups ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ dropoff, total: {distance_km}km")
                 else:
                     logger.warning(f"Google Maps Directions API error: {data.get('error_message', data.get('status'))}")
-                    distance_km = 25.0 * len(all_pickups)  # Fallback: estimate per stop
+                    distance_km = DEFAULT_FALLBACK_DISTANCE_KM * len(all_pickups)  # Fallback: estimate per stop
             else:
                 # Single pickup - use Distance Matrix API
                 url = "https://maps.googleapis.com/maps/api/distancematrix/json"
@@ -1370,15 +1374,15 @@ async def calculate_price(request: PriceCalculationRequest):
                         distance_km = round(distance_meters / 1000, 2)
                     else:
                         logger.warning(f"Google Maps element status: {element.get('status')}")
-                        distance_km = 25.0  # Fallback
+                        distance_km = DEFAULT_FALLBACK_DISTANCE_KM  # Fallback
                 else:
                     logger.warning(f"Google Maps API error: {data.get('error_message', data.get('status'))}")
-                    distance_km = 25.0  # Fallback
+                    distance_km = DEFAULT_FALLBACK_DISTANCE_KM  # Fallback
         else:
-            # Fallback: estimate based on number of stops
+            # Fallback: estimate based on number of stops (no API keys configured)
             pickup_count = 1 + len([addr for addr in (request.pickupAddresses or []) if addr])
-            distance_km = 25.0 * pickup_count  # Default estimate per stop
-            logger.warning(f"Google Maps API key not found. Using default distance estimate: {distance_km}km for {pickup_count} stops")
+            distance_km = DEFAULT_FALLBACK_DISTANCE_KM * pickup_count  # Default estimate per stop
+            logger.warning(f"GEOAPIFY_API_KEY and GOOGLE_MAPS_API_KEY not set. Using default distance estimate: {distance_km}km for {pickup_count} stops - SET API KEYS TO FIX PRICING")
         
         # Calculate pricing with tiered rates - FLAT RATE per bracket
         # The rate is determined by which distance bracket the trip falls into
@@ -1390,7 +1394,7 @@ async def calculate_price(request: PriceCalculationRequest):
         # ===========================================
         # Specific keywords for the concert venue ONLY (must be precise)
         matakana_concert_keywords = ['matakana country park', 'matakana country club', 'rd5/1151', '1151 leigh road']
-        hibiscus_coast_keywords = ['orewa', 'whangaparaoa', 'silverdale', 'red beach', 'stanmore bay', 'army bay', 'gulf harbour', 'manly', 'hibiscus coast', 'millwater', 'milldale', 'hatfields beach', 'waiwera', 'alec craig']
+        hibiscus_coast_keywords = ['orewa', 'whangaparaoa', 'silverdale', 'red beach', 'stanmore bay', 'army bay', 'gulf harbour', 'manly', 'hibiscus coast', 'millwater', 'milldale', 'hatfields beach', 'waiwera', 'alec craig', 'orewa beach', 'stillwater', 'coatesville']
         
         # Check if this is specifically the concert venue (not general Matakana)
         # Normalize macrons for matching (Māngere -> Mangere)
@@ -1414,7 +1418,25 @@ async def calculate_price(request: PriceCalculationRequest):
             logger.info(f"Zone distance: Hibiscus Coast <-> Airport applying minimum 73 km (API returned {distance_km} km)")
             distance_km = 73.0
         
-        # Minimum distance for Auckland Airport <-> Whangarei (Geoapify often fails, falls back to 25 km)
+        # Minimum distance for North Auckland (Warkworth, Matakana, Leigh) <-> Airport (~60-70km)
+        north_auckland_keywords = ['warkworth', 'snells beach', 'matakana', 'leigh', 'wellsford', 'puhoi', 'alberton']
+        is_from_north_auckland = any(kw in pickup_lower for kw in north_auckland_keywords)
+        is_to_north_auckland = any(kw in dropoff_lower for kw in north_auckland_keywords)
+        north_auckland_to_airport = (is_from_north_auckland and is_to_airport) or (is_to_north_auckland and is_from_airport)
+        if north_auckland_to_airport and distance_km < 65.0:
+            logger.info(f"Zone distance: North Auckland <-> Airport applying minimum 65 km (API returned {distance_km} km)")
+            distance_km = 65.0
+        
+        # Minimum distance for Hamilton area <-> Airport (~125km)
+        hamilton_keywords = ['hamilton', 'frankton', 'hillcrest', 'rototuna', 'cambridge', 'te awamutu', 'ngaruawahia']
+        is_from_hamilton = any(kw in pickup_lower for kw in hamilton_keywords)
+        is_to_hamilton = any(kw in dropoff_lower for kw in hamilton_keywords)
+        hamilton_to_airport = (is_from_hamilton and is_to_airport) or (is_to_hamilton and is_from_airport)
+        if hamilton_to_airport and distance_km < 125.0:
+            logger.info(f"Zone distance: Hamilton area <-> Airport applying minimum 125 km (API returned {distance_km} km)")
+            distance_km = 125.0
+        
+        # Minimum distance for Auckland Airport <-> Whangarei (Geoapify often fails, falls back to default)
         # Old system: 181.7 km = ~$646 for 2 passengers
         whangarei_keywords = ['whangarei', 'onerahi', 'kensington', 'tikipunga', 'regent', 'whangarei heads']
         is_to_whangarei = any(kw in dropoff_lower for kw in whangarei_keywords)
