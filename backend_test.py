@@ -8,13 +8,14 @@ import requests
 import json
 import time
 import sys
+import os
 from datetime import datetime, timedelta
 from io import StringIO
 
 # Configuration
 BACKEND_URL = "https://dazzling-leakey.preview.emergentagent.com/api"
-ADMIN_USERNAME = "admin"
-ADMIN_PASSWORD = "Kongkong2025!@"
+ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
 
 # Test data for different languages
 TEST_BOOKINGS = {
@@ -121,9 +122,13 @@ class BookaRideBackendTester:
     def test_direct_mailgun_email(self):
         """Test direct Mailgun email sending"""
         try:
-            # Using curl equivalent with requests
+            # Optional: direct Mailgun test (requires env vars)
+            mailgun_api_key = os.environ.get("MAILGUN_API_KEY", "")
+            if not mailgun_api_key:
+                self.log_result("Mailgun Direct Email", True, "Skipped (MAILGUN_API_KEY not set)")
+                return True
             mailgun_url = "https://api.mailgun.net/v3/mg.bookaride.co.nz/messages"
-            auth = ('api', '151d31c4dd7cd9fd3015d140b2c58f76-235e4bb2-1ecf548a')
+            auth = ('api', mailgun_api_key)
             
             data = {
                 'from': 'Book A Ride <noreply@mg.bookaride.co.nz>',

@@ -2,21 +2,16 @@
 
 ## 🎉 Status: FULLY FUNCTIONAL
 
-The booking confirmation email system is now **fully configured and tested** using Mailgun.
+The booking confirmation email system supports **Google Workspace (Gmail) SMTP** and **Mailgun**, selectable via `EMAIL_PROVIDER`.
 
 ---
 
 ## 📧 Current Configuration
 
-### **Email Service:** Mailgun
-- **Provider:** Mailgun (Industry-standard transactional email service)
-- **Domain:** `sandbox59c86157949d4094843b359ecfdc08ee.mailgun.org` (Sandbox)
-- **API Key:** Configured in `/app/backend/.env`
-- **Sender:** BookaRide <noreply@bookaride.co.nz>
-- **Status:** ✅ Active and Tested
-
-### **Verified Recipients (Sandbox Mode):**
-- `no-reply@bookaride.co.nz` ✅ Verified
+### **Email Service:** Configurable
+- **Recommended (Google-only):** Google Workspace SMTP (no extra provider cost)
+- **Optional:** Mailgun (can still be used, but not required)
+- **Selector:** `EMAIL_PROVIDER` (`smtp`, `mailgun`, or `auto`)
 
 ---
 
@@ -33,7 +28,7 @@ The booking confirmation email system is now **fully configured and tested** usi
 7. **Backend processes webhook:**
    - Updates booking status to `"confirmed"`
    - Updates payment status to `"paid"`
-   - **Sends email confirmation** via Mailgun ✅
+   - **Sends email confirmation** via configured provider ✅
    - Sends SMS confirmation via Twilio
    - Creates Google Calendar event
 8. **Customer receives confirmation email** instantly
@@ -59,8 +54,7 @@ Email ID: <20251205030920.b40b9df6fd64e920@sandbox...mailgun.org>
 
 ### **Backend Email Function:**
 - ✅ `send_booking_confirmation_email()` implemented
-- ✅ `send_via_mailgun()` tested and working
-- ✅ SMTP fallback configured (if Mailgun fails)
+- ✅ Unified sender supports Mailgun or Google SMTP
 - ✅ HTML email template with booking details
 - ✅ Professional branding (dark theme with gold accents)
 
@@ -124,17 +118,23 @@ Currently using **sandbox domain** which can only send to verified recipients. T
 
 ## 🔧 Environment Variables
 
-**Current Configuration** (`/app/backend/.env`):
+### Google Workspace SMTP (recommended)
+
 ```env
-MAILGUN_API_KEY=151d31c4dd7cd9fd3015d140b2c58f76-235e4bb2-1ecf548a
-MAILGUN_DOMAIN=sandbox59c86157949d4094843b359ecfdc08ee.mailgun.org
+EMAIL_PROVIDER=smtp
+SMTP_USER=info@bookaride.co.nz
+SMTP_PASS=your_google_app_password
+NOREPLY_EMAIL=noreply@bookaride.co.nz
 SENDER_EMAIL=noreply@bookaride.co.nz
 ```
 
-**After Custom Domain Verification:**
+### Mailgun (optional)
+
 ```env
-MAILGUN_API_KEY=151d31c4dd7cd9fd3015d140b2c58f76-235e4bb2-1ecf548a
-MAILGUN_DOMAIN=mg.bookaride.co.nz  # ← Updated
+EMAIL_PROVIDER=mailgun
+MAILGUN_API_KEY=your_mailgun_api_key
+MAILGUN_DOMAIN=mg.bookaride.co.nz
+NOREPLY_EMAIL=noreply@bookaride.co.nz
 SENDER_EMAIL=noreply@bookaride.co.nz
 ```
 
