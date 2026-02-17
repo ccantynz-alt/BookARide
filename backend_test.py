@@ -8,13 +8,14 @@ import requests
 import json
 import time
 import sys
+import os
 from datetime import datetime, timedelta
 from io import StringIO
 
 # Configuration
 BACKEND_URL = "https://dazzling-leakey.preview.emergentagent.com/api"
 ADMIN_USERNAME = "admin"
-ADMIN_PASSWORD = "Kongkong2025!@"
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "your-admin-password-here")
 
 # Test data for different languages
 TEST_BOOKINGS = {
@@ -123,7 +124,7 @@ class BookaRideBackendTester:
         try:
             # Using curl equivalent with requests
             mailgun_url = "https://api.mailgun.net/v3/mg.bookaride.co.nz/messages"
-            auth = ('api', '151d31c4dd7cd9fd3015d140b2c58f76-235e4bb2-1ecf548a')
+            auth = ('api', os.getenv("MAILGUN_API_KEY", "your-mailgun-api-key-here"))
             
             data = {
                 'from': 'Book A Ride <noreply@mg.bookaride.co.nz>',

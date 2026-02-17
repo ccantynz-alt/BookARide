@@ -69,7 +69,7 @@
 
 **Default Admin:**
 - Username: `admin`
-- Password: `BookARide2024!`
+- Password: `[Use the admin password configured in your environment]`
 
 ### MongoDB Collection: `drivers`
 
@@ -98,7 +98,7 @@
 Request:
 {
   "username": "admin",
-  "password": "BookARide2024!"
+  "password": "[your-admin-password]"
 }
 
 Response:
@@ -779,7 +779,7 @@ REACT_APP_GOOGLE_MAPS_KEY=AIzaxxx
 **Admin Login:**
 ```
 Username: admin
-Password: BookARide2024!
+Password: [Use the admin password configured in your environment]
 ```
 
 **Stripe Test Cards:**
