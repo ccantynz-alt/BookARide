@@ -34,8 +34,8 @@ dist
 
 *token.json*
 *credentials.json*
-service_account.json
-*service_account*.json
+*gmail*credentials*.json
+*bookaride-gmail*.json
 
 # Logs and debug files
 npm-debug.log*

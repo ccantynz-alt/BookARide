@@ -9,6 +9,7 @@ import json
 import time
 import sys
 import os
+import uuid
 from datetime import datetime, timedelta
 from io import StringIO
 
@@ -119,31 +120,36 @@ class BookaRideBackendTester:
             self.log_result("Admin Login", False, f"Login error: {str(e)}")
             return False
     
-    def test_direct_mailgun_email(self):
-        """Test direct Mailgun email sending"""
+    def test_direct_gmail_api_email(self):
+        """Test direct Google Workspace Gmail API email sending"""
         try:
-            # Using curl equivalent with requests
-            mailgun_url = "https://api.mailgun.net/v3/mg.bookaride.co.nz/messages"
-            auth = ('api', os.getenv("MAILGUN_API_KEY", "your-mailgun-api-key-here"))
-            
-            data = {
-                'from': 'Book A Ride <noreply@mg.bookaride.co.nz>',
-                'to': 'test@example.com',
-                'subject': 'Test Email - DNS Verification',
-                'text': 'Mailgun DNS is verified and working!'
+            sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'backend'))
+            from server import send_via_gmail_api
+
+            test_booking = {
+                'id': 'test-email-' + str(uuid.uuid4())[:8],
+                'name': 'Test User',
+                'email': 'test@example.com',
+                'phone': '+64211234567',
+                'serviceType': 'airport-shuttle',
+                'pickupAddress': 'Auckland Airport',
+                'dropoffAddress': 'Queen Street, Auckland',
+                'date': '2025-12-20',
+                'time': '15:30',
+                'passengers': '2',
+                'language': 'en',
+                'pricing': {'totalPrice': 105.50}
             }
-            
-            response = requests.post(mailgun_url, auth=auth, data=data, timeout=15)
-            
-            if response.status_code == 200:
-                result = response.json()
-                self.log_result("Direct Mailgun Test", True, f"Email sent successfully: {result.get('message', 'OK')}")
+
+            result = send_via_gmail_api(test_booking)
+            if result:
+                self.log_result("Direct Gmail API Test", True, "Email sent successfully via Google Workspace")
                 return True
             else:
-                self.log_result("Direct Mailgun Test", False, f"Mailgun failed with status {response.status_code}", response.text)
+                self.log_result("Direct Gmail API Test", False, "Gmail API returned False (check GOOGLE_SERVICE_ACCOUNT_JSON and domain-wide delegation)")
                 return False
         except Exception as e:
-            self.log_result("Direct Mailgun Test", False, f"Mailgun error: {str(e)}")
+            self.log_result("Direct Gmail API Test", False, f"Gmail API error: {str(e)}")
             return False
     
     def test_price_calculation(self):
@@ -2590,8 +2596,8 @@ TEST002,Test Customer 2,test2@example.com,021654321,456 Sample Ave Auckland,Auck
         self.test_duplicate_reminder_prevention()
         
         # Additional core functionality tests
-        print("\n📧 Testing Email System...")
-        self.test_direct_mailgun_email()
+        print("\n📧 Testing Email System (Google Workspace Gmail API)...")
+        self.test_direct_gmail_api_email()
         
         print("\n📋 Testing Booking System...")
         self.test_price_calculation()
