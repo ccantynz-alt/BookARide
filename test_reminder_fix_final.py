@@ -8,13 +8,14 @@ import requests
 import json
 import time
 import uuid
+import os
 from datetime import datetime, timedelta
 import pytz
 
 # Configuration
 BACKEND_URL = "https://dazzling-leakey.preview.emergentagent.com/api"
 ADMIN_USERNAME = "admin"
-ADMIN_PASSWORD = "Kongkong2025!@"
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "your-admin-password-here")
 
 def test_duplicate_reminder_prevention_final():
     """Final comprehensive test for duplicate reminder prevention"""
