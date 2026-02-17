@@ -41,7 +41,7 @@ export const AdminAuthCallback = () => {
         return;
       }
 
-      // Legacy flow: session_id from Emergent
+      // Legacy flow: session_id (deprecated - keeping for backwards compatibility)
       const sessionIdMatch = hash.match(/session_id=([^&]+)/);
       if (sessionIdMatch) {
         try {
