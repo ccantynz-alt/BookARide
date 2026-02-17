@@ -51,8 +51,9 @@ Should show: `State: ACTIVE`
 cd /app/backend
 python3 << 'EOF'
 import requests
+import os
 
-api_key = "151d31c4dd7cd9fd3015d140b2c58f76-235e4bb2-1ecf548a"
+api_key = os.getenv("MAILGUN_API_KEY")  # Get from environment variable
 domain = "mg.bookaride.co.nz"
 from_email = "noreply@mg.bookaride.co.nz"
 to_email = "YOUR_EMAIL@example.com"  # Replace with your email

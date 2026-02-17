@@ -3712,7 +3712,7 @@ async def send_daily_reminders_core(source: str = "unknown"):
 async def cron_send_reminders(api_key: str = None):
     """Endpoint for external cron service to trigger reminders (requires API key)"""
     try:
-        expected_key = os.environ.get('CRON_API_KEY', 'bookaride-cron-secret-2024')
+        expected_key = os.environ.get('CRON_API_KEY')
         
         if api_key != expected_key:
             raise HTTPException(status_code=401, detail="Invalid API key")
