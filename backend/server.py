@@ -57,7 +57,7 @@ class CheckoutSessionRequest(BaseModel):
     success_url: str
     cancel_url: str
     customer_email: Optional[str] = None
-    metadata: Dict[str, str] = {}
+    metadata: Dict[str, Any] = {}
     mode: str = "payment"
     description: Optional[str] = None
 
@@ -71,7 +71,7 @@ class CheckoutStatusResponse(BaseModel):
     payment_status: str
     amount_total: Optional[int] = None
     currency: Optional[str] = None
-    metadata: Dict[str, str] = {}
+    metadata: Dict[str, Any] = {}
 
 class StripeCheckout:
     def __init__(self, api_key: str, webhook_url: str = ""):
@@ -774,7 +774,11 @@ class GoogleAuthSession(BaseModel):
 
 @api_router.post("/admin/google-auth/session")
 async def process_google_auth_session(auth_data: GoogleAuthSession, response: Response):
-    """DEPRECATED: Legacy Google OAuth session endpoint - use /admin/google-auth/callback instead"""
+    """
+    DEPRECATED: Legacy Google OAuth session endpoint - use /admin/google-auth/callback instead.
+    This endpoint will be removed in a future version (tentatively v2.0).
+    Maintained for backwards compatibility with existing integrations.
+    """
     try:
         # This endpoint is deprecated but kept for backwards compatibility
         async with httpx.AsyncClient() as client:
@@ -3307,7 +3311,7 @@ async def chatbot_message(request: ChatbotMessageRequest):
         }
 
 
-# Core reminder sending logic - used by all reminder triggers# Core reminder sending logic - used by all reminder triggers
+# Core reminder sending logic - used by all reminder triggers
 async def send_daily_reminders_core(source: str = "unknown"):
     """
     Core logic for sending day-before reminders.
