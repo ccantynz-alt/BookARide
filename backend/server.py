@@ -1982,14 +1982,6 @@ async def send_booking_email(email_data: dict, current_admin: dict = Depends(get
         if not recipient_email or not subject or not message:
             raise HTTPException(status_code=400, detail="Missing required email fields")
         
-        # Send via Mailgun
-        mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
-        mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
-        sender_email = os.environ.get('SENDER_EMAIL', 'noreply@mg.bookaride.co.nz')
-        
-        if not mailgun_api_key or not mailgun_domain:
-            raise HTTPException(status_code=500, detail="Mailgun not configured")
-        
         # Create HTML email content
         html_content = f"""
         <html>
@@ -2008,33 +2000,13 @@ async def send_booking_email(email_data: dict, current_admin: dict = Depends(get
         </html>
         """
         
-        # Build email data
-        email_payload = {
-            "from": f"BookaRide Admin <{sender_email}>",
-            "to": recipient_email,
-            "subject": subject,
-            "html": html_content,
-            "text": message
-        }
-        
-        # Add CC if provided
-        if cc_emails and cc_emails.strip():
-            email_payload["cc"] = cc_emails.strip()
-        
-        # Send email via Mailgun API
-        response = requests.post(
-            f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
-            auth=("api", mailgun_api_key),
-            data=email_payload
-        )
-        
-        if response.status_code == 200:
+        # Send via Google Workspace Gmail API
+        success = send_email_gmail(recipient_email, subject, html_content, from_name="BookaRide Admin", cc=cc_emails.strip() if cc_emails and cc_emails.strip() else None)
+        if success:
             cc_info = f" (CC: {cc_emails})" if cc_emails else ""
             logger.info(f"Admin email sent to {recipient_email}{cc_info} - Subject: {subject}")
             return {"message": "Email sent successfully"}
-        else:
-            logger.error(f"Mailgun error: {response.status_code} - {response.text}")
-            raise HTTPException(status_code=500, detail=f"Failed to send email: {response.text}")
+        raise HTTPException(status_code=500, detail="Gmail API not configured or failed to send email")
         
     except HTTPException:
         raise
@@ -2054,14 +2026,6 @@ async def send_booking_to_admin(booking_id: str, current_admin: dict = Depends(g
         
         # Get admin email from environment or use default
         admin_email = os.environ.get('ADMIN_EMAIL', 'admin@bookaride.co.nz')
-        
-        # Send via Mailgun
-        mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
-        mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
-        sender_email = os.environ.get('SENDER_EMAIL', 'noreply@mg.bookaride.co.nz')
-        
-        if not mailgun_api_key or not mailgun_domain:
-            raise HTTPException(status_code=500, detail="Mailgun not configured")
         
         # Format booking details
         total_price = booking.get('totalPrice', 0)
@@ -2133,24 +2097,13 @@ async def send_booking_to_admin(booking_id: str, current_admin: dict = Depends(g
         </html>
         """
         
-        # Send email via Mailgun API
-        response = requests.post(
-            f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
-            auth=("api", mailgun_api_key),
-            data={
-                "from": f"BookaRide System <{sender_email}>",
-                "to": admin_email,
-                "subject": f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¹ Booking Details - {booking.get('name', 'Customer')} - {booking.get('id', '')[:8].upper()}",
-                "html": html_content
-            }
-        )
-        
-        if response.status_code == 200:
+        # Send via Google Workspace Gmail API
+        subject = f"Booking Details - {booking.get('name', 'Customer')} - {booking.get('id', '')[:8].upper()}"
+        success = send_email_gmail(admin_email, subject, html_content, from_name="BookaRide System")
+        if success:
             logger.info(f"Booking details sent to admin: {admin_email} - Booking: {booking_id}")
             return {"message": f"Booking details sent to {admin_email}"}
-        else:
-            logger.error(f"Mailgun error: {response.status_code} - {response.text}")
-            raise HTTPException(status_code=500, detail=f"Failed to send email: {response.text}")
+        raise HTTPException(status_code=500, detail="Gmail API not configured or failed to send email")
         
     except HTTPException:
         raise
@@ -2342,121 +2295,118 @@ EMAIL_TRANSLATIONS = {
 }
 
 def send_booking_confirmation_email(booking: dict, include_payment_link: bool = True):
-    """Send booking confirmation email via Mailgun or SMTP fallback"""
-    # Try Mailgun first
-    mailgun_success = send_via_mailgun(booking)
-    if mailgun_success:
-        return True
-    
-    # Fallback to SMTP if Mailgun fails
-    logger.warning("Mailgun failed, trying SMTP fallback...")
-    return send_via_smtp(booking)
+    """Send booking confirmation email via Google Workspace Gmail API only"""
+    return send_via_gmail_api(booking)
 
 
-def send_via_mailgun(booking: dict):
-    """Try sending via Mailgun with beautiful email template"""
+def _get_gmail_api_credentials():
+    """Get Gmail API credentials using service account with domain-wide delegation"""
     try:
-        mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
-        mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
+        from google.oauth2 import service_account
+        import json
+        import base64
+
         sender_email = get_noreply_email()
-        
-        if not mailgun_api_key or not mailgun_domain:
-            logger.warning("Mailgun credentials not configured")
+
+        # Try JSON from environment first (production)
+        service_account_json = os.environ.get('GOOGLE_SERVICE_ACCOUNT_JSON') or os.environ.get('GMAIL_SERVICE_ACCOUNT_JSON')
+        if service_account_json:
+            try:
+                service_account_info = json.loads(service_account_json)
+                creds = service_account.Credentials.from_service_account_info(
+                    service_account_info,
+                    scopes=['https://www.googleapis.com/auth/gmail.send'],
+                    subject=sender_email  # Domain-wide delegation: impersonate this user
+                )
+                return creds
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse GOOGLE_SERVICE_ACCOUNT_JSON: {e}")
+                return None
+
+        # Fallback to file
+        service_account_file = os.environ.get('GOOGLE_SERVICE_ACCOUNT_FILE') or os.environ.get('GMAIL_SERVICE_ACCOUNT_FILE')
+        if service_account_file and os.path.exists(service_account_file):
+            creds = service_account.Credentials.from_service_account_file(
+                service_account_file,
+                scopes=['https://www.googleapis.com/auth/gmail.send'],
+                subject=sender_email
+            )
+            return creds
+
+        logger.warning("Gmail API: No service account configured (set GOOGLE_SERVICE_ACCOUNT_JSON or GOOGLE_SERVICE_ACCOUNT_FILE)")
+        return None
+    except Exception as e:
+        logger.error(f"Gmail API credentials error: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return None
+
+
+def send_via_gmail_api(booking: dict):
+    """Send booking confirmation via Google Workspace Gmail API (no Mailgun, no SMTP)"""
+    try:
+        import base64
+        from google.oauth2 import service_account
+        from googleapiclient.discovery import build
+
+        creds = _get_gmail_api_credentials()
+        if not creds:
             return False
-        
-        # Get booking reference for subject line
+
+        sender_email = get_noreply_email()
         booking_ref = get_booking_reference(booking)
-        
-        # Get language preference for subject (default to English)
+
+        # Language for subject
         lang = booking.get('language', 'en')
         if lang not in EMAIL_TRANSLATIONS:
             lang = 'en'
         t = EMAIL_TRANSLATIONS[lang]
-        
         subject = f"{t['subject']} - Ref: {booking_ref}"
-        recipient_email = booking.get('email')
-        
-        # Use the beautiful email template
-        html_content = generate_confirmation_email_html(booking)
-        
-        # Build email data with CC support
-        email_data = {
-            "from": f"BookaRide <{sender_email}>",
-            "to": recipient_email,
-            "subject": subject,
-            "html": html_content
-        }
-        
-        # Add CC if provided
-        cc_email = booking.get('ccEmail', '')
-        if cc_email and cc_email.strip():
-            email_data["cc"] = cc_email.strip()
-        
-        # Send email via Mailgun API
-        response = requests.post(
-            f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
-            auth=("api", mailgun_api_key),
-            data=email_data
-        )
-        
-        if response.status_code == 200:
-            cc_info = f" (CC: {cc_email})" if cc_email else ""
-            logger.info(f"Confirmation email sent to {recipient_email}{cc_info} via Mailgun")
-            return True
-        else:
-            logger.error(f"Mailgun error: {response.status_code} - {response.text}")
-            return False
-        
-    except Exception as e:
-        logger.error(f"Mailgun error: {str(e)}")
-        return False
 
-
-def send_via_smtp(booking: dict):
-    """Fallback: Send via Gmail SMTP"""
-    try:
-        smtp_user = os.environ.get('SMTP_USER')
-        smtp_pass = os.environ.get('SMTP_PASS')
-        sender_email = get_noreply_email()
-        
-        if not smtp_user or not smtp_pass:
-            logger.warning("SMTP credentials not configured")
-            return False
-        
-        # Create email content using the beautiful template
-        booking_ref = get_booking_reference(booking)
-        subject = f"Booking Confirmation - Ref: {booking_ref}"
         recipient_email = booking.get('email')
-        
-        # Use the beautiful email template
         html_content = generate_confirmation_email_html(booking)
-        
-        # Create message
+        cc_email = (booking.get('ccEmail') or '').strip()
+
+        # Build MIME message
         message = MIMEMultipart('alternative')
         message['Subject'] = subject
-        message['From'] = sender_email
+        message['From'] = f"BookaRide <{sender_email}>"
         message['To'] = recipient_email
-        
-        # Attach HTML
+        if cc_email:
+            message['Cc'] = cc_email
+
         html_part = MIMEText(html_content, 'html')
         message.attach(html_part)
-        
-        # Send via SMTP (Google Workspace / Gmail)
-        smtp_host = os.environ.get('SMTP_HOST', 'smtp.gmail.com')
-        smtp_port = int(os.environ.get('SMTP_PORT', '587'))
-        with smtplib.SMTP(smtp_host, smtp_port) as server:
-            server.starttls()
-            server.login(smtp_user, smtp_pass)
-            server.send_message(message)
-        
-        logger.info(f"Confirmation email sent to {recipient_email} via SMTP")
+
+        # Gmail API requires base64url-encoded raw message
+        raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
+
+        service = build('gmail', 'v1', credentials=creds)
+
+        send_body = {'raw': raw}
+        sent = service.users().messages().send(userId='me', body=send_body).execute()
+
+        cc_info = f" (CC: {cc_email})" if cc_email else ""
+        logger.info(f"Confirmation email sent to {recipient_email}{cc_info} via Google Workspace Gmail API (id: {sent.get('id')})")
         return True
-        
+
     except Exception as e:
-        logger.error(f"SMTP error: {str(e)}")
+        logger.error(f"Gmail API error: {str(e)}")
         import traceback
         logger.error(traceback.format_exc())
         return False
+
+
+def send_email_gmail(to_email: str, subject: str, html_content: str, from_email: str = None, from_name: str = "BookaRide", cc: str = None, reply_to: str = None) -> bool:
+    """Generic email send via Google Workspace Gmail API. Use for all transactional emails."""
+    sender = send_email_unified
+    if not sender:
+        try:
+            from email_sender import send_email as sender
+        except ImportError:
+            logger.warning("email_sender not available for send_email_gmail")
+            return False
+    return sender(to_email, subject, html_content, from_email=from_email or get_noreply_email(), from_name=from_name, reply_to=reply_to, cc=cc)
 
 
 def send_booking_confirmation_sms(booking: dict):
@@ -9813,15 +9763,7 @@ async def send_cancellation_notifications(booking: dict):
             logger.error(f"Failed to send cancellation SMS: {str(e)}")
 
 async def send_cancellation_email(booking: dict, to_email: str, customer_name: str):
-    """Send cancellation email via Mailgun (from noreply address)"""
-    mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
-    mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
-    sender_email = get_noreply_email()
-    
-    if not mailgun_api_key or not mailgun_domain:
-        logger.warning("Mailgun credentials not configured for cancellation email")
-        return
-    
+    """Send cancellation email via Google Workspace Gmail API"""
     # Format date and get references
     formatted_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
     booking_ref = get_booking_reference(booking)
@@ -9888,21 +9830,11 @@ async def send_cancellation_email(booking: dict, to_email: str, customer_name: s
     </html>
     """
     
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
-            auth=("api", mailgun_api_key),
-            data={
-                "from": f"Book A Ride NZ <{sender_email}>",
-                "to": to_email,
-                "subject": f"Booking Cancelled - Ref: {booking_ref} - Book A Ride NZ",
-                "html": html_content
-            }
-        )
-        
-        if response.status_code != 200:
-            logger.error(f"Mailgun cancellation email failed: {response.text}")
-            raise Exception(f"Failed to send email: {response.status_code}")
+    subject = f"Booking Cancelled - Ref: {booking_ref} - Book A Ride NZ"
+    success = send_email_gmail(to_email, subject, html_content, from_name="Book A Ride NZ")
+    if not success:
+        logger.error("Gmail API cancellation email failed")
+        raise Exception("Failed to send cancellation email")
 
 def send_cancellation_sms(booking: dict, to_phone: str, customer_name: str):
     """Send cancellation SMS via Twilio"""

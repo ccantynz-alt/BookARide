@@ -101,12 +101,21 @@ You need to upload the JSON credentials file to the server.
 
 ### **Step 8: Update Environment Variables**
 
-Once the JSON file is on the server at `/app/backend/bookaride-gmail-credentials.json`, update `.env`:
+**Required** - Add these to your `.env` or deployment config:
 
 ```bash
+# Gmail API - use ONE of these (file path OR JSON string)
 GOOGLE_SERVICE_ACCOUNT_FILE=/app/backend/bookaride-gmail-credentials.json
+# OR for production (e.g. Render, Kubernetes): paste entire JSON as one line
+# GOOGLE_SERVICE_ACCOUNT_JSON={"type":"service_account",...}
+
+# The email address to send FROM (must be a real user in your Google Workspace)
 SENDER_EMAIL=noreply@bookaride.co.nz
+# OR
+NOREPLY_EMAIL=noreply@bookaride.co.nz
 ```
+
+**Note:** Mailgun and SMTP are no longer used. All email goes through Google Workspace Gmail API only.
 
 ---
 
