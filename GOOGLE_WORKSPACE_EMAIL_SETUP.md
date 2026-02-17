@@ -1,6 +1,12 @@
 # Send Emails via Google Workspace (Gmail)
 
-You can use your Google Workspace account (e.g. `info@bookaride.co.nz`) to send emails from the website instead of Mailgun. No extra cost – it uses your existing Google account.
+**⚡ BookaRide now uses Google Workspace SMTP exclusively for all email sending.**
+
+👉 **For complete setup instructions, see [GOOGLE_EMAIL_SETUP.md](./GOOGLE_EMAIL_SETUP.md)**
+
+This document provides a quick reference. For detailed troubleshooting and advanced configuration, refer to the complete guide above.
+
+---
 
 ## Quick Setup (about 5 minutes)
 

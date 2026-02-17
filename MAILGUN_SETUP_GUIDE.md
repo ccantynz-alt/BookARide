@@ -1,9 +1,23 @@
-# Mailgun Setup Guide - Simple & Fast!
+# ⚠️ DEPRECATED: Mailgun Setup Guide
+
+**This guide is no longer used.** BookaRide now uses **Google Workspace SMTP** for all email sending, eliminating the need for Mailgun.
+
+## 👉 See: [GOOGLE_EMAIL_SETUP.md](./GOOGLE_EMAIL_SETUP.md)
+
+**Benefits of using Google instead:**
+- ✅ No additional cost (uses your existing Google Workspace)
+- ✅ Simpler setup (3 environment variables vs DNS configuration)
+- ✅ 2,000 emails/day included
+- ✅ No need for separate email service
+
+---
+
+# Old Mailgun Guide (For Reference Only)
 ## For BookaRide.co.nz Email Confirmations
 
 ---
 
-## ✅ Why Mailgun?
+## ✅ Why Mailgun? (No longer relevant)
 
 - 💰 **5,000 FREE emails/month**
 - ⚡ **5-minute setup**
