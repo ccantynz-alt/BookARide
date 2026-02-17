@@ -47,6 +47,9 @@ python3 /app/check_mailgun_dns.py
 Should show: `State: ACTIVE`
 
 ### Step 2: Test Email Sending
+
+**Note:** Make sure the `MAILGUN_API_KEY` environment variable is set before running this test.
+
 ```bash
 cd /app/backend
 python3 << 'EOF'
@@ -54,6 +57,11 @@ import requests
 import os
 
 api_key = os.getenv("MAILGUN_API_KEY")  # Get from environment variable
+if not api_key:
+    print("❌ Error: MAILGUN_API_KEY environment variable is not set")
+    print("Please set it using: export MAILGUN_API_KEY='your-api-key-here'")
+    exit(1)
+
 domain = "mg.bookaride.co.nz"
 from_email = "noreply@mg.bookaride.co.nz"
 to_email = "YOUR_EMAIL@example.com"  # Replace with your email
