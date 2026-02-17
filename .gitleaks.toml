@@ -1,0 +1,70 @@
+title = "BookARide Gitleaks Configuration"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "google-service-account"
+description = "Google Service Account JSON"
+regex = '''service_account'''
+path = '''(.*?)\.json$'''
+
+[[rules]]
+id = "jwt-secret"
+description = "JWT Secret Key"
+regex = '''JWT_SECRET(_KEY)?[\s]*=[\s]*["']?[\w\-\.]+["']?'''
+
+[[rules]]
+id = "mongo-connection"
+description = "MongoDB Connection String"
+regex = '''mongodb(\+srv)?://[^\s]+'''
+
+[[rules]]
+id = "stripe-api-key"
+description = "Stripe API Key"
+regex = '''(sk|pk)_(test|live)_[0-9a-zA-Z]{24,}'''
+
+[[rules]]
+id = "google-api-key"
+description = "Google API Key"
+regex = '''AIza[0-9A-Za-z\-_]{35}'''
+
+[[rules]]
+id = "twilio-api-key"
+description = "Twilio API Key"
+regex = '''SK[0-9a-fA-F]{32}'''
+
+[[rules]]
+id = "mailgun-api-key"
+description = "Mailgun API Key"
+regex = '''key-[0-9a-zA-Z]{32}'''
+
+[[rules]]
+id = "aws-access-key"
+description = "AWS Access Key"
+regex = '''AKIA[0-9A-Z]{16}'''
+
+[[rules]]
+id = "private-key"
+description = "Private Key"
+regex = '''-----BEGIN (RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----'''
+
+[allowlist]
+description = "Allowlist for false positives"
+paths = [
+  '''^\.git/''',
+  '''node_modules/''',
+  '''\.lock$''',
+  '''\.md$''',  # Documentation files with example keys
+  '''package-lock\.json$''',
+  '''yarn\.lock$''',
+]
+
+# Allow example/placeholder secrets in documentation
+regexes = [
+  '''(sk|pk)_test_xxx''',
+  '''sk_live_xxx''',
+  '''your_secret_key_here''',
+  '''placeholder''',
+  '''example\.com''',
+]
