@@ -31,6 +31,7 @@ In **Render** → your backend service → **Environment**, add:
 |----------|---------|-------------|
 | `SMTP_HOST` | `smtp.gmail.com` | Use for Gmail/Google Workspace |
 | `SMTP_PORT` | `587` | TLS port |
+| `EMAIL_PROVIDER` | (auto) | Set to `google` to use only Google (saves Mailgun cost) |
 
 ### 3. Redeploy
 
