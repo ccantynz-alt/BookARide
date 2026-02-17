@@ -93,6 +93,11 @@ SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'your-secret-key-change-in-product
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 1440  # 24 hours
 
+# Emergent LLM API Key
+EMERGENT_API_KEY = os.environ.get('EMERGENT_API_KEY')
+if not EMERGENT_API_KEY:
+    logging.warning("EMERGENT_API_KEY not set. LLM features (email auto-reply, translation) will fail at runtime.")
+
 # Support both bcrypt (legacy from create_admin.py) and pbkdf2_sha256 for backward compatibility
 pwd_context = CryptContext(schemes=["pbkdf2_sha256", "bcrypt"], deprecated="auto")
 security = HTTPBearer()
@@ -3204,6 +3209,10 @@ async def handle_incoming_email(request: Request):
         # Generate AI response
         from emergentintegrations.llm.openai import LlmChat, UserMessage
         
+        if not EMERGENT_API_KEY:
+            logger.error("Cannot generate email response: EMERGENT_API_KEY not set")
+            return {"status": "error", "reason": "LLM not configured"}
+        
         email_system_prompt = """You are an AI email assistant for BookaRide NZ, a premium airport transfer service in Auckland, New Zealand.
 
 You are responding to customer emails automatically. Be warm, professional, and helpful.
@@ -3250,7 +3259,7 @@ FORMAT:
 """
         
         llm = LlmChat(
-            api_key="sk-emergent-1221fFe2cB790B632B",
+            api_key=EMERGENT_API_KEY,
             session_id=str(uuid.uuid4()),
             system_message=email_system_prompt
         )
@@ -3514,6 +3523,10 @@ async def chatbot_message(request: ChatbotMessageRequest):
     try:
         from emergentintegrations.llm.openai import LlmChat, UserMessage
         
+        if not EMERGENT_API_KEY:
+            logger.error("Cannot generate chatbot response: EMERGENT_API_KEY not set")
+            return {"error": "AI chatbot not configured. Please contact support."}
+        
         # Build context from conversation history
         history_context = ""
         if request.conversationHistory:
@@ -3563,7 +3576,7 @@ IMPORTANT:
 - The booking form has a LIVE PRICE CALCULATOR - they see the price instantly when they enter addresses"""
 
         llm = LlmChat(
-            api_key="sk-emergent-1221fFe2cB790B632B",
+            api_key=EMERGENT_API_KEY,
             session_id=str(uuid.uuid4()),
             system_message=system_prompt
         )
@@ -4372,12 +4385,16 @@ async def translate_to_english_async(text: str) -> str:
     if not text or not contains_non_english(text):
         return text
     
+    if not EMERGENT_API_KEY:
+        logger.warning("Cannot translate text: EMERGENT_API_KEY not set")
+        return text  # Return original text if translation not available
+    
     try:
         from emergentintegrations.llm.openai import LlmChat, UserMessage
         import uuid
         
         llm = LlmChat(
-            api_key="sk-emergent-1221fFe2cB790B632B",
+            api_key=EMERGENT_API_KEY,
             session_id=str(uuid.uuid4()),
             system_message="You are a translator. Translate text to English. Only return the translation, nothing else. Keep any English text as-is."
         )
