@@ -3274,47 +3274,13 @@ async def handle_incoming_email(request: Request):
             return {"status": "skipped", "reason": "empty body"}
         
         # AI auto-response disabled - requires OpenAI API configuration
-        logger.info(f"AI auto-response disabled for email from {sender_email}")
+        logger.info(f"AI auto-response disabled for email from {reply_to_email}")
         return {"status": "disabled", "reason": "AI auto-response feature requires OpenAI API configuration"}
         
-                            <a href="https://bookaride.co.nz/book-now" 
-                               style="background: #D4AF37; color: #000; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
-                                Complete Your Booking ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢
-                            </a>
-                        </div>
-                        <p style="color: #999; font-size: 14px; text-align: center;">
-                            Questions? Just reply to this email or use our 24/7 AI chat on the website.
-                        </p>
-                    </div>
-                    <div style="background: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; color: #666;">
-                        <p>ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â© BookaRide NZ | Auckland Airport Transfers</p>
-                    </div>
-                </div>
-                """
-                
-                response = requests.post(
-                    f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
-                    auth=("api", mailgun_api_key),
-                    data={
-                        "from": f"BookaRide NZ <bookings@{mailgun_domain}>",
-                        "to": email,
-                        "subject": subject,
-                        "html": html_content
-                    }
-                )
-                
-                if response.status_code == 200:
-                    await db.abandoned_bookings.update_one(
-                        {"email": email, "recovered": False},
-                        {"$set": {"email_sent": True, "email_sent_at": datetime.now(timezone.utc).isoformat()}}
-                    )
-                    logger.info(f"Sent abandoned booking recovery email to {email}")
-                    
-            except Exception as e:
-                logger.error(f"Error sending recovery email: {str(e)}")
-                
+        
     except Exception as e:
-        logger.error(f"Error in abandoned booking task: {str(e)}")
+        logger.error(f"Email auto-responder error: {str(e)}")
+        return {"status": "error", "reason": str(e)}
 
 
 # ============================================

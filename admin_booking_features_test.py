@@ -15,7 +15,7 @@ import os
 from datetime import datetime, timedelta
 
 # Configuration
-BACKEND_URL = "https://dazzling-leakey.preview.emergentagent.com/api"
+BACKEND_URL = "http://localhost:8000/api"
 ADMIN_USERNAME = "admin"
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "your-admin-password-here")
 
