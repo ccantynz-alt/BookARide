@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Card, CardContent } from '../components/ui/card';
 import { toast } from 'sonner';
 import { companyInfo } from '../mock';
+import { API } from '../config/api';
 import SEO from '../components/SEO';
 import PageBreadcrumb from '../components/PageBreadcrumb';
 import { FAQSchema, LocalBusinessSchema } from '../components/SchemaMarkup';
@@ -30,20 +31,32 @@ export const Contact = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Mock submission - will be connected to backend later
-    console.log('Contact form submitted:', formData);
-    toast.success("Message Sent!", {
-      description: "We&apos;ll get back to you as soon as possible.",
-    });
-    // Reset form
-    setFormData({
-      name: '',
-      email: '',
-      phone: '',
-      message: ''
-    });
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`${API}/contact`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.detail || data.message || 'Failed to send message');
+      }
+      toast.success("Message Sent!", {
+        description: "We'll get back to you as soon as possible.",
+      });
+      setFormData({ name: '', email: '', phone: '', message: '' });
+    } catch (err) {
+      toast.error("Could not send message", {
+        description: err.message || "Please try again or email us directly.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -209,8 +222,8 @@ export const Contact = () => {
                       />
                     </div>
 
-                    <Button type="submit" className="w-full bg-gold hover:bg-gold/90 text-black font-semibold text-lg py-6 transition-colors duration-200">
-                      Send Message
+                    <Button type="submit" disabled={isSubmitting} className="w-full bg-gold hover:bg-gold/90 text-black font-semibold text-lg py-6 transition-colors duration-200">
+                      {isSubmitting ? 'Sending...' : 'Send Message'}
                     </Button>
                   </form>
 

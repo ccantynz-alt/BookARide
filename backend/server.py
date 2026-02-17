@@ -257,6 +257,15 @@ class StatusCheck(BaseModel):
 class StatusCheckCreate(BaseModel):
     client_name: str
 
+
+class ContactFormSubmit(BaseModel):
+    """Website contact form submission."""
+    name: str
+    email: str
+    phone: Optional[str] = ""
+    message: str
+
+
 # Booking Models
 class PriceCalculationRequest(BaseModel):
     serviceType: str
@@ -1236,6 +1245,36 @@ async def get_status_checks():
             check['timestamp'] = datetime.fromisoformat(check['timestamp'])
     
     return status_checks
+
+
+@api_router.post("/contact")
+async def submit_contact_form(data: ContactFormSubmit):
+    """
+    Submit website contact form. Sends email to company inbox via Mailgun/SMTP.
+    """
+    contact_email = os.environ.get("CONTACT_EMAIL") or os.environ.get("BOOKINGS_EMAIL") or "bookings@bookaride.co.nz"
+    if not send_email_unified:
+        raise HTTPException(status_code=503, detail="Email service not configured. Please try again later or email us directly.")
+    html = f"""
+    <h3>New Contact Form Submission</h3>
+    <p><strong>Name:</strong> {data.name}</p>
+    <p><strong>Email:</strong> <a href="mailto:{data.email}">{data.email}</a></p>
+    <p><strong>Phone:</strong> {data.phone or 'Not provided'}</p>
+    <p><strong>Message:</strong></p>
+    <p>{data.message.replace(chr(10), '<br>')}</p>
+    <hr>
+    <p style="color:#666;font-size:12px;">Sent from bookaride.co.nz contact form</p>
+    """
+    ok = send_email_unified(
+        to_email=contact_email,
+        subject=f"Contact Form: {data.name}",
+        html_content=html,
+        reply_to=data.email,
+    )
+    if not ok:
+        raise HTTPException(status_code=500, detail="Failed to send message. Please try again or email us directly.")
+    return {"message": "Message sent successfully. We'll get back to you soon."}
+
 
 def _geocode_geoapify(address: str, api_key: str) -> tuple:
     """Geocode address via Geoapify. Returns (lat, lon) or (None, None)."""
