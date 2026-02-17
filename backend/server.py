@@ -17,7 +17,11 @@ import httpx
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionResponse, CheckoutStatusResponse, CheckoutSessionRequest
+try:
+    import stripe
+except Exception:
+    stripe = None
+
 try:
     from twilio.rest import Client
 except Exception:
@@ -45,6 +49,74 @@ except ImportError:
 
 # Global lock to prevent concurrent reminder sending
 reminder_lock = asyncio.Lock()
+
+# === Stripe Payment Models and Helper ===
+class CheckoutSessionRequest(BaseModel):
+    amount_total: int
+    currency: str = "nzd"
+    success_url: str
+    cancel_url: str
+    customer_email: Optional[str] = None
+    metadata: Dict[str, str] = {}
+    mode: str = "payment"
+    description: Optional[str] = None
+
+class CheckoutSessionResponse(BaseModel):
+    session_id: str
+    url: str
+
+class CheckoutStatusResponse(BaseModel):
+    session_id: str
+    status: str
+    payment_status: str
+    amount_total: Optional[int] = None
+    currency: Optional[str] = None
+    metadata: Dict[str, str] = {}
+
+class StripeCheckout:
+    def __init__(self, api_key: str, webhook_url: str = ""):
+        self.api_key = api_key
+        self.webhook_url = webhook_url
+        if stripe is None:
+            raise RuntimeError("stripe library is not available. Add 'stripe' to requirements.txt.")
+        stripe.api_key = api_key
+
+    async def create_checkout_session(self, req: CheckoutSessionRequest) -> CheckoutSessionResponse:
+        if not self.api_key or self.api_key.strip() == "":
+            raise RuntimeError("STRIPE_SECRET_KEY is not set.")
+        session = stripe.checkout.Session.create(
+            mode=getattr(req, "mode", "payment"),
+            line_items=[
+                {
+                    "price_data": {
+                        "currency": req.currency,
+                        "product_data": {
+                            "name": req.description or "BookARide booking",
+                        },
+                        "unit_amount": int(req.amount_total),
+                    },
+                    "quantity": 1,
+                }
+            ],
+            success_url=req.success_url,
+            cancel_url=req.cancel_url,
+            customer_email=getattr(req, "customer_email", None),
+            metadata=getattr(req, "metadata", {}) or {},
+        )
+        return CheckoutSessionResponse(session_id=session.id, url=session.url)
+
+    async def get_checkout_status(self, session_id: str) -> CheckoutStatusResponse:
+        if not self.api_key or self.api_key.strip() == "":
+            raise RuntimeError("STRIPE_SECRET_KEY is not set.")
+        session = stripe.checkout.Session.retrieve(session_id)
+        return CheckoutStatusResponse(
+            session_id=session.id,
+            status=getattr(session, "status", "") or "",
+            payment_status=getattr(session, "payment_status", "") or "",
+            amount_total=getattr(session, "amount_total", None),
+            currency=getattr(session, "currency", None),
+            metadata=getattr(session, "metadata", {}) or {},
+        )
 
 # === Background Task Helpers ===
 def run_async_task(coro_func, arg, task_description="background task"):
