@@ -26,18 +26,25 @@ def send_email(
     reply_to: str = None,
 ) -> bool:
     """
-    Send email via Mailgun (if configured) or Google Workspace SMTP (fallback).
+    Send email via Mailgun or Google Workspace SMTP.
+    Use EMAIL_PROVIDER=google to prefer Google SMTP when Mailgun has issues.
     Returns True if sent successfully, False otherwise.
     """
     from_email = from_email or get_noreply_email()
+    prefer_google = os.environ.get("EMAIL_PROVIDER", "").lower() == "google"
 
-    # Try Mailgun first
-    if _send_via_mailgun(to_email, subject, html_content, from_email, from_name, reply_to):
-        return True
-
-    # Fallback to SMTP (Google Workspace / Gmail)
-    if _send_via_smtp(to_email, subject, html_content, from_email, from_name):
-        return True
+    # Prefer Google SMTP when EMAIL_PROVIDER=google (e.g. Mailgun having issues)
+    if prefer_google:
+        if _send_via_smtp(to_email, subject, html_content, from_email, from_name, reply_to):
+            return True
+        if _send_via_mailgun(to_email, subject, html_content, from_email, from_name, reply_to):
+            return True
+    else:
+        # Default: try Mailgun first, fallback to SMTP
+        if _send_via_mailgun(to_email, subject, html_content, from_email, from_name, reply_to):
+            return True
+        if _send_via_smtp(to_email, subject, html_content, from_email, from_name, reply_to):
+            return True
 
     logger.warning("No email provider configured (Mailgun or SMTP)")
     return False
@@ -89,6 +96,7 @@ def _send_via_smtp(
     html_content: str,
     from_email: str,
     from_name: str,
+    reply_to: str = None,
 ) -> bool:
     """Send via SMTP (Google Workspace / Gmail)."""
     user = os.environ.get("SMTP_USER")
@@ -104,6 +112,8 @@ def _send_via_smtp(
         msg["Subject"] = subject
         msg["From"] = f"{from_name} <{from_email}>"
         msg["To"] = to_email
+        if reply_to:
+            msg["Reply-To"] = reply_to
         msg.attach(MIMEText(html_content, "html"))
 
         with smtplib.SMTP(host, port) as server:

@@ -44,6 +44,10 @@ Click **Manual Deploy** in Render so the new env vars are picked up.
 - **Google Workspace SMTP** is used if Mailgun is not configured but `SMTP_USER` and `SMTP_PASS` are set.
 - You can use either Mailgun or Google Workspace; you don’t need both.
 
+### Mailgun having issues? Use Google instead
+
+If Mailgun is configured but having problems (DNS, delivery, API errors), add `EMAIL_PROVIDER=google`. This makes the system prefer Google SMTP over Mailgun. You can keep your Mailgun env vars; they'll only be used if Google SMTP fails.
+
 ## Sending from noreply@
 
 Customer confirmations, payment links, and reminders are sent from `noreply@bookaride.co.nz` (or whatever you set in `NOREPLY_EMAIL`). With Google Workspace:
