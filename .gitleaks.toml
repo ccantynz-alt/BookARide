@@ -40,6 +40,11 @@ description = "Mailgun API Key"
 regex = '''key-[0-9a-zA-Z]{32}'''
 
 [[rules]]
+id = "emergent-api-key"
+description = "Emergent API Key"
+regex = '''sk-emergent-[0-9a-zA-Z]{20,}'''
+
+[[rules]]
 id = "aws-access-key"
 description = "AWS Access Key"
 regex = '''AKIA[0-9A-Z]{16}'''
@@ -58,6 +63,10 @@ paths = [
   '''\.md$''',  # Documentation files with example keys
   '''package-lock\.json$''',
   '''yarn\.lock$''',
+  '''test.*\.json$''',  # Test result files
+  '''_test\.py$''',  # Test scripts
+  '''IMPORT_BOOKINGS_SCRIPT\.py$''',  # Import script with example URLs
+  '''reset_admin_password\.py$''',  # Admin script with example URLs
 ]
 
 # Allow example/placeholder secrets in documentation
@@ -67,4 +76,10 @@ regexes = [
   '''your_secret_key_here''',
   '''placeholder''',
   '''example\.com''',
+  '''mongodb://localhost''',  # Local MongoDB URLs
+  '''mongodb://\.\.\.''',  # Truncated example URLs
+  '''mongodb\+srv://\.\.\.''',  # Truncated example URLs
+  '''username:password@cluster''',  # Generic placeholder credentials
+  '''user:pass@cluster''',  # Generic placeholder credentials
+  '''eyJhbGciOiJIUzI1NiIs\.\.\.''',  # Truncated JWT examples
 ]

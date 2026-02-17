@@ -8,6 +8,7 @@ repos:
       
       # Detect private keys
       - id: detect-private-key
+        exclude: '(\.example$|\.md$)'  # Exclude example files and documentation
       
       # Check for merge conflicts
       - id: check-merge-conflict
@@ -27,8 +28,7 @@ repos:
     rev: v1.4.0
     hooks:
       - id: detect-secrets
-        args: ['--baseline', '.secrets.baseline']
-        exclude: package-lock.json
+        exclude: '(package-lock\.json|\.example$|\.md$)'
 
   - repo: https://github.com/gitleaks/gitleaks
     rev: v8.18.1
