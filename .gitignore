@@ -123,3 +123,6 @@ backend/#*.txt
 RUN_LOGS/
 D8_CONTROL/
 .env*.local
+
+# Sensitive documentation files
+EMAIL_SYSTEM_READY.md
