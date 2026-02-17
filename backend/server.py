@@ -93,6 +93,11 @@ SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'your-secret-key-change-in-product
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 1440  # 24 hours
 
+# Emergent LLM API Key
+EMERGENT_API_KEY = os.environ.get('EMERGENT_API_KEY')
+if not EMERGENT_API_KEY:
+    logging.warning("EMERGENT_API_KEY not set. LLM features will not work.")
+
 # Support both bcrypt (legacy from create_admin.py) and pbkdf2_sha256 for backward compatibility
 pwd_context = CryptContext(schemes=["pbkdf2_sha256", "bcrypt"], deprecated="auto")
 security = HTTPBearer()
@@ -3250,7 +3255,7 @@ FORMAT:
 """
         
         llm = LlmChat(
-            api_key="sk-emergent-1221fFe2cB790B632B",
+            api_key=EMERGENT_API_KEY,
             session_id=str(uuid.uuid4()),
             system_message=email_system_prompt
         )
@@ -3563,7 +3568,7 @@ IMPORTANT:
 - The booking form has a LIVE PRICE CALCULATOR - they see the price instantly when they enter addresses"""
 
         llm = LlmChat(
-            api_key="sk-emergent-1221fFe2cB790B632B",
+            api_key=EMERGENT_API_KEY,
             session_id=str(uuid.uuid4()),
             system_message=system_prompt
         )
@@ -4377,7 +4382,7 @@ async def translate_to_english_async(text: str) -> str:
         import uuid
         
         llm = LlmChat(
-            api_key="sk-emergent-1221fFe2cB790B632B",
+            api_key=EMERGENT_API_KEY,
             session_id=str(uuid.uuid4()),
             system_message="You are a translator. Translate text to English. Only return the translation, nothing else. Keep any English text as-is."
         )

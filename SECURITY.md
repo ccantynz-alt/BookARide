@@ -47,6 +47,9 @@ TWILIO_ACCOUNT_SID=your_sid_here
 TWILIO_AUTH_TOKEN=your_token_here
 MAILGUN_API_KEY=your_key_here
 MAILGUN_DOMAIN=your_domain_here
+
+# Emergent LLM Integration
+EMERGENT_API_KEY=your_emergent_api_key_here
 ```
 
 #### Frontend (.env file - DO NOT COMMIT)
