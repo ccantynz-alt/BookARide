@@ -616,6 +616,9 @@ export const AdminDashboard = () => {
   const [adminFlightArrivalTime, setAdminFlightArrivalTime] = useState(null);
   const [adminFlightDepartureTime, setAdminFlightDepartureTime] = useState(null);
 
+  // Date picker state for edit booking modal
+  const [editPickupDate, setEditPickupDate] = useState(null);
+
   useEffect(() => {
     // Check authentication
     const token = localStorage.getItem('adminToken');
@@ -1567,6 +1570,13 @@ export const AdminDashboard = () => {
       ...booking,
       pickupAddresses: booking.pickupAddresses || []
     });
+    // Initialise the date picker from the booking's stored date (YYYY-MM-DD)
+    if (booking.date) {
+      const [year, month, day] = booking.date.split('-').map(Number);
+      setEditPickupDate(new Date(year, month - 1, day));
+    } else {
+      setEditPickupDate(null);
+    }
     setShowEditBookingModal(true);
   };
 
@@ -4257,6 +4267,7 @@ export const AdminDashboard = () => {
                           }
                         }}
                         placeholder="Select date"
+                        allowPastDates={true}
                         maxDate={new Date('2030-12-31')}
                         showMonthDropdown
                         showYearDropdown
@@ -4726,13 +4737,27 @@ export const AdminDashboard = () => {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label>Date *</Label>
-                      <Input
-                        type="date"
-                        value={editingBooking.date}
-                        onChange={(e) => setEditingBooking(prev => ({...prev, date: e.target.value}))}
-                        className="mt-1"
-                      />
+                      <Label>Date * (can backdate for invoicing)</Label>
+                      <div className="mt-1">
+                        <CustomDatePicker
+                          selected={editPickupDate}
+                          onChange={(date) => {
+                            setEditPickupDate(date);
+                            if (date) {
+                              const year = date.getFullYear();
+                              const month = String(date.getMonth() + 1).padStart(2, '0');
+                              const day = String(date.getDate()).padStart(2, '0');
+                              setEditingBooking(prev => ({...prev, date: `${year}-${month}-${day}`}));
+                            }
+                          }}
+                          placeholder="Select date"
+                          allowPastDates={true}
+                          maxDate={new Date('2030-12-31')}
+                          showMonthDropdown
+                          showYearDropdown
+                          dropdownMode="select"
+                        />
+                      </div>
                     </div>
                     <div>
                       <Label>Time *</Label>
