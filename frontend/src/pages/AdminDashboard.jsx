@@ -2241,56 +2241,57 @@ export const AdminDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-20">
-      {/* Professional Light Header */}
-      <div className="bg-white border-b border-gray-200 py-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 pt-20">
+      {/* Glassy Header */}
+      <div className="bg-white/10 backdrop-blur-md border-b border-white/10 py-5 sticky top-20 z-40 shadow-lg">
         <div className="container mx-auto px-4">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-              <p className="text-gray-500 text-sm mt-1">Manage bookings and customer communications</p>
+              <h1 className="text-2xl font-bold text-white tracking-tight">Admin Dashboard</h1>
+              <p className="text-white/50 text-xs mt-0.5">Manage bookings and customer communications</p>
             </div>
             <div className="flex gap-2 flex-wrap">
-              <Button onClick={() => window.open('/', '_blank')} variant="outline" size="sm">
+              <Button onClick={() => window.open('/', '_blank')} variant="outline" size="sm" className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white backdrop-blur-sm">
                 <Home className="w-4 h-4 mr-2" />
                 View Site
               </Button>
-              <Button onClick={handleSyncContactsToiPhone} disabled={syncingContacts} variant="outline" size="sm">
+              <Button onClick={handleSyncContactsToiPhone} disabled={syncingContacts} variant="outline" size="sm" className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white backdrop-blur-sm">
                 <Smartphone className="w-4 h-4 mr-2" />
                 {syncingContacts ? 'Syncing...' : 'Sync to iPhone'}
               </Button>
-              <Button onClick={() => navigate('/driver/portal')} variant="outline" size="sm">
+              <Button onClick={() => navigate('/driver/portal')} variant="outline" size="sm" className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white backdrop-blur-sm">
                 <Users className="w-4 h-4 mr-2" />
                 Driver Portal
               </Button>
-              <Button onClick={() => navigate('/admin/seo')} variant="outline" size="sm">
+              <Button onClick={() => navigate('/admin/seo')} variant="outline" size="sm" className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white backdrop-blur-sm">
                 <Settings className="w-4 h-4 mr-2" />
                 SEO Management
               </Button>
-              <Button 
-                onClick={handleSync} 
+              <Button
+                onClick={handleSync}
                 disabled={syncing}
-                variant="outline" 
+                variant="outline"
                 size="sm"
+                className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white backdrop-blur-sm"
               >
                 <RefreshCw className={`w-4 h-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
                 {syncing ? 'Syncing...' : 'Sync'}
               </Button>
               {xeroConnected ? (
-                <Button variant="outline" size="sm" className="text-green-600 border-green-300">
+                <Button variant="outline" size="sm" className="bg-green-500/20 border-green-400/40 text-green-300 hover:bg-green-500/30 backdrop-blur-sm">
                   <DollarSign className="w-4 h-4 mr-2" />
                   Xero: {xeroOrg || 'Connected'}
                 </Button>
               ) : (
-                <Button onClick={connectXero} variant="outline" size="sm">
+                <Button onClick={connectXero} variant="outline" size="sm" className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white backdrop-blur-sm">
                   <DollarSign className="w-4 h-4 mr-2" />
                   Connect Xero
                 </Button>
               )}
-              <Button onClick={() => setShowPasswordModal(true)} variant="outline" size="sm">
+              <Button onClick={() => setShowPasswordModal(true)} variant="outline" size="sm" className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white backdrop-blur-sm">
                 Change Password
               </Button>
-              <Button onClick={handleLogout} variant="outline" size="sm" className="text-red-600 border-red-300 hover:bg-red-50">
+              <Button onClick={handleLogout} variant="outline" size="sm" className="bg-red-500/20 border-red-400/40 text-red-300 hover:bg-red-500/30 backdrop-blur-sm">
                 <LogOut className="w-4 h-4 mr-2" />
                 Logout
               </Button>
@@ -2301,8 +2302,8 @@ export const AdminDashboard = () => {
 
       <div className="container mx-auto px-4 py-8">
         {/* Breadcrumb Navigation */}
-        <AdminBreadcrumb 
-          activeTab={activeTab} 
+        <AdminBreadcrumb
+          activeTab={activeTab}
           selectedBooking={selectedBooking}
           showDetailsModal={showDetailsModal}
           showEditBookingModal={showEditBookingModal}
@@ -2315,49 +2316,49 @@ export const AdminDashboard = () => {
           if (val === 'shuttle') fetchShuttleData();
           if (val === 'archive') fetchArchivedBookings(1, '');
         }} className="w-full">
-          <TabsList className="flex flex-wrap w-full gap-1 mb-4 md:mb-8 bg-transparent">
-            <TabsTrigger value="bookings" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4">
+          <TabsList className="flex flex-wrap w-full gap-1 mb-6 md:mb-8 bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl p-1.5 shadow-lg">
+            <TabsTrigger value="bookings" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 text-white/70 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-md rounded-xl">
               <BookOpen className="w-3 h-3 md:w-4 md:h-4" />
               <span className="hidden sm:inline">Bookings</span>
               <span className="sm:hidden">Book</span>
             </TabsTrigger>
-            <TabsTrigger value="shuttle" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 text-yellow-600">
+            <TabsTrigger value="shuttle" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 text-amber-300/80 data-[state=active]:bg-white data-[state=active]:text-amber-700 data-[state=active]:shadow-md rounded-xl">
               <Bus className="w-3 h-3 md:w-4 md:h-4" />
               <span>Shuttle</span>
             </TabsTrigger>
-            <TabsTrigger value="deleted" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 text-red-600">
+            <TabsTrigger value="deleted" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 text-red-300/80 data-[state=active]:bg-white data-[state=active]:text-red-700 data-[state=active]:shadow-md rounded-xl">
               <Trash2 className="w-3 h-3 md:w-4 md:h-4" />
               <span className="hidden md:inline">Deleted</span>
               <span className="md:hidden">Del</span>
               {deletedBookings.length > 0 && <span className="text-[10px]">({deletedBookings.length})</span>}
             </TabsTrigger>
-            <TabsTrigger value="archive" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 text-blue-600">
+            <TabsTrigger value="archive" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 text-sky-300/80 data-[state=active]:bg-white data-[state=active]:text-sky-700 data-[state=active]:shadow-md rounded-xl">
               <Archive className="w-3 h-3 md:w-4 md:h-4" />
               <span className="hidden md:inline">Archive</span>
               <span className="md:hidden">Arc</span>
               {archivedCount > 0 && <span className="text-[10px]">({archivedCount})</span>}
             </TabsTrigger>
-            <TabsTrigger value="analytics" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 hidden lg:flex">
+            <TabsTrigger value="analytics" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 hidden lg:flex text-white/70 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-md rounded-xl">
               <BarChart3 className="w-3 h-3 md:w-4 md:h-4" />
               <span>Analytics</span>
             </TabsTrigger>
-            <TabsTrigger value="customers" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 hidden lg:flex">
+            <TabsTrigger value="customers" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 hidden lg:flex text-white/70 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-md rounded-xl">
               <Users className="w-3 h-3 md:w-4 md:h-4" />
               <span>Customers</span>
             </TabsTrigger>
-            <TabsTrigger value="drivers" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4">
+            <TabsTrigger value="drivers" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 text-white/70 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-md rounded-xl">
               <Users className="w-3 h-3 md:w-4 md:h-4" />
               <span>Drivers</span>
             </TabsTrigger>
-            <TabsTrigger value="applications" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 hidden xl:flex">
+            <TabsTrigger value="applications" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 hidden xl:flex text-white/70 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-md rounded-xl">
               <FileText className="w-3 h-3 md:w-4 md:h-4" />
               <span>Apps</span>
             </TabsTrigger>
-            <TabsTrigger value="marketing" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 hidden xl:flex">
+            <TabsTrigger value="marketing" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 hidden xl:flex text-white/70 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-md rounded-xl">
               <Globe className="w-3 h-3 md:w-4 md:h-4" />
               <span>Marketing</span>
             </TabsTrigger>
-            <TabsTrigger value="import" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 hidden xl:flex text-purple-600">
+            <TabsTrigger value="import" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 hidden xl:flex text-violet-300/80 data-[state=active]:bg-white data-[state=active]:text-violet-700 data-[state=active]:shadow-md rounded-xl">
               <FileText className="w-3 h-3 md:w-4 md:h-4" />
               <span>Import</span>
             </TabsTrigger>
