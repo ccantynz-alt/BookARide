@@ -4257,7 +4257,6 @@ export const AdminDashboard = () => {
                           }
                         }}
                         placeholder="Select date"
-                        minDate={new Date()}
                         maxDate={new Date('2030-12-31')}
                         showMonthDropdown
                         showYearDropdown
@@ -4732,7 +4731,6 @@ export const AdminDashboard = () => {
                         type="date"
                         value={editingBooking.date}
                         onChange={(e) => setEditingBooking(prev => ({...prev, date: e.target.value}))}
-                        min={new Date().toISOString().split('T')[0]}
                         className="mt-1"
                       />
                     </div>
