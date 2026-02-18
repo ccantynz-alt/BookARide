@@ -12,7 +12,7 @@ export const LocalBusinessSchema = () => {
     "description": "Auckland's premium airport transfer service. Private door-to-door shuttles from all Auckland suburbs to Auckland Airport. Fixed prices, flight tracking, professional drivers.",
     "url": "https://bookaride.co.nz",
     "telephone": "+64-9-XXX-XXXX",
-    "email": "bookings@bookaride.co.nz",
+    "email": "bookings@bookerride.co.nz",
     "address": {
       "@type": "PostalAddress",
       "streetAddress": "Auckland",

@@ -15,7 +15,7 @@ const AirportShuttlePage = () => {
     "description": "Auckland's #1 rated airport shuttle service. Professional door-to-door transfers to Auckland Airport with fixed pricing, 24/7 availability, and real-time tracking.",
     "url": "https://bookaride.co.nz",
     "telephone": "+64-27-XXX-XXXX",
-    "email": "bookings@bookaride.co.nz",
+    "email": "bookings@bookerride.co.nz",
     "address": {
       "@type": "PostalAddress",
       "addressLocality": "Auckland",
