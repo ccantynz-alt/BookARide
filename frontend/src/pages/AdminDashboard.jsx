@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogOut, Search, Filter, Mail, DollarSign, CheckCircle, XCircle, Clock, Eye, Edit2, BarChart3, Users, BookOpen, Car, Settings, Trash2, MapPin, Calendar, RefreshCw, Send, Bell, Facebook, Globe, Square, CheckSquare, FileText, Smartphone, RotateCcw, AlertTriangle, AlertCircle, Home, Bus, ExternalLink, Navigation, Upload, Archive } from 'lucide-react';
-import { useLoadScript } from '@react-google-maps/api';
+import GeoapifyAutocomplete from '../components/GeoapifyAutocomplete';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent } from '../components/ui/card';
@@ -26,10 +26,7 @@ import ProfessionalStatsBar from '../components/admin/ProfessionalStatsBar';
 import UrgentNotificationsCenter from '../components/admin/UrgentNotificationsCenter';
 import ConfirmationStatusPanel from '../components/admin/ConfirmationStatusPanel';
 import ReturnsOverviewPanel from '../components/admin/ReturnsOverviewPanel';
-import { initAutocompleteWithFix } from '../utils/fixGoogleAutocomplete';
 import { API } from '../config/api';
-
-const libraries = ['places'];
 
 // Helper function to format date to DD/MM/YYYY
 const formatDate = (dateString) => {
@@ -506,13 +503,6 @@ const ImportBookingsSection = ({ onSuccess }) => {
 
 export const AdminDashboard = () => {
   const navigate = useNavigate();
-  const { isLoaded } = useLoadScript({
-    googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY,
-    libraries: libraries
-  });
-  const pickupInputRef = useRef(null);
-  const dropoffInputRef = useRef(null);
-  const additionalPickupRefs = useRef([]);
   const [activeTab, setActiveTab] = useState('bookings');
   const [bookings, setBookings] = useState([]);
   const [filteredBookings, setFilteredBookings] = useState([]);
@@ -618,11 +608,6 @@ export const AdminDashboard = () => {
   // Xero invoice date state (for backdating)
   const [xeroInvoiceDate, setXeroInvoiceDate] = useState(null);
   
-  // Refs for edit modal autocomplete
-  const editPickupInputRef = useRef(null);
-  const editDropoffInputRef = useRef(null);
-  const editAdditionalPickupRefs = useRef([]);
-  
   // Date/Time picker states for admin form
   const [adminPickupDate, setAdminPickupDate] = useState(null);
   const [adminPickupTime, setAdminPickupTime] = useState(null);
@@ -647,169 +632,6 @@ export const AdminDashboard = () => {
   useEffect(() => {
     filterBookings();
   }, [bookings, searchTerm, statusFilter]);
-
-  // Store cleanup functions for autocomplete instances
-  const autocompleteCleanupRef = useRef([]);
-
-  // Initialize Google Places Autocomplete for admin booking form
-  useEffect(() => {
-    if (!isLoaded || !showCreateBookingModal) return;
-
-    // Clean up previous autocomplete instances
-    autocompleteCleanupRef.current.forEach(cleanup => {
-      if (cleanup) cleanup();
-    });
-    autocompleteCleanupRef.current = [];
-
-    // Reset initialization flags for additional pickup refs
-    additionalPickupRefs.current.forEach(ref => {
-      if (ref) ref._autocompleteInitialized = false;
-    });
-
-    // Delay to ensure modal and inputs are fully rendered
-    const timer = setTimeout(() => {
-      try {
-        if (window.google && window.google.maps && window.google.maps.places) {
-          const autocompleteOptions = {
-            fields: ['formatted_address', 'geometry', 'name']
-          };
-
-          // Initialize pickup autocomplete with fix
-          if (pickupInputRef.current) {
-            const pickupSetup = initAutocompleteWithFix(pickupInputRef.current, autocompleteOptions);
-            if (pickupSetup && pickupSetup.autocomplete) {
-              pickupSetup.autocomplete.addListener('place_changed', () => {
-                const place = pickupSetup.autocomplete.getPlace();
-                if (place && place.formatted_address) {
-                  setNewBooking(prev => ({ ...prev, pickupAddress: place.formatted_address }));
-                }
-              });
-              autocompleteCleanupRef.current.push(pickupSetup.cleanup);
-            }
-          }
-
-          // Initialize dropoff autocomplete with fix
-          if (dropoffInputRef.current) {
-            const dropoffSetup = initAutocompleteWithFix(dropoffInputRef.current, autocompleteOptions);
-            if (dropoffSetup && dropoffSetup.autocomplete) {
-              dropoffSetup.autocomplete.addListener('place_changed', () => {
-                const place = dropoffSetup.autocomplete.getPlace();
-                if (place && place.formatted_address) {
-                  setNewBooking(prev => ({ ...prev, dropoffAddress: place.formatted_address }));
-                }
-              });
-              autocompleteCleanupRef.current.push(dropoffSetup.cleanup);
-            }
-          }
-
-          // Initialize autocomplete for additional pickup addresses with fix
-          additionalPickupRefs.current.forEach((ref, index) => {
-            if (ref && !ref._autocompleteInitialized) {
-              const additionalSetup = initAutocompleteWithFix(ref, autocompleteOptions);
-              if (additionalSetup && additionalSetup.autocomplete) {
-                additionalSetup.autocomplete.addListener('place_changed', () => {
-                  const place = additionalSetup.autocomplete.getPlace();
-                  if (place && place.formatted_address) {
-                    // Use functional update to avoid stale closure
-                    setNewBooking(prev => ({
-                      ...prev,
-                      pickupAddresses: prev.pickupAddresses.map((addr, i) => 
-                        i === index ? place.formatted_address : addr
-                      )
-                    }));
-                  }
-                });
-                ref._autocompleteInitialized = true;
-                autocompleteCleanupRef.current.push(additionalSetup.cleanup);
-              }
-            }
-          });
-
-          console.log('✅ Google Places Autocomplete initialized for admin form with click fix');
-        } else {
-          console.warn('⚠️ Google Maps Places API not loaded yet');
-        }
-      } catch (error) {
-        console.error('❌ Error initializing Google Places Autocomplete:', error);
-      }
-    }, 500);
-
-    return () => {
-      clearTimeout(timer);
-      // Cleanup autocomplete instances when modal closes
-      autocompleteCleanupRef.current.forEach(cleanup => {
-        if (cleanup) cleanup();
-      });
-    };
-  }, [isLoaded, showCreateBookingModal, newBooking.pickupAddresses.length]);
-
-  // Initialize autocomplete for edit modal
-  useEffect(() => {
-    if (!isLoaded || !showEditBookingModal || !editingBooking) return;
-
-    const timer = setTimeout(() => {
-      try {
-        if (window.google?.maps?.places) {
-          const autocompleteOptions = {
-            fields: ['formatted_address', 'geometry', 'name']
-          };
-
-          // Initialize pickup autocomplete for edit modal
-          if (editPickupInputRef.current && !editPickupInputRef.current._autocompleteInitialized) {
-            const pickupSetup = initAutocompleteWithFix(editPickupInputRef.current, autocompleteOptions);
-            if (pickupSetup?.autocomplete) {
-              pickupSetup.autocomplete.addListener('place_changed', () => {
-                const place = pickupSetup.autocomplete.getPlace();
-                if (place?.formatted_address) {
-                  setEditingBooking(prev => ({ ...prev, pickupAddress: place.formatted_address }));
-                }
-              });
-              editPickupInputRef.current._autocompleteInitialized = true;
-            }
-          }
-
-          // Initialize dropoff autocomplete for edit modal
-          if (editDropoffInputRef.current && !editDropoffInputRef.current._autocompleteInitialized) {
-            const dropoffSetup = initAutocompleteWithFix(editDropoffInputRef.current, autocompleteOptions);
-            if (dropoffSetup?.autocomplete) {
-              dropoffSetup.autocomplete.addListener('place_changed', () => {
-                const place = dropoffSetup.autocomplete.getPlace();
-                if (place?.formatted_address) {
-                  setEditingBooking(prev => ({ ...prev, dropoffAddress: place.formatted_address }));
-                }
-              });
-              editDropoffInputRef.current._autocompleteInitialized = true;
-            }
-          }
-
-          // Initialize additional pickup autocompletes for edit modal
-          editAdditionalPickupRefs.current.forEach((ref, index) => {
-            if (ref && !ref._autocompleteInitialized) {
-              const setup = initAutocompleteWithFix(ref, autocompleteOptions);
-              if (setup?.autocomplete) {
-                setup.autocomplete.addListener('place_changed', () => {
-                  const place = setup.autocomplete.getPlace();
-                  if (place?.formatted_address) {
-                    setEditingBooking(prev => ({
-                      ...prev,
-                      pickupAddresses: prev.pickupAddresses.map((addr, i) => i === index ? place.formatted_address : addr)
-                    }));
-                  }
-                });
-                ref._autocompleteInitialized = true;
-              }
-            }
-          });
-
-          console.log('✅ Google Places Autocomplete initialized for edit modal');
-        }
-      } catch (error) {
-        console.error('❌ Error initializing autocomplete for edit modal:', error);
-      }
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [isLoaded, showEditBookingModal, editingBooking?.pickupAddresses?.length]);
 
   const getAuthHeaders = () => {
     const token = localStorage.getItem('adminToken');
@@ -1568,47 +1390,11 @@ export const AdminDashboard = () => {
     }));
   };
 
-  // Function to initialize autocomplete for additional pickup inputs
-  const initializeAdditionalPickupAutocomplete = useCallback(() => {
-    if (!isLoaded || !window.google?.maps?.places) return;
-    
-    const autocompleteOptions = {
-      fields: ['formatted_address', 'geometry', 'name']
-    };
-    
-    additionalPickupRefs.current.forEach((ref, index) => {
-      if (ref && !ref._autocompleteInitialized) {
-        const setup = initAutocompleteWithFix(ref, autocompleteOptions);
-        if (setup?.autocomplete) {
-          setup.autocomplete.addListener('place_changed', () => {
-            const place = setup.autocomplete.getPlace();
-            if (place?.formatted_address) {
-              // Update the pickup address directly using setNewBooking
-              setNewBooking(prev => ({
-                ...prev,
-                pickupAddresses: prev.pickupAddresses.map((addr, i) => 
-                  i === index ? place.formatted_address : addr
-                )
-              }));
-            }
-          });
-          ref._autocompleteInitialized = true;
-          autocompleteCleanupRef.current.push(setup.cleanup);
-        }
-      }
-    });
-  }, [isLoaded]);
-
   const handleAddPickup = () => {
     setNewBooking(prev => ({
       ...prev,
       pickupAddresses: [...prev.pickupAddresses, '']
     }));
-    
-    // Re-initialize autocomplete for new input after DOM update
-    setTimeout(() => {
-      initializeAdditionalPickupAutocomplete();
-    }, 200);
   };
 
   const exportToCSV = () => {
@@ -1826,33 +1612,6 @@ export const AdminDashboard = () => {
       ...prev,
       pickupAddresses: [...(prev.pickupAddresses || []), '']
     }));
-    
-    // Re-initialize autocomplete for new input after DOM update
-    setTimeout(() => {
-      if (!isLoaded || !window.google?.maps?.places) return;
-      
-      const autocompleteOptions = {
-        fields: ['formatted_address', 'geometry', 'name']
-      };
-      
-      editAdditionalPickupRefs.current.forEach((ref, index) => {
-        if (ref && !ref._autocompleteInitialized) {
-          const setup = initAutocompleteWithFix(ref, autocompleteOptions);
-          if (setup?.autocomplete) {
-            setup.autocomplete.addListener('place_changed', () => {
-              const place = setup.autocomplete.getPlace();
-              if (place?.formatted_address) {
-                setEditingBooking(prev => ({
-                  ...prev,
-                  pickupAddresses: prev.pickupAddresses.map((addr, i) => i === index ? place.formatted_address : addr)
-                }));
-              }
-            });
-            ref._autocompleteInitialized = true;
-          }
-        }
-      });
-    }, 100);
   };
 
   // Handle removing pickup from edit form
@@ -4415,13 +4174,12 @@ export const AdminDashboard = () => {
               <div className="space-y-4">
                 <div>
                   <Label>Pickup Address 1 *</Label>
-                  <Input
-                    ref={pickupInputRef}
+                  <GeoapifyAutocomplete
                     value={newBooking.pickupAddress}
-                    onChange={(e) => setNewBooking(prev => ({...prev, pickupAddress: e.target.value}))}
+                    onChange={(v) => setNewBooking(prev => ({...prev, pickupAddress: v}))}
+                    onSelect={(addr) => setNewBooking(prev => ({...prev, pickupAddress: addr}))}
                     placeholder="Start typing address..."
                     className="mt-1"
-                    autoComplete="off"
                   />
                 </div>
 
@@ -4430,12 +4188,11 @@ export const AdminDashboard = () => {
                   <div key={index} className="relative">
                     <Label>Pickup Address {index + 2}</Label>
                     <div className="flex gap-2 mt-1">
-                      <Input
-                        ref={(el) => (additionalPickupRefs.current[index] = el)}
+                      <GeoapifyAutocomplete
                         value={pickup}
-                        onChange={(e) => handlePickupAddressChange(index, e.target.value)}
+                        onChange={(v) => handlePickupAddressChange(index, v)}
+                        onSelect={(addr) => handlePickupAddressChange(index, addr)}
                         placeholder="Start typing address..."
-                        autoComplete="off"
                         className="flex-1"
                       />
                       <Button
@@ -4474,13 +4231,12 @@ export const AdminDashboard = () => {
 
                 <div>
                   <Label>Drop-off Address *</Label>
-                  <Input
-                    ref={dropoffInputRef}
+                  <GeoapifyAutocomplete
                     value={newBooking.dropoffAddress}
-                    onChange={(e) => setNewBooking(prev => ({...prev, dropoffAddress: e.target.value}))}
+                    onChange={(v) => setNewBooking(prev => ({...prev, dropoffAddress: v}))}
+                    onSelect={(addr) => setNewBooking(prev => ({...prev, dropoffAddress: addr}))}
                     placeholder="Start typing address..."
                     className="mt-1"
-                    autoComplete="off"
                   />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -4912,13 +4668,12 @@ export const AdminDashboard = () => {
                 <div className="space-y-4">
                   <div>
                     <Label>Pickup Address 1 *</Label>
-                    <Input
-                      ref={editPickupInputRef}
+                    <GeoapifyAutocomplete
                       value={editingBooking.pickupAddress}
-                      onChange={(e) => setEditingBooking(prev => ({...prev, pickupAddress: e.target.value}))}
+                      onChange={(v) => setEditingBooking(prev => ({...prev, pickupAddress: v}))}
+                      onSelect={(addr) => setEditingBooking(prev => ({...prev, pickupAddress: addr}))}
                       placeholder="Start typing address..."
                       className="mt-1"
-                      autoComplete="off"
                     />
                   </div>
 
@@ -4927,12 +4682,11 @@ export const AdminDashboard = () => {
                     <div key={index} className="relative">
                       <Label>Pickup Address {index + 2}</Label>
                       <div className="flex gap-2 mt-1">
-                        <Input
-                          ref={(el) => (editAdditionalPickupRefs.current[index] = el)}
+                        <GeoapifyAutocomplete
                           value={pickup}
-                          onChange={(e) => handleEditPickupAddressChange(index, e.target.value)}
+                          onChange={(v) => handleEditPickupAddressChange(index, v)}
+                          onSelect={(addr) => handleEditPickupAddressChange(index, addr)}
                           placeholder="Start typing address..."
-                          autoComplete="off"
                           className="flex-1"
                         />
                         <Button
@@ -4962,13 +4716,12 @@ export const AdminDashboard = () => {
 
                   <div>
                     <Label>Drop-off Address *</Label>
-                    <Input
-                      ref={editDropoffInputRef}
+                    <GeoapifyAutocomplete
                       value={editingBooking.dropoffAddress}
-                      onChange={(e) => setEditingBooking(prev => ({...prev, dropoffAddress: e.target.value}))}
+                      onChange={(v) => setEditingBooking(prev => ({...prev, dropoffAddress: v}))}
+                      onSelect={(addr) => setEditingBooking(prev => ({...prev, dropoffAddress: addr}))}
                       placeholder="Start typing address..."
                       className="mt-1"
-                      autoComplete="off"
                     />
                   </div>
 
