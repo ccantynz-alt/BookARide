@@ -803,9 +803,10 @@ export const BookNow = () => {
                         </div>
                       </div>
 
-                      {/* Return Journey - Always visible, optional */}
+                      {/* Return Journey - Integrated into single form, optional fields */}
                       <div className="bg-gray-50 p-6 rounded-lg mb-6 border border-gray-200">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Return Journey <span className="text-sm font-normal text-gray-500">(Optional – leave blank for one-way)</span></h3>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Return Journey</h3>
+                        <p className="text-sm text-gray-600 mb-4">Book both ways in one trip. Leave blank for one-way only.</p>
                           
                           {/* Return Date and Time */}
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -853,10 +854,7 @@ export const BookNow = () => {
 
                           {/* Return Flight Information */}
                           <div className="bg-white p-4 rounded-lg border border-gray-200 mt-4">
-                            <h4 className="text-md font-semibold text-gray-900 mb-3">
-                              Return Flight Information
-                              <span className="text-sm font-normal text-gray-500 ml-2">(Required if booking return)</span>
-                            </h4>
+                            <h4 className="text-md font-semibold text-gray-900 mb-3">Return Flight Information</h4>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div className="space-y-2">
                                 <Label htmlFor="returnDepartureFlightNumber">Return Flight Number</Label>
@@ -914,7 +912,7 @@ export const BookNow = () => {
                           </div>
                           
                           <p className="text-xs text-gray-600 mt-4">
-                            Return trip will be from <strong>{formData.dropoffAddress || 'drop-off location'}</strong> back to <strong>{formData.pickupAddress || 'pickup location'}</strong>
+                            Return: <strong>{formData.dropoffAddress || 'drop-off'}</strong> → <strong>{formData.pickupAddress || 'pickup'}</strong>
                           </p>
                         </div>
                     </CardContent>
