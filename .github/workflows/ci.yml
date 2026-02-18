@@ -37,7 +37,7 @@ jobs:
         run: npm run build
         env:
           CI: false
-          REACT_APP_API_URL: http://localhost:8000
+          REACT_APP_BACKEND_URL: http://localhost:8000
           REACT_APP_GEOAPIFY_API_KEY: placeholder
           REACT_APP_STRIPE_PUBLISHABLE_KEY: placeholder
 
