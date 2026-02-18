@@ -2347,13 +2347,25 @@ EMAIL_TRANSLATIONS = {
 }
 
 def send_booking_confirmation_email(booking: dict, include_payment_link: bool = True):
-    """Send booking confirmation email via Mailgun or SMTP fallback"""
+    """Send booking confirmation email via Mailgun, Gmail API, or SMTP fallback"""
     # Try Mailgun first
-    mailgun_success = send_via_mailgun(booking)
-    if mailgun_success:
+    if send_via_mailgun(booking):
         return True
-    
-    # Fallback to SMTP if Mailgun fails
+
+    # Try Gmail API / SMTP via unified sender
+    if send_email_unified:
+        logger.warning("Mailgun failed, trying Gmail API / SMTP fallback...")
+        recipient_email = booking.get("email")
+        booking_ref = get_booking_reference(booking)
+        lang = booking.get("language", "en")
+        if lang not in EMAIL_TRANSLATIONS:
+            lang = "en"
+        t = EMAIL_TRANSLATIONS[lang]
+        subject = f"{t['subject']} - Ref: {booking_ref}"
+        html_content = generate_confirmation_email_html(booking)
+        return send_email_unified(recipient_email, subject, html_content)
+
+    # Final fallback to local SMTP function
     logger.warning("Mailgun failed, trying SMTP fallback...")
     return send_via_smtp(booking)
 
