@@ -24,6 +24,7 @@ def send_email(
     from_email: str = None,
     from_name: str = "Book A Ride NZ",
     reply_to: str = None,
+    cc: str = None,
 ) -> bool:
     """
     Send email via Mailgun (if configured) or Google Workspace SMTP (fallback).
@@ -32,7 +33,7 @@ def send_email(
     from_email = from_email or get_noreply_email()
 
     # Try Mailgun first
-    if _send_via_mailgun(to_email, subject, html_content, from_email, from_name, reply_to):
+    if _send_via_mailgun(to_email, subject, html_content, from_email, from_name, reply_to, cc):
         return True
 
     # Try Gmail API second
@@ -40,7 +41,7 @@ def send_email(
         return True
 
     # Fallback to SMTP (Google Workspace / Gmail)
-    if _send_via_smtp(to_email, subject, html_content, from_email, from_name):
+    if _send_via_smtp(to_email, subject, html_content, from_email, from_name, cc):
         return True
 
     logger.warning("No email provider configured (Mailgun, Gmail API, or SMTP)")
@@ -54,6 +55,7 @@ def _send_via_mailgun(
     from_email: str,
     from_name: str,
     reply_to: str = None,
+    cc: str = None,
 ) -> bool:
     """Send via Mailgun API."""
     api_key = os.environ.get("MAILGUN_API_KEY")
@@ -70,6 +72,8 @@ def _send_via_mailgun(
         }
         if reply_to:
             data["h:Reply-To"] = reply_to
+        if cc:
+            data["cc"] = cc
 
         resp = requests.post(
             f"https://api.mailgun.net/v3/{domain}/messages",
@@ -167,6 +171,7 @@ def _send_via_smtp(
     html_content: str,
     from_email: str,
     from_name: str,
+    cc: str = None,
 ) -> bool:
     """Send via SMTP (Google Workspace / Gmail)."""
     user = os.environ.get("SMTP_USER")
@@ -185,14 +190,17 @@ def _send_via_smtp(
         msg["Subject"] = subject
         msg["From"] = f"{from_name} <{effective_from}>"
         msg["To"] = to_email
+        if cc:
+            msg["Cc"] = cc
         msg.attach(MIMEText(html_content, "html"))
 
+        all_recipients = [to_email] + [a.strip() for a in cc.split(",")] if cc else [to_email]
         with smtplib.SMTP(host, port) as server:
             server.starttls()
             server.login(user, password)
-            server.sendmail(effective_from, to_email, msg.as_string())
+            server.sendmail(effective_from, all_recipients, msg.as_string())
 
-        logger.info(f"Email sent to {to_email} via SMTP")
+        logger.info(f"Email sent to {to_email} via SMTP" + (f" (CC: {cc})" if cc else ""))
         return True
     except Exception as e:
         logger.error(f"SMTP send error: {e}")

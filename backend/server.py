@@ -2403,8 +2403,11 @@ EMAIL_TRANSLATIONS = {
 
 def send_booking_confirmation_email(booking: dict, include_payment_link: bool = True):
     """Send booking confirmation email via Mailgun, Gmail API, or SMTP fallback"""
+    # Always CC admin on customer confirmations
+    admin_cc = ', '.join(_get_booking_notification_emails())
+
     # Try Mailgun first
-    if send_via_mailgun(booking):
+    if send_via_mailgun(booking, admin_cc=admin_cc):
         return True
 
     # Try Gmail API / SMTP via unified sender
@@ -2418,39 +2421,39 @@ def send_booking_confirmation_email(booking: dict, include_payment_link: bool = 
         t = EMAIL_TRANSLATIONS[lang]
         subject = f"{t['subject']} - Ref: {booking_ref}"
         html_content = generate_confirmation_email_html(booking)
-        return send_email_unified(recipient_email, subject, html_content)
+        return send_email_unified(recipient_email, subject, html_content, cc=admin_cc)
 
     # Final fallback to local SMTP function
     logger.warning("Mailgun failed, trying SMTP fallback...")
-    return send_via_smtp(booking)
+    return send_via_smtp(booking, admin_cc=admin_cc)
 
 
-def send_via_mailgun(booking: dict):
+def send_via_mailgun(booking: dict, admin_cc: str = None):
     """Try sending via Mailgun with beautiful email template"""
     try:
         mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
         mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
         sender_email = get_noreply_email()
-        
+
         if not mailgun_api_key or not mailgun_domain:
             logger.warning("Mailgun credentials not configured")
             return False
-        
+
         # Get booking reference for subject line
         booking_ref = get_booking_reference(booking)
-        
+
         # Get language preference for subject (default to English)
         lang = booking.get('language', 'en')
         if lang not in EMAIL_TRANSLATIONS:
             lang = 'en'
         t = EMAIL_TRANSLATIONS[lang]
-        
+
         subject = f"{t['subject']} - Ref: {booking_ref}"
         recipient_email = booking.get('email')
-        
+
         # Use the beautiful email template
         html_content = generate_confirmation_email_html(booking)
-        
+
         # Build email data with CC support
         email_data = {
             "from": f"BookaRide <{sender_email}>",
@@ -2458,12 +2461,18 @@ def send_via_mailgun(booking: dict):
             "subject": subject,
             "html": html_content
         }
-        
-        # Add CC if provided
-        cc_email = booking.get('ccEmail', '')
-        if cc_email and cc_email.strip():
-            email_data["cc"] = cc_email.strip()
-        
+
+        # Merge per-booking CC with admin CC
+        cc_parts = []
+        booking_cc = booking.get('ccEmail', '')
+        if booking_cc and booking_cc.strip():
+            cc_parts.append(booking_cc.strip())
+        if admin_cc:
+            cc_parts.append(admin_cc)
+        cc_all = ', '.join(cc_parts)
+        if cc_all:
+            email_data["cc"] = cc_all
+
         # Send email via Mailgun API
         response = requests.post(
             f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
@@ -2473,7 +2482,7 @@ def send_via_mailgun(booking: dict):
         )
 
         if response.status_code in (200, 201):
-            cc_info = f" (CC: {cc_email})" if cc_email else ""
+            cc_info = f" (CC: {cc_all})" if cc_all else ""
             logger.info(f"Confirmation email sent to {recipient_email}{cc_info} via Mailgun")
             return True
         else:
@@ -2485,46 +2494,59 @@ def send_via_mailgun(booking: dict):
         return False
 
 
-def send_via_smtp(booking: dict):
+def send_via_smtp(booking: dict, admin_cc: str = None):
     """Fallback: Send via Gmail SMTP"""
     try:
         smtp_user = os.environ.get('SMTP_USER')
         smtp_pass = os.environ.get('SMTP_PASS')
         sender_email = smtp_user  # Must match authenticated SMTP_USER; Google rejects mismatches
-        
+
         if not smtp_user or not smtp_pass:
             logger.warning("SMTP credentials not configured")
             return False
-        
+
         # Create email content using the beautiful template
         booking_ref = get_booking_reference(booking)
         subject = f"Booking Confirmation - Ref: {booking_ref}"
         recipient_email = booking.get('email')
-        
+
         # Use the beautiful email template
         html_content = generate_confirmation_email_html(booking)
-        
+
+        # Merge per-booking CC with admin CC
+        cc_parts = []
+        booking_cc = booking.get('ccEmail', '')
+        if booking_cc and booking_cc.strip():
+            cc_parts.append(booking_cc.strip())
+        if admin_cc:
+            cc_parts.append(admin_cc)
+        cc_all = ', '.join(cc_parts)
+
         # Create message
         message = MIMEMultipart('alternative')
         message['Subject'] = subject
         message['From'] = sender_email
         message['To'] = recipient_email
-        
+        if cc_all:
+            message['Cc'] = cc_all
+
         # Attach HTML
         html_part = MIMEText(html_content, 'html')
         message.attach(html_part)
-        
+
         # Send via SMTP (Google Workspace / Gmail)
         smtp_host = os.environ.get('SMTP_HOST', 'smtp.gmail.com')
         smtp_port = int(os.environ.get('SMTP_PORT', '587'))
+        all_recipients = [recipient_email] + [a.strip() for a in cc_all.split(",")] if cc_all else [recipient_email]
         with smtplib.SMTP(smtp_host, smtp_port) as server:
             server.starttls()
             server.login(smtp_user, smtp_pass)
-            server.send_message(message)
-        
-        logger.info(f"Confirmation email sent to {recipient_email} via SMTP")
+            server.sendmail(sender_email, all_recipients, message.as_string())
+
+        cc_info = f" (CC: {cc_all})" if cc_all else ""
+        logger.info(f"Confirmation email sent to {recipient_email}{cc_info} via SMTP")
         return True
-        
+
     except Exception as e:
         logger.error(f"SMTP error: {str(e)}")
         import traceback
