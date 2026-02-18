@@ -1751,15 +1751,23 @@ async def create_booking(booking: BookingCreate, background_tasks: BackgroundTas
                 f"Xero invoice for booking #{ref_number}"
             )
         
-        # Send customer confirmation email and SMS in background
-        # Note: For Stripe/PayPal payments, additional confirmations will be sent via webhook after payment
-        # This ensures customers always get an immediate acknowledgment of their booking
-        background_tasks.add_task(
-            run_sync_task,
-            send_customer_confirmation,
-            booking_dict,
-            f"customer confirmation for booking #{ref_number}"
-        )
+        # Send customer confirmation email and SMS in background.
+        # For card (Stripe) payments, generate and embed a payment link so the customer
+        # can pay even if they closed the checkout tab.
+        if booking_dict.get('paymentMethod') == 'card':
+            background_tasks.add_task(
+                run_async_task,
+                send_customer_confirmation_with_payment_link,
+                booking_dict,
+                f"customer confirmation with payment link for booking #{ref_number}"
+            )
+        else:
+            background_tasks.add_task(
+                run_sync_task,
+                send_customer_confirmation,
+                booking_dict,
+                f"customer confirmation for booking #{ref_number}"
+            )
         logger.info(f"Queued customer confirmation for booking #{ref_number}")
         
         return booking_obj
@@ -2401,13 +2409,14 @@ EMAIL_TRANSLATIONS = {
     }
 }
 
-def send_booking_confirmation_email(booking: dict, include_payment_link: bool = True):
-    """Send booking confirmation email via Mailgun, Gmail API, or SMTP fallback"""
+def send_booking_confirmation_email(booking: dict, include_payment_link: bool = True, payment_link: str = None):
+    """Send booking confirmation email via Mailgun, Gmail API, or SMTP fallback.
+    Pass payment_link to embed a Pay Now button for unpaid bookings."""
     # Always CC admin on customer confirmations
     admin_cc = ', '.join(_get_booking_notification_emails())
 
     # Try Mailgun first
-    if send_via_mailgun(booking, admin_cc=admin_cc):
+    if send_via_mailgun(booking, admin_cc=admin_cc, payment_link=payment_link):
         return True
 
     # Try Gmail API / SMTP via unified sender
@@ -2420,15 +2429,15 @@ def send_booking_confirmation_email(booking: dict, include_payment_link: bool = 
             lang = "en"
         t = EMAIL_TRANSLATIONS[lang]
         subject = f"{t['subject']} - Ref: {booking_ref}"
-        html_content = generate_confirmation_email_html(booking)
+        html_content = generate_confirmation_email_html(booking, payment_link=payment_link)
         return send_email_unified(recipient_email, subject, html_content, cc=admin_cc)
 
     # Final fallback to local SMTP function
     logger.warning("Mailgun failed, trying SMTP fallback...")
-    return send_via_smtp(booking, admin_cc=admin_cc)
+    return send_via_smtp(booking, admin_cc=admin_cc, payment_link=payment_link)
 
 
-def send_via_mailgun(booking: dict, admin_cc: str = None):
+def send_via_mailgun(booking: dict, admin_cc: str = None, payment_link: str = None):
     """Try sending via Mailgun with beautiful email template"""
     try:
         mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
@@ -2451,8 +2460,8 @@ def send_via_mailgun(booking: dict, admin_cc: str = None):
         subject = f"{t['subject']} - Ref: {booking_ref}"
         recipient_email = booking.get('email')
 
-        # Use the beautiful email template
-        html_content = generate_confirmation_email_html(booking)
+        # Use the beautiful email template (include payment link if provided)
+        html_content = generate_confirmation_email_html(booking, payment_link=payment_link)
 
         # Build email data with CC support
         email_data = {
@@ -2494,7 +2503,7 @@ def send_via_mailgun(booking: dict, admin_cc: str = None):
         return False
 
 
-def send_via_smtp(booking: dict, admin_cc: str = None):
+def send_via_smtp(booking: dict, admin_cc: str = None, payment_link: str = None):
     """Fallback: Send via Gmail SMTP"""
     try:
         smtp_user = os.environ.get('SMTP_USER')
@@ -2510,8 +2519,8 @@ def send_via_smtp(booking: dict, admin_cc: str = None):
         subject = f"Booking Confirmation - Ref: {booking_ref}"
         recipient_email = booking.get('email')
 
-        # Use the beautiful email template
-        html_content = generate_confirmation_email_html(booking)
+        # Use the beautiful email template (include payment link if provided)
+        html_content = generate_confirmation_email_html(booking, payment_link=payment_link)
 
         # Merge per-booking CC with admin CC
         cc_parts = []
@@ -4978,10 +4987,11 @@ def _get_booking_email_data(booking: dict) -> dict:
     }
 
 
-def generate_confirmation_email_html(booking: dict, for_admin: bool = False) -> str:
+def generate_confirmation_email_html(booking: dict, for_admin: bool = False, payment_link: str = None) -> str:
     """Generate the confirmation email HTML for preview or sending - Clean professional design.
     Includes all booking details: flights, return trip, notes, route, payment.
-    Set for_admin=True to add admin copy banner (same content, both get full details)."""
+    Set for_admin=True to add admin copy banner (same content, both get full details).
+    Pass payment_link to include a Pay Now button for unpaid bookings."""
     sender_email = os.environ.get('SENDER_EMAIL', 'bookings@bookaride.co.nz')
     d = _get_booking_email_data(booking)
     
@@ -5059,6 +5069,27 @@ def generate_confirmation_email_html(booking: dict, for_admin: bool = False) -> 
                         </tr>
                 '''
     
+    # Payment CTA section (shown for unpaid bookings when a payment link is available)
+    payment_cta_html = ""
+    if payment_link and payment_status != 'PAID':
+        payment_cta_html = f'''
+                        <tr>
+                            <td colspan="2" style="padding: 25px 20px 10px 20px;">
+                                <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-radius: 10px; padding: 25px; text-align: center;">
+                                    <p style="margin: 0 0 6px 0; color: #D4AF37; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Payment Required</p>
+                                    <p style="margin: 0 0 18px 0; color: #ffffff; font-size: 28px; font-weight: 700;">${total_price:.2f} <span style="font-size: 14px; color: #aaa;">NZD</span></p>
+                                    <a href="{payment_link}"
+                                       style="display: inline-block; background: #D4AF37; color: #1a1a2e; padding: 14px 40px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 16px; letter-spacing: 0.5px;">
+                                        Pay Now
+                                    </a>
+                                    <p style="margin: 14px 0 0 0; font-size: 12px; color: #888;">
+                                        Or copy this link: <a href="{payment_link}" style="color: #D4AF37; word-break: break-all;">{payment_link}</a>
+                                    </p>
+                                </div>
+                            </td>
+                        </tr>
+        '''
+
     # Notes section
     notes_html = ""
     if notes:
@@ -5191,7 +5222,9 @@ def generate_confirmation_email_html(booking: dict, for_admin: bool = False) -> 
                         {return_section_html}
                         
                         {notes_html}
-                        
+
+                        {payment_cta_html}
+
                         <!-- Price Section -->
                         <tr>
                             <td colspan="2" style="padding: 25px 20px; background: #faf9f6;">
@@ -8519,27 +8552,53 @@ def generate_paypal_payment_link(booking: dict) -> str:
 
 
 # Background task helpers for payment link sending
+async def send_customer_confirmation_with_payment_link(booking: dict):
+    """Send customer confirmation email for card/Stripe bookings.
+    Generates a Stripe payment link and embeds it so the customer can pay
+    even if they closed the checkout tab."""
+    preference = booking.get('notificationPreference', 'both')
+    payment_link = None
+
+    if preference in ['email', 'both']:
+        # Generate a Stripe payment link so the customer has it in their inbox
+        if booking.get('payment_status', 'unpaid') != 'paid':
+            try:
+                payment_link = await generate_stripe_payment_link(booking)
+            except Exception as e:
+                logger.warning(f"Could not generate Stripe link for confirmation email: {e}")
+        send_booking_confirmation_email(booking, payment_link=payment_link)
+        logger.info(f"Customer confirmation {'with payment link' if payment_link else '(no link)'} sent for booking {get_booking_reference(booking)}")
+
+    if preference in ['sms', 'both']:
+        send_booking_confirmation_sms(booking)
+
+
 async def send_stripe_payment_link_background(booking: dict):
-    """Send Stripe payment link in background"""
+    """Send Stripe payment link embedded in booking confirmation email"""
     try:
         payment_link = await generate_stripe_payment_link(booking)
         if payment_link:
-            await send_payment_link_email(booking, payment_link, 'stripe')
-            # Also send confirmation email
-            send_booking_confirmation_email(booking, include_payment_link=False)
-            logger.info(f"Stripe payment link sent for booking #{booking.get('referenceNumber')}")
+            # Send one combined confirmation email with the Pay Now button embedded
+            send_booking_confirmation_email(booking, payment_link=payment_link)
+            logger.info(f"Confirmation email with Stripe payment link sent for booking #{booking.get('referenceNumber')}")
+        else:
+            # Fallback: send plain confirmation without link
+            send_booking_confirmation_email(booking)
+            logger.warning(f"Stripe link unavailable for booking #{booking.get('referenceNumber')} — sent plain confirmation")
     except Exception as e:
         logger.error(f"Error sending Stripe payment link: {str(e)}")
 
 async def send_paypal_payment_link_background(booking: dict):
-    """Send PayPal payment link in background"""
+    """Send PayPal payment link embedded in booking confirmation email"""
     try:
         payment_link = generate_paypal_payment_link(booking)
         if payment_link:
-            await send_payment_link_email(booking, payment_link, 'paypal')
-            # Also send confirmation email
-            send_booking_confirmation_email(booking, include_payment_link=False)
-            logger.info(f"PayPal payment link sent for booking #{booking.get('referenceNumber')}")
+            # Send one combined confirmation email with the Pay Now button embedded
+            send_booking_confirmation_email(booking, payment_link=payment_link)
+            logger.info(f"Confirmation email with PayPal payment link sent for booking #{booking.get('referenceNumber')}")
+        else:
+            send_booking_confirmation_email(booking)
+            logger.warning(f"PayPal link unavailable for booking #{booking.get('referenceNumber')} — sent plain confirmation")
     except Exception as e:
         logger.error(f"Error sending PayPal payment link: {str(e)}")
 
