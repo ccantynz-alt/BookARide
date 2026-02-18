@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Search, Filter, Mail, DollarSign, CheckCircle, XCircle, Clock, Eye, Edit2, BarChart3, Users, BookOpen, Car, Settings, Trash2, MapPin, Calendar, RefreshCw, Send, Bell, Facebook, Globe, Square, CheckSquare, FileText, Smartphone, RotateCcw, AlertTriangle, AlertCircle, Home, Bus, ExternalLink, Navigation, Upload, Archive } from 'lucide-react';
+import { LogOut, Search, Filter, Mail, DollarSign, CheckCircle, XCircle, Clock, Eye, Edit2, BarChart3, Users, BookOpen, Car, Settings, Trash2, MapPin, Calendar, RefreshCw, Send, Bell, Facebook, Globe, Square, CheckSquare, FileText, Smartphone, RotateCcw, AlertTriangle, AlertCircle, Home, Bus, ExternalLink, Navigation, Upload, Archive, CreditCard } from 'lucide-react';
 import GeoapifyAutocomplete from '../components/GeoapifyAutocomplete';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -2628,6 +2628,16 @@ export const AdminDashboard = () => {
                               <Mail className="w-4 h-4 text-green-600" />
                               <span className="text-[8px] text-green-500">Email</span>
                             </button>
+                            {booking.payment_status !== 'paid' && (
+                              <button
+                                onClick={() => handleResendPaymentLink(booking.id, 'stripe')}
+                                className="p-1.5 hover:bg-emerald-100 rounded flex flex-col items-center border border-emerald-200"
+                                title="Send Stripe payment link to customer"
+                              >
+                                <CreditCard className="w-4 h-4 text-emerald-600" />
+                                <span className="text-[8px] text-emerald-600 font-medium">Pay Link</span>
+                              </button>
+                            )}
                             <button
                               onClick={() => {
                                 setSmsModal(booking);
