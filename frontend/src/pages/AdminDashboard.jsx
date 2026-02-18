@@ -2458,7 +2458,10 @@ export const AdminDashboard = () => {
                               {isToday(booking.date) && <span className="px-1.5 py-0.5 text-[9px] font-bold bg-blue-600 text-white rounded animate-pulse">TODAY</span>}
                               {isTomorrow(booking.date) && <span className="px-1.5 py-0.5 text-[9px] font-bold bg-orange-500 text-white rounded">TMR</span>}
                             </div>
-                            <div className="text-xs text-gray-700 font-medium">{formatDate(booking.date)}</div>
+                            <div className="text-xs text-gray-700 font-medium">
+                              <span className="text-gold font-bold mr-1">{getShortDayOfWeek(booking.date)}</span>
+                              {formatDate(booking.date)}
+                            </div>
                             <div className="text-sm font-bold text-gray-900">{booking.time}</div>
                           </div>
                         </td>
@@ -2507,7 +2510,10 @@ export const AdminDashboard = () => {
                           {hasReturn ? (
                             <div className="flex flex-col bg-purple-50 p-1.5 rounded border border-purple-200">
                               <span className="text-[10px] font-semibold text-purple-700">🔄 RETURN</span>
-                              <span className="text-xs font-bold text-purple-900">{formatDate(booking.returnDate)}</span>
+                              <span className="text-xs font-bold text-purple-900">
+                                <span className="text-purple-500 mr-1">{getShortDayOfWeek(booking.returnDate)}</span>
+                                {formatDate(booking.returnDate)}
+                              </span>
                               <span className="text-sm font-bold text-purple-800">{booking.returnTime}</span>
                             </div>
                           ) : (
