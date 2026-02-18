@@ -1079,6 +1079,45 @@ async def health_check():
     return {"status": "healthy", "service": "bookaride-api"}
 
 
+@api_router.post("/admin/test-email")
+async def test_email_sending(request: Request, current_admin=Depends(get_current_admin)):
+    """
+    Admin endpoint: check which email providers are configured and send a test email.
+    POST body (JSON): { "to": "you@example.com" }  (optional – defaults to admin email)
+    """
+    body = await request.json() if request.headers.get("content-type", "").startswith("application/json") else {}
+    to_email = body.get("to") or os.environ.get("ADMIN_EMAIL") or os.environ.get("BOOKINGS_NOTIFICATION_EMAIL", "")
+
+    results = {
+        "providers_configured": {
+            "mailgun": bool(os.environ.get("MAILGUN_API_KEY") and os.environ.get("MAILGUN_DOMAIN")),
+            "gmail_api": bool(os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON") or os.environ.get("GOOGLE_SERVICE_ACCOUNT_FILE")),
+            "smtp": bool(os.environ.get("SMTP_USER") and os.environ.get("SMTP_PASS")),
+        },
+        "send_attempted_to": to_email,
+        "send_result": False,
+        "error": None,
+    }
+
+    if not to_email:
+        results["error"] = "No recipient: set ADMIN_EMAIL env var or pass {'to': 'email'} in body"
+        return results
+
+    if send_email_unified:
+        try:
+            results["send_result"] = send_email_unified(
+                to_email,
+                "BookaRide – Test Email",
+                "<h2>Test email working!</h2><p>If you received this, your email provider is configured correctly.</p>",
+            )
+        except Exception as exc:
+            results["error"] = str(exc)
+    else:
+        results["error"] = "email_sender module not loaded"
+
+    return results
+
+
 # Google Reviews Endpoint - Fetches reviews from Google Places API
 @api_router.get("/google-reviews")
 async def get_google_reviews():
@@ -2411,10 +2450,11 @@ def send_via_mailgun(booking: dict):
         response = requests.post(
             f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
             auth=("api", mailgun_api_key),
-            data=email_data
+            data=email_data,
+            timeout=15,
         )
-        
-        if response.status_code == 200:
+
+        if response.status_code in (200, 201):
             cc_info = f" (CC: {cc_email})" if cc_email else ""
             logger.info(f"Confirmation email sent to {recipient_email}{cc_info} via Mailgun")
             return True
