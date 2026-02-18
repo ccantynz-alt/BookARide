@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Search, Filter, Mail, DollarSign, CheckCircle, XCircle, Clock, Eye, Edit2, BarChart3, Users, BookOpen, Car, Settings, Trash2, MapPin, Calendar, RefreshCw, Send, Bell, Facebook, Globe, Square, CheckSquare, FileText, Smartphone, RotateCcw, AlertTriangle, AlertCircle, Home, Bus, ExternalLink, Navigation, Upload, Archive } from 'lucide-react';
+import { LogOut, Search, Filter, Mail, DollarSign, CheckCircle, XCircle, Clock, Eye, Edit2, BarChart3, Users, BookOpen, Car, Settings, Trash2, MapPin, Calendar, RefreshCw, Send, Bell, Facebook, Globe, Square, CheckSquare, FileText, Smartphone, RotateCcw, AlertTriangle, AlertCircle, Home, Bus, ExternalLink, Navigation, Upload, Archive, CreditCard } from 'lucide-react';
 import GeoapifyAutocomplete from '../components/GeoapifyAutocomplete';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -615,6 +615,9 @@ export const AdminDashboard = () => {
   const [adminReturnTime, setAdminReturnTime] = useState(null);
   const [adminFlightArrivalTime, setAdminFlightArrivalTime] = useState(null);
   const [adminFlightDepartureTime, setAdminFlightDepartureTime] = useState(null);
+
+  // Date picker state for edit booking modal
+  const [editPickupDate, setEditPickupDate] = useState(null);
 
   useEffect(() => {
     // Check authentication
@@ -1567,6 +1570,13 @@ export const AdminDashboard = () => {
       ...booking,
       pickupAddresses: booking.pickupAddresses || []
     });
+    // Initialise the date picker from the booking's stored date (YYYY-MM-DD)
+    if (booking.date) {
+      const [year, month, day] = booking.date.split('-').map(Number);
+      setEditPickupDate(new Date(year, month - 1, day));
+    } else {
+      setEditPickupDate(null);
+    }
     setShowEditBookingModal(true);
   };
 
@@ -2624,6 +2634,16 @@ export const AdminDashboard = () => {
                               <Mail className="w-4 h-4 text-green-600" />
                               <span className="text-[8px] text-green-500">Email</span>
                             </button>
+                            {booking.payment_status !== 'paid' && (
+                              <button
+                                onClick={() => handleResendPaymentLink(booking.id, 'stripe')}
+                                className="p-1.5 hover:bg-emerald-100 rounded flex flex-col items-center border border-emerald-200"
+                                title="Send Stripe payment link to customer"
+                              >
+                                <CreditCard className="w-4 h-4 text-emerald-600" />
+                                <span className="text-[8px] text-emerald-600 font-medium">Pay Link</span>
+                              </button>
+                            )}
                             <button
                               onClick={() => {
                                 setSmsModal(booking);
@@ -4262,8 +4282,8 @@ export const AdminDashboard = () => {
                             setNewBooking(prev => ({...prev, date: formattedDate}));
                           }
                         }}
-                        placeholder="Select date (past dates allowed)"
-                        minDate={new Date('2020-01-01')}
+                        placeholder="Select date"
+                        allowPastDates={true}
                         maxDate={new Date('2030-12-31')}
                         showMonthDropdown
                         showYearDropdown
@@ -4733,13 +4753,27 @@ export const AdminDashboard = () => {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label>Date *</Label>
-                      <Input
-                        type="date"
-                        value={editingBooking.date}
-                        onChange={(e) => setEditingBooking(prev => ({...prev, date: e.target.value}))}
-                        className="mt-1"
-                      />
+                      <Label>Date * (can backdate for invoicing)</Label>
+                      <div className="mt-1">
+                        <CustomDatePicker
+                          selected={editPickupDate}
+                          onChange={(date) => {
+                            setEditPickupDate(date);
+                            if (date) {
+                              const year = date.getFullYear();
+                              const month = String(date.getMonth() + 1).padStart(2, '0');
+                              const day = String(date.getDate()).padStart(2, '0');
+                              setEditingBooking(prev => ({...prev, date: `${year}-${month}-${day}`}));
+                            }
+                          }}
+                          placeholder="Select date"
+                          allowPastDates={true}
+                          maxDate={new Date('2030-12-31')}
+                          showMonthDropdown
+                          showYearDropdown
+                          dropdownMode="select"
+                        />
+                      </div>
                     </div>
                     <div>
                       <Label>Time *</Label>
