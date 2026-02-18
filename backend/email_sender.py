@@ -178,16 +178,19 @@ def _send_via_smtp(
         return False
 
     try:
+        # Must send from the authenticated SMTP account — Google rejects mismatches
+        # between the login user and the From address.
+        effective_from = user
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
-        msg["From"] = f"{from_name} <{from_email}>"
+        msg["From"] = f"{from_name} <{effective_from}>"
         msg["To"] = to_email
         msg.attach(MIMEText(html_content, "html"))
 
         with smtplib.SMTP(host, port) as server:
             server.starttls()
             server.login(user, password)
-            server.sendmail(from_email, to_email, msg.as_string())
+            server.sendmail(effective_from, to_email, msg.as_string())
 
         logger.info(f"Email sent to {to_email} via SMTP")
         return True
