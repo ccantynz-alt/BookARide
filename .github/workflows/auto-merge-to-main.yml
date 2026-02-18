@@ -10,6 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: write
 
     steps:
       - name: Checkout repo
@@ -23,19 +24,45 @@ jobs:
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
 
-      - name: Merge into main
+      - name: Try direct merge to main
+        id: direct_merge
+        continue-on-error: true
         run: |
           git checkout main
           git pull origin main
           git merge --no-ff origin/${{ github.ref_name }} -m "Auto-merge ${{ github.ref_name }} into main"
           git push origin main
+          echo "merged=direct" >> $GITHUB_OUTPUT
 
-      - name: Delete source branch
+      - name: Create PR and enable auto-merge (fallback)
+        if: steps.direct_merge.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="${{ github.ref_name }}"
+          TITLE="Auto-merge: ${BRANCH}"
+          # Create PR (ok if it already exists)
+          gh pr create \
+            --base main \
+            --head "$BRANCH" \
+            --title "$TITLE" \
+            --body "Automated merge of $BRANCH into main" \
+            || true
+          # Enable auto-merge so it merges as soon as checks pass
+          gh pr merge "$BRANCH" \
+            --auto \
+            --merge \
+            --subject "$TITLE" \
+            || true
+          echo "Created/updated PR for $BRANCH with auto-merge enabled"
+
+      - name: Delete source branch (if direct merge succeeded)
+        if: steps.direct_merge.outcome == 'success'
         run: |
           git push origin --delete ${{ github.ref_name }} || echo "Branch already deleted or not found"
 
       - name: Deploy to server (Render/VPS)
-        if: ${{ secrets.DEPLOY_SSH_KEY != '' }}
+        if: steps.direct_merge.outcome == 'success' && secrets.DEPLOY_SSH_KEY != ''
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.DEPLOY_HOST }}
