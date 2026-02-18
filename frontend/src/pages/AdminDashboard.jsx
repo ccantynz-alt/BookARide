@@ -543,6 +543,10 @@ export const AdminDashboard = () => {
   const [emailMessage, setEmailMessage] = useState('');
   const [emailCC, setEmailCC] = useState('');
   const [priceOverride, setPriceOverride] = useState('');
+  const [inlinePriceBookingId, setInlinePriceBookingId] = useState(null);
+  const [inlinePriceValue, setInlinePriceValue] = useState('');
+  const [smsModal, setSmsModal] = useState(null);
+  const [smsPhone, setSmsPhone] = useState('');
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [setPasswordMode, setSetPasswordMode] = useState(false);  // true = set without current (forgot/Google)
   const [currentPassword, setCurrentPassword] = useState('');
@@ -1657,6 +1661,52 @@ export const AdminDashboard = () => {
     }
   };
 
+  const handleInlinePriceSave = async (booking) => {
+    const newPrice = parseFloat(inlinePriceValue);
+    if (isNaN(newPrice) || newPrice < 0) {
+      toast.error('Enter a valid price');
+      return;
+    }
+    try {
+      await axios.patch(`${API}/bookings/${booking.id}`, {
+        pricing: { ...booking.pricing, totalPrice: newPrice, overridden: true }
+      }, getAuthHeaders());
+      toast.success(`Price updated to $${newPrice.toFixed(2)}`);
+      setInlinePriceBookingId(null);
+      fetchBookings();
+    } catch {
+      toast.error('Failed to update price');
+    }
+  };
+
+  const buildSmsMessage = (booking) => {
+    const lines = [
+      `BookARide #${booking.referenceNumber || booking.id?.slice(0, 6)}`,
+      `Date: ${booking.date} at ${booking.time}`,
+      `Customer: ${booking.name} | ${booking.phone}`,
+      `Pax: ${booking.passengers || 1}`,
+      `Pickup: ${booking.pickupAddress}`,
+      `Dropoff: ${booking.dropoffAddress}`,
+    ];
+    if (booking.returnDate && booking.returnTime) {
+      lines.push(`Return: ${booking.returnDate} at ${booking.returnTime}`);
+    }
+    const flightNum = booking.arrivalFlightNumber || booking.flightArrivalNumber || booking.departureFlightNumber || booking.flightDepartureNumber;
+    if (flightNum) lines.push(`Flight: ${flightNum}`);
+    if (booking.notes) lines.push(`Notes: ${booking.notes}`);
+    lines.push(`Price: $${booking.pricing?.totalPrice?.toFixed(2) || booking.totalPrice || '0'}`);
+    return lines.join('\n');
+  };
+
+  const openSmsApp = () => {
+    const phone = smsPhone.replace(/\s/g, '');
+    if (!phone) { toast.error('Enter a phone number'); return; }
+    const message = buildSmsMessage(smsModal);
+    window.open(`sms:${phone}?body=${encodeURIComponent(message)}`, '_self');
+    setSmsModal(null);
+    setSmsPhone('');
+  };
+
   const handlePriceOverride = async () => {
     try {
       const newPrice = parseFloat(priceOverride);
@@ -2698,9 +2748,35 @@ export const AdminDashboard = () => {
                         {/* PRICE & PAYMENT COLUMN */}
                         <td className="px-2 py-2">
                           <div className="flex flex-col items-start">
-                            <span className="text-sm font-bold text-gray-900">${booking.pricing?.totalPrice?.toFixed(0) || booking.totalPrice || '0'}</span>
+                            {inlinePriceBookingId === booking.id ? (
+                              <div className="flex items-center gap-0.5">
+                                <span className="text-xs text-gray-500">$</span>
+                                <input
+                                  type="number"
+                                  value={inlinePriceValue}
+                                  onChange={e => setInlinePriceValue(e.target.value)}
+                                  className="w-14 h-6 text-sm font-bold border border-gold rounded px-1 focus:outline-none focus:ring-1 focus:ring-gold/50"
+                                  autoFocus
+                                  onKeyDown={e => {
+                                    if (e.key === 'Enter') handleInlinePriceSave(booking);
+                                    if (e.key === 'Escape') setInlinePriceBookingId(null);
+                                  }}
+                                />
+                                <button onClick={() => handleInlinePriceSave(booking)} className="text-green-600 hover:text-green-700 font-bold text-sm leading-none px-0.5" title="Save">✓</button>
+                                <button onClick={() => setInlinePriceBookingId(null)} className="text-gray-400 hover:text-gray-600 font-bold text-sm leading-none px-0.5" title="Cancel">✕</button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => { setInlinePriceBookingId(booking.id); setInlinePriceValue(booking.pricing?.totalPrice?.toFixed(2) || booking.totalPrice || '0'); }}
+                                className="group flex items-center gap-0.5 hover:bg-gold/10 rounded px-1 py-0.5 -ml-1"
+                                title="Tap to override price"
+                              >
+                                <span className="text-sm font-bold text-gray-900">${booking.pricing?.totalPrice?.toFixed(0) || booking.totalPrice || '0'}</span>
+                                <Edit2 className="w-2.5 h-2.5 text-gold opacity-0 group-hover:opacity-100 transition-opacity" />
+                              </button>
+                            )}
                             <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold ${
-                              booking.payment_status === 'paid' ? 'bg-green-100 text-green-700' : 
+                              booking.payment_status === 'paid' ? 'bg-green-100 text-green-700' :
                               booking.payment_status === 'cash' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
                             }`}>
                               {booking.payment_status === 'paid' ? '✓ PAID' : booking.payment_status === 'cash' ? '💵 CASH' : '✗ UNPAID'}
@@ -2782,6 +2858,17 @@ export const AdminDashboard = () => {
                             >
                               <Mail className="w-4 h-4 text-green-600" />
                               <span className="text-[8px] text-green-500">Email</span>
+                            </button>
+                            <button
+                              onClick={() => {
+                                setSmsModal(booking);
+                                setSmsPhone(booking.driver_phone || '');
+                              }}
+                              className="p-1.5 hover:bg-purple-100 rounded flex flex-col items-center"
+                              title="Send booking details to driver via SMS"
+                            >
+                              <Smartphone className="w-4 h-4 text-purple-600" />
+                              <span className="text-[8px] text-purple-500">Driver</span>
                             </button>
                             <button
                               onClick={() => handleResendConfirmation(booking.id)}
@@ -3964,6 +4051,65 @@ export const AdminDashboard = () => {
                   ✓ Confirm & Send to Driver
                 </Button>
               </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* SMS to Driver Modal */}
+      <Dialog open={!!smsModal} onOpenChange={(open) => { if (!open) { setSmsModal(null); setSmsPhone(''); } }}>
+        <DialogContent className="max-w-sm mx-4">
+          <DialogHeader>
+            <DialogTitle className="text-base flex items-center gap-2">
+              <Smartphone className="w-4 h-4 text-purple-600" />
+              Send to Driver — #{smsModal?.referenceNumber}
+            </DialogTitle>
+          </DialogHeader>
+          {smsModal && (
+            <div className="space-y-4">
+              {/* Saved drivers with phone numbers */}
+              {drivers.filter(d => d.phone).length > 0 && (
+                <div>
+                  <Label className="text-xs text-gray-500 mb-2 block">Saved Drivers</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {drivers.filter(d => d.phone).map(d => (
+                      <button
+                        key={d._id || d.id || d.name}
+                        onClick={() => setSmsPhone(d.phone)}
+                        className={`text-xs px-3 py-2 rounded-lg border transition-colors ${smsPhone === d.phone ? 'bg-gold border-gold text-black font-semibold' : 'bg-gray-50 border-gray-200 hover:border-gold/50 text-gray-700'}`}
+                      >
+                        {d.name?.split(' ')[0]} · {d.phone}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {/* Manual phone entry */}
+              <div>
+                <Label className="text-xs text-gray-500 mb-1 block">Driver Phone Number</Label>
+                <Input
+                  type="tel"
+                  placeholder="+64 21 ..."
+                  value={smsPhone}
+                  onChange={e => setSmsPhone(e.target.value)}
+                  className="text-sm"
+                />
+              </div>
+              {/* Message preview */}
+              <div>
+                <Label className="text-xs text-gray-500 mb-1 block">Message Preview</Label>
+                <pre className="text-xs bg-gray-50 border rounded-lg p-3 whitespace-pre-wrap text-gray-700 max-h-44 overflow-auto font-mono">
+                  {buildSmsMessage(smsModal)}
+                </pre>
+              </div>
+              <Button
+                onClick={openSmsApp}
+                disabled={!smsPhone}
+                className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold h-12 text-base"
+              >
+                <Smartphone className="w-4 h-4 mr-2" />
+                Open SMS App
+              </Button>
             </div>
           )}
         </DialogContent>
