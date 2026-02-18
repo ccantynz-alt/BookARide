@@ -2490,7 +2490,7 @@ def send_via_smtp(booking: dict):
     try:
         smtp_user = os.environ.get('SMTP_USER')
         smtp_pass = os.environ.get('SMTP_PASS')
-        sender_email = get_noreply_email()
+        sender_email = smtp_user  # Must match authenticated SMTP_USER; Google rejects mismatches
         
         if not smtp_user or not smtp_pass:
             logger.warning("SMTP credentials not configured")
