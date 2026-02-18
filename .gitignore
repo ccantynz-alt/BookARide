@@ -47,6 +47,7 @@ dump.rdb
 # System files
 .DS_Store
 *.pem
+.gitconfig
 
 # Python
 __pycache__/
