@@ -154,7 +154,7 @@ export const PaymentSuccess = () => {
                 <div className="space-y-4">
                   {[
                     { icon: Mail, color: 'text-blue-500 bg-blue-50', title: 'Confirmation sent', desc: 'Check your email and SMS — your booking details are on their way.' },
-                    { icon: Car, color: 'text-emerald-500 bg-emerald-50', title: 'Driver assigned', desc: 'We'll confirm your driver before your trip and send their details.' },
+                    { icon: Car, color: 'text-emerald-500 bg-emerald-50', title: 'Driver assigned', desc: "We'll confirm your driver before your trip and send their details." },
                     { icon: Clock, color: 'text-amber-500 bg-amber-50', title: 'Day of travel', desc: 'Your driver will be on time. For airport pickups, we track your flight.' },
                   ].map(({ icon: Icon, color, title, desc }) => (
                     <div key={title} className="flex items-start gap-4">
@@ -216,7 +216,7 @@ export const PaymentSuccess = () => {
                   {paymentStatus === 'expired'
                     ? 'Your payment session expired. Please start a new booking.'
                     : paymentStatus === 'timeout'
-                    ? 'We couldn't confirm your payment in time. Check your email — if payment went through, your booking is confirmed.'
+                    ? "We couldn't confirm your payment in time. Check your email — if payment went through, your booking is confirmed."
                     : paymentStatus === 'cancelled'
                     ? 'Your Afterpay payment was cancelled. No charge was made.'
                     : 'There was a problem processing your payment. Please contact us or try again.'}
