@@ -116,10 +116,13 @@ def _send_via_gmail_api(
         if service_account_json:
             try:
                 info = json.loads(service_account_json)
-                creds = service_account.Credentials.from_service_account_info(info, scopes=scopes)
             except json.JSONDecodeError as e:
                 logger.error(f"Failed to parse GOOGLE_SERVICE_ACCOUNT_JSON: {e}")
                 return False
+            # Render sometimes stores \n as literal \\n — fix the private key
+            if "private_key" in info:
+                info["private_key"] = info["private_key"].replace("\\n", "\n")
+            creds = service_account.Credentials.from_service_account_info(info, scopes=scopes)
         else:
             if not os.path.exists(service_account_file):
                 logger.error(f"Service account file not found: {service_account_file}")
@@ -143,7 +146,18 @@ def _send_via_gmail_api(
         logger.info(f"Email sent to {to_email} via Gmail API (id: {result.get('id')})")
         return True
     except Exception as e:
-        logger.error(f"Gmail API send error: {e}")
+        try:
+            from googleapiclient.errors import HttpError
+            if isinstance(e, HttpError):
+                logger.error(
+                    f"Gmail API HttpError {e.status_code}: {e.error_details} — "
+                    f"Check service account domain-wide delegation and that "
+                    f"{from_email!r} is a real Google Workspace user with Gmail enabled."
+                )
+                return False
+        except Exception:
+            pass
+        logger.error(f"Gmail API send error ({type(e).__name__}): {e}")
         return False
 
 

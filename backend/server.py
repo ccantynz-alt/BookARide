@@ -1084,6 +1084,7 @@ async def test_email_sending(request: Request, current_admin=Depends(get_current
     """
     Admin endpoint: check which email providers are configured and send a test email.
     POST body (JSON): { "to": "you@example.com" }  (optional – defaults to admin email)
+    Returns per-provider results so you can see exactly which one fails and why.
     """
     body = await request.json() if request.headers.get("content-type", "").startswith("application/json") else {}
     to_email = body.get("to") or os.environ.get("ADMIN_EMAIL") or os.environ.get("BOOKINGS_NOTIFICATION_EMAIL", "")
@@ -1096,24 +1097,41 @@ async def test_email_sending(request: Request, current_admin=Depends(get_current
         },
         "send_attempted_to": to_email,
         "send_result": False,
-        "error": None,
+        "provider_used": None,
+        "provider_errors": {},
     }
 
     if not to_email:
-        results["error"] = "No recipient: set ADMIN_EMAIL env var or pass {'to': 'email'} in body"
+        results["provider_errors"]["_"] = "No recipient: set ADMIN_EMAIL env var or pass {'to': 'email'} in body"
         return results
 
-    if send_email_unified:
-        try:
-            results["send_result"] = send_email_unified(
-                to_email,
-                "BookaRide – Test Email",
-                "<h2>Test email working!</h2><p>If you received this, your email provider is configured correctly.</p>",
-            )
-        except Exception as exc:
-            results["error"] = str(exc)
-    else:
-        results["error"] = "email_sender module not loaded"
+    if not send_email_unified:
+        results["provider_errors"]["_"] = "email_sender module not loaded"
+        return results
+
+    try:
+        from email_sender import _send_via_mailgun, _send_via_gmail_api, _send_via_smtp
+        from_email = get_noreply_email()
+        subject = "BookaRide – Test Email"
+        html = "<h2>Test email working!</h2><p>If you received this, your email provider is configured correctly.</p>"
+
+        providers = [
+            ("mailgun",   _send_via_mailgun,   (to_email, subject, html, from_email, "BookaRide", None)),
+            ("gmail_api", _send_via_gmail_api,  (to_email, subject, html, from_email, "BookaRide", None)),
+            ("smtp",      _send_via_smtp,       (to_email, subject, html, from_email, "BookaRide")),
+        ]
+        for name, fn, args in providers:
+            try:
+                ok = fn(*args)
+                results["provider_errors"][name] = "ok" if ok else "returned False (not configured or auth failed — check Render logs for details)"
+                if ok:
+                    results["send_result"] = True
+                    results["provider_used"] = name
+                    break
+            except Exception as exc:
+                results["provider_errors"][name] = f"{type(exc).__name__}: {exc}"
+    except Exception as exc:
+        results["provider_errors"]["_import"] = str(exc)
 
     return results
 
