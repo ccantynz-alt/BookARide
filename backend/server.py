@@ -2621,12 +2621,97 @@ Thank you for booking with us!"""
         return False
 
 
+def create_stripe_payment_link_sync(booking_dict: dict) -> str:
+    """Create a Stripe Checkout session synchronously and return the URL.
+    Returns empty string if Stripe is not configured or the booking is already paid."""
+    try:
+        stripe_api_key = os.environ.get('STRIPE_API_KEY') or os.environ.get('STRIPE_SECRET_KEY')
+        if not stripe_api_key:
+            logger.warning("Stripe API key not configured — skipping payment link in email")
+            return ''
+
+        try:
+            import stripe as stripe_lib
+        except ImportError:
+            logger.warning("stripe library not installed — skipping payment link in email")
+            return ''
+
+        amount = float(booking_dict.get('totalPrice', 0) or 0)
+        if amount <= 0:
+            logger.warning(f"Booking {booking_dict.get('id')} has no positive amount — skipping payment link")
+            return ''
+
+        stripe_lib.api_key = stripe_api_key
+        frontend_url = os.environ.get('FRONTEND_URL', 'https://bookaride.co.nz').rstrip('/')
+        booking_id = booking_dict.get('id', '')
+        booking_ref = get_booking_reference(booking_dict)
+
+        session = stripe_lib.checkout.Session.create(
+            mode='payment',
+            line_items=[{
+                'price_data': {
+                    'currency': 'nzd',
+                    'product_data': {'name': f'BookARide booking #{booking_ref}'},
+                    'unit_amount': int(round(amount * 100)),
+                },
+                'quantity': 1,
+            }],
+            success_url=f"{frontend_url}/payment-success?session_id={{CHECKOUT_SESSION_ID}}",
+            cancel_url=f"{frontend_url}/book-now",
+            customer_email=booking_dict.get('email') or None,
+            metadata={
+                'booking_id': booking_id,
+                'customer_email': booking_dict.get('email', ''),
+                'customer_name': booking_dict.get('name', ''),
+            },
+        )
+
+        url = session.url or ''
+        if not url:
+            return ''
+
+        # Persist the link against the booking so admin can also see it
+        try:
+            from pymongo import MongoClient
+            _sync_client = MongoClient(os.environ.get('MONGO_URL', 'mongodb://localhost:27017'))
+            _sync_db = _sync_client[os.environ.get('DB_NAME', 'test_database')]
+            _sync_db.bookings.update_one(
+                {'id': booking_id},
+                {'$set': {'email_payment_link': url, 'email_payment_session_id': session.id}}
+            )
+            _sync_client.close()
+        except Exception as db_err:
+            logger.error(f"Could not save payment link to booking {booking_id}: {db_err}")
+
+        logger.info(f"Stripe payment link created for booking {booking_ref}: {url}")
+        return url
+    except Exception as e:
+        logger.error(f"Error creating Stripe payment link for email: {e}")
+        return ''
+
+
 def send_customer_confirmation(booking: dict):
     """Send confirmation based on customer's notification preference"""
     preference = booking.get('notificationPreference', 'both')
     results = {'email': False, 'sms': False}
     booking_id = booking.get('id')
-    
+
+    # Generate a Stripe payment link and attach it to the booking dict so that
+    # the email template can render a "Pay Now" button.
+    # Only generate if the booking is not already paid and isn't an invoice-only method.
+    booking = dict(booking)  # shallow copy — don't mutate the caller's dict
+    skip_payment_link_methods = {'xero', 'invoice', 'cash'}
+    already_paid = (booking.get('payment_status') or '').lower() == 'paid'
+    payment_method_val = (booking.get('paymentMethod') or '').lower()
+    if not already_paid and payment_method_val not in skip_payment_link_methods:
+        existing_link = booking.get('email_payment_link', '')
+        if existing_link:
+            logger.info(f"Re-using existing payment link for booking {booking_id}")
+        else:
+            generated_link = create_stripe_payment_link_sync(booking)
+            if generated_link:
+                booking['email_payment_link'] = generated_link
+
     if preference in ['email', 'both']:
         results['email'] = send_booking_confirmation_email(booking)
         logger.info(f"Email confirmation {'sent' if results['email'] else 'failed'} for booking {get_booking_reference(booking)}")
@@ -4981,7 +5066,8 @@ def _get_booking_email_data(booking: dict) -> dict:
 def generate_confirmation_email_html(booking: dict, for_admin: bool = False) -> str:
     """Generate the confirmation email HTML for preview or sending - Clean professional design.
     Includes all booking details: flights, return trip, notes, route, payment.
-    Set for_admin=True to add admin copy banner (same content, both get full details)."""
+    Set for_admin=True to add admin copy banner (same content, both get full details).
+    If booking contains 'email_payment_link' and payment is not paid, a Pay Now button is shown."""
     sender_email = os.environ.get('SENDER_EMAIL', 'bookings@bookaride.co.nz')
     d = _get_booking_email_data(booking)
     
@@ -5100,6 +5186,26 @@ def generate_confirmation_email_html(booking: dict, for_admin: bool = False) -> 
                         </tr>
             '''
     
+    # Payment link button — only for customer emails on unpaid bookings
+    payment_link_html = ''
+    _payment_link_url = booking.get('email_payment_link', '')
+    if not for_admin and _payment_link_url and payment_status != 'PAID':
+        payment_link_html = f'''
+                        <!-- Pay Now Button -->
+                        <tr>
+                            <td colspan="2" style="padding: 30px 20px; text-align: center; background: #fdf8ee;">
+                                <p style="margin: 0 0 6px 0; color: #666; font-size: 13px;">Your booking is reserved — complete your payment to confirm.</p>
+                                <a href="{_payment_link_url}"
+                                   style="display: inline-block; background: #D4AF37; color: #1a1a2e; text-decoration: none;
+                                          font-size: 16px; font-weight: 700; padding: 14px 40px; border-radius: 6px;
+                                          letter-spacing: 0.5px; margin-top: 10px;">
+                                    Pay Now — ${total_price:.2f} NZD
+                                </a>
+                                <p style="margin: 12px 0 0 0; color: #999; font-size: 11px;">Secure payment via Stripe&nbsp;·&nbsp;Card, Apple Pay &amp; Google Pay accepted</p>
+                            </td>
+                        </tr>
+        '''
+
     admin_banner = '''
                 <div style="background: #1a365d; color: #D4AF37; padding: 12px 20px; text-align: center; border-bottom: 2px solid #D4AF37;">
                     <p style="margin: 0; font-size: 13px; font-weight: 600;">ADMIN COPY - New Booking</p>
@@ -5215,6 +5321,8 @@ def generate_confirmation_email_html(booking: dict, for_admin: bool = False) -> 
                             </td>
                         </tr>
                         
+                        {payment_link_html}
+
                         <!-- Contact Details -->
                         <tr>
                             <td colspan="2" style="padding: 20px;">
