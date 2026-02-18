@@ -1,13 +1,20 @@
 name: Auto-merge claude branches to main
 
 on:
-  push:
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
     branches:
       - 'claude/**'
 
 jobs:
   auto-merge:
+    name: Merge into main (after CI passes)
     runs-on: ubuntu-latest
+    # Only proceed when CI passed and the branch is a claude/* branch
+    if: github.event.workflow_run.conclusion == 'success' && startsWith(github.event.workflow_run.head_branch, 'claude/')
     permissions:
       contents: write
 
@@ -25,14 +32,16 @@ jobs:
 
       - name: Merge into main
         run: |
+          BRANCH="${{ github.event.workflow_run.head_branch }}"
+          git fetch origin "$BRANCH"
           git checkout main
           git pull origin main
-          git merge --no-ff origin/${{ github.ref_name }} -m "Auto-merge ${{ github.ref_name }} into main"
+          git merge --no-ff "origin/$BRANCH" -m "Auto-merge $BRANCH into main (CI passed)"
           git push origin main
 
       - name: Delete source branch
         run: |
-          git push origin --delete ${{ github.ref_name }} || echo "Branch already deleted or not found"
+          git push origin --delete "${{ github.event.workflow_run.head_branch }}" || echo "Branch already deleted or not found"
 
       - name: Deploy to server
         if: ${{ secrets.DEPLOY_SSH_KEY != '' }}
