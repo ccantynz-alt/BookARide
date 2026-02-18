@@ -95,8 +95,6 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 1440  # 24 hours
 
 # Emergent LLM API Key
 EMERGENT_API_KEY = os.environ.get('EMERGENT_API_KEY')
-if not EMERGENT_API_KEY:
-    logging.warning("EMERGENT_API_KEY not set. LLM features (email auto-reply, translation) will fail at runtime.")
 
 # Support both bcrypt (legacy from create_admin.py) and pbkdf2_sha256 for backward compatibility
 pwd_context = CryptContext(schemes=["pbkdf2_sha256", "bcrypt"], deprecated="auto")
