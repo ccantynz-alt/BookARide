@@ -4,6 +4,9 @@
 .idea/
 .vscode/
 
+# Emergent platform
+.emergent/
+
 # Dependencies
 node_modules/
 /node_modules
@@ -47,6 +50,7 @@ dump.rdb
 # System files
 .DS_Store
 *.pem
+.gitconfig
 
 # Python
 __pycache__/
