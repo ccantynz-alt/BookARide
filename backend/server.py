@@ -410,40 +410,20 @@ class BookingCreate(BaseModel):
                 raise ValueError('Return flight number is required for airport shuttle return bookings. Without a flight number, your booking may face cancellation.')
         return self
     
-    # @model_validator(mode='after')
-    # def validate_booking_date(self):
-    #     """Validate that booking date is not in the past"""
-    #     if self.date:
-    #         try:
-    #             nz_tz = pytz.timezone('Pacific/Auckland')
-    #             today = datetime.now(nz_tz).strftime('%Y-%m-%d')
-    #             # Allow bookings for today and future only
-    #             if self.date < today:
-    #                 raise ValueError(f'Booking date ({self.date}) cannot be in the past. Today is {today}.')
-    #         except Exception as e:
-    #             if 'cannot be in the past' in str(e):
-    #                 raise
-    #             # If date parsing fails, let it through (will fail elsewhere)
-    #             pass
-    #     return self
-
-@model_validator(mode='after')
-def validate_booking_date(self):       
-    # Skip validation for data retrieval operations    
-    if hasattr(self, '_skip_date_validation') or getattr(self, 'id', None):    
+    @model_validator(mode='after')
+    def validate_booking_date(self):
+        """Validate that booking date is not in the past (NZ time)"""
+        if self.date:
+            try:
+                nz_tz = pytz.timezone('Pacific/Auckland')
+                today = datetime.now(nz_tz).strftime('%Y-%m-%d')
+                if self.date < today:
+                    raise ValueError(f'Booking date ({self.date}) cannot be in the past. Today is {today}.')
+            except Exception as e:
+                if 'cannot be in the past' in str(e):
+                    raise
+                pass
         return self
-    
-    if self.date:  # ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ NOW PROPERLY INSIDE THE FUNCTION
-        try:
-            nz_tz = pytz.timezone('Pacific/Auckland')
-            today = datetime.now(nz_tz).strftime('%Y-%m-%d')
-            if self.date < today:
-                raise ValueError(f'Booking date ({self.date}) cannot be in the past. Today is {today}.')
-        except Exception as e:
-            if 'cannot be in the past' in str(e):
-                raise
-            pass
-    return self
 
 class Booking(BookingCreate):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -466,6 +446,11 @@ class Booking(BookingCreate):
     def validate_return_flight_for_airport_shuttle(self):
         """Skip validation for existing bookings - only enforce on creation via BookingCreate"""
         # This overrides the parent validator to allow reading old bookings without returnFlightNumber
+        return self
+
+    @model_validator(mode='after')
+    def validate_booking_date(self):
+        """Skip date validation for existing bookings read from the database"""
         return self
 
 def is_booking_within_24_hours(date_str: str, time_str: str) -> bool:
@@ -1995,14 +1980,18 @@ async def get_bookings(
         if status and status != 'all':
             query['status'] = status
         
-        # Search filter (name, email, phone, reference)
+        # Search filter (name, email, phone, reference, date, address)
         if search:
             query['$or'] = [
                 {'name': {'$regex': search, '$options': 'i'}},
                 {'email': {'$regex': search, '$options': 'i'}},
                 {'phone': {'$regex': search, '$options': 'i'}},
                 {'referenceNumber': {'$regex': search, '$options': 'i'}},
-                {'original_booking_id': {'$regex': search, '$options': 'i'}}
+                {'original_booking_id': {'$regex': search, '$options': 'i'}},
+                {'date': {'$regex': search, '$options': 'i'}},
+                {'pickupAddress': {'$regex': search, '$options': 'i'}},
+                {'dropoffAddress': {'$regex': search, '$options': 'i'}},
+                {'notes': {'$regex': search, '$options': 'i'}}
             ]
         
         # Date range filter
@@ -2024,6 +2013,7 @@ async def get_bookings(
         today_str = now_nz.strftime('%Y-%m-%d')
         
         # DB-side sorting and pagination to avoid loading the full dataset into memory.
+        # Sort order: Today (time asc) → Future (date asc, soonest first) → Past (date desc, most recent first)
         pipeline = [
             {"$match": query},
             {"$addFields": {
@@ -2039,10 +2029,38 @@ async def get_bookings(
                     }
                 }
             }},
-            {"$sort": {"sortPriority": 1, "sortDate": 1, "sortTime": 1}},
+            # Convert YYYY-MM-DD to integer YYYYMMDD for directional sort arithmetic
+            {"$addFields": {
+                "dateNumeric": {
+                    "$toInt": {
+                        "$replaceAll": {
+                            "input": "$sortDate",
+                            "find": "-",
+                            "replacement": ""
+                        }
+                    }
+                }
+            }},
+            # dateKey drives within-group sort direction:
+            #   Today  (0): constant 0, sub-sorted by time asc
+            #   Future (1): +dateNumeric → asc = soonest first
+            #   Past   (2): -dateNumeric → asc = most-recent first
+            {"$addFields": {
+                "dateKey": {
+                    "$switch": {
+                        "branches": [
+                            {"case": {"$eq": ["$sortPriority", 0]}, "then": 0},
+                            {"case": {"$eq": ["$sortPriority", 1]}, "then": "$dateNumeric"},
+                            {"case": {"$eq": ["$sortPriority", 2]}, "then": {"$multiply": ["$dateNumeric", -1]}}
+                        ],
+                        "default": "$dateNumeric"
+                    }
+                }
+            }},
+            {"$sort": {"sortPriority": 1, "dateKey": 1, "sortTime": 1}},
             {"$skip": skip},
             {"$limit": limit},
-            {"$project": {"_id": 0, "sortPriority": 0, "sortDate": 0, "sortTime": 0}}
+            {"$project": {"_id": 0, "sortPriority": 0, "sortDate": 0, "sortTime": 0, "dateNumeric": 0, "dateKey": 0}}
         ]
 
         bookings = await db.bookings.aggregate(pipeline).to_list(length=limit)
@@ -2116,19 +2134,27 @@ async def update_booking(booking_id: str, update_data: dict, current_admin: dict
             raise HTTPException(status_code=404, detail="Booking not found")
         logger.info(f"Booking updated: {booking_id}")
         
-        # Auto-sync to Google Calendar if date/time changed
-        if any(key in update_data for key in ['date', 'time', 'returnDate', 'returnTime', 'pickupAddress', 'dropoffAddress']):
+        # Auto-sync to Google Calendar if date/time/address changed.
+        # update_calendar_event handles both update (existing) and create (no event yet).
+        calendar_trigger_fields = ['date', 'time', 'returnDate', 'returnTime', 'pickupAddress', 'dropoffAddress', 'name', 'passengers']
+        if any(key in update_data for key in calendar_trigger_fields):
             try:
-                # Get the updated booking
                 updated_booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
-                if updated_booking and updated_booking.get('calendar_event_id'):
-                    # Update existing calendar event
+                if updated_booking:
                     await update_calendar_event(updated_booking)
-                    logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Calendar event updated for booking {booking_id}")
+                    logger.info(f"Calendar event synced for booking {booking_id}")
             except Exception as cal_error:
-                logger.warning(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â Failed to update calendar event: {str(cal_error)}")
-                # Don't fail the whole update if calendar sync fails
-        
+                logger.warning(f"Failed to sync calendar for booking {booking_id}: {str(cal_error)}")
+
+        # Send update notification email to admin + customer when key booking details change
+        notify_trigger_fields = ['date', 'time', 'pickupAddress', 'dropoffAddress', 'returnDate', 'returnTime', 'status', 'passengers', 'name', 'phone', 'email']
+        if any(key in update_data for key in notify_trigger_fields):
+            try:
+                notify_booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+                if notify_booking:
+                    await send_booking_update_notification(notify_booking, list(update_data.keys()))
+            except Exception as notify_error:
+                logger.warning(f"Failed to send update notification for {booking_id}: {str(notify_error)}")
         return {"message": "Booking updated successfully"}
     except HTTPException:
         raise
@@ -4028,6 +4054,75 @@ def _get_booking_notification_emails() -> list:
     """Emails to receive new booking copies. BOOKINGS_NOTIFICATION_EMAIL or ADMIN_EMAIL, default bookings@"""
     raw = os.environ.get('BOOKINGS_NOTIFICATION_EMAIL') or os.environ.get('ADMIN_EMAIL', 'bookings@bookaride.co.nz')
     return [e.strip() for e in str(raw).split(',') if e.strip()]
+
+
+async def send_booking_update_notification(booking: dict, changed_fields: list):
+    """Send an update notification to admin and customer when a booking is amended by admin."""
+    try:
+        booking_ref = get_booking_reference(booking)
+        formatted_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
+        customer_name = booking.get('name', 'Customer')
+        customer_email = booking.get('email', '')
+
+        # Build a human-readable list of changed fields
+        friendly_names = {
+            'date': 'Date', 'time': 'Time', 'pickupAddress': 'Pickup Address',
+            'dropoffAddress': 'Drop-off Address', 'returnDate': 'Return Date',
+            'returnTime': 'Return Time', 'status': 'Status', 'passengers': 'Passengers',
+            'name': 'Name', 'phone': 'Phone', 'email': 'Email',
+        }
+        changed_labels = [friendly_names.get(f, f) for f in changed_fields if f in friendly_names]
+        changes_text = ', '.join(changed_labels) if changed_labels else 'booking details'
+
+        subject = f"Booking Updated - {customer_name} - {formatted_date} - Ref: #{booking_ref}"
+        html_content = generate_confirmation_email_html(booking, for_admin=False)
+
+        # Prepend an amendment notice to the email HTML
+        amendment_banner = f"""
+        <div style="background:#fff8e6;border-left:4px solid #D4AF37;padding:15px 20px;margin-bottom:20px;border-radius:4px;">
+          <strong style="color:#b8860b;">Booking Amendment Notice</strong><br>
+          <span style="color:#555;">The following details were updated: <strong>{changes_text}</strong>.
+          Please review the updated booking information below.</span>
+        </div>
+        """
+        # Insert the banner after the opening body/container tag
+        html_content = html_content.replace('<div style="padding: 20px', amendment_banner + '<div style="padding: 20px', 1)
+
+        # Notify admin
+        admin_emails = _get_booking_notification_emails()
+        if send_email_unified:
+            for admin_email in admin_emails:
+                try:
+                    send_email_unified(
+                        admin_email,
+                        f"[UPDATED] {subject}",
+                        html_content,
+                        from_email=get_noreply_email(),
+                        from_name="BookaRide System",
+                    )
+                    logger.info(f"Booking update notification sent to admin {admin_email} for #{booking_ref}")
+                except Exception as e:
+                    logger.error(f"Failed to send update notification to admin {admin_email}: {e}")
+
+        # Notify customer (only if email is available)
+        if customer_email:
+            try:
+                if send_email_unified:
+                    send_email_unified(
+                        customer_email,
+                        f"Your BookaRide Booking Has Been Updated - Ref #{booking_ref}",
+                        html_content,
+                        from_email=get_noreply_email(),
+                        from_name="BookaRide",
+                    )
+                    logger.info(f"Booking update notification sent to customer {customer_email} for #{booking_ref}")
+                else:
+                    send_booking_confirmation_email(booking)
+            except Exception as e:
+                logger.error(f"Failed to send update notification to customer {customer_email}: {e}")
+
+    except Exception as e:
+        logger.error(f"Error in send_booking_update_notification: {str(e)}")
 
 
 async def send_booking_notification_to_admin(booking: dict):
@@ -10571,7 +10666,9 @@ async def search_all_bookings(
                 {"phone": {"$regex": search, "$options": "i"}},
                 {"pickupAddress": {"$regex": search, "$options": "i"}},
                 {"dropoffAddress": {"$regex": search, "$options": "i"}},
-                {"referenceNumber": {"$regex": search, "$options": "i"}}
+                {"referenceNumber": {"$regex": search, "$options": "i"}},
+                {"date": {"$regex": search, "$options": "i"}},
+                {"notes": {"$regex": search, "$options": "i"}}
             ]
         }
         

@@ -1207,13 +1207,15 @@ export const AdminDashboard = () => {
     // Search filter - also search archive via API
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
-      filtered = filtered.filter(b => 
+      filtered = filtered.filter(b =>
         b.name?.toLowerCase().includes(searchLower) ||
         b.email?.toLowerCase().includes(searchLower) ||
         b.phone?.includes(searchTerm) ||
         b.pickupAddress?.toLowerCase().includes(searchLower) ||
         b.dropoffAddress?.toLowerCase().includes(searchLower) ||
-        String(b.referenceNumber)?.includes(searchTerm)
+        String(b.referenceNumber)?.includes(searchTerm) ||
+        b.date?.includes(searchTerm) ||
+        b.notes?.toLowerCase().includes(searchLower)
       );
       
       // Also search archive for matching results
