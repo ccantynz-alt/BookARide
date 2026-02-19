@@ -13,7 +13,7 @@ from datetime import datetime
 sys.path.append('/app/backend')
 from server import send_booking_confirmation_email, send_booking_confirmation_sms
 
-BACKEND_URL = "https://dazzling-leakey.preview.emergentagent.com/api"
+BACKEND_URL = "http://localhost:8000/api"
 ADMIN_USERNAME = "admin"
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "your-admin-password-here")
 
