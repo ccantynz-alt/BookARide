@@ -138,9 +138,6 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 1440  # 24 hours
 QUICK_APPROVAL_TOKEN_EXPIRE_HOURS = 24
 
-# Emergent LLM API Key
-EMERGENT_API_KEY = os.environ.get('EMERGENT_API_KEY')
-
 # Support both bcrypt (legacy from create_admin.py) and pbkdf2_sha256 for backward compatibility
 pwd_context = CryptContext(schemes=["pbkdf2_sha256", "bcrypt"], deprecated="auto")
 security = HTTPBearer()
@@ -3487,142 +3484,9 @@ async def handle_incoming_email(request: Request):
             logger.warning("Empty email body received")
             return {"status": "skipped", "reason": "empty body"}
         
-        # Generate AI response
-        from emergentintegrations.llm.openai import LlmChat, UserMessage
-        
-        if not EMERGENT_API_KEY:
-            logger.error("Cannot generate email response: EMERGENT_API_KEY not set")
-            return {"status": "error", "reason": "LLM not configured"}
-        
-        email_system_prompt = """You are an AI email assistant for BookaRide NZ, a premium airport transfer service in Auckland, New Zealand.
-
-You are responding to customer emails automatically. Be warm, professional, and helpful.
-
-KEY INFORMATION ABOUT BOOKARIDE:
-- Airport shuttles to/from Auckland Airport, Hamilton Airport, and Whangarei
-- Services: Airport transfers, Hobbiton tours, Cruise terminal transfers, Wine tours
-- Payment: Credit/Debit cards, Afterpay (pay in 4 instalments)
-- Meet & Greet service available (driver with name sign at arrivals)
-- Child seats available on request
-- 24/7 service
-
-HOW OUR PRICING WORKS (IMPORTANT - explain this to customers):
-- We use Google Maps to calculate the EXACT distance from pickup to dropoff
-- Pricing is based on a per-kilometer rate
-- Every address in Auckland has a DIFFERENT price because it's calculated point-to-point
-- This means pricing is very precise and accurate - no estimates or guesswork
-- To get your exact price, you MUST enter your pickup address and dropoff address on our website
-- The price calculator is LIVE - you see the exact price instantly when you enter both addresses
-- No surge pricing like Uber - our rates are fixed and transparent
-
-EXAMPLE PRICE RANGES (but always direct them to get exact quote):
-- Auckland CBD to Airport: ~$65-85
-- North Shore to Airport: ~$75-95
-- Hibiscus Coast (Orewa, Whangaparaoa) to Airport: ~$90-120
-- Hamilton to Airport: ~$180-220
-
-YOUR RESPONSE GUIDELINES:
-1. Keep responses concise but helpful (3-5 paragraphs max)
-2. ALWAYS explain that we need their exact pickup and dropoff addresses to give an accurate price
-3. Explain that our pricing uses Google Maps and is calculated per kilometer - very precise
-4. Direct them to bookaride.co.nz/book-now where they can enter addresses and get instant pricing
-5. If they're asking about a booking, tell them to include their booking reference
-6. Be friendly and professional
-7. Sign off as "BookaRide Team"
-8. DO NOT give specific prices - explain WHY you can't (every address is different) and direct to website
-9. If they have a complaint or complex issue, assure them a team member will follow up
-
-FORMAT:
-- Start with "Hi [Name]," or "Hi there," if name unknown
-- Keep paragraphs short
-- End with a call to action (enter your addresses at bookaride.co.nz/book-now for instant pricing)
-- Sign: "Best regards,\nBookaRide Team"
-"""
-        
-        llm = LlmChat(
-            api_key=EMERGENT_API_KEY,
-            session_id=str(uuid.uuid4()),
-            system_message=email_system_prompt
-        )
-        
-        user_prompt = f"""Please write a helpful email response to this customer inquiry.
-
-FROM: {sender_name}
-SUBJECT: {subject}
-MESSAGE:
-{email_content[:2000]}
-
-Write a professional, helpful response:"""
-        
-        user_msg = UserMessage(text=user_prompt)
-        ai_response = await llm.send_message(user_msg)
-        
-        # Send the AI-generated response via Mailgun
-        mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
-        mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
-        
-        if not mailgun_api_key or not mailgun_domain:
-            logger.error("Mailgun not configured for auto-reply")
-            return {"status": "error", "reason": "email service not configured"}
-        
-        # Prepare the reply
-        reply_subject = f"Re: {subject}" if not subject.startswith('Re:') else subject
-        
-        # Create HTML version
-        html_response = f"""
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <div style="background: linear-gradient(135deg, #1a1a1a, #2d2d2d); padding: 20px; text-align: center;">
-                <h1 style="color: #D4AF37; margin: 0;">BookaRide NZ</h1>
-                <p style="color: #888; margin: 5px 0 0 0;">Airport Transfers & Tours</p>
-            </div>
-            <div style="padding: 30px; background: #fff;">
-                {ai_response.replace(chr(10), '<br>')}
-            </div>
-            <div style="background: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; color: #666;">
-                <p><strong>Book Online:</strong> <a href="https://bookaride.co.nz/book-now" style="color: #D4AF37;">bookaride.co.nz/book-now</a></p>
-                <p>Get instant pricing - just enter your pickup and dropoff!</p>
-                <hr style="border: none; border-top: 1px solid #ddd; margin: 15px 0;">
-                <p style="font-size: 10px; color: #999;">
-                    This is an automated response. For complex inquiries, our team will follow up within 24 hours.
-                </p>
-            </div>
-        </div>
-        """
-        
-        # Send via Mailgun
-        response = requests.post(
-            f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
-            auth=("api", mailgun_api_key),
-            data={
-                "from": f"BookaRide NZ <bookings@{mailgun_domain}>",
-                "to": reply_to_email,
-                "subject": reply_subject,
-                "text": ai_response,
-                "html": html_response,
-                "h:Reply-To": "info@bookaride.co.nz"
-            }
-        )
-        
-        if response.status_code == 200:
-            logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ AI auto-reply sent to {reply_to_email}")
-            
-            # Store the email interaction for admin review
-            await db.email_logs.insert_one({
-                "id": str(uuid.uuid4()),
-                "from": reply_to_email,
-                "sender_name": sender_name,
-                "subject": subject,
-                "original_message": email_content[:5000],
-                "ai_response": ai_response,
-                "status": "sent",
-                "created_at": datetime.now(timezone.utc).isoformat()
-            })
-            
-            return {"status": "success", "message": "AI response sent"}
-        else:
-            logger.error(f"Failed to send auto-reply: {response.text}")
-            return {"status": "error", "reason": response.text}
-        
+        # AI auto-response disabled - requires OpenAI API configuration
+        logger.info(f"AI auto-response disabled for email from {reply_to_email}")
+        return {"status": "disabled", "reason": "AI auto-response feature requires OpenAI API configuration"}        
     except Exception as e:
         logger.error(f"Email auto-responder error: {str(e)}")
         return {"status": "error", "reason": str(e)}
@@ -3800,86 +3664,17 @@ class ChatbotMessageRequest(BaseModel):
 
 @api_router.post("/chatbot/message")
 async def chatbot_message(request: ChatbotMessageRequest):
-    """AI-powered chatbot for booking assistance"""
+    """AI-powered chatbot for booking assistance - DISABLED (requires OpenAI API configuration)"""
     try:
-        from emergentintegrations.llm.openai import LlmChat, UserMessage
-        
-        if not EMERGENT_API_KEY:
-            logger.error("Cannot generate chatbot response: EMERGENT_API_KEY not set")
-            return {"error": "AI chatbot not configured. Please contact support."}
-        
-        # Build context from conversation history
-        history_context = ""
-        if request.conversationHistory:
-            for msg in request.conversationHistory[-6:]:  # Last 6 messages for context
-                role = "Customer" if msg.get('role') == 'user' else "Assistant"
-                history_context += f"{role}: {msg.get('content', '')}\n"
-        
-        # System prompt for the booking assistant
-        system_prompt = """You are a friendly and helpful booking assistant for BookaRide NZ, a premium airport transfer service in Auckland, New Zealand.
-
-KEY INFORMATION:
-- We offer airport shuttles to/from Auckland Airport, Hamilton Airport, and Whangarei
-- Popular services: Airport transfers, Hobbiton tours, Cruise terminal transfers, Wine tours
-- Payment options: Credit/Debit cards, Afterpay (pay in 4 instalments)
-- We offer Meet & Greet service where drivers hold a name sign at arrivals
-- Child seats available on request
-- 24/7 service available
-- IMPORTANT: All bookings are made online at bookaride.co.nz/book-now with LIVE PRICING
-
-HOW OUR PRICING WORKS (explain this when asked about prices):
-- We use Google Maps to calculate the EXACT distance from pickup to dropoff
-- Pricing is based on a per-kilometer rate
-- Every address in Auckland has a DIFFERENT price - it's calculated point-to-point
-- This means our pricing is very precise and accurate - no guesswork!
-- To get an exact price, they need to enter their pickup and dropoff addresses on our website
-- The price calculator is LIVE - they see the exact price instantly
-- No surge pricing like Uber - our rates are fixed and fair
-
-EXAMPLE PRICE RANGES (but always direct them to enter addresses for exact price):
-- Auckland CBD to Airport: ~$65-85
-- North Shore to Airport: ~$75-95
-- Hibiscus Coast (Orewa, Whangaparaoa) to Airport: ~$90-120
-- Hamilton to Airport: ~$180-220
-
-YOUR STYLE:
-- Be warm, friendly and professional
-- Keep responses concise (2-3 sentences when possible)
-- Use emojis sparingly but naturally ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â
-- ALWAYS explain we need their exact addresses to give a precise price (because we use Google Maps per-kilometer pricing)
-- Direct them to bookaride.co.nz/book-now - they just enter pickup & dropoff to see the exact price instantly
-- For questions you can't answer, suggest they email info@bookaride.co.nz
-
-IMPORTANT: 
-- Never give phone numbers - we don't take phone bookings
-- Always direct to the online booking form for quotes and bookings
-- Explain WHY we can't give exact prices without addresses (every house is different distance!)
-- The booking form has a LIVE PRICE CALCULATOR - they see the price instantly when they enter addresses"""
-
-        llm = LlmChat(
-            api_key=EMERGENT_API_KEY,
-            session_id=str(uuid.uuid4()),
-            system_message=system_prompt
-        )
-        
-        # Build the user message with context
-        full_message = f"""Previous conversation:
-{history_context}
-
-Customer's new message: {request.message}
-
-Respond helpfully and naturally as the BookaRide assistant:"""
-        
-        user_msg = UserMessage(text=full_message)
-        response = await llm.send_message(user_msg)
-        
-        return {"response": response.strip()}
-        
+        # AI chatbot disabled - requires OpenAI API configuration
+        logger.info("AI chatbot disabled - requires OpenAI API configuration")
+        return {
+            "response": "Our AI assistant is currently unavailable. For booking assistance, please visit bookaride.co.nz/book-now to see instant pricing, or email info@bookaride.co.nz for help."
+        }
     except Exception as e:
         logger.error(f"Chatbot error: {str(e)}")
-        # Fallback response
         return {
-            "response": "I apologize, I'm having a brief technical issue. For immediate assistance, please call us at 0800 BOOK A RIDE or visit bookaride.co.nz/book-now to make a booking. We're here to help! ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â"
+            "response": "For immediate assistance, please visit bookaride.co.nz/book-now to make a booking or email info@bookaride.co.nz."
         }
 
 
@@ -4666,33 +4461,10 @@ def contains_non_english(text: str) -> bool:
     return any(ord(c) > 127 for c in str(text))
 
 async def translate_to_english_async(text: str) -> str:
-    """Translate non-English text to English using Emergent LLM"""
-    if not text or not contains_non_english(text):
-        return text
-    
-    if not EMERGENT_API_KEY:
-        logger.warning("Cannot translate text: EMERGENT_API_KEY not set")
-        return text  # Return original text if translation not available
-    
-    try:
-        from emergentintegrations.llm.openai import LlmChat, UserMessage
-        import uuid
-        
-        llm = LlmChat(
-            api_key=EMERGENT_API_KEY,
-            session_id=str(uuid.uuid4()),
-            system_message="You are a translator. Translate text to English. Only return the translation, nothing else. Keep any English text as-is."
-        )
-        
-        user_msg = UserMessage(text=text)
-        translated = await llm.send_message(user_msg)
-        
-        if translated and translated.strip():
-            return f"{translated.strip()} ({text})"  # Show translation with original
-        return text
-    except Exception as e:
-        logger.warning(f"Translation failed: {str(e)}")
-        return text
+    """Translation disabled - returns original text"""
+    # Translation feature disabled (requires OpenAI API configuration)
+    return text
+
 
 async def get_english_calendar_text(booking: dict) -> dict:
     """Get English versions of booking fields for calendar, with translations if needed"""
@@ -11230,7 +11002,6 @@ if cors_origins_env == '*':
     cors_origins = [
         "https://bookaride.co.nz",
         "https://www.bookaride.co.nz",
-        "https://dazzling-leakey.preview.emergentagent.com",
         "http://localhost:3000"
     ]
 else:
