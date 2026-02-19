@@ -48,22 +48,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          BRANCH="${{ github.event.workflow_run.head_branch }}"
-          TITLE="Auto-merge: ${BRANCH}"
-          # Create PR (ok if it already exists)
-          gh pr create \
-            --base main \
-            --head "$BRANCH" \
-            --title "$TITLE" \
-            --body "Automated merge of $BRANCH into main" \
-            || true
-          # Enable auto-merge so it merges as soon as checks pass
-          gh pr merge "$BRANCH" \
-            --auto \
-            --merge \
-            --subject "$TITLE" \
-            || true
-          echo "Created/updated PR for $BRANCH with auto-merge enabled"
+          git push origin --delete "${{ github.event.workflow_run.head_branch }}" || echo "Branch already deleted or not found"
 
       - name: Delete source branch (if direct merge succeeded)
         if: steps.direct_merge.outcome == 'success'
