@@ -7,6 +7,8 @@ from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
+import hashlib
+import hmac
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict, model_validator
 from typing import List, Optional, Dict
@@ -88,10 +90,53 @@ if 'MONGO_URL' not in os.environ or 'DB_NAME' not in os.environ:
 client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=2000, connectTimeoutMS=2000)
 db = client[db_name]
 
+
+async def resolve_db_name_case_conflict() -> str:
+    """
+    Resolve DB names that differ only by case.
+
+    MongoDB can raise write error 13297 if a database already exists with
+    different letter casing. This ensures we reuse the existing name.
+    """
+    global db_name, db
+
+    configured_db_name = os.environ.get('DB_NAME', db_name)
+    try:
+        existing_db_names = await client.list_database_names()
+    except Exception as exc:
+        logging.warning("Could not list databases for DB_NAME case check: %s", exc)
+        db_name = configured_db_name
+        db = client[db_name]
+        os.environ['DB_NAME'] = db_name
+        return db_name
+
+    matched_db_name = next(
+        (name for name in existing_db_names if name.lower() == configured_db_name.lower()),
+        None
+    )
+
+    if matched_db_name and matched_db_name != configured_db_name:
+        logging.warning(
+            "DB_NAME case mismatch detected: configured '%s' but existing database is '%s'. "
+            "Using existing database name.",
+            configured_db_name,
+            matched_db_name
+        )
+        db_name = matched_db_name
+        db = client[db_name]
+        os.environ['DB_NAME'] = db_name
+        return db_name
+
+    db_name = configured_db_name
+    db = client[db_name]
+    os.environ['DB_NAME'] = db_name
+    return db_name
+
 # Authentication configuration
 SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'your-secret-key-change-in-production-' + str(uuid.uuid4()))
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 1440  # 24 hours
+QUICK_APPROVAL_TOKEN_EXPIRE_HOURS = 24
 
 # Emergent LLM API Key
 EMERGENT_API_KEY = os.environ.get('EMERGENT_API_KEY')
@@ -186,6 +231,32 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
+
+def _build_quick_approval_signature(booking_id: str, action: str, expires_at: int) -> str:
+    payload = f"{booking_id}:{action}:{expires_at}"
+    return hmac.new(
+        SECRET_KEY.encode("utf-8"),
+        payload.encode("utf-8"),
+        hashlib.sha256
+    ).hexdigest()
+
+def build_quick_approval_link(booking_id: str, action: str, public_domain: str) -> str:
+    expires_at = int(
+        (datetime.now(timezone.utc) + timedelta(hours=QUICK_APPROVAL_TOKEN_EXPIRE_HOURS)).timestamp()
+    )
+    token = _build_quick_approval_signature(booking_id, action, expires_at)
+    return (
+        f"{public_domain}/api/booking/quick-approve/{booking_id}"
+        f"?action={action}&expires={expires_at}&token={token}"
+    )
+
+def validate_quick_approval_token(booking_id: str, action: str, expires_at: int, token: str) -> bool:
+    if not token:
+        return False
+    if datetime.now(timezone.utc).timestamp() > expires_at:
+        return False
+    expected = _build_quick_approval_signature(booking_id, action, expires_at)
+    return hmac.compare_digest(token, expected)
 
 def format_nz_phone(phone: str) -> str:
     """Format phone number to E.164 format for Twilio (NZ numbers)"""
@@ -1768,16 +1839,37 @@ async def create_booking(booking: BookingCreate, background_tasks: BackgroundTas
         raise HTTPException(status_code=500, detail=f"Error creating booking: {str(e)}")
 
 
-# Quick Approve/Reject Endpoint (for email links - no auth required, uses secure token)
+# Quick Approve/Reject Endpoint (for signed email links)
 @api_router.get("/booking/quick-approve/{booking_id}")
-async def quick_approve_booking(booking_id: str, action: str = "approve"):
+async def quick_approve_booking(
+    booking_id: str,
+    action: str = "approve",
+    token: str = "",
+    expires: Optional[int] = None
+):
     """
     Quick approve or reject a booking directly from email link.
-    No authentication required - accessed via unique booking ID from email.
+    Requires a signed token tied to booking_id/action with expiry.
     """
     from fastapi.responses import HTMLResponse
     
     try:
+        if action not in {"approve", "reject"}:
+            return HTMLResponse(content="""
+                <html><body style="font-family: Arial; text-align: center; padding: 50px;">
+                    <h1 style="color: #f59e0b;">Invalid Action</h1>
+                    <p>Please use the approve or reject buttons from the email.</p>
+                </body></html>
+            """, status_code=400)
+
+        if expires is None or not validate_quick_approval_token(booking_id, action, expires, token):
+            return HTMLResponse(content="""
+                <html><body style="font-family: Arial; text-align: center; padding: 50px;">
+                    <h1 style="color: #DC2626;">Link Invalid or Expired</h1>
+                    <p>This approval link has expired or is invalid. Please use the admin dashboard.</p>
+                    <a href="https://bookaride.co.nz/admin/dashboard" style="display: inline-block; margin-top: 20px; padding: 15px 30px; background-color: #f59e0b; color: white; text-decoration: none; border-radius: 8px;">Go to Admin Dashboard</a>
+                </body></html>
+            """, status_code=401)
         # Find the booking
         booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
         
@@ -1838,7 +1930,14 @@ async def quick_approve_booking(booking_id: str, action: str = "approve"):
                 }}
             )
             
-            # TODO: Optionally send rejection email to customer
+            # Send rejection email to customer
+            customer_email = booking.get('email')
+            if customer_email:
+                try:
+                    await send_cancellation_email(booking, customer_email, customer_name)
+                    logger.info(f"Rejection email sent to customer for booking {booking_ref}")
+                except Exception as e:
+                    logger.error(f"Failed to send rejection email: {e}")
             
             logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Booking {booking_ref} REJECTED via email quick-approve")
             
@@ -1886,6 +1985,9 @@ async def get_bookings(
 ):
     """Get bookings with pagination and filtering for faster loading"""
     try:
+        page = max(page, 1)
+        limit = min(max(limit, 1), 200)
+
         # Build query
         query = {}
         
@@ -1921,25 +2023,29 @@ async def get_bookings(
         now_nz = datetime.now(nz_tz)
         today_str = now_nz.strftime('%Y-%m-%d')
         
-        # Fetch ALL matching bookings to sort properly (needed for smart date ordering)
-        all_bookings = await db.bookings.find(query, {"_id": 0}).to_list(None)
-        
-        # Custom sort: prioritize today, then tomorrow, then upcoming dates, then past dates
-        def sort_key(b):
-            date = b.get('date', '9999-99-99')
-            time = b.get('time', '00:00')
-            if date == today_str:
-                return (0, time)  # Today first
-            elif date > today_str:
-                return (1, date, time)  # Future dates in ascending order
-            else:
-                return (2, date, time)  # Past dates last
-        
-        all_bookings.sort(key=sort_key)
-        logger.info(f"Today: {today_str}, First 3 bookings after sort: {[b.get('date') for b in all_bookings[:3]]}")
-        
-        # Apply pagination
-        bookings = all_bookings[skip:skip + limit]
+        # DB-side sorting and pagination to avoid loading the full dataset into memory.
+        pipeline = [
+            {"$match": query},
+            {"$addFields": {
+                "sortDate": {"$ifNull": ["$date", "9999-99-99"]},
+                "sortTime": {"$ifNull": ["$time", "00:00"]},
+                "sortPriority": {
+                    "$switch": {
+                        "branches": [
+                            {"case": {"$eq": [{"$ifNull": ["$date", "9999-99-99"]}, today_str]}, "then": 0},
+                            {"case": {"$gt": [{"$ifNull": ["$date", "9999-99-99"]}, today_str]}, "then": 1}
+                        ],
+                        "default": 2
+                    }
+                }
+            }},
+            {"$sort": {"sortPriority": 1, "sortDate": 1, "sortTime": 1}},
+            {"$skip": skip},
+            {"$limit": limit},
+            {"$project": {"_id": 0, "sortPriority": 0, "sortDate": 0, "sortTime": 0}}
+        ]
+
+        bookings = await db.bookings.aggregate(pipeline).to_list(length=limit)
         
         # Add pagination headers via response
         logger.info(f"Fetched {len(bookings)} bookings (page {page}, total {total})")
@@ -2674,7 +2780,7 @@ def create_stripe_payment_link_sync(booking_dict: dict) -> str:
         try:
             from pymongo import MongoClient
             _sync_client = MongoClient(os.environ.get('MONGO_URL', 'mongodb://localhost:27017'))
-            _sync_db = _sync_client[os.environ.get('DB_NAME', 'test_database')]
+            _sync_db = _sync_client[db_name]
             _sync_db.bookings.update_one(
                 {'id': booking_id},
                 {'$set': {'email_payment_link': url, 'email_payment_session_id': session.id}}
@@ -2730,7 +2836,7 @@ def send_customer_confirmation(booking: dict):
         try:
             from pymongo import MongoClient
             sync_client = MongoClient(os.environ.get('MONGO_URL', 'mongodb://localhost:27017'))
-            sync_db = sync_client[os.environ.get('DB_NAME', 'test_database')]
+            sync_db = sync_client[db_name]
             
             nz_tz = pytz.timezone('Pacific/Auckland')
             now = datetime.now(nz_tz).isoformat()
@@ -3902,10 +4008,10 @@ async def cron_send_reminders(api_key: str = None):
     try:
         expected_key = os.environ.get('CRON_API_KEY')
         if not expected_key:
-            logger.error("CRON_API_KEY environment variable is not set")
-            raise HTTPException(status_code=500, detail="CRON_API_KEY not configured")
+            logger.error("CRON_API_KEY is not configured; cron endpoint disabled")
+            raise HTTPException(status_code=503, detail="Cron endpoint is not configured")
         
-        if api_key != expected_key:
+        if not api_key or not hmac.compare_digest(api_key, expected_key):
             raise HTTPException(status_code=401, detail="Invalid API key")
         
         result = await send_daily_reminders_core(source="cron_endpoint")
@@ -4031,6 +4137,10 @@ async def send_urgent_approval_notification(booking: dict):
         booking_ref = get_booking_reference(booking)
         full_booking_id = get_full_booking_reference(booking)
         
+        public_domain = os.environ.get('PUBLIC_DOMAIN', 'https://bookaride.co.nz').rstrip('/')
+        approve_link = build_quick_approval_link(booking.get('id', ''), "approve", public_domain)
+        reject_link = build_quick_approval_link(booking.get('id', ''), "reject", public_domain)
+
         # Create URGENT email for bookings within 24 hours
         html_content = f"""
         <html>
@@ -4069,8 +4179,8 @@ async def send_urgent_approval_notification(booking: dict):
                         <p style="margin: 10px 0 0 0; font-size: 14px; color: #7F1D1D;">Approve or reject this booking:</p>
                         
                         <div style="margin-top: 20px;">
-                            <a href="https://bookaride.co.nz/api/booking/quick-approve/{booking.get('id')}?action=approve" style="display: inline-block; margin: 5px; padding: 15px 40px; background-color: #16a34a; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ APPROVE</a>
-                            <a href="https://bookaride.co.nz/api/booking/quick-approve/{booking.get('id')}?action=reject" style="display: inline-block; margin: 5px; padding: 15px 40px; background-color: #DC2626; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ REJECT</a>
+                            <a href="{approve_link}" style="display: inline-block; margin: 5px; padding: 15px 40px; background-color: #16a34a; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ APPROVE</a>
+                            <a href="{reject_link}" style="display: inline-block; margin: 5px; padding: 15px 40px; background-color: #DC2626; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ REJECT</a>
                         </div>
                         
                         <p style="margin: 15px 0 0 0; font-size: 12px; color: #7F1D1D;">Or open the admin dashboard for more options:</p>
@@ -4164,7 +4274,7 @@ Price: ${booking.get('totalPrice', 0):.2f}
             try:
                 from pymongo import MongoClient
                 sync_client = MongoClient(os.environ.get('MONGO_URL', 'mongodb://localhost:27017'))
-                sync_db = sync_client[os.environ.get('DB_NAME', 'test_database')]
+                sync_db = sync_client[db_name]
                 sync_db.pending_approvals.update_one(
                     {"admin_phone": admin_phone},
                     {"$set": {
@@ -7901,17 +8011,28 @@ Customers will be auto-notified 5 mins before their pickup. Drive safe! ÃƒÆ�
 
 # Production Database Sync Endpoint
 PRODUCTION_API_URL = "https://bookaride.co.nz/api"
-SYNC_SECRET_KEY = os.environ.get("SYNC_SECRET_KEY", "bookaride-sync-2024-secret")
+SYNC_SECRET_KEY = os.environ.get("SYNC_SECRET_KEY")
+
+def get_sync_secret_key() -> str:
+    if not SYNC_SECRET_KEY:
+        raise RuntimeError("SYNC_SECRET_KEY is not configured")
+    return SYNC_SECRET_KEY
 
 # Background auto-sync function
 async def auto_sync_from_production():
     """Automatically sync data from production every 5 minutes"""
     try:
+        try:
+            sync_secret = get_sync_secret_key()
+        except RuntimeError as secret_error:
+            logger.warning(f"Auto-sync disabled: {str(secret_error)}")
+            return
+
         logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¾ Auto-sync: Starting sync from production...")
         
         response = requests.get(
             f"{PRODUCTION_API_URL}/sync/export",
-            params={"secret": SYNC_SECRET_KEY},
+            params={"secret": sync_secret},
             timeout=60
         )
         
@@ -8257,9 +8378,15 @@ async def get_urgent_return_bookings(current_admin: dict = Depends(get_current_a
 
 # Endpoint to EXPORT data (called by other environments to fetch data)
 @api_router.get("/sync/export")
-async def export_data_for_sync(secret: str = ""):
+async def export_data_for_sync(request: Request, secret: str = ""):
     """Export bookings and drivers for sync - requires secret key"""
-    if secret != SYNC_SECRET_KEY:
+    try:
+        expected_secret = get_sync_secret_key()
+    except RuntimeError:
+        raise HTTPException(status_code=503, detail="Sync export is not configured")
+
+    provided_secret = request.headers.get("X-Sync-Secret") or secret
+    if not provided_secret or not hmac.compare_digest(provided_secret, expected_secret):
         raise HTTPException(status_code=403, detail="Invalid sync key")
     
     try:
@@ -8277,9 +8404,14 @@ async def export_data_for_sync(secret: str = ""):
 
 
 @api_router.post("/admin/sync")
-async def sync_from_production():
+async def sync_from_production(current_admin: dict = Depends(get_current_admin)):
     """Sync bookings and drivers from production database via deployed API"""
     try:
+        try:
+            sync_secret = get_sync_secret_key()
+        except RuntimeError:
+            raise HTTPException(status_code=503, detail="Sync service is not configured")
+
         sync_results = {
             "bookings_synced": 0,
             "bookings_updated": 0,
@@ -8293,7 +8425,7 @@ async def sync_from_production():
             logger.info("Starting sync from production...")
             response = requests.get(
                 f"{PRODUCTION_API_URL}/sync/export",
-                params={"secret": SYNC_SECRET_KEY},
+                params={"secret": sync_secret},
                 timeout=60
             )
             
@@ -12413,7 +12545,7 @@ async def hotel_login(request: HotelLoginRequest):
             "hotel_code": hotel["code"],
             "exp": datetime.now(timezone.utc) + timedelta(hours=24)
         }
-        token = jwt.encode(token_data, os.environ.get("SECRET_KEY", "hotel-secret-key"), algorithm="HS256")
+        token = jwt.encode(token_data, SECRET_KEY, algorithm=ALGORITHM)
         
         return {
             "success": True,
@@ -12439,7 +12571,7 @@ async def get_current_hotel(request: Request):
     
     token = auth_header.split(" ")[1]
     try:
-        payload = jwt.decode(token, os.environ.get("SECRET_KEY", "hotel-secret-key"), algorithms=["HS256"])
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return payload
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
@@ -13413,35 +13545,40 @@ def create_arrival_email_html(customer_name: str, booking_date: str, pickup_time
 
 @app.on_event("startup")
 async def startup_event():
-    """Start the scheduler when the app starts and ensure default admin exists"""
-    # Ensure default admin exists with correct email for Google OAuth
+    """Start the scheduler when the app starts and optionally bootstrap an admin user"""
+    await resolve_db_name_case_conflict()
     try:
-        default_admin = await db.admin_users.find_one({"username": "admin"})
+        logger.info(f"MongoDB startup: using database '{db_name}'")
+    except Exception:
+        pass
+
+    bootstrap_username = os.environ.get("BOOTSTRAP_ADMIN_USERNAME", "admin")
+    bootstrap_email = os.environ.get("BOOTSTRAP_ADMIN_EMAIL")
+    bootstrap_password = os.environ.get("BOOTSTRAP_ADMIN_PASSWORD")
+
+    # Create bootstrap admin only if missing. Never reset credentials on startup.
+    try:
+        default_admin = await db.admin_users.find_one({"username": bootstrap_username})
     except Exception as e:
         print("WARN: admin seed skipped (db unavailable):", repr(e))
         default_admin = {"_skip": True}
     if not default_admin:
-        hashed_pw = "$2b$12$C6UzMDM.H6dfI/f/IKcEeO8m8Y4YkQkQ1h6s4H6c3Z8Y5G7c8Y4r2"
-        await db.admin_users.insert_one({
-            "id": str(uuid.uuid4()),
-            "username": "admin",
-            "email": "info@bookaride.co.nz",
-            "hashed_password": hashed_pw,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "is_active": True
-        })
-        logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Default admin user created")
+        if bootstrap_email and bootstrap_password:
+            await db.admin_users.insert_one({
+                "id": str(uuid.uuid4()),
+                "username": bootstrap_username,
+                "email": bootstrap_email,
+                "hashed_password": get_password_hash(bootstrap_password),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "is_active": True
+            })
+            logger.info(f"Bootstrap admin user '{bootstrap_username}' created")
+        else:
+            logger.warning(
+                "Bootstrap admin user not created: set BOOTSTRAP_ADMIN_EMAIL and BOOTSTRAP_ADMIN_PASSWORD"
+            )
     else:
-        # Update password and email to ensure they're correct
-        hashed_pw = "$2b$12$C6UzMDM.H6dfI/f/IKcEeO8m8Y4YkQkQ1h6s4H6c3Z8Y5G7c8Y4r2"
-        await db.admin_users.update_one(
-            {"username": "admin"},
-            {"$set": {
-                "hashed_password": hashed_pw,
-                "email": "info@bookaride.co.nz"
-            }}
-        )
-        logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Admin password reset and email updated to info@bookaride.co.nz")
+        logger.info(f"Bootstrap admin user '{bootstrap_username}' already exists; no startup credential reset")
     
     # Create database indexes for faster queries
     try:
