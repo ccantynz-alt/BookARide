@@ -4,6 +4,7 @@ on:
   workflow_run:
     workflows:
       - CI
+      - Secret Scanning
     types:
       - completed
     branches:
@@ -13,7 +14,7 @@ jobs:
   auto-merge:
     name: Merge into main (after CI passes)
     runs-on: ubuntu-latest
-    # Only proceed when CI passed and the branch is a claude/* branch
+    # Only proceed when the triggering workflow passed and the branch is a claude/* branch
     if: github.event.workflow_run.conclusion == 'success' && startsWith(github.event.workflow_run.head_branch, 'claude/')
     permissions:
       contents: write
@@ -25,12 +26,51 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Check all required workflows passed
+        id: check-workflows
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const ref = context.payload.workflow_run.head_sha;
+            const requiredWorkflows = ['CI', 'Secret Scanning'];
+            
+            // Get all workflow runs for this commit
+            const { data: runs } = await github.rest.actions.listWorkflowRunsForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              head_sha: ref,
+              per_page: 100
+            });
+            
+            // Check if all required workflows have completed successfully
+            const workflowStatuses = {};
+            for (const run of runs.workflow_runs) {
+              if (requiredWorkflows.includes(run.name)) {
+                workflowStatuses[run.name] = run.conclusion;
+              }
+            }
+            
+            console.log('Workflow statuses:', workflowStatuses);
+            
+            // Verify all required workflows are present and successful
+            for (const workflow of requiredWorkflows) {
+              if (workflowStatuses[workflow] !== 'success') {
+                core.setFailed(`Required workflow "${workflow}" has not passed yet (status: ${workflowStatuses[workflow] || 'not run'})`);
+                return false;
+              }
+            }
+            
+            console.log('All required workflows passed!');
+            return true;
+
       - name: Configure git
+        if: steps.check-workflows.outputs.result == 'true'
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
 
       - name: Merge into main
+        if: steps.check-workflows.outputs.result == 'true'
         run: |
           BRANCH="${{ github.event.workflow_run.head_branch }}"
           git fetch origin "$BRANCH"
