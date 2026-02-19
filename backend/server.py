@@ -1838,7 +1838,14 @@ async def quick_approve_booking(booking_id: str, action: str = "approve"):
                 }}
             )
             
-            # TODO: Optionally send rejection email to customer
+            # Send rejection email to customer
+            customer_email = booking.get('email')
+            if customer_email:
+                try:
+                    await send_cancellation_email(booking, customer_email, customer_name)
+                    logger.info(f"Rejection email sent to customer for booking {booking_ref}")
+                except Exception as e:
+                    logger.error(f"Failed to send rejection email: {e}")
             
             logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Booking {booking_ref} REJECTED via email quick-approve")
             
