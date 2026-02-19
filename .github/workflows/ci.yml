@@ -39,6 +39,7 @@ jobs:
           CI: false
           REACT_APP_BACKEND_URL: http://localhost:8000
           REACT_APP_GEOAPIFY_API_KEY: placeholder
+          REACT_APP_GOOGLE_MAPS_API_KEY: placeholder
           REACT_APP_STRIPE_PUBLISHABLE_KEY: placeholder
 
   backend-lint:
@@ -74,4 +75,5 @@ jobs:
           fi
         env:
           MONGO_URL: mongodb://localhost:27017
-          JWT_SECRET: ci-test-secret
+          # CI-only JWT secret; production should use a strong secret from GitHub Actions secrets
+          JWT_SECRET: ${{ secrets.CI_JWT_SECRET || 'ci-test-secret-fallback' }}

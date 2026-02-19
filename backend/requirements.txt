@@ -23,3 +23,6 @@ google-api-python-client>=2.151.0
 apscheduler>=3.10.4
 vobject>=0.9.9
 stripe>=11.0.0
+
+# --- Testing dependencies ---
+pytest>=8.0.0
