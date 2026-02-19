@@ -48,7 +48,46 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git push origin --delete "${{ github.event.workflow_run.head_branch }}" || echo "Branch already deleted or not found"
+          BRANCH="${{ github.event.workflow_run.head_branch }}"
+          
+          # Check if PR already exists
+          EXISTING_PR=$(gh pr list --head "$BRANCH" --base main --json number --jq '.[0].number' || echo "")
+          
+          if [ -z "$EXISTING_PR" ]; then
+            # Create PR if it doesn't exist
+            PR_NUMBER=$(gh pr create \
+              --title "Auto-merge failed: $BRANCH → main (merge conflicts)" \
+              --body "⚠️ **Automatic merge failed due to conflicts**
+
+            The CI passed successfully on branch \`$BRANCH\`, but the automatic merge to \`main\` failed, likely due to merge conflicts.
+
+            **Next steps:**
+            1. Review the conflicts in this PR
+            2. Resolve conflicts manually
+            3. Merge this PR to complete the integration
+
+            **Branch:** \`$BRANCH\`
+            **Workflow run:** ${{ github.event.workflow_run.html_url }}" \
+              --base main \
+              --head "$BRANCH" \
+              --label "auto-merge-failed,needs-review" | grep -oP '#\K\d+' || echo "")
+            
+            if [ -n "$PR_NUMBER" ]; then
+              echo "✅ Created PR #$PR_NUMBER for manual review"
+            else
+              echo "❌ Failed to create PR - manual intervention required"
+              exit 1
+            fi
+          else
+            echo "ℹ️ PR #$EXISTING_PR already exists for branch $BRANCH"
+            
+            # Add a comment to the existing PR
+            gh pr comment "$EXISTING_PR" --body "⚠️ **Auto-merge attempt failed**
+
+            Another attempt to automatically merge this branch to \`main\` failed at $(date -u +"%Y-%m-%d %H:%M:%S UTC").
+
+            Please resolve any merge conflicts and merge manually."
+          fi
 
       - name: Delete source branch (if direct merge succeeded)
         if: steps.direct_merge.outcome == 'success'
