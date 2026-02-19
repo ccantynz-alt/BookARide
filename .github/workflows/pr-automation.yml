@@ -76,8 +76,8 @@ jobs:
       - name: Count changed lines
         id: diff
         run: |
-          ADDITIONS=$(git diff --stat origin/${{ github.base_ref }}...HEAD | tail -1 | grep -oP '\d+ insertion' | grep -oP '\d+' || echo 0)
-          DELETIONS=$(git diff --stat origin/${{ github.base_ref }}...HEAD | tail -1 | grep -oP '\d+ deletion' | grep -oP '\d+' || echo 0)
+          ADDITIONS=$(git diff --stat origin/${{ github.base_ref }}...HEAD | tail -1 | grep -oP '\d+(?= insertion)' || echo 0)
+          DELETIONS=$(git diff --stat origin/${{ github.base_ref }}...HEAD | tail -1 | grep -oP '\d+(?= deletion)' || echo 0)
           TOTAL=$((ADDITIONS + DELETIONS))
           echo "total=$TOTAL" >> $GITHUB_OUTPUT
           echo "Changed lines: $TOTAL (additions: $ADDITIONS, deletions: $DELETIONS)"

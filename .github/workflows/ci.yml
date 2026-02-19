@@ -15,8 +15,6 @@ jobs:
   frontend-build:
     name: Frontend Build
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
     defaults:
       run:
         working-directory: frontend
@@ -46,8 +44,6 @@ jobs:
   backend-lint:
     name: Backend Lint & Syntax
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
     defaults:
       run:
         working-directory: backend
