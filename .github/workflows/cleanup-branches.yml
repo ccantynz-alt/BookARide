@@ -1,0 +1,53 @@
+name: Clean up stale branches
+
+on:
+  schedule:
+    - cron: '0 2 * * 0'  # Every Sunday at 2am UTC
+  workflow_dispatch:       # Also allows manual trigger from GitHub Actions UI
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Delete merged and stale AI-agent branches
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const prefixes = ['claude/', 'cursor/', 'copilot/', 'doctor/', 'fix/'];
+            const { data: branches } = await github.rest.repos.listBranches({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 100,
+            });
+
+            let deleted = 0;
+            for (const branch of branches) {
+              const name = branch.name;
+              if (!prefixes.some(p => name.startsWith(p))) continue;
+
+              try {
+                // Check if this branch has been merged into main
+                const { data: compare } = await github.rest.repos.compareCommitsWithBasehead({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  basehead: `main...${name}`,
+                });
+
+                if (compare.ahead_by === 0 || compare.status === 'behind' || compare.status === 'identical') {
+                  await github.rest.git.deleteRef({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    ref: `heads/${name}`,
+                  });
+                  console.log(`Deleted: ${name}`);
+                  deleted++;
+                }
+              } catch (err) {
+                console.log(`Skipped ${name}: ${err.message}`);
+              }
+            }
+            console.log(`Total deleted: ${deleted}`);
