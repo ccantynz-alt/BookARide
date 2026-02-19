@@ -48,7 +48,31 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git push origin --delete "${{ github.event.workflow_run.head_branch }}" || echo "Branch already deleted or not found"
+          BRANCH="${{ github.event.workflow_run.head_branch }}"
+          # Check if PR already exists
+          EXISTING_PR=$(gh pr list --head "$BRANCH" --base main --json number --jq '.[0].number')
+          
+          if [ -z "$EXISTING_PR" ]; then
+            # Create PR for manual resolution
+            PR_BODY="⚠️ **Automatic merge failed** - manual intervention required.
+          
+          The auto-merge workflow attempted to merge this branch into \`main\` after CI passed, but encountered merge conflicts.
+          
+          **Branch**: \`$BRANCH\`
+          **Workflow Run**: ${{ github.event.workflow_run.html_url }}
+          
+          Please resolve the conflicts manually and merge when ready."
+          
+            gh pr create \
+              --base main \
+              --head "$BRANCH" \
+              --title "Auto-merge failed: $BRANCH → main (merge conflicts)" \
+              --body "$PR_BODY" \
+              --label "merge-conflict"
+            echo "Created PR for manual conflict resolution"
+          else
+            echo "PR #$EXISTING_PR already exists for this branch"
+          fi
 
       - name: Delete source branch (if direct merge succeeded)
         if: steps.direct_merge.outcome == 'success'
