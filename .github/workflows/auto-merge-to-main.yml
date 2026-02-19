@@ -17,6 +17,7 @@ jobs:
     if: github.event.workflow_run.conclusion == 'success' && startsWith(github.event.workflow_run.head_branch, 'claude/')
     permissions:
       contents: write
+      issues: write
 
     steps:
       - name: Checkout repo
@@ -31,6 +32,8 @@ jobs:
           git config user.email "actions@github.com"
 
       - name: Merge into main
+        id: merge
+        continue-on-error: true
         run: |
           BRANCH="${{ github.event.workflow_run.head_branch }}"
           git fetch origin "$BRANCH"
@@ -38,3 +41,48 @@ jobs:
           git pull origin main
           git merge --no-ff "origin/$BRANCH" -m "Auto-merge $BRANCH into main (CI passed)"
           git push origin main
+
+      - name: Create issue on merge failure
+        if: steps.merge.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const branch = '${{ github.event.workflow_run.head_branch }}';
+            const runUrl = '${{ github.event.workflow_run.html_url }}';
+            
+            const body = [
+              '## Auto-merge Failed',
+              '',
+              `The auto-merge workflow failed to merge branch \`${branch}\` into \`main\`.`,
+              '',
+              '### Possible Reasons',
+              '- Merge conflicts with the main branch',
+              '- Branch protection rules prevented the push',
+              '- Network or temporary GitHub API issues',
+              '',
+              '### Next Steps',
+              `1. Review the [workflow run logs](${runUrl}) for details`,
+              `2. Check for merge conflicts: \`git checkout main && git pull && git merge origin/${branch}\``,
+              '3. Resolve any conflicts manually and merge the branch',
+              `4. Consider rebasing \`${branch}\` on the latest \`main\` if appropriate`,
+              '',
+              '### Related Resources',
+              `- Branch: \`${branch}\``,
+              `- CI Run: ${runUrl}`,
+              '',
+              '_This issue was automatically created by the auto-merge workflow._',
+            ].join('\n');
+            
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Auto-merge failed: ${branch} → main`,
+              body: body,
+              labels: ['automation', 'needs-attention'],
+            });
+
+      - name: Fail workflow if merge failed
+        if: steps.merge.outcome == 'failure'
+        run: |
+          echo "::error::Auto-merge failed. An issue has been created to track this failure."
+          exit 1
