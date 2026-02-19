@@ -43,12 +43,58 @@ jobs:
           git push origin main
           echo "merged=direct" >> $GITHUB_OUTPUT
 
-      - name: Create PR and enable auto-merge (fallback)
+      - name: Create PR and notify on merge failure (fallback)
         if: steps.direct_merge.outcome == 'failure'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git push origin --delete "${{ github.event.workflow_run.head_branch }}" || echo "Branch already deleted or not found"
+          BRANCH="${{ github.event.workflow_run.head_branch }}"
+          
+          # Check if PR already exists for this branch
+          EXISTING_PR=$(gh pr list --head "$BRANCH" --base main --state open --json number --jq '.[0].number')
+          
+          if [ -z "$EXISTING_PR" ]; then
+            # Create a new PR
+            PR_URL=$(gh pr create \
+              --base main \
+              --head "$BRANCH" \
+              --title "Auto-merge failed: $BRANCH → main (merge conflicts)" \
+              --body "⚠️ **Automatic merge failed due to conflicts**
+
+          The automated merge of \`$BRANCH\` into \`main\` failed, likely due to merge conflicts.
+          
+          **CI Status:** ✅ Passed
+          **Branch:** \`$BRANCH\`
+          **Target:** \`main\`
+          
+          ### Required Actions:
+          1. Review the merge conflicts
+          2. Resolve conflicts locally or in the GitHub UI
+          3. Merge this PR manually once conflicts are resolved
+          
+          ### How to resolve locally:
+          \`\`\`bash
+          git checkout main
+          git pull origin main
+          git merge $BRANCH
+          # Resolve conflicts
+          git commit
+          git push origin main
+          \`\`\`
+          
+          ---
+          _This PR was created automatically by the auto-merge workflow after CI passed._")
+            
+            echo "Created PR: $PR_URL"
+            
+            # Post a comment notifying about the failure
+            gh pr comment "$PR_URL" --body "🚨 **Manual intervention required**: Auto-merge failed. Please review and resolve merge conflicts."
+          else
+            echo "PR #$EXISTING_PR already exists for branch $BRANCH"
+            
+            # Add a comment to the existing PR
+            gh pr comment "$EXISTING_PR" --body "⚠️ Auto-merge attempt failed at $(date -u +"%Y-%m-%d %H:%M:%S UTC"). Merge conflicts detected. Manual resolution required."
+          fi
 
       - name: Delete source branch (if direct merge succeeded)
         if: steps.direct_merge.outcome == 'success'
