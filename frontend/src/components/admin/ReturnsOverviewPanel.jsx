@@ -13,15 +13,16 @@ const ReturnsOverviewPanel = ({ bookings = [], drivers = [], onAssignDriver, onV
   const [urgentReturns, setUrgentReturns] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Helper for local date string
-  const getLocalDateString = (date) => {
-    const d = date || new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  // Helper — returns YYYY-MM-DD in NZ time (Pacific/Auckland) so dates match
+  // what the backend uses, regardless of where the admin's browser is.
+  const getNZDateString = (offsetDays = 0) => {
+    const d = new Date(Date.now() + offsetDays * 86400000);
+    return d.toLocaleDateString('en-CA', { timeZone: 'Pacific/Auckland' });
   };
 
-  const today = getLocalDateString(new Date());
-  const tomorrow = getLocalDateString(new Date(Date.now() + 86400000));
-  const nextWeek = getLocalDateString(new Date(Date.now() + 7 * 86400000));
+  const today = getNZDateString(0);
+  const tomorrow = getNZDateString(1);
+  const nextWeek = getNZDateString(7);
 
   // Get all returns (today, tomorrow, and upcoming)
   const allReturns = bookings.filter(b => 

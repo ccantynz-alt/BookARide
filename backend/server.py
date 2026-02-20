@@ -4858,7 +4858,7 @@ async def create_calendar_event(booking: dict):
         nz_dt = nz_tz.localize(naive_dt)
         formatted_date = datetime.strptime(booking_date, '%Y-%m-%d').strftime('%d %B %Y')
         
-        has_return = booking.get('bookReturn', False)
+        has_return = booking.get('bookReturn', False) or bool(booking.get('returnDate'))
         
         outbound_event = {
             'summary': f"{customer_name} → {eng['dropoff'].split(',')[0]}" + (" + Return" if has_return else ""),
@@ -4909,13 +4909,21 @@ Date: {booking.get('returnDate', 'N/A')} at {booking.get('returnTime', 'N/A')}
             return_date = booking.get('returnDate')
             return_time = booking.get('returnTime')
             
+            return_nz_dt = None
             try:
-                return_naive_dt = datetime.strptime(f"{return_date} {return_time}", '%Y-%m-%d %H:%M')
-                return_nz_dt = nz_tz.localize(return_naive_dt)
+                for time_fmt in ['%H:%M', '%I:%M %p', '%I:%M%p', '%H:%M:%S']:
+                    try:
+                        t = datetime.strptime(return_time.strip(), time_fmt).time()
+                        d = datetime.strptime(return_date, '%Y-%m-%d').date()
+                        return_nz_dt = nz_tz.localize(datetime.combine(d, t))
+                        break
+                    except Exception:
+                        continue
+                if return_nz_dt is None:
+                    logger.warning(f"Could not parse returnTime '{return_time}' for calendar event")
                 formatted_return_date = datetime.strptime(return_date, '%Y-%m-%d').strftime('%d %B %Y')
             except Exception as parse_error:
-                logger.warning(f"Could not parse return date/time: {parse_error}")
-                return_nz_dt = None
+                logger.warning(f"Could not parse return date/time for calendar: {parse_error}")
                 formatted_return_date = return_date
             
             if return_nz_dt:
@@ -5062,7 +5070,7 @@ async def sync_booking_to_calendar(booking_id: str, current_admin: dict = Depend
         success = await create_calendar_event(booking)
         if success:
             action = "updated" if existing_event_ids else "created"
-            has_return = booking.get('bookReturn', False)
+            has_return = booking.get('bookReturn', False) or bool(booking.get('returnDate'))
             event_count = "2 events (outbound + return)" if has_return else "1 event"
             return {"success": True, "message": f"Booking {action} in Google Calendar successfully! ({event_count})"}
         else:
@@ -8229,10 +8237,12 @@ async def check_return_booking_alerts():
         # Find bookings with return trips today or tomorrow
         tomorrow_str = (now_nz + timedelta(days=1)).strftime('%Y-%m-%d')
         
+        # Only exclude 'cancelled' — a booking marked 'completed' after the outbound
+        # leg still needs its return trip serviced.
         return_bookings = await db.bookings.find({
             'returnDate': {'$in': [today_str, tomorrow_str]},
             'returnTime': {'$exists': True, '$ne': ''},
-            'status': {'$nin': ['cancelled', 'completed']}
+            'status': {'$nin': ['cancelled']}
         }, {'_id': 0}).to_list(100)
         
         alerts_sent = 0
@@ -8245,17 +8255,27 @@ async def check_return_booking_alerts():
                 if not return_date or not return_time:
                     continue
                 
-                # Parse return pickup datetime
-                try:
-                    return_datetime = datetime.strptime(f"{return_date} {return_time}", '%Y-%m-%d %H:%M')
-                    return_datetime = nz_tz.localize(return_datetime)
-                except:
+                # Parse return pickup datetime — try multiple formats (handles "9:00" vs "09:00")
+                return_datetime = None
+                for time_fmt in ['%H:%M', '%I:%M %p', '%I:%M%p', '%H:%M:%S']:
+                    try:
+                        t = datetime.strptime(return_time.strip(), time_fmt).time()
+                        d = datetime.strptime(return_date, '%Y-%m-%d').date()
+                        return_datetime = nz_tz.localize(datetime.combine(d, t))
+                        break
+                    except Exception:
+                        continue
+                if return_datetime is None:
+                    logger.warning(
+                        f"[ReturnAlerts] Could not parse returnTime '{return_time}' for "
+                        f"booking {booking.get('id', '?')} — skipping"
+                    )
                     continue
-                
+
                 # Skip if return is in the past
                 if return_datetime < now_nz:
                     continue
-                
+
                 # Get the return pickup address (usually dropoff becomes pickup for return)
                 return_pickup = booking.get('dropoffAddress', booking.get('pickupAddress', ''))
                 
@@ -8338,11 +8358,11 @@ async def check_return_booking_alerts():
                             except Exception as drv_err:
                                 logger.error(f"Failed to send driver reminder: {str(drv_err)}")
                     
-                    # Mark alert as sent
+                    # Mark alert as sent (sent_at must be a datetime for TTL index)
                     await db.return_alerts_sent.insert_one({
                         "alert_key": alert_key,
                         "booking_id": booking_id,
-                        "sent_at": datetime.now(timezone.utc).isoformat(),
+                        "sent_at": datetime.now(timezone.utc),
                         "drive_minutes": drive_minutes
                     })
             
@@ -8358,6 +8378,73 @@ async def check_return_booking_alerts():
         return {"error": str(e)}
 
 
+@api_router.get("/admin/booking-diagnostics")
+async def booking_diagnostics(
+    search: str = "",
+    current_admin: dict = Depends(get_current_admin)
+):
+    """Diagnostic endpoint — searches active + archived bookings and returns
+    full return-trip details, plus today's NZ date/time. Helps debug missing
+    return bookings for a specific customer."""
+    try:
+        nz_tz = pytz.timezone('Pacific/Auckland')
+        now_nz = datetime.now(nz_tz)
+        today_str = now_nz.strftime('%Y-%m-%d')
+
+        query = {}
+        if search:
+            query['$or'] = [
+                {'name': {'$regex': search, '$options': 'i'}},
+                {'phone': {'$regex': search, '$options': 'i'}},
+                {'email': {'$regex': search, '$options': 'i'}},
+                {'referenceNumber': {'$regex': search, '$options': 'i'}},
+            ]
+
+        active = await db.bookings.find(query, {'_id': 0}).sort('date', -1).to_list(100)
+        archived = await db.bookings_archive.find(query, {'_id': 0}).sort('date', -1).to_list(100)
+
+        def summarise(b):
+            return_date = b.get('returnDate', '')
+            return_time = b.get('returnTime', '')
+            # Try parsing the return time
+            parsed_ok = False
+            for fmt in ['%H:%M', '%I:%M %p', '%I:%M%p', '%H:%M:%S']:
+                try:
+                    datetime.strptime(return_time.strip(), fmt)
+                    parsed_ok = True
+                    break
+                except Exception:
+                    continue
+            return {
+                'ref': get_booking_reference(b),
+                'name': b.get('name'),
+                'status': b.get('status'),
+                'date': b.get('date'),
+                'time': b.get('time'),
+                'returnDate': return_date,
+                'returnTime': return_time,
+                'returnTime_parse_ok': parsed_ok if return_time else 'N/A',
+                'bookReturn': b.get('bookReturn'),
+                'returnDepartureFlightNumber': b.get('returnDepartureFlightNumber') or b.get('returnFlightNumber'),
+                'source': 'active',
+            }
+
+        results_active = [summarise(b) for b in active]
+        results_archived = [{**summarise(b), 'source': 'archived'} for b in archived]
+        all_results = results_active + results_archived
+
+        return {
+            'nz_now': now_nz.strftime('%Y-%m-%d %H:%M:%S %Z'),
+            'nz_today': today_str,
+            'search': search,
+            'total_found': len(all_results),
+            'bookings': all_results,
+        }
+    except Exception as e:
+        logger.error(f"Error in booking_diagnostics: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @api_router.get("/admin/urgent-returns")
 async def get_urgent_return_bookings(current_admin: dict = Depends(get_current_admin)):
     """Get upcoming return bookings with drive time calculations for dashboard display.
@@ -8368,11 +8455,13 @@ async def get_urgent_return_bookings(current_admin: dict = Depends(get_current_a
         today_str = now_nz.strftime('%Y-%m-%d')
         tomorrow_str = (now_nz + timedelta(days=1)).strftime('%Y-%m-%d')
         
-        # Find return bookings for today and tomorrow
+        # Find return bookings for today and tomorrow.
+        # Note: we only exclude 'cancelled' — a booking marked 'completed' after the
+        # outbound leg still needs its return trip serviced.
         return_bookings = await db.bookings.find({
             'returnDate': {'$in': [today_str, tomorrow_str]},
             'returnTime': {'$exists': True, '$ne': ''},
-            'status': {'$nin': ['cancelled', 'completed']}
+            'status': {'$nin': ['cancelled']}
         }, {'_id': 0}).to_list(50)
         
         urgent_returns = []
@@ -8385,13 +8474,24 @@ async def get_urgent_return_bookings(current_admin: dict = Depends(get_current_a
                 if not return_date or not return_time:
                     continue
                 
-                # Parse return datetime
-                try:
-                    return_datetime = datetime.strptime(f"{return_date} {return_time}", '%Y-%m-%d %H:%M')
-                    return_datetime = nz_tz.localize(return_datetime)
-                except:
+                # Parse return datetime — try multiple time formats so bookings
+                # with "9:00" (no zero-pad) or "9:00 AM" are not silently dropped
+                return_datetime = None
+                for time_fmt in ['%H:%M', '%I:%M %p', '%I:%M%p', '%H:%M:%S']:
+                    try:
+                        t = datetime.strptime(return_time.strip(), time_fmt).time()
+                        d = datetime.strptime(return_date, '%Y-%m-%d').date()
+                        return_datetime = nz_tz.localize(datetime.combine(d, t))
+                        break
+                    except Exception:
+                        continue
+                if return_datetime is None:
+                    logger.warning(
+                        f"Could not parse returnTime '{return_time}' for booking "
+                        f"{get_booking_reference(booking)} — skipping from urgent-returns"
+                    )
                     continue
-                
+
                 # Skip past returns
                 if return_datetime < now_nz:
                     continue
@@ -13696,6 +13796,11 @@ async def startup_event():
         await db.bookings_archive.create_index("name")
         await db.bookings_archive.create_index("email")
         await db.bookings_archive.create_index("referenceNumber")
+        # TTL index: auto-expire return alert records after 7 days to prevent unbounded growth
+        await db.return_alerts_sent.create_index(
+            "sent_at", expireAfterSeconds=7 * 24 * 3600
+        )
+        await db.return_alerts_sent.create_index("alert_key", unique=True)
         logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Archive indexes created")
     except Exception as e:
         logger.warning(f"Archive index creation note: {str(e)}")
