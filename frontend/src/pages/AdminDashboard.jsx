@@ -609,6 +609,8 @@ export const AdminDashboard = () => {
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
   const [searchingCustomers, setSearchingCustomers] = useState(false);
   const customerSearchRef = useRef(null);
+  const fetchBookingsRef = useRef(null);
+  const filterBookingsRef = useRef(null);
   
   // Preview confirmation modal states
   const [showPreviewModal, setShowPreviewModal] = useState(false);
@@ -814,7 +816,7 @@ export const AdminDashboard = () => {
   const [bookingsPerPage] = useState(50);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
-  fetchBookings = async (page = 1, append = false) => {
+  const fetchBookings = async (page = 1, append = false) => {
     try {
       if (page === 1) setLoading(true);
       else setIsLoadingMore(true);
@@ -1418,7 +1420,7 @@ export const AdminDashboard = () => {
     }
   };
 
-  filterBookings = () => {
+  const filterBookings = () => {
     let filtered = bookings;
 
     // Status filter
