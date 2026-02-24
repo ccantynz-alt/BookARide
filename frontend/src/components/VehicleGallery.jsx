@@ -2,8 +2,8 @@ import React from 'react';
 import Slider from 'react-slick';
 import { Card } from './ui/card';
 import { AnimatedSection } from './AnimatedSection';
-import 'slick-carousel/slick/slick.css';
-import 'slick-carousel/slick/slick-theme.css';
+import '../styles/slick.css';
+import '../styles/slick-theme.css';
 import { Car, Users, Luggage } from 'lucide-react';
 
 export const VehicleGallery = () => {
