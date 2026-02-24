@@ -1555,7 +1555,7 @@ export const AdminDashboard = () => {
         return;
       }
       console.error('Error deleting booking:', error);
-      toast.error('Failed to cancel booking');
+      toast.error(error.response?.data?.detail || 'Failed to cancel booking');
     }
   };
 
