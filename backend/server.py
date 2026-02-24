@@ -1918,7 +1918,7 @@ async def get_bookings(
         # Calculate skip for pagination (only when not return_all)
         skip = (page - 1) * limit if not return_all else 0
         
-        # Get total count for pagination info
+        # Get total count for pagination info (main collection only for now)
         total = await db.bookings.count_documents(query)
         
         # Get current date in NZ timezone for sorting priority
@@ -1926,8 +1926,48 @@ async def get_bookings(
         now_nz = datetime.now(nz_tz)
         today_str = now_nz.strftime('%Y-%m-%d')
         
-        # Fetch ALL matching bookings to sort properly (needed for smart date ordering)
+        # Fetch ALL matching bookings from main collection
         all_bookings = await db.bookings.find(query, {"_id": 0}).to_list(None)
+        
+        # Also fetch shuttle bookings so admin never misses any (they were in a separate collection)
+        shuttle_raw = []
+        try:
+            shuttle_query = {}
+            if date_from:
+                shuttle_query['date'] = shuttle_query.get('date', {})
+                shuttle_query['date']['$gte'] = date_from
+            if date_to:
+                shuttle_query.setdefault('date', {})['$lte'] = date_to
+            if status and status != 'all':
+                shuttle_query['status'] = status
+            if search:
+                shuttle_query['$or'] = [
+                    {'name': {'$regex': search, '$options': 'i'}},
+                    {'email': {'$regex': search, '$options': 'i'}},
+                    {'phone': {'$regex': search, '$options': 'i'}},
+                    {'id': {'$regex': search, '$options': 'i'}}
+                ]
+            shuttle_raw = await db.shuttle_bookings.find(shuttle_query, {"_id": 0}).to_list(None)
+        except Exception as shuttle_err:
+            logger.warning(f"Shuttle bookings fetch skipped: {shuttle_err}")
+        # Normalize shuttle docs to same shape as Booking so one list works
+        for s in shuttle_raw:
+            s['time'] = s.get('departureTime', '00:00')
+            s['referenceNumber'] = s.get('referenceNumber') or ('S-' + (s.get('id') or '')[:8])
+            s['pricing'] = s.get('pricing') or {'totalPrice': s.get('totalEstimated') or s.get('finalPrice') or 0}
+            s['serviceType'] = 'airport-shuttle'
+            s['passengers'] = str(s.get('passengers', 1))
+            s['bookingType'] = 'shuttle'
+            s.setdefault('pickupAddresses', [])
+            s.setdefault('dropoffAddress', 'Auckland International Airport')
+            s.setdefault('pickupAddress', s.get('pickupAddress') or '')
+            s.setdefault('notes', '')
+            s.setdefault('bookReturn', False)
+            s.setdefault('returnDate', '')
+            s.setdefault('returnTime', '')
+            s.setdefault('payment_status', s.get('paymentStatus') or 'unpaid')
+        all_bookings = list(all_bookings) + list(shuttle_raw)
+        total = len(all_bookings)
         
         # Custom sort: prioritize today, then tomorrow, then upcoming dates, then past dates
         def sort_key(b):
@@ -1941,17 +1981,30 @@ async def get_bookings(
                 return (2, date, time)  # Past dates last
         
         all_bookings.sort(key=sort_key)
-        logger.info(f"Today: {today_str}, First 3 bookings after sort: {[b.get('date') for b in all_bookings[:3]]}")
+        logger.info(f"Today: {today_str}, total bookings (main+shuttle): {len(all_bookings)}")
         
         # Return full list when limit=0 (admin must see every booking); otherwise paginate
         if return_all:
             bookings = all_bookings[:limit]  # Apply safety cap
-            logger.info(f"Fetched ALL {len(bookings)} bookings (return_all, total in DB: {total})")
+            logger.info(f"Fetched ALL {len(bookings)} bookings (return_all)")
         else:
             bookings = all_bookings[skip:skip + limit]
             logger.info(f"Fetched {len(bookings)} bookings (page {page}, total {total})")
         
-        return [Booking(**booking) for booking in bookings]
+        # Validate and return; allow shuttle docs that may have minimal fields
+        out = []
+        for b in bookings:
+            try:
+                # Ensure required Booking fields exist for shuttle
+                b.setdefault('pickupAddress', b.get('pickupAddress') or '')
+                b.setdefault('notes', '')
+                b.setdefault('bookReturn', False)
+                b.setdefault('returnDate', '')
+                b.setdefault('returnTime', '')
+                out.append(Booking(**b))
+            except Exception as e:
+                logger.warning(f"Skip booking (validation): id={b.get('id')} ref={b.get('referenceNumber')} err={e}")
+        return out
     except Exception as e:
         logger.error(f"Error fetching bookings: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error fetching bookings: {str(e)}")
@@ -1959,15 +2012,21 @@ async def get_bookings(
 
 @api_router.get("/bookings/count")
 async def get_bookings_count(current_admin: dict = Depends(get_current_admin)):
-    """Get total booking counts for dashboard stats"""
+    """Get total booking counts for dashboard stats (includes shuttle bookings)"""
     try:
-        total = await db.bookings.count_documents({})
+        main_total = await db.bookings.count_documents({})
+        shuttle_total = await db.shuttle_bookings.count_documents({"status": {"$nin": ["cancelled", "deleted"]}})
+        total = main_total + shuttle_total
+
         pending = await db.bookings.count_documents({"status": "pending"})
         confirmed = await db.bookings.count_documents({"status": "confirmed"})
         completed = await db.bookings.count_documents({"status": "completed"})
         cancelled = await db.bookings.count_documents({"status": "cancelled"})
         pending_approval = await db.bookings.count_documents({"status": "pending_approval"})
-        
+        # Include shuttle in pending_approval / authorized
+        shuttle_pending = await db.shuttle_bookings.count_documents({"status": {"$in": ["pending_approval", "authorized"]}})
+        pending_approval = pending_approval + shuttle_pending
+
         return {
             "total": total,
             "pending": pending,
