@@ -1610,7 +1610,7 @@ async def get_bookings(
         # Calculate skip for pagination
         skip = (page - 1) * limit
         
-        # Get total count for pagination info
+        # Get total count for pagination info (main collection only for now)
         total = await db.bookings.count_documents(query)
         
         # Get current date in NZ timezone for sorting priority
@@ -1618,8 +1618,53 @@ async def get_bookings(
         now_nz = datetime.now(nz_tz)
         today_str = now_nz.strftime('%Y-%m-%d')
         
-        # Fetch ALL matching bookings to sort properly (needed for smart date ordering)
+        # Fetch ALL matching bookings from main collection
         all_bookings = await db.bookings.find(query, {"_id": 0}).to_list(None)
+        
+        # Also fetch shuttle bookings so admin never misses any (they were in a separate collection)
+        shuttle_raw = []
+        try:
+            shuttle_query = {}
+            if date_from:
+                shuttle_query['date'] = shuttle_query.get('date', {})
+                shuttle_query['date']['$gte'] = date_from
+            if date_to:
+                shuttle_query.setdefault('date', {})['$lte'] = date_to
+            if status and status != 'all':
+                shuttle_query['status'] = status
+            if search:
+                shuttle_query['$or'] = [
+                    {'name': {'$regex': search, '$options': 'i'}},
+                    {'email': {'$regex': search, '$options': 'i'}},
+                    {'phone': {'$regex': search, '$options': 'i'}},
+                    {'id': {'$regex': search, '$options': 'i'}}
+                ]
+            shuttle_raw = await db.shuttle_bookings.find(shuttle_query, {"_id": 0}).to_list(None)
+        except Exception as shuttle_err:
+            logger.warning(f"Shuttle bookings fetch skipped: {shuttle_err}")
+        # Normalize shuttle docs to same shape as Booking so one list works
+        for s in shuttle_raw:
+            s['time'] = s.get('departureTime', '00:00')
+            s['referenceNumber'] = s.get('referenceNumber') or ('S-' + (s.get('id') or '')[:8])
+            s['pricing'] = s.get('pricing') or {'totalPrice': s.get('totalEstimated') or s.get('finalPrice') or 0}
+            s['serviceType'] = 'airport-shuttle'
+            s['passengers'] = str(s.get('passengers', 1))
+            s['bookingType'] = 'shuttle'
+            s.setdefault('pickupAddresses', [])
+            s.setdefault('dropoffAddress', 'Auckland International Airport')
+            s.setdefault('pickupAddress', s.get('pickupAddress') or '')
+            s.setdefault('notes', '')
+            s.setdefault('bookReturn', False)
+            s.setdefault('returnDate', '')
+            s.setdefault('returnTime', '')
+            s.setdefault('payment_status', s.get('paymentStatus') or 'unpaid')
+            s.setdefault('date', today_str)
+            s.setdefault('name', 'Unknown')
+            s.setdefault('email', '')
+            s.setdefault('phone', '')
+            s.setdefault('status', 'pending')
+        all_bookings = list(all_bookings) + list(shuttle_raw)
+        total = len(all_bookings)
         
         # Custom sort: prioritize today, then tomorrow, then upcoming dates, then past dates
         def sort_key(b):
@@ -1633,7 +1678,7 @@ async def get_bookings(
                 return (2, date, time)  # Past dates last
         
         all_bookings.sort(key=sort_key)
-        logger.info(f"Today: {today_str}, First 3 bookings after sort: {[b.get('date') for b in all_bookings[:3]]}")
+        logger.info(f"Today: {today_str}, total bookings (main+shuttle): {len(all_bookings)}")
         
         # Apply pagination
         bookings = all_bookings[skip:skip + limit]
@@ -1641,7 +1686,20 @@ async def get_bookings(
         # Add pagination headers via response
         logger.info(f"Fetched {len(bookings)} bookings (page {page}, total {total})")
         
-        return [Booking(**booking) for booking in bookings]
+        # Validate and return; allow shuttle docs that may have minimal fields
+        out = []
+        for b in bookings:
+            try:
+                # Ensure required Booking fields exist for shuttle
+                b.setdefault('pickupAddress', b.get('pickupAddress') or '')
+                b.setdefault('notes', '')
+                b.setdefault('bookReturn', False)
+                b.setdefault('returnDate', '')
+                b.setdefault('returnTime', '')
+                out.append(Booking(**b))
+            except Exception as e:
+                logger.warning(f"Skip booking (validation): id={b.get('id')} ref={b.get('referenceNumber')} err={e}")
+        return out
     except Exception as e:
         logger.error(f"Error fetching bookings: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error fetching bookings: {str(e)}")
@@ -1649,15 +1707,34 @@ async def get_bookings(
 
 @api_router.get("/bookings/count")
 async def get_bookings_count(current_admin: dict = Depends(get_current_admin)):
-    """Get total booking counts for dashboard stats"""
+    """Get total booking counts for dashboard stats (includes shuttle bookings)"""
     try:
-        total = await db.bookings.count_documents({})
+        # Count active bookings (non-cancelled/deleted) from both main and shuttle
+        main_active = await db.bookings.count_documents({"status": {"$nin": ["cancelled", "deleted"]}})
+        shuttle_active = await db.shuttle_bookings.count_documents({"status": {"$nin": ["cancelled", "deleted"]}})
+        total = main_active + shuttle_active
+
+        # Count status-specific bookings from both main and shuttle
         pending = await db.bookings.count_documents({"status": "pending"})
+        shuttle_pending = await db.shuttle_bookings.count_documents({"status": "pending"})
+        pending = pending + shuttle_pending
+
         confirmed = await db.bookings.count_documents({"status": "confirmed"})
+        shuttle_confirmed = await db.shuttle_bookings.count_documents({"status": "confirmed"})
+        confirmed = confirmed + shuttle_confirmed
+
         completed = await db.bookings.count_documents({"status": "completed"})
+        shuttle_completed = await db.shuttle_bookings.count_documents({"status": "completed"})
+        completed = completed + shuttle_completed
+
         cancelled = await db.bookings.count_documents({"status": "cancelled"})
+        shuttle_cancelled = await db.shuttle_bookings.count_documents({"status": "cancelled"})
+        cancelled = cancelled + shuttle_cancelled
+
         pending_approval = await db.bookings.count_documents({"status": "pending_approval"})
-        
+        shuttle_pending_approval = await db.shuttle_bookings.count_documents({"status": {"$in": ["pending_approval", "authorized"]}})
+        pending_approval = pending_approval + shuttle_pending_approval
+
         return {
             "total": total,
             "pending": pending,
@@ -5316,6 +5393,104 @@ async def get_payment_status(session_id: str):
     except Exception as e:
         logger.error(f"Error getting payment status: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error checking payment status: {str(e)}")
+
+
+@api_router.get("/bookings/orphan-payments")
+async def list_orphan_payments(current_admin: dict = Depends(get_current_admin)):
+    """List Stripe payments that are paid but the booking is missing from the admin list.
+    Use this to find and recover bookings like #74 where payment came through but booking never appeared."""
+    try:
+        paid = await db.payment_transactions.find(
+            {"payment_status": "paid"},
+            {"_id": 0, "booking_id": 1, "session_id": 1, "amount": 1, "customer_email": 1, "customer_name": 1, "created_at": 1}
+        ).to_list(500)
+        orphan = []
+        for t in paid:
+            bid = t.get("booking_id")
+            if not bid:
+                continue
+            exists = await db.bookings.find_one({"id": bid}, {"_id": 1})
+            if not exists:
+                orphan.append({
+                    "booking_id": bid,
+                    "session_id": t.get("session_id"),
+                    "amount": t.get("amount"),
+                    "customer_email": t.get("customer_email"),
+                    "customer_name": t.get("customer_name"),
+                    "created_at": t.get("created_at"),
+                })
+        return {"orphan_payments": orphan, "count": len(orphan)}
+    except Exception as e:
+        logger.error(f"Error listing orphan payments: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class RecoverBookingFromPayment(BaseModel):
+    session_id: Optional[str] = None
+    booking_id: Optional[str] = None
+
+
+@api_router.post("/bookings/recover-from-payment")
+async def recover_booking_from_payment(body: RecoverBookingFromPayment, current_admin: dict = Depends(get_current_admin)):
+    """Create a booking in the admin list from a paid Stripe payment when the original booking is missing.
+    Provide either session_id (Stripe checkout session) or booking_id. The booking will appear in admin with
+    payment_status=paid; you can then edit date/time/route as needed."""
+    try:
+        if body.session_id:
+            t = await db.payment_transactions.find_one(
+                {"session_id": body.session_id, "payment_status": "paid"},
+                {"_id": 0}
+            )
+        elif body.booking_id:
+            t = await db.payment_transactions.find_one(
+                {"booking_id": body.booking_id, "payment_status": "paid"},
+                {"_id": 0}
+            )
+        else:
+            raise HTTPException(status_code=400, detail="Provide session_id or booking_id")
+        if not t:
+            raise HTTPException(status_code=404, detail="No paid payment found for that session or booking id")
+        bid = t.get("booking_id")
+        if not bid:
+            raise HTTPException(status_code=400, detail="Transaction has no booking_id")
+        exists = await db.bookings.find_one({"id": bid}, {"_id": 1})
+        if exists:
+            return {"message": "Booking already exists", "booking_id": bid}
+        ref_str = str(await get_next_reference_number())
+        now_iso = datetime.now(timezone.utc).isoformat()
+        recovered = {
+            "id": bid,
+            "referenceNumber": ref_str,
+            "name": t.get("customer_name") or "Recovered customer",
+            "email": t.get("customer_email") or "",
+            "phone": "",
+            "serviceType": "airport-shuttle",
+            "pickupAddress": "(Edit after recovery)",
+            "pickupAddresses": [],
+            "dropoffAddress": "Auckland Airport",
+            "date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+            "time": "12:00",
+            "passengers": "1",
+            "notes": f"Recovered from Stripe payment (session {t.get('session_id', '')[:20]}...). Please confirm date, time and route.",
+            "pricing": {"totalPrice": t.get("amount", 0)},
+            "totalPrice": t.get("amount", 0),
+            "status": "confirmed",
+            "payment_status": "paid",
+            "bookReturn": False,
+            "returnDate": "",
+            "returnTime": "",
+            "createdAt": now_iso,
+            "recoveredFromPaymentAt": now_iso,
+            "recoveredBy": current_admin.get("username", "admin"),
+        }
+        await db.bookings.insert_one(recovered)
+        logger.info(f"Recovered booking {bid} (ref #{ref_str}) from payment for {t.get('customer_email')}")
+        return {"message": "Booking recovered and added to admin list", "booking_id": bid, "referenceNumber": ref_str}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error recovering booking from payment: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @api_router.post("/webhook/stripe")
@@ -9459,13 +9634,20 @@ async def get_driver_schedule(driver_id: str, date: Optional[str] = None):
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.delete("/bookings/{booking_id}")
-async def delete_booking(booking_id: str, send_notification: bool = True, current_admin: dict = Depends(get_current_admin)):
-    """Soft-delete a single booking (moves to deleted_bookings collection)"""
+async def delete_booking(booking_id: str, send_notification: bool = True, force: bool = False, current_admin: dict = Depends(get_current_admin)):
+    """Soft-delete a single booking (moves to deleted_bookings collection). Paid bookings require force=true."""
     try:
         # First, get the booking details before deleting (for notifications)
         booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
         if not booking:
             raise HTTPException(status_code=404, detail="Booking not found")
+        # Safeguard: do not allow deleting a booking that has a paid Stripe payment unless force=true
+        paid_txn = await db.payment_transactions.find_one({"booking_id": booking_id, "payment_status": "paid"}, {"_id": 1})
+        if paid_txn and not force:
+            raise HTTPException(
+                status_code=400,
+                detail="This booking has a paid Stripe payment. Use 'Recover from payment' if the booking is missing; to cancel/refund use force=true."
+            )
         
         # Send cancellation notifications if requested
         if send_notification:
