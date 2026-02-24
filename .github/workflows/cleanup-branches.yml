@@ -10,9 +10,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: write
 
     steps:
-      - name: Delete merged and stale AI-agent branches
+      - name: Delete merged and stale AI-agent branches (and close open PRs)
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -38,6 +39,23 @@ jobs:
                 });
 
                 if (compare.ahead_by === 0 || compare.status === 'behind' || compare.status === 'identical') {
+                  // Close any open PRs for this branch before deleting it
+                  const { data: prs } = await github.rest.pulls.list({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    head: `${context.repo.owner}:${name}`,
+                    state: 'open',
+                  });
+                  for (const pr of prs) {
+                    await github.rest.pulls.update({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      pull_number: pr.number,
+                      state: 'closed',
+                    });
+                    console.log(`Closed PR #${pr.number} (${pr.title}) for branch: ${name}`);
+                  }
+
                   await github.rest.git.deleteRef({
                     owner: context.repo.owner,
                     repo: context.repo.repo,
