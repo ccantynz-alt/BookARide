@@ -87,4 +87,4 @@ Airport shuttle booking platform for New Zealand with features including:
 
 ## Admin Credentials
 - Username: `admin`
-- Password: `Kongkong2025!@`
+- Password: `[Use the admin password configured in your environment]`

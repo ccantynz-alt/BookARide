@@ -154,7 +154,7 @@ Domain: bookaride.co.nz
 
 ### Admin Credentials:
 - **Username:** `admin`
-- **Password:** `BookARide2024!`
+- **Password:** `[Use the admin password configured in your environment]`
 - **Admin Panel:** `/admin/login`
 
 ---
