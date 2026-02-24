@@ -32,7 +32,4 @@ services:
     autoDeploy: true
     envVars:
       - key: REACT_APP_BACKEND_URL
-        fromService:
-          name: bookaride-backend
-          type: web
-          property: host
+        value: https://bookaride-backend.onrender.com
