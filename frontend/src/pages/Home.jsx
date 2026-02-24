@@ -1,7 +1,8 @@
 import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowRight, Plane, Briefcase, MapPin, Calendar, Star, Check, Shield, Clock, Award, Users, Sparkles, DollarSign } from 'lucide-react';
+import { ArrowRight, Plane, Briefcase, MapPin, Calendar, Star, Check, Shield, Clock, Award, Users, Sparkles, DollarSign, Wrench } from 'lucide-react';
+import siteConfig from '../config/siteConfig';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { services, testimonials, howItWorksSteps } from '../mock';
@@ -35,8 +36,16 @@ export const Home = () => {
     });
   }, []);
 
+  const maintenanceMode = siteConfig.maintenanceMode === true;
+
   return (
     <div className="min-h-screen bg-white">
+      {maintenanceMode && (
+        <div className="sticky top-0 z-50 w-full bg-amber-500 text-black py-4 px-4 text-center font-semibold text-lg shadow-lg flex items-center justify-center gap-3">
+          <Wrench className="w-6 h-6 flex-shrink-0" />
+          <span>Online booking is temporarily under maintenance. Please call or email to book.</span>
+        </div>
+      )}
       <SEO 
         title="Affordable Airport Shuttle Auckland - Best Value Transfers"
         description="Affordable airport shuttle service in Auckland. Best value airport transfers for Auckland, Hamilton, and Whangarei airports. Reliable, safe, and budget-friendly shuttle service available 24/7. Book online now!"
@@ -134,19 +143,34 @@ export const Home = () => {
                 transition={{ delay: 0.8, duration: 0.6 }}
                 className="flex flex-col sm:flex-row gap-4"
               >
-                <Link to="/book-now" className="flex-1">
-                  <Button 
-                    size="lg" 
-                    className="w-full h-16 bg-gold hover:bg-yellow-500 text-black font-bold text-lg px-8 shadow-2xl hover:shadow-gold/50 transform hover:scale-105 transition-all duration-300 group relative overflow-hidden"
-                  >
-                    <span className="relative z-10 flex items-center justify-center gap-3">
-                      <span>BOOK YOUR RIDE NOW</span>
-                      <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
-                    </span>
-                    {/* Button shine effect */}
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000" />
-                  </Button>
-                </Link>
+                {maintenanceMode ? (
+                  <div className="flex-1">
+                    <Button 
+                      size="lg" 
+                      disabled
+                      className="w-full h-16 bg-gray-500 text-gray-300 font-bold text-lg px-8 cursor-not-allowed opacity-80"
+                    >
+                      <span className="flex items-center justify-center gap-3">
+                        <span>BOOKING UNDER MAINTENANCE</span>
+                        <Wrench className="w-6 h-6" />
+                      </span>
+                    </Button>
+                  </div>
+                ) : (
+                  <Link to="/book-now" className="flex-1">
+                    <Button 
+                      size="lg" 
+                      className="w-full h-16 bg-gold hover:bg-yellow-500 text-black font-bold text-lg px-8 shadow-2xl hover:shadow-gold/50 transform hover:scale-105 transition-all duration-300 group relative overflow-hidden"
+                    >
+                      <span className="relative z-10 flex items-center justify-center gap-3">
+                        <span>BOOK YOUR RIDE NOW</span>
+                        <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
+                      </span>
+                      {/* Button shine effect */}
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000" />
+                    </Button>
+                  </Link>
+                )}
                 <Link to="/services">
                   <Button 
                     variant="outline" 
@@ -431,12 +455,18 @@ export const Home = () => {
                 {/* CTA Button */}
                 <div className="mt-10 text-center pt-8 border-t border-gray-200">
                   <p className="text-gray-700 mb-4 font-medium">Ready to experience the difference?</p>
-                  <Link to="/book-now">
-                    <Button className="bg-gold hover:bg-gold/90 text-black font-semibold px-10 py-6 text-lg">
-                      Book Your Ride Now
-                      <ArrowRight className="ml-2 w-5 h-5" />
+                  {maintenanceMode ? (
+                    <Button disabled className="bg-gray-400 text-gray-200 font-semibold px-10 py-6 text-lg cursor-not-allowed">
+                      Booking Under Maintenance
                     </Button>
-                  </Link>
+                  ) : (
+                    <Link to="/book-now">
+                      <Button className="bg-gold hover:bg-gold/90 text-black font-semibold px-10 py-6 text-lg">
+                        Book Your Ride Now
+                        <ArrowRight className="ml-2 w-5 h-5" />
+                      </Button>
+                    </Link>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -486,11 +516,17 @@ export const Home = () => {
                           <ArrowRight className="ml-2 w-5 h-5" />
                         </Button>
                       </Link>
-                      <Link to="/book-now">
-                        <Button variant="outline" className="border-gold text-gold hover:bg-gold hover:text-black px-8 py-6 w-full sm:w-auto">
-                          Book Now
+                      {maintenanceMode ? (
+                        <Button disabled variant="outline" className="border-gray-500 text-gray-400 px-8 py-6 w-full sm:w-auto cursor-not-allowed">
+                          Booking Under Maintenance
                         </Button>
-                      </Link>
+                      ) : (
+                        <Link to="/book-now">
+                          <Button variant="outline" className="border-gold text-gold hover:bg-gold hover:text-black px-8 py-6 w-full sm:w-auto">
+                            Book Now
+                          </Button>
+                        </Link>
+                      )}
                     </div>
                   </div>
                   
