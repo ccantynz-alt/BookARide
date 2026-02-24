@@ -513,7 +513,9 @@ export const AdminDashboard = () => {
   const pickupInputRef = useRef(null);
   const dropoffInputRef = useRef(null);
   const additionalPickupRefs = useRef([]);
-  const autocompleteCleanupRef = useRef([]); // Declared here so any useEffect can use it without "before initialization"
+  const autocompleteCleanupRef = useRef([]);
+  const fetchBookingsRef = useRef(null);
+  const filterBookingsRef = useRef(null);
   const [activeTab, setActiveTab] = useState('bookings');
   const [bookings, setBookings] = useState([]);
   const [filteredBookings, setFilteredBookings] = useState([]);
@@ -839,19 +841,22 @@ export const AdminDashboard = () => {
         console.warn('Could not cache bookings:', e);
       }
       
-      if (append) {
-        setBookings(prev => [...prev, ...newBookings]);
+      // Defer heavy state update to next tick to avoid "[Violation] 'load' handler took Xms"
+      const doUpdate = () => {
+        if (append) {
+          setBookings(prev => [...prev, ...newBookings]);
+        } else {
+          setBookings(newBookings);
+        }
+        setCurrentPage(1);
+        setLoading(false);
+        setIsLoadingMore(false);
+        if (page === 1) fetchBookingCounts();
+      };
+      if (typeof requestAnimationFrame !== 'undefined') {
+        requestAnimationFrame(doUpdate);
       } else {
-        setBookings(newBookings);
-      }
-      
-      setCurrentPage(1);
-      setLoading(false);
-      setIsLoadingMore(false);
-      
-      // Fetch total count for stats
-      if (page === 1) {
-        fetchBookingCounts();
+        setTimeout(doUpdate, 0);
       }
     } catch (error) {
       if (error.response?.status === 401) {
