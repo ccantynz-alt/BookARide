@@ -14,7 +14,7 @@ Your website is ready. Let's activate it and start getting bookings!
 1. Open browser: http://localhost:3000/admin/seo
 2. Login:
    - Username: `admin`
-   - Password: `[Use the admin password configured in your environment]`
+   - Password: `BookARide2024!`
 3. Click the **gold button**: "Initialize ALL Pages (71 Total)"
 4. Wait 30 seconds
 5. Done! You'll see success message

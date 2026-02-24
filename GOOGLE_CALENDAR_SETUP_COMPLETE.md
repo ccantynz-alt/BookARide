@@ -29,7 +29,7 @@ You need to authorize the app to access your Google Calendar **once**.
 
 1. Login to admin dashboard: https://bookaride.co.nz/admin/login
    - Username: `admin`
-   - Password: `[Use the admin password configured in your environment]`
+   - Password: `BookARide2024!`
 
 2. Look for "**Google Calendar**" or "**Connect Calendar**" button
 3. Click to authorize

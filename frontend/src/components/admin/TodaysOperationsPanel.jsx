@@ -5,7 +5,7 @@ import { Button } from '../ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import axios from 'axios';
 
-import { API } from '../../config/api';
+const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 // Format time to 12-hour format
 const formatTime12h = (time) => {
