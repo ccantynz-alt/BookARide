@@ -1966,6 +1966,11 @@ async def get_bookings(
             s.setdefault('returnDate', '')
             s.setdefault('returnTime', '')
             s.setdefault('payment_status', s.get('paymentStatus') or 'unpaid')
+            s.setdefault('date', today_str)
+            s.setdefault('name', 'Unknown')
+            s.setdefault('email', '')
+            s.setdefault('phone', '')
+            s.setdefault('status', 'pending')
         all_bookings = list(all_bookings) + list(shuttle_raw)
         total = len(all_bookings)
         
