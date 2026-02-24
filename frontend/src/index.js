@@ -1,6 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { HelmetProvider } from 'react-helmet-async';
+import { HelmetProvider } from '@vuer-ai/react-helmet-async';
 import "@/index.css";
 import App from "@/App";
 
