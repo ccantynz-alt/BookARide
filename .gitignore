@@ -4,6 +4,9 @@
 .idea/
 .vscode/
 
+# Emergent platform
+.emergent/
+
 # Dependencies
 node_modules/
 /node_modules
@@ -34,6 +37,8 @@ dist
 
 *token.json*
 *credentials.json*
+service_account.json
+*service_account*.json
 
 # Logs and debug files
 npm-debug.log*
@@ -45,6 +50,7 @@ dump.rdb
 # System files
 .DS_Store
 *.pem
+.gitconfig
 
 # Python
 __pycache__/
@@ -100,9 +106,42 @@ frontend/node_modules/.cache/default-development/11.pack
 frontend/node_modules/.cache/default-development/7.pack_
 frontend/node_modules/.cache/default-development/12.pack
 -e 
-# Environment files
+# Environment files and secrets
 *.env
 *.env.*
+.env.local
+.env.*.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# AWS credentials
+.aws/
+*aws_credentials*
+*aws_config*
+
+# Google Cloud credentials
+*gcloud*
+*service-account*.json
+*serviceAccount*.json
+*service_account*.json
+
+# API keys and secrets
+*api_key*
+*api_keys*
+*secret_key*
+*private_key*
+*privatekey*
+
+# SSH and certificates
+*.key
+id_rsa*
+*.cert
+
+# Database credentials
+*database_url*
+*db_password*
+
 frontend/node_modules/.cache/default-development/13.pack
 frontend/node_modules/.cache/default-development/14.pack
 frontend/node_modules/.cache/default-development/15.pack
@@ -114,6 +153,7 @@ frontend/node_modules/.cache/default-development/19.pack
 frontend/node_modules/.cache/default-development/21.pack
 
 # Ignore timestamped backup files created by patch scripts
+*.bak
 *.bak.*
 # Local scratch/notes files (often contain secrets)
 backend/*.txt
@@ -123,3 +163,6 @@ backend/#*.txt
 RUN_LOGS/
 D8_CONTROL/
 .env*.local
+
+# Sensitive documentation files
+EMAIL_SYSTEM_READY.md

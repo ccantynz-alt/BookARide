@@ -96,6 +96,17 @@ If you see “SMTP credentials not configured” in logs, double-check `SMTP_USE
 
 ---
 
+## Diagnosing Issues
+
+Use the admin test-email endpoint to see exactly which provider fails and why:
+
+```
+POST /api/admin/test-email
+{"to": "your@email.com"}
+```
+
+Response includes `provider_errors` for each provider so you can see the actual error message from Google.
+
 ## Troubleshooting
 
 | Issue | What to do |

@@ -6,11 +6,12 @@ Test email functionality by creating a booking and simulating payment completion
 import requests
 import json
 import time
+import os
 from datetime import datetime
 
 BACKEND_URL = "https://dazzling-leakey.preview.emergentagent.com/api"
 ADMIN_USERNAME = "admin"
-ADMIN_PASSWORD = "BookARide2024!"
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "your-admin-password-here")
 
 def test_email_flow():
     """Test complete email flow"""
