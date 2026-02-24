@@ -5,7 +5,7 @@ import { Button } from '../ui/button';
 import { toast } from 'sonner';
 import axios from 'axios';
 
-import { API } from '../../config/api';
+const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const UrgentReturnsPanel = () => {
   const [urgentReturns, setUrgentReturns] = useState([]);
@@ -43,13 +43,13 @@ const UrgentReturnsPanel = () => {
   const getUrgencyStyle = (color) => {
     switch (color) {
       case 'red':
-        return 'bg-red-50/90 border-red-400/70 text-red-800 backdrop-blur-sm';
+        return 'bg-red-100 border-red-500 text-red-800';
       case 'orange':
-        return 'bg-orange-50/90 border-orange-400/70 text-orange-800 backdrop-blur-sm';
+        return 'bg-orange-100 border-orange-500 text-orange-800';
       case 'yellow':
-        return 'bg-yellow-50/90 border-yellow-400/70 text-yellow-800 backdrop-blur-sm';
+        return 'bg-yellow-100 border-yellow-500 text-yellow-800';
       default:
-        return 'bg-green-50/90 border-green-400/70 text-green-800 backdrop-blur-sm';
+        return 'bg-green-100 border-green-500 text-green-800';
     }
   };
 
@@ -91,8 +91,8 @@ const UrgentReturnsPanel = () => {
   }
 
   return (
-    <Card className="mb-4 border border-amber-300/80 shadow-lg backdrop-blur-sm bg-white/95">
-      <CardHeader className="bg-gradient-to-r from-amber-500/90 to-orange-500/90 text-white py-3 rounded-t-xl">
+    <Card className="mb-4 border-2 border-amber-400 shadow-lg">
+      <CardHeader className="bg-gradient-to-r from-amber-500 to-orange-500 text-white py-3">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-lg">
             <AlertTriangle className="h-5 w-5" />

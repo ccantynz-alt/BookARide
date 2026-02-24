@@ -307,7 +307,7 @@ import InternationalHomePage from './pages/InternationalHomePage';
 **Login Credentials (SAME):**
 ```
 Username: admin
-Password: `[Use the admin password configured in your environment]`
+Password: BookARide2024!
 ```
 
 **Database:**

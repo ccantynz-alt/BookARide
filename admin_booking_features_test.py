@@ -11,13 +11,12 @@ import requests
 import json
 import time
 import sys
-import os
 from datetime import datetime, timedelta
 
 # Configuration
 BACKEND_URL = "https://dazzling-leakey.preview.emergentagent.com/api"
 ADMIN_USERNAME = "admin"
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "your-admin-password-here")
+ADMIN_PASSWORD = "Chico9620!@"
 
 class AdminBookingFeaturesTester:
     def __init__(self):

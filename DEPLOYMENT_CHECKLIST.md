@@ -29,7 +29,7 @@ Open https://bookaride.co.nz and test:
 - [ ] Homepage loads
 - [ ] Book Now page shows pricing
 - [ ] WELCOME10 promo code works
-- [ ] Admin login works (admin / [your-admin-password])
+- [ ] Admin login works (admin / Kongkong2025!@)
 - [ ] Can view bookings in admin
 - [ ] Can assign driver to booking
 - [ ] Driver receives SMS notification

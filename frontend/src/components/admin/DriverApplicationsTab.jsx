@@ -9,7 +9,8 @@ import { Label } from '../ui/label';
 import { toast } from 'sonner';
 import axios from 'axios';
 
-import { API } from '../../config/api';
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const API = `${BACKEND_URL}/api`;
 
 export const DriverApplicationsTab = () => {
   const [applications, setApplications] = useState([]);
