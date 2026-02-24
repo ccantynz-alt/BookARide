@@ -151,13 +151,44 @@ app = FastAPI()
 # Root and health - Render/Kubernetes may check / or /health or /healthz
 @app.get("/")
 async def root():
-    return {"status": "ok", "service": "bookaride-api", "docs": "/docs"}
+    return {
+        "status": "ok",
+        "service": "bookaride-api",
+        "docs": "/docs",
+        "email_status": "/email-status or /api/email-status",
+    }
 
 @app.get("/health")
 @app.get("/healthz")
 async def root_health_check():
     """Root health check endpoint for Kubernetes/Render liveness/readiness probes"""
     return {"status": "healthy", "service": "bookaride-api"}
+
+
+@app.get("/email-status")
+@app.get("/api/email-status")
+async def root_email_status():
+    """Email config check – same as /api/email-status. No auth."""
+    try:
+        from email_sender import is_email_configured, get_noreply_email
+    except ImportError:
+        return {
+            "email_provider": os.environ.get("EMAIL_PROVIDER") or "sendgrid",
+            "sendgrid_configured": bool(os.environ.get("SENDGRID_API_KEY")),
+            "smtp_configured": bool(os.environ.get("SMTP_USER") and os.environ.get("SMTP_PASS")),
+            "mailgun_configured": bool(os.environ.get("MAILGUN_API_KEY") and os.environ.get("MAILGUN_DOMAIN")),
+            "noreply_email": os.environ.get("NOREPLY_EMAIL") or os.environ.get("SENDER_EMAIL") or "(not set)",
+            "hint": "SendGrid only: set SENDGRID_API_KEY and NOREPLY_EMAIL (verified sender). Remove Mailgun/SMTP vars.",
+        }
+    return {
+        "email_provider": os.environ.get("EMAIL_PROVIDER") or "sendgrid",
+        "sendgrid_configured": bool(os.environ.get("SENDGRID_API_KEY")),
+        "smtp_configured": bool(os.environ.get("SMTP_USER") and os.environ.get("SMTP_PASS")),
+        "mailgun_configured": bool(os.environ.get("MAILGUN_API_KEY") and os.environ.get("MAILGUN_DOMAIN")),
+        "noreply_email": get_noreply_email(),
+        "email_configured": is_email_configured(),
+        "hint": "SendGrid only: SENDGRID_API_KEY + NOREPLY_EMAIL (verified sender in SendGrid). Remove Mailgun/SMTP.",
+    }
 
 # Google auth start - app-level routes (try multiple paths for compatibility)
 @app.get("/api/admin/google-auth/start")
@@ -1432,6 +1463,8 @@ def _get_distance_geoapify(pickup_address: str, dropoff_address: str, waypoint_a
 # Default distance when BOTH Geoapify and Google Maps fail (was 25km - caused massive undercharging for 60-70km trips)
 # Use 75km to cover common long routes (Orewa, Hibiscus Coast, Warkworth) - better to slightly overcharge than lose money
 DEFAULT_FALLBACK_DISTANCE_KM = 75.0
+# Long-distance fallback when addresses indicate Tauranga/BOP/Hamilton/Whangarei (prevents ~$200 charge for 200km+ trip)
+LONG_DISTANCE_FALLBACK_KM = 200.0
 
 # Price Calculation Endpoint
 @api_router.post("/calculate-price", response_model=PricingBreakdown)
@@ -1442,6 +1475,15 @@ async def calculate_price(request: PriceCalculationRequest):
         google_api_key = os.environ.get('GOOGLE_MAPS_API_KEY', '')
         
         distance_km = None
+        # Normalize addresses early so we can use long-distance fallback when API fails
+        def _norm(s):
+            return (s or '').lower().replace('\u0101', 'a').replace('ā', 'a')
+        _pickup_lower = _norm(request.pickupAddress)
+        _dropoff_lower = _norm(request.dropoffAddress)
+        _long_distance_keywords = ['tauranga', 'mount maunganui', 'papamoa', 'otumoetai', 'bay of plenty', 'hamilton', 'whangarei', 'cambridge', 'te awamutu']
+        _is_long_distance_route = any(kw in _pickup_lower or kw in _dropoff_lower for kw in _long_distance_keywords)
+        _fallback_km = LONG_DISTANCE_FALLBACK_KM if _is_long_distance_route else DEFAULT_FALLBACK_DISTANCE_KM
+
         if geoapify_key:
             # Route: pickup -> additional pickups -> dropoff
             waypoint_addrs = [a for a in (request.pickupAddresses or []) if a and a.strip()]
@@ -1484,7 +1526,7 @@ async def calculate_price(request: PriceCalculationRequest):
                     logger.info(f"Multi-stop route: {len(all_pickups)} pickups → dropoff, total: {distance_km}km")
                 else:
                     logger.warning(f"Google Maps Directions API error: {data.get('error_message', data.get('status'))}")
-                    distance_km = DEFAULT_FALLBACK_DISTANCE_KM * len(all_pickups)  # Fallback: estimate per stop
+                    distance_km = _fallback_km * len(all_pickups)  # Fallback: estimate per stop
             else:
                 # Single pickup - use Distance Matrix API
                 url = "https://maps.googleapis.com/maps/api/distancematrix/json"
@@ -1505,14 +1547,14 @@ async def calculate_price(request: PriceCalculationRequest):
                         distance_km = round(distance_meters / 1000, 2)
                     else:
                         logger.warning(f"Google Maps element status: {element.get('status')}")
-                        distance_km = DEFAULT_FALLBACK_DISTANCE_KM  # Fallback
+                        distance_km = _fallback_km  # Fallback
                 else:
                     logger.warning(f"Google Maps API error: {data.get('error_message', data.get('status'))}")
-                    distance_km = DEFAULT_FALLBACK_DISTANCE_KM  # Fallback
+                    distance_km = _fallback_km  # Fallback
         else:
             # Fallback: estimate based on number of stops (no API keys configured)
             pickup_count = 1 + len([addr for addr in (request.pickupAddresses or []) if addr])
-            distance_km = DEFAULT_FALLBACK_DISTANCE_KM * pickup_count  # Default estimate per stop
+            distance_km = _fallback_km * pickup_count  # Default estimate per stop
             logger.warning(f"GEOAPIFY_API_KEY and GOOGLE_MAPS_API_KEY not set. Using default distance estimate: {distance_km}km for {pickup_count} stops - SET API KEYS TO FIX PRICING")
         
         # Calculate pricing with tiered rates - FLAT RATE per bracket
@@ -1576,6 +1618,16 @@ async def calculate_price(request: PriceCalculationRequest):
         if airport_to_whangarei and distance_km < 182.0:
             logger.info(f"Zone distance: Auckland Airport <-> Whangarei applying minimum 182 km (API returned {distance_km} km)")
             distance_km = 182.0
+        
+        # Minimum distance for Tauranga / Bay of Plenty <-> Auckland Airport (~215 km)
+        # Prevents massive undercharging when distance API fails (was falling back to 75 km = ~$200)
+        tauranga_keywords = ['tauranga', 'mount maunganui', 'papamoa', 'te puna', 'omokoroa', 'bethlehem', 'welcome bay', 'otumoetai', 'greerton', 'bay of plenty', 'tauriko', 'katikati', 'waihi beach']
+        is_to_tauranga = any(kw in dropoff_lower for kw in tauranga_keywords)
+        is_from_tauranga = any(kw in pickup_lower for kw in tauranga_keywords)
+        tauranga_to_airport = (is_from_tauranga and is_to_airport) or (is_to_tauranga and is_from_airport)
+        if tauranga_to_airport and distance_km < 200.0:
+            logger.info(f"Zone distance: Tauranga/BOP <-> Airport applying minimum 200 km (API returned {distance_km} km)")
+            distance_km = 200.0
         
         # Concert pricing structure (ONLY for Matakana Country Park):
         # - From Hibiscus Coast to concert venue: Flat $550 (return)
@@ -1746,10 +1798,11 @@ async def create_booking(booking: BookingCreate, background_tasks: BackgroundTas
             booking_dict['returnFlightNumber'] = booking.returnDepartureFlightNumber  # Also set the alias
             logger.info(f"Set returnDepartureFlightNumber: {booking.returnDepartureFlightNumber}")
         
-        # Get sequential reference number
+        # Get sequential reference number (store as string so admin search by "74" finds booking #74)
         ref_number = await get_next_reference_number()
-        booking_dict['referenceNumber'] = ref_number
-        booking_obj.referenceNumber = ref_number
+        ref_str = str(ref_number)
+        booking_dict['referenceNumber'] = ref_str
+        booking_obj.referenceNumber = ref_str
         
         # Check if booking is within 24 hours - requires manual approval
         requires_approval = is_booking_within_24_hours(booking.date, booking.time)
@@ -1983,10 +2036,16 @@ async def get_bookings(
     date_from: str = None,
     date_to: str = None
 ):
-    """Get bookings with pagination and filtering for faster loading"""
+    """Get bookings with pagination and filtering for faster loading.
+    No filter by payment_status - cash/pay-on-pickup are included like all others.
+    Use limit=0 to return ALL active bookings (capped at 5000) so admin never misses one."""
     try:
-        page = max(page, 1)
-        limit = min(max(limit, 1), 200)
+        # limit=0 means "return all" for admin dashboard - no pagination, no missed bookings
+        return_all = limit == 0
+        if return_all:
+            limit = 5000  # Safety cap when returning all
+        else:
+            limit = min(int(limit), 500) if limit else 50
 
         # Build query
         query = {}
@@ -2004,6 +2063,9 @@ async def get_bookings(
                 {'referenceNumber': {'$regex': search, '$options': 'i'}},
                 {'original_booking_id': {'$regex': search, '$options': 'i'}}
             ]
+            # Also find by ref number when stored as integer (e.g. booking #74)
+            if search.strip().isdigit():
+                query['$or'].append({'referenceNumber': int(search.strip())})
         
         # Date range filter
         if date_from:
@@ -2012,8 +2074,8 @@ async def get_bookings(
         if date_to:
             query.setdefault('date', {})['$lte'] = date_to
         
-        # Calculate skip for pagination
-        skip = (page - 1) * limit
+        # Calculate skip for pagination (only when not return_all)
+        skip = (page - 1) * limit if not return_all else 0
         
         # Get total count for pagination info
         total = await db.bookings.count_documents(query)
@@ -2023,32 +2085,30 @@ async def get_bookings(
         now_nz = datetime.now(nz_tz)
         today_str = now_nz.strftime('%Y-%m-%d')
         
-        # DB-side sorting and pagination to avoid loading the full dataset into memory.
-        pipeline = [
-            {"$match": query},
-            {"$addFields": {
-                "sortDate": {"$ifNull": ["$date", "9999-99-99"]},
-                "sortTime": {"$ifNull": ["$time", "00:00"]},
-                "sortPriority": {
-                    "$switch": {
-                        "branches": [
-                            {"case": {"$eq": [{"$ifNull": ["$date", "9999-99-99"]}, today_str]}, "then": 0},
-                            {"case": {"$gt": [{"$ifNull": ["$date", "9999-99-99"]}, today_str]}, "then": 1}
-                        ],
-                        "default": 2
-                    }
-                }
-            }},
-            {"$sort": {"sortPriority": 1, "sortDate": 1, "sortTime": 1}},
-            {"$skip": skip},
-            {"$limit": limit},
-            {"$project": {"_id": 0, "sortPriority": 0, "sortDate": 0, "sortTime": 0}}
-        ]
-
-        bookings = await db.bookings.aggregate(pipeline).to_list(length=limit)
+        # Fetch ALL matching bookings to sort properly (needed for smart date ordering)
+        all_bookings = await db.bookings.find(query, {"_id": 0}).to_list(None)
         
-        # Add pagination headers via response
-        logger.info(f"Fetched {len(bookings)} bookings (page {page}, total {total})")
+        # Custom sort: prioritize today, then tomorrow, then upcoming dates, then past dates
+        def sort_key(b):
+            date = b.get('date', '9999-99-99')
+            time = b.get('time', '00:00')
+            if date == today_str:
+                return (0, time)  # Today first
+            elif date > today_str:
+                return (1, date, time)  # Future dates in ascending order
+            else:
+                return (2, date, time)  # Past dates last
+        
+        all_bookings.sort(key=sort_key)
+        logger.info(f"Today: {today_str}, First 3 bookings after sort: {[b.get('date') for b in all_bookings[:3]]}")
+        
+        # Return full list when limit=0 (admin must see every booking); otherwise paginate
+        if return_all:
+            bookings = all_bookings[:limit]  # Apply safety cap
+            logger.info(f"Fetched ALL {len(bookings)} bookings (return_all, total in DB: {total})")
+        else:
+            bookings = all_bookings[skip:skip + limit]
+            logger.info(f"Fetched {len(bookings)} bookings (page {page}, total {total})")
         
         return [Booking(**booking) for booking in bookings]
     except Exception as e:
@@ -2121,8 +2181,8 @@ async def update_booking(booking_id: str, update_data: dict, current_admin: dict
             try:
                 # Get the updated booking
                 updated_booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
-                if updated_booking and updated_booking.get('calendar_event_id'):
-                    # Update existing calendar event
+                if updated_booking:
+                    # update_calendar_event creates if none exists, otherwise updates
                     await update_calendar_event(updated_booking)
                     logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Calendar event updated for booking {booking_id}")
             except Exception as cal_error:
@@ -2508,30 +2568,21 @@ EMAIL_TRANSLATIONS = {
 }
 
 def send_booking_confirmation_email(booking: dict, include_payment_link: bool = True):
-    """Send booking confirmation email via Mailgun, Gmail API, or SMTP fallback"""
-    # Always CC admin on customer confirmations
-    admin_cc = ', '.join(_get_booking_notification_emails())
+    """Send booking confirmation. Uses unified sender only (one provider, no conflicts)."""
+    booking_ref = get_booking_reference(booking)
+    lang = booking.get('language', 'en')
+    if lang not in EMAIL_TRANSLATIONS:
+        lang = 'en'
+    t = EMAIL_TRANSLATIONS[lang]
+    subject = f"{t['subject']} - Ref: {booking_ref}"
+    recipient_email = booking.get('email')
+    html_content = generate_confirmation_email_html(booking)
+    from_email = get_noreply_email()
 
-    # Try Mailgun first
-    if send_via_mailgun(booking, admin_cc=admin_cc):
-        return True
-
-    # Try Gmail API / SMTP via unified sender
+    # SendGrid only (no Mailgun / Google fallback)
     if send_email_unified:
-        logger.warning("Mailgun failed, trying Gmail API / SMTP fallback...")
-        recipient_email = booking.get("email")
-        booking_ref = get_booking_reference(booking)
-        lang = booking.get("language", "en")
-        if lang not in EMAIL_TRANSLATIONS:
-            lang = "en"
-        t = EMAIL_TRANSLATIONS[lang]
-        subject = f"{t['subject']} - Ref: {booking_ref}"
-        html_content = generate_confirmation_email_html(booking)
-        return send_email_unified(recipient_email, subject, html_content, cc=admin_cc)
-
-    # Final fallback to local SMTP function
-    logger.warning("Mailgun failed, trying SMTP fallback...")
-    return send_via_smtp(booking, admin_cc=admin_cc)
+        return send_email_unified(recipient_email, subject, html_content, from_email=from_email, from_name="BookaRide")
+    return False
 
 
 def send_via_mailgun(booking: dict, admin_cc: str = None):
@@ -5044,6 +5095,51 @@ async def resend_booking_confirmation(booking_id: str, current_admin: dict = Dep
         raise HTTPException(status_code=500, detail=f"Error resending confirmation: {str(e)}")
 
 
+# Email diagnostics (so you can see why confirmations aren't arriving)
+@api_router.get("/email-status")
+async def get_email_status():
+    """Check if email is configured on this server (no auth). Use to verify Render env vars."""
+    try:
+        from email_sender import is_email_configured, get_noreply_email
+    except ImportError:
+        return {
+            "email_provider": os.environ.get("EMAIL_PROVIDER") or "sendgrid",
+            "sendgrid_configured": bool(os.environ.get("SENDGRID_API_KEY")),
+            "smtp_configured": bool(os.environ.get("SMTP_USER") and os.environ.get("SMTP_PASS")),
+            "mailgun_configured": bool(os.environ.get("MAILGUN_API_KEY") and os.environ.get("MAILGUN_DOMAIN")),
+            "noreply_email": os.environ.get("NOREPLY_EMAIL") or os.environ.get("SENDER_EMAIL") or "(not set)",
+            "hint": "SendGrid only: set SENDGRID_API_KEY and NOREPLY_EMAIL (verified sender). Remove Mailgun/SMTP vars.",
+        }
+    return {
+        "email_provider": os.environ.get("EMAIL_PROVIDER") or "sendgrid",
+        "sendgrid_configured": bool(os.environ.get("SENDGRID_API_KEY")),
+        "smtp_configured": bool(os.environ.get("SMTP_USER") and os.environ.get("SMTP_PASS")),
+        "mailgun_configured": bool(os.environ.get("MAILGUN_API_KEY") and os.environ.get("MAILGUN_DOMAIN")),
+        "noreply_email": get_noreply_email(),
+        "email_configured": is_email_configured(),
+        "hint": "SendGrid only: SENDGRID_API_KEY + NOREPLY_EMAIL (verified sender in SendGrid). Remove Mailgun/SMTP.",
+    }
+
+
+@api_router.post("/admin/test-email")
+async def admin_send_test_email(body: dict = Body(default={}), current_admin: dict = Depends(get_current_admin)):
+    """Send one test email and return success or the exact error. Use to fix 'not receiving confirmations'."""
+    to = (body.get("to") or "").strip() or os.environ.get("BOOKINGS_NOTIFICATION_EMAIL") or current_admin.get("email") or "bookings@bookaride.co.nz"
+    if "@" not in to:
+        raise HTTPException(status_code=400, detail="Provide a valid 'to' email in the request body.")
+    try:
+        from email_sender import send_test_email as do_send_test_email
+    except ImportError:
+        # Fallback without email_sender
+        if not os.environ.get("SMTP_USER") or not os.environ.get("SMTP_PASS"):
+            raise HTTPException(status_code=500, detail="SMTP_USER or SMTP_PASS not set on this server. Add them in Render Environment.")
+        raise HTTPException(status_code=500, detail="email_sender module not available.")
+    ok, err = do_send_test_email(to)
+    if ok:
+        return {"success": True, "message": f"Test email sent to {to}. Check inbox and spam."}
+    raise HTTPException(status_code=500, detail=err or "Email failed (no details).")
+
+
 @api_router.post("/bookings/{booking_id}/resend-payment-link")
 async def resend_payment_link(booking_id: str, payment_method: str = "stripe", current_admin: dict = Depends(get_current_admin)):
     """Resend payment link to customer via email
@@ -5520,9 +5616,9 @@ async def import_bookings(request: ImportBookingsRequest, current_admin: dict = 
                     else:
                         formatted_return_date = booking_data.return_date
                 
-                # Generate new booking ID and reference
+                # Generate new booking ID and reference (referenceNumber as string for search)
                 new_id = str(uuid.uuid4())
-                ref_number = await get_next_reference_number()
+                ref_number = str(await get_next_reference_number())
                 
                 # Build the booking document
                 new_booking = {
@@ -9350,11 +9446,11 @@ class ManualBooking(BaseModel):
 async def create_manual_booking(booking: ManualBooking, background_tasks: BackgroundTasks):
     """Create a booking manually"""
     try:
-        # Get sequential reference number OR use provided one
+        # Get sequential reference number OR use provided one (store as string for search)
         if booking.referenceNumber:
-            ref_number = booking.referenceNumber
+            ref_number = str(booking.referenceNumber)
         else:
-            ref_number = await get_next_reference_number()
+            ref_number = str(await get_next_reference_number())
         
         # Extract total price from pricing or use override
         if booking.priceOverride is not None and booking.priceOverride > 0:
@@ -11226,10 +11322,18 @@ async def generate_sitemap():
 # Configure CORS with specific origins for credentials support
 cors_origins_env = os.environ.get('CORS_ORIGINS', '*')
 if cors_origins_env == '*':
-    # When using credentials, we need specific origins
+    # When using credentials, we need specific origins. One booking form for all domains.
     cors_origins = [
         "https://bookaride.co.nz",
         "https://www.bookaride.co.nz",
+        "https://airportshuttleservice.co.nz",
+        "https://www.airportshuttleservice.co.nz",
+        "https://hibiscustoairport.co.nz",
+        "https://www.hibiscustoairport.co.nz",
+        "https://aucklandshuttles.co.nz",
+        "https://www.aucklandshuttles.co.nz",
+        "https://bookaridenz.com",
+        "https://www.bookaridenz.com",
         "https://dazzling-leakey.preview.emergentagent.com",
         "http://localhost:3000"
     ]
@@ -12599,8 +12703,8 @@ async def create_hotel_booking(request: HotelBookingRequest, hotel: dict = Depen
         # Get hotel info
         hotel_info = await db.hotel_partners.find_one({"id": hotel["hotel_id"]}, {"_id": 0})
         
-        # Generate reference number
-        ref_number = await get_next_reference_number()
+        # Generate reference number (string for search)
+        ref_number = str(await get_next_reference_number())
         
         # Create booking
         booking_id = str(uuid.uuid4())
@@ -12805,7 +12909,7 @@ async def check_availability(request: AirlineAvailabilityRequest, airline: dict 
 async def create_airline_booking(request: AirlineBookingRequest, airline: dict = Depends(airline_auth)):
     """Create a booking from airline partner."""
     try:
-        ref_number = await get_next_reference_number()
+        ref_number = str(await get_next_reference_number())
         booking_id = str(uuid.uuid4())
         
         # Parse datetime
