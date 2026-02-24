@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Search, Filter, Mail, DollarSign, CheckCircle, XCircle, Clock, Eye, Edit2, BarChart3, Users, BookOpen, Car, Settings, Trash2, MapPin, Calendar, RefreshCw, Send, Bell, Facebook, Globe, Square, CheckSquare, FileText, Smartphone, RotateCcw, AlertTriangle, AlertCircle, Home, Bus, ExternalLink, Navigation, Upload, Archive } from 'lucide-react';
-import { useLoadScript } from '@react-google-maps/api';
+import { LogOut, Search, Filter, Mail, DollarSign, CheckCircle, XCircle, Clock, Eye, Edit2, BarChart3, Users, BookOpen, Car, Settings, Trash2, MapPin, Calendar, RefreshCw, Send, Bell, Facebook, Globe, Square, CheckSquare, FileText, Smartphone, RotateCcw, AlertTriangle, AlertCircle, Home, Bus, ExternalLink, Navigation, Upload, Archive, CreditCard } from 'lucide-react';
+import GeoapifyAutocomplete from '../components/GeoapifyAutocomplete';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent } from '../components/ui/card';
@@ -26,10 +26,7 @@ import ProfessionalStatsBar from '../components/admin/ProfessionalStatsBar';
 import UrgentNotificationsCenter from '../components/admin/UrgentNotificationsCenter';
 import ConfirmationStatusPanel from '../components/admin/ConfirmationStatusPanel';
 import ReturnsOverviewPanel from '../components/admin/ReturnsOverviewPanel';
-import { initAutocompleteWithFix } from '../utils/fixGoogleAutocomplete';
 import { API } from '../config/api';
-
-const libraries = ['places'];
 
 // Helper function to format date to DD/MM/YYYY
 const formatDate = (dateString) => {
@@ -506,13 +503,6 @@ const ImportBookingsSection = ({ onSuccess }) => {
 
 export const AdminDashboard = () => {
   const navigate = useNavigate();
-  const { isLoaded } = useLoadScript({
-    googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY,
-    libraries: libraries
-  });
-  const pickupInputRef = useRef(null);
-  const dropoffInputRef = useRef(null);
-  const additionalPickupRefs = useRef([]);
   const [activeTab, setActiveTab] = useState('bookings');
   const [bookings, setBookings] = useState([]);
   const [filteredBookings, setFilteredBookings] = useState([]);
@@ -543,6 +533,10 @@ export const AdminDashboard = () => {
   const [emailMessage, setEmailMessage] = useState('');
   const [emailCC, setEmailCC] = useState('');
   const [priceOverride, setPriceOverride] = useState('');
+  const [inlinePriceBookingId, setInlinePriceBookingId] = useState(null);
+  const [inlinePriceValue, setInlinePriceValue] = useState('');
+  const [smsModal, setSmsModal] = useState(null);
+  const [smsPhone, setSmsPhone] = useState('');
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [setPasswordMode, setSetPasswordMode] = useState(false);  // true = set without current (forgot/Google)
   const [currentPassword, setCurrentPassword] = useState('');
@@ -614,11 +608,6 @@ export const AdminDashboard = () => {
   // Xero invoice date state (for backdating)
   const [xeroInvoiceDate, setXeroInvoiceDate] = useState(null);
   
-  // Refs for edit modal autocomplete
-  const editPickupInputRef = useRef(null);
-  const editDropoffInputRef = useRef(null);
-  const editAdditionalPickupRefs = useRef([]);
-  
   // Date/Time picker states for admin form
   const [adminPickupDate, setAdminPickupDate] = useState(null);
   const [adminPickupTime, setAdminPickupTime] = useState(null);
@@ -626,6 +615,9 @@ export const AdminDashboard = () => {
   const [adminReturnTime, setAdminReturnTime] = useState(null);
   const [adminFlightArrivalTime, setAdminFlightArrivalTime] = useState(null);
   const [adminFlightDepartureTime, setAdminFlightDepartureTime] = useState(null);
+
+  // Date picker state for edit booking modal
+  const [editPickupDate, setEditPickupDate] = useState(null);
 
   useEffect(() => {
     // Check authentication
@@ -1576,47 +1568,11 @@ export const AdminDashboard = () => {
     }));
   };
 
-  // Function to initialize autocomplete for additional pickup inputs
-  const initializeAdditionalPickupAutocomplete = useCallback(() => {
-    if (!isLoaded || !window.google?.maps?.places) return;
-    
-    const autocompleteOptions = {
-      fields: ['formatted_address', 'geometry', 'name']
-    };
-    
-    additionalPickupRefs.current.forEach((ref, index) => {
-      if (ref && !ref._autocompleteInitialized) {
-        const setup = initAutocompleteWithFix(ref, autocompleteOptions);
-        if (setup?.autocomplete) {
-          setup.autocomplete.addListener('place_changed', () => {
-            const place = setup.autocomplete.getPlace();
-            if (place?.formatted_address) {
-              // Update the pickup address directly using setNewBooking
-              setNewBooking(prev => ({
-                ...prev,
-                pickupAddresses: prev.pickupAddresses.map((addr, i) => 
-                  i === index ? place.formatted_address : addr
-                )
-              }));
-            }
-          });
-          ref._autocompleteInitialized = true;
-          autocompleteCleanupRef.current.push(setup.cleanup);
-        }
-      }
-    });
-  }, [isLoaded]);
-
   const handleAddPickup = () => {
     setNewBooking(prev => ({
       ...prev,
       pickupAddresses: [...prev.pickupAddresses, '']
     }));
-    
-    // Re-initialize autocomplete for new input after DOM update
-    setTimeout(() => {
-      initializeAdditionalPickupAutocomplete();
-    }, 200);
   };
 
   const exportToCSV = () => {
@@ -1667,6 +1623,52 @@ export const AdminDashboard = () => {
       console.error('Error exporting to CSV:', error);
       toast.error('Failed to export bookings');
     }
+  };
+
+  const handleInlinePriceSave = async (booking) => {
+    const newPrice = parseFloat(inlinePriceValue);
+    if (isNaN(newPrice) || newPrice < 0) {
+      toast.error('Enter a valid price');
+      return;
+    }
+    try {
+      await axios.patch(`${API}/bookings/${booking.id}`, {
+        pricing: { ...booking.pricing, totalPrice: newPrice, overridden: true }
+      }, getAuthHeaders());
+      toast.success(`Price updated to $${newPrice.toFixed(2)}`);
+      setInlinePriceBookingId(null);
+      fetchBookings();
+    } catch {
+      toast.error('Failed to update price');
+    }
+  };
+
+  const buildSmsMessage = (booking) => {
+    const lines = [
+      `BookARide #${booking.referenceNumber || booking.id?.slice(0, 6)}`,
+      `Date: ${booking.date} at ${booking.time}`,
+      `Customer: ${booking.name} | ${booking.phone}`,
+      `Pax: ${booking.passengers || 1}`,
+      `Pickup: ${booking.pickupAddress}`,
+      `Dropoff: ${booking.dropoffAddress}`,
+    ];
+    if (booking.returnDate && booking.returnTime) {
+      lines.push(`Return: ${booking.returnDate} at ${booking.returnTime}`);
+    }
+    const flightNum = booking.arrivalFlightNumber || booking.flightArrivalNumber || booking.departureFlightNumber || booking.flightDepartureNumber;
+    if (flightNum) lines.push(`Flight: ${flightNum}`);
+    if (booking.notes) lines.push(`Notes: ${booking.notes}`);
+    lines.push(`Price: $${booking.pricing?.totalPrice?.toFixed(2) || booking.totalPrice || '0'}`);
+    return lines.join('\n');
+  };
+
+  const openSmsApp = () => {
+    const phone = smsPhone.replace(/\s/g, '');
+    if (!phone) { toast.error('Enter a phone number'); return; }
+    const message = buildSmsMessage(smsModal);
+    window.open(`sms:${phone}?body=${encodeURIComponent(message)}`, '_self');
+    setSmsModal(null);
+    setSmsPhone('');
   };
 
   const handlePriceOverride = async () => {
@@ -1743,6 +1745,13 @@ export const AdminDashboard = () => {
       ...booking,
       pickupAddresses: booking.pickupAddresses || []
     });
+    // Initialise the date picker from the booking's stored date (YYYY-MM-DD)
+    if (booking.date) {
+      const [year, month, day] = booking.date.split('-').map(Number);
+      setEditPickupDate(new Date(year, month - 1, day));
+    } else {
+      setEditPickupDate(null);
+    }
     setShowEditBookingModal(true);
   };
 
@@ -1788,33 +1797,6 @@ export const AdminDashboard = () => {
       ...prev,
       pickupAddresses: [...(prev.pickupAddresses || []), '']
     }));
-    
-    // Re-initialize autocomplete for new input after DOM update
-    setTimeout(() => {
-      if (!isLoaded || !window.google?.maps?.places) return;
-      
-      const autocompleteOptions = {
-        fields: ['formatted_address', 'geometry', 'name']
-      };
-      
-      editAdditionalPickupRefs.current.forEach((ref, index) => {
-        if (ref && !ref._autocompleteInitialized) {
-          const setup = initAutocompleteWithFix(ref, autocompleteOptions);
-          if (setup?.autocomplete) {
-            setup.autocomplete.addListener('place_changed', () => {
-              const place = setup.autocomplete.getPlace();
-              if (place?.formatted_address) {
-                setEditingBooking(prev => ({
-                  ...prev,
-                  pickupAddresses: prev.pickupAddresses.map((addr, i) => i === index ? place.formatted_address : addr)
-                }));
-              }
-            });
-            ref._autocompleteInitialized = true;
-          }
-        }
-      });
-    }, 100);
   };
 
   // Handle removing pickup from edit form
@@ -2253,56 +2235,57 @@ export const AdminDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-20">
-      {/* Professional Light Header */}
-      <div className="bg-white border-b border-gray-200 py-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 pt-20">
+      {/* Glassy Header */}
+      <div className="bg-white/10 backdrop-blur-md border-b border-white/10 py-5 sticky top-20 z-40 shadow-lg">
         <div className="container mx-auto px-4">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-              <p className="text-gray-500 text-sm mt-1">Manage bookings and customer communications</p>
+              <h1 className="text-2xl font-bold text-white tracking-tight">Admin Dashboard</h1>
+              <p className="text-white/50 text-xs mt-0.5">Manage bookings and customer communications</p>
             </div>
             <div className="flex gap-2 flex-wrap">
-              <Button onClick={() => window.open('/', '_blank')} variant="outline" size="sm">
+              <Button onClick={() => window.open('/', '_blank')} variant="outline" size="sm" className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white backdrop-blur-sm">
                 <Home className="w-4 h-4 mr-2" />
                 View Site
               </Button>
-              <Button onClick={handleSyncContactsToiPhone} disabled={syncingContacts} variant="outline" size="sm">
+              <Button onClick={handleSyncContactsToiPhone} disabled={syncingContacts} variant="outline" size="sm" className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white backdrop-blur-sm">
                 <Smartphone className="w-4 h-4 mr-2" />
                 {syncingContacts ? 'Syncing...' : 'Sync to iPhone'}
               </Button>
-              <Button onClick={() => navigate('/driver/portal')} variant="outline" size="sm">
+              <Button onClick={() => navigate('/driver/portal')} variant="outline" size="sm" className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white backdrop-blur-sm">
                 <Users className="w-4 h-4 mr-2" />
                 Driver Portal
               </Button>
-              <Button onClick={() => navigate('/admin/seo')} variant="outline" size="sm">
+              <Button onClick={() => navigate('/admin/seo')} variant="outline" size="sm" className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white backdrop-blur-sm">
                 <Settings className="w-4 h-4 mr-2" />
                 SEO Management
               </Button>
-              <Button 
-                onClick={handleSync} 
+              <Button
+                onClick={handleSync}
                 disabled={syncing}
-                variant="outline" 
+                variant="outline"
                 size="sm"
+                className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white backdrop-blur-sm"
               >
                 <RefreshCw className={`w-4 h-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
                 {syncing ? 'Syncing...' : 'Sync'}
               </Button>
               {xeroConnected ? (
-                <Button variant="outline" size="sm" className="text-green-600 border-green-300">
+                <Button variant="outline" size="sm" className="bg-green-500/20 border-green-400/40 text-green-300 hover:bg-green-500/30 backdrop-blur-sm">
                   <DollarSign className="w-4 h-4 mr-2" />
                   Xero: {xeroOrg || 'Connected'}
                 </Button>
               ) : (
-                <Button onClick={connectXero} variant="outline" size="sm">
+                <Button onClick={connectXero} variant="outline" size="sm" className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white backdrop-blur-sm">
                   <DollarSign className="w-4 h-4 mr-2" />
                   Connect Xero
                 </Button>
               )}
-              <Button onClick={() => setShowPasswordModal(true)} variant="outline" size="sm">
+              <Button onClick={() => setShowPasswordModal(true)} variant="outline" size="sm" className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white backdrop-blur-sm">
                 Change Password
               </Button>
-              <Button onClick={handleLogout} variant="outline" size="sm" className="text-red-600 border-red-300 hover:bg-red-50">
+              <Button onClick={handleLogout} variant="outline" size="sm" className="bg-red-500/20 border-red-400/40 text-red-300 hover:bg-red-500/30 backdrop-blur-sm">
                 <LogOut className="w-4 h-4 mr-2" />
                 Logout
               </Button>
@@ -2313,8 +2296,8 @@ export const AdminDashboard = () => {
 
       <div className="container mx-auto px-4 py-8">
         {/* Breadcrumb Navigation */}
-        <AdminBreadcrumb 
-          activeTab={activeTab} 
+        <AdminBreadcrumb
+          activeTab={activeTab}
           selectedBooking={selectedBooking}
           showDetailsModal={showDetailsModal}
           showEditBookingModal={showEditBookingModal}
@@ -2327,49 +2310,49 @@ export const AdminDashboard = () => {
           if (val === 'shuttle') fetchShuttleData();
           if (val === 'archive') fetchArchivedBookings(1, '');
         }} className="w-full">
-          <TabsList className="flex flex-wrap w-full gap-1 mb-4 md:mb-8 bg-transparent">
-            <TabsTrigger value="bookings" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4">
+          <TabsList className="flex flex-wrap w-full gap-1 mb-6 md:mb-8 bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl p-1.5 shadow-lg">
+            <TabsTrigger value="bookings" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 text-white/70 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-md rounded-xl">
               <BookOpen className="w-3 h-3 md:w-4 md:h-4" />
               <span className="hidden sm:inline">Bookings</span>
               <span className="sm:hidden">Book</span>
             </TabsTrigger>
-            <TabsTrigger value="shuttle" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 text-yellow-600">
+            <TabsTrigger value="shuttle" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 text-amber-300/80 data-[state=active]:bg-white data-[state=active]:text-amber-700 data-[state=active]:shadow-md rounded-xl">
               <Bus className="w-3 h-3 md:w-4 md:h-4" />
               <span>Shuttle</span>
             </TabsTrigger>
-            <TabsTrigger value="deleted" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 text-red-600">
+            <TabsTrigger value="deleted" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 text-red-300/80 data-[state=active]:bg-white data-[state=active]:text-red-700 data-[state=active]:shadow-md rounded-xl">
               <Trash2 className="w-3 h-3 md:w-4 md:h-4" />
               <span className="hidden md:inline">Deleted</span>
               <span className="md:hidden">Del</span>
               {deletedBookings.length > 0 && <span className="text-[10px]">({deletedBookings.length})</span>}
             </TabsTrigger>
-            <TabsTrigger value="archive" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 text-blue-600">
+            <TabsTrigger value="archive" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 text-sky-300/80 data-[state=active]:bg-white data-[state=active]:text-sky-700 data-[state=active]:shadow-md rounded-xl">
               <Archive className="w-3 h-3 md:w-4 md:h-4" />
               <span className="hidden md:inline">Archive</span>
               <span className="md:hidden">Arc</span>
               {archivedCount > 0 && <span className="text-[10px]">({archivedCount})</span>}
             </TabsTrigger>
-            <TabsTrigger value="analytics" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 hidden lg:flex">
+            <TabsTrigger value="analytics" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 hidden lg:flex text-white/70 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-md rounded-xl">
               <BarChart3 className="w-3 h-3 md:w-4 md:h-4" />
               <span>Analytics</span>
             </TabsTrigger>
-            <TabsTrigger value="customers" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 hidden lg:flex">
+            <TabsTrigger value="customers" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 hidden lg:flex text-white/70 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-md rounded-xl">
               <Users className="w-3 h-3 md:w-4 md:h-4" />
               <span>Customers</span>
             </TabsTrigger>
-            <TabsTrigger value="drivers" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4">
+            <TabsTrigger value="drivers" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 text-white/70 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-md rounded-xl">
               <Users className="w-3 h-3 md:w-4 md:h-4" />
               <span>Drivers</span>
             </TabsTrigger>
-            <TabsTrigger value="applications" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 hidden xl:flex">
+            <TabsTrigger value="applications" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 hidden xl:flex text-white/70 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-md rounded-xl">
               <FileText className="w-3 h-3 md:w-4 md:h-4" />
               <span>Apps</span>
             </TabsTrigger>
-            <TabsTrigger value="marketing" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 hidden xl:flex">
+            <TabsTrigger value="marketing" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 hidden xl:flex text-white/70 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-md rounded-xl">
               <Globe className="w-3 h-3 md:w-4 md:h-4" />
               <span>Marketing</span>
             </TabsTrigger>
-            <TabsTrigger value="import" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 hidden xl:flex text-purple-600">
+            <TabsTrigger value="import" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 hidden xl:flex text-violet-300/80 data-[state=active]:bg-white data-[state=active]:text-violet-700 data-[state=active]:shadow-md rounded-xl">
               <FileText className="w-3 h-3 md:w-4 md:h-4" />
               <span>Import</span>
             </TabsTrigger>
@@ -2684,7 +2667,10 @@ export const AdminDashboard = () => {
                               {isToday(booking.date) && <span className="px-1.5 py-0.5 text-[9px] font-bold bg-blue-600 text-white rounded animate-pulse">TODAY</span>}
                               {isTomorrow(booking.date) && <span className="px-1.5 py-0.5 text-[9px] font-bold bg-orange-500 text-white rounded">TMR</span>}
                             </div>
-                            <div className="text-xs text-gray-700 font-medium">{formatDate(booking.date)}</div>
+                            <div className="text-xs text-gray-700 font-medium">
+                              <span className="text-gold font-bold mr-1">{getShortDayOfWeek(booking.date)}</span>
+                              {formatDate(booking.date)}
+                            </div>
                             <div className="text-sm font-bold text-gray-900">{booking.time}</div>
                           </div>
                         </td>
@@ -2733,7 +2719,10 @@ export const AdminDashboard = () => {
                           {hasReturn ? (
                             <div className="flex flex-col bg-purple-50 p-1.5 rounded border border-purple-200">
                               <span className="text-[10px] font-semibold text-purple-700">🔄 RETURN</span>
-                              <span className="text-xs font-bold text-purple-900">{formatDate(booking.returnDate)}</span>
+                              <span className="text-xs font-bold text-purple-900">
+                                <span className="text-purple-500 mr-1">{getShortDayOfWeek(booking.returnDate)}</span>
+                                {formatDate(booking.returnDate)}
+                              </span>
                               <span className="text-sm font-bold text-purple-800">{booking.returnTime}</span>
                             </div>
                           ) : (
@@ -2743,9 +2732,35 @@ export const AdminDashboard = () => {
                         {/* PRICE & PAYMENT COLUMN */}
                         <td className="px-2 py-2">
                           <div className="flex flex-col items-start">
-                            <span className="text-sm font-bold text-gray-900">${booking.pricing?.totalPrice?.toFixed(0) || booking.totalPrice || '0'}</span>
+                            {inlinePriceBookingId === booking.id ? (
+                              <div className="flex items-center gap-0.5">
+                                <span className="text-xs text-gray-500">$</span>
+                                <input
+                                  type="number"
+                                  value={inlinePriceValue}
+                                  onChange={e => setInlinePriceValue(e.target.value)}
+                                  className="w-14 h-6 text-sm font-bold border border-gold rounded px-1 focus:outline-none focus:ring-1 focus:ring-gold/50"
+                                  autoFocus
+                                  onKeyDown={e => {
+                                    if (e.key === 'Enter') handleInlinePriceSave(booking);
+                                    if (e.key === 'Escape') setInlinePriceBookingId(null);
+                                  }}
+                                />
+                                <button onClick={() => handleInlinePriceSave(booking)} className="text-green-600 hover:text-green-700 font-bold text-sm leading-none px-0.5" title="Save">✓</button>
+                                <button onClick={() => setInlinePriceBookingId(null)} className="text-gray-400 hover:text-gray-600 font-bold text-sm leading-none px-0.5" title="Cancel">✕</button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => { setInlinePriceBookingId(booking.id); setInlinePriceValue(booking.pricing?.totalPrice?.toFixed(2) || booking.totalPrice || '0'); }}
+                                className="group flex items-center gap-0.5 hover:bg-gold/10 rounded px-1 py-0.5 -ml-1"
+                                title="Tap to override price"
+                              >
+                                <span className="text-sm font-bold text-gray-900">${booking.pricing?.totalPrice?.toFixed(0) || booking.totalPrice || '0'}</span>
+                                <Edit2 className="w-2.5 h-2.5 text-gold opacity-0 group-hover:opacity-100 transition-opacity" />
+                              </button>
+                            )}
                             <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold ${
-                              booking.payment_status === 'paid' ? 'bg-green-100 text-green-700' : 
+                              booking.payment_status === 'paid' ? 'bg-green-100 text-green-700' :
                               booking.payment_status === 'cash' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
                             }`}>
                               {booking.payment_status === 'paid' ? '✓ PAID' : booking.payment_status === 'cash' ? '💵 CASH' : '✗ UNPAID'}
@@ -2827,6 +2842,27 @@ export const AdminDashboard = () => {
                             >
                               <Mail className="w-4 h-4 text-green-600" />
                               <span className="text-[8px] text-green-500">Email</span>
+                            </button>
+                            {booking.payment_status !== 'paid' && (
+                              <button
+                                onClick={() => handleResendPaymentLink(booking.id, 'stripe')}
+                                className="p-1.5 hover:bg-emerald-100 rounded flex flex-col items-center border border-emerald-200"
+                                title="Send Stripe payment link to customer"
+                              >
+                                <CreditCard className="w-4 h-4 text-emerald-600" />
+                                <span className="text-[8px] text-emerald-600 font-medium">Pay Link</span>
+                              </button>
+                            )}
+                            <button
+                              onClick={() => {
+                                setSmsModal(booking);
+                                setSmsPhone(booking.driver_phone || '');
+                              }}
+                              className="p-1.5 hover:bg-purple-100 rounded flex flex-col items-center"
+                              title="Send booking details to driver via SMS"
+                            >
+                              <Smartphone className="w-4 h-4 text-purple-600" />
+                              <span className="text-[8px] text-purple-500">Driver</span>
                             </button>
                             <button
                               onClick={() => handleResendConfirmation(booking.id)}
@@ -4016,6 +4052,65 @@ export const AdminDashboard = () => {
         </DialogContent>
       </Dialog>
 
+      {/* SMS to Driver Modal */}
+      <Dialog open={!!smsModal} onOpenChange={(open) => { if (!open) { setSmsModal(null); setSmsPhone(''); } }}>
+        <DialogContent className="max-w-sm mx-4">
+          <DialogHeader>
+            <DialogTitle className="text-base flex items-center gap-2">
+              <Smartphone className="w-4 h-4 text-purple-600" />
+              Send to Driver — #{smsModal?.referenceNumber}
+            </DialogTitle>
+          </DialogHeader>
+          {smsModal && (
+            <div className="space-y-4">
+              {/* Saved drivers with phone numbers */}
+              {drivers.filter(d => d.phone).length > 0 && (
+                <div>
+                  <Label className="text-xs text-gray-500 mb-2 block">Saved Drivers</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {drivers.filter(d => d.phone).map(d => (
+                      <button
+                        key={d._id || d.id || d.name}
+                        onClick={() => setSmsPhone(d.phone)}
+                        className={`text-xs px-3 py-2 rounded-lg border transition-colors ${smsPhone === d.phone ? 'bg-gold border-gold text-black font-semibold' : 'bg-gray-50 border-gray-200 hover:border-gold/50 text-gray-700'}`}
+                      >
+                        {d.name?.split(' ')[0]} · {d.phone}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {/* Manual phone entry */}
+              <div>
+                <Label className="text-xs text-gray-500 mb-1 block">Driver Phone Number</Label>
+                <Input
+                  type="tel"
+                  placeholder="+64 21 ..."
+                  value={smsPhone}
+                  onChange={e => setSmsPhone(e.target.value)}
+                  className="text-sm"
+                />
+              </div>
+              {/* Message preview */}
+              <div>
+                <Label className="text-xs text-gray-500 mb-1 block">Message Preview</Label>
+                <pre className="text-xs bg-gray-50 border rounded-lg p-3 whitespace-pre-wrap text-gray-700 max-h-44 overflow-auto font-mono">
+                  {buildSmsMessage(smsModal)}
+                </pre>
+              </div>
+              <Button
+                onClick={openSmsApp}
+                disabled={!smsPhone}
+                className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold h-12 text-base"
+              >
+                <Smartphone className="w-4 h-4 mr-2" />
+                Open SMS App
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Email Modal */}
       <Dialog open={showEmailModal} onOpenChange={setShowEmailModal}>
         <DialogContent className="max-w-2xl">
@@ -4316,13 +4411,12 @@ export const AdminDashboard = () => {
               <div className="space-y-4">
                 <div>
                   <Label>Pickup Address 1 *</Label>
-                  <Input
-                    ref={pickupInputRef}
+                  <GeoapifyAutocomplete
                     value={newBooking.pickupAddress}
-                    onChange={(e) => setNewBooking(prev => ({...prev, pickupAddress: e.target.value}))}
+                    onChange={(v) => setNewBooking(prev => ({...prev, pickupAddress: v}))}
+                    onSelect={(addr) => setNewBooking(prev => ({...prev, pickupAddress: addr}))}
                     placeholder="Start typing address..."
                     className="mt-1"
-                    autoComplete="off"
                   />
                 </div>
 
@@ -4331,12 +4425,11 @@ export const AdminDashboard = () => {
                   <div key={index} className="relative">
                     <Label>Pickup Address {index + 2}</Label>
                     <div className="flex gap-2 mt-1">
-                      <Input
-                        ref={(el) => (additionalPickupRefs.current[index] = el)}
+                      <GeoapifyAutocomplete
                         value={pickup}
-                        onChange={(e) => handlePickupAddressChange(index, e.target.value)}
+                        onChange={(v) => handlePickupAddressChange(index, v)}
+                        onSelect={(addr) => handlePickupAddressChange(index, addr)}
                         placeholder="Start typing address..."
-                        autoComplete="off"
                         className="flex-1"
                       />
                       <Button
@@ -4375,13 +4468,12 @@ export const AdminDashboard = () => {
 
                 <div>
                   <Label>Drop-off Address *</Label>
-                  <Input
-                    ref={dropoffInputRef}
+                  <GeoapifyAutocomplete
                     value={newBooking.dropoffAddress}
-                    onChange={(e) => setNewBooking(prev => ({...prev, dropoffAddress: e.target.value}))}
+                    onChange={(v) => setNewBooking(prev => ({...prev, dropoffAddress: v}))}
+                    onSelect={(addr) => setNewBooking(prev => ({...prev, dropoffAddress: addr}))}
                     placeholder="Start typing address..."
                     className="mt-1"
-                    autoComplete="off"
                   />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -4402,7 +4494,7 @@ export const AdminDashboard = () => {
                           }
                         }}
                         placeholder="Select date"
-                        minDate={new Date()}
+                        allowPastDates={true}
                         maxDate={new Date('2030-12-31')}
                         showMonthDropdown
                         showYearDropdown
@@ -4813,13 +4905,12 @@ export const AdminDashboard = () => {
                 <div className="space-y-4">
                   <div>
                     <Label>Pickup Address 1 *</Label>
-                    <Input
-                      ref={editPickupInputRef}
+                    <GeoapifyAutocomplete
                       value={editingBooking.pickupAddress}
-                      onChange={(e) => setEditingBooking(prev => ({...prev, pickupAddress: e.target.value}))}
+                      onChange={(v) => setEditingBooking(prev => ({...prev, pickupAddress: v}))}
+                      onSelect={(addr) => setEditingBooking(prev => ({...prev, pickupAddress: addr}))}
                       placeholder="Start typing address..."
                       className="mt-1"
-                      autoComplete="off"
                     />
                   </div>
 
@@ -4828,12 +4919,11 @@ export const AdminDashboard = () => {
                     <div key={index} className="relative">
                       <Label>Pickup Address {index + 2}</Label>
                       <div className="flex gap-2 mt-1">
-                        <Input
-                          ref={(el) => (editAdditionalPickupRefs.current[index] = el)}
+                        <GeoapifyAutocomplete
                           value={pickup}
-                          onChange={(e) => handleEditPickupAddressChange(index, e.target.value)}
+                          onChange={(v) => handleEditPickupAddressChange(index, v)}
+                          onSelect={(addr) => handleEditPickupAddressChange(index, addr)}
                           placeholder="Start typing address..."
-                          autoComplete="off"
                           className="flex-1"
                         />
                         <Button
@@ -4863,26 +4953,38 @@ export const AdminDashboard = () => {
 
                   <div>
                     <Label>Drop-off Address *</Label>
-                    <Input
-                      ref={editDropoffInputRef}
+                    <GeoapifyAutocomplete
                       value={editingBooking.dropoffAddress}
-                      onChange={(e) => setEditingBooking(prev => ({...prev, dropoffAddress: e.target.value}))}
+                      onChange={(v) => setEditingBooking(prev => ({...prev, dropoffAddress: v}))}
+                      onSelect={(addr) => setEditingBooking(prev => ({...prev, dropoffAddress: addr}))}
                       placeholder="Start typing address..."
                       className="mt-1"
-                      autoComplete="off"
                     />
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label>Date *</Label>
-                      <Input
-                        type="date"
-                        value={editingBooking.date}
-                        onChange={(e) => setEditingBooking(prev => ({...prev, date: e.target.value}))}
-                        min={new Date().toISOString().split('T')[0]}
-                        className="mt-1"
-                      />
+                      <Label>Date * (can backdate for invoicing)</Label>
+                      <div className="mt-1">
+                        <CustomDatePicker
+                          selected={editPickupDate}
+                          onChange={(date) => {
+                            setEditPickupDate(date);
+                            if (date) {
+                              const year = date.getFullYear();
+                              const month = String(date.getMonth() + 1).padStart(2, '0');
+                              const day = String(date.getDate()).padStart(2, '0');
+                              setEditingBooking(prev => ({...prev, date: `${year}-${month}-${day}`}));
+                            }
+                          }}
+                          placeholder="Select date"
+                          allowPastDates={true}
+                          maxDate={new Date('2030-12-31')}
+                          showMonthDropdown
+                          showYearDropdown
+                          dropdownMode="select"
+                        />
+                      </div>
                     </div>
                     <div>
                       <Label>Time *</Label>

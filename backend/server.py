@@ -7,6 +7,8 @@ from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
+import hashlib
+import hmac
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict, model_validator
 from typing import List, Optional, Dict
@@ -88,10 +90,56 @@ if 'MONGO_URL' not in os.environ or 'DB_NAME' not in os.environ:
 client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=2000, connectTimeoutMS=2000)
 db = client[db_name]
 
+
+async def resolve_db_name_case_conflict() -> str:
+    """
+    Resolve DB names that differ only by case.
+
+    MongoDB can raise write error 13297 if a database already exists with
+    different letter casing. This ensures we reuse the existing name.
+    """
+    global db_name, db
+
+    configured_db_name = os.environ.get('DB_NAME', db_name)
+    try:
+        existing_db_names = await client.list_database_names()
+    except Exception as exc:
+        logging.warning("Could not list databases for DB_NAME case check: %s", exc)
+        db_name = configured_db_name
+        db = client[db_name]
+        os.environ['DB_NAME'] = db_name
+        return db_name
+
+    matched_db_name = next(
+        (name for name in existing_db_names if name.lower() == configured_db_name.lower()),
+        None
+    )
+
+    if matched_db_name and matched_db_name != configured_db_name:
+        logging.warning(
+            "DB_NAME case mismatch detected: configured '%s' but existing database is '%s'. "
+            "Using existing database name.",
+            configured_db_name,
+            matched_db_name
+        )
+        db_name = matched_db_name
+        db = client[db_name]
+        os.environ['DB_NAME'] = db_name
+        return db_name
+
+    db_name = configured_db_name
+    db = client[db_name]
+    os.environ['DB_NAME'] = db_name
+    return db_name
+
 # Authentication configuration
 SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'your-secret-key-change-in-production-' + str(uuid.uuid4()))
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 1440  # 24 hours
+QUICK_APPROVAL_TOKEN_EXPIRE_HOURS = 24
+
+# Emergent LLM API Key
+EMERGENT_API_KEY = os.environ.get('EMERGENT_API_KEY')
 
 # Support both bcrypt (legacy from create_admin.py) and pbkdf2_sha256 for backward compatibility
 pwd_context = CryptContext(schemes=["pbkdf2_sha256", "bcrypt"], deprecated="auto")
@@ -214,6 +262,32 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
+
+def _build_quick_approval_signature(booking_id: str, action: str, expires_at: int) -> str:
+    payload = f"{booking_id}:{action}:{expires_at}"
+    return hmac.new(
+        SECRET_KEY.encode("utf-8"),
+        payload.encode("utf-8"),
+        hashlib.sha256
+    ).hexdigest()
+
+def build_quick_approval_link(booking_id: str, action: str, public_domain: str) -> str:
+    expires_at = int(
+        (datetime.now(timezone.utc) + timedelta(hours=QUICK_APPROVAL_TOKEN_EXPIRE_HOURS)).timestamp()
+    )
+    token = _build_quick_approval_signature(booking_id, action, expires_at)
+    return (
+        f"{public_domain}/api/booking/quick-approve/{booking_id}"
+        f"?action={action}&expires={expires_at}&token={token}"
+    )
+
+def validate_quick_approval_token(booking_id: str, action: str, expires_at: int, token: str) -> bool:
+    if not token:
+        return False
+    if datetime.now(timezone.utc).timestamp() > expires_at:
+        return False
+    expected = _build_quick_approval_signature(booking_id, action, expires_at)
+    return hmac.compare_digest(token, expected)
 
 def format_nz_phone(phone: str) -> str:
     """Format phone number to E.164 format for Twilio (NZ numbers)"""
@@ -1107,6 +1181,63 @@ async def health_check():
     return {"status": "healthy", "service": "bookaride-api"}
 
 
+@api_router.post("/admin/test-email")
+async def test_email_sending(request: Request, current_admin=Depends(get_current_admin)):
+    """
+    Admin endpoint: check which email providers are configured and send a test email.
+    POST body (JSON): { "to": "you@example.com" }  (optional – defaults to admin email)
+    Returns per-provider results so you can see exactly which one fails and why.
+    """
+    body = await request.json() if request.headers.get("content-type", "").startswith("application/json") else {}
+    to_email = body.get("to") or os.environ.get("ADMIN_EMAIL") or os.environ.get("BOOKINGS_NOTIFICATION_EMAIL", "")
+
+    results = {
+        "providers_configured": {
+            "mailgun": bool(os.environ.get("MAILGUN_API_KEY") and os.environ.get("MAILGUN_DOMAIN")),
+            "gmail_api": bool(os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON") or os.environ.get("GOOGLE_SERVICE_ACCOUNT_FILE")),
+            "smtp": bool(os.environ.get("SMTP_USER") and os.environ.get("SMTP_PASS")),
+        },
+        "send_attempted_to": to_email,
+        "send_result": False,
+        "provider_used": None,
+        "provider_errors": {},
+    }
+
+    if not to_email:
+        results["provider_errors"]["_"] = "No recipient: set ADMIN_EMAIL env var or pass {'to': 'email'} in body"
+        return results
+
+    if not send_email_unified:
+        results["provider_errors"]["_"] = "email_sender module not loaded"
+        return results
+
+    try:
+        from email_sender import _send_via_mailgun, _send_via_gmail_api, _send_via_smtp
+        from_email = get_noreply_email()
+        subject = "BookaRide – Test Email"
+        html = "<h2>Test email working!</h2><p>If you received this, your email provider is configured correctly.</p>"
+
+        providers = [
+            ("mailgun",   _send_via_mailgun,   (to_email, subject, html, from_email, "BookaRide", None)),
+            ("gmail_api", _send_via_gmail_api,  (to_email, subject, html, from_email, "BookaRide", None)),
+            ("smtp",      _send_via_smtp,       (to_email, subject, html, from_email, "BookaRide")),
+        ]
+        for name, fn, args in providers:
+            try:
+                ok = fn(*args)
+                results["provider_errors"][name] = "ok" if ok else "returned False (not configured or auth failed — check Render logs for details)"
+                if ok:
+                    results["send_result"] = True
+                    results["provider_used"] = name
+                    break
+            except Exception as exc:
+                results["provider_errors"][name] = f"{type(exc).__name__}: {exc}"
+    except Exception as exc:
+        results["provider_errors"]["_import"] = str(exc)
+
+    return results
+
+
 # Google Reviews Endpoint - Fetches reviews from Google Places API
 @api_router.get("/google-reviews")
 async def get_google_reviews():
@@ -1392,7 +1523,7 @@ async def calculate_price(request: PriceCalculationRequest):
                     # Sum all leg distances
                     total_distance_meters = sum(leg['distance']['value'] for leg in route['legs'])
                     distance_km = round(total_distance_meters / 1000, 2)
-                    logger.info(f"Multi-stop route: {len(all_pickups)} pickups ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ dropoff, total: {distance_km}km")
+                    logger.info(f"Multi-stop route: {len(all_pickups)} pickups → dropoff, total: {distance_km}km")
                 else:
                     logger.warning(f"Google Maps Directions API error: {data.get('error_message', data.get('status'))}")
                     distance_km = _fallback_km * len(all_pickups)  # Fallback: estimate per stop
@@ -1559,7 +1690,7 @@ async def calculate_price(request: PriceCalculationRequest):
             if is_from_hibiscus_coast or is_to_hibiscus_coast:
                 # From/to Hibiscus Coast - flat $550 minimum (return)
                 if total_price < matakana_concert_base:
-                    logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â½ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âµ Hibiscus Coast ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ Matakana Country Park: applying flat ${matakana_concert_base}")
+                    logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â½ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âµ Hibiscus Coast → Matakana Country Park: applying flat ${matakana_concert_base}")
                     total_price = matakana_concert_base
             else:
                 # From elsewhere in Auckland:
@@ -1588,7 +1719,7 @@ async def calculate_price(request: PriceCalculationRequest):
                 # Total = km rate to Hibiscus Coast + $550 concert base + extras
                 total_price = price_to_hibiscus + matakana_concert_base + airport_fee + oversized_luggage_fee + passenger_fee
                 
-                logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â½ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âµ Auckland ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ Matakana Country Park: {distance_to_hibiscus}km @ ${rate_to_hibiscus}/km = ${price_to_hibiscus:.2f} + ${matakana_concert_base} = ${total_price:.2f}")
+                logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â½ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âµ Auckland → Matakana Country Park: {distance_to_hibiscus}km @ ${rate_to_hibiscus}/km = ${price_to_hibiscus:.2f} + ${matakana_concert_base} = ${total_price:.2f}")
         elif total_price < 100.0:
             # Standard minimum of $100 for regular trips
             total_price = 100.0
@@ -1761,16 +1892,37 @@ async def create_booking(booking: BookingCreate, background_tasks: BackgroundTas
         raise HTTPException(status_code=500, detail=f"Error creating booking: {str(e)}")
 
 
-# Quick Approve/Reject Endpoint (for email links - no auth required, uses secure token)
+# Quick Approve/Reject Endpoint (for signed email links)
 @api_router.get("/booking/quick-approve/{booking_id}")
-async def quick_approve_booking(booking_id: str, action: str = "approve"):
+async def quick_approve_booking(
+    booking_id: str,
+    action: str = "approve",
+    token: str = "",
+    expires: Optional[int] = None
+):
     """
     Quick approve or reject a booking directly from email link.
-    No authentication required - accessed via unique booking ID from email.
+    Requires a signed token tied to booking_id/action with expiry.
     """
     from fastapi.responses import HTMLResponse
     
     try:
+        if action not in {"approve", "reject"}:
+            return HTMLResponse(content="""
+                <html><body style="font-family: Arial; text-align: center; padding: 50px;">
+                    <h1 style="color: #f59e0b;">Invalid Action</h1>
+                    <p>Please use the approve or reject buttons from the email.</p>
+                </body></html>
+            """, status_code=400)
+
+        if expires is None or not validate_quick_approval_token(booking_id, action, expires, token):
+            return HTMLResponse(content="""
+                <html><body style="font-family: Arial; text-align: center; padding: 50px;">
+                    <h1 style="color: #DC2626;">Link Invalid or Expired</h1>
+                    <p>This approval link has expired or is invalid. Please use the admin dashboard.</p>
+                    <a href="https://bookaride.co.nz/admin/dashboard" style="display: inline-block; margin-top: 20px; padding: 15px 30px; background-color: #f59e0b; color: white; text-decoration: none; border-radius: 8px;">Go to Admin Dashboard</a>
+                </body></html>
+            """, status_code=401)
         # Find the booking
         booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
         
@@ -1831,7 +1983,14 @@ async def quick_approve_booking(booking_id: str, action: str = "approve"):
                 }}
             )
             
-            # TODO: Optionally send rejection email to customer
+            # Send rejection email to customer
+            customer_email = booking.get('email')
+            if customer_email:
+                try:
+                    await send_cancellation_email(booking, customer_email, customer_name)
+                    logger.info(f"Rejection email sent to customer for booking {booking_ref}")
+                except Exception as e:
+                    logger.error(f"Failed to send rejection email: {e}")
             
             logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Booking {booking_ref} REJECTED via email quick-approve")
             
@@ -2426,32 +2585,32 @@ def send_booking_confirmation_email(booking: dict, include_payment_link: bool = 
     return False
 
 
-def send_via_mailgun(booking: dict):
+def send_via_mailgun(booking: dict, admin_cc: str = None):
     """Try sending via Mailgun with beautiful email template"""
     try:
         mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
         mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
         sender_email = get_noreply_email()
-        
+
         if not mailgun_api_key or not mailgun_domain:
             logger.warning("Mailgun credentials not configured")
             return False
-        
+
         # Get booking reference for subject line
         booking_ref = get_booking_reference(booking)
-        
+
         # Get language preference for subject (default to English)
         lang = booking.get('language', 'en')
         if lang not in EMAIL_TRANSLATIONS:
             lang = 'en'
         t = EMAIL_TRANSLATIONS[lang]
-        
+
         subject = f"{t['subject']} - Ref: {booking_ref}"
         recipient_email = booking.get('email')
-        
+
         # Use the beautiful email template
         html_content = generate_confirmation_email_html(booking)
-        
+
         # Build email data with CC support
         email_data = {
             "from": f"BookaRide <{sender_email}>",
@@ -2459,21 +2618,28 @@ def send_via_mailgun(booking: dict):
             "subject": subject,
             "html": html_content
         }
-        
-        # Add CC if provided
-        cc_email = booking.get('ccEmail', '')
-        if cc_email and cc_email.strip():
-            email_data["cc"] = cc_email.strip()
-        
+
+        # Merge per-booking CC with admin CC
+        cc_parts = []
+        booking_cc = booking.get('ccEmail', '')
+        if booking_cc and booking_cc.strip():
+            cc_parts.append(booking_cc.strip())
+        if admin_cc:
+            cc_parts.append(admin_cc)
+        cc_all = ', '.join(cc_parts)
+        if cc_all:
+            email_data["cc"] = cc_all
+
         # Send email via Mailgun API
         response = requests.post(
             f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
             auth=("api", mailgun_api_key),
-            data=email_data
+            data=email_data,
+            timeout=15,
         )
-        
-        if response.status_code == 200:
-            cc_info = f" (CC: {cc_email})" if cc_email else ""
+
+        if response.status_code in (200, 201):
+            cc_info = f" (CC: {cc_all})" if cc_all else ""
             logger.info(f"Confirmation email sent to {recipient_email}{cc_info} via Mailgun")
             return True
         else:
@@ -2485,46 +2651,59 @@ def send_via_mailgun(booking: dict):
         return False
 
 
-def send_via_smtp(booking: dict):
+def send_via_smtp(booking: dict, admin_cc: str = None):
     """Fallback: Send via Gmail SMTP"""
     try:
         smtp_user = os.environ.get('SMTP_USER')
         smtp_pass = os.environ.get('SMTP_PASS')
-        sender_email = get_noreply_email()
-        
+        sender_email = smtp_user  # Must match authenticated SMTP_USER; Google rejects mismatches
+
         if not smtp_user or not smtp_pass:
             logger.warning("SMTP credentials not configured")
             return False
-        
+
         # Create email content using the beautiful template
         booking_ref = get_booking_reference(booking)
         subject = f"Booking Confirmation - Ref: {booking_ref}"
         recipient_email = booking.get('email')
-        
+
         # Use the beautiful email template
         html_content = generate_confirmation_email_html(booking)
-        
+
+        # Merge per-booking CC with admin CC
+        cc_parts = []
+        booking_cc = booking.get('ccEmail', '')
+        if booking_cc and booking_cc.strip():
+            cc_parts.append(booking_cc.strip())
+        if admin_cc:
+            cc_parts.append(admin_cc)
+        cc_all = ', '.join(cc_parts)
+
         # Create message
         message = MIMEMultipart('alternative')
         message['Subject'] = subject
         message['From'] = sender_email
         message['To'] = recipient_email
-        
+        if cc_all:
+            message['Cc'] = cc_all
+
         # Attach HTML
         html_part = MIMEText(html_content, 'html')
         message.attach(html_part)
-        
+
         # Send via SMTP (Google Workspace / Gmail)
         smtp_host = os.environ.get('SMTP_HOST', 'smtp.gmail.com')
         smtp_port = int(os.environ.get('SMTP_PORT', '587'))
+        all_recipients = [recipient_email] + [a.strip() for a in cc_all.split(",")] if cc_all else [recipient_email]
         with smtplib.SMTP(smtp_host, smtp_port) as server:
             server.starttls()
             server.login(smtp_user, smtp_pass)
-            server.send_message(message)
-        
-        logger.info(f"Confirmation email sent to {recipient_email} via SMTP")
+            server.sendmail(sender_email, all_recipients, message.as_string())
+
+        cc_info = f" (CC: {cc_all})" if cc_all else ""
+        logger.info(f"Confirmation email sent to {recipient_email}{cc_info} via SMTP")
         return True
-        
+
     except Exception as e:
         logger.error(f"SMTP error: {str(e)}")
         import traceback
@@ -2599,12 +2778,97 @@ Thank you for booking with us!"""
         return False
 
 
+def create_stripe_payment_link_sync(booking_dict: dict) -> str:
+    """Create a Stripe Checkout session synchronously and return the URL.
+    Returns empty string if Stripe is not configured or the booking is already paid."""
+    try:
+        stripe_api_key = os.environ.get('STRIPE_API_KEY') or os.environ.get('STRIPE_SECRET_KEY')
+        if not stripe_api_key:
+            logger.warning("Stripe API key not configured — skipping payment link in email")
+            return ''
+
+        try:
+            import stripe as stripe_lib
+        except ImportError:
+            logger.warning("stripe library not installed — skipping payment link in email")
+            return ''
+
+        amount = float(booking_dict.get('totalPrice', 0) or 0)
+        if amount <= 0:
+            logger.warning(f"Booking {booking_dict.get('id')} has no positive amount — skipping payment link")
+            return ''
+
+        stripe_lib.api_key = stripe_api_key
+        frontend_url = os.environ.get('FRONTEND_URL', 'https://bookaride.co.nz').rstrip('/')
+        booking_id = booking_dict.get('id', '')
+        booking_ref = get_booking_reference(booking_dict)
+
+        session = stripe_lib.checkout.Session.create(
+            mode='payment',
+            line_items=[{
+                'price_data': {
+                    'currency': 'nzd',
+                    'product_data': {'name': f'BookARide booking #{booking_ref}'},
+                    'unit_amount': int(round(amount * 100)),
+                },
+                'quantity': 1,
+            }],
+            success_url=f"{frontend_url}/payment-success?session_id={{CHECKOUT_SESSION_ID}}",
+            cancel_url=f"{frontend_url}/book-now",
+            customer_email=booking_dict.get('email') or None,
+            metadata={
+                'booking_id': booking_id,
+                'customer_email': booking_dict.get('email', ''),
+                'customer_name': booking_dict.get('name', ''),
+            },
+        )
+
+        url = session.url or ''
+        if not url:
+            return ''
+
+        # Persist the link against the booking so admin can also see it
+        try:
+            from pymongo import MongoClient
+            _sync_client = MongoClient(os.environ.get('MONGO_URL', 'mongodb://localhost:27017'))
+            _sync_db = _sync_client[db_name]
+            _sync_db.bookings.update_one(
+                {'id': booking_id},
+                {'$set': {'email_payment_link': url, 'email_payment_session_id': session.id}}
+            )
+            _sync_client.close()
+        except Exception as db_err:
+            logger.error(f"Could not save payment link to booking {booking_id}: {db_err}")
+
+        logger.info(f"Stripe payment link created for booking {booking_ref}: {url}")
+        return url
+    except Exception as e:
+        logger.error(f"Error creating Stripe payment link for email: {e}")
+        return ''
+
+
 def send_customer_confirmation(booking: dict):
     """Send confirmation based on customer's notification preference"""
     preference = booking.get('notificationPreference', 'both')
     results = {'email': False, 'sms': False}
     booking_id = booking.get('id')
-    
+
+    # Generate a Stripe payment link and attach it to the booking dict so that
+    # the email template can render a "Pay Now" button.
+    # Only generate if the booking is not already paid and isn't an invoice-only method.
+    booking = dict(booking)  # shallow copy — don't mutate the caller's dict
+    skip_payment_link_methods = {'xero', 'invoice', 'cash'}
+    already_paid = (booking.get('payment_status') or '').lower() == 'paid'
+    payment_method_val = (booking.get('paymentMethod') or '').lower()
+    if not already_paid and payment_method_val not in skip_payment_link_methods:
+        existing_link = booking.get('email_payment_link', '')
+        if existing_link:
+            logger.info(f"Re-using existing payment link for booking {booking_id}")
+        else:
+            generated_link = create_stripe_payment_link_sync(booking)
+            if generated_link:
+                booking['email_payment_link'] = generated_link
+
     if preference in ['email', 'both']:
         results['email'] = send_booking_confirmation_email(booking)
         logger.info(f"Email confirmation {'sent' if results['email'] else 'failed'} for booking {get_booking_reference(booking)}")
@@ -2623,7 +2887,7 @@ def send_customer_confirmation(booking: dict):
         try:
             from pymongo import MongoClient
             sync_client = MongoClient(os.environ.get('MONGO_URL', 'mongodb://localhost:27017'))
-            sync_db = sync_client[os.environ.get('DB_NAME', 'test_database')]
+            sync_db = sync_client[db_name]
             
             nz_tz = pytz.timezone('Pacific/Auckland')
             now = datetime.now(nz_tz).isoformat()
@@ -3277,6 +3541,10 @@ async def handle_incoming_email(request: Request):
         # Generate AI response
         from emergentintegrations.llm.openai import LlmChat, UserMessage
         
+        if not EMERGENT_API_KEY:
+            logger.error("Cannot generate email response: EMERGENT_API_KEY not set")
+            return {"status": "error", "reason": "LLM not configured"}
+        
         email_system_prompt = """You are an AI email assistant for BookaRide NZ, a premium airport transfer service in Auckland, New Zealand.
 
 You are responding to customer emails automatically. Be warm, professional, and helpful.
@@ -3323,7 +3591,7 @@ FORMAT:
 """
         
         llm = LlmChat(
-            api_key="sk-emergent-1221fFe2cB790B632B",
+            api_key=EMERGENT_API_KEY,
             session_id=str(uuid.uuid4()),
             system_message=email_system_prompt
         )
@@ -3535,7 +3803,7 @@ async def send_abandoned_booking_emails():
                         <div style="text-align: center; margin: 30px 0;">
                             <a href="https://bookaride.co.nz/book-now" 
                                style="background: #D4AF37; color: #000; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
-                                Complete Your Booking ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢
+                                Complete Your Booking →
                             </a>
                         </div>
                         <p style="color: #999; font-size: 14px; text-align: center;">
@@ -3587,6 +3855,10 @@ async def chatbot_message(request: ChatbotMessageRequest):
     try:
         from emergentintegrations.llm.openai import LlmChat, UserMessage
         
+        if not EMERGENT_API_KEY:
+            logger.error("Cannot generate chatbot response: EMERGENT_API_KEY not set")
+            return {"error": "AI chatbot not configured. Please contact support."}
+        
         # Build context from conversation history
         history_context = ""
         if request.conversationHistory:
@@ -3636,7 +3908,7 @@ IMPORTANT:
 - The booking form has a LIVE PRICE CALCULATOR - they see the price instantly when they enter addresses"""
 
         llm = LlmChat(
-            api_key="sk-emergent-1221fFe2cB790B632B",
+            api_key=EMERGENT_API_KEY,
             session_id=str(uuid.uuid4()),
             system_message=system_prompt
         )
@@ -3785,9 +4057,12 @@ async def send_daily_reminders_core(source: str = "unknown"):
 async def cron_send_reminders(api_key: str = None):
     """Endpoint for external cron service to trigger reminders (requires API key)"""
     try:
-        expected_key = os.environ.get('CRON_API_KEY', 'bookaride-cron-secret-2024')
+        expected_key = os.environ.get('CRON_API_KEY')
+        if not expected_key:
+            logger.error("CRON_API_KEY is not configured; cron endpoint disabled")
+            raise HTTPException(status_code=503, detail="Cron endpoint is not configured")
         
-        if api_key != expected_key:
+        if not api_key or not hmac.compare_digest(api_key, expected_key):
             raise HTTPException(status_code=401, detail="Invalid API key")
         
         result = await send_daily_reminders_core(source="cron_endpoint")
@@ -3913,6 +4188,10 @@ async def send_urgent_approval_notification(booking: dict):
         booking_ref = get_booking_reference(booking)
         full_booking_id = get_full_booking_reference(booking)
         
+        public_domain = os.environ.get('PUBLIC_DOMAIN', 'https://bookaride.co.nz').rstrip('/')
+        approve_link = build_quick_approval_link(booking.get('id', ''), "approve", public_domain)
+        reject_link = build_quick_approval_link(booking.get('id', ''), "reject", public_domain)
+
         # Create URGENT email for bookings within 24 hours
         html_content = f"""
         <html>
@@ -3951,8 +4230,8 @@ async def send_urgent_approval_notification(booking: dict):
                         <p style="margin: 10px 0 0 0; font-size: 14px; color: #7F1D1D;">Approve or reject this booking:</p>
                         
                         <div style="margin-top: 20px;">
-                            <a href="https://bookaride.co.nz/api/booking/quick-approve/{booking.get('id')}?action=approve" style="display: inline-block; margin: 5px; padding: 15px 40px; background-color: #16a34a; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ APPROVE</a>
-                            <a href="https://bookaride.co.nz/api/booking/quick-approve/{booking.get('id')}?action=reject" style="display: inline-block; margin: 5px; padding: 15px 40px; background-color: #DC2626; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ REJECT</a>
+                            <a href="{approve_link}" style="display: inline-block; margin: 5px; padding: 15px 40px; background-color: #16a34a; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ APPROVE</a>
+                            <a href="{reject_link}" style="display: inline-block; margin: 5px; padding: 15px 40px; background-color: #DC2626; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ REJECT</a>
                         </div>
                         
                         <p style="margin: 15px 0 0 0; font-size: 12px; color: #7F1D1D;">Or open the admin dashboard for more options:</p>
@@ -4046,7 +4325,7 @@ Price: ${booking.get('totalPrice', 0):.2f}
             try:
                 from pymongo import MongoClient
                 sync_client = MongoClient(os.environ.get('MONGO_URL', 'mongodb://localhost:27017'))
-                sync_db = sync_client[os.environ.get('DB_NAME', 'test_database')]
+                sync_db = sync_client[db_name]
                 sync_db.pending_approvals.update_one(
                     {"admin_phone": admin_phone},
                     {"$set": {
@@ -4442,12 +4721,16 @@ async def translate_to_english_async(text: str) -> str:
     if not text or not contains_non_english(text):
         return text
     
+    if not EMERGENT_API_KEY:
+        logger.warning("Cannot translate text: EMERGENT_API_KEY not set")
+        return text  # Return original text if translation not available
+    
     try:
         from emergentintegrations.llm.openai import LlmChat, UserMessage
         import uuid
         
         llm = LlmChat(
-            api_key="sk-emergent-1221fFe2cB790B632B",
+            api_key=EMERGENT_API_KEY,
             session_id=str(uuid.uuid4()),
             system_message="You are a translator. Translate text to English. Only return the translation, nothing else. Keep any English text as-is."
         )
@@ -4534,10 +4817,10 @@ async def create_calendar_event(booking: dict):
         has_return = booking.get('bookReturn', False)
         
         outbound_event = {
-            'summary': f"{customer_name} ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ {eng['dropoff'].split(',')[0]}" + (" + Return" if has_return else ""),
+            'summary': f"{customer_name} → {eng['dropoff'].split(',')[0]}" + (" + Return" if has_return else ""),
             'location': main_pickup,
             'description': f"""BOOKING #{ref_num}
-ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â
+══════════════════════════════════════
 
 CUSTOMER
 {customer_name}
@@ -4556,11 +4839,11 @@ ${total_price:.2f} NZD - {payment_status}
 
 {f'NOTES: {notes}' if notes and notes.strip() else ''}
 {"" if not has_return else f'''
-ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â
+══════════════════════════════════════
 RETURN TRIP BOOKED
 Date: {booking.get('returnDate', 'N/A')} at {booking.get('returnTime', 'N/A')}
 (See separate calendar event)
-ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â'''}
+══════════════════════════════════════'''}
             """.strip(),
             'start': {'dateTime': nz_dt.isoformat()},
             'end': {'dateTime': (nz_dt + timedelta(hours=2)).isoformat()},
@@ -4601,10 +4884,10 @@ Date: {booking.get('returnDate', 'N/A')} at {booking.get('returnTime', 'N/A')}
                 reverse_stops.append(f"{len(reverse_stops) + 1}. {main_pickup} (FINAL DROP-OFF)")
                 
                 return_event = {
-                    'summary': f"{customer_name} ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â Return from {eng['dropoff'].split(',')[0]}",
+                    'summary': f"{customer_name} ← Return from {eng['dropoff'].split(',')[0]}",
                     'location': eng['dropoff'],  # Return starts from original drop-off
                     'description': f"""BOOKING #{ref_num} - RETURN
-ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â
+══════════════════════════════════════
 
 CUSTOMER
 {customer_name}
@@ -4623,10 +4906,10 @@ ${total_price:.2f} NZD (total both ways) - {payment_status}
 
 {f'NOTES: {notes}' if notes and notes.strip() else ''}
 
-ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â
+══════════════════════════════════════
 Return leg of booking #{ref_num}
 Outbound was: {formatted_date} at {booking_time}
-ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â
+══════════════════════════════════════
                     """.strip(),
                     'start': {'dateTime': return_nz_dt.isoformat()},
                     'end': {'dateTime': (return_nz_dt + timedelta(hours=2)).isoformat()},
@@ -4989,7 +5272,8 @@ def _get_booking_email_data(booking: dict) -> dict:
 def generate_confirmation_email_html(booking: dict, for_admin: bool = False) -> str:
     """Generate the confirmation email HTML for preview or sending - Clean professional design.
     Includes all booking details: flights, return trip, notes, route, payment.
-    Set for_admin=True to add admin copy banner (same content, both get full details)."""
+    Set for_admin=True to add admin copy banner (same content, both get full details).
+    If booking contains 'email_payment_link' and payment is not paid, a Pay Now button is shown."""
     sender_email = os.environ.get('SENDER_EMAIL', 'bookings@bookaride.co.nz')
     d = _get_booking_email_data(booking)
     
@@ -5108,6 +5392,26 @@ def generate_confirmation_email_html(booking: dict, for_admin: bool = False) -> 
                         </tr>
             '''
     
+    # Payment link button — only for customer emails on unpaid bookings
+    payment_link_html = ''
+    _payment_link_url = booking.get('email_payment_link', '')
+    if not for_admin and _payment_link_url and payment_status != 'PAID':
+        payment_link_html = f'''
+                        <!-- Pay Now Button -->
+                        <tr>
+                            <td colspan="2" style="padding: 30px 20px; text-align: center; background: #fdf8ee;">
+                                <p style="margin: 0 0 6px 0; color: #666; font-size: 13px;">Your booking is reserved — complete your payment to confirm.</p>
+                                <a href="{_payment_link_url}"
+                                   style="display: inline-block; background: #D4AF37; color: #1a1a2e; text-decoration: none;
+                                          font-size: 16px; font-weight: 700; padding: 14px 40px; border-radius: 6px;
+                                          letter-spacing: 0.5px; margin-top: 10px;">
+                                    Pay Now — ${total_price:.2f} NZD
+                                </a>
+                                <p style="margin: 12px 0 0 0; color: #999; font-size: 11px;">Secure payment via Stripe&nbsp;·&nbsp;Card, Apple Pay &amp; Google Pay accepted</p>
+                            </td>
+                        </tr>
+        '''
+
     admin_banner = '''
                 <div style="background: #1a365d; color: #D4AF37; padding: 12px 20px; text-align: center; border-bottom: 2px solid #D4AF37;">
                     <p style="margin: 0; font-size: 13px; font-weight: 600;">ADMIN COPY - New Booking</p>
@@ -5223,6 +5527,8 @@ def generate_confirmation_email_html(booking: dict, for_admin: bool = False) -> 
                             </td>
                         </tr>
                         
+                        {payment_link_html}
+
                         <!-- Contact Details -->
                         <tr>
                             <td colspan="2" style="padding: 20px;">
@@ -7801,17 +8107,28 @@ Customers will be auto-notified 5 mins before their pickup. Drive safe! ÃƒÆ�
 
 # Production Database Sync Endpoint
 PRODUCTION_API_URL = "https://bookaride.co.nz/api"
-SYNC_SECRET_KEY = os.environ.get("SYNC_SECRET_KEY", "bookaride-sync-2024-secret")
+SYNC_SECRET_KEY = os.environ.get("SYNC_SECRET_KEY")
+
+def get_sync_secret_key() -> str:
+    if not SYNC_SECRET_KEY:
+        raise RuntimeError("SYNC_SECRET_KEY is not configured")
+    return SYNC_SECRET_KEY
 
 # Background auto-sync function
 async def auto_sync_from_production():
     """Automatically sync data from production every 5 minutes"""
     try:
+        try:
+            sync_secret = get_sync_secret_key()
+        except RuntimeError as secret_error:
+            logger.warning(f"Auto-sync disabled: {str(secret_error)}")
+            return
+
         logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¾ Auto-sync: Starting sync from production...")
         
         response = requests.get(
             f"{PRODUCTION_API_URL}/sync/export",
-            params={"secret": SYNC_SECRET_KEY},
+            params={"secret": sync_secret},
             timeout=60
         )
         
@@ -8157,9 +8474,15 @@ async def get_urgent_return_bookings(current_admin: dict = Depends(get_current_a
 
 # Endpoint to EXPORT data (called by other environments to fetch data)
 @api_router.get("/sync/export")
-async def export_data_for_sync(secret: str = ""):
+async def export_data_for_sync(request: Request, secret: str = ""):
     """Export bookings and drivers for sync - requires secret key"""
-    if secret != SYNC_SECRET_KEY:
+    try:
+        expected_secret = get_sync_secret_key()
+    except RuntimeError:
+        raise HTTPException(status_code=503, detail="Sync export is not configured")
+
+    provided_secret = request.headers.get("X-Sync-Secret") or secret
+    if not provided_secret or not hmac.compare_digest(provided_secret, expected_secret):
         raise HTTPException(status_code=403, detail="Invalid sync key")
     
     try:
@@ -8177,9 +8500,14 @@ async def export_data_for_sync(secret: str = ""):
 
 
 @api_router.post("/admin/sync")
-async def sync_from_production():
+async def sync_from_production(current_admin: dict = Depends(get_current_admin)):
     """Sync bookings and drivers from production database via deployed API"""
     try:
+        try:
+            sync_secret = get_sync_secret_key()
+        except RuntimeError:
+            raise HTTPException(status_code=503, detail="Sync service is not configured")
+
         sync_results = {
             "bookings_synced": 0,
             "bookings_updated": 0,
@@ -8193,7 +8521,7 @@ async def sync_from_production():
             logger.info("Starting sync from production...")
             response = requests.get(
                 f"{PRODUCTION_API_URL}/sync/export",
-                params={"secret": SYNC_SECRET_KEY},
+                params={"secret": sync_secret},
                 timeout=60
             )
             
@@ -8304,7 +8632,7 @@ async def get_analytics_stats(start_date: Optional[str] = None, end_date: Option
             pickup = booking.get('pickupAddress', '').split(',')[0]
             dropoff = booking.get('dropoffAddress', '').split(',')[0]
             if pickup and dropoff:
-                route = f"{pickup} ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ {dropoff}"
+                route = f"{pickup} → {dropoff}"
                 route_counts[route] = route_counts.get(route, 0) + 1
         
         popular_routes = sorted(route_counts.items(), key=lambda x: x[1], reverse=True)[:5]
@@ -12321,7 +12649,7 @@ async def hotel_login(request: HotelLoginRequest):
             "hotel_code": hotel["code"],
             "exp": datetime.now(timezone.utc) + timedelta(hours=24)
         }
-        token = jwt.encode(token_data, os.environ.get("SECRET_KEY", "hotel-secret-key"), algorithm="HS256")
+        token = jwt.encode(token_data, SECRET_KEY, algorithm=ALGORITHM)
         
         return {
             "success": True,
@@ -12347,7 +12675,7 @@ async def get_current_hotel(request: Request):
     
     token = auth_header.split(" ")[1]
     try:
-        payload = jwt.decode(token, os.environ.get("SECRET_KEY", "hotel-secret-key"), algorithms=["HS256"])
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return payload
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
@@ -13321,35 +13649,40 @@ def create_arrival_email_html(customer_name: str, booking_date: str, pickup_time
 
 @app.on_event("startup")
 async def startup_event():
-    """Start the scheduler when the app starts and ensure default admin exists"""
-    # Ensure default admin exists with correct email for Google OAuth
+    """Start the scheduler when the app starts and optionally bootstrap an admin user"""
+    await resolve_db_name_case_conflict()
     try:
-        default_admin = await db.admin_users.find_one({"username": "admin"})
+        logger.info(f"MongoDB startup: using database '{db_name}'")
+    except Exception:
+        pass
+
+    bootstrap_username = os.environ.get("BOOTSTRAP_ADMIN_USERNAME", "admin")
+    bootstrap_email = os.environ.get("BOOTSTRAP_ADMIN_EMAIL")
+    bootstrap_password = os.environ.get("BOOTSTRAP_ADMIN_PASSWORD")
+
+    # Create bootstrap admin only if missing. Never reset credentials on startup.
+    try:
+        default_admin = await db.admin_users.find_one({"username": bootstrap_username})
     except Exception as e:
         print("WARN: admin seed skipped (db unavailable):", repr(e))
         default_admin = {"_skip": True}
     if not default_admin:
-        hashed_pw = "$2b$12$C6UzMDM.H6dfI/f/IKcEeO8m8Y4YkQkQ1h6s4H6c3Z8Y5G7c8Y4r2"
-        await db.admin_users.insert_one({
-            "id": str(uuid.uuid4()),
-            "username": "admin",
-            "email": "info@bookaride.co.nz",
-            "hashed_password": hashed_pw,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "is_active": True
-        })
-        logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Default admin user created")
+        if bootstrap_email and bootstrap_password:
+            await db.admin_users.insert_one({
+                "id": str(uuid.uuid4()),
+                "username": bootstrap_username,
+                "email": bootstrap_email,
+                "hashed_password": get_password_hash(bootstrap_password),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "is_active": True
+            })
+            logger.info(f"Bootstrap admin user '{bootstrap_username}' created")
+        else:
+            logger.warning(
+                "Bootstrap admin user not created: set BOOTSTRAP_ADMIN_EMAIL and BOOTSTRAP_ADMIN_PASSWORD"
+            )
     else:
-        # Update password and email to ensure they're correct
-        hashed_pw = "$2b$12$C6UzMDM.H6dfI/f/IKcEeO8m8Y4YkQkQ1h6s4H6c3Z8Y5G7c8Y4r2"
-        await db.admin_users.update_one(
-            {"username": "admin"},
-            {"$set": {
-                "hashed_password": hashed_pw,
-                "email": "info@bookaride.co.nz"
-            }}
-        )
-        logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Admin password reset and email updated to info@bookaride.co.nz")
+        logger.info(f"Bootstrap admin user '{bootstrap_username}' already exists; no startup credential reset")
     
     # Create database indexes for faster queries
     try:
