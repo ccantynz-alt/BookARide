@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Search, Filter, Mail, DollarSign, CheckCircle, XCircle, Clock, Eye, Edit2, BarChart3, Users, BookOpen, Car, Settings, Trash2, MapPin, Calendar, RefreshCw, Send, Bell, Facebook, Globe, Square, CheckSquare, FileText, Smartphone, RotateCcw, AlertTriangle, AlertCircle, Home, Bus, ExternalLink, Navigation, Upload, Archive } from 'lucide-react';
+import { LogOut, Search, Filter, Mail, DollarSign, CheckCircle, XCircle, Clock, Eye, Edit2, Users, BookOpen, Car, Settings, Trash2, MapPin, Calendar, RefreshCw, Send, Bell, Facebook, Globe, Square, CheckSquare, FileText, Smartphone, RotateCcw, AlertTriangle, AlertCircle, Home, Bus, ExternalLink, Navigation, Upload, Archive } from 'lucide-react';
 import { useLoadScript } from '@react-google-maps/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -13,9 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { toast } from 'sonner';
 import { CustomDatePicker, CustomTimePicker } from '../components/DateTimePicker';
 import axios from 'axios';
-import { AnalyticsTab } from '../components/admin/AnalyticsTab';
 import { CustomersTab } from '../components/admin/CustomersTab';
-import { DriversTab } from '../components/admin/DriversTab';
 import { DriverApplicationsTab } from '../components/admin/DriverApplicationsTab';
 import { LandingPagesTab } from '../components/admin/LandingPagesTab';
 import { AdminBreadcrumb } from '../components/admin/AdminBreadcrumb';
@@ -824,7 +822,7 @@ export const AdminDashboard = () => {
   const [dateTo, setDateTo] = useState('');
   const [loadAllBookings] = useState(true); // Always load full list so we never miss a booking
 
-  fetchBookings = async (page = 1, append = false) => {
+  fetchBookings = async (page = 1, append = false, isRetry = false) => {
     try {
       if (page === 1) setLoading(true);
       else setIsLoadingMore(true);
@@ -841,12 +839,12 @@ export const AdminDashboard = () => {
         params
       });
       
-      const newBookings = response.data;
+      const newBookings = Array.isArray(response.data) ? response.data : [];
       
       // Cache bookings in localStorage for offline access
       try {
         const cached = JSON.parse(localStorage.getItem('cachedBookings') || '[]');
-        const updatedCache = append ? [...cached, ...newBookings] : newBookings;
+        const updatedCache = append ? [...(Array.isArray(cached) ? cached : []), ...newBookings] : newBookings;
         localStorage.setItem('cachedBookings', JSON.stringify(updatedCache.slice(0, 500)));
         localStorage.setItem('cachedBookingsTime', new Date().toISOString());
       } catch (e) {
@@ -856,7 +854,7 @@ export const AdminDashboard = () => {
       // Defer heavy state update to next tick to avoid "[Violation] 'load' handler took Xms"
       const doUpdate = () => {
         if (append) {
-          setBookings(prev => [...prev, ...newBookings]);
+          setBookings(prev => [...(Array.isArray(prev) ? prev : []), ...newBookings]);
         } else {
           setBookings(newBookings);
         }
@@ -879,11 +877,16 @@ export const AdminDashboard = () => {
         return;
       }
       console.error('Error fetching bookings:', error);
-      
-      // Try to load from cache if offline
+      const isRetriable = !error.response || error.response.status >= 500 || error.response.status === 408;
+      if (isRetriable && !isRetry) {
+        setTimeout(() => fetchBookings(page, append, true), 1500);
+        setLoading(false);
+        setIsLoadingMore(false);
+        return;
+      }
       try {
         const cached = JSON.parse(localStorage.getItem('cachedBookings') || '[]');
-        if (cached.length > 0) {
+        if (Array.isArray(cached) && cached.length > 0) {
           setBookings(cached);
           toast.info('Loaded cached bookings (offline mode)');
         } else {
@@ -892,7 +895,6 @@ export const AdminDashboard = () => {
       } catch (e) {
         toast.error('Failed to load bookings');
       }
-      
       setLoading(false);
       setIsLoadingMore(false);
     }
@@ -915,7 +917,7 @@ export const AdminDashboard = () => {
   const fetchDrivers = async () => {
     try {
       const response = await axios.get(`${API}/drivers`, getAuthHeaders());
-      setDrivers(response.data.drivers || []);
+      setDrivers(Array.isArray(response.data?.drivers) ? response.data.drivers : []);
     } catch (error) {
       console.error('Error fetching drivers:', error);
     }
@@ -925,7 +927,7 @@ export const AdminDashboard = () => {
     setLoadingDeleted(true);
     try {
       const response = await axios.get(`${API}/bookings/deleted`, getAuthHeaders());
-      setDeletedBookings(response.data || []);
+      setDeletedBookings(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error('Error fetching deleted bookings:', error);
       toast.error('Failed to load deleted bookings');
@@ -1153,7 +1155,7 @@ export const AdminDashboard = () => {
     }
   };
 
-  // Initial load: run after fetchBookings, fetchDrivers, checkXeroStatus, fetchArchivedCount are defined (avoids "before initialization" error)
+  // Initial load: bookings first; drivers deferred to lighten first paint
   useEffect(() => {
     const token = localStorage.getItem('adminToken');
     if (!token) {
@@ -1161,7 +1163,7 @@ export const AdminDashboard = () => {
       return;
     }
     fetchBookings();
-    fetchDrivers();
+    setTimeout(() => fetchDrivers(), 600);
     checkXeroStatus();
     fetchArchivedCount();
   }, [navigate]);
@@ -1424,24 +1426,23 @@ export const AdminDashboard = () => {
   };
 
   filterBookings = () => {
-    let filtered = bookings;
+    let filtered = Array.isArray(bookings) ? bookings : [];
 
-    // Status filter
     if (statusFilter !== 'all') {
-      filtered = filtered.filter(b => b.status === statusFilter);
+      filtered = filtered.filter(b => b && b.status === statusFilter);
     }
 
     // Search filter - also search archive via API
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
-      filtered = filtered.filter(b => 
+      filtered = filtered.filter(b => b && (
         b.name?.toLowerCase().includes(searchLower) ||
         b.email?.toLowerCase().includes(searchLower) ||
         b.phone?.includes(searchTerm) ||
         b.pickupAddress?.toLowerCase().includes(searchLower) ||
         b.dropoffAddress?.toLowerCase().includes(searchLower) ||
         String(b.referenceNumber)?.includes(searchTerm)
-      );
+      ));
       
       // Also search archive for matching results
       searchAllBookings(searchTerm);
@@ -1460,8 +1461,8 @@ export const AdminDashboard = () => {
     }
     try {
       const response = await axios.get(`${API}/bookings/search-all?search=${encodeURIComponent(term)}&include_archived=true`, getAuthHeaders());
-      // Only set archived results that aren't already in the active bookings
-      const archivedOnly = response.data.results.filter(b => b.isArchived);
+      const results = Array.isArray(response.data?.results) ? response.data.results : [];
+      const archivedOnly = results.filter(b => b && b.isArchived);
       setArchiveSearchResults(archivedOnly);
     } catch (error) {
       console.error('Error searching all bookings:', error);
@@ -1707,7 +1708,7 @@ export const AdminDashboard = () => {
       link.click();
       document.body.removeChild(link);
       
-      toast.success(`Exported ${filteredBookings.length} bookings to CSV`);
+      toast.success(`Exported ${list.length} bookings to CSV`);
     } catch (error) {
       console.error('Error exporting to CSV:', error);
       toast.error('Failed to export bookings');
@@ -2394,17 +2395,9 @@ export const AdminDashboard = () => {
               <span className="md:hidden">Arc</span>
               {archivedCount > 0 && <span className="text-[10px]">({archivedCount})</span>}
             </TabsTrigger>
-            <TabsTrigger value="analytics" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 hidden lg:flex">
-              <BarChart3 className="w-3 h-3 md:w-4 md:h-4" />
-              <span>Analytics</span>
-            </TabsTrigger>
             <TabsTrigger value="customers" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 hidden lg:flex">
               <Users className="w-3 h-3 md:w-4 md:h-4" />
               <span>Customers</span>
-            </TabsTrigger>
-            <TabsTrigger value="drivers" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4">
-              <Users className="w-3 h-3 md:w-4 md:h-4" />
-              <span>Drivers</span>
             </TabsTrigger>
             <TabsTrigger value="applications" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 hidden xl:flex">
               <FileText className="w-3 h-3 md:w-4 md:h-4" />
@@ -2505,8 +2498,8 @@ onViewBooking={(booking) => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500 mb-1">Revenue (Confirmed)</p>
-                <p className="text-3xl font-bold text-emerald-600">${stats.totalRevenue.toFixed(2)}</p>
-                <p className="text-xs text-gray-400 mt-1">{stats.confirmed + stats.completed} jobs</p>
+                <p className="text-3xl font-bold text-emerald-600">${(stats.totalRevenue ?? 0).toFixed(2)}</p>
+                <p className="text-xs text-gray-400 mt-1">{(stats.confirmed ?? 0) + (stats.completed ?? 0)} jobs</p>
               </div>
               <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center">
                 <DollarSign className="w-6 h-6 text-emerald-600" />
@@ -3205,19 +3198,9 @@ onViewBooking={(booking) => {
             </Card>
           </TabsContent>
 
-          {/* Analytics Tab */}
-          <TabsContent value="analytics">
-            <AnalyticsTab />
-          </TabsContent>
-
           {/* Customers Tab */}
           <TabsContent value="customers">
             <CustomersTab />
-          </TabsContent>
-
-          {/* Drivers Tab */}
-          <TabsContent value="drivers">
-            <DriversTab />
           </TabsContent>
 
           {/* Driver Applications Tab */}

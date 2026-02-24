@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import './App.css';
 import './i18n/config';
 import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
@@ -41,8 +41,10 @@ import TermsAndConditions from './pages/TermsAndConditions';
 import WebsiteUsagePolicy from './pages/WebsiteUsagePolicy';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import siteConfig from './config/siteConfig';
-import AdminDashboard from './pages/AdminDashboard';
 import AdminErrorBoundary from './components/admin/AdminErrorBoundary';
+import RootErrorBoundary from './components/RootErrorBoundary';
+
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 import SEODashboard from './pages/SEODashboard';
 import DriverLogin from './pages/DriverLogin';
 import DriverPortal from './pages/DriverPortal';
@@ -330,10 +332,11 @@ function App() {
   ];
 
   return (
-    <div className="App">
-      <BrowserRouter>
-        <LanguageRedirect>
-          <Routes>
+    <RootErrorBoundary>
+      <div className="App">
+        <BrowserRouter>
+          <LanguageRedirect>
+            <Routes>
             {/* Driver Routes (No Header/Footer) */}
             <Route path="/driver/login" element={<DriverLogin />} />
             <Route path="/driver/portal" element={<DriverPortal />} />
@@ -348,7 +351,7 @@ function App() {
             <Route path="/admin/auth/callback" element={<AdminAuthCallback />} />
             <Route path="/admin/forgot-password" element={<AdminForgotPassword />} />
             <Route path="/admin/reset-password" element={<AdminResetPassword />} />
-            <Route path="/admin/dashboard" element={<AdminErrorBoundary><AdminDashboard /></AdminErrorBoundary>} />
+            <Route path="/admin/dashboard" element={<AdminErrorBoundary><Suspense fallback={<div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f172a', color: '#94a3b8' }}>Loading admin…</div>}><AdminDashboard /></Suspense></AdminErrorBoundary>} />
             <Route path="/admin/seo" element={<SEODashboard />} />
             <Route path="/admin/facebook-strategy" element={<FacebookStrategy />} />
             
@@ -378,10 +381,11 @@ function App() {
               ))}
             </Route>
           </Routes>
-          <Toaster />
-        </LanguageRedirect>
-      </BrowserRouter>
-    </div>
+            <Toaster />
+          </LanguageRedirect>
+        </BrowserRouter>
+      </div>
+    </RootErrorBoundary>
   );
 }
 
