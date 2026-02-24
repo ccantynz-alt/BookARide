@@ -113,8 +113,14 @@ async def root():
 @app.get("/health")
 @app.get("/healthz")
 async def root_health_check():
-    """Root health check endpoint for Kubernetes/Render liveness/readiness probes"""
-    return {"status": "healthy", "service": "bookaride-api"}
+    """Root health check for Render/Kubernetes. Pings MongoDB so readiness = app + DB up."""
+    try:
+        await asyncio.wait_for(db.command("ping"), timeout=2.0)
+        return {"status": "healthy", "service": "bookaride-api", "mongo": "ok"}
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=503, detail="MongoDB ping timeout")
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"MongoDB unreachable: {str(e)}")
 
 
 @app.get("/email-status")
