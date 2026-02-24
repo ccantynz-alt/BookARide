@@ -8,14 +8,13 @@ import requests
 import json
 import time
 import sys
-import os
 from datetime import datetime, timedelta
 
 # Configuration from review request
 BACKEND_URL = "https://dazzling-leakey.preview.emergentagent.com/api"
 ADMIN_USERNAME = "admin"
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "your-admin-password-here")
-CRON_API_KEY = os.getenv("CRON_API_KEY", "your-cron-api-key-here")
+ADMIN_PASSWORD = "Kongkong2025!@"
+CRON_API_KEY = "bookaride-cron-secret-2024"
 
 class ReminderSystemTester:
     def __init__(self):
@@ -181,7 +180,7 @@ class ReminderSystemTester:
             return False
     
     def test_external_cron_endpoint(self):
-        """Test GET /api/cron/send-reminders?api_key=[cron-api-key] endpoint"""
+        """Test GET /api/cron/send-reminders?api_key=bookaride-cron-secret-2024 endpoint"""
         try:
             # This endpoint should not require Bearer token, just API key
             headers_backup = self.session.headers.copy()

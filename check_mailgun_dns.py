@@ -6,11 +6,10 @@ Checks every 10 minutes if mg.bookaride.co.nz is verified
 
 import requests
 import time
-import os
 from datetime import datetime
 
 # Mailgun configuration
-MAILGUN_API_KEY = os.getenv("MAILGUN_API_KEY", "your-mailgun-api-key-here")
+MAILGUN_API_KEY = "151d31c4dd7cd9fd3015d140b2c58f76-235e4bb2-1ecf548a"
 MAILGUN_DOMAIN = "mg.bookaride.co.nz"
 CHECK_INTERVAL = 600  # 10 minutes in seconds
 

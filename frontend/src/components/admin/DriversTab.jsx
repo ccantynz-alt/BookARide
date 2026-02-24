@@ -10,7 +10,8 @@ import { User, Phone, Mail, Car, Plus, Edit2, Trash2, Calendar, MapPin, Key } fr
 import { toast } from 'sonner';
 import axios from 'axios';
 
-import { API } from '../../config/api';
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const API = `${BACKEND_URL}/api`;
 
 export const DriversTab = () => {
   const [drivers, setDrivers] = useState([]);
