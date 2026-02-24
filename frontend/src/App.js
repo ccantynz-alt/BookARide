@@ -42,6 +42,7 @@ import WebsiteUsagePolicy from './pages/WebsiteUsagePolicy';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import siteConfig from './config/siteConfig';
 import AdminDashboard from './pages/AdminDashboard';
+import AdminErrorBoundary from './components/admin/AdminErrorBoundary';
 import SEODashboard from './pages/SEODashboard';
 import DriverLogin from './pages/DriverLogin';
 import DriverPortal from './pages/DriverPortal';
@@ -347,7 +348,7 @@ function App() {
             <Route path="/admin/auth/callback" element={<AdminAuthCallback />} />
             <Route path="/admin/forgot-password" element={<AdminForgotPassword />} />
             <Route path="/admin/reset-password" element={<AdminResetPassword />} />
-            <Route path="/admin/dashboard" element={<AdminDashboard />} />
+            <Route path="/admin/dashboard" element={<AdminErrorBoundary><AdminDashboard /></AdminErrorBoundary>} />
             <Route path="/admin/seo" element={<SEODashboard />} />
             <Route path="/admin/facebook-strategy" element={<FacebookStrategy />} />
             
