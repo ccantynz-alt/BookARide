@@ -5780,6 +5780,104 @@ async def get_payment_status(session_id: str):
         raise HTTPException(status_code=500, detail=f"Error checking payment status: {str(e)}")
 
 
+@api_router.get("/bookings/orphan-payments")
+async def list_orphan_payments(current_admin: dict = Depends(get_current_admin)):
+    """List Stripe payments that are paid but the booking is missing from the admin list.
+    Use this to find and recover bookings like #74 where payment came through but booking never appeared."""
+    try:
+        paid = await db.payment_transactions.find(
+            {"payment_status": "paid"},
+            {"_id": 0, "booking_id": 1, "session_id": 1, "amount": 1, "customer_email": 1, "customer_name": 1, "created_at": 1}
+        ).to_list(500)
+        orphan = []
+        for t in paid:
+            bid = t.get("booking_id")
+            if not bid:
+                continue
+            exists = await db.bookings.find_one({"id": bid}, {"_id": 1})
+            if not exists:
+                orphan.append({
+                    "booking_id": bid,
+                    "session_id": t.get("session_id"),
+                    "amount": t.get("amount"),
+                    "customer_email": t.get("customer_email"),
+                    "customer_name": t.get("customer_name"),
+                    "created_at": t.get("created_at"),
+                })
+        return {"orphan_payments": orphan, "count": len(orphan)}
+    except Exception as e:
+        logger.error(f"Error listing orphan payments: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class RecoverBookingFromPayment(BaseModel):
+    session_id: Optional[str] = None
+    booking_id: Optional[str] = None
+
+
+@api_router.post("/bookings/recover-from-payment")
+async def recover_booking_from_payment(body: RecoverBookingFromPayment, current_admin: dict = Depends(get_current_admin)):
+    """Create a booking in the admin list from a paid Stripe payment when the original booking is missing.
+    Provide either session_id (Stripe checkout session) or booking_id. The booking will appear in admin with
+    payment_status=paid; you can then edit date/time/route as needed."""
+    try:
+        if body.session_id:
+            t = await db.payment_transactions.find_one(
+                {"session_id": body.session_id, "payment_status": "paid"},
+                {"_id": 0}
+            )
+        elif body.booking_id:
+            t = await db.payment_transactions.find_one(
+                {"booking_id": body.booking_id, "payment_status": "paid"},
+                {"_id": 0}
+            )
+        else:
+            raise HTTPException(status_code=400, detail="Provide session_id or booking_id")
+        if not t:
+            raise HTTPException(status_code=404, detail="No paid payment found for that session or booking id")
+        bid = t.get("booking_id")
+        if not bid:
+            raise HTTPException(status_code=400, detail="Transaction has no booking_id")
+        exists = await db.bookings.find_one({"id": bid}, {"_id": 1})
+        if exists:
+            return {"message": "Booking already exists", "booking_id": bid}
+        ref_str = str(await get_next_reference_number())
+        now_iso = datetime.now(timezone.utc).isoformat()
+        recovered = {
+            "id": bid,
+            "referenceNumber": ref_str,
+            "name": t.get("customer_name") or "Recovered customer",
+            "email": t.get("customer_email") or "",
+            "phone": "",
+            "serviceType": "airport-shuttle",
+            "pickupAddress": "(Edit after recovery)",
+            "pickupAddresses": [],
+            "dropoffAddress": "Auckland Airport",
+            "date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+            "time": "12:00",
+            "passengers": "1",
+            "notes": f"Recovered from Stripe payment (session {t.get('session_id', '')[:20]}...). Please confirm date, time and route.",
+            "pricing": {"totalPrice": t.get("amount", 0)},
+            "totalPrice": t.get("amount", 0),
+            "status": "confirmed",
+            "payment_status": "paid",
+            "bookReturn": False,
+            "returnDate": "",
+            "returnTime": "",
+            "createdAt": now_iso,
+            "recoveredFromPaymentAt": now_iso,
+            "recoveredBy": current_admin.get("username", "admin"),
+        }
+        await db.bookings.insert_one(recovered)
+        logger.info(f"Recovered booking {bid} (ref #{ref_str}) from payment for {t.get('customer_email')}")
+        return {"message": "Booking recovered and added to admin list", "booking_id": bid, "referenceNumber": ref_str}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error recovering booking from payment: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @api_router.post("/webhook/stripe")
 async def stripe_webhook(request: Request):
     try:
@@ -9923,13 +10021,20 @@ async def get_driver_schedule(driver_id: str, date: Optional[str] = None):
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.delete("/bookings/{booking_id}")
-async def delete_booking(booking_id: str, send_notification: bool = True, current_admin: dict = Depends(get_current_admin)):
-    """Soft-delete a single booking (moves to deleted_bookings collection)"""
+async def delete_booking(booking_id: str, send_notification: bool = True, force: bool = False, current_admin: dict = Depends(get_current_admin)):
+    """Soft-delete a single booking (moves to deleted_bookings collection). Paid bookings require force=true."""
     try:
         # First, get the booking details before deleting (for notifications)
         booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
         if not booking:
             raise HTTPException(status_code=404, detail="Booking not found")
+        # Safeguard: do not allow deleting a booking that has a paid Stripe payment unless force=true
+        paid_txn = await db.payment_transactions.find_one({"booking_id": booking_id, "payment_status": "paid"}, {"_id": 1})
+        if paid_txn and not force:
+            raise HTTPException(
+                status_code=400,
+                detail="This booking has a paid Stripe payment. Use 'Recover from payment' if the booking is missing; to cancel/refund use force=true."
+            )
         
         # Send cancellation notifications if requested
         if send_notification:

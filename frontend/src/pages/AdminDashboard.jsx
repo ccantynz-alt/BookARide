@@ -527,6 +527,10 @@ export const AdminDashboard = () => {
   const [archivePage, setArchivePage] = useState(1);
   const [archiveTotalPages, setArchiveTotalPages] = useState(1);
   const [runningAutoArchive, setRunningAutoArchive] = useState(false);
+  const [orphanPayments, setOrphanPayments] = useState([]);
+  const [loadingOrphans, setLoadingOrphans] = useState(false);
+  const [recoverSessionId, setRecoverSessionId] = useState('');
+  const [recovering, setRecovering] = useState(false);
   // Shuttle state
   const [shuttleDate, setShuttleDate] = useState(new Date().toISOString().split('T')[0]);
   const [shuttleData, setShuttleData] = useState({});
@@ -933,6 +937,39 @@ export const AdminDashboard = () => {
       toast.error('Failed to load deleted bookings');
     } finally {
       setLoadingDeleted(false);
+    }
+  };
+
+  const fetchOrphanPayments = async () => {
+    setLoadingOrphans(true);
+    try {
+      const response = await axios.get(`${API}/bookings/orphan-payments`, getAuthHeaders());
+      setOrphanPayments(response.data?.orphan_payments || []);
+      if ((response.data?.count || 0) > 0) {
+        toast.info(`Found ${response.data.count} paid Stripe payment(s) with no booking in the list. You can recover them below.`);
+      }
+    } catch (error) {
+      console.error('Error fetching orphan payments:', error);
+      toast.error(error.response?.data?.detail || 'Failed to check for missing payments');
+    } finally {
+      setLoadingOrphans(false);
+    }
+  };
+
+  const recoverBookingFromPayment = async (sessionId = null, bookingId = null) => {
+    setRecovering(true);
+    try {
+      const payload = sessionId ? { session_id: sessionId } : { booking_id: bookingId };
+      const response = await axios.post(`${API}/bookings/recover-from-payment`, payload, getAuthHeaders());
+      toast.success(response.data?.message || 'Booking recovered and added to the list.');
+      setRecoverSessionId('');
+      setOrphanPayments(prev => prev.filter(o => o.booking_id !== (response.data?.booking_id || bookingId)));
+      fetchBookings();
+    } catch (error) {
+      const detail = error.response?.data?.detail;
+      toast.error(typeof detail === 'string' ? detail : 'Recover failed');
+    } finally {
+      setRecovering(false);
     }
   };
 
@@ -2388,11 +2425,11 @@ export const AdminDashboard = () => {
           drivers={drivers}
           onAssignDriver={(booking) => {
             setSelectedBooking(booking);
-            setShowBookingDetails(true);
+            setShowDetailsModal(true);
           }}
           onViewBooking={(booking) => {
             setSelectedBooking(booking);
-            setShowBookingDetails(true);
+            setShowDetailsModal(true);
           }}
         />
         
@@ -2405,10 +2442,10 @@ export const AdminDashboard = () => {
           <ReturnsOverviewPanel 
             bookings={bookings}
             drivers={drivers}
-            onViewBooking={(booking) => {
-              setSelectedBooking(booking);
-              setShowBookingDetails(true);
-            }}
+onViewBooking={(booking) => {
+            setSelectedBooking(booking);
+            setShowDetailsModal(true);
+          }}
           />
         </div>
         
@@ -2417,7 +2454,7 @@ export const AdminDashboard = () => {
           bookings={bookings} 
           onViewBooking={(booking) => {
             setSelectedBooking(booking);
-            setShowBookingDetails(true);
+            setShowDetailsModal(true);
           }}
         />
         
@@ -2555,6 +2592,47 @@ export const AdminDashboard = () => {
                 className="bg-gold hover:bg-gold/90 text-black font-semibold"
               >
                 + Create Booking
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Recover missing bookings (e.g. #74 – payment in Stripe but booking never appeared) */}
+        <Card className="mb-6 border-amber-200 bg-amber-50/50">
+          <CardContent className="p-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
+              <div>
+                <p className="font-medium text-amber-900">Payment received in Stripe but booking missing from the list?</p>
+                <p className="text-sm text-amber-800">Use this if a customer paid (e.g. booking #74) but the booking never appeared in the admin panel.</p>
+              </div>
+              <Button variant="outline" size="sm" onClick={fetchOrphanPayments} disabled={loadingOrphans} className="border-amber-500 text-amber-800 hover:bg-amber-100">
+                {loadingOrphans ? 'Checking...' : 'Check for missing payments'}
+              </Button>
+            </div>
+            {Array.isArray(orphanPayments) && orphanPayments.length > 0 && (
+              <div className="mt-4 space-y-2">
+                <p className="text-sm font-medium text-amber-900">Paid payments with no booking in list:</p>
+                {orphanPayments.map((o) => (
+                  <div key={o.booking_id} className="flex flex-wrap items-center gap-2 py-2 px-3 bg-white rounded border border-amber-200">
+                    <span className="text-sm">{o.customer_name || 'Unknown'} – {o.customer_email || 'No email'} – ${Number(o.amount || 0).toFixed(2)}</span>
+                    <Button size="sm" onClick={() => recoverBookingFromPayment(null, o.booking_id)} disabled={recovering} className="bg-amber-600 hover:bg-amber-700">
+                      Recover into list
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <input
+                type="text"
+                placeholder="Or paste Stripe session ID (cs_...)"
+                value={recoverSessionId || ''}
+                onChange={(e) => setRecoverSessionId(e.target.value || '')}
+                className="border rounded px-2 py-1.5 text-sm w-64"
+              />
+              <Button size="sm" onClick={() => recoverBookingFromPayment((recoverSessionId || '').trim(), null)} disabled={recovering || !(recoverSessionId || '').trim()} className="bg-amber-600 hover:bg-amber-700">
+                {recovering ? 'Recovering...' : 'Recover from session ID'}
               </Button>
             </div>
           </CardContent>
