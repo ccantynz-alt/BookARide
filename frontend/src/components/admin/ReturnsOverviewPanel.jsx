@@ -7,7 +7,7 @@ import { Button } from '../ui/button';
 import axios from 'axios';
 import { toast } from 'sonner';
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+import { API } from '../../config/api';
 
 const ReturnsOverviewPanel = ({ bookings = [], drivers = [], onAssignDriver, onViewBooking }) => {
   const [urgentReturns, setUrgentReturns] = useState([]);
@@ -89,14 +89,14 @@ const ReturnsOverviewPanel = ({ bookings = [], drivers = [], onAssignDriver, onV
     return (
       <div 
         key={booking.id}
-        className={`p-4 rounded-xl border transition-all hover:shadow-md cursor-pointer ${
+        className={`p-4 rounded-xl border transition-all hover:shadow-md cursor-pointer backdrop-blur-sm ${
           isToday && !driver
-            ? 'bg-red-50 border-red-200'
+            ? 'bg-red-50/80 border-red-200/70'
             : isToday
-              ? 'bg-purple-50 border-purple-200'
+              ? 'bg-violet-50/80 border-violet-200/70'
               : isTomorrow
-                ? 'bg-blue-50 border-blue-200'
-                : 'bg-gray-50 border-gray-100'
+                ? 'bg-sky-50/80 border-sky-200/70'
+                : 'bg-gray-50/80 border-gray-100/70'
         }`}
         onClick={() => onViewBooking?.(booking)}
       >
@@ -108,12 +108,12 @@ const ReturnsOverviewPanel = ({ bookings = [], drivers = [], onAssignDriver, onV
               <span className="font-semibold text-gray-900">{booking.name || booking.customerName}</span>
               <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                 isToday && !driver
-                  ? 'bg-red-200 text-red-700'
+                  ? 'bg-red-100/90 text-red-700'
                   : isToday
-                    ? 'bg-purple-200 text-purple-700'
+                    ? 'bg-violet-100/90 text-violet-700'
                     : isTomorrow
-                      ? 'bg-blue-200 text-blue-700'
-                      : 'bg-gray-200 text-gray-700'
+                      ? 'bg-sky-100/90 text-sky-700'
+                      : 'bg-gray-100/90 text-gray-700'
               }`}>
                 {formatDate(booking.returnDate)}
               </span>
@@ -168,7 +168,7 @@ const ReturnsOverviewPanel = ({ bookings = [], drivers = [], onAssignDriver, onV
 
   if (allReturns.length === 0) {
     return (
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
+      <div className="bg-white/90 rounded-2xl shadow-md border border-gray-100/80 backdrop-blur-sm p-6 mb-6">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
             <Plane className="w-5 h-5 text-purple-600" />
@@ -183,7 +183,7 @@ const ReturnsOverviewPanel = ({ bookings = [], drivers = [], onAssignDriver, onV
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
+    <div className="bg-white/90 rounded-2xl shadow-md border border-gray-100/80 backdrop-blur-sm p-6 mb-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
