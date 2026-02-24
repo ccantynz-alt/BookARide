@@ -2019,18 +2019,31 @@ async def get_bookings(
 async def get_bookings_count(current_admin: dict = Depends(get_current_admin)):
     """Get total booking counts for dashboard stats (includes shuttle bookings)"""
     try:
-        main_total = await db.bookings.count_documents({})
-        shuttle_total = await db.shuttle_bookings.count_documents({"status": {"$nin": ["cancelled", "deleted"]}})
-        total = main_total + shuttle_total
+        # Count active bookings (non-cancelled/deleted) from both main and shuttle
+        main_active = await db.bookings.count_documents({"status": {"$nin": ["cancelled", "deleted"]}})
+        shuttle_active = await db.shuttle_bookings.count_documents({"status": {"$nin": ["cancelled", "deleted"]}})
+        total = main_active + shuttle_active
 
+        # Count status-specific bookings from both main and shuttle
         pending = await db.bookings.count_documents({"status": "pending"})
+        shuttle_pending = await db.shuttle_bookings.count_documents({"status": "pending"})
+        pending = pending + shuttle_pending
+
         confirmed = await db.bookings.count_documents({"status": "confirmed"})
+        shuttle_confirmed = await db.shuttle_bookings.count_documents({"status": "confirmed"})
+        confirmed = confirmed + shuttle_confirmed
+
         completed = await db.bookings.count_documents({"status": "completed"})
+        shuttle_completed = await db.shuttle_bookings.count_documents({"status": "completed"})
+        completed = completed + shuttle_completed
+
         cancelled = await db.bookings.count_documents({"status": "cancelled"})
+        shuttle_cancelled = await db.shuttle_bookings.count_documents({"status": "cancelled"})
+        cancelled = cancelled + shuttle_cancelled
+
         pending_approval = await db.bookings.count_documents({"status": "pending_approval"})
-        # Include shuttle in pending_approval / authorized
-        shuttle_pending = await db.shuttle_bookings.count_documents({"status": {"$in": ["pending_approval", "authorized"]}})
-        pending_approval = pending_approval + shuttle_pending
+        shuttle_pending_approval = await db.shuttle_bookings.count_documents({"status": {"$in": ["pending_approval", "authorized"]}})
+        pending_approval = pending_approval + shuttle_pending_approval
 
         return {
             "total": total,
