@@ -15,7 +15,7 @@ from server import send_booking_confirmation_email, send_booking_confirmation_sm
 
 BACKEND_URL = "https://dazzling-leakey.preview.emergentagent.com/api"
 ADMIN_USERNAME = "admin"
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "your-admin-password-here")
+ADMIN_PASSWORD = "BookARide2024!"
 
 def run_final_test():
     """Run final comprehensive test"""
@@ -66,7 +66,7 @@ def run_final_test():
     print("\n3️⃣ DIRECT MAILGUN EMAIL TEST")
     try:
         mailgun_url = "https://api.mailgun.net/v3/mg.bookaride.co.nz/messages"
-        auth = ('api', os.getenv("MAILGUN_API_KEY", "your-mailgun-api-key-here"))
+        auth = ('api', '151d31c4dd7cd9fd3015d140b2c58f76-235e4bb2-1ecf548a')
         
         data = {
             'from': 'Book A Ride <noreply@mg.bookaride.co.nz>',

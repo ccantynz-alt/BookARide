@@ -1,129 +1,316 @@
-# Google Workspace Email Setup for Book a Ride
-
-This guide configures **Google Workspace** (or Gmail) to send booking confirmations and other transactional emails from the Book a Ride backend.
-
-The app already supports this: it uses **SMTP** with `smtp.gmail.com` when Mailgun is not configured or as a fallback. You only need to add the right environment variables and create an **App Password** in Google.
+# Google Workspace Email Setup Guide
+## For BookaRide.co.nz / AirportShuttleService.co.nz
 
 ---
 
-## 1. Use a Google Workspace or Gmail account
+## ✅ What Changed
 
-- Use the address you want to send **from** (e.g. `bookings@bookaride.co.nz` if it’s on Google Workspace, or `yourname@gmail.com`).
-- That address will be used for:
-  - Booking confirmations
-  - Admin notifications
-  - Password reset emails
-  - Driver notifications
-  - Payment link emails
+**Replaced:** SendGrid API → Google Workspace SMTP
+**Why:** More reliable, easier setup, likely already have Google Workspace
 
 ---
 
-## 2. Turn on 2-Step Verification (required for App Passwords)
+## 📋 Setup Instructions
 
-1. Go to [Google Account → Security](https://myaccount.google.com/security).
-2. Under **“How you sign in to Google”**, turn on **2-Step Verification** if it’s not already on.
+### **Step 1: Create App Password in Google**
+
+1. Go to your Google Account: https://myaccount.google.com/apppasswords
+2. Sign in with your Google Workspace email (e.g., info@bookaride.co.nz)
+3. If you don't see "App passwords":
+   - Go to Security Settings: https://myaccount.google.com/security
+   - Enable **2-Step Verification** first (required for app passwords)
+   - Then return to App passwords
+4. Click **Select app** → Choose **"Mail"**
+5. Click **Select device** → Choose **"Other (Custom name)"**
+6. Enter name: **"BookaRide Website"**
+7. Click **Generate**
+8. **COPY the 16-character password** (looks like: `abcd efgh ijkl mnop`)
+9. Save this password - you won't see it again!
 
 ---
 
-## 3. Create an App Password
+### **Step 2: Update Environment Variables**
 
-1. Go to [Google Account → Security → 2-Step Verification](https://myaccount.google.com/signinoptions/two-step-verification).
-2. At the bottom, open **“App passwords”**.
-3. Choose **“Mail”** and **“Other”**, name it e.g. **“Book a Ride backend”**.
-4. Click **Generate**.
-5. Copy the **16-character password** (e.g. `abcd efgh ijkl mnop`). You can store it with or without spaces; the app will use it as-is.
+Open `/app/backend/.env` and update these lines:
 
-You’ll use this as `SMTP_PASS` in the next step.
-
----
-
-## 4. Set environment variables
-
-Add these to your backend environment (e.g. `.env` in the backend folder, or your host’s env vars like Render/Vercel).
-
-### Required for Google Workspace SMTP
-
-```env
-# Google Workspace / Gmail SMTP (for confirmations and notifications)
-SMTP_USER=bookings@bookaride.co.nz
-SMTP_PASS=your-16-char-app-password
-SMTP_HOST=smtp.gmail.com
+```bash
+SMTP_SERVER=smtp.gmail.com
 SMTP_PORT=587
+SMTP_USERNAME=your-email@bookaride.co.nz
+SMTP_PASSWORD=abcd efgh ijkl mnop
+SENDER_EMAIL=your-email@bookaride.co.nz
 ```
 
-- **SMTP_USER**: Full email address (same as the Google account you created the App Password for).
-- **SMTP_PASS**: The 16-character App Password from step 3.
-- **SMTP_HOST** / **SMTP_PORT**: Defaults in the app are `smtp.gmail.com` and `587`; you can omit them if you use these.
+**Replace with YOUR details:**
+- `SMTP_USERNAME`: Your Google Workspace email
+- `SMTP_PASSWORD`: The 16-character app password you just generated
+- `SENDER_EMAIL`: The "from" email customers will see (same as username)
 
-### “From” address (what customers see)
-
-```env
-# Address shown as "From" on emails (use your domain for best deliverability)
-NOREPLY_EMAIL=bookings@bookaride.co.nz
-# Or:
-SENDER_EMAIL=bookings@bookaride.co.nz
+**Example:**
+```bash
+SMTP_SERVER=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=info@bookaride.co.nz
+SMTP_PASSWORD=wxyz abcd efgh ijkl
+SENDER_EMAIL=info@bookaride.co.nz
 ```
-
-- Use an address that is either:
-  - The same Google Workspace mailbox as `SMTP_USER`, or  
-  - An alias/send-as address for that mailbox in Google.
-- If you don’t set these, the app falls back to `noreply@bookaride.co.nz` (that address must be valid in Google if you use it).
-
-### Optional: use only Google Workspace (no Mailgun)
-
-To send **only** via Google Workspace and not use Mailgun:
-
-- Do **not** set `MAILGUN_API_KEY` and `MAILGUN_DOMAIN` (or remove them).
-- Set the SMTP and sender variables above.
-
-The app will use SMTP for all transactional emails when Mailgun is not configured.
 
 ---
 
-## 5. Restart the backend
+### **Step 3: Restart Backend**
 
-After changing env vars, restart the backend process (e.g. restart the server or redeploy).
-
----
-
-## 6. Test that it works
-
-1. **Create a test booking** on the site using a real email you can check.
-2. Confirm you receive the **booking confirmation** at that address.
-3. Optionally trigger **“Resend confirmation”** from the admin panel for an existing booking.
-
-If you see “SMTP credentials not configured” in logs, double-check `SMTP_USER` and `SMTP_PASS` and that the App Password has no extra spaces.
-
----
-
-## Diagnosing Issues
-
-Use the admin test-email endpoint to see exactly which provider fails and why:
-
-```
-POST /api/admin/test-email
-{"to": "your@email.com"}
+```bash
+sudo supervisorctl restart backend
 ```
 
-Response includes `provider_errors` for each provider so you can see the actual error message from Google.
+---
 
-## Troubleshooting
+### **Step 4: Test Email Sending**
 
-| Issue | What to do |
-|-------|------------|
-| “Username and Password not accepted” | Use an **App Password**, not your normal Google password. Ensure 2-Step Verification is on and the App Password is for “Mail”. |
-| “SMTP credentials not configured” | Ensure `SMTP_USER` and `SMTP_PASS` are set in the environment the backend actually uses (e.g. `.env` next to `server.py` or in the host’s dashboard). |
-| Emails go to spam | Use a **Google Workspace** address on your own domain (e.g. `bookings@bookaride.co.nz`), set SPF/DKIM in Google Admin, and use that same address as `NOREPLY_EMAIL` / `SENDER_EMAIL`. |
-| Wrong “From” address | Set `NOREPLY_EMAIL` or `SENDER_EMAIL` to the exact address you want; it must be the same as `SMTP_USER` or a configured send-as alias. |
+Create test file:
+```bash
+cat > /tmp/test_google_email.py << 'EOF'
+import os
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+# Load from .env
+import sys
+sys.path.append('/app/backend')
+
+# Set your credentials (or load from .env)
+smtp_username = "YOUR_EMAIL@bookaride.co.nz"
+smtp_password = "YOUR_APP_PASSWORD"
+sender_email = "YOUR_EMAIL@bookaride.co.nz"
+test_recipient = "YOUR_EMAIL@bookaride.co.nz"  # Send to yourself for testing
+
+try:
+    message = MIMEMultipart('alternative')
+    message['Subject'] = "Test Booking Confirmation"
+    message['From'] = sender_email
+    message['To'] = test_recipient
+
+    html_content = """
+    <html>
+        <body style="font-family: Arial, sans-serif;">
+            <h1 style="color: #D4AF37;">Test Email - BookaRide</h1>
+            <p>This is a test email from your BookaRide website.</p>
+            <p>If you receive this, email integration is working! ✅</p>
+        </body>
+    </html>
+    """
+
+    html_part = MIMEText(html_content, 'html')
+    message.attach(html_part)
+
+    with smtplib.SMTP('smtp.gmail.com', 587) as server:
+        server.starttls()
+        server.login(smtp_username, smtp_password)
+        server.send_message(message)
+
+    print("✅ Email sent successfully via Google Workspace!")
+
+except Exception as e:
+    print(f"❌ Error: {str(e)}")
+EOF
+```
+
+Run the test:
+```bash
+# Edit the file first with your credentials
+nano /tmp/test_google_email.py
+# Then run
+python3 /tmp/test_google_email.py
+```
+
+**Expected Output:**
+```
+✅ Email sent successfully via Google Workspace!
+```
+
+Check your inbox - you should receive the test email!
 
 ---
 
-## Summary
+## 🔒 Security Notes
 
-1. Enable 2-Step Verification on the Google account.
-2. Create an App Password for “Mail”.
-3. Set `SMTP_USER`, `SMTP_PASS`, and optionally `SMTP_HOST`, `SMTP_PORT`, `NOREPLY_EMAIL`/`SENDER_EMAIL`.
-4. Omit or remove Mailgun vars to use only Google Workspace.
-5. Restart the backend and test with a real booking.
+### **App Password vs Regular Password**
+- ✅ **DO use:** App password (16 characters from Google)
+- ❌ **DON'T use:** Your regular Gmail/Google Workspace password
+- App passwords are safer and can be revoked independently
 
-After this, Book a Ride will send all confirmation and notification emails through Google Workspace.
+### **Email Account Recommendations**
+**Best options:**
+1. `noreply@bookaride.co.nz` - Professional, clear it's automated
+2. `bookings@bookaride.co.nz` - Customers can reply for questions
+3. `info@bookaride.co.nz` - General business email
+
+**Avoid:**
+- Personal emails (looks unprofessional)
+- Shared accounts without app passwords
+
+---
+
+## 📧 Email Settings Explained
+
+```bash
+SMTP_SERVER=smtp.gmail.com    # Google's SMTP server
+SMTP_PORT=587                 # Standard SMTP port (with STARTTLS)
+SMTP_USERNAME=your@email.com  # Your Google Workspace email
+SMTP_PASSWORD=app-password     # 16-char app password from Google
+SENDER_EMAIL=your@email.com   # "From" address in emails
+```
+
+**Alternative ports:**
+- Port 587: TLS/STARTTLS (recommended) ✅
+- Port 465: SSL (also works)
+- Port 25: Plain (not recommended for security)
+
+---
+
+## 🧪 Troubleshooting
+
+### **Error: "Username and Password not accepted"**
+**Solutions:**
+1. Make sure you're using the **app password**, not your regular password
+2. Check if 2-Step Verification is enabled on your Google account
+3. Verify email address is correct (no typos)
+4. Try generating a new app password
+
+### **Error: "SMTP AUTH extension not supported"**
+**Solution:** You're connecting to wrong port. Use port 587, not 25.
+
+### **Error: "534 Please log in via your web browser"**
+**Solutions:**
+1. Go to: https://accounts.google.com/DisplayUnlockCaptcha
+2. Sign in with your Google Workspace account
+3. Click "Continue" to allow access
+4. Try sending email again
+
+### **Error: "535 Authentication credentials invalid"**
+**Solution:** App password might have spaces - remove them:
+```bash
+# Wrong: wxyz abcd efgh ijkl
+# Right: wxyzabcdefghijkl
+```
+
+### **Emails not arriving**
+**Check:**
+1. Spam folder (both yours and customer's)
+2. Backend logs: `tail -f /var/log/supervisor/backend.err.log`
+3. Test with your own email first
+4. Verify sender email is correct in .env
+
+---
+
+## 🚀 What Happens Now
+
+### **When Customer Books:**
+1. Customer completes booking and pays via Stripe ✅
+2. Backend receives payment confirmation ✅
+3. **Email automatically sent** via Google Workspace ✅
+4. SMS sent via Twilio (if configured) ✅
+5. Google Calendar event created (if configured) ✅
+
+### **Email Content Includes:**
+- Booking reference number
+- Service type
+- Pickup & drop-off addresses
+- Date and time
+- Number of passengers
+- Total price paid
+- Contact information
+
+---
+
+## 📊 Email Limits
+
+### **Google Workspace Limits:**
+- **Free Gmail:** 500 emails/day
+- **Google Workspace:** 2,000 emails/day per user
+- Rate: ~20-30 emails per minute
+
+### **For Your Business:**
+If you get more than 2,000 bookings per day:
+- Use multiple sender accounts
+- Upgrade to SendGrid/Mailgun (paid)
+- Or use AWS SES (0.10 per 1000 emails)
+
+---
+
+## 💡 Best Practices
+
+### **1. Monitor Email Delivery**
+Check backend logs regularly:
+```bash
+tail -f /var/log/supervisor/backend.err.log | grep "email"
+```
+
+### **2. Test After Every Change**
+Always test email after:
+- Changing .env variables
+- Restarting backend
+- Deploying to production
+
+### **3. Keep App Password Secure**
+- Don't share it
+- Don't commit it to Git (it's in .env, which should be .gitignored)
+- Rotate it every 6-12 months
+
+### **4. Professional Email Template**
+The current email includes:
+- Company branding (colors, logo reference)
+- All booking details
+- Contact information
+- Professional footer
+
+---
+
+## 🔄 Switching Back to SendGrid (If Needed)
+
+If you later want to use SendGrid instead:
+
+1. Revert code changes (I can help)
+2. Update .env:
+   ```bash
+   SENDGRID_API_KEY=your_key
+   SENDER_EMAIL=noreply@bookaride.co.nz
+   ```
+3. Restart backend
+
+---
+
+## ✅ Checklist
+
+- [ ] 2-Step Verification enabled on Google account
+- [ ] App password generated
+- [ ] Updated `/app/backend/.env` with credentials
+- [ ] Restarted backend: `sudo supervisorctl restart backend`
+- [ ] Tested with test script - email received
+- [ ] Tested real booking - confirmation received
+- [ ] Checked spam folder
+- [ ] Verified backend logs show "email sent"
+
+---
+
+## 📞 Support
+
+If you still have issues after following this guide:
+- Check backend logs for specific error messages
+- Verify Google Workspace account is active
+- Ensure domain (bookaride.co.nz) is verified in Google
+- Let me know the exact error message you're seeing
+
+---
+
+**Status After Setup:**
+✅ Email confirmations working
+✅ Professional, branded emails
+✅ No monthly API costs (included with Google Workspace)
+✅ Can send from your business domain
+✅ 2,000 emails/day limit (sufficient for most operations)
+
+**Setup Time:** 10-15 minutes
+**Cost:** Free (included with Google Workspace)
+**Reliability:** High (Google infrastructure)

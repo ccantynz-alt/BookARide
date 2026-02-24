@@ -4,7 +4,9 @@ import { Loader2, CheckCircle, XCircle } from 'lucide-react';
 import { Card, CardContent } from '../components/ui/card';
 import { toast } from 'sonner';
 import axios from 'axios';
-import { API } from '../config/api';
+
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const API = `${BACKEND_URL}/api`;
 
 export const AdminAuthCallback = () => {
   const navigate = useNavigate();
@@ -19,56 +21,60 @@ export const AdminAuthCallback = () => {
     hasProcessed.current = true;
 
     const processAuth = async () => {
-      const hash = window.location.hash;
-      const params = new URLSearchParams(window.location.search);
+      try {
+        // Extract session_id from URL fragment
+        const hash = window.location.hash;
+        const sessionIdMatch = hash.match(/session_id=([^&]+)/);
 
-      // Handle error from backend redirect (e.g. non-admin email)
-      if (params.get('error') === 'unauthorized') {
-        setStatus('error');
-        setErrorMessage(params.get('message') || 'This Google account is not authorized as an admin.');
-        return;
-      }
+        if (!sessionIdMatch) {
+          setStatus('error');
+          setErrorMessage('No session ID found. Please try logging in again.');
+          return;
+        }
 
-      // New flow: token in URL hash from backend redirect
-      const tokenMatch = hash.match(/token=([^&]+)/);
-      if (tokenMatch) {
-        const token = tokenMatch[1];
-        localStorage.setItem('adminToken', token);
-        localStorage.setItem('adminAuth', 'true');
+        const sessionId = sessionIdMatch[1];
+
+        // Send session_id to backend for verification
+        const response = await axios.post(
+          `${API}/admin/google-auth/session`,
+          { session_id: sessionId },
+          { withCredentials: true }
+        );
+
+        // Store JWT token for backward compatibility
+        if (response.data.access_token) {
+          localStorage.setItem('adminToken', response.data.access_token);
+          localStorage.setItem('adminAuth', 'true');
+        }
+
+        // Store admin info
+        if (response.data.admin) {
+          localStorage.setItem('adminInfo', JSON.stringify(response.data.admin));
+        }
+
         setStatus('success');
         toast.success('Google login successful!');
-        setTimeout(() => navigate('/admin/dashboard', { replace: true }), 1000);
-        return;
-      }
 
-      // Legacy flow: session_id from Emergent
-      const sessionIdMatch = hash.match(/session_id=([^&]+)/);
-      if (sessionIdMatch) {
-        try {
-          const response = await axios.post(
-            `${API}/admin/google-auth/session`,
-            { session_id: sessionIdMatch[1] },
-            { withCredentials: true }
-          );
-          if (response.data.access_token) {
-            localStorage.setItem('adminToken', response.data.access_token);
-            localStorage.setItem('adminAuth', 'true');
-          }
-          if (response.data.admin) {
-            localStorage.setItem('adminInfo', JSON.stringify(response.data.admin));
-          }
-          setStatus('success');
-          toast.success('Google login successful!');
-          setTimeout(() => navigate('/admin/dashboard', { state: { user: response.data.admin }, replace: true }), 1000);
-        } catch (error) {
-          setStatus('error');
-          setErrorMessage(error.response?.data?.detail || 'Authentication failed.');
+        // Redirect to dashboard after brief delay
+        setTimeout(() => {
+          navigate('/admin/dashboard', {
+            state: { user: response.data.admin },
+            replace: true
+          });
+        }, 1000);
+
+      } catch (error) {
+        console.error('Auth callback error:', error);
+        setStatus('error');
+
+        if (error.response?.status === 403) {
+          setErrorMessage(error.response.data.detail || 'This Google account is not authorized as an admin.');
+        } else if (error.response?.status === 401) {
+          setErrorMessage('Authentication failed. Please try again.');
+        } else {
+          setErrorMessage('An error occurred during authentication. Please try again.');
         }
-        return;
       }
-
-      setStatus('error');
-      setErrorMessage('No session found. Please try logging in again.');
     };
 
     processAuth();

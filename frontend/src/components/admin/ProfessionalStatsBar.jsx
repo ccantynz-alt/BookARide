@@ -7,7 +7,8 @@ import {
 import { Button } from '../ui/button';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { API } from '../../config/api';
+
+const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const ProfessionalStatsBar = ({ bookings = [], drivers = [], onRefresh }) => {
   const [systemHealth, setSystemHealth] = useState(null);
