@@ -29,6 +29,7 @@ def send_email(
     from_email: str = None,
     from_name: str = "Book A Ride NZ",
     reply_to: str = None,
+    cc: str = None,
 ) -> bool:
     """
     Send email. If EMAIL_PROVIDER is set (mailgun | sendgrid | smtp), use ONLY that – no fallbacks.
@@ -96,6 +97,7 @@ def _send_via_mailgun(
     from_email: str,
     from_name: str,
     reply_to: str = None,
+    cc: str = None,
 ) -> bool:
     """Send via Mailgun API."""
     api_key = os.environ.get("MAILGUN_API_KEY")
@@ -112,6 +114,8 @@ def _send_via_mailgun(
         }
         if reply_to:
             data["h:Reply-To"] = reply_to
+        if cc:
+            data["cc"] = cc
 
         resp = requests.post(
             f"https://api.mailgun.net/v3/{domain}/messages",
@@ -129,12 +133,87 @@ def _send_via_mailgun(
         return False
 
 
+def _send_via_gmail_api(
+    to_email: str,
+    subject: str,
+    html_content: str,
+    from_email: str,
+    from_name: str,
+    reply_to: str = None,
+) -> bool:
+    """Send via Gmail API using service account with domain-wide delegation."""
+    import json
+    import base64
+
+    service_account_json = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON")
+    service_account_file = os.environ.get("GOOGLE_SERVICE_ACCOUNT_FILE")
+    if not service_account_json and not service_account_file:
+        return False
+
+    try:
+        from google.oauth2 import service_account
+        from googleapiclient.discovery import build
+    except ImportError:
+        logger.warning("Google API client library not installed")
+        return False
+
+    try:
+        scopes = ["https://www.googleapis.com/auth/gmail.send"]
+        if service_account_json:
+            try:
+                info = json.loads(service_account_json)
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse GOOGLE_SERVICE_ACCOUNT_JSON: {e}")
+                return False
+            # Render sometimes stores \n as literal \\n — fix the private key
+            if "private_key" in info:
+                info["private_key"] = info["private_key"].replace("\\n", "\n")
+            creds = service_account.Credentials.from_service_account_info(info, scopes=scopes)
+        else:
+            if not os.path.exists(service_account_file):
+                logger.error(f"Service account file not found: {service_account_file}")
+                return False
+            creds = service_account.Credentials.from_service_account_file(service_account_file, scopes=scopes)
+
+        # Delegate to send as the noreply address
+        delegated_creds = creds.with_subject(from_email)
+        service = build("gmail", "v1", credentials=delegated_creds)
+
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"] = f"{from_name} <{from_email}>"
+        msg["To"] = to_email
+        if reply_to:
+            msg["Reply-To"] = reply_to
+        msg.attach(MIMEText(html_content, "html"))
+
+        raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
+        result = service.users().messages().send(userId="me", body={"raw": raw}).execute()
+        logger.info(f"Email sent to {to_email} via Gmail API (id: {result.get('id')})")
+        return True
+    except Exception as e:
+        try:
+            from googleapiclient.errors import HttpError
+            if isinstance(e, HttpError):
+                logger.error(
+                    f"Gmail API HttpError {e.status_code}: {e.error_details} — "
+                    f"Check service account domain-wide delegation and that "
+                    f"{from_email!r} is a real Google Workspace user with Gmail enabled."
+                )
+                return False
+        except Exception:
+            pass
+        logger.error(f"Gmail API send error ({type(e).__name__}): {e}")
+        return False
+
+
 def _send_via_smtp(
     to_email: str,
     subject: str,
     html_content: str,
     from_email: str,
     from_name: str,
+    cc: str = None,
 ) -> bool:
     """Send via SMTP (Google Workspace / Gmail)."""
     user = os.environ.get("SMTP_USER")
@@ -146,18 +225,24 @@ def _send_via_smtp(
         return False
 
     try:
+        # Must send from the authenticated SMTP account — Google rejects mismatches
+        # between the login user and the From address.
+        effective_from = user
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
-        msg["From"] = f"{from_name} <{from_email}>"
+        msg["From"] = f"{from_name} <{effective_from}>"
         msg["To"] = to_email
+        if cc:
+            msg["Cc"] = cc
         msg.attach(MIMEText(html_content, "html"))
 
+        all_recipients = [to_email] + [a.strip() for a in cc.split(",")] if cc else [to_email]
         with smtplib.SMTP(host, port) as server:
             server.starttls()
             server.login(user, password)
-            server.sendmail(from_email, to_email, msg.as_string())
+            server.sendmail(effective_from, all_recipients, msg.as_string())
 
-        logger.info(f"Email sent to {to_email} via SMTP")
+        logger.info(f"Email sent to {to_email} via SMTP" + (f" (CC: {cc})" if cc else ""))
         return True
     except Exception as e:
         logger.error(f"SMTP send error: {e}")

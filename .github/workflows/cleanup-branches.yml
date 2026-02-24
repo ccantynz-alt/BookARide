@@ -1,0 +1,77 @@
+name: Clean up stale branches and PRs
+
+on:
+  push:
+    branches:
+      - main          # Runs automatically after every auto-merge
+  schedule:
+    - cron: '0 2 * * 0'  # Also every Sunday 2am UTC as a safety net
+  workflow_dispatch:       # Manual trigger from GitHub Actions UI
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Close stale PRs and delete merged agent branches
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const prefixes = ['claude/', 'cursor/', 'copilot/', 'doctor/', 'fix/'];
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            // ── 1. Close all open PRs from agent branches ──────────────────
+            let page = 1;
+            let prsClosed = 0;
+            while (true) {
+              const { data: prs } = await github.rest.pulls.list({
+                owner, repo, state: 'open', per_page: 100, page,
+              });
+              if (prs.length === 0) break;
+              for (const pr of prs) {
+                const branch = pr.head.ref;
+                if (!prefixes.some(p => branch.startsWith(p))) continue;
+                await github.rest.pulls.update({
+                  owner, repo, pull_number: pr.number, state: 'closed',
+                });
+                console.log(`Closed PR #${pr.number}: ${pr.title} (${branch})`);
+                prsClosed++;
+              }
+              page++;
+            }
+            console.log(`PRs closed: ${prsClosed}`);
+
+            // ── 2. Delete merged/behind agent branches ──────────────────────
+            let branchPage = 1;
+            let deleted = 0;
+            while (true) {
+              const { data: branches } = await github.rest.repos.listBranches({
+                owner, repo, per_page: 100, page: branchPage,
+              });
+              if (branches.length === 0) break;
+              for (const branch of branches) {
+                const name = branch.name;
+                if (!prefixes.some(p => name.startsWith(p))) continue;
+                try {
+                  const { data: compare } = await github.rest.repos.compareCommitsWithBasehead({
+                    owner, repo, basehead: `main...${name}`,
+                  });
+                  if (compare.ahead_by === 0) {
+                    await github.rest.git.deleteRef({ owner, repo, ref: `heads/${name}` });
+                    console.log(`Deleted branch: ${name}`);
+                    deleted++;
+                  } else {
+                    console.log(`Kept (${compare.ahead_by} commits ahead): ${name}`);
+                  }
+                } catch (err) {
+                  console.log(`Skipped ${name}: ${err.message}`);
+                }
+              }
+              branchPage++;
+            }
+            console.log(`Branches deleted: ${deleted}`);

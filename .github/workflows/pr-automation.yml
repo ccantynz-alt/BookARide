@@ -1,0 +1,95 @@
+name: PR Automation
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+jobs:
+  label:
+    name: Auto-label PR
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Label by changed paths
+        uses: actions/labeler@v5
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          configuration-path: .github/labeler.yml
+
+  pr-comment:
+    name: Post CI status comment
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Comment on new PR
+        if: github.event.action == 'opened'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+            });
+
+            const body = [
+              '## BookARide CI Checklist',
+              '',
+              'Thanks for opening this PR! The automated checks below will run shortly:',
+              '',
+              '| Check | Status |',
+              '|---|---|',
+              '| Frontend build | ⏳ Pending |',
+              '| Backend syntax & lint | ⏳ Pending |',
+              '| Secret scanning | ⏳ Pending |',
+              '',
+              '> The PR will be eligible for auto-merge into `main` once all checks pass.',
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
+
+  size-check:
+    name: PR size check
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Count changed lines
+        id: diff
+        run: |
+          ADDITIONS=$(git diff --stat origin/${{ github.base_ref }}...HEAD | tail -1 | grep -oP '\d+(?= insertion)' || echo 0)
+          DELETIONS=$(git diff --stat origin/${{ github.base_ref }}...HEAD | tail -1 | grep -oP '\d+(?= deletion)' || echo 0)
+          TOTAL=$((ADDITIONS + DELETIONS))
+          echo "total=$TOTAL" >> $GITHUB_OUTPUT
+          echo "Changed lines: $TOTAL (additions: $ADDITIONS, deletions: $DELETIONS)"
+
+      - name: Label large PRs
+        if: steps.diff.outputs.total > 500
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: ['large-pr'],
+            });
