@@ -5,12 +5,12 @@ This document summarizes the security remediation work completed to remove all e
 
 ## Problem
 The following sensitive credentials were found exposed in the repository:
-- **Mailgun API Key**: `151d31c4dd7cd9fd3015d140b2c58f76-235e4bb2-1ecf548a`
+- **Mailgun API Key**: `[REDACTED]`
 - **Admin Passwords**: 
-  - `BookARide2024!`
-  - `Kongkong2025!@`
-  - `Chico9620!@`
-- **CRON API Key**: `bookaride-cron-secret-2024`
+  - `[REDACTED]`
+  - `[REDACTED]`
+  - `[REDACTED]`
+- **CRON API Key**: `[REDACTED]`
 
 ## Solution Implemented
 All hardcoded credentials have been removed and replaced with:
