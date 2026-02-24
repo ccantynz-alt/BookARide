@@ -644,6 +644,11 @@ export const AdminDashboard = () => {
     filterBookings();
   }, [bookings, searchTerm, statusFilter]);
 
+  useEffect(() => {
+    if (!localStorage.getItem('adminToken')) return;
+    if (dateFrom || dateTo) fetchBookings(1, false);
+  }, [dateFrom, dateTo]);
+
   // Store cleanup functions for autocomplete instances
   const autocompleteCleanupRef = useRef([]);
 
@@ -819,20 +824,27 @@ export const AdminDashboard = () => {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [totalBookings, setTotalBookings] = useState(0);
-  const [bookingsPerPage] = useState(50);
+  const [bookingsPerPage] = useState(200);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [loadAllBookings] = useState(true); // Always load full list so we never miss a booking
 
   const fetchBookings = async (page = 1, append = false) => {
     try {
       if (page === 1) setLoading(true);
       else setIsLoadingMore(true);
       
+      const params = {
+        page: loadAllBookings ? 1 : page,
+        limit: loadAllBookings ? 0 : bookingsPerPage   // 0 = return ALL active bookings (never miss one)
+      };
+      if (dateFrom) params.date_from = dateFrom;
+      if (dateTo) params.date_to = dateTo;
+      
       const response = await axios.get(`${API}/bookings`, {
         ...getAuthHeaders(),
-        params: {
-          page: page,
-          limit: bookingsPerPage
-        }
+        params
       });
       
       const newBookings = response.data;
@@ -841,7 +853,7 @@ export const AdminDashboard = () => {
       try {
         const cached = JSON.parse(localStorage.getItem('cachedBookings') || '[]');
         const updatedCache = append ? [...cached, ...newBookings] : newBookings;
-        localStorage.setItem('cachedBookings', JSON.stringify(updatedCache.slice(0, 200))); // Cache up to 200
+        localStorage.setItem('cachedBookings', JSON.stringify(updatedCache.slice(0, 500)));
         localStorage.setItem('cachedBookingsTime', new Date().toISOString());
       } catch (e) {
         console.warn('Could not cache bookings:', e);
@@ -853,7 +865,7 @@ export const AdminDashboard = () => {
         setBookings(newBookings);
       }
       
-      setCurrentPage(page);
+      setCurrentPage(1);
       setLoading(false);
       setIsLoadingMore(false);
       
@@ -2494,6 +2506,34 @@ export const AdminDashboard = () => {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="border rounded px-2 py-2 text-sm w-[130px]"
+                  title="From date"
+                />
+                <span className="text-gray-400 text-sm">–</span>
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="border rounded px-2 py-2 text-sm w-[130px]"
+                  title="To date"
+                />
+                {(dateFrom || dateTo) && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => { setDateFrom(''); setDateTo(''); fetchBookings(1, false); }}
+                    className="text-gray-600"
+                  >
+                    Clear dates
+                  </Button>
+                )}
+              </div>
               <Button 
                 onClick={exportToCSV}
                 variant="outline"
@@ -2523,6 +2563,12 @@ export const AdminDashboard = () => {
         {/* Bookings Table */}
         <Card>
           <CardContent className="p-0">
+            {!loading && loadAllBookings && bookings.length > 0 && (
+              <div className="bg-emerald-50 border-b border-emerald-200 px-4 py-2 text-sm text-emerald-800 flex items-center gap-2">
+                <span className="font-medium">Full list loaded.</span>
+                <span>Every active booking is shown – none hidden by pagination.</span>
+              </div>
+            )}
             {loading ? (
               <div className="text-center py-12">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold mx-auto"></div>
@@ -2826,7 +2872,7 @@ export const AdminDashboard = () => {
               </div>
               
               {/* Load More Button - showing if more bookings available */}
-              {bookings.length >= bookingsPerPage * currentPage && (
+              {!loadAllBookings && bookings.length >= bookingsPerPage * currentPage && (
                 <div className="flex justify-center mt-4 pb-4">
                   <Button
                     onClick={loadMoreBookings}
@@ -2910,7 +2956,9 @@ export const AdminDashboard = () => {
               
               {/* Pagination Info - always visible */}
               <div className="text-center text-sm text-gray-500 pb-2">
-                Showing {filteredBookings.length} of {totalBookings || bookings.length} bookings
+                {loadAllBookings
+                  ? `Showing all ${filteredBookings.length} bookings (full list – none hidden)`
+                  : `Showing ${filteredBookings.length} of ${totalBookings || bookings.length} bookings`}
                 {archiveSearchResults.length > 0 && ` + ${archiveSearchResults.length} from archive`}
               </div>
             </>
