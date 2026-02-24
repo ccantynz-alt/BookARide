@@ -514,6 +514,9 @@ export const AdminDashboard = () => {
   const dropoffInputRef = useRef(null);
   const additionalPickupRefs = useRef([]);
   const autocompleteCleanupRef = useRef([]);
+  // Declare in wider scope; assigned unconditionally below so always defined before use (avoids "Cannot access 'mr' before initialization")
+  let fetchBookings;
+  let filterBookings;
   const fetchBookingsRef = useRef(null);
   const filterBookingsRef = useRef(null);
   const [activeTab, setActiveTab] = useState('bookings');
@@ -634,7 +637,16 @@ export const AdminDashboard = () => {
   const [adminFlightArrivalTime, setAdminFlightArrivalTime] = useState(null);
   const [adminFlightDepartureTime, setAdminFlightDepartureTime] = useState(null);
 
-  // Initialize Google Places Autocomplete for admin booking form (autocompleteCleanupRef declared at top)
+  // Use refs only - never reference fetchBookings/filterBookings here (they are declared later)
+  useEffect(() => {
+    if (filterBookingsRef.current) filterBookingsRef.current();
+  }, [bookings, searchTerm, statusFilter]);
+  useEffect(() => {
+    if (!localStorage.getItem('adminToken')) return;
+    if (dateFrom || dateTo) fetchBookingsRef.current?.(1, false);
+  }, [dateFrom, dateTo]);
+
+  // Initialize Google Places Autocomplete for admin booking form
   useEffect(() => {
     if (!isLoaded || !showCreateBookingModal) return;
 
@@ -812,7 +824,7 @@ export const AdminDashboard = () => {
   const [dateTo, setDateTo] = useState('');
   const [loadAllBookings] = useState(true); // Always load full list so we never miss a booking
 
-  const fetchBookings = async (page = 1, append = false) => {
+  fetchBookings = async (page = 1, append = false) => {
     try {
       if (page === 1) setLoading(true);
       else setIsLoadingMore(true);
@@ -885,6 +897,7 @@ export const AdminDashboard = () => {
       setIsLoadingMore(false);
     }
   };
+  fetchBookingsRef.current = fetchBookings;
 
   const fetchBookingCounts = async () => {
     try {
@@ -1410,7 +1423,7 @@ export const AdminDashboard = () => {
     }
   };
 
-  const filterBookings = () => {
+  filterBookings = () => {
     let filtered = bookings;
 
     // Status filter
@@ -1436,16 +1449,7 @@ export const AdminDashboard = () => {
 
     setFilteredBookings(filtered);
   };
-
-  // Declare-first fix: these effects use fetchBookings and filterBookings, so they must run after those are defined
-  useEffect(() => {
-    filterBookings();
-  }, [bookings, searchTerm, statusFilter]);
-
-  useEffect(() => {
-    if (!localStorage.getItem('adminToken')) return;
-    if (dateFrom || dateTo) fetchBookings(1, false);
-  }, [dateFrom, dateTo]);
+  filterBookingsRef.current = filterBookings;
 
   // Search across all bookings (active + archived)
   const [archiveSearchResults, setArchiveSearchResults] = useState([]);
