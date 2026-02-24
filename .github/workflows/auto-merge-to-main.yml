@@ -50,13 +50,72 @@ jobs:
         run: |
           git push origin --delete "${{ github.event.workflow_run.head_branch }}" || echo "Branch already deleted or not found"
 
-      - name: Delete source branch (if direct merge succeeded)
-        if: steps.direct_merge.outcome == 'success'
-        run: |
-          git push origin --delete "${{ github.event.workflow_run.head_branch }}" || echo "Branch already deleted or not found"
+      - name: Close all stale agent PRs and delete merged branches
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const prefixes = ['claude/', 'cursor/', 'copilot/', 'doctor/', 'fix/'];
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
 
-      - name: Deploy to server (Render/VPS)
-        if: steps.direct_merge.outcome == 'success' && secrets.DEPLOY_SSH_KEY != ''
+            // ── Close all open PRs from agent branches ──────────────────────
+            let page = 1;
+            let prsClosed = 0;
+            while (true) {
+              const { data: prs } = await github.rest.pulls.list({
+                owner, repo, state: 'open', per_page: 100, page,
+              });
+              if (prs.length === 0) break;
+              for (const pr of prs) {
+                const branch = pr.head.ref;
+                if (!prefixes.some(p => branch.startsWith(p))) continue;
+                try {
+                  await github.rest.pulls.update({
+                    owner, repo, pull_number: pr.number, state: 'closed',
+                  });
+                  console.log(`Closed PR #${pr.number}: ${pr.title} (${branch})`);
+                  prsClosed++;
+                } catch (err) {
+                  console.log(`Could not close PR #${pr.number}: ${err.message}`);
+                }
+              }
+              page++;
+            }
+            console.log(`PRs closed: ${prsClosed}`);
+
+            // ── Delete merged/behind agent branches ─────────────────────────
+            let branchPage = 1;
+            let deleted = 0;
+            while (true) {
+              const { data: branches } = await github.rest.repos.listBranches({
+                owner, repo, per_page: 100, page: branchPage,
+              });
+              if (branches.length === 0) break;
+              for (const branch of branches) {
+                const name = branch.name;
+                if (!prefixes.some(p => name.startsWith(p))) continue;
+                try {
+                  const { data: compare } = await github.rest.repos.compareCommitsWithBasehead({
+                    owner, repo, basehead: `main...${name}`,
+                  });
+                  if (compare.ahead_by === 0) {
+                    await github.rest.git.deleteRef({ owner, repo, ref: `heads/${name}` });
+                    console.log(`Deleted branch: ${name}`);
+                    deleted++;
+                  } else {
+                    console.log(`Kept (${compare.ahead_by} commits ahead): ${name}`);
+                  }
+                } catch (err) {
+                  console.log(`Skipped ${name}: ${err.message}`);
+                }
+              }
+              branchPage++;
+            }
+            console.log(`Branches deleted: ${deleted}`);
+
+      - name: Deploy to server
+        if: ${{ secrets.DEPLOY_SSH_KEY != '' }}
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.DEPLOY_HOST }}
