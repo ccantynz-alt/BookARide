@@ -4,7 +4,7 @@
 
 A hardcoded Emergent API key was found in the repository at `backend/server.py` (lines 3253, 3566, and 4380).
 
-**Exposed Key**: `sk-emergent-1221fFe2cB790B632B`
+**Exposed Key**: `[REDACTED - key has been revoked]`
 
 This key has been **REMOVED** from the code and replaced with an environment variable, but it still exists in:
 - Git commit history
@@ -57,7 +57,7 @@ The exposed key still exists in Git history. To completely remove it, follow the
 
 **Search pattern to remove**:
 ```
-sk-emergent-1221fFe2cB790B632B
+sk-emergent-[REDACTED]
 ```
 
 ### 5. Verify the Fix
@@ -86,7 +86,7 @@ Anyone with repository access could have used this key to:
 
 ## Changes Made
 
-1. ✅ Removed hardcoded `sk-emergent-1221fFe2cB790B632B` from `backend/server.py`
+1. ✅ Removed hardcoded Emergent API key from `backend/server.py`
 2. ✅ Added `EMERGENT_API_KEY` environment variable
 3. ✅ Updated all 3 occurrences to use the environment variable
 4. ✅ Added warning message if `EMERGENT_API_KEY` is not set

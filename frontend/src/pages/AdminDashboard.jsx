@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Search, Filter, Mail, DollarSign, CheckCircle, XCircle, Clock, Eye, Edit2, BarChart3, Users, BookOpen, Car, Settings, Trash2, MapPin, Calendar, RefreshCw, Send, Bell, Facebook, Globe, Square, CheckSquare, FileText, Smartphone, RotateCcw, AlertTriangle, AlertCircle, Home, Bus, ExternalLink, Navigation, Upload, Archive } from 'lucide-react';
+import { LogOut, Search, Filter, Mail, DollarSign, CheckCircle, XCircle, Clock, Eye, Edit2, BarChart3, Users, BookOpen, Car, Settings, Trash2, MapPin, Calendar, RefreshCw, Send, Bell, Facebook, Globe, Square, CheckSquare, FileText, Smartphone, RotateCcw, AlertTriangle, AlertCircle, Home, Bus, ExternalLink, Navigation, Upload, Archive, CreditCard } from 'lucide-react';
 import GeoapifyAutocomplete from '../components/GeoapifyAutocomplete';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -616,6 +616,9 @@ export const AdminDashboard = () => {
   const [adminFlightArrivalTime, setAdminFlightArrivalTime] = useState(null);
   const [adminFlightDepartureTime, setAdminFlightDepartureTime] = useState(null);
 
+  // Date picker state for edit booking modal
+  const [editPickupDate, setEditPickupDate] = useState(null);
+
   useEffect(() => {
     // Check authentication
     const token = localStorage.getItem('adminToken');
@@ -633,6 +636,174 @@ export const AdminDashboard = () => {
     filterBookings();
   }, [bookings, searchTerm, statusFilter]);
 
+  useEffect(() => {
+    if (!localStorage.getItem('adminToken')) return;
+    if (dateFrom || dateTo) fetchBookings(1, false);
+  }, [dateFrom, dateTo]);
+
+  // Store cleanup functions for autocomplete instances
+  const autocompleteCleanupRef = useRef([]);
+
+  // Initialize Google Places Autocomplete for admin booking form
+  useEffect(() => {
+    if (!isLoaded || !showCreateBookingModal) return;
+
+    // Clean up previous autocomplete instances
+    autocompleteCleanupRef.current.forEach(cleanup => {
+      if (cleanup) cleanup();
+    });
+    autocompleteCleanupRef.current = [];
+
+    // Reset initialization flags for additional pickup refs
+    additionalPickupRefs.current.forEach(ref => {
+      if (ref) ref._autocompleteInitialized = false;
+    });
+
+    // Delay to ensure modal and inputs are fully rendered
+    const timer = setTimeout(() => {
+      try {
+        if (window.google && window.google.maps && window.google.maps.places) {
+          const autocompleteOptions = {
+            fields: ['formatted_address', 'geometry', 'name']
+          };
+
+          // Initialize pickup autocomplete with fix
+          if (pickupInputRef.current) {
+            const pickupSetup = initAutocompleteWithFix(pickupInputRef.current, autocompleteOptions);
+            if (pickupSetup && pickupSetup.autocomplete) {
+              pickupSetup.autocomplete.addListener('place_changed', () => {
+                const place = pickupSetup.autocomplete.getPlace();
+                if (place && place.formatted_address) {
+                  setNewBooking(prev => ({ ...prev, pickupAddress: place.formatted_address }));
+                }
+              });
+              autocompleteCleanupRef.current.push(pickupSetup.cleanup);
+            }
+          }
+
+          // Initialize dropoff autocomplete with fix
+          if (dropoffInputRef.current) {
+            const dropoffSetup = initAutocompleteWithFix(dropoffInputRef.current, autocompleteOptions);
+            if (dropoffSetup && dropoffSetup.autocomplete) {
+              dropoffSetup.autocomplete.addListener('place_changed', () => {
+                const place = dropoffSetup.autocomplete.getPlace();
+                if (place && place.formatted_address) {
+                  setNewBooking(prev => ({ ...prev, dropoffAddress: place.formatted_address }));
+                }
+              });
+              autocompleteCleanupRef.current.push(dropoffSetup.cleanup);
+            }
+          }
+
+          // Initialize autocomplete for additional pickup addresses with fix
+          additionalPickupRefs.current.forEach((ref, index) => {
+            if (ref && !ref._autocompleteInitialized) {
+              const additionalSetup = initAutocompleteWithFix(ref, autocompleteOptions);
+              if (additionalSetup && additionalSetup.autocomplete) {
+                additionalSetup.autocomplete.addListener('place_changed', () => {
+                  const place = additionalSetup.autocomplete.getPlace();
+                  if (place && place.formatted_address) {
+                    // Use functional update to avoid stale closure
+                    setNewBooking(prev => ({
+                      ...prev,
+                      pickupAddresses: prev.pickupAddresses.map((addr, i) => 
+                        i === index ? place.formatted_address : addr
+                      )
+                    }));
+                  }
+                });
+                ref._autocompleteInitialized = true;
+                autocompleteCleanupRef.current.push(additionalSetup.cleanup);
+              }
+            }
+          });
+
+          console.log('✅ Google Places Autocomplete initialized for admin form with click fix');
+        } else {
+          console.warn('⚠️ Google Maps Places API not loaded yet');
+        }
+      } catch (error) {
+        console.error('❌ Error initializing Google Places Autocomplete:', error);
+      }
+    }, 500);
+
+    return () => {
+      clearTimeout(timer);
+      // Cleanup autocomplete instances when modal closes
+      autocompleteCleanupRef.current.forEach(cleanup => {
+        if (cleanup) cleanup();
+      });
+    };
+  }, [isLoaded, showCreateBookingModal, newBooking.pickupAddresses.length]);
+
+  // Initialize autocomplete for edit modal
+  useEffect(() => {
+    if (!isLoaded || !showEditBookingModal || !editingBooking) return;
+
+    const timer = setTimeout(() => {
+      try {
+        if (window.google?.maps?.places) {
+          const autocompleteOptions = {
+            fields: ['formatted_address', 'geometry', 'name']
+          };
+
+          // Initialize pickup autocomplete for edit modal
+          if (editPickupInputRef.current && !editPickupInputRef.current._autocompleteInitialized) {
+            const pickupSetup = initAutocompleteWithFix(editPickupInputRef.current, autocompleteOptions);
+            if (pickupSetup?.autocomplete) {
+              pickupSetup.autocomplete.addListener('place_changed', () => {
+                const place = pickupSetup.autocomplete.getPlace();
+                if (place?.formatted_address) {
+                  setEditingBooking(prev => ({ ...prev, pickupAddress: place.formatted_address }));
+                }
+              });
+              editPickupInputRef.current._autocompleteInitialized = true;
+            }
+          }
+
+          // Initialize dropoff autocomplete for edit modal
+          if (editDropoffInputRef.current && !editDropoffInputRef.current._autocompleteInitialized) {
+            const dropoffSetup = initAutocompleteWithFix(editDropoffInputRef.current, autocompleteOptions);
+            if (dropoffSetup?.autocomplete) {
+              dropoffSetup.autocomplete.addListener('place_changed', () => {
+                const place = dropoffSetup.autocomplete.getPlace();
+                if (place?.formatted_address) {
+                  setEditingBooking(prev => ({ ...prev, dropoffAddress: place.formatted_address }));
+                }
+              });
+              editDropoffInputRef.current._autocompleteInitialized = true;
+            }
+          }
+
+          // Initialize additional pickup autocompletes for edit modal
+          editAdditionalPickupRefs.current.forEach((ref, index) => {
+            if (ref && !ref._autocompleteInitialized) {
+              const setup = initAutocompleteWithFix(ref, autocompleteOptions);
+              if (setup?.autocomplete) {
+                setup.autocomplete.addListener('place_changed', () => {
+                  const place = setup.autocomplete.getPlace();
+                  if (place?.formatted_address) {
+                    setEditingBooking(prev => ({
+                      ...prev,
+                      pickupAddresses: prev.pickupAddresses.map((addr, i) => i === index ? place.formatted_address : addr)
+                    }));
+                  }
+                });
+                ref._autocompleteInitialized = true;
+              }
+            }
+          });
+
+          console.log('✅ Google Places Autocomplete initialized for edit modal');
+        }
+      } catch (error) {
+        console.error('❌ Error initializing autocomplete for edit modal:', error);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [isLoaded, showEditBookingModal, editingBooking?.pickupAddresses?.length]);
+
   const getAuthHeaders = () => {
     const token = localStorage.getItem('adminToken');
     return {
@@ -645,20 +816,27 @@ export const AdminDashboard = () => {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [totalBookings, setTotalBookings] = useState(0);
-  const [bookingsPerPage] = useState(50);
+  const [bookingsPerPage] = useState(200);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [loadAllBookings] = useState(true); // Always load full list so we never miss a booking
 
   const fetchBookings = async (page = 1, append = false) => {
     try {
       if (page === 1) setLoading(true);
       else setIsLoadingMore(true);
       
+      const params = {
+        page: loadAllBookings ? 1 : page,
+        limit: loadAllBookings ? 0 : bookingsPerPage   // 0 = return ALL active bookings (never miss one)
+      };
+      if (dateFrom) params.date_from = dateFrom;
+      if (dateTo) params.date_to = dateTo;
+      
       const response = await axios.get(`${API}/bookings`, {
         ...getAuthHeaders(),
-        params: {
-          page: page,
-          limit: bookingsPerPage
-        }
+        params
       });
       
       const newBookings = response.data;
@@ -667,7 +845,7 @@ export const AdminDashboard = () => {
       try {
         const cached = JSON.parse(localStorage.getItem('cachedBookings') || '[]');
         const updatedCache = append ? [...cached, ...newBookings] : newBookings;
-        localStorage.setItem('cachedBookings', JSON.stringify(updatedCache.slice(0, 200))); // Cache up to 200
+        localStorage.setItem('cachedBookings', JSON.stringify(updatedCache.slice(0, 500)));
         localStorage.setItem('cachedBookingsTime', new Date().toISOString());
       } catch (e) {
         console.warn('Could not cache bookings:', e);
@@ -679,7 +857,7 @@ export const AdminDashboard = () => {
         setBookings(newBookings);
       }
       
-      setCurrentPage(page);
+      setCurrentPage(1);
       setLoading(false);
       setIsLoadingMore(false);
       
@@ -1567,6 +1745,13 @@ export const AdminDashboard = () => {
       ...booking,
       pickupAddresses: booking.pickupAddresses || []
     });
+    // Initialise the date picker from the booking's stored date (YYYY-MM-DD)
+    if (booking.date) {
+      const [year, month, day] = booking.date.split('-').map(Number);
+      setEditPickupDate(new Date(year, month - 1, day));
+    } else {
+      setEditPickupDate(null);
+    }
     setShowEditBookingModal(true);
   };
 
@@ -2304,6 +2489,34 @@ export const AdminDashboard = () => {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="border rounded px-2 py-2 text-sm w-[130px]"
+                  title="From date"
+                />
+                <span className="text-gray-400 text-sm">–</span>
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="border rounded px-2 py-2 text-sm w-[130px]"
+                  title="To date"
+                />
+                {(dateFrom || dateTo) && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => { setDateFrom(''); setDateTo(''); fetchBookings(1, false); }}
+                    className="text-gray-600"
+                  >
+                    Clear dates
+                  </Button>
+                )}
+              </div>
               <Button 
                 onClick={exportToCSV}
                 variant="outline"
@@ -2333,6 +2546,12 @@ export const AdminDashboard = () => {
         {/* Bookings Table */}
         <Card>
           <CardContent className="p-0">
+            {!loading && loadAllBookings && bookings.length > 0 && (
+              <div className="bg-emerald-50 border-b border-emerald-200 px-4 py-2 text-sm text-emerald-800 flex items-center gap-2">
+                <span className="font-medium">Full list loaded.</span>
+                <span>Every active booking is shown – none hidden by pagination.</span>
+              </div>
+            )}
             {loading ? (
               <div className="text-center py-12">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold mx-auto"></div>
@@ -2448,7 +2667,10 @@ export const AdminDashboard = () => {
                               {isToday(booking.date) && <span className="px-1.5 py-0.5 text-[9px] font-bold bg-blue-600 text-white rounded animate-pulse">TODAY</span>}
                               {isTomorrow(booking.date) && <span className="px-1.5 py-0.5 text-[9px] font-bold bg-orange-500 text-white rounded">TMR</span>}
                             </div>
-                            <div className="text-xs text-gray-700 font-medium">{formatDate(booking.date)}</div>
+                            <div className="text-xs text-gray-700 font-medium">
+                              <span className="text-gold font-bold mr-1">{getShortDayOfWeek(booking.date)}</span>
+                              {formatDate(booking.date)}
+                            </div>
                             <div className="text-sm font-bold text-gray-900">{booking.time}</div>
                           </div>
                         </td>
@@ -2497,7 +2719,10 @@ export const AdminDashboard = () => {
                           {hasReturn ? (
                             <div className="flex flex-col bg-purple-50 p-1.5 rounded border border-purple-200">
                               <span className="text-[10px] font-semibold text-purple-700">🔄 RETURN</span>
-                              <span className="text-xs font-bold text-purple-900">{formatDate(booking.returnDate)}</span>
+                              <span className="text-xs font-bold text-purple-900">
+                                <span className="text-purple-500 mr-1">{getShortDayOfWeek(booking.returnDate)}</span>
+                                {formatDate(booking.returnDate)}
+                              </span>
                               <span className="text-sm font-bold text-purple-800">{booking.returnTime}</span>
                             </div>
                           ) : (
@@ -2618,6 +2843,16 @@ export const AdminDashboard = () => {
                               <Mail className="w-4 h-4 text-green-600" />
                               <span className="text-[8px] text-green-500">Email</span>
                             </button>
+                            {booking.payment_status !== 'paid' && (
+                              <button
+                                onClick={() => handleResendPaymentLink(booking.id, 'stripe')}
+                                className="p-1.5 hover:bg-emerald-100 rounded flex flex-col items-center border border-emerald-200"
+                                title="Send Stripe payment link to customer"
+                              >
+                                <CreditCard className="w-4 h-4 text-emerald-600" />
+                                <span className="text-[8px] text-emerald-600 font-medium">Pay Link</span>
+                              </button>
+                            )}
                             <button
                               onClick={() => {
                                 setSmsModal(booking);
@@ -2673,7 +2908,7 @@ export const AdminDashboard = () => {
               </div>
               
               {/* Load More Button - showing if more bookings available */}
-              {bookings.length >= bookingsPerPage * currentPage && (
+              {!loadAllBookings && bookings.length >= bookingsPerPage * currentPage && (
                 <div className="flex justify-center mt-4 pb-4">
                   <Button
                     onClick={loadMoreBookings}
@@ -2757,7 +2992,9 @@ export const AdminDashboard = () => {
               
               {/* Pagination Info - always visible */}
               <div className="text-center text-sm text-gray-500 pb-2">
-                Showing {filteredBookings.length} of {totalBookings || bookings.length} bookings
+                {loadAllBookings
+                  ? `Showing all ${filteredBookings.length} bookings (full list – none hidden)`
+                  : `Showing ${filteredBookings.length} of ${totalBookings || bookings.length} bookings`}
                 {archiveSearchResults.length > 0 && ` + ${archiveSearchResults.length} from archive`}
               </div>
             </>
@@ -4257,6 +4494,7 @@ export const AdminDashboard = () => {
                           }
                         }}
                         placeholder="Select date"
+                        allowPastDates={true}
                         maxDate={new Date('2030-12-31')}
                         showMonthDropdown
                         showYearDropdown
@@ -4726,13 +4964,27 @@ export const AdminDashboard = () => {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label>Date *</Label>
-                      <Input
-                        type="date"
-                        value={editingBooking.date}
-                        onChange={(e) => setEditingBooking(prev => ({...prev, date: e.target.value}))}
-                        className="mt-1"
-                      />
+                      <Label>Date * (can backdate for invoicing)</Label>
+                      <div className="mt-1">
+                        <CustomDatePicker
+                          selected={editPickupDate}
+                          onChange={(date) => {
+                            setEditPickupDate(date);
+                            if (date) {
+                              const year = date.getFullYear();
+                              const month = String(date.getMonth() + 1).padStart(2, '0');
+                              const day = String(date.getDate()).padStart(2, '0');
+                              setEditingBooking(prev => ({...prev, date: `${year}-${month}-${day}`}));
+                            }
+                          }}
+                          placeholder="Select date"
+                          allowPastDates={true}
+                          maxDate={new Date('2030-12-31')}
+                          showMonthDropdown
+                          showYearDropdown
+                          dropdownMode="select"
+                        />
+                      </div>
                     </div>
                     <div>
                       <Label>Time *</Label>
