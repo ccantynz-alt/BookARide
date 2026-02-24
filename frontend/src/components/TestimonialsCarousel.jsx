@@ -3,8 +3,8 @@ import Slider from 'react-slick';
 import { Card, CardContent } from './ui/card';
 import { Star, Quote } from 'lucide-react';
 import { AnimatedSection } from './AnimatedSection';
-import 'slick-carousel/slick/slick.css';
-import 'slick-carousel/slick/slick-theme.css';
+import '../styles/slick.css';
+import '../styles/slick-theme.css';
 
 export const TestimonialsCarousel = () => {
   const testimonials = [
