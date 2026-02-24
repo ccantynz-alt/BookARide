@@ -7,7 +7,7 @@
 | Google Maps | console.cloud.google.com (Enable Distance Matrix + Places API) |
 | Stripe | dashboard.stripe.com/apikeys |
 | Twilio | console.twilio.com |
-| Mailgun | app.mailgun.com |
+| Mailgun | app.mailgun.com (optional; can use Google Workspace SMTP instead) |
 | AviationStack | aviationstack.com (free tier) |
 | OpenAI | Use Emergent LLM Key (built-in) |
 
@@ -26,8 +26,13 @@ STRIPE_PUBLISHABLE_KEY=pk_xxx
 TWILIO_ACCOUNT_SID=xxx
 TWILIO_AUTH_TOKEN=xxx
 TWILIO_PHONE_NUMBER=+64xxx
+# Email: either Mailgun or Google Workspace SMTP (see GOOGLE_WORKSPACE_EMAIL_SETUP.md)
 MAILGUN_API_KEY=xxx
 MAILGUN_DOMAIN=mg.yourdomain.com
+# Or use Google Workspace:
+# SMTP_USER=bookings@yourdomain.com
+# SMTP_PASS=your-app-password
+# NOREPLY_EMAIL=bookings@yourdomain.com
 AVIATIONSTACK_API_KEY=xxx
 EMERGENT_LLM_KEY=xxx
 ADMIN_EMAIL=admin@yourdomain.com
