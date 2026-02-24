@@ -513,6 +513,7 @@ export const AdminDashboard = () => {
   const pickupInputRef = useRef(null);
   const dropoffInputRef = useRef(null);
   const additionalPickupRefs = useRef([]);
+  const autocompleteCleanupRef = useRef([]); // Declared here so any useEffect can use it without "before initialization"
   const [activeTab, setActiveTab] = useState('bookings');
   const [bookings, setBookings] = useState([]);
   const [filteredBookings, setFilteredBookings] = useState([]);
@@ -631,32 +632,7 @@ export const AdminDashboard = () => {
   const [adminFlightArrivalTime, setAdminFlightArrivalTime] = useState(null);
   const [adminFlightDepartureTime, setAdminFlightDepartureTime] = useState(null);
 
-  useEffect(() => {
-    // Check authentication
-    const token = localStorage.getItem('adminToken');
-    if (!token) {
-      navigate('/admin/login');
-      return;
-    }
-    fetchBookings();
-    fetchDrivers();
-    checkXeroStatus();
-    fetchArchivedCount(); // Load archive count on initial load
-  }, [navigate]);
-
-  useEffect(() => {
-    filterBookings();
-  }, [bookings, searchTerm, statusFilter]);
-
-  useEffect(() => {
-    if (!localStorage.getItem('adminToken')) return;
-    if (dateFrom || dateTo) fetchBookings(1, false);
-  }, [dateFrom, dateTo]);
-
-  // Store cleanup functions for autocomplete instances
-  const autocompleteCleanupRef = useRef([]);
-
-  // Initialize Google Places Autocomplete for admin booking form
+  // Initialize Google Places Autocomplete for admin booking form (autocompleteCleanupRef declared at top)
   useEffect(() => {
     if (!isLoaded || !showCreateBookingModal) return;
 
@@ -1159,6 +1135,19 @@ export const AdminDashboard = () => {
     }
   };
 
+  // Initial load: run after fetchBookings, fetchDrivers, checkXeroStatus, fetchArchivedCount are defined (avoids "before initialization" error)
+  useEffect(() => {
+    const token = localStorage.getItem('adminToken');
+    if (!token) {
+      navigate('/admin/login');
+      return;
+    }
+    fetchBookings();
+    fetchDrivers();
+    checkXeroStatus();
+    fetchArchivedCount();
+  }, [navigate]);
+
   const connectXero = async () => {
     try {
       const response = await axios.get(`${API}/xero/login`, getAuthHeaders());
@@ -1442,6 +1431,16 @@ export const AdminDashboard = () => {
 
     setFilteredBookings(filtered);
   };
+
+  // Declare-first fix: these effects use fetchBookings and filterBookings, so they must run after those are defined
+  useEffect(() => {
+    filterBookings();
+  }, [bookings, searchTerm, statusFilter]);
+
+  useEffect(() => {
+    if (!localStorage.getItem('adminToken')) return;
+    if (dateFrom || dateTo) fetchBookings(1, false);
+  }, [dateFrom, dateTo]);
 
   // Search across all bookings (active + archived)
   const [archiveSearchResults, setArchiveSearchResults] = useState([]);
