@@ -514,9 +514,9 @@ export const AdminDashboard = () => {
   const dropoffInputRef = useRef(null);
   const additionalPickupRefs = useRef([]);
   const autocompleteCleanupRef = useRef([]);
-  // Declare in wider scope; assigned unconditionally below so always defined before use (avoids "Cannot access 'mr' before initialization")
-  let fetchBookings;
-  let filterBookings;
+  // Initialized to no-ops so never in TDZ (minifier can reorder; avoids "Cannot access 'mr' before initialization")
+  let fetchBookings = () => {};
+  let filterBookings = () => {};
   const fetchBookingsRef = useRef(null);
   const filterBookingsRef = useRef(null);
   const [activeTab, setActiveTab] = useState('bookings');
