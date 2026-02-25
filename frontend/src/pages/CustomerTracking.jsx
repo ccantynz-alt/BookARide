@@ -1,21 +1,8 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { MapPin, Clock, Car, User, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
-import { GoogleMap, Marker, useJsApiLoader } from '@react-google-maps/api';
+import { MapPin, Clock, Car, User, AlertCircle, Loader2, RefreshCw, ExternalLink } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
-const GOOGLE_MAPS_API_KEY = process.env.REACT_APP_GOOGLE_MAPS_API_KEY;
-
-const mapContainerStyle = {
-  width: '100%',
-  height: '300px',
-  borderRadius: '12px'
-};
-
-const defaultCenter = {
-  lat: -36.8485, // Auckland
-  lng: 174.7633
-};
 
 export default function CustomerTracking() {
   const { trackingRef } = useParams();
@@ -23,11 +10,6 @@ export default function CustomerTracking() {
   const [status, setStatus] = useState('loading'); // loading, pending, active, completed, error
   const [error, setError] = useState(null);
   const [lastFetch, setLastFetch] = useState(null);
-  const mapRef = useRef(null);
-
-  const { isLoaded, loadError } = useJsApiLoader({
-    googleMapsApiKey: GOOGLE_MAPS_API_KEY
-  });
 
   // Fetch tracking data
   const fetchTracking = useCallback(async () => {
@@ -48,14 +30,6 @@ export default function CustomerTracking() {
       setTracking(data);
       setStatus(data.status || 'pending');
       setLastFetch(new Date());
-      
-      // Pan map to driver location
-      if (data.currentLocation && mapRef.current) {
-        mapRef.current.panTo({
-          lat: data.currentLocation.lat,
-          lng: data.currentLocation.lng
-        });
-      }
     } catch (err) {
       console.error('Error fetching tracking:', err);
       if (status === 'loading') {
@@ -78,15 +52,15 @@ export default function CustomerTracking() {
     return () => clearInterval(interval);
   }, [status, fetchTracking]);
 
-  const onMapLoad = useCallback((map) => {
-    mapRef.current = map;
-    if (tracking?.currentLocation) {
-      map.panTo({
-        lat: tracking.currentLocation.lat,
-        lng: tracking.currentLocation.lng
-      });
+  const openLocationInMaps = () => {
+    const loc = tracking?.currentLocation;
+    const address = tracking?.pickupAddress;
+    if (loc?.lat != null && loc?.lng != null) {
+      window.open(`https://www.openstreetmap.org/?mlat=${loc.lat}&mlon=${loc.lng}&zoom=16#map=16/${loc.lat}/${loc.lng}`, '_blank');
+    } else if (address) {
+      window.open(`https://www.openstreetmap.org/search?query=${encodeURIComponent(address)}`, '_blank');
     }
-  }, [tracking]);
+  };
 
   if (status === 'loading') {
     return (
@@ -181,64 +155,20 @@ export default function CustomerTracking() {
           </div>
         )}
 
-        {/* Map */}
-        <div className="bg-gray-800 rounded-xl p-3 mb-4 border border-gray-700">
-          {loadError && (
-            <div className="h-[300px] flex items-center justify-center text-red-400">
-              <AlertCircle className="w-6 h-6 mr-2" />
-              Error loading map
-            </div>
-          )}
-          
-          {!isLoaded && !loadError && (
-            <div className="h-[300px] flex items-center justify-center">
-              <Loader2 className="w-8 h-8 animate-spin text-amber-400" />
-            </div>
-          )}
-          
-          {isLoaded && !loadError && (
-            <GoogleMap
-              mapContainerStyle={mapContainerStyle}
-              center={tracking?.currentLocation || defaultCenter}
-              zoom={14}
-              onLoad={onMapLoad}
-              options={{
-                disableDefaultUI: true,
-                zoomControl: true,
-                styles: [
-                  { elementType: 'geometry', stylers: [{ color: '#242f3e' }] },
-                  { elementType: 'labels.text.stroke', stylers: [{ color: '#242f3e' }] },
-                  { elementType: 'labels.text.fill', stylers: [{ color: '#746855' }] },
-                  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#38414e' }] },
-                  { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#212a37' }] },
-                  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#17263c' }] },
-                ]
-              }}
+        {/* View location in maps (OpenStreetMap) */}
+        {(tracking?.currentLocation || tracking?.pickupAddress) && (
+          <div className="bg-gray-800 rounded-xl p-3 mb-4 border border-gray-700">
+            <button
+              type="button"
+              onClick={openLocationInMaps}
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-amber-600 hover:bg-amber-500 text-white font-medium rounded-lg transition-colors"
             >
-              {/* Driver marker */}
-              {tracking?.currentLocation && (
-                <Marker
-                  position={{
-                    lat: tracking.currentLocation.lat,
-                    lng: tracking.currentLocation.lng
-                  }}
-                  icon={{
-                    url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
-                      <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
-                        <circle cx="20" cy="20" r="18" fill="#22c55e" stroke="white" stroke-width="3"/>
-                        <path d="M12 22l5-10h6l5 10-3 2h-10l-3-2z" fill="white"/>
-                        <circle cx="14" cy="24" r="2" fill="#22c55e"/>
-                        <circle cx="26" cy="24" r="2" fill="#22c55e"/>
-                      </svg>
-                    `),
-                    scaledSize: new window.google.maps.Size(40, 40),
-                    anchor: new window.google.maps.Point(20, 20)
-                  }}
-                />
-              )}
-            </GoogleMap>
-          )}
-        </div>
+              <MapPin className="w-5 h-5" />
+              View driver location on map
+              <ExternalLink className="w-4 h-4" />
+            </button>
+          </div>
+        )}
 
         {/* Driver Info */}
         {tracking && (
