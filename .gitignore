@@ -58,6 +58,9 @@ chainlit.md
 .ipynb_checkpoints/
 .ac
 
+# Sensitive documentation files that must not be re-committed
+EMAIL_SYSTEM_READY.md
+
 # Deployment
 .vercel
 
