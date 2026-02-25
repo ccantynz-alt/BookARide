@@ -531,6 +531,8 @@ export const AdminDashboard = () => {
   const [loadingDeleted, setLoadingDeleted] = useState(false);
   const [restoringAll, setRestoringAll] = useState(false);
   const [downloadingBackup, setDownloadingBackup] = useState(false);
+  const [retentionCounts, setRetentionCounts] = useState(null); // { active, deleted } when list empty
+  const [deletedCountForBanner, setDeletedCountForBanner] = useState(null); // deleted count for "Restore all" banner on Bookings tab
   const [xeroConnected, setXeroConnected] = useState(false);
   const [xeroOrg, setXeroOrg] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -644,6 +646,27 @@ export const AdminDashboard = () => {
     if (!localStorage.getItem('adminToken')) return;
     if (dateFrom || dateTo) fetchBookingsRef.current?.(1, false);
   }, [dateFrom, dateTo]);
+
+  // When the displayed list is empty (including when filters return no results), fetch counts for the empty state
+  useEffect(() => {
+    if (loading || filteredBookings.length > 0) {
+      setRetentionCounts(null);
+      return;
+    }
+    let cancelled = false;
+    axios.get(`${API}/admin/bookings/retention-counts`, getAuthHeaders()).then((r) => {
+      if (!cancelled && r.data) setRetentionCounts({ active: r.data.active ?? 0, deleted: r.data.deleted ?? 0 });
+    }).catch(() => { if (!cancelled) setRetentionCounts(null); });
+    return () => { cancelled = true; };
+  }, [loading, filteredBookings.length]);
+
+  // When on Bookings tab, fetch deleted count so we can show "Restore all" banner if any are in Deleted
+  useEffect(() => {
+    if (activeTab !== 'bookings') return;
+    axios.get(`${API}/admin/bookings/retention-counts`, getAuthHeaders()).then((r) => {
+      if (r.data && typeof r.data.deleted === 'number') setDeletedCountForBanner(r.data.deleted);
+    }).catch(() => setDeletedCountForBanner(null));
+  }, [activeTab]);
 
   const getAuthHeaders = () => {
     const token = localStorage.getItem('adminToken');
@@ -1061,13 +1084,18 @@ export const AdminDashboard = () => {
   };
 
   const handleRestoreAllBookings = async () => {
-    if (deletedBookings.length === 0) return;
-    if (!window.confirm(`Restore all ${deletedBookings.length} deleted booking(s) back to active bookings?`)) return;
+    const countToShow = deletedBookings.length > 0 ? deletedBookings.length : (deletedCountForBanner ?? 0);
+    if (countToShow === 0) {
+      toast.info('No deleted bookings to restore');
+      return;
+    }
+    if (!window.confirm(`Restore all ${countToShow} deleted booking(s) back to active bookings? This will reinstate your full list.`)) return;
     setRestoringAll(true);
     try {
       const res = await axios.post(`${API}/bookings/restore-all`, {}, getAuthHeaders());
       const count = res.data?.restored_count ?? 0;
-      toast.success(count ? `Restored ${count} booking(s) successfully` : res.data?.message || 'Done');
+      toast.success(count ? `Restored ${count} booking(s). Your list is reinstated.` : res.data?.message || 'Done');
+      setDeletedCountForBanner(0);
       fetchDeletedBookings();
       fetchBookingsRef.current?.();
     } catch (error) {
@@ -2229,6 +2257,38 @@ export const AdminDashboard = () => {
           {/* Bookings Tab */}
           <TabsContent value="bookings" className="space-y-6">
         
+        {/* CRITICAL: Restore all deleted bookings - prominent so user can reinstate full list immediately */}
+        {deletedCountForBanner != null && deletedCountForBanner > 0 && (
+          <Card className="border-red-300 bg-red-50 shadow-md">
+            <CardContent className="p-4 flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="w-8 h-8 text-red-600 shrink-0" />
+                <div>
+                  <p className="font-bold text-red-900">You have {deletedCountForBanner} booking{deletedCountForBanner !== 1 ? 's' : ''} in Deleted — they are not in this list.</p>
+                  <p className="text-sm text-red-800 mt-0.5">Restore them now to reinstate your full bookings list.</p>
+                </div>
+              </div>
+              <Button
+                onClick={handleRestoreAllBookings}
+                disabled={restoringAll}
+                className="bg-green-600 hover:bg-green-700 text-white font-semibold shrink-0"
+              >
+                {restoringAll ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    Restoring...
+                  </>
+                ) : (
+                  <>
+                    <RotateCcw className="w-4 h-4 mr-2" />
+                    Restore all {deletedCountForBanner} now
+                  </>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
         {/* PROFESSIONAL STATS BAR - Clean white theme */}
         <ProfessionalStatsBar bookings={bookings} drivers={drivers} />
         
@@ -2476,8 +2536,48 @@ onViewBooking={(booking) => {
                 <p className="text-gray-600 mt-4">Loading bookings...</p>
               </div>
             ) : filteredBookings.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-gray-600">No bookings found</p>
+              <div className="space-y-4">
+                <div className="text-center py-8">
+                  <p className="text-gray-600 font-medium">No bookings in this view</p>
+                </div>
+                <Card className="border-amber-200 bg-amber-50/50 max-w-2xl mx-auto">
+                  <CardContent className="p-4 space-y-3">
+                    {retentionCounts && (
+                      <p className="text-sm font-semibold text-amber-900">
+                        Database: {retentionCounts.active} active, {retentionCounts.deleted} in Deleted.
+                        {retentionCounts.deleted > 0 && ' Restore them from the Deleted tab.'}
+                      </p>
+                    )}
+                    <p className="font-medium text-amber-900">Get your bookings back:</p>
+                    <ul className="list-disc list-inside text-sm text-amber-800 space-y-1">
+                      {(dateFrom || dateTo) && (
+                        <li>You have date filters on—clearing them may show bookings.</li>
+                      )}
+                      <li>If bookings disappeared after an update, they may be in the <strong>Deleted</strong> tab. Open Deleted and click <strong>Restore all</strong> to reinstate them.</li>
+                      <li>Use <strong>Deleted → Download backup (JSON)</strong> to see exactly what’s stored (active + deleted).</li>
+                    </ul>
+                    <div className="flex flex-wrap gap-2 pt-2">
+                      {(dateFrom || dateTo) && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => { setDateFrom(''); setDateTo(''); fetchBookingsRef.current?.(1, false); }}
+                          className="border-amber-500 text-amber-800 hover:bg-amber-100"
+                        >
+                          Clear date filters & show all
+                        </Button>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setActiveTab('deleted')}
+                        className="border-amber-500 text-amber-800 hover:bg-amber-100"
+                      >
+                        Open Deleted tab
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
             ) : (
             <>
