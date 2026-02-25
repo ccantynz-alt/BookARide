@@ -17,9 +17,7 @@ import CurrencyConverter from '../components/CurrencyConverter';
 import TripCostSplitter from '../components/TripCostSplitter';
 import WeatherWidget from '../components/WeatherWidget';
 import LiveJourneyVisualizer from '../components/LiveJourneyVisualizer';
-import GeoapifyRouteMap from '../components/GeoapifyRouteMap';
 import { CustomDatePicker, CustomTimePicker } from '../components/DateTimePicker';
-import { GeoapifyAutocomplete } from '../components/GeoapifyAutocomplete';
 
 const DROPOFF_QUICK_ADDRESSES = [
   { label: 'Auckland Airport', address: 'Auckland Airport, Ray Emery Drive, Mangere, Auckland 2022, New Zealand' },
@@ -544,12 +542,12 @@ export const BookNow = () => {
                           <MapPin className="w-4 h-4 text-gold" />
                           <span>Pickup Location 1 *</span>
                         </Label>
-                        <GeoapifyAutocomplete
+                        <Input
                           id="pickupAddress"
                           name="pickupAddress"
                           value={formData.pickupAddress}
-                          onChange={(v) => setFormData(prev => ({ ...prev, pickupAddress: v }))}
-                          placeholder="Start typing address..."
+                          onChange={(e) => setFormData(prev => ({ ...prev, pickupAddress: e.target.value }))}
+                          placeholder="Enter full address..."
                           required
                           className="transition-all duration-200 focus:ring-2 focus:ring-gold"
                         />
@@ -564,10 +562,10 @@ export const BookNow = () => {
                             <span>Pickup Location {index + 2}</span>
                           </Label>
                           <div className="flex gap-2">
-                            <GeoapifyAutocomplete
+                            <Input
                               value={pickup}
-                              onChange={(v) => handlePickupAddressChange(index, v)}
-                              placeholder="Start typing address..."
+                              onChange={(e) => handlePickupAddressChange(index, e.target.value)}
+                              placeholder="Enter full address..."
                               className="flex-1 transition-all duration-200 focus:ring-2 focus:ring-gold"
                             />
                             <Button
@@ -609,14 +607,13 @@ export const BookNow = () => {
                           <MapPin className="w-4 h-4 text-gold" />
                           <span>Drop-off Address *</span>
                         </Label>
-                        <GeoapifyAutocomplete
+                        <Input
                           id="dropoffAddress"
                           name="dropoffAddress"
                           value={formData.dropoffAddress}
-                          onChange={(v) => setFormData(prev => ({ ...prev, dropoffAddress: v }))}
-                          placeholder="Start typing address..."
+                          onChange={(e) => setFormData(prev => ({ ...prev, dropoffAddress: e.target.value }))}
+                          placeholder="Enter full address or pick below..."
                           required
-                          quickSelectOptions={DROPOFF_QUICK_ADDRESSES}
                           className="transition-all duration-200 focus:ring-2 focus:ring-gold"
                         />
                         <p className="text-xs text-gray-500">Address suggestions as you type</p>
@@ -1129,27 +1126,15 @@ export const BookNow = () => {
                             <WeatherWidget location={formData.dropoffAddress || 'Auckland'} />
                           </div>
 
-                          {/* Route preview (Geoapify map or summary) */}
+                          {/* Route summary */}
                           {formData.pickupAddress && formData.dropoffAddress && (
-                            <div className="mt-4" data-testid="route-map-container">
-                              {process.env.REACT_APP_GEOAPIFY_API_KEY ? (
-                                <GeoapifyRouteMap 
-                                  pickupAddress={formData.pickupAddress}
-                                  pickupAddresses={formData.pickupAddresses}
-                                  dropoffAddress={formData.dropoffAddress}
-                                  pickupTime={formData.time}
-                                  pickupDate={formData.date}
-                                />
-                              ) : (
-                                <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 space-y-2">
-                                  <p className="text-sm font-medium text-gray-700">Your route</p>
-                                  <p className="text-sm text-gray-600">Pickup: {formData.pickupAddress}</p>
-                                  {formData.pickupAddresses?.filter(Boolean).map((addr, i) => (
-                                    <p key={i} className="text-sm text-gray-600">+ Stop: {addr}</p>
-                                  ))}
-                                  <p className="text-sm text-gray-600">Drop-off: {formData.dropoffAddress}</p>
-                                </div>
-                              )}
+                            <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 space-y-2" data-testid="route-map-container">
+                              <p className="text-sm font-medium text-gray-700">Your route</p>
+                              <p className="text-sm text-gray-600">Pickup: {formData.pickupAddress}</p>
+                              {formData.pickupAddresses?.filter(Boolean).map((addr, i) => (
+                                <p key={i} className="text-sm text-gray-600">+ Stop: {addr}</p>
+                              ))}
+                              <p className="text-sm text-gray-600">Drop-off: {formData.dropoffAddress}</p>
                             </div>
                           )}
 
