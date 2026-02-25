@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronRight, Home, BookOpen, BarChart3, Users, Car, FileText, Globe } from 'lucide-react';
+import { ChevronRight, Home, BookOpen, BarChart3, Users, Car, FileText, Globe, Activity } from 'lucide-react';
 
 const tabConfig = {
   bookings: { label: 'Bookings', icon: BookOpen },
@@ -8,6 +8,7 @@ const tabConfig = {
   drivers: { label: 'Drivers', icon: Car },
   applications: { label: 'Driver Applications', icon: FileText },
   marketing: { label: 'Marketing', icon: Globe },
+  cockpit: { label: 'Cockpit', icon: Activity },
 };
 
 export const AdminBreadcrumb = ({ activeTab, selectedBooking, showDetailsModal, showEditBookingModal }) => {

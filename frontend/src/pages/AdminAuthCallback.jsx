@@ -22,10 +22,12 @@ export const AdminAuthCallback = () => {
       const hash = window.location.hash;
       const params = new URLSearchParams(window.location.search);
 
-      // Handle error from backend redirect (e.g. non-admin email)
-      if (params.get('error') === 'unauthorized') {
+      // Handle any error from backend redirect (missing code/state, unauthorized, token failure, etc.)
+      const errorType = params.get('error');
+      if (errorType) {
         setStatus('error');
-        setErrorMessage(params.get('message') || 'This Google account is not authorized as an admin.');
+        const msg = params.get('message');
+        setErrorMessage(msg ? msg.replace(/\+/g, ' ') : 'Sign-in failed. Please try again.');
         return;
       }
 
@@ -41,34 +43,16 @@ export const AdminAuthCallback = () => {
         return;
       }
 
-      // Legacy flow: session_id from Emergent
+      // Legacy Emergent flow no longer supported
       const sessionIdMatch = hash.match(/session_id=([^&]+)/);
       if (sessionIdMatch) {
-        try {
-          const response = await axios.post(
-            `${API}/admin/google-auth/session`,
-            { session_id: sessionIdMatch[1] },
-            { withCredentials: true }
-          );
-          if (response.data.access_token) {
-            localStorage.setItem('adminToken', response.data.access_token);
-            localStorage.setItem('adminAuth', 'true');
-          }
-          if (response.data.admin) {
-            localStorage.setItem('adminInfo', JSON.stringify(response.data.admin));
-          }
-          setStatus('success');
-          toast.success('Google login successful!');
-          setTimeout(() => navigate('/admin/dashboard', { state: { user: response.data.admin }, replace: true }), 1000);
-        } catch (error) {
-          setStatus('error');
-          setErrorMessage(error.response?.data?.detail || 'Authentication failed.');
-        }
+        setStatus('error');
+        setErrorMessage('Please use the "Sign in with Google" button on the login page to sign in.');
         return;
       }
 
       setStatus('error');
-      setErrorMessage('No session found. Please try logging in again.');
+      setErrorMessage('No sign-in result found. Please try "Sign in with Google" again from the login page.');
     };
 
     processAuth();

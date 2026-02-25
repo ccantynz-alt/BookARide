@@ -24,16 +24,14 @@ const getBackendUrl = () => {
   }
   if (typeof window !== 'undefined') {
     const origin = window.location.origin || '';
-    if (isPartnerOrigin(origin)) {
-      return RENDER_BACKEND;
-    }
-    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
-      return RENDER_BACKEND;
-    }
+    if (isPartnerOrigin(origin)) return RENDER_BACKEND;
+    if (origin.includes('localhost') || origin.includes('127.0.0.1')) return RENDER_BACKEND;
+    if (origin.includes('vercel.app')) return RENDER_BACKEND;
     return origin;
   }
   return '';
 };
 
+export const RENDER_BACKEND_URL = RENDER_BACKEND;
 export const BACKEND_URL = getBackendUrl();
 export const API = BACKEND_URL.endsWith('/api') ? BACKEND_URL : `${BACKEND_URL}/api`;

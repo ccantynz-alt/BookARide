@@ -17,7 +17,7 @@ import httpx
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionResponse, CheckoutStatusResponse, CheckoutSessionRequest
+from stripe_checkout import StripeCheckout, CheckoutSessionResponse, CheckoutStatusResponse, CheckoutSessionRequest
 try:
     from twilio.rest import Client
 except Exception:
@@ -303,6 +303,7 @@ class PriceCalculationRequest(BaseModel):
     passengers: int
     vipAirportPickup: bool = False
     oversizedLuggage: bool = False
+    bookReturn: bool = False  # When True, price for 2 legs with minimum $150 per leg
 
 class PricingBreakdown(BaseModel):
     distance: float
@@ -682,16 +683,26 @@ async def admin_google_auth_start():
     return response
 
 @api_router.get("/admin/google-auth/callback")
-async def admin_google_auth_callback(code: str, state: str, request: Request):
+async def admin_google_auth_callback(request: Request, code: Optional[str] = None, state: Optional[str] = None):
     """Handle Google OAuth callback - exchange code for tokens, check admin, redirect to frontend with JWT"""
+    public_domain = os.environ.get('PUBLIC_DOMAIN', 'https://bookaride.co.nz')
+    frontend_url = public_domain.rstrip('/')
+    callback_url = f"{frontend_url}/admin/auth/callback"
+
+    if not code or not state:
+        return RedirectResponse(
+            url=f"{callback_url}?error=missing_params&message=Sign-in%20was%20cancelled%20or%20incomplete.%20Please%20try%20again."
+        )
+
     client_id = os.environ.get('GOOGLE_CLIENT_ID')
     client_secret = os.environ.get('GOOGLE_CLIENT_SECRET')
     if not client_id or not client_secret:
-        raise HTTPException(status_code=500, detail="Google OAuth not configured")
+        return RedirectResponse(url=f"{callback_url}?error=config&message=Server%20OAuth%20not%20configured.")
     saved_state = request.cookies.get("admin_oauth_state")
     if not saved_state or saved_state != state or not state.startswith(ADMIN_GOOGLE_OAUTH_STATE):
-        raise HTTPException(status_code=400, detail="Invalid state - possible CSRF")
-    public_domain = os.environ.get('PUBLIC_DOMAIN', 'https://bookaride.co.nz')
+        return RedirectResponse(
+            url=f"{callback_url}?error=invalid_state&message=Invalid%20or%20expired%20sign-in.%20Please%20try%20again."
+        )
     backend_url = os.environ.get('BACKEND_URL') or os.environ.get('RENDER_EXTERNAL_URL') or public_domain
     redirect_uri = f"{backend_url.rstrip('/')}/api/admin/google-auth/callback"
     token_resp = requests.post(
@@ -707,28 +718,32 @@ async def admin_google_auth_callback(code: str, state: str, request: Request):
     )
     if token_resp.status_code != 200:
         logger.error(f"Google token error: {token_resp.text}")
-        raise HTTPException(status_code=400, detail="Failed to exchange code for token")
+        return RedirectResponse(
+            url=f"{callback_url}?error=token_exchange&message=Sign-in%20failed.%20Please%20try%20again."
+        )
     tokens = token_resp.json()
     user_resp = requests.get(
         "https://www.googleapis.com/oauth2/v2/userinfo",
         headers={"Authorization": f"Bearer {tokens['access_token']}"},
     )
     if user_resp.status_code != 200:
-        raise HTTPException(status_code=400, detail="Failed to get user info")
+        return RedirectResponse(
+            url=f"{callback_url}?error=user_info&message=Could%20not%20get%20account%20info.%20Please%20try%20again."
+        )
     user_info = user_resp.json()
     email = (user_info.get("email") or "").lower().strip()
     if not email:
-        raise HTTPException(status_code=400, detail="Email not provided by Google")
+        return RedirectResponse(
+            url=f"{callback_url}?error=no_email&message=Email%20not%20provided%20by%20Google."
+        )
     admin = await db.admin_users.find_one({"email": email}, {"_id": 0})
     if not admin:
         logger.warning(f"Google OAuth attempt for non-admin: {email}")
-        frontend_url = public_domain.rstrip('/')
         return RedirectResponse(
-            url=f"{frontend_url}/admin/auth/callback?error=unauthorized&message=This%20Google%20account%20is%20not%20authorized"
+            url=f"{callback_url}?error=unauthorized&message=This%20Google%20account%20is%20not%20authorized"
         )
     access_token = create_access_token(data={"sub": admin["username"]})
-    frontend_url = public_domain.rstrip('/')
-    redirect_url = f"{frontend_url}/admin/auth/callback#token={access_token}"
+    redirect_url = f"{callback_url}#token={access_token}"
     response = RedirectResponse(url=redirect_url)
     response.delete_cookie("admin_oauth_state")
     logger.info(f"Admin logged in via Google: {admin['username']} ({email})")
@@ -739,88 +754,11 @@ class GoogleAuthSession(BaseModel):
 
 @api_router.post("/admin/google-auth/session")
 async def process_google_auth_session(auth_data: GoogleAuthSession, response: Response):
-    """Process Google OAuth session_id from Emergent Auth and create admin session"""
-    try:
-        # Verify session with Emergent Auth
-        async with httpx.AsyncClient() as client:
-            auth_response = await client.get(
-                "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data",
-                headers={"X-Session-ID": auth_data.session_id}
-            )
-        
-        if auth_response.status_code != 200:
-            logger.error(f"Emergent Auth error: {auth_response.text}")
-            raise HTTPException(status_code=401, detail="Invalid session")
-        
-        user_data = auth_response.json()
-        email = user_data.get("email")
-        name = user_data.get("name")
-        picture = user_data.get("picture")
-        emergent_session_token = user_data.get("session_token")
-        
-        if not email:
-            raise HTTPException(status_code=400, detail="Email not provided by Google")
-        
-        # Check if admin exists with this email
-        admin = await db.admin_users.find_one({"email": email}, {"_id": 0})
-        
-        if not admin:
-            # Admin doesn't exist - reject login
-            logger.warning(f"Google OAuth attempt for non-admin email: {email}")
-            raise HTTPException(
-                status_code=403, 
-                detail="This Google account is not authorized as an admin. Please contact the system administrator."
-            )
-        
-        # Admin exists - create session
-        session_token = f"admin_session_{uuid.uuid4().hex}"
-        expires_at = datetime.now(timezone.utc) + timedelta(days=7)
-        
-        # Store session in database
-        await db.admin_sessions.insert_one({
-            "admin_id": admin["id"],
-            "username": admin["username"],
-            "email": email,
-            "session_token": session_token,
-            "google_name": name,
-            "google_picture": picture,
-            "emergent_session_token": emergent_session_token,
-            "expires_at": expires_at.isoformat(),
-            "created_at": datetime.now(timezone.utc).isoformat()
-        })
-        
-        # Set httpOnly cookie
-        response.set_cookie(
-            key="admin_session_token",
-            value=session_token,
-            httponly=True,
-            secure=True,
-            samesite="none",
-            path="/",
-            max_age=7 * 24 * 60 * 60  # 7 days
-        )
-        
-        # Also return JWT token for localStorage (backward compatibility)
-        access_token = create_access_token(data={"sub": admin["username"]})
-        
-        logger.info(f"Admin logged in via Google: {admin['username']} ({email})")
-        
-        return {
-            "access_token": access_token,
-            "token_type": "bearer",
-            "admin": {
-                "username": admin["username"],
-                "email": email,
-                "name": name,
-                "picture": picture
-            }
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Google OAuth error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Authentication failed: {str(e)}")
+    """Legacy Emergent Auth no longer used. Use Google OAuth via /admin/google-auth/start instead."""
+    raise HTTPException(
+        status_code=410,
+        detail="Emergent auth is no longer used. Please log in via the main Google login button (uses Google OAuth directly)."
+    )
 
 
 @api_router.get("/admin/auth/me")
@@ -1335,7 +1273,30 @@ def _get_distance_geoapify(pickup_address: str, dropoff_address: str, waypoint_a
     return None
 
 
-# Default distance when BOTH Geoapify and Google Maps fail (was 25km - caused massive undercharging for 60-70km trips)
+def _build_maps_route_url(origin: str, destination: str, waypoint_addresses: list, geoapify_key: str) -> str:
+    """Build OpenStreetMap directions URL. Uses Geoapify to geocode if key set, else returns OSM search URL."""
+    if not origin or not destination:
+        return "https://www.openstreetmap.org"
+    if geoapify_key:
+        try:
+            addrs = [origin] + list(waypoint_addresses or []) + [destination]
+            coords = []
+            for addr in addrs:
+                if not (addr and addr.strip()):
+                    continue
+                lat, lon = _geocode_geoapify(addr.strip(), geoapify_key)
+                if lat is not None and lon is not None:
+                    coords.append(f"{lat},{lon}")
+            if len(coords) >= 2:
+                route_param = ";".join(coords)
+                return f"https://www.openstreetmap.org/directions?engine=osrm_car&route={route_param}"
+        except Exception as e:
+            logger.warning(f"Geoapify geocode for maps URL: {e}")
+    query = requests.utils.quote(f"{origin} to {destination}")
+    return f"https://www.openstreetmap.org/search?query={query}"
+
+
+# Default distance when Geoapify fails or is not set (was 25km - caused massive undercharging for 60-70km trips)
 # Use 75km to cover common long routes (Orewa, Hibiscus Coast, Warkworth) - better to slightly overcharge than lose money
 DEFAULT_FALLBACK_DISTANCE_KM = 75.0
 # Long-distance fallback when addresses indicate Tauranga/BOP/Hamilton/Whangarei (prevents ~$200 charge for 200km+ trip)
@@ -1345,10 +1306,8 @@ LONG_DISTANCE_FALLBACK_KM = 200.0
 @api_router.post("/calculate-price", response_model=PricingBreakdown)
 async def calculate_price(request: PriceCalculationRequest):
     try:
-        # Prefer Geoapify, then Google Maps, then fallback estimate
+        # Geoapify only for distance; fallback estimate if not set or API fails
         geoapify_key = os.environ.get('GEOAPIFY_API_KEY', '')
-        google_api_key = os.environ.get('GOOGLE_MAPS_API_KEY', '')
-        
         distance_km = None
         # Normalize addresses early so we can use long-distance fallback when API fails
         def _norm(s):
@@ -1371,67 +1330,11 @@ async def calculate_price(request: PriceCalculationRequest):
             if distance_km is not None:
                 logger.info(f"Geoapify route distance: {distance_km}km")
         
-        if distance_km is None and google_api_key:
-            # Build list of all stops: first pickup + additional pickups + dropoff
-            all_pickups = [request.pickupAddress]
-            if request.pickupAddresses:
-                all_pickups.extend([addr for addr in request.pickupAddresses if addr])
-            
-            # If multiple pickups, use Directions API for route optimization
-            if len(all_pickups) > 1:
-                # Use Directions API with waypoints for multi-stop route
-                url = "https://maps.googleapis.com/maps/api/directions/json"
-                waypoints = "|".join(all_pickups[1:])  # All pickups except first
-                params = {
-                    'origin': all_pickups[0],  # First pickup
-                    'destination': request.dropoffAddress,  # Final dropoff
-                    'waypoints': waypoints,  # Intermediate pickups
-                    'key': google_api_key
-                }
-                response = requests.get(url, params=params)
-                data = response.json()
-                
-                logger.info(f"Google Maps Directions API (multi-stop) response status: {data.get('status')}")
-                
-                if data['status'] == 'OK' and len(data['routes']) > 0:
-                    route = data['routes'][0]
-                    # Sum all leg distances
-                    total_distance_meters = sum(leg['distance']['value'] for leg in route['legs'])
-                    distance_km = round(total_distance_meters / 1000, 2)
-                    logger.info(f"Multi-stop route: {len(all_pickups)} pickups ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ dropoff, total: {distance_km}km")
-                else:
-                    logger.warning(f"Google Maps Directions API error: {data.get('error_message', data.get('status'))}")
-                    distance_km = _fallback_km * len(all_pickups)  # Fallback: estimate per stop
-            else:
-                # Single pickup - use Distance Matrix API
-                url = "https://maps.googleapis.com/maps/api/distancematrix/json"
-                params = {
-                    'origins': request.pickupAddress,
-                    'destinations': request.dropoffAddress,
-                    'key': google_api_key
-                }
-                response = requests.get(url, params=params)
-                data = response.json()
-                
-                logger.info(f"Google Maps Distance Matrix API response: {data}")
-                
-                if data['status'] == 'OK' and len(data['rows']) > 0 and len(data['rows'][0]['elements']) > 0:
-                    element = data['rows'][0]['elements'][0]
-                    if element['status'] == 'OK':
-                        distance_meters = element['distance']['value']
-                        distance_km = round(distance_meters / 1000, 2)
-                    else:
-                        logger.warning(f"Google Maps element status: {element.get('status')}")
-                        distance_km = _fallback_km  # Fallback
-                else:
-                    logger.warning(f"Google Maps API error: {data.get('error_message', data.get('status'))}")
-                    distance_km = _fallback_km  # Fallback
-        else:
-            # Fallback: estimate based on number of stops (no API keys configured)
+        if distance_km is None:
+            # No Google Maps - use fallback only
             pickup_count = 1 + len([addr for addr in (request.pickupAddresses or []) if addr])
-            distance_km = _fallback_km * pickup_count  # Default estimate per stop
-            logger.warning(f"GEOAPIFY_API_KEY and GOOGLE_MAPS_API_KEY not set. Using default distance estimate: {distance_km}km for {pickup_count} stops - SET API KEYS TO FIX PRICING")
-        
+            distance_km = _fallback_km * pickup_count
+            logger.warning(f"GEOAPIFY_API_KEY not set or geocoding failed. Using default distance estimate: {distance_km}km for {pickup_count} stops - SET GEOAPIFY_API_KEY FOR ACCURATE PRICING")
         # Calculate pricing with tiered rates - FLAT RATE per bracket
         # The rate is determined by which distance bracket the trip falls into
         # Then that rate is applied to the ENTIRE distance
@@ -1595,13 +1498,30 @@ async def calculate_price(request: PriceCalculationRequest):
                 total_price = price_to_hibiscus + matakana_concert_base + airport_fee + oversized_luggage_fee + passenger_fee
                 
                 logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â½ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âµ Auckland ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ Matakana Country Park: {distance_to_hibiscus}km @ ${rate_to_hibiscus}/km = ${price_to_hibiscus:.2f} + ${matakana_concert_base} = ${total_price:.2f}")
-        elif total_price < 100.0:
-            # Standard minimum of $100 for regular trips
-            total_price = 100.0
+        elif total_price < 150.0:
+            # Standard minimum $150 per one-way leg (was $100; return = 2 legs so min $300)
+            total_price = 150.0
+        
+        # One-way subtotal (before return doubling)
+        one_way_subtotal = round(total_price, 2)
+        
+        # Return trip: charge for 2 legs with minimum $150 per leg (except concert flat return)
+        if request.bookReturn:
+            if is_concert_trip and (is_from_hibiscus_coast or is_to_hibiscus_coast):
+                # Concert flat $550 is already the return price; don't double
+                subtotal = one_way_subtotal
+            else:
+                subtotal = round(2 * max(one_way_subtotal, 150.0), 2)
+                distance_km = distance_km * 2
+                base_price = base_price * 2
+                airport_fee = airport_fee * 2
+                oversized_luggage_fee = oversized_luggage_fee * 2
+                passenger_fee = passenger_fee * 2
+                logger.info(f"Return trip: 2 x max(one_way=${one_way_subtotal:.2f}, $150) = ${subtotal:.2f} subtotal")
+        else:
+            subtotal = one_way_subtotal
         
         # Calculate Stripe processing fee (2.9% + $0.30 NZD) and add to customer total
-        # This ensures drivers get the full base amount
-        subtotal = round(total_price, 2)
         stripe_fee = round((subtotal * 0.029) + 0.30, 2)
         total_with_stripe = round(subtotal + stripe_fee, 2)
         
@@ -3339,73 +3259,15 @@ async def handle_incoming_email(request: Request):
             logger.warning("Empty email body received")
             return {"status": "skipped", "reason": "empty body"}
         
-        # Generate AI response
-        from emergentintegrations.llm.openai import LlmChat, UserMessage
-        
-        email_system_prompt = """You are an AI email assistant for BookaRide NZ, a premium airport transfer service in Auckland, New Zealand.
-
-You are responding to customer emails automatically. Be warm, professional, and helpful.
-
-KEY INFORMATION ABOUT BOOKARIDE:
-- Airport shuttles to/from Auckland Airport, Hamilton Airport, and Whangarei
-- Services: Airport transfers, Hobbiton tours, Cruise terminal transfers, Wine tours
-- Payment: Credit/Debit cards, Afterpay (pay in 4 instalments)
-- Meet & Greet service available (driver with name sign at arrivals)
-- Child seats available on request
-- 24/7 service
-
-HOW OUR PRICING WORKS (IMPORTANT - explain this to customers):
-- We use Google Maps to calculate the EXACT distance from pickup to dropoff
-- Pricing is based on a per-kilometer rate
-- Every address in Auckland has a DIFFERENT price because it's calculated point-to-point
-- This means pricing is very precise and accurate - no estimates or guesswork
-- To get your exact price, you MUST enter your pickup address and dropoff address on our website
-- The price calculator is LIVE - you see the exact price instantly when you enter both addresses
-- No surge pricing like Uber - our rates are fixed and transparent
-
-EXAMPLE PRICE RANGES (but always direct them to get exact quote):
-- Auckland CBD to Airport: ~$65-85
-- North Shore to Airport: ~$75-95
-- Hibiscus Coast (Orewa, Whangaparaoa) to Airport: ~$90-120
-- Hamilton to Airport: ~$180-220
-
-YOUR RESPONSE GUIDELINES:
-1. Keep responses concise but helpful (3-5 paragraphs max)
-2. ALWAYS explain that we need their exact pickup and dropoff addresses to give an accurate price
-3. Explain that our pricing uses Google Maps and is calculated per kilometer - very precise
-4. Direct them to bookaride.co.nz/book-now where they can enter addresses and get instant pricing
-5. If they're asking about a booking, tell them to include their booking reference
-6. Be friendly and professional
-7. Sign off as "BookaRide Team"
-8. DO NOT give specific prices - explain WHY you can't (every address is different) and direct to website
-9. If they have a complaint or complex issue, assure them a team member will follow up
-
-FORMAT:
-- Start with "Hi [Name]," or "Hi there," if name unknown
-- Keep paragraphs short
-- End with a call to action (enter your addresses at bookaride.co.nz/book-now for instant pricing)
-- Sign: "Best regards,\nBookaRide Team"
-"""
-        
-        llm = LlmChat(
-            api_key="sk-emergent-1221fFe2cB790B632B",
-            session_id=str(uuid.uuid4()),
-            system_message=email_system_prompt
+        # AI email reply disabled (Emergent no longer used). Use a short auto-ack.
+        ai_response = (
+            f"Hi there,\n\n"
+            "Thank you for your email. Our team will respond within 24 hours.\n\n"
+            "For instant pricing and to book, visit bookaride.co.nz/book-now and enter your pickup and dropoff addresses.\n\n"
+            "Best regards,\nBookaRide Team"
         )
         
-        user_prompt = f"""Please write a helpful email response to this customer inquiry.
-
-FROM: {sender_name}
-SUBJECT: {subject}
-MESSAGE:
-{email_content[:2000]}
-
-Write a professional, helpful response:"""
-        
-        user_msg = UserMessage(text=user_prompt)
-        ai_response = await llm.send_message(user_msg)
-        
-        # Send the AI-generated response via Mailgun
+        # Send the response via Mailgun
         mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
         mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
         
@@ -3650,9 +3512,7 @@ class ChatbotMessageRequest(BaseModel):
 async def chatbot_message(request: ChatbotMessageRequest):
     """AI-powered chatbot for booking assistance"""
     try:
-        from emergentintegrations.llm.openai import LlmChat, UserMessage
-        
-        # Build context from conversation history
+        # Emergent LLM no longer used - return static guidance
         history_context = ""
         if request.conversationHistory:
             for msg in request.conversationHistory[-6:]:  # Last 6 messages for context
@@ -3700,24 +3560,11 @@ IMPORTANT:
 - Explain WHY we can't give exact prices without addresses (every house is different distance!)
 - The booking form has a LIVE PRICE CALCULATOR - they see the price instantly when they enter addresses"""
 
-        llm = LlmChat(
-            api_key="sk-emergent-1221fFe2cB790B632B",
-            session_id=str(uuid.uuid4()),
-            system_message=system_prompt
+        response = (
+            "Thanks for your message! For instant pricing and to book, visit bookaride.co.nz/book-now and enter your pickup and dropoff addresses. "
+            "For other questions, email info@bookaride.co.nz and we'll get back to you within 24 hours."
         )
-        
-        # Build the user message with context
-        full_message = f"""Previous conversation:
-{history_context}
-
-Customer's new message: {request.message}
-
-Respond helpfully and naturally as the BookaRide assistant:"""
-        
-        user_msg = UserMessage(text=full_message)
-        response = await llm.send_message(user_msg)
-        
-        return {"response": response.strip()}
+        return {"response": response}
         
     except Exception as e:
         logger.error(f"Chatbot error: {str(e)}")
@@ -4503,29 +4350,8 @@ def contains_non_english(text: str) -> bool:
     return any(ord(c) > 127 for c in str(text))
 
 async def translate_to_english_async(text: str) -> str:
-    """Translate non-English text to English using Emergent LLM"""
-    if not text or not contains_non_english(text):
-        return text
-    
-    try:
-        from emergentintegrations.llm.openai import LlmChat, UserMessage
-        import uuid
-        
-        llm = LlmChat(
-            api_key="sk-emergent-1221fFe2cB790B632B",
-            session_id=str(uuid.uuid4()),
-            system_message="You are a translator. Translate text to English. Only return the translation, nothing else. Keep any English text as-is."
-        )
-        
-        user_msg = UserMessage(text=text)
-        translated = await llm.send_message(user_msg)
-        
-        if translated and translated.strip():
-            return f"{translated.strip()} ({text})"  # Show translation with original
-        return text
-    except Exception as e:
-        logger.warning(f"Translation failed: {str(e)}")
-        return text
+    """Translate non-English text to English (Emergent LLM no longer used - returns original)."""
+    return text
 
 async def get_english_calendar_text(booking: dict) -> dict:
     """Get English versions of booking fields for calendar, with translations if needed"""
@@ -7183,66 +7009,11 @@ async def get_optimized_shuttle_route(date: str, time: str, current_admin: dict 
         if not pickup_addresses:
             raise HTTPException(status_code=400, detail="No pickup addresses found")
         
-        # Use Google Maps Directions API to optimize route
-        google_api_key = os.environ.get('GOOGLE_MAPS_API_KEY', '')
-        
-        # Destination is Auckland Airport
         destination = "Auckland International Airport, New Zealand"
-        
-        if google_api_key and len(pickup_addresses) > 1:
-            # Use Directions API with waypoint optimization
-            url = "https://maps.googleapis.com/maps/api/directions/json"
-            
-            # First pickup as origin, rest as waypoints, optimize order
-            origin = pickup_addresses[0]
-            waypoints = "|".join(pickup_addresses[1:]) if len(pickup_addresses) > 1 else ""
-            
-            params = {
-                'origin': origin,
-                'destination': destination,
-                'waypoints': f"optimize:true|{waypoints}" if waypoints else "",
-                'key': google_api_key
-            }
-            
-            response = requests.get(url, params=params)
-            data = response.json()
-            
-            if data['status'] == 'OK' and data['routes']:
-                route = data['routes'][0]
-                optimized_order = route.get('waypoint_order', [])
-                
-                # Reorder pickups based on optimization
-                if optimized_order:
-                    reordered = [pickup_addresses[0]]  # Keep first as origin
-                    for idx in optimized_order:
-                        reordered.append(pickup_addresses[idx + 1])
-                    pickup_addresses = reordered
-                
-                # Calculate total distance and duration
-                total_distance = sum(leg['distance']['value'] for leg in route['legs'])
-                total_duration = sum(leg['duration']['value'] for leg in route['legs'])
-                
-                route_info = {
-                    "totalDistanceKm": round(total_distance / 1000, 1),
-                    "totalDurationMins": round(total_duration / 60),
-                    "legs": [{
-                        "from": leg['start_address'],
-                        "to": leg['end_address'],
-                        "distance": leg['distance']['text'],
-                        "duration": leg['duration']['text']
-                    } for leg in route['legs']]
-                }
-            else:
-                route_info = {"error": "Could not optimize route"}
-        else:
-            route_info = {"note": "Single pickup - no optimization needed"}
-        
-        # Build Google Maps URL for driver's phone
-        waypoints_encoded = "|".join(pickup_addresses[1:]) if len(pickup_addresses) > 1 else ""
-        if waypoints_encoded:
-            maps_url = f"https://www.google.com/maps/dir/?api=1&origin={requests.utils.quote(pickup_addresses[0])}&destination={requests.utils.quote(destination)}&waypoints={requests.utils.quote(waypoints_encoded)}&travelmode=driving"
-        else:
-            maps_url = f"https://www.google.com/maps/dir/?api=1&origin={requests.utils.quote(pickup_addresses[0])}&destination={requests.utils.quote(destination)}&travelmode=driving"
+        route_info = {"note": "Route order as listed; open in maps for directions"}
+        geoapify_key = os.environ.get('GEOAPIFY_API_KEY', '')
+        waypoint_list = pickup_addresses[1:] if len(pickup_addresses) > 1 else []
+        maps_url = _build_maps_route_url(pickup_addresses[0], destination, waypoint_list, geoapify_key)
         
         # Build pickup list with passenger details
         pickup_list = []
@@ -7264,6 +7035,7 @@ async def get_optimized_shuttle_route(date: str, time: str, current_admin: dict 
             "optimizedPickups": pickup_addresses,
             "pickupDetails": pickup_list,
             "routeInfo": route_info,
+            "mapsUrl": maps_url,
             "googleMapsUrl": maps_url,
             "destination": destination
         }
@@ -12131,46 +11903,48 @@ async def fix_now():
         return {"success": False, "error": str(e)}
 
 
+def _bookings_missing_calendar_query():
+    """All active bookings (not cancelled) that have no calendar event yet."""
+    return {
+        "status": {"$ne": "cancelled"},
+        "$or": [
+            {"calendar_event_id": {"$exists": False}},
+            {"calendar_event_id": None},
+            {"calendar_event_id": ""}
+        ]
+    }
+
+
 @api_router.post("/admin/batch-sync-calendar")
 async def batch_sync_calendar(
     background_tasks: BackgroundTasks,
     current_admin: dict = Depends(get_current_admin)
 ):
     """
-    Batch sync all imported bookings to Google Calendar.
-    Only syncs bookings that don't already have a calendar_event_id.
+    Batch sync ALL bookings missing from Google Calendar (not just imported).
+    Only syncs bookings that don't already have a calendar_event_id. Skips cancelled.
     Runs in background to avoid timeout for large datasets.
     """
     try:
-        # Count bookings that need syncing (imported + no calendar event)
-        query = {
-            "imported_from": "wordpress_chauffeur",
-            "$or": [
-                {"calendar_event_id": {"$exists": False}},
-                {"calendar_event_id": None},
-                {"calendar_event_id": ""}
-            ]
-        }
-        
+        query = _bookings_missing_calendar_query()
         total_to_sync = await db.bookings.count_documents(query)
-        
+
         if total_to_sync == 0:
             return {
                 "success": True,
-                "message": "All imported bookings are already synced to Google Calendar!",
+                "message": "All bookings are already synced to Google Calendar!",
                 "total_synced": 0,
                 "total_to_sync": 0
             }
-        
-        # Start background task to sync bookings
+
         background_tasks.add_task(
             batch_sync_calendar_task,
             query
         )
-        
+
         return {
             "success": True,
-            "message": f"Calendar sync started for {total_to_sync} imported bookings. This runs in the background - check back in a few minutes.",
+            "message": f"Calendar sync started for {total_to_sync} bookings. This runs in the background - check back in a few minutes.",
             "total_to_sync": total_to_sync,
             "status": "processing"
         }
@@ -12183,7 +11957,7 @@ async def batch_sync_calendar(
 async def batch_sync_calendar_task(query: dict):
     """Background task to sync bookings to calendar"""
     try:
-        logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Starting batch calendar sync for imported bookings...")
+        logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Starting batch calendar sync for all bookings missing from calendar...")
         
         synced = 0
         failed = 0
@@ -12245,30 +12019,21 @@ async def batch_sync_calendar_task(query: dict):
 async def get_batch_sync_status(current_admin: dict = Depends(get_current_admin)):
     """Check the status of the batch calendar sync task"""
     try:
-        # Get task status
         task_status = await db.system_tasks.find_one(
             {"task": "batch_calendar_sync"},
             {"_id": 0}
         )
-        
-        # Count remaining bookings to sync
-        query = {
-            "imported_from": "wordpress_chauffeur",
-            "$or": [
-                {"calendar_event_id": {"$exists": False}},
-                {"calendar_event_id": None},
-                {"calendar_event_id": ""}
-            ]
-        }
-        remaining = await db.bookings.count_documents(query)
-        
-        # Count already synced
+
+        # Count all bookings missing calendar (same query as batch sync)
+        remaining = await db.bookings.count_documents(_bookings_missing_calendar_query())
+
+        # Count already synced (has calendar_event_id set; exclude cancelled for consistency)
         synced_query = {
-            "imported_from": "wordpress_chauffeur",
+            "status": {"$ne": "cancelled"},
             "calendar_event_id": {"$exists": True, "$nin": [None, ""]}
         }
         already_synced = await db.bookings.count_documents(synced_query)
-        
+
         return {
             "remaining_to_sync": remaining,
             "already_synced": already_synced,
@@ -12362,6 +12127,108 @@ async def manual_run_error_check(current_admin: dict = Depends(get_current_admin
         return result
     except Exception as e:
         logger.error(f"Error running manual error check: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== SEO HEALTH AGENT ====================
+# Continuous technical SEO monitoring (sitemap + key URLs). For rank tracking see SEO-AGENT-DESIGN.md.
+
+async def run_seo_health_check():
+    """
+    Run technical SEO health check: sitemap reachable and valid, key pages return 200.
+    Stores report in seo_health_reports for dashboard. Called weekly by scheduler and via POST /admin/run-seo-check.
+    """
+    issues = []
+    warnings = []
+    checks = {}
+    base = (os.environ.get("PUBLIC_DOMAIN") or "https://bookaride.co.nz").rstrip("/")
+    sitemap_base = (os.environ.get("SITEMAP_BASE_URL") or base).rstrip("/")
+    sitemap_url = f"{sitemap_base}/sitemap.xml"
+    key_paths = ["/", "/book-now", "/services", "/contact"]
+
+    async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
+        # 1. Sitemap
+        try:
+            r = await client.get(sitemap_url)
+            checks["sitemap_status"] = r.status_code
+            if r.status_code != 200:
+                issues.append(f"Sitemap returned {r.status_code}: {sitemap_url}")
+            else:
+                text = (r.text or "")
+                if "<url>" not in text and "<urlset" not in text:
+                    warnings.append("Sitemap returned 200 but no <url> entries found")
+                else:
+                    checks["sitemap_ok"] = True
+        except Exception as e:
+            issues.append(f"Sitemap unreachable: {sitemap_url} - {str(e)}")
+            checks["sitemap_ok"] = False
+
+        # 2. Key pages (use main site base)
+        for path in key_paths:
+            url = f"{base}{path}" if path != "/" else base
+            try:
+                r = await client.get(url)
+                key = path or "home"
+                checks[f"url_{key}"] = r.status_code
+                if r.status_code >= 400:
+                    issues.append(f"Key page {path or '/'} returned {r.status_code}")
+            except Exception as e:
+                issues.append(f"Key page {path or '/'} failed: {str(e)}")
+                checks[f"url_{path or 'home'}"] = "error"
+
+    status = "critical" if issues else ("warning" if warnings else "healthy")
+    report = {
+        "report_time": datetime.now(timezone.utc).isoformat(),
+        "status": status,
+        "issues": issues[:30],
+        "warnings": warnings[:30],
+        "checks": checks,
+        "base_url": base,
+        "sitemap_url": sitemap_url,
+    }
+    try:
+        await db.seo_health_reports.insert_one(report)
+    except Exception as e:
+        logger.warning(f"SEO health report save failed: {e}")
+    return {"success": True, "status": status, "issues_count": len(issues), "warnings_count": len(warnings)}
+
+
+@api_router.get("/admin/seo-health")
+async def get_seo_health(current_admin: dict = Depends(get_current_admin)):
+    """Return latest SEO health report for Cockpit/dashboard."""
+    try:
+        latest = await db.seo_health_reports.find_one({}, sort=[("report_time", -1)])
+        if not latest:
+            return {
+                "status": "unknown",
+                "message": "No SEO check run yet. Run check from Cockpit.",
+                "latest_report": None,
+                "checked_at": None,
+            }
+        latest.pop("_id", None)
+        return {
+            "status": latest.get("status", "unknown"),
+            "message": "Issues found" if latest.get("issues") else "Technical SEO OK",
+            "latest_report": {
+                "issues": latest.get("issues", []),
+                "warnings": latest.get("warnings", []),
+                "checks": latest.get("checks", {}),
+            },
+            "checked_at": latest.get("report_time"),
+        }
+    except Exception as e:
+        logger.error(f"SEO health get error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/admin/run-seo-check")
+async def manual_run_seo_check(current_admin: dict = Depends(get_current_admin)):
+    """Manually trigger the SEO health check."""
+    try:
+        result = await run_seo_health_check()
+        return result
+    except Exception as e:
+        logger.error(f"Error running SEO check: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -13613,6 +13480,16 @@ async def startup_event():
         name='Daily system health check',
         replace_existing=True,
         misfire_grace_time=3600 * 4  # Allow 4 hour grace period
+    )
+    
+    # SEO HEALTH CHECK - Runs weekly (Sunday 3 AM NZ)
+    scheduler.add_job(
+        run_seo_health_check,
+        CronTrigger(day_of_week='sun', hour=3, minute=0, timezone=nz_tz),
+        id='weekly_seo_health',
+        name='Weekly SEO technical health check',
+        replace_existing=True,
+        misfire_grace_time=3600 * 12
     )
     
     # AUTO-ARCHIVE COMPLETED BOOKINGS - Runs at 2 AM NZ time

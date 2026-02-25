@@ -68,10 +68,8 @@ const UrgentReturnsPanel = () => {
     );
   };
 
-  const openGoogleMaps = (address) => {
-    const encodedAddress = encodeURIComponent(address);
-    const encodedBase = encodeURIComponent(baseAddress);
-    window.open(`https://www.google.com/maps/dir/${encodedBase}/${encodedAddress}`, '_blank');
+  const openInMaps = (address) => {
+    window.open(`https://www.openstreetmap.org/search?query=${encodeURIComponent(address)}`, '_blank');
   };
 
   const callCustomer = (phone) => {
@@ -167,7 +165,7 @@ const UrgentReturnsPanel = () => {
                   <Button 
                     size="sm" 
                     variant="outline"
-                    onClick={() => openGoogleMaps(returnBooking.pickup_address)}
+                    onClick={() => openInMaps(returnBooking.pickup_address)}
                     className="text-xs"
                   >
                     <Navigation className="h-3 w-3 mr-1" />

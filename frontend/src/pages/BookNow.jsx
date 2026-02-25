@@ -17,7 +17,6 @@ import CurrencyConverter from '../components/CurrencyConverter';
 import TripCostSplitter from '../components/TripCostSplitter';
 import WeatherWidget from '../components/WeatherWidget';
 import LiveJourneyVisualizer from '../components/LiveJourneyVisualizer';
-import MultiStopRouteMap from '../components/MultiStopRouteMap';
 import GeoapifyRouteMap from '../components/GeoapifyRouteMap';
 import { CustomDatePicker, CustomTimePicker } from '../components/DateTimePicker';
 import { GeoapifyAutocomplete } from '../components/GeoapifyAutocomplete';
@@ -182,41 +181,36 @@ export const BookNow = () => {
     setPricing(prev => ({ ...prev, calculating: true }));
 
     try {
+      const hasReturnTrip = !!(formData.returnDate && formData.returnTime);
       const response = await axios.post(`${API}/calculate-price`, {
         serviceType: formData.serviceType,
         pickupAddress: formData.pickupAddress,
-        pickupAddresses: formData.pickupAddresses.filter(addr => addr.trim()),  // Filter empty
+        pickupAddresses: formData.pickupAddresses.filter(addr => addr.trim()),
         dropoffAddress: formData.dropoffAddress,
         passengers: parseInt(formData.passengers),
         vipAirportPickup: formData.vipAirportPickup,
-        oversizedLuggage: formData.oversizedLuggage
+        oversizedLuggage: formData.oversizedLuggage,
+        bookReturn: hasReturnTrip
       });
 
-      // If return trip is booked (return date + time filled), double the price (round trip)
-      const hasReturnTrip = !!(formData.returnDate && formData.returnTime);
-      const multiplier = hasReturnTrip ? 2 : 1;
-      
-      // Calculate Stripe fee for the multiplied amount
-      const subtotal = response.data.subtotal * multiplier;
-      const stripeFee = (subtotal * 0.029) + 0.30;
-      
+      // Backend returns full price (return = 2 legs, $150 min per leg); use as-is
+      const data = response.data;
       setPricing({
-        distance: response.data.distance * multiplier,
-        basePrice: response.data.basePrice * multiplier,
-        airportFee: response.data.airportFee * multiplier,
-        oversizedLuggageFee: response.data.oversizedLuggageFee * multiplier,
-        passengerFee: response.data.passengerFee * multiplier,
-        stripeFee: Math.round(stripeFee * 100) / 100,
-        subtotal: subtotal,
-        totalPrice: Math.round((subtotal + stripeFee) * 100) / 100,
+        distance: data.distance,
+        basePrice: data.basePrice,
+        airportFee: data.airportFee,
+        oversizedLuggageFee: data.oversizedLuggageFee,
+        passengerFee: data.passengerFee,
+        stripeFee: data.stripeFee ?? Math.round(((data.subtotal * 0.029) + 0.30) * 100) / 100,
+        subtotal: data.subtotal,
+        totalPrice: data.totalPrice,
         calculating: false
       });
       
       // Auto-apply promo code if one was entered before price calculation
       if (promoCode.trim() && !promoApplied) {
-        // Delay slightly to ensure state is updated
         setTimeout(() => {
-          handleApplyPromoWithSubtotal(promoCode.trim(), subtotal);
+          handleApplyPromoWithSubtotal(promoCode.trim(), data.subtotal);
         }, 100);
       } else {
         // Reset promo if price changes and there's no pending code
@@ -1135,18 +1129,10 @@ export const BookNow = () => {
                             <WeatherWidget location={formData.dropoffAddress || 'Auckland'} />
                           </div>
 
-                          {/* Multi-Stop Route Map with Visual Preview */}
+                          {/* Route preview (Geoapify map or summary) */}
                           {formData.pickupAddress && formData.dropoffAddress && (
                             <div className="mt-4" data-testid="route-map-container">
-                              {process.env.REACT_APP_GOOGLE_MAPS_API_KEY ? (
-                                <MultiStopRouteMap 
-                                  pickupAddress={formData.pickupAddress}
-                                  pickupAddresses={formData.pickupAddresses}
-                                  dropoffAddress={formData.dropoffAddress}
-                                  pickupTime={formData.time}
-                                  pickupDate={formData.date}
-                                />
-                              ) : process.env.REACT_APP_GEOAPIFY_API_KEY ? (
+                              {process.env.REACT_APP_GEOAPIFY_API_KEY ? (
                                 <GeoapifyRouteMap 
                                   pickupAddress={formData.pickupAddress}
                                   pickupAddresses={formData.pickupAddresses}
