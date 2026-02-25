@@ -1,20 +1,29 @@
 #!/usr/bin/env python3
 """
 Mailgun DNS Propagation Checker
-Checks every 10 minutes if mg.bookaride.co.nz is verified
+Checks every 10 minutes if the configured Mailgun domain is verified.
+Uses MAILGUN_API_KEY and MAILGUN_DOMAIN from environment (e.g. backend/.env).
 """
 
+import os
 import requests
 import time
 from datetime import datetime
+from dotenv import load_dotenv
 
-# Mailgun configuration
-MAILGUN_API_KEY = "151d31c4dd7cd9fd3015d140b2c58f76-235e4bb2-1ecf548a"
-MAILGUN_DOMAIN = "mg.bookaride.co.nz"
+# Load environment variables from .env file before reading them
+load_dotenv()
+
+# Mailgun configuration from environment (never commit API keys)
+MAILGUN_API_KEY = os.environ.get("MAILGUN_API_KEY", "").strip()
+MAILGUN_DOMAIN = os.environ.get("MAILGUN_DOMAIN", "mg.bookaride.co.nz")
 CHECK_INTERVAL = 600  # 10 minutes in seconds
 
 def check_dns_status():
     """Check Mailgun domain verification status"""
+    if not MAILGUN_API_KEY:
+        print("❌ MAILGUN_API_KEY not set. Set it in .env or environment.")
+        return False
     try:
         response = requests.get(
             f"https://api.mailgun.net/v3/domains/{MAILGUN_DOMAIN}",

@@ -62,27 +62,30 @@ def run_final_test():
         results.append("❌ Admin Authentication")
         return results
     
-    # 3. Direct Mailgun Test
+    # 3. Direct Mailgun Test (uses env: MAILGUN_API_KEY, MAILGUN_DOMAIN)
     print("\n3️⃣ DIRECT MAILGUN EMAIL TEST")
     try:
-        mailgun_url = "https://api.mailgun.net/v3/mg.bookaride.co.nz/messages"
-        auth = ('api', '151d31c4dd7cd9fd3015d140b2c58f76-235e4bb2-1ecf548a')
-        
-        data = {
-            'from': 'Book A Ride <noreply@mg.bookaride.co.nz>',
-            'to': 'final-test@bookaride.co.nz',
-            'subject': 'Final Test - Mailgun DNS Verification',
-            'text': 'Final comprehensive test - Mailgun DNS is verified and working!'
-        }
-        
-        response = requests.post(mailgun_url, auth=auth, data=data, timeout=15)
-        
-        if response.status_code == 200:
-            print("✅ Mailgun Direct: EMAIL SENT")
-            results.append("✅ Mailgun Direct Email")
+        api_key = os.environ.get("MAILGUN_API_KEY", "").strip()
+        domain = os.environ.get("MAILGUN_DOMAIN", "mg.bookaride.co.nz")
+        if not api_key:
+            print("⏭️ Mailgun Direct: SKIPPED (MAILGUN_API_KEY not set)")
+            results.append("⏭️ Mailgun Direct Email (skipped)")
         else:
-            print(f"❌ Mailgun Direct: FAILED ({response.status_code})")
-            results.append("❌ Mailgun Direct Email")
+            mailgun_url = f"https://api.mailgun.net/v3/{domain}/messages"
+            auth = ('api', api_key)
+            data = {
+                'from': f'Book A Ride <noreply@{domain}>',
+                'to': 'final-test@bookaride.co.nz',
+                'subject': 'Final Test - Mailgun DNS Verification',
+                'text': 'Final comprehensive test - Mailgun DNS is verified and working!'
+            }
+            response = requests.post(mailgun_url, auth=auth, data=data, timeout=15)
+            if response.status_code == 200:
+                print("✅ Mailgun Direct: EMAIL SENT")
+                results.append("✅ Mailgun Direct Email")
+            else:
+                print(f"❌ Mailgun Direct: FAILED ({response.status_code})")
+                results.append("❌ Mailgun Direct Email")
     except Exception as e:
         print(f"❌ Mailgun Direct: ERROR - {str(e)}")
         results.append("❌ Mailgun Direct Email")
