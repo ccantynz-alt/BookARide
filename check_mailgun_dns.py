@@ -9,6 +9,10 @@ import os
 import requests
 import time
 from datetime import datetime
+from dotenv import load_dotenv
+
+# Load environment variables from .env file before reading them
+load_dotenv()
 
 # Mailgun configuration from environment (never commit API keys)
 MAILGUN_API_KEY = os.environ.get("MAILGUN_API_KEY", "").strip()
