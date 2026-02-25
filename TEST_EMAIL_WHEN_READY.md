@@ -49,25 +49,31 @@ Should show: `State: ACTIVE`
 ### Step 2: Test Email Sending
 ```bash
 cd /app/backend
+# Load .env then run (API key must come from environment only)
 python3 << 'EOF'
+import os
 import requests
+from dotenv import load_dotenv
+load_dotenv()
 
-api_key = "151d31c4dd7cd9fd3015d140b2c58f76-235e4bb2-1ecf548a"
-domain = "mg.bookaride.co.nz"
-from_email = "noreply@mg.bookaride.co.nz"
+api_key = os.environ.get("MAILGUN_API_KEY")  # Set in .env only; never commit
+domain = os.environ.get("MAILGUN_DOMAIN", "mg.bookaride.co.nz")
+from_email = f"noreply@{domain}"
 to_email = "YOUR_EMAIL@example.com"  # Replace with your email
 
+if not api_key:
+    print("Set MAILGUN_API_KEY in .env")
+    exit(1)
 response = requests.post(
     f"https://api.mailgun.net/v3/{domain}/messages",
     auth=("api", api_key),
     data={
-        "from": from_email,
+        "from": f"Book A Ride <{from_email}>",
         "to": to_email,
         "subject": "Test Email - Book A Ride NZ",
         "text": "This is a test email. If you received this, Mailgun is working!"
     }
 )
-
 if response.status_code == 200:
     print("✅ Email sent successfully!")
     print(f"Response: {response.json()}")
