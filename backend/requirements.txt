@@ -14,6 +14,8 @@ pymongo>=4.6.0
 passlib==1.7.4
 bcrypt==4.0.1
 
+# NOTE: Do not add emergentintegrations - we use local stripe_checkout and no Emergent LLM/Auth.
+
 # --- Added by Render Sledgehammer ---
 twilio>=9.0.0
 python-jose[cryptography]>=3.3.0

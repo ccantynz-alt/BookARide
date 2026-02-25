@@ -102,67 +102,11 @@ const FAQSection = ({ suburb }) => {
   );
 };
 
-// Route Map Component
+// Route section with link to OpenStreetMap (no Google Maps)
 const RouteMap = ({ suburb }) => {
-  const mapRef = useRef(null);
-  const [mapLoaded, setMapLoaded] = useState(false);
-
-  useEffect(() => {
-    if (!window.google || !suburb.coordinates) return;
-
-    const map = new window.google.maps.Map(mapRef.current, {
-      zoom: 11,
-      center: {
-        lat: (suburb.coordinates.lat + AIRPORT_COORDS.lat) / 2,
-        lng: (suburb.coordinates.lng + AIRPORT_COORDS.lng) / 2
-      },
-      styles: [
-        { featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] }
-      ]
-    });
-
-    // Add markers
-    new window.google.maps.Marker({
-      position: suburb.coordinates,
-      map,
-      title: suburb.name,
-      icon: {
-        url: "https://maps.google.com/mapfiles/ms/icons/green-dot.png"
-      }
-    });
-
-    new window.google.maps.Marker({
-      position: AIRPORT_COORDS,
-      map,
-      title: "Auckland Airport",
-      icon: {
-        url: "https://maps.google.com/mapfiles/ms/icons/red-dot.png"
-      }
-    });
-
-    // Draw route
-    const directionsService = new window.google.maps.DirectionsService();
-    const directionsRenderer = new window.google.maps.DirectionsRenderer({
-      map,
-      suppressMarkers: true,
-      polylineOptions: {
-        strokeColor: "#D4AF37",
-        strokeWeight: 4
-      }
-    });
-
-    directionsService.route({
-      origin: suburb.coordinates,
-      destination: AIRPORT_COORDS,
-      travelMode: window.google.maps.TravelMode.DRIVING
-    }, (response, status) => {
-      if (status === "OK") {
-        directionsRenderer.setDirections(response);
-      }
-    });
-
-    setMapLoaded(true);
-  }, [suburb]);
+  const osmDirectionsUrl = suburb?.coordinates
+    ? `https://www.openstreetmap.org/directions?engine=osrm_car&route=${suburb.coordinates.lat},${suburb.coordinates.lng};${AIRPORT_COORDS.lat},${AIRPORT_COORDS.lng}`
+    : `https://www.openstreetmap.org/search?query=${encodeURIComponent(suburb?.name || '')}%20to%20Auckland%20Airport`;
 
   return (
     <section className="py-16 bg-gray-900">
@@ -179,16 +123,18 @@ const RouteMap = ({ suburb }) => {
         
         <div className="max-w-5xl mx-auto">
           <div 
-            ref={mapRef} 
-            className="w-full h-[400px] rounded-xl overflow-hidden shadow-2xl"
-            style={{ background: '#1a1a2e' }}
+            className="w-full rounded-xl overflow-hidden shadow-2xl flex items-center justify-center p-8"
+            style={{ background: '#1a1a2e', minHeight: '200px' }}
           >
-            {!mapLoaded && (
-              <div className="flex items-center justify-center h-full text-gray-400">
-                <Navigation className="w-8 h-8 animate-pulse mr-2" />
-                Loading map...
-              </div>
-            )}
+            <a
+              href={osmDirectionsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gold hover:bg-gold/90 text-gray-900 font-semibold rounded-lg transition-colors"
+            >
+              <MapPin className="w-5 h-5" />
+              View route on OpenStreetMap
+            </a>
           </div>
           
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">

@@ -24,6 +24,13 @@ const UrgentNotificationsCenter = ({ bookings = [], drivers = [], onAssignDriver
   const today = getLocalDateString(new Date());
   const tomorrow = getLocalDateString(new Date(Date.now() + 86400000));
 
+  const formatReturnDate = (yyyyMmDd) => {
+    if (!yyyyMmDd) return '';
+    const [y, m, d] = yyyyMmDd.split('-');
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${d} ${months[parseInt(m, 10) - 1]}`;
+  };
+
   // Get urgent items
   const unassignedToday = bookings.filter(b => 
     (b.date || b.pickupDate) === today && 
@@ -222,7 +229,7 @@ const UrgentNotificationsCenter = ({ bookings = [], drivers = [], onAssignDriver
                 }`} />
               </div>
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-semibold text-gray-900">{ret.customer_name}</span>
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                     ret.urgency === 'OVERDUE' || ret.urgency === 'LEAVE NOW' 
@@ -231,10 +238,10 @@ const UrgentNotificationsCenter = ({ bookings = [], drivers = [], onAssignDriver
                         ? 'bg-orange-200 text-orange-700' 
                         : 'bg-purple-200 text-purple-700'
                   }`}>
-                    RETURN @ {ret.return_time_formatted}
+                    RETURN: {formatReturnDate(ret.return_date)} at {ret.return_time_formatted}
                   </span>
                 </div>
-                <div className="flex items-center gap-3 text-sm text-gray-600 mt-1">
+                <div className="flex items-center gap-3 text-sm text-gray-600 mt-1 flex-wrap">
                   <span className="flex items-center gap-1">
                     <MapPin className="w-3.5 h-3.5" />
                     {(ret.pickup_address || '').split(',')[0]}

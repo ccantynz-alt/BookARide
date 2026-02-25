@@ -19,18 +19,25 @@ function showFatalError(message, stack) {
 }
 
 window.onerror = function (message, source, lineno, colno, error) {
-  const stack = error?.stack || source ? source + (lineno != null ? ':' + lineno + (colno != null ? ':' + colno : '') : '') : '';
+  const stack = (error && error.stack)
+    ? error.stack
+    : (source ? source + (lineno != null ? ':' + lineno + (colno != null ? ':' + colno : '') : '') : '');
   console.error('Uncaught error:', message, stack);
   showFatalError(String(message), stack);
   return true;
 };
 window.onunhandledrejection = function (e) {
+  e.preventDefault();
   const msg = e.reason?.message ?? String(e.reason);
   const stack = e.reason?.stack;
   console.error('Unhandled rejection:', msg, stack);
   showFatalError(msg, stack);
 };
 
+if (!rootEl) {
+  document.body.innerHTML = '<div style="padding:2rem;font-family:system-ui;color:#dc2626">Root element #root not found.</div>';
+  throw new Error('Root element #root not found');
+}
 const root = ReactDOM.createRoot(rootEl);
 root.render(
   <React.StrictMode>
