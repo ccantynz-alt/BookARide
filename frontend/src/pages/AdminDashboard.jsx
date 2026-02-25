@@ -3040,6 +3040,7 @@ onViewBooking={(booking) => {
                 </div>
                 <p className="text-sm text-red-700 mb-4">
                   These bookings have been deleted but can be restored. They will be kept for 30 days before permanent deletion.
+                  If your bookings disappeared after an update, they may be here—click <strong>Restore all</strong> above to reinstate them.
                 </p>
                 
                 {loadingDeleted ? (
