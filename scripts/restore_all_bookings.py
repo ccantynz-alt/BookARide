@@ -4,8 +4,8 @@ import os
 import sys
 import requests
 
-BACKEND_URL = os.environ.get("BACKEND_URL", "https://bookaride-backend.onrender.com")
-API = BACKEND_URL if BACKEND_URL.rstrip("/").endswith("/api") else f"{BACKEND_URL.rstrip('/')}/api"
+BACKEND_URL = os.environ.get("BACKEND_URL", "https://bookaride-backend.onrender.com").rstrip("/")
+API = BACKEND_URL if BACKEND_URL.endswith("/api") else f"{BACKEND_URL}/api"
 ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
 
