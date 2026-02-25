@@ -23,7 +23,6 @@ import ProfessionalStatsBar from '../components/admin/ProfessionalStatsBar';
 import UrgentNotificationsCenter from '../components/admin/UrgentNotificationsCenter';
 import ConfirmationStatusPanel from '../components/admin/ConfirmationStatusPanel';
 import ReturnsOverviewPanel from '../components/admin/ReturnsOverviewPanel';
-import { GeoapifyAutocomplete } from '../components/GeoapifyAutocomplete';
 import { API } from '../config/api';
 import Cockpit from '../admin/Cockpit';
 
@@ -4175,10 +4174,10 @@ onViewBooking={(booking) => {
               <div className="space-y-4">
                 <div>
                   <Label>Pickup Address 1 *</Label>
-                  <GeoapifyAutocomplete
+                  <Input
                     value={newBooking.pickupAddress}
-                    onChange={(v) => setNewBooking(prev => ({ ...prev, pickupAddress: v }))}
-                    placeholder="Start typing address..."
+                    onChange={(e) => setNewBooking(prev => ({ ...prev, pickupAddress: e.target.value }))}
+                    placeholder="Enter full address..."
                     className="mt-1"
                   />
                 </div>
@@ -4188,10 +4187,10 @@ onViewBooking={(booking) => {
                   <div key={index} className="relative">
                     <Label>Pickup Address {index + 2}</Label>
                     <div className="flex gap-2 mt-1">
-                      <GeoapifyAutocomplete
+                      <Input
                         value={pickup}
-                        onChange={(v) => handlePickupAddressChange(index, v)}
-                        placeholder="Start typing address..."
+                        onChange={(e) => handlePickupAddressChange(index, e.target.value)}
+                        placeholder="Enter full address..."
                         className="flex-1"
                       />
                       <Button
@@ -4230,10 +4229,10 @@ onViewBooking={(booking) => {
 
                 <div>
                   <Label>Drop-off Address *</Label>
-                  <GeoapifyAutocomplete
+                  <Input
                     value={newBooking.dropoffAddress}
-                    onChange={(v) => setNewBooking(prev => ({ ...prev, dropoffAddress: v }))}
-                    placeholder="Start typing address..."
+                    onChange={(e) => setNewBooking(prev => ({ ...prev, dropoffAddress: e.target.value }))}
+                    placeholder="Enter full address..."
                     className="mt-1"
                   />
                 </div>
@@ -4666,10 +4665,10 @@ onViewBooking={(booking) => {
                 <div className="space-y-4">
                   <div>
                     <Label>Pickup Address 1 *</Label>
-                    <GeoapifyAutocomplete
+                    <Input
                       value={editingBooking.pickupAddress}
-                      onChange={(v) => setEditingBooking(prev => ({ ...prev, pickupAddress: v }))}
-                      placeholder="Start typing address..."
+                      onChange={(e) => setEditingBooking(prev => ({ ...prev, pickupAddress: e.target.value }))}
+                      placeholder="Enter full address..."
                       className="mt-1"
                     />
                   </div>
@@ -4679,10 +4678,10 @@ onViewBooking={(booking) => {
                     <div key={index} className="relative">
                       <Label>Pickup Address {index + 2}</Label>
                       <div className="flex gap-2 mt-1">
-                        <GeoapifyAutocomplete
+                        <Input
                           value={pickup}
-                          onChange={(v) => handleEditPickupAddressChange(index, v)}
-                          placeholder="Start typing address..."
+                          onChange={(e) => handleEditPickupAddressChange(index, e.target.value)}
+                          placeholder="Enter full address..."
                           className="flex-1"
                         />
                         <Button
@@ -4712,10 +4711,10 @@ onViewBooking={(booking) => {
 
                   <div>
                     <Label>Drop-off Address *</Label>
-                    <GeoapifyAutocomplete
+                    <Input
                       value={editingBooking.dropoffAddress}
-                      onChange={(v) => setEditingBooking(prev => ({ ...prev, dropoffAddress: v }))}
-                      placeholder="Start typing address..."
+                      onChange={(e) => setEditingBooking(prev => ({ ...prev, dropoffAddress: e.target.value }))}
+                      placeholder="Enter full address..."
                       className="mt-1"
                     />
                   </div>
