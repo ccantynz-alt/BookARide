@@ -10036,6 +10036,30 @@ async def bulk_delete(booking_ids: List[str], send_notifications: bool = False, 
 
 
 # ============================================
+# BOOKINGS BACKUP (retention: never lose bookings)
+# ============================================
+
+@api_router.get("/admin/bookings/export-backup")
+async def export_bookings_backup(current_admin: dict = Depends(get_current_admin)):
+    """Export full backup of active + deleted bookings as JSON. Use for backups; bookings are always retained (soft-delete)."""
+    try:
+        active = await db.bookings.find({}, {"_id": 0}).to_list(10000)
+        deleted = await db.deleted_bookings.find({}, {"_id": 0}).sort("deletedAt", -1).to_list(10000)
+        exported_at = datetime.now(timezone.utc).isoformat()
+        return {
+            "exportedAt": exported_at,
+            "exportedBy": current_admin.get("username", "admin"),
+            "activeCount": len(active),
+            "deletedCount": len(deleted),
+            "active": active,
+            "deleted": deleted,
+        }
+    except Exception as e:
+        logger.error(f"Error exporting backup: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================
 # DELETED BOOKINGS RECOVERY ENDPOINTS
 # ============================================
 
@@ -10084,11 +10108,29 @@ async def restore_booking(booking_id: str, current_admin: dict = Depends(get_cur
 
 @api_router.post("/bookings/restore-all")
 async def restore_all_deleted_bookings(current_admin: dict = Depends(get_current_admin)):
-    """Restore all soft-deleted bookings back to active bookings"""
+    """Restore all soft-deleted bookings back to active bookings. Bookings are always retained (soft-delete only)."""
     try:
         deleted_list = await db.deleted_bookings.find({}, {"_id": 0}).to_list(1000)
         if not deleted_list:
             return {"message": "No deleted bookings to restore", "restored_count": 0}
+        # Snapshot before restore (keep last 10 for point-in-time recovery)
+        try:
+            snap = {
+                "snapshotAt": datetime.now(timezone.utc).isoformat(),
+                "action": "pre_restore_all",
+                "snapshotBy": current_admin.get("username", "admin"),
+                "activeCount": await db.bookings.count_documents({}),
+                "deletedCount": len(deleted_list),
+                "deletedIds": [b.get("id") for b in deleted_list if b.get("id")],
+            }
+            await db.bookings_snapshots.insert_one(snap)
+            total = await db.bookings_snapshots.count_documents({})
+            if total > 10:
+                oldest = await db.bookings_snapshots.find({}).sort("snapshotAt", 1).limit(total - 10).to_list(total - 10)
+                if oldest:
+                    await db.bookings_snapshots.delete_many({"_id": {"$in": [o["_id"] for o in oldest]}})
+        except Exception as snap_err:
+            logger.warning(f"Snapshot before restore_all failed (non-fatal): {snap_err}")
         restored = 0
         for booking in deleted_list:
             booking_id = booking.get("id")

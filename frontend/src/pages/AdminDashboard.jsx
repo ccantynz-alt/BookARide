@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Search, Filter, Mail, DollarSign, CheckCircle, XCircle, Clock, Eye, Edit2, Users, BookOpen, Car, Settings, Trash2, MapPin, Calendar, RefreshCw, Send, Bell, Facebook, Globe, Square, CheckSquare, FileText, Smartphone, RotateCcw, AlertTriangle, AlertCircle, Home, Bus, ExternalLink, Navigation, Upload, Archive, Activity } from 'lucide-react';
+import { LogOut, Search, Filter, Mail, DollarSign, CheckCircle, XCircle, Clock, Eye, Edit2, Users, BookOpen, Car, Settings, Trash2, MapPin, Calendar, RefreshCw, Send, Bell, Facebook, Globe, Square, CheckSquare, FileText, Smartphone, RotateCcw, AlertTriangle, AlertCircle, Home, Bus, ExternalLink, Navigation, Upload, Archive, Activity, Download, Shield } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent } from '../components/ui/card';
@@ -530,6 +530,7 @@ export const AdminDashboard = () => {
   const [loadingShuttle, setLoadingShuttle] = useState(false);
   const [loadingDeleted, setLoadingDeleted] = useState(false);
   const [restoringAll, setRestoringAll] = useState(false);
+  const [downloadingBackup, setDownloadingBackup] = useState(false);
   const [xeroConnected, setXeroConnected] = useState(false);
   const [xeroOrg, setXeroOrg] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -1074,6 +1075,26 @@ export const AdminDashboard = () => {
       toast.error(error.response?.data?.detail || 'Failed to restore all bookings');
     } finally {
       setRestoringAll(false);
+    }
+  };
+
+  const handleDownloadBackup = async () => {
+    setDownloadingBackup(true);
+    try {
+      const res = await axios.get(`${API}/admin/bookings/export-backup`, getAuthHeaders());
+      const blob = new Blob([JSON.stringify(res.data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `bookings-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(`Backup downloaded: ${res.data?.activeCount ?? 0} active, ${res.data?.deletedCount ?? 0} deleted`);
+    } catch (error) {
+      console.error('Error downloading backup:', error);
+      toast.error(error.response?.data?.detail || 'Failed to download backup');
+    } finally {
+      setDownloadingBackup(false);
     }
   };
 
@@ -2389,6 +2410,16 @@ onViewBooking={(booking) => {
           </CardContent>
         </Card>
 
+        {/* Data retention: bookings are never lost */}
+        <Card className="mb-6 border-green-200 bg-green-50/50">
+          <CardContent className="p-3">
+            <div className="flex flex-wrap items-center gap-2 text-sm text-green-800">
+              <Shield className="w-4 h-4 shrink-0 text-green-600" />
+              <span><strong>Bookings are always retained.</strong> Deletions only move items to the Deleted tab where you can Restore all. Download a full backup (Deleted tab → Download backup) anytime.</span>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Recover missing bookings (e.g. #74 – payment in Stripe but booking never appeared) */}
         <Card className="mb-6 border-amber-200 bg-amber-50/50">
           <CardContent className="p-4">
@@ -3018,29 +3049,43 @@ onViewBooking={(booking) => {
                     <AlertTriangle className="w-6 h-6 text-red-600" />
                     <h3 className="text-lg font-semibold text-red-800">Recently Deleted Bookings</h3>
                   </div>
-                  {deletedBookings.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2">
                     <Button
-                      onClick={handleRestoreAllBookings}
-                      disabled={restoringAll}
-                      className="bg-green-600 hover:bg-green-700 text-white"
+                      onClick={handleDownloadBackup}
+                      disabled={downloadingBackup}
+                      variant="outline"
+                      className="border-gray-400 text-gray-700 hover:bg-gray-100"
                     >
-                      {restoringAll ? (
-                        <>
-                          <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                          Restoring...
-                        </>
+                      {downloadingBackup ? (
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
                       ) : (
-                        <>
-                          <RotateCcw className="w-4 h-4 mr-2" />
-                          Restore all {deletedBookings.length} booking{deletedBookings.length !== 1 ? 's' : ''}
-                        </>
+                        <Download className="w-4 h-4 mr-2" />
                       )}
+                      Download backup (JSON)
                     </Button>
-                  )}
+                    {deletedBookings.length > 0 && (
+                      <Button
+                        onClick={handleRestoreAllBookings}
+                        disabled={restoringAll}
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                      >
+                        {restoringAll ? (
+                          <>
+                            <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                            Restoring...
+                          </>
+                        ) : (
+                          <>
+                            <RotateCcw className="w-4 h-4 mr-2" />
+                            Restore all {deletedBookings.length} booking{deletedBookings.length !== 1 ? 's' : ''}
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </div>
                 </div>
                 <p className="text-sm text-red-700 mb-4">
-                  These bookings have been deleted but can be restored. They will be kept for 30 days before permanent deletion.
-                  If your bookings disappeared after an update, they may be here—click <strong>Restore all</strong> above to reinstate them.
+                  Bookings are always retained—we never permanently remove them without your action. Deleted items stay here for recovery; use <strong>Restore all</strong> to reinstate. If bookings disappeared after an update, they may be here.
                 </p>
                 
                 {loadingDeleted ? (
