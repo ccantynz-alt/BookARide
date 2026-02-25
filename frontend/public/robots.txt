@@ -1,10 +1,13 @@
-# https://www.robotstxt.org/robotstxt.html
+# robots.txt for bookaride.co.nz
 User-agent: *
 Allow: /
 
-# Sitemap location
-Sitemap: https://airportshuttleservice.co.nz/sitemap.xml
-
-# Disallow admin areas
-User-agent: *
+# Disallow admin pages
 Disallow: /admin/
+Disallow: /driver/
+
+# Sitemap
+Sitemap: https://bookaride.co.nz/sitemap.xml
+
+# Crawl-delay for good behavior
+Crawl-delay: 1

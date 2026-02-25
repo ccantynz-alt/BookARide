@@ -5,8 +5,11 @@ import { companyInfo } from '../mock';
 
 export const Footer = () => {
   return (
-    <footer className="bg-black text-gray-300 border-t border-gold/20">
-      <div className="container mx-auto px-4 py-12">
+    <footer className="bg-gradient-to-b from-gray-900 to-black text-gray-300 border-t border-white/10 relative overflow-hidden">
+      {/* Glass decoration */}
+      <div className="absolute top-0 left-1/4 w-96 h-96 bg-gold/5 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-gold/5 rounded-full blur-3xl pointer-events-none" />
+      <div className="container mx-auto px-4 py-12 relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* Company Info */}
           <div>
@@ -51,8 +54,13 @@ export const Footer = () => {
                 </Link>
               </li>
               <li>
-                <Link to="/contact" className="text-sm hover:text-gold transition-colors duration-200">
+                <Link to="/book-now" className="text-sm hover:text-gold transition-colors duration-200">
                   Book Now
+                </Link>
+              </li>
+              <li>
+                <Link to="/afterpay" className="text-sm hover:text-gold transition-colors duration-200 flex items-center gap-1">
+                  <span className="text-[#B2FCE4]">●</span> Pay with Afterpay
                 </Link>
               </li>
             </ul>
@@ -74,12 +82,6 @@ export const Footer = () => {
             <h3 className="text-gold font-semibold mb-4">Contact Us</h3>
             <ul className="space-y-3">
               <li className="flex items-start space-x-3">
-                <Phone className="w-5 h-5 text-gold flex-shrink-0 mt-0.5" />
-                <a href="tel:+6421743321" className="text-sm hover:text-gold transition-colors duration-200">
-                  {companyInfo.phone}
-                </a>
-              </li>
-              <li className="flex items-start space-x-3">
                 <Mail className="w-5 h-5 text-gold flex-shrink-0 mt-0.5" />
                 <a href="mailto:info@bookaride.co.nz" className="text-sm hover:text-gold transition-colors duration-200">
                   {companyInfo.email}
@@ -94,10 +96,25 @@ export const Footer = () => {
         </div>
 
         {/* Bottom Bar */}
-        <div className="border-t border-gray-800 mt-8 pt-8 text-center">
-          <p className="text-sm text-gray-400">
-            © {new Date().getFullYear()} Book A Ride NZ. All rights reserved.
-          </p>
+        <div className="border-t border-gray-800 mt-8 pt-8">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+            <p className="text-sm text-gray-400">
+              © {new Date().getFullYear()} Book A Ride NZ. All rights reserved.
+            </p>
+            <div className="flex flex-wrap justify-center gap-4 text-sm">
+              <Link to="/privacy-policy" className="text-gray-400 hover:text-gold transition-colors duration-200">
+                Privacy Policy
+              </Link>
+              <span className="text-gray-600">|</span>
+              <Link to="/terms-and-conditions" className="text-gray-400 hover:text-gold transition-colors duration-200">
+                Terms & Conditions
+              </Link>
+              <span className="text-gray-600">|</span>
+              <Link to="/website-usage-policy" className="text-gray-400 hover:text-gold transition-colors duration-200">
+                Website Usage
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
     </footer>

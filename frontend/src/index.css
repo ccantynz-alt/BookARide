@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+@import './styles/animations.css';
+@import './styles/datepicker.css';
+
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 body {
@@ -108,4 +111,80 @@ code {
   .hover\:bg-gold\/90:hover {
     background-color: rgba(212, 175, 55, 0.9);
   }
+}
+
+/* Google Places Autocomplete Dropdown Fix - CRITICAL FOR BOOKING */
+.pac-container {
+  z-index: 999999 !important;
+  background-color: white !important;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  font-family: 'Inter', sans-serif;
+  margin-top: 2px !important;
+  pointer-events: auto !important;
+  transform: none !important;
+  position: fixed !important;
+}
+
+.pac-container:after {
+  display: none !important;
+}
+
+.pac-item {
+  cursor: pointer !important;
+  padding: 10px 14px !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+  border-top: 1px solid #e5e7eb !important;
+  pointer-events: auto !important;
+  background-color: white !important;
+}
+
+.pac-item:first-child {
+  border-top: none !important;
+}
+
+.pac-item:hover {
+  background-color: #f3f4f6 !important;
+}
+
+.pac-item:active {
+  background-color: #e5e7eb !important;
+}
+
+.pac-item-query {
+  font-size: 14px !important;
+  padding-right: 4px !important;
+  color: #1f2937 !important;
+  /* Allow clicks to pass through to parent pac-item */
+  pointer-events: none !important;
+}
+
+.pac-matched {
+  font-weight: 600 !important;
+  color: #000 !important;
+  pointer-events: none !important;
+}
+
+.pac-icon {
+  margin-right: 8px !important;
+  pointer-events: none !important;
+}
+
+/* Ensure pac-item-selected-query also allows clicks through */
+.pac-item-selected,
+.pac-item-selected-query {
+  pointer-events: auto !important;
+}
+
+/* For dropdowns in modals/dialogs */
+[role="dialog"] + .pac-container {
+  z-index: 100000 !important;
+}
+
+/* Ensure the dropdown stays visible when interacting */
+.pac-container:focus-within,
+.pac-container:hover {
+  display: block !important;
+  visibility: visible !important;
 }

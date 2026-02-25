@@ -4,6 +4,7 @@ import { MapPin, Clock, Users, Star, CheckCircle, ArrowRight } from 'lucide-reac
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import SEO from '../components/SEO';
+import { Home, ChevronRight } from 'lucide-react';
 
 export const HobbitonTransfers = () => {
   const features = [
@@ -41,39 +42,69 @@ export const HobbitonTransfers = () => {
   ];
 
   return (
-    <div className="min-h-screen pt-20">
+    <div className="min-h-screen">
       <SEO 
         title="Hobbiton Transfers - Auckland to Hobbiton Movie Set Shuttle Service"
         description="Professional Hobbiton Movie Set transfers from Auckland. Direct shuttle service to Matamata Hobbiton tours. Comfortable, scenic journey through Waikato. Book your Hobbiton transfer today - perfect for Lord of the Rings fans!"
         keywords="Hobbiton transfers, Auckland to Hobbiton shuttle, Hobbiton Movie Set transfer, Matamata shuttle, Lord of the Rings tour transport, Hobbiton tour transfer, shuttle to Hobbiton, Auckland Hobbiton transport"
         canonical="/hobbiton-transfers"
       />
-      {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white py-20 overflow-hidden">
-        {/* Background Vehicle Image */}
-        <div className="absolute inset-0 opacity-15">
+      
+      {/* Hero Section with integrated breadcrumb */}
+      <section className="relative text-white pt-20 pb-20 overflow-hidden min-h-[600px] flex flex-col">
+        {/* Beautiful Hobbiton Background Image */}
+        <div className="absolute inset-0">
           <img 
-            src="/shuttle-van.jpg" 
-            alt="" 
-            className="w-full h-full object-cover object-right"
-            style={{ filter: 'brightness(0.4) blur(1px)' }}
+            src="https://images.unsplash.com/photo-1584956861988-913b8c1c7270?auto=compress&cs=tinysrgb&w=1920&q=80" 
+            alt="Hobbiton Movie Set - iconic hobbit hole with round green door" 
+            className="w-full h-full object-cover"
           />
+          {/* Dark overlay for text readability */}
+          <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-black/40" />
         </div>
         
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-0 left-0 w-full h-full bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzRjMC0yLjIxLTEuNzktNC00LTRzLTQgMS43OS00IDQgMS43OSA0IDQgNCA0LTEuNzkgNC00em0wLTEwYzAtMi4yMS0xLjc5LTQtNC00cy00IDEuNzktNCA0IDEuNzkgNCA0IDQgNC0xLjc5IDQtNHoiLz48L2c+PC9nPjwvc3ZnPg==')]"></div>
-        </div>
+        {/* Breadcrumb - white text, inside hero */}
+        <nav className="relative z-10 mb-8">
+          <div className="container mx-auto px-4">
+            <ol className="flex items-center gap-2 text-sm">
+              <li>
+                <Link to="/" className="text-white/70 hover:text-gold transition-colors flex items-center gap-1">
+                  <Home className="w-4 h-4" />
+                  <span className="hidden sm:inline">Home</span>
+                </Link>
+              </li>
+              <li className="text-white/50">
+                <ChevronRight className="w-4 h-4" />
+              </li>
+              <li>
+                <Link to="/services" className="text-white/70 hover:text-gold transition-colors">
+                  Services
+                </Link>
+              </li>
+              <li className="text-white/50">
+                <ChevronRight className="w-4 h-4" />
+              </li>
+              <li>
+                <span className="text-gold font-medium">Hobbiton Transfers</span>
+              </li>
+            </ol>
+          </div>
+        </nav>
         
-        <div className="container mx-auto px-4 relative z-10">
-          <div className="max-w-4xl mx-auto text-center">
+        <div className="container mx-auto px-4 relative z-10 flex-1 flex items-center">
+          <div className="max-w-4xl">
+            <div className="inline-flex items-center gap-2 bg-gold/20 border border-gold/40 rounded-full px-4 py-2 mb-6">
+              <Star className="w-4 h-4 text-gold" />
+              <span className="text-gold font-semibold text-sm">LORD OF THE RINGS EXPERIENCE</span>
+            </div>
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6">
               Hobbiton Movie Set
               <span className="block text-gold mt-2">Transfers from Auckland</span>
             </h1>
-            <p className="text-xl text-gray-300 mb-8">
-              Experience the magic of Middle-earth with our premium transfer service from Auckland to Hobbiton Movie Set in Matamata
+            <p className="text-xl text-gray-200 mb-8 max-w-2xl">
+              Step into Middle-earth with our premium transfer service. We'll take you from Auckland directly to the magical Hobbiton Movie Set in Matamata.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="flex flex-col sm:flex-row gap-4">
               <Link to="/book-now">
                 <Button className="bg-gold hover:bg-gold/90 text-black font-semibold px-8 py-6 text-lg">
                   Book Your Transfer
@@ -191,20 +222,20 @@ export const HobbitonTransfers = () => {
               Transparent Pricing
             </h2>
             <p className="text-lg text-gray-700 mb-8">
-              Auckland to Hobbiton is approximately 175km. Based on our distance-based pricing:
+              Get an instant quote for your Hobbiton adventure using our live pricing calculator:
             </p>
             <Card className="border-2 border-gold/30 mb-8">
               <CardContent className="p-8">
                 <div className="text-center">
-                  <p className="text-gray-600 mb-2">Estimated Base Price</p>
-                  <p className="text-5xl font-bold text-gold mb-2">$612.50</p>
-                  <p className="text-sm text-gray-600">175km × $3.50/km (100-300km rate)</p>
+                  <p className="text-gray-600 mb-2">Your Price</p>
+                  <p className="text-4xl font-bold text-gold mb-2">Instant Online Quote</p>
+                  <p className="text-sm text-gray-600">Fair distance-based pricing • No hidden fees</p>
                   <div className="mt-6 pt-6 border-t border-gray-200">
-                    <p className="text-sm text-gray-600 mb-3">Additional Options:</p>
+                    <p className="text-sm text-gray-600 mb-3">What's Included:</p>
                     <div className="space-y-2 text-gray-700">
-                      <p>• Extra passengers: $5 per person (1st included)</p>
-                      <p>• VIP Airport Pickup: +$15 (parking close to door eleven)</p>
-                      <p>• Return trip: 2× one-way price</p>
+                      <p>• Door-to-door service</p>
+                      <p>• Professional driver</p>
+                      <p>• Return trip available</p>
                     </div>
                   </div>
                 </div>
@@ -215,6 +246,67 @@ export const HobbitonTransfers = () => {
                 Get Exact Quote & Book Now
               </Button>
             </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Customer Testimonials Section */}
+      <section className="py-16 bg-gradient-to-br from-gray-900 to-black text-white">
+        <div className="container mx-auto px-4">
+          <div className="max-w-5xl mx-auto">
+            <h2 className="text-3xl font-bold text-center mb-4">
+              What Our Hobbiton Travelers Say
+            </h2>
+            <p className="text-gray-300 text-center mb-12">
+              Join hundreds of satisfied customers who've experienced the magic of Middle-earth with us
+            </p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card className="bg-white/10 border-gold/30 backdrop-blur-sm">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-1 mb-3">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} className="w-4 h-4 text-gold fill-gold" />
+                    ))}
+                  </div>
+                  <p className="text-white mb-4 italic">
+                    "Best decision we made! The driver was so knowledgeable about LOTR and the route was scenic. Made our Hobbiton experience even more magical!"
+                  </p>
+                  <p className="text-gold font-semibold">Emma & James</p>
+                  <p className="text-gray-400 text-sm">Auckland → Hobbiton</p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white/10 border-gold/30 backdrop-blur-sm">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-1 mb-3">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} className="w-4 h-4 text-gold fill-gold" />
+                    ))}
+                  </div>
+                  <p className="text-white mb-4 italic">
+                    "Punctual, professional, and the vehicle was spotless. We were able to relax and enjoy the beautiful Waikato scenery. Highly recommend!"
+                  </p>
+                  <p className="text-gold font-semibold">David L.</p>
+                  <p className="text-gray-400 text-sm">International Traveller</p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white/10 border-gold/30 backdrop-blur-sm">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-1 mb-3">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} className="w-4 h-4 text-gold fill-gold" />
+                    ))}
+                  </div>
+                  <p className="text-white mb-4 italic">
+                    "Perfect for our family of 5! Comfortable ride, friendly driver, and we arrived right on time for our Hobbiton tour. Worth every penny!"
+                  </p>
+                  <p className="text-gold font-semibold">Sarah M.</p>
+                  <p className="text-gray-400 text-sm">Family of 5</p>
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </div>
       </section>

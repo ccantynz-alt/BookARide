@@ -1,10 +1,12 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Plane, Briefcase, MapPin, Calendar, Check, ArrowRight, Users, Car, Shield, Clock, Award } from 'lucide-react';
+import { Plane, Briefcase, MapPin, Calendar, Check, ArrowRight, Users, Car, Shield, Clock, Award, DollarSign, Globe } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { services, fleet } from '../mock';
 import SEO from '../components/SEO';
+import PageBreadcrumb from '../components/PageBreadcrumb';
+import { FAQSchema, ServiceSchema } from '../components/SchemaMarkup';
 
 const iconMap = {
   plane: Plane,
@@ -15,71 +17,398 @@ const iconMap = {
 
 export const Services = () => {
   return (
-    <div className="min-h-screen pt-20 bg-white">
+    <div className="min-h-screen bg-white">
       <SEO 
         title="Airport Shuttle Services - Auckland, Hamilton & Whangarei"
         description="Comprehensive airport shuttle services across New Zealand. Auckland airport shuttle, Hamilton airport transfers, Whangarei shuttles, private transfers, cruise ship pickups, and Hobbiton tours. Professional, safe, and reliable shuttle service. Book now!"
         keywords="airport shuttle service, Auckland shuttles, shuttle service, Auckland airport shuttle, Hamilton airport shuttle, Whangarei airport transfer, private shuttle service, airport transportation, corporate shuttle, cruise transfers, Hobbiton transfers, airport pickup service, shuttle service Auckland"
         canonical="/services"
       />
-      {/* Hero Section */}
-      <section className="py-24 bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
-        {/* Background Vehicle Image */}
-        <div className="absolute inset-0 opacity-15">
+      <FAQSchema faqs={[
+        { question: "What airport shuttle services do you offer?", answer: "We offer private airport transfers, cruise ship transfers, corporate transport, Hobbiton tours, and inter-city shuttles. All services include door-to-door pickup and professional drivers." },
+        { question: "Which airports do you service?", answer: "We service Auckland International Airport, Hamilton Airport, and Whangarei Airport with private shuttle transfers from anywhere in the greater Auckland, Waikato, and Northland regions." },
+        { question: "Do you offer corporate shuttle services?", answer: "Yes! We provide corporate accounts with priority booking, invoice billing, and dedicated account management. Perfect for businesses with regular airport transfer needs." },
+        { question: "Can you arrange group shuttles?", answer: "Absolutely! We have vehicles for 1-11 passengers and can arrange multiple vehicles for larger groups. Contact us for group booking rates." }
+      ]} />
+      <ServiceSchema service={{ name: "Airport Shuttle Services", description: "Professional airport transfer services in New Zealand", areaServed: "New Zealand", serviceType: "Airport Transfer" }} />
+      <PageBreadcrumb items={[{ label: 'Services' }]} />
+      {/* Professional Hero Section */}
+      <section className="pt-32 pb-20 bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
+        {/* Background - Professional Airport/Travel Service */}
+        <div className="absolute inset-0">
           <img 
-            src="/shuttle-van.jpg" 
-            alt="" 
-            className="w-full h-full object-cover object-left"
-            style={{ filter: 'brightness(0.4) blur(1px)' }}
+            src="https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=1920&q=80" 
+            alt="Professional shuttle bus service" 
+            className="w-full h-full object-cover"
           />
+          <div className="absolute inset-0 bg-black/60" />
         </div>
         
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(212,175,55,0.15),transparent_50%)]" />
+        {/* Gold accent gradients */}
+        <div className="absolute inset-0 opacity-20">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(212,175,55,0.2),transparent_50%)]" />
         </div>
+        <div className="absolute left-0 top-0 w-1/3 h-full bg-gradient-to-r from-gold/10 to-transparent" />
+        <div className="absolute right-0 top-0 w-1/3 h-full bg-gradient-to-l from-gold/10 to-transparent" />
+        
         <div className="container mx-auto px-4 relative z-10">
-          <div className="max-w-3xl mx-auto text-center">
-            <h1 className="text-5xl md:text-6xl font-bold text-white mb-6">
-              Our Services
+          <div className="max-w-5xl mx-auto text-center">
+            {/* Premium Badge */}
+            <div className="inline-flex items-center gap-2 bg-gold/10 border border-gold/30 rounded-full px-6 py-2 mb-8">
+              <Award className="w-5 h-5 text-gold" />
+              <span className="text-gold font-semibold text-sm tracking-wide">PREMIUM TRANSFER SERVICES</span>
+            </div>
+            
+            <h1 className="text-5xl md:text-7xl font-black text-white mb-6 leading-tight">
+              Our <span className="text-gold">Services</span>
             </h1>
-            <p className="text-xl text-white/80">
-              Airport shuttles for Auckland, Hamilton & Whangarei, plus private transfers in Auckland
+            <p className="text-xl md:text-2xl text-white/90 mb-8 leading-relaxed">
+              Professional airport shuttles across New Zealand's North Island
             </p>
+            
+            {/* LIVE PRICING BANNER - SELL SELL SELL */}
+            <div className="bg-gradient-to-r from-gold to-yellow-500 rounded-2xl p-8 mb-8 shadow-2xl border-2 border-yellow-300">
+              <div className="flex flex-col md:flex-row items-center justify-center gap-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-16 h-16 bg-black/20 rounded-full flex items-center justify-center">
+                    <DollarSign className="w-8 h-8 text-black" strokeWidth={3} />
+                  </div>
+                  <div className="text-left">
+                    <div className="text-2xl md:text-3xl font-black text-black leading-tight">LIVE PRICING</div>
+                    <div className="text-black/80 font-semibold">See Your Exact Price in Seconds!</div>
+                  </div>
+                </div>
+                <div className="h-12 w-px bg-black/20 hidden md:block"></div>
+                <div className="text-center md:text-left">
+                  <div className="text-black font-bold mb-2">✓ Instant Quotes</div>
+                  <div className="text-black font-bold mb-2">✓ No Hidden Fees</div>
+                  <div className="text-black font-bold">✓ Pay Per Kilometer</div>
+                </div>
+                <Link to="/book-now">
+                  <Button className="bg-black hover:bg-gray-900 text-gold font-black text-lg px-8 py-6 shadow-xl">
+                    GET INSTANT QUOTE
+                    <ArrowRight className="ml-2 w-5 h-5" />
+                  </Button>
+                </Link>
+              </div>
+            </div>
+            
+            {/* Trust Indicators */}
+            <div className="flex flex-wrap justify-center gap-8">
+              <div className="text-center">
+                <div className="text-4xl font-black text-gold mb-2">4</div>
+                <div className="text-white/70 text-sm">Locations</div>
+              </div>
+              <div className="h-12 w-px bg-white/20"></div>
+              <div className="text-center">
+                <div className="text-4xl font-black text-gold mb-2">24/7</div>
+                <div className="text-white/70 text-sm">Available</div>
+              </div>
+              <div className="h-12 w-px bg-white/20"></div>
+              <div className="text-center">
+                <div className="text-4xl font-black text-gold mb-2">100%</div>
+                <div className="text-white/70 text-sm">Reliable</div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Services Detail */}
-      <section className="py-24 bg-white">
+      {/* Core Services - Professional Layout */}
+      <section className="py-24 bg-gradient-to-b from-gray-50 to-white">
         <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-4">
+              Airport <span className="text-gold">Transfers</span>
+            </h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Professional airport shuttle services across New Zealand
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-7xl mx-auto">
             {services.map((service, index) => {
               const Icon = iconMap[service.icon];
               return (
-                <Card key={service.id} className="border-2 border-gray-200 hover:border-gold hover:shadow-xl transition-all duration-300">
-                  <CardContent className="p-10">
-                    <div className="flex items-start space-x-6">
-                      <div className="w-20 h-20 bg-gray-900 rounded-xl flex items-center justify-center flex-shrink-0">
-                        <Icon className="w-10 h-10 text-gold" />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="text-3xl font-bold text-gray-900 mb-4">{service.title}</h3>
-                        <p className="text-gray-600 mb-8 leading-relaxed">{service.description}</p>
-                        <div className="space-y-4">
-                          <h4 className="font-semibold text-gray-900">Features:</h4>
-                          {service.features.map((feature, idx) => (
-                            <div key={idx} className="flex items-center space-x-3">
-                              <Check className="w-5 h-5 text-gold flex-shrink-0" />
-                              <span className="text-gray-700">{feature}</span>
-                            </div>
-                          ))}
+                <Card key={service.id} className="border-2 border-gray-200 hover:border-gold hover:shadow-2xl transition-all duration-300 group overflow-hidden">
+                  <CardContent className="p-0">
+                    {/* Card Header with Icon */}
+                    <div className="bg-gradient-to-br from-gray-900 to-black p-8 relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-64 h-64 bg-gold/5 rounded-full -mr-32 -mt-32"></div>
+                      <div className="flex items-center gap-4 relative z-10">
+                        <div className="w-16 h-16 bg-gold/20 border-2 border-gold rounded-xl flex items-center justify-center flex-shrink-0">
+                          <Icon className="w-8 h-8 text-gold" />
                         </div>
+                        <h3 className="text-2xl md:text-3xl font-bold text-white">{service.title}</h3>
                       </div>
+                    </div>
+                    
+                    {/* Card Body */}
+                    <div className="p-8">
+                      <p className="text-gray-600 mb-6 leading-relaxed text-lg">{service.description}</p>
+                      
+                      <div className="space-y-3 mb-8">
+                        <h4 className="font-bold text-gray-900 text-sm uppercase tracking-wide mb-4">What's Included:</h4>
+                        {service.features.map((feature, idx) => (
+                          <div key={idx} className="flex items-start gap-3">
+                            <div className="flex-shrink-0 w-5 h-5 bg-gold/20 rounded-full flex items-center justify-center mt-0.5">
+                              <Check className="w-3 h-3 text-gold" strokeWidth={3} />
+                            </div>
+                            <span className="text-gray-700 text-sm leading-relaxed">{feature}</span>
+                          </div>
+                        ))}
+                      </div>
+                      
+                      <Link to="/book-now">
+                        <Button className="w-full bg-gold hover:bg-yellow-500 text-black font-bold py-6 text-base shadow-lg group-hover:shadow-xl transition-all">
+                          Book This Service
+                          <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                        </Button>
+                      </Link>
                     </div>
                   </CardContent>
                 </Card>
               );
             })}
+          </div>
+        </div>
+      </section>
+
+      {/* Premium Event Services - Professional Design */}
+      <section className="py-24 bg-white relative overflow-hidden">
+        <div className="container mx-auto px-4 relative z-10">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 bg-gold/10 border border-gold/30 rounded-full px-6 py-2 mb-6">
+              <Award className="w-5 h-5 text-gold" />
+              <span className="text-gold font-bold text-sm tracking-wide">PREMIUM EVENT SERVICES</span>
+            </div>
+            <h2 className="text-4xl md:text-6xl font-black text-gray-900 mb-6">
+              Events & <span className="text-gold">Special Occasions</span>
+            </h2>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
+              Professional group transportation for concerts, corporate events, and celebrations
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
+            {/* Corporate Events */}
+            <Card className="border-2 border-gray-200 hover:border-gold hover:shadow-xl transition-all duration-300 group overflow-hidden bg-white">
+              <CardContent className="p-8">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-16 h-16 bg-gradient-to-br from-gray-900 to-black rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                    <Briefcase className="w-8 h-8 text-gold" strokeWidth={2} />
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900">Corporate Events</h3>
+                </div>
+                <p className="text-gray-600 mb-6 leading-relaxed">
+                  Impress clients and colleagues with professional group transportation for conferences, meetings, and corporate functions.
+                </p>
+                <div className="space-y-3 mb-8">
+                  {[
+                    'Executive-level service',
+                    'Professional chauffeurs',
+                    'Invoice billing available',
+                    'Fleet of 4-11 passenger vehicles',
+                    'Punctual & reliable service',
+                    'Perfect for team outings'
+                  ].map((item, idx) => (
+                    <div key={idx} className="flex items-start gap-3">
+                      <Check className="w-5 h-5 text-gold flex-shrink-0 mt-0.5" strokeWidth={2.5} />
+                      <span className="text-gray-700">{item}</span>
+                    </div>
+                  ))}
+                </div>
+                <Link to="/book-now">
+                  <Button className="w-full bg-gray-900 hover:bg-black text-white font-semibold py-4">
+                    Request Corporate Quote
+                    <ArrowRight className="ml-2 w-5 h-5" />
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+
+            {/* Concert Shuttles - Matakana */}
+            <Card className="border-2 border-gold hover:border-gold hover:shadow-xl transition-all duration-300 group overflow-hidden bg-white relative">
+              <div className="absolute top-4 right-4 bg-gold px-3 py-1 rounded-full z-10">
+                <span className="text-black font-bold text-xs">POPULAR</span>
+              </div>
+              <CardContent className="p-8">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-16 h-16 bg-gradient-to-br from-gray-900 to-black rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                    <Calendar className="w-8 h-8 text-gold" strokeWidth={2} />
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900">Concert Shuttles</h3>
+                </div>
+                <p className="text-gray-600 mb-6 leading-relaxed">
+                  Enjoy concerts at Matakana, Mission Estate, and Villa Maria with safe, reliable transportation. Don't drink and drive!
+                </p>
+                <div className="space-y-3 mb-8">
+                  {[
+                    'Matakana Country Park concerts',
+                    'Villa Maria & Mission Estate events',
+                    'No drink-driving worries',
+                    'Groups of 4-11 passengers',
+                    'Late-night return service available',
+                    'Door-to-door convenience'
+                  ].map((item, idx) => (
+                    <div key={idx} className="flex items-start gap-3">
+                      <Check className="w-5 h-5 text-gold flex-shrink-0 mt-0.5" strokeWidth={2.5} />
+                      <span className="text-gray-700">{item}</span>
+                    </div>
+                  ))}
+                </div>
+                <Link to="/book-now">
+                  <Button className="w-full bg-gold hover:bg-yellow-500 text-black font-semibold py-4">
+                    Book Concert Shuttle
+                    <ArrowRight className="ml-2 w-5 h-5" />
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+
+            {/* Sports & Stadium Events */}
+            <Card className="border-2 border-gray-200 hover:border-gold hover:shadow-xl transition-all duration-300 group overflow-hidden bg-white">
+              <CardContent className="p-8">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-16 h-16 bg-gradient-to-br from-gray-900 to-black rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                    <Users className="w-8 h-8 text-gold" strokeWidth={2} />
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900">Stadium Events</h3>
+                </div>
+                <p className="text-gray-600 mb-6 leading-relaxed">
+                  Rugby, cricket, concerts at Eden Park, Mt Smart Stadium, or Western Springs - we'll get you there stress-free!
+                </p>
+                <div className="space-y-3 mb-8">
+                  {[
+                    'Eden Park & Mt Smart Stadium',
+                    'Western Springs events',
+                    'Skip parking hassles',
+                    'Perfect for groups',
+                    'Fast drop-off & pickup',
+                    'Safe post-event transport'
+                  ].map((item, idx) => (
+                    <div key={idx} className="flex items-start gap-3">
+                      <Check className="w-5 h-5 text-gold flex-shrink-0 mt-0.5" strokeWidth={2.5} />
+                      <span className="text-gray-700">{item}</span>
+                    </div>
+                  ))}
+                </div>
+                <Link to="/book-now">
+                  <Button className="w-full bg-gray-900 hover:bg-black text-white font-semibold py-4">
+                    Book Stadium Transfer
+                    <ArrowRight className="ml-2 w-5 h-5" />
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+
+            {/* Weddings & Special Occasions */}
+            <Card className="border-2 border-gray-200 hover:border-gold hover:shadow-xl transition-all duration-300 group overflow-hidden bg-white">
+              <CardContent className="p-8">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-16 h-16 bg-gradient-to-br from-gray-900 to-black rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                    <Award className="w-8 h-8 text-gold" strokeWidth={2} />
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900">Weddings & Celebrations</h3>
+                </div>
+                <p className="text-gray-600 mb-6 leading-relaxed">
+                  Make your special day perfect with elegant transportation for weddings, anniversaries, and milestone celebrations.
+                </p>
+                <div className="space-y-3 mb-8">
+                  {[
+                    'Wedding party transport',
+                    'Birthday celebrations',
+                    'Anniversary events',
+                    'Elegant & professional service',
+                    'Immaculate vehicles',
+                    'Special occasion packages'
+                  ].map((item, idx) => (
+                    <div key={idx} className="flex items-start gap-3">
+                      <Check className="w-5 h-5 text-gold flex-shrink-0 mt-0.5" strokeWidth={2.5} />
+                      <span className="text-gray-700">{item}</span>
+                    </div>
+                  ))}
+                </div>
+                <Link to="/book-now">
+                  <Button className="w-full bg-gold hover:bg-yellow-500 text-black font-semibold py-4">
+                    Request Custom Quote
+                    <ArrowRight className="ml-2 w-5 h-5" />
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+
+            {/* Wine Tours */}
+            <Card className="border-2 border-gray-200 hover:border-gold hover:shadow-xl transition-all duration-300 group overflow-hidden bg-white">
+              <CardContent className="p-8">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-16 h-16 bg-gradient-to-br from-gray-900 to-black rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                    <MapPin className="w-8 h-8 text-gold" strokeWidth={2} />
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900">Wine Tours</h3>
+                </div>
+                <p className="text-gray-600 mb-6 leading-relaxed">
+                  Explore Waiheke Island, Matakana, or Kumeu wineries without worrying about designated drivers.
+                </p>
+                <div className="space-y-3 mb-8">
+                  {[
+                    'Waiheke Island wine tours',
+                    'Matakana & Kumeu wine regions',
+                    'Group-friendly vehicles',
+                    'Flexible itineraries',
+                    'Multiple winery stops',
+                    'Full-day or half-day options'
+                  ].map((item, idx) => (
+                    <div key={idx} className="flex items-start gap-3">
+                      <Check className="w-5 h-5 text-gold flex-shrink-0 mt-0.5" strokeWidth={2.5} />
+                      <span className="text-gray-700">{item}</span>
+                    </div>
+                  ))}
+                </div>
+                <Link to="/book-now">
+                  <Button className="w-full bg-gray-900 hover:bg-black text-white font-semibold py-4">
+                    Plan Wine Tour
+                    <ArrowRight className="ml-2 w-5 h-5" />
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+
+            {/* Group Outings */}
+            <Card className="border-2 border-gray-200 hover:border-gold hover:shadow-xl transition-all duration-300 group overflow-hidden bg-white">
+              <CardContent className="p-8">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-16 h-16 bg-gradient-to-br from-gray-900 to-black rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                    <Users className="w-8 h-8 text-gold" strokeWidth={2} />
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900">Group Outings</h3>
+                </div>
+                <p className="text-gray-600 mb-6 leading-relaxed">
+                  Beach trips, shopping expeditions, restaurant tours, or any group activity - we make it easy and fun!
+                </p>
+                <div className="space-y-3 mb-8">
+                  {[
+                    'Beach & day trips',
+                    'Shopping expeditions',
+                    'Restaurant tours',
+                    'Theater & cultural events',
+                    'Family reunions',
+                    'Bachelor/Bachelorette parties'
+                  ].map((item, idx) => (
+                    <div key={idx} className="flex items-start gap-3">
+                      <Check className="w-5 h-5 text-gold flex-shrink-0 mt-0.5" strokeWidth={2.5} />
+                      <span className="text-gray-700">{item}</span>
+                    </div>
+                  ))}
+                </div>
+                <Link to="/book-now">
+                  <Button className="w-full bg-gold hover:bg-yellow-500 text-black font-semibold py-4">
+                    Book Group Transfer
+                    <ArrowRight className="ml-2 w-5 h-5" />
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </section>
@@ -156,29 +485,29 @@ export const Services = () => {
               <Card className="border-2 border-gold/30 bg-gradient-to-br from-gold/20 to-gold/5 backdrop-blur">
                 <CardContent className="p-10 text-center">
                   <div className="mb-6">
-                    <p className="text-gray-300 text-sm mb-2">Estimated Price</p>
-                    <p className="text-5xl font-bold text-gold mb-2">$612.50</p>
-                    <p className="text-gray-400 text-sm">Base one-way fare</p>
+                    <p className="text-gray-300 text-sm mb-2">Get Your Price</p>
+                    <p className="text-4xl font-bold text-gold mb-2">Instant Quote</p>
+                    <p className="text-gray-400 text-sm">Live pricing calculator</p>
                   </div>
                   
                   <div className="space-y-3 mb-8 text-left">
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-300">Distance:</span>
-                      <span className="text-white font-semibold">175km</span>
+                      <span className="text-gray-300">Pricing:</span>
+                      <span className="text-white font-semibold">Distance-based</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-300">Travel Time:</span>
-                      <span className="text-white font-semibold">~2.5 hours</span>
+                      <span className="text-gray-300">Quotes:</span>
+                      <span className="text-white font-semibold">Instant online</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-300">Rate:</span>
-                      <span className="text-white font-semibold">$3.50/km</span>
+                      <span className="text-gray-300">Guarantee:</span>
+                      <span className="text-white font-semibold">No hidden fees</span>
                     </div>
                   </div>
 
                   <Link to="/book-now">
                     <Button variant="outline" className="border-gold text-gold hover:bg-gold hover:text-black w-full py-4">
-                      Book Now
+                      Get Quote
                     </Button>
                   </Link>
                 </CardContent>
@@ -257,6 +586,83 @@ export const Services = () => {
         </div>
       </section>
 
+      {/* International Visitors Section */}
+      <section className="py-20 bg-gradient-to-br from-gray-900 via-black to-gray-800 relative overflow-hidden">
+        <div className="absolute inset-0">
+          <img 
+            src="https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1920&q=80" 
+            alt="Connected world" 
+            className="w-full h-full object-cover opacity-20"
+          />
+        </div>
+        <div className="container mx-auto px-4 relative z-10">
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center gap-2 bg-gold/20 px-4 py-2 rounded-full mb-6">
+              <Globe className="w-5 h-5 text-gold" />
+              <span className="text-gold font-medium">WELCOME INTERNATIONAL VISITORS</span>
+            </div>
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
+              Serving Visitors from <span className="text-gold">Around the World</span>
+            </h2>
+            <p className="text-xl text-white/70 max-w-3xl mx-auto">
+              Multilingual support, international payment options, and personalized service for travelers from every corner of the globe
+            </p>
+          </div>
+
+          {/* Country Flags Grid */}
+          <div className="flex flex-wrap justify-center gap-4 mb-10">
+            {[
+              { flag: '🇨🇳', name: 'China', link: '/visitors/china' },
+              { flag: '🇯🇵', name: 'Japan', link: '/visitors/japan' },
+              { flag: '🇰🇷', name: 'Korea', link: '/visitors/korea' },
+              { flag: '🇦🇺', name: 'Australia', link: '/visitors/australia' },
+              { flag: '🇺🇸', name: 'USA', link: '/visitors/usa' },
+              { flag: '🇬🇧', name: 'UK', link: '/visitors/uk' },
+              { flag: '🇩🇪', name: 'Germany', link: '/visitors/germany' },
+              { flag: '🇫🇷', name: 'France', link: '/visitors/france' },
+              { flag: '🇸🇬', name: 'Singapore', link: '/visitors/singapore' }
+            ].map((country, index) => (
+              <Link 
+                key={index} 
+                to={country.link}
+                className="bg-white/10 backdrop-blur-sm px-5 py-3 rounded-xl border border-white/20 hover:border-gold hover:bg-white/20 transition-all duration-300 flex items-center gap-2 group"
+              >
+                <span className="text-2xl">{country.flag}</span>
+                <span className="text-white group-hover:text-gold transition-colors">{country.name}</span>
+              </Link>
+            ))}
+          </div>
+
+          {/* Features */}
+          <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto mb-10">
+            <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 text-center border border-white/10">
+              <div className="text-3xl mb-2">💬</div>
+              <h3 className="text-white font-semibold mb-1">9+ Languages</h3>
+              <p className="text-white/60 text-sm">Multilingual customer support</p>
+            </div>
+            <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 text-center border border-white/10">
+              <div className="text-3xl mb-2">💳</div>
+              <h3 className="text-white font-semibold mb-1">Global Payments</h3>
+              <p className="text-white/60 text-sm">Alipay, WeChat, PayPal & more</p>
+            </div>
+            <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 text-center border border-white/10">
+              <div className="text-3xl mb-2">✈️</div>
+              <h3 className="text-white font-semibold mb-1">Flight Tracking</h3>
+              <p className="text-white/60 text-sm">We monitor your arrival</p>
+            </div>
+          </div>
+
+          <div className="text-center">
+            <Link to="/international-visitors">
+              <Button className="bg-gold hover:bg-gold/90 text-black font-semibold px-8 py-6 text-lg">
+                View All International Services
+                <ArrowRight className="ml-2 w-5 h-5" />
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* CTA */}
       <section className="py-24 bg-gradient-to-r from-gray-900 via-black to-gray-900 relative overflow-hidden">
         <div className="absolute inset-0 opacity-10">
@@ -269,7 +675,7 @@ export const Services = () => {
           <p className="text-xl text-white/80 mb-12 max-w-2xl mx-auto">
             Get in touch today for a quote or to make a booking.
           </p>
-          <Link to="/contact">
+          <Link to="/book-now">
             <Button size="lg" className="bg-gold hover:bg-gold/90 text-black font-semibold px-10 py-6 text-base transition-all duration-200 shadow-lg">
               Book Now
               <ArrowRight className="ml-2 w-5 h-5" />
