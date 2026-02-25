@@ -43,6 +43,7 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 import siteConfig from './config/siteConfig';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminErrorBoundary from './components/admin/AdminErrorBoundary';
+import RootErrorBoundary from './components/RootErrorBoundary';
 import SEODashboard from './pages/SEODashboard';
 import DriverLogin from './pages/DriverLogin';
 import DriverPortal from './pages/DriverPortal';
@@ -330,10 +331,11 @@ function App() {
   ];
 
   return (
-    <div className="App">
-      <BrowserRouter>
-        <LanguageRedirect>
-          <Routes>
+    <RootErrorBoundary>
+      <div className="App">
+        <BrowserRouter>
+          <LanguageRedirect>
+            <Routes>
             {/* Driver Routes (No Header/Footer) */}
             <Route path="/driver/login" element={<DriverLogin />} />
             <Route path="/driver/portal" element={<DriverPortal />} />
@@ -378,10 +380,11 @@ function App() {
               ))}
             </Route>
           </Routes>
-          <Toaster />
-        </LanguageRedirect>
-      </BrowserRouter>
-    </div>
+            <Toaster />
+          </LanguageRedirect>
+        </BrowserRouter>
+      </div>
+    </RootErrorBoundary>
   );
 }
 

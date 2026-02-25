@@ -147,11 +147,10 @@ export default function DriverTracking() {
     setStatus('completed');
   };
 
-  // Open navigation to pickup address
+  // Open navigation to pickup address (OpenStreetMap)
   const openNavigation = () => {
     if (session?.pickupAddress) {
-      const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(session.pickupAddress)}&travelmode=driving`;
-      window.open(url, '_blank');
+      window.open(`https://www.openstreetmap.org/search?query=${encodeURIComponent(session.pickupAddress)}`, '_blank');
     }
   };
 

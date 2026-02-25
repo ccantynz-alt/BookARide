@@ -193,7 +193,7 @@ const ReturnsOverviewPanel = ({ bookings = [], drivers = [], onAssignDriver, onV
           <div>
             <h2 className="text-lg font-semibold text-gray-900">Return Trips</h2>
             <p className="text-sm text-gray-500">
-              {todayReturns.length} today • {tomorrowReturns.length} tomorrow • {laterReturns.length} later
+              {todayReturns.length} today • {tomorrowReturns.length} tomorrow • {laterReturns.length} later. Date & time shown for each return.
             </p>
           </div>
         </div>
