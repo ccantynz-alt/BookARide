@@ -531,6 +531,7 @@ export const AdminDashboard = () => {
   const [loadingDeleted, setLoadingDeleted] = useState(false);
   const [restoringAll, setRestoringAll] = useState(false);
   const [downloadingBackup, setDownloadingBackup] = useState(false);
+  const [retentionCounts, setRetentionCounts] = useState(null); // { active, deleted } when list empty
   const [xeroConnected, setXeroConnected] = useState(false);
   const [xeroOrg, setXeroOrg] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -644,6 +645,19 @@ export const AdminDashboard = () => {
     if (!localStorage.getItem('adminToken')) return;
     if (dateFrom || dateTo) fetchBookingsRef.current?.(1, false);
   }, [dateFrom, dateTo]);
+
+  // When list is empty, fetch active/deleted counts so we can show "0 active, 47 deleted"
+  useEffect(() => {
+    if (loading || bookings.length > 0) {
+      setRetentionCounts(null);
+      return;
+    }
+    let cancelled = false;
+    axios.get(`${API}/admin/bookings/retention-counts`, getAuthHeaders()).then((r) => {
+      if (!cancelled && r.data) setRetentionCounts({ active: r.data.active ?? 0, deleted: r.data.deleted ?? 0 });
+    }).catch(() => { if (!cancelled) setRetentionCounts(null); });
+    return () => { cancelled = true; };
+  }, [loading, bookings.length]);
 
   const getAuthHeaders = () => {
     const token = localStorage.getItem('adminToken');
@@ -2476,8 +2490,48 @@ onViewBooking={(booking) => {
                 <p className="text-gray-600 mt-4">Loading bookings...</p>
               </div>
             ) : filteredBookings.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-gray-600">No bookings found</p>
+              <div className="space-y-4">
+                <div className="text-center py-8">
+                  <p className="text-gray-600 font-medium">No bookings in this view</p>
+                </div>
+                <Card className="border-amber-200 bg-amber-50/50 max-w-2xl mx-auto">
+                  <CardContent className="p-4 space-y-3">
+                    {retentionCounts && (
+                      <p className="text-sm font-semibold text-amber-900">
+                        Database: {retentionCounts.active} active, {retentionCounts.deleted} in Deleted.
+                        {retentionCounts.deleted > 0 && ' Restore them from the Deleted tab.'}
+                      </p>
+                    )}
+                    <p className="font-medium text-amber-900">Get your bookings back:</p>
+                    <ul className="list-disc list-inside text-sm text-amber-800 space-y-1">
+                      {(dateFrom || dateTo) && (
+                        <li>You have date filters on—clearing them may show bookings.</li>
+                      )}
+                      <li>If bookings disappeared after an update, they may be in the <strong>Deleted</strong> tab. Open Deleted and click <strong>Restore all</strong> to reinstate them.</li>
+                      <li>Use <strong>Deleted → Download backup (JSON)</strong> to see exactly what’s stored (active + deleted).</li>
+                    </ul>
+                    <div className="flex flex-wrap gap-2 pt-2">
+                      {(dateFrom || dateTo) && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => { setDateFrom(''); setDateTo(''); fetchBookingsRef.current?.(1, false); }}
+                          className="border-amber-500 text-amber-800 hover:bg-amber-100"
+                        >
+                          Clear date filters & show all
+                        </Button>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setActiveTab('deleted')}
+                        className="border-amber-500 text-amber-800 hover:bg-amber-100"
+                      >
+                        Open Deleted tab
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
             ) : (
             <>
