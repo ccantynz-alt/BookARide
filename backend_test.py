@@ -4,6 +4,7 @@ Comprehensive Backend Testing for BookaRide.co.nz
 Tests specific features requested in review: pricing, flight tracking, driver assignment, AI email auto-responder, and payment endpoints
 """
 
+import os
 import requests
 import json
 import time
@@ -119,19 +120,21 @@ class BookaRideBackendTester:
             return False
     
     def test_direct_mailgun_email(self):
-        """Test direct Mailgun email sending"""
+        """Test direct Mailgun email sending (uses MAILGUN_API_KEY, MAILGUN_DOMAIN from env)."""
         try:
-            # Using curl equivalent with requests
-            mailgun_url = "https://api.mailgun.net/v3/mg.bookaride.co.nz/messages"
-            auth = ('api', '151d31c4dd7cd9fd3015d140b2c58f76-235e4bb2-1ecf548a')
-            
+            api_key = os.environ.get("MAILGUN_API_KEY", "").strip()
+            domain = os.environ.get("MAILGUN_DOMAIN", "mg.bookaride.co.nz")
+            if not api_key:
+                self.log_result("Direct Mailgun Test", False, "MAILGUN_API_KEY not set (set in .env)")
+                return False
+            mailgun_url = f"https://api.mailgun.net/v3/{domain}/messages"
+            auth = ('api', api_key)
             data = {
-                'from': 'Book A Ride <noreply@mg.bookaride.co.nz>',
+                'from': f'Book A Ride <noreply@{domain}>',
                 'to': 'test@example.com',
                 'subject': 'Test Email - DNS Verification',
                 'text': 'Mailgun DNS is verified and working!'
             }
-            
             response = requests.post(mailgun_url, auth=auth, data=data, timeout=15)
             
             if response.status_code == 200:
