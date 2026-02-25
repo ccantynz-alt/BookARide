@@ -10039,6 +10039,17 @@ async def bulk_delete(booking_ids: List[str], send_notifications: bool = False, 
 # BOOKINGS BACKUP (retention: never lose bookings)
 # ============================================
 
+@api_router.get("/admin/bookings/retention-counts")
+async def get_retention_counts(current_admin: dict = Depends(get_current_admin)):
+    """Return active and deleted booking counts so admin can see why list might be empty."""
+    try:
+        active = await db.bookings.count_documents({})
+        deleted = await db.deleted_bookings.count_documents({})
+        return {"active": active, "deleted": deleted}
+    except Exception as e:
+        logger.error(f"Error getting retention counts: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @api_router.get("/admin/bookings/export-backup")
 async def export_bookings_backup(current_admin: dict = Depends(get_current_admin)):
     """Export full backup of active + deleted bookings as JSON. Use for backups; bookings are always retained (soft-delete)."""
