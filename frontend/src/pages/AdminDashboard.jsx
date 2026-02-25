@@ -663,9 +663,11 @@ export const AdminDashboard = () => {
   // When on Bookings tab, fetch deleted count so we can show "Restore all" banner if any are in Deleted
   useEffect(() => {
     if (activeTab !== 'bookings') return;
+    let cancelled = false;
     axios.get(`${API}/admin/bookings/retention-counts`, getAuthHeaders()).then((r) => {
-      if (r.data && typeof r.data.deleted === 'number') setDeletedCountForBanner(r.data.deleted);
-    }).catch(() => setDeletedCountForBanner(null));
+      if (!cancelled && r.data && typeof r.data.deleted === 'number') setDeletedCountForBanner(r.data.deleted);
+    }).catch(() => { if (!cancelled) setDeletedCountForBanner(null); });
+    return () => { cancelled = true; };
   }, [activeTab]);
 
   const getAuthHeaders = () => {
