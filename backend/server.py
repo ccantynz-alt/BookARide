@@ -10082,6 +10082,32 @@ async def restore_booking(booking_id: str, current_admin: dict = Depends(get_cur
         logger.error(f"Error restoring booking: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@api_router.post("/bookings/restore-all")
+async def restore_all_deleted_bookings(current_admin: dict = Depends(get_current_admin)):
+    """Restore all soft-deleted bookings back to active bookings"""
+    try:
+        deleted_list = await db.deleted_bookings.find({}, {"_id": 0}).to_list(1000)
+        if not deleted_list:
+            return {"message": "No deleted bookings to restore", "restored_count": 0}
+        restored = 0
+        for booking in deleted_list:
+            booking_id = booking.get("id")
+            if not booking_id:
+                continue
+            booking.pop('deletedAt', None)
+            booking.pop('deletedBy', None)
+            booking.pop('notificationSent', None)
+            booking['restoredAt'] = datetime.now(timezone.utc).isoformat()
+            booking['restoredBy'] = current_admin.get('username', 'admin')
+            await db.bookings.insert_one(booking)
+            await db.deleted_bookings.delete_one({"id": booking_id})
+            restored += 1
+        logger.info(f"Restored all {restored} deleted bookings by {current_admin.get('username', 'admin')}")
+        return {"message": f"Restored {restored} booking(s) successfully", "restored_count": restored}
+    except Exception as e:
+        logger.error(f"Error restoring all bookings: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @api_router.delete("/bookings/permanent/{booking_id}")
 async def permanent_delete_booking(booking_id: str, current_admin: dict = Depends(get_current_admin)):
     """Permanently delete a booking from deleted_bookings (no recovery possible)"""

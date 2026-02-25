@@ -529,6 +529,7 @@ export const AdminDashboard = () => {
   const [shuttleData, setShuttleData] = useState({});
   const [loadingShuttle, setLoadingShuttle] = useState(false);
   const [loadingDeleted, setLoadingDeleted] = useState(false);
+  const [restoringAll, setRestoringAll] = useState(false);
   const [xeroConnected, setXeroConnected] = useState(false);
   const [xeroOrg, setXeroOrg] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -1055,6 +1056,24 @@ export const AdminDashboard = () => {
     } catch (error) {
       console.error('Error permanently deleting booking:', error);
       toast.error('Failed to permanently delete booking');
+    }
+  };
+
+  const handleRestoreAllBookings = async () => {
+    if (deletedBookings.length === 0) return;
+    if (!window.confirm(`Restore all ${deletedBookings.length} deleted booking(s) back to active bookings?`)) return;
+    setRestoringAll(true);
+    try {
+      const res = await axios.post(`${API}/bookings/restore-all`, {}, getAuthHeaders());
+      const count = res.data?.restored_count ?? 0;
+      toast.success(count ? `Restored ${count} booking(s) successfully` : res.data?.message || 'Done');
+      fetchDeletedBookings();
+      fetchBookingsRef.current?.();
+    } catch (error) {
+      console.error('Error restoring all bookings:', error);
+      toast.error(error.response?.data?.detail || 'Failed to restore all bookings');
+    } finally {
+      setRestoringAll(false);
     }
   };
 
@@ -2994,9 +3013,30 @@ onViewBooking={(booking) => {
           <TabsContent value="deleted" className="space-y-6">
             <Card className="border-red-200 bg-red-50">
               <CardContent className="p-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <AlertTriangle className="w-6 h-6 text-red-600" />
-                  <h3 className="text-lg font-semibold text-red-800">Recently Deleted Bookings</h3>
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                  <div className="flex items-center gap-3">
+                    <AlertTriangle className="w-6 h-6 text-red-600" />
+                    <h3 className="text-lg font-semibold text-red-800">Recently Deleted Bookings</h3>
+                  </div>
+                  {deletedBookings.length > 0 && (
+                    <Button
+                      onClick={handleRestoreAllBookings}
+                      disabled={restoringAll}
+                      className="bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      {restoringAll ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                          Restoring...
+                        </>
+                      ) : (
+                        <>
+                          <RotateCcw className="w-4 h-4 mr-2" />
+                          Restore all {deletedBookings.length} booking{deletedBookings.length !== 1 ? 's' : ''}
+                        </>
+                      )}
+                    </Button>
+                  )}
                 </div>
                 <p className="text-sm text-red-700 mb-4">
                   These bookings have been deleted but can be restored. They will be kept for 30 days before permanent deletion.
