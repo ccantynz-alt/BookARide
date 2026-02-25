@@ -601,6 +601,10 @@ export const AdminDashboard = () => {
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
   const [searchingCustomers, setSearchingCustomers] = useState(false);
   const customerSearchRef = useRef(null);
+
+  // Guard against selectedBookings ever not being a Set; use let + assign so minifier cannot reorder (avoids "Cannot access 'gr' before initialization")
+  let safeSelectedSet = new Set();
+  safeSelectedSet = selectedBookings instanceof Set ? selectedBookings : new Set();
   
   // Preview confirmation modal states
   const [showPreviewModal, setShowPreviewModal] = useState(false);
@@ -621,6 +625,15 @@ export const AdminDashboard = () => {
   const [adminFlightArrivalTime, setAdminFlightArrivalTime] = useState(null);
   const [adminFlightDepartureTime, setAdminFlightDepartureTime] = useState(null);
 
+  // Pagination state (must be before useEffects that depend on dateFrom/dateTo)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalBookings, setTotalBookings] = useState(0);
+  const [bookingsPerPage] = useState(200);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [loadAllBookings] = useState(true); // Always load full list so we never miss a booking
+
   // Use refs only - never reference fetchBookings/filterBookings here (they are declared later)
   useEffect(() => {
     if (filterBookingsRef.current) filterBookingsRef.current();
@@ -638,15 +651,6 @@ export const AdminDashboard = () => {
       }
     };
   };
-
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalBookings, setTotalBookings] = useState(0);
-  const [bookingsPerPage] = useState(200);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
-  const [loadAllBookings] = useState(true); // Always load full list so we never miss a booking
 
   fetchBookings = async (page = 1, append = false, isRetry = false) => {
     try {
@@ -1389,16 +1393,16 @@ export const AdminDashboard = () => {
 
   // Bulk delete without notifications
   const handleBulkDelete = async () => {
-    if (selectedBookings.size === 0) return;
+    if (safeSelectedSet.size === 0) return;
     
     setShowBulkDeleteConfirm(false);
-    const count = selectedBookings.size;
+    const count = safeSelectedSet.size;
     let deleted = 0;
     let failed = 0;
 
     toast.loading(`Deleting ${count} bookings...`);
 
-    for (const bookingId of selectedBookings) {
+    for (const bookingId of safeSelectedSet) {
       try {
         await axios.delete(`${API}/bookings/${bookingId}?send_notification=false`, getAuthHeaders());
         deleted++;
@@ -2429,11 +2433,11 @@ onViewBooking={(booking) => {
             <>
               <div className="overflow-x-auto">
                 {/* Bulk Action Bar */}
-                {selectedBookings.size > 0 && (
+                {safeSelectedSet.size > 0 && (
                   <div className="bg-red-50 border-b border-red-200 px-4 py-3 flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-3">
                       <span className="text-sm font-medium text-red-800">
-                        {selectedBookings.size} booking{selectedBookings.size > 1 ? 's' : ''} selected
+                        {safeSelectedSet.size} booking{safeSelectedSet.size > 1 ? 's' : ''} selected
                       </span>
                       <Button
                         variant="ghost"
@@ -2461,7 +2465,7 @@ onViewBooking={(booking) => {
                       <th className="p-2 w-8">
                         <button
                           onClick={() => {
-                            if (selectedBookings.size === filteredBookings.length) {
+                            if (safeSelectedSet.size === filteredBookings.length) {
                               setSelectedBookings(new Set());
                             } else {
                               setSelectedBookings(new Set(filteredBookings.map(b => b.id)));
@@ -2470,7 +2474,7 @@ onViewBooking={(booking) => {
                           className="p-1 hover:bg-gray-200 rounded"
                           title="Select all"
                         >
-                          {selectedBookings.size === filteredBookings.length && filteredBookings.length > 0 ? (
+                          {safeSelectedSet.size === filteredBookings.length && filteredBookings.length > 0 ? (
                             <CheckSquare className="w-4 h-4 text-gold" />
                           ) : (
                             <Square className="w-4 h-4 text-gray-400" />
@@ -2497,7 +2501,7 @@ onViewBooking={(booking) => {
                       
                       return (
                       <tr key={booking.id} className={`border-b hover:bg-gray-50 transition-colors
-                        ${selectedBookings.has(booking.id) ? 'bg-gold/10' : ''} 
+                        ${safeSelectedSet.has(booking.id) ? 'bg-gold/10' : ''} 
                         ${isUrgentUnassigned ? 'bg-red-50 border-l-4 border-l-red-500' : ''}
                         ${!isUrgentUnassigned && isToday(booking.date) ? 'bg-blue-50/50 border-l-4 border-l-blue-500' : ''} 
                         ${!isUrgentUnassigned && !isToday(booking.date) && isTomorrow(booking.date) ? 'border-l-4 border-l-orange-400 bg-orange-50/30' : ''}
@@ -2506,7 +2510,7 @@ onViewBooking={(booking) => {
                         <td className="px-2 py-2">
                           <button
                             onClick={() => {
-                              const newSelected = new Set(selectedBookings);
+                              const newSelected = new Set(safeSelectedSet);
                               if (newSelected.has(booking.id)) {
                                 newSelected.delete(booking.id);
                               } else {
@@ -2516,7 +2520,7 @@ onViewBooking={(booking) => {
                             }}
                             className="p-0.5 hover:bg-gray-200 rounded"
                           >
-                            {selectedBookings.has(booking.id) ? (
+                            {safeSelectedSet.has(booking.id) ? (
                               <CheckSquare className="w-4 h-4 text-gold" />
                             ) : (
                               <Square className="w-4 h-4 text-gray-400" />
@@ -4974,7 +4978,7 @@ onViewBooking={(booking) => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-600">
               <Trash2 className="w-5 h-5" />
-              Delete {selectedBookings.size} Booking{selectedBookings.size > 1 ? 's' : ''}?
+              Delete {safeSelectedSet.size} Booking{safeSelectedSet.size > 1 ? 's' : ''}?
             </DialogTitle>
           </DialogHeader>
           <div className="py-4">
@@ -5003,7 +5007,7 @@ onViewBooking={(booking) => {
               className="bg-red-600 hover:bg-red-700"
             >
               <Trash2 className="w-4 h-4 mr-2" />
-              Delete {selectedBookings.size} Booking{selectedBookings.size > 1 ? 's' : ''}
+              Delete {safeSelectedSet.size} Booking{safeSelectedSet.size > 1 ? 's' : ''}
             </Button>
           </div>
         </DialogContent>
