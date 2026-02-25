@@ -13,15 +13,50 @@ export const PaymentSuccess = () => {
   const [paymentStatus, setPaymentStatus] = useState('checking');
   const [paymentDetails, setPaymentDetails] = useState(null);
   const sessionId = searchParams.get('session_id');
+  const orderToken = searchParams.get('orderToken');
+  const paymentMethod = searchParams.get('method');
+  const status = searchParams.get('status');
 
   useEffect(() => {
+    // Handle Afterpay callback
+    if (paymentMethod === 'afterpay' && orderToken) {
+      handleAfterpayCallback();
+      return;
+    }
+
+    // Handle Stripe callback
     if (!sessionId) {
       navigate('/book-now');
       return;
     }
 
     pollPaymentStatus();
-  }, [sessionId]);
+  }, [sessionId, orderToken, paymentMethod]);
+
+  const handleAfterpayCallback = async () => {
+    try {
+      if (status === 'CANCELLED') {
+        setPaymentStatus('cancelled');
+        return;
+      }
+
+      // Capture the Afterpay payment
+      const response = await axios.post(`${API}/afterpay/capture?token=${orderToken}`);
+
+      if (response.data.status === 'APPROVED') {
+        setPaymentStatus('success');
+        setPaymentDetails({
+          payment_method: 'Afterpay',
+          order_id: response.data.order_id
+        });
+      } else {
+        setPaymentStatus('error');
+      }
+    } catch (error) {
+      console.error('Error capturing Afterpay payment:', error);
+      setPaymentStatus('error');
+    }
+  };
 
   const pollPaymentStatus = async (attempts = 0) => {
     const maxAttempts = 5;
@@ -84,6 +119,12 @@ export const PaymentSuccess = () => {
                   {paymentDetails && (
                     <div className="bg-gray-50 p-6 rounded-lg mb-8">
                       <div className="text-left space-y-3">
+                        {paymentDetails.referenceNumber && (
+                          <div className="flex justify-between items-center bg-gold/10 p-3 rounded-lg mb-4">
+                            <span className="text-gray-700 font-medium">Your Booking Reference:</span>
+                            <span className="font-bold text-2xl text-gold">#{paymentDetails.referenceNumber}</span>
+                          </div>
+                        )}
                         <div className="flex justify-between">
                           <span className="text-gray-600">Amount Paid:</span>
                           <span className="font-semibold text-gray-900">
@@ -95,6 +136,9 @@ export const PaymentSuccess = () => {
                           <span className="font-semibold text-green-600">Confirmed</span>
                         </div>
                       </div>
+                      <p className="text-sm text-gray-500 mt-4 text-center">
+                        Please save this reference number for your records.
+                      </p>
                     </div>
                   )}
                   <button
@@ -110,12 +154,12 @@ export const PaymentSuccess = () => {
                     <span className="text-4xl text-red-600">✕</span>
                   </div>
                   <h1 className="text-3xl font-bold text-gray-900 mb-4">
-                    {paymentStatus === 'expired' ? 'Payment Session Expired' : 
-                     paymentStatus === 'timeout' ? 'Payment Check Timeout' : 
+                    {paymentStatus === 'expired' ? 'Payment Session Expired' :
+                     paymentStatus === 'timeout' ? 'Payment Check Timeout' :
                      'Payment Error'}
                   </h1>
                   <p className="text-gray-600 mb-8">
-                    {paymentStatus === 'expired' 
+                    {paymentStatus === 'expired'
                       ? 'Your payment session has expired. Please try booking again.'
                       : paymentStatus === 'timeout'
                       ? 'We could not verify your payment in time. Please check your email for confirmation.'

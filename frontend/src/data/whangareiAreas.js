@@ -1,0 +1,121 @@
+// Whangarei Areas Data for SEO Landing Pages
+export const whangareiAreas = [
+  // Whangarei CBD & Central
+  {
+    slug: 'whangarei-cbd',
+    name: 'Whangarei CBD',
+    city: 'Whangarei',
+    region: 'Northland',
+    description: 'Northland\'s largest city center with vibrant waterfront and marina',
+    coordinates: { lat: -35.7275, lng: 174.3166 },
+    distanceToAirport: 165,
+    estimatedPrice: 280,
+    estimatedTime: '2 hours',
+    landmarks: ['Town Basin', 'Hatea River', 'Cameron Street', 'Whangarei Falls', 'Quarry Arts Centre'],
+    nearbyAreas: ['Onerahi', 'Kensington', 'Regent']
+  },
+  {
+    slug: 'onerahi-whangarei',
+    name: 'Onerahi',
+    city: 'Whangarei',
+    region: 'Northland',
+    description: 'Coastal suburb with beaches and airport access',
+    coordinates: { lat: -35.7631, lng: 174.3369 },
+    distanceToAirport: 168,
+    estimatedPrice: 280,
+    estimatedTime: '2 hours',
+    landmarks: ['Onerahi Beach', 'Whangarei Airport', 'Pacific Rendezvous'],
+    nearbyAreas: ['Whangarei CBD', 'Parua Bay', 'Riverside']
+  },
+  {
+    slug: 'kensington-whangarei',
+    name: 'Kensington',
+    city: 'Whangarei',
+    region: 'Northland',
+    description: 'Established suburb with parks and shopping',
+    coordinates: { lat: -35.7184, lng: 174.3289 },
+    distanceToAirport: 164,
+    estimatedPrice: 280,
+    estimatedTime: '2 hours',
+    landmarks: ['Kensington Park', 'Whangārei Hospital', 'Kensington Stadium'],
+    nearbyAreas: ['Whangarei CBD', 'Regent', 'Tikipunga']
+  },
+  {
+    slug: 'tikipunga-whangarei',
+    name: 'Tikipunga',
+    city: 'Whangarei',
+    region: 'Northland',
+    description: 'Northern suburb with high school and community facilities',
+    coordinates: { lat: -35.6981, lng: 174.3428 },
+    distanceToAirport: 162,
+    estimatedPrice: 280,
+    estimatedTime: '2 hours',
+    landmarks: ['Tikipunga High School', 'Tikipunga Shopping Centre'],
+    nearbyAreas: ['Kensington', 'Whangarei CBD', 'Raumanga']
+  },
+  {
+    slug: 'regent-whangarei',
+    name: 'Regent',
+    city: 'Whangarei',
+    region: 'Northland',
+    description: 'Central suburb close to CBD amenities',
+    coordinates: { lat: -35.7228, lng: 174.3225 },
+    distanceToAirport: 165,
+    estimatedPrice: 280,
+    estimatedTime: '2 hours',
+    landmarks: ['Regent Shopping Centre', 'Mair Park'],
+    nearbyAreas: ['Whangarei CBD', 'Kensington', 'Morningside']
+  },
+  {
+    slug: 'whangarei-heads',
+    name: 'Whangarei Heads',
+    city: 'Whangarei',
+    region: 'Northland',
+    description: 'Scenic coastal area with beautiful beaches',
+    coordinates: { lat: -35.8167, lng: 174.4500 },
+    distanceToAirport: 180,
+    estimatedPrice: 300,
+    estimatedTime: '2 hours 10 minutes',
+    landmarks: ['Ocean Beach', 'Mt Manaia', 'Smugglers Cove', 'Reotahi Bay'],
+    nearbyAreas: ['Onerahi', 'Parua Bay', 'Whangarei CBD']
+  },
+  {
+    slug: 'ruakaka',
+    name: 'Ruakaka',
+    city: 'Ruakaka',
+    region: 'Northland',
+    description: 'Coastal town with beautiful surf beaches',
+    coordinates: { lat: -35.9100, lng: 174.4500 },
+    distanceToAirport: 150,
+    estimatedPrice: 260,
+    estimatedTime: '1 hour 50 minutes',
+    landmarks: ['Ruakaka Beach', 'Marsden Point', 'Ruakaka Racecourse'],
+    nearbyAreas: ['Waipu', 'Whangarei CBD', 'One Tree Point']
+  },
+  {
+    slug: 'waipu',
+    name: 'Waipu',
+    city: 'Waipu',
+    region: 'Northland',
+    description: 'Scottish heritage town with stunning coastal scenery',
+    coordinates: { lat: -35.9722, lng: 174.4500 },
+    distanceToAirport: 140,
+    estimatedPrice: 250,
+    estimatedTime: '1 hour 45 minutes',
+    landmarks: ['Waipu Cove', 'Waipu Museum', 'Bream Bay'],
+    nearbyAreas: ['Ruakaka', 'Mangawhai', 'Langs Beach']
+  },
+  {
+    slug: 'mangawhai',
+    name: 'Mangawhai',
+    city: 'Mangawhai',
+    region: 'Northland',
+    description: 'Popular holiday destination with beautiful harbor and surf beach',
+    coordinates: { lat: -36.0961, lng: 174.5708 },
+    distanceToAirport: 110,
+    estimatedPrice: 200,
+    estimatedTime: '1 hour 20 minutes',
+    landmarks: ['Mangawhai Heads', 'Mangawhai Harbour', 'Mangawhai Cliffs'],
+    nearbyAreas: ['Waipu', 'Wellsford', 'Kaiwaka']
+  }
+];

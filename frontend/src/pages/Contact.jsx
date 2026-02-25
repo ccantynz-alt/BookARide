@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Phone, Mail, MapPin, Clock } from 'lucide-react';
+import { Phone, Mail, MapPin, Clock, ArrowRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
@@ -9,18 +10,14 @@ import { Card, CardContent } from '../components/ui/card';
 import { toast } from 'sonner';
 import { companyInfo } from '../mock';
 import SEO from '../components/SEO';
+import PageBreadcrumb from '../components/PageBreadcrumb';
+import { FAQSchema, LocalBusinessSchema } from '../components/SchemaMarkup';
 
 export const Contact = () => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
-    serviceType: '',
-    pickupLocation: '',
-    dropoffLocation: '',
-    date: '',
-    time: '',
-    passengers: '',
     message: ''
   });
 
@@ -36,45 +33,59 @@ export const Contact = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     // Mock submission - will be connected to backend later
-    console.log('Booking submitted:', formData);
-    toast.success("Booking Request Received!", {
-      description: "We'll contact you shortly to confirm your booking.",
+    console.log('Contact form submitted:', formData);
+    toast.success("Message Sent!", {
+      description: "We&apos;ll get back to you as soon as possible.",
     });
     // Reset form
     setFormData({
       name: '',
       email: '',
       phone: '',
-      serviceType: '',
-      pickupLocation: '',
-      dropoffLocation: '',
-      date: '',
-      time: '',
-      passengers: '',
       message: ''
     });
   };
 
   return (
-    <div className="min-h-screen pt-20 bg-white">
+    <div className="min-h-screen bg-white">
       <SEO 
         title="Contact Us - Book Your Airport Shuttle Today"
         description="Contact Book A Ride NZ for airport shuttle bookings and inquiries. Available 24/7 for Auckland, Hamilton, and Whangarei airport transfers. Quick online booking, instant quotes, professional service."
         keywords="book airport shuttle, contact airport shuttle, airport shuttle booking, airport shuttle Auckland contact, shuttle service booking, airport transfer contact, book shuttle online"
         canonical="/contact"
       />
-      {/* Hero Section */}
-      <section className="py-24 bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(212,175,55,0.15),transparent_50%)]" />
+      <LocalBusinessSchema />
+      <FAQSchema faqs={[
+        { question: "How do I book an airport shuttle?", answer: "You can book online at bookaride.co.nz in under 2 minutes, call us, or send an enquiry through this contact form. We provide instant quotes for all Auckland, Hamilton, and Whangarei transfers." },
+        { question: "What are your operating hours?", answer: "We operate 24/7, 365 days a year. Whether you have an early morning flight at 4am or a late-night arrival, we're available to get you there safely." },
+        { question: "How quickly will you respond to my enquiry?", answer: "We aim to respond to all enquiries within 1 hour during business hours and within 4 hours outside business hours. For urgent bookings, please call us directly." },
+        { question: "Can I modify my booking after confirmation?", answer: "Yes! You can modify your booking up to 24 hours before pickup at no charge. Contact us via phone, email, or through your booking confirmation link." }
+      ]}
+      />
+      <PageBreadcrumb items={[{ label: 'Contact' }]} />
+      {/* Hero Section with Professional Image */}
+      <section className="pt-32 pb-20 bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
+        {/* Background Image - Customer Service */}
+        <div className="absolute inset-0">
+          <img 
+            src="https://images.unsplash.com/photo-1423666639041-f56000c27a9a?auto=format&fit=crop&w=1920&q=80" 
+            alt="Contact us - customer service" 
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-gray-900/80 via-gray-900/70 to-gray-900" />
         </div>
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-3xl mx-auto text-center">
+            <div className="inline-block mb-4">
+              <span className="bg-gold/20 text-gold text-sm font-semibold px-4 py-2 rounded-full border border-gold/30">
+                📞 24/7 SUPPORT AVAILABLE
+              </span>
+            </div>
             <h1 className="text-5xl md:text-6xl font-bold text-white mb-6">
-              Book Your Ride
+              Get in <span className="text-gold">Touch</span>
             </h1>
             <p className="text-xl text-white/80">
-              Fill out the form below and we'll get back to you shortly to confirm your booking.
+              Questions? Need a custom quote? We're here to help!
             </p>
           </div>
         </div>
@@ -90,17 +101,6 @@ export const Contact = () => {
                 <CardContent className="p-8">
                   <h3 className="text-2xl font-bold text-gray-900 mb-8">Contact Information</h3>
                   <div className="space-y-6">
-                    <div className="flex items-start space-x-4">
-                      <div className="w-12 h-12 bg-gray-900 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <Phone className="w-6 h-6 text-gold" />
-                      </div>
-                      <div>
-                        <div className="text-sm font-semibold text-gray-900 mb-2">Phone</div>
-                        <a href={`tel:${companyInfo.phone}`} className="text-sm text-gray-600 hover:text-gold transition-colors duration-200">
-                          {companyInfo.phone}
-                        </a>
-                      </div>
-                    </div>
                     <div className="flex items-start space-x-4">
                       <div className="w-12 h-12 bg-gray-900 rounded-lg flex items-center justify-center flex-shrink-0">
                         <Mail className="w-6 h-6 text-gold" />
@@ -136,22 +136,23 @@ export const Contact = () => {
 
               <Card className="border-2 border-gold/30 bg-gradient-to-br from-gray-50 to-white">
                 <CardContent className="p-8">
-                  <h4 className="font-semibold text-gray-900 mb-3">Need Help Right Away?</h4>
-                  <p className="text-sm text-gray-600 mb-6">Call us now for instant booking and support.</p>
-                  <a href={`tel:${companyInfo.phone}`}>
-                    <Button className="w-full bg-gold hover:bg-gold/90 text-black font-semibold transition-colors duration-200">
-                      Call Now
-                    </Button>
+                  <h4 className="font-semibold text-gray-900 mb-3">Need a Quick Quote?</h4>
+                  <p className="text-sm text-gray-600 mb-4">Get instant pricing with our live price calculator.</p>
+                  <a href="/book-now" className="inline-block bg-gold hover:bg-yellow-500 text-black font-semibold px-6 py-3 rounded-lg transition-colors">
+                    Get Instant Quote →
                   </a>
+                  <p className="text-xs text-gray-500 mt-4">Enter your pickup & dropoff for live pricing</p>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Booking Form */}
+            {/* Contact & Inquiry Form */}
             <div className="lg:col-span-2">
               <Card className="border-2 border-gray-200">
                 <CardContent className="p-10">
-                  <h3 className="text-3xl font-bold text-gray-900 mb-8">Booking Form</h3>
+                  <h3 className="text-3xl font-bold text-gray-900 mb-4">Send Us a Message</h3>
+                  <p className="text-gray-600 mb-8">Have questions? Need a custom quote? We&apos;re here to help!</p>
+                  
                   <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
@@ -181,122 +182,49 @@ export const Contact = () => {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <Label htmlFor="phone">Phone Number *</Label>
-                        <Input
-                          id="phone"
-                          name="phone"
-                          type="tel"
-                          value={formData.phone}
-                          onChange={handleChange}
-                          placeholder="+64 21 123 4567"
-                          required
-                          className="transition-all duration-200 focus:ring-2 focus:ring-gold"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="serviceType">Service Type *</Label>
-                        <Select onValueChange={(value) => handleSelectChange('serviceType', value)} required>
-                          <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-gold">
-                            <SelectValue placeholder="Select service" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="auckland-airport">Auckland Airport Shuttle</SelectItem>
-                            <SelectItem value="hamilton-airport">Hamilton Airport Shuttle</SelectItem>
-                            <SelectItem value="whangarei-airport">Whangarei Airport Shuttle</SelectItem>
-                            <SelectItem value="private-auckland">Private Auckland Transfer</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <Label htmlFor="pickupLocation">Pickup Location *</Label>
-                        <Input
-                          id="pickupLocation"
-                          name="pickupLocation"
-                          value={formData.pickupLocation}
-                          onChange={handleChange}
-                          placeholder="123 Main Street, Auckland"
-                          required
-                          className="transition-all duration-200 focus:ring-2 focus:ring-gold"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="dropoffLocation">Drop-off Location *</Label>
-                        <Input
-                          id="dropoffLocation"
-                          name="dropoffLocation"
-                          value={formData.dropoffLocation}
-                          onChange={handleChange}
-                          placeholder="Auckland Airport"
-                          required
-                          className="transition-all duration-200 focus:ring-2 focus:ring-gold"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <div className="space-y-2">
-                        <Label htmlFor="date">Date *</Label>
-                        <Input
-                          id="date"
-                          name="date"
-                          type="date"
-                          value={formData.date}
-                          onChange={handleChange}
-                          required
-                          className="transition-all duration-200 focus:ring-2 focus:ring-gold"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="time">Time *</Label>
-                        <Input
-                          id="time"
-                          name="time"
-                          type="time"
-                          value={formData.time}
-                          onChange={handleChange}
-                          required
-                          className="transition-all duration-200 focus:ring-2 focus:ring-gold"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="passengers">Passengers *</Label>
-                        <Select onValueChange={(value) => handleSelectChange('passengers', value)} required>
-                          <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-gold">
-                            <SelectValue placeholder="Number" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="1">1 Passenger</SelectItem>
-                            <SelectItem value="2">2 Passengers</SelectItem>
-                            <SelectItem value="3">3 Passengers</SelectItem>
-                            <SelectItem value="4">4 Passengers</SelectItem>
-                            <SelectItem value="5+">5+ Passengers</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">Phone Number</Label>
+                      <Input
+                        id="phone"
+                        name="phone"
+                        type="tel"
+                        value={formData.phone}
+                        onChange={handleChange}
+                        placeholder="+64 21 123 4567"
+                        className="transition-all duration-200 focus:ring-2 focus:ring-gold"
+                      />
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="message">Additional Information</Label>
+                      <Label htmlFor="message">Your Message *</Label>
                       <Textarea
                         id="message"
                         name="message"
                         value={formData.message}
                         onChange={handleChange}
-                        placeholder="Any special requirements or notes..."
-                        rows={4}
+                        placeholder="Tell us about your transfer needs, ask a question, or request a custom quote..."
+                        rows={6}
+                        required
                         className="transition-all duration-200 focus:ring-2 focus:ring-gold"
                       />
                     </div>
 
-                    <Button type="submit" className="w-full bg-gold hover:bg-gold/90 text-black font-semibold text-lg py-7 transition-colors duration-200">
-                      Submit Booking Request
+                    <Button type="submit" className="w-full bg-gold hover:bg-gold/90 text-black font-semibold text-lg py-6 transition-colors duration-200">
+                      Send Message
                     </Button>
                   </form>
+
+                  {/* Book Online CTA */}
+                  <div className="mt-8 pt-8 border-t border-gray-200 text-center">
+                    <p className="text-gray-700 mb-4 font-medium">Ready to book your transfer?</p>
+                    <Link to="/book-now">
+                      <Button className="bg-gray-900 hover:bg-gray-800 text-white font-semibold px-10 py-6 text-lg">
+                        Book Online Now
+                        <ArrowRight className="ml-2 w-5 h-5" />
+                      </Button>
+                    </Link>
+                    <p className="text-sm text-gray-500 mt-3">Get instant pricing and confirmation</p>
+                  </div>
                 </CardContent>
               </Card>
             </div>

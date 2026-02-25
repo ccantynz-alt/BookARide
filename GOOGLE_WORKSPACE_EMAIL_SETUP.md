@@ -90,7 +90,7 @@ try:
     message['Subject'] = "Test Booking Confirmation"
     message['From'] = sender_email
     message['To'] = test_recipient
-    
+
     html_content = """
     <html>
         <body style="font-family: Arial, sans-serif;">
@@ -100,17 +100,17 @@ try:
         </body>
     </html>
     """
-    
+
     html_part = MIMEText(html_content, 'html')
     message.attach(html_part)
-    
+
     with smtplib.SMTP('smtp.gmail.com', 587) as server:
         server.starttls()
         server.login(smtp_username, smtp_password)
         server.send_message(message)
-    
+
     print("✅ Email sent successfully via Google Workspace!")
-    
+
 except Exception as e:
     print(f"❌ Error: {str(e)}")
 EOF

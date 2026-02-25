@@ -1,9 +1,10 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, Clock, Users, Ship, CheckCircle, ArrowRight, Plane, Navigation } from 'lucide-react';
+import { MapPin, Clock, Users, Ship, CheckCircle, ArrowRight, Plane, Navigation, Star } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import SEO from '../components/SEO';
+import PageBreadcrumb from '../components/PageBreadcrumb';
 
 export const CruiseTransfers = () => {
   const pickupLocations = [
@@ -65,22 +66,24 @@ export const CruiseTransfers = () => {
   ];
 
   return (
-    <div className="min-h-screen pt-20">
+    <div className="min-h-screen">
       <SEO 
         title="Cruise Ship Transfers Auckland - Port & Airport Shuttle Service"
         description="Professional cruise ship transfer service in Auckland. Shuttle between cruise terminals, airport, and hotels. Reliable transport for cruise passengers. Luggage assistance, on-time guarantee. Book your cruise transfer today!"
         keywords="cruise ship transfers Auckland, cruise terminal shuttle, port transfer Auckland, cruise ship airport shuttle, Auckland cruise transfer, ferry terminal shuttle, cruise passenger transport, ship to airport shuttle"
         canonical="/cruise-transfers"
       />
-      {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white py-20 overflow-hidden">
-        {/* Background Vehicle Image */}
-        <div className="absolute inset-0 opacity-15">
+      <PageBreadcrumb items={[{ label: 'Services', href: '/services' }, { label: 'Cruise Transfers' }]} />
+      {/* Hero Section with Stunning Cruise Ship */}
+      <section className="relative bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white pt-32 pb-20 overflow-hidden">
+        {/* Beautiful Cruise Ship Background */}
+        <div className="absolute inset-0">
           <img 
-            src="/shuttle-van.jpg" 
-            alt="" 
+            src="https://images.unsplash.com/photo-1548574505-5e239809ee19?auto=format&fit=crop&w=1920&q=80" 
+            alt="Luxury cruise ship at sea" 
             className="w-full h-full object-cover object-center"
-            style={{ filter: 'brightness(0.4) blur(1px)' }}
+          />
+          <div className="absolute inset-0 bg-black/50"
           />
         </div>
         
@@ -127,33 +130,48 @@ export const CruiseTransfers = () => {
             See our professional shuttle service in action at Auckland's cruise terminal
           </p>
           
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-6xl mx-auto">
-            {/* Image 1 - Van with Cruise Ship */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            {/* Image 1 - Luxury Cruise Ship */}
             <Card className="border-2 border-gold/30 overflow-hidden hover:border-gold transition-colors duration-200">
-              <div className="relative h-80 overflow-hidden">
+              <div className="relative h-72 overflow-hidden">
                 <img 
-                  src="/cruise-van-ship.jpg" 
-                  alt="Book A Ride shuttle van at Auckland cruise terminal with cruise ship in background" 
+                  src="https://images.unsplash.com/photo-1599640842225-85d111c60e6b?auto=format&fit=crop&w=800&q=80" 
+                  alt="Luxury cruise ship at port" 
                   className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                 />
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-6">
-                  <h3 className="text-white font-bold text-xl mb-1">Our Fleet at Your Service</h3>
-                  <p className="text-gray-200 text-sm">Professional shuttle service ready at the cruise terminal</p>
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6">
+                  <h3 className="text-white font-bold text-lg mb-1">Luxury Cruise Ships</h3>
+                  <p className="text-gray-200 text-sm">We serve all major cruise lines</p>
                 </div>
               </div>
             </Card>
 
-            {/* Image 2 - Pacific Aria Cruise Ship */}
+            {/* Image 2 - Cruise at Sea */}
             <Card className="border-2 border-gold/30 overflow-hidden hover:border-gold transition-colors duration-200">
-              <div className="relative h-80 overflow-hidden">
+              <div className="relative h-72 overflow-hidden">
                 <img 
-                  src="/cruise-ship-pacific-aria.jpg" 
-                  alt="Pacific Aria cruise ship docked at Auckland port" 
+                  src="https://images.unsplash.com/photo-1580541631950-7282082b53ce?auto=format&fit=crop&w=800&q=80" 
+                  alt="Cruise ship sailing at sunset" 
                   className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                 />
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-6">
-                  <h3 className="text-white font-bold text-xl mb-1">Auckland Cruise Terminal</h3>
-                  <p className="text-gray-200 text-sm">Serving major cruise lines including P&O, Royal Caribbean, and more</p>
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6">
+                  <h3 className="text-white font-bold text-lg mb-1">Seamless Transfers</h3>
+                  <p className="text-gray-200 text-sm">Airport to port, hassle-free</p>
+                </div>
+              </div>
+            </Card>
+
+            {/* Image 3 - Cruise Deck */}
+            <Card className="border-2 border-gold/30 overflow-hidden hover:border-gold transition-colors duration-200">
+              <div className="relative h-72 overflow-hidden">
+                <img 
+                  src="https://images.unsplash.com/photo-1519046904884-53103b34b206?auto=format&fit=crop&w=800&q=80" 
+                  alt="Tropical cruise destination" 
+                  className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                />
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6">
+                  <h3 className="text-white font-bold text-lg mb-1">Start Your Adventure</h3>
+                  <p className="text-gray-200 text-sm">We get you there on time</p>
                 </div>
               </div>
             </Card>
@@ -234,7 +252,6 @@ export const CruiseTransfers = () => {
                       <div className="space-y-1 text-sm">
                         <p className="text-gray-700"><strong>Distance:</strong> ~26km</p>
                         <p className="text-gray-700"><strong>Time:</strong> 25-35 minutes</p>
-                        <p className="text-gold font-semibold"><strong>From:</strong> $100 (minimum fare)</p>
                       </div>
                     </div>
                   </div>
@@ -255,7 +272,6 @@ export const CruiseTransfers = () => {
                       <div className="space-y-1 text-sm">
                         <p className="text-gray-700"><strong>Distance:</strong> ~26km</p>
                         <p className="text-gray-700"><strong>Time:</strong> 25-35 minutes</p>
-                        <p className="text-gold font-semibold"><strong>From:</strong> $100 (minimum fare)</p>
                       </div>
                     </div>
                   </div>
@@ -276,7 +292,6 @@ export const CruiseTransfers = () => {
                       <div className="space-y-1 text-sm">
                         <p className="text-gray-700"><strong>Service:</strong> Two separate trips</p>
                         <p className="text-gray-700"><strong>Flexibility:</strong> Book both at once</p>
-                        <p className="text-gold font-semibold"><strong>From:</strong> Contact for quote</p>
                       </div>
                     </div>
                   </div>
@@ -296,8 +311,7 @@ export const CruiseTransfers = () => {
                       </p>
                       <div className="space-y-1 text-sm">
                         <p className="text-gray-700"><strong>Capacity:</strong> Up to 11 passengers</p>
-                        <p className="text-gray-700"><strong>Extra:</strong> $5 per additional passenger</p>
-                        <p className="text-gold font-semibold"><strong>VIP Service:</strong> +$15 airport pickup</p>
+                        <p className="text-gray-700"><strong>Service:</strong> Contact for quote</p>
                       </div>
                     </div>
                   </div>
@@ -331,6 +345,67 @@ export const CruiseTransfers = () => {
         </div>
       </section>
 
+      {/* Customer Testimonials Section */}
+      <section className="py-16 bg-gradient-to-br from-gray-900 to-black text-white">
+        <div className="container mx-auto px-4">
+          <div className="max-w-5xl mx-auto">
+            <h2 className="text-3xl font-bold text-center mb-4">
+              Trusted by Cruise Passengers Worldwide
+            </h2>
+            <p className="text-gray-300 text-center mb-12">
+              Hear from travelers who chose us for their Auckland cruise transfers
+            </p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card className="bg-white/10 border-gold/30 backdrop-blur-sm">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-1 mb-3">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} className="w-4 h-4 text-gold fill-gold" />
+                    ))}
+                  </div>
+                  <p className="text-white mb-4 italic">
+                    "Perfect timing! Driver was waiting when we disembarked. Made our connection to the airport stress-free. Would definitely use again!"
+                  </p>
+                  <p className="text-gold font-semibold">Robert & Linda</p>
+                  <p className="text-gray-400 text-sm">Celebrity Cruise Passengers</p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white/10 border-gold/30 backdrop-blur-sm">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-1 mb-3">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} className="w-4 h-4 text-gold fill-gold" />
+                    ))}
+                  </div>
+                  <p className="text-white mb-4 italic">
+                    "Excellent service from airport to cruise terminal. Driver helped with all our luggage and got us there with time to spare. Highly professional!"
+                  </p>
+                  <p className="text-gold font-semibold">Jennifer K.</p>
+                  <p className="text-gray-400 text-sm">International Traveller</p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white/10 border-gold/30 backdrop-blur-sm">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-1 mb-3">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} className="w-4 h-4 text-gold fill-gold" />
+                    ))}
+                  </div>
+                  <p className="text-white mb-4 italic">
+                    "Booked both ways - to cruise and back to airport. Reliable, comfortable, and great value. Made our Auckland stopover easy!"
+                  </p>
+                  <p className="text-gold font-semibold">Paul & Maria</p>
+                  <p className="text-gray-400 text-sm">Cruise Couple</p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Tips Section */}
       <section className="py-16 bg-white">
         <div className="container mx-auto px-4">
@@ -343,11 +418,11 @@ export const CruiseTransfers = () => {
                 <CardContent className="p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-3">Before Your Cruise</h3>
                   <ul className="space-y-2 text-gray-700 text-sm">
-                    <li>• Book transfer in advance for guaranteed service</li>
-                    <li>• Provide flight/cruise details for tracking</li>
-                    <li>• Allow extra time during peak cruise season</li>
-                    <li>• Confirm pickup time 24 hours before</li>
-                    <li>• Have cruise terminal address handy</li>
+                    <li>• Book transfer 24-48 hours in advance</li>
+                    <li>• Share your cruise itinerary with us</li>
+                    <li>• Confirm pickup time day before</li>
+                    <li>• Allow extra time for check-in</li>
+                    <li>• Have cruise documents ready</li>
                   </ul>
                 </CardContent>
               </Card>

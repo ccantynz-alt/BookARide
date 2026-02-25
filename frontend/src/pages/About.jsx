@@ -2,30 +2,36 @@ import React from 'react';
 import { Shield, Users, Clock, Award, Target, Heart } from 'lucide-react';
 import { Card, CardContent } from '../components/ui/card';
 import SEO from '../components/SEO';
+import PageBreadcrumb from '../components/PageBreadcrumb';
+import { FAQSchema, LocalBusinessSchema } from '../components/SchemaMarkup';
 
 export const About = () => {
   return (
-    <div className="min-h-screen pt-20 bg-white">
+    <div className="min-h-screen bg-white">
       <SEO 
         title="About Us - Professional Airport Shuttle Service in New Zealand"
         description="Learn about Book A Ride NZ - your trusted airport shuttle service provider. Serving Auckland, Hamilton, and Whangarei airports with safe, reliable, and professional transportation. Over 10,000 happy customers, 24/7 available."
         keywords="airport shuttle company, shuttle service New Zealand, Auckland airport transfer company, professional shuttle service, reliable airport shuttle, NZ transportation service, safe shuttle service"
         canonical="/about"
       />
-      {/* Hero Section */}
-      <section className="py-24 bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
-        {/* Background Vehicle Image */}
-        <div className="absolute inset-0 opacity-15">
+      <LocalBusinessSchema />
+      <FAQSchema faqs={[
+        { question: "How long has BookaRide been operating?", answer: "BookaRide has been providing premium airport transfer services in Auckland and throughout New Zealand, building a reputation for reliability, safety, and exceptional customer service." },
+        { question: "Are your drivers licensed and vetted?", answer: "Yes, all our drivers are fully licensed P-endorsement holders, background checked, and undergo regular vehicle inspections. Safety is our top priority." },
+        { question: "What makes BookaRide different from other shuttles?", answer: "We offer private door-to-door transfers (no shared rides), real-time flight tracking, fixed pricing with no surge, and 24/7 availability. Plus, we're locally owned and operated in New Zealand." },
+        { question: "Do you have insurance?", answer: "Absolutely. All our vehicles and drivers are fully insured with comprehensive commercial passenger transport insurance, giving you complete peace of mind." }
+      ]} />
+      <PageBreadcrumb items={[{ label: 'About Us' }]} />
+      {/* Hero Section with Beautiful NZ Landscape */}
+      <section className="pt-32 pb-24 bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
+        {/* New Zealand Landscape Background */}
+        <div className="absolute inset-0">
           <img 
-            src="/shuttle-van.jpg" 
-            alt="" 
-            className="w-full h-full object-cover object-center"
-            style={{ filter: 'brightness(0.4) blur(1px)' }}
+            src="https://images.unsplash.com/photo-1507699622108-4be3abd695ad?auto=format&fit=crop&w=1920&q=80" 
+            alt="Beautiful New Zealand landscape" 
+            className="w-full h-full object-cover"
           />
-        </div>
-        
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(212,175,55,0.15),transparent_50%)]" />
+          <div className="absolute inset-0 bg-black/50" />
         </div>
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-3xl mx-auto text-center">

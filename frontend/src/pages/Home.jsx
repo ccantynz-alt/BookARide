@@ -1,11 +1,21 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Plane, Briefcase, MapPin, Calendar, Star, Check, Shield, Clock, Award, Users } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { ArrowRight, Plane, Briefcase, MapPin, Calendar, Star, Check, Shield, Clock, Award, Users, Sparkles, DollarSign } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { services, testimonials, howItWorksSteps } from '../mock';
 import SEO from '../components/SEO';
 import StructuredData from '../components/StructuredData';
+import { HomePageSchema } from '../components/SchemaMarkup';
+import { AnimatedSection, FadeIn } from '../components/AnimatedSection';
+import { AnimatedCounter } from '../components/AnimatedCounter';
+import { VehicleGallery } from '../components/VehicleGallery';
+import { TestimonialsCarousel } from '../components/TestimonialsCarousel';
+import TrustBadges from '../components/TrustBadges';
+import { motion } from 'framer-motion';
+import AOS from 'aos';
+import 'aos/dist/aos.css';
 
 const iconMap = {
   plane: Plane,
@@ -15,6 +25,16 @@ const iconMap = {
 };
 
 export const Home = () => {
+  const { t } = useTranslation();
+  
+  useEffect(() => {
+    AOS.init({
+      duration: 800,
+      once: true,
+      offset: 100
+    });
+  }, []);
+
   return (
     <div className="min-h-screen bg-white">
       <SEO 
@@ -24,105 +44,283 @@ export const Home = () => {
         canonical="/"
       />
       <StructuredData />
-      {/* Hero Section */}
-      <section className="relative pt-32 pb-24 md:pt-40 md:pb-32 overflow-hidden bg-gradient-to-br from-gray-900 via-black to-gray-900">
-        {/* Background Vehicle Image - Subtle */}
-        <div className="absolute inset-0 opacity-15">
-          <img 
-            src="/shuttle-van.jpg" 
-            alt="" 
-            className="w-full h-full object-cover object-right"
-            style={{ filter: 'brightness(0.4) blur(1px)' }}
-          />
-        </div>
+      <HomePageSchema />
+      {/* ULTRA PROFESSIONAL LUXURY HERO SECTION */}
+      <section className="relative min-h-screen flex items-center overflow-hidden bg-gradient-to-br from-gray-900 via-black to-gray-900">
         
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(212,175,55,0.15),transparent_50%)]" />
+        {/* Split Background Design - Image on Right */}
+        <div className="absolute inset-0">
+          {/* Dark gradient on left for text readability */}
+          <div className="absolute inset-0 bg-gradient-to-r from-black via-black/95 to-transparent z-10" />
+          
+          {/* Professional airport image - positioned on right */}
+          <div className="absolute right-0 top-0 w-full lg:w-3/5 h-full">
+            <img 
+              src="https://images.unsplash.com/photo-1522199873717-bc67b1a5e32b?auto=compress&cs=tinysrgb&w=1920&q=80" 
+              alt="Professional traveler at Auckland airport departure board - Book A Ride premium shuttle service" 
+              className="w-full h-full object-cover"
+              style={{ objectPosition: 'center center' }}
+            />
+            {/* Gradient fade from left */}
+            <div className="absolute inset-0 bg-gradient-to-r from-black via-black/40 to-transparent" />
+          </div>
+          
+          {/* Subtle gold accent */}
+          <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-gold via-gold/50 to-transparent" />
+        </div>
+
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10 py-20 sm:py-32">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            
+            {/* LEFT SIDE - POWERFUL MESSAGING */}
+            <motion.div
+              initial={{ opacity: 0, x: -50 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8 }}
+              className="text-left"
+            >
+              {/* Premium Badge */}
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.2, duration: 0.6 }}
+                className="inline-flex items-center gap-2 bg-gold/10 border border-gold/30 rounded-full px-4 py-2 mb-6"
+              >
+                <Star className="w-4 h-4 text-gold fill-gold" />
+                <span className="text-gold font-semibold text-sm tracking-wide">★★★★★ 5-STAR RATED</span>
+              </motion.div>
+
+              {/* Massive Headline */}
+              <h1 className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-black text-white mb-6 leading-tight">
+                <span className="block mb-2">Premium</span>
+                <span className="block bg-gradient-to-r from-gold via-yellow-300 to-gold bg-clip-text text-transparent" 
+                      style={{ WebkitTextStroke: '1px rgba(212,175,55,0.3)' }}>
+                  Airport Transfers
+                </span>
+              </h1>
+
+              {/* Compelling Subheading */}
+              <p className="text-xl sm:text-2xl lg:text-3xl text-gray-300 mb-8 leading-relaxed font-light">
+                Your journey matters. Arrive in <span className="text-gold font-semibold">comfort</span>, <span className="text-gold font-semibold">style</span>, and <span className="text-gold font-semibold">safety</span>.
+              </p>
+
+              {/* Key Benefits */}
+              <div className="space-y-4 mb-10">
+                {[
+                  { icon: Check, text: 'Professional Drivers - Licensed & Experienced' },
+                  { icon: Check, text: 'Premium Vehicles - Immaculate & Comfortable' },
+                  { icon: Check, text: 'Fixed Rates - No Hidden Fees, Ever' },
+                  { icon: Check, text: 'Flight Tracking - We Monitor Your Arrival' }
+                ].map((benefit, index) => (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.4 + index * 0.1, duration: 0.6 }}
+                    className="flex items-center gap-4 group"
+                  >
+                    <div className="flex-shrink-0 w-8 h-8 bg-gold/20 rounded-full flex items-center justify-center group-hover:bg-gold/30 transition-colors">
+                      <benefit.icon className="w-5 h-5 text-gold" strokeWidth={3} />
+                    </div>
+                    <span className="text-white text-lg font-medium">{benefit.text}</span>
+                  </motion.div>
+                ))}
+              </div>
+
+              {/* CTA BUTTONS */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.8, duration: 0.6 }}
+                className="flex flex-col sm:flex-row gap-4"
+              >
+                <Link to="/book-now" className="flex-1">
+                  <Button
+                    size="lg"
+                    className="w-full h-16 bg-gold hover:bg-yellow-500 text-black font-bold text-lg px-8 shadow-2xl hover:shadow-gold/50 transform hover:scale-105 transition-all duration-300 group relative overflow-hidden"
+                  >
+                    <span className="relative z-10 flex items-center justify-center gap-3">
+                      <span>BOOK YOUR RIDE NOW</span>
+                      <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
+                    </span>
+                    {/* Button shine effect */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000" />
+                  </Button>
+                </Link>
+                <Link to="/services">
+                  <Button 
+                    variant="outline" 
+                    size="lg"
+                    className="h-16 border-2 border-gold text-gold hover:bg-gold/10 font-semibold text-lg px-8 backdrop-blur-sm hover:border-yellow-400 transition-all duration-300"
+                  >
+                    VIEW SERVICES
+                  </Button>
+                </Link>
+              </motion.div>
+
+              {/* Trust Indicators */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 1, duration: 0.6 }}
+                className="mt-8 pt-8 border-t border-white/10"
+              >
+                <div className="flex flex-wrap items-center gap-8">
+                  <div className="flex items-center gap-2">
+                    <Shield className="w-5 h-5 text-gold" />
+                    <span className="text-white/80 text-sm font-medium">Fully Insured</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-5 h-5 text-gold" />
+                    <span className="text-white/80 text-sm font-medium">24/7 Support</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Users className="w-5 h-5 text-gold" />
+                    <span className="text-white/80 text-sm font-medium">10,000+ Happy Clients</span>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+
+            {/* RIGHT SIDE - COMPELLING SALES CONTENT */}
+            <motion.div
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8, delay: 0.3 }}
+              className="hidden lg:block"
+            >
+              <div className="relative">
+                {/* Glowing card effect - enhanced glow */}
+                <div className="absolute -inset-4 bg-gradient-to-br from-gold/30 to-yellow-500/20 rounded-[2rem] blur-2xl animate-pulse" />
+                <div className="absolute inset-0 bg-gradient-to-br from-gold/20 to-transparent rounded-3xl blur-xl" />
+                
+                {/* Premium value proposition card - MORE GLASSY */}
+                <div className="relative bg-white/10 backdrop-blur-2xl border border-white/30 rounded-3xl p-8 shadow-[0_8px_32px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.1)]">
+                  {/* Inner glass highlight */}
+                  <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-white/20 via-transparent to-transparent pointer-events-none" />
+                  {/* Main value prop */}
+                  <div className="mb-8">
+                    <h3 className="text-3xl font-bold text-white mb-4">Why Thousands Choose Us</h3>
+                    <p className="text-white/80 text-lg leading-relaxed">
+                      New Zealand's most trusted airport transfer service. We don't just drive you—we deliver peace of mind.
+                    </p>
+                  </div>
+
+                  {/* Key differentiators */}
+                  <div className="space-y-6 mb-8">
+                    <div className="flex gap-4">
+                      <div className="flex-shrink-0 w-12 h-12 bg-gold/20 rounded-xl flex items-center justify-center">
+                        <Shield className="w-6 h-6 text-gold" />
+                      </div>
+                      <div>
+                        <h4 className="text-white font-bold text-lg mb-1">100% Reliable</h4>
+                        <p className="text-white/70 text-sm">Never miss a flight. We track your arrival and adjust pickup times automatically.</p>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-4">
+                      <div className="flex-shrink-0 w-12 h-12 bg-gold/20 rounded-xl flex items-center justify-center">
+                        <DollarSign className="w-6 h-6 text-gold" />
+                      </div>
+                      <div>
+                        <h4 className="text-white font-bold text-lg mb-1">Best Price Guarantee</h4>
+                        <p className="text-white/70 text-sm">Fixed rates mean no surge pricing, no surprises. What you see is what you pay.</p>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-4">
+                      <div className="flex-shrink-0 w-12 h-12 bg-gold/20 rounded-xl flex items-center justify-center">
+                        <Award className="w-6 h-6 text-gold" />
+                      </div>
+                      <div>
+                        <h4 className="text-white font-bold text-lg mb-1">5-Star Experience</h4>
+                        <p className="text-white/70 text-sm">Professional drivers, premium vehicles, VIP service. Travel like you deserve.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Social proof - glass card */}
+                  <div className="bg-white/10 backdrop-blur-xl rounded-xl p-5 border border-white/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-1">
+                        {[...Array(5)].map((_, i) => (
+                          <Star key={i} className="w-5 h-5 text-gold fill-gold" />
+                        ))}
+                      </div>
+                      <span className="text-gold font-bold text-lg">4.9/5</span>
+                    </div>
+                    <p className="text-white/90 text-sm italic mb-3">
+                      "Best airport transfer I've ever had in NZ. Professional, on-time, and great value. Highly recommend!"
+                    </p>
+                    <p className="text-white/60 text-xs">— Michael T., International Traveller</p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+          </div>
+        </div>
+
+        {/* Scroll indicator */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.5, duration: 1 }}
+          className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-20"
+        >
+          <div className="flex flex-col items-center gap-2 animate-bounce">
+            <span className="text-white/60 text-sm font-medium tracking-wider">SCROLL TO EXPLORE</span>
+            <div className="w-6 h-10 border-2 border-white/30 rounded-full flex justify-center pt-2">
+              <div className="w-1 h-3 bg-gold rounded-full animate-pulse" />
+            </div>
+          </div>
+        </motion.div>
+
+      </section>
+
+      {/* Services Section - Glassmorphism Design */}
+      <section className="py-24 bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
+        {/* Background decoration */}
+        <div className="absolute inset-0 opacity-30">
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-gold/20 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-gold/10 rounded-full blur-3xl"></div>
         </div>
         
         <div className="container mx-auto px-4 relative z-10">
-          <div className="max-w-5xl mx-auto text-center">
-            <h1 className="text-5xl md:text-7xl font-bold text-white mb-8 leading-tight">
-              Affordable Airport Shuttles
-              <span className="block mt-2 text-gold">Best Value in Auckland</span>
-            </h1>
-            <p className="text-xl md:text-2xl text-white/80 mb-12 max-w-3xl mx-auto leading-relaxed">
-              Reliable airport transfers at unbeatable prices. Instant online booking, transparent pricing, and professional service - all in 60 seconds.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-6 justify-center">
-              <Link to="/contact">
-                <Button size="lg" className="bg-gold hover:bg-gold/90 text-black font-semibold px-10 py-6 text-base group transition-all duration-200 shadow-lg">
-                  Book Your Ride
-                  <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform duration-200" />
-                </Button>
-              </Link>
-              <Link to="/services">
-                <Button size="lg" variant="outline" className="border-2 border-gold text-gold hover:bg-gold hover:text-black font-semibold px-10 py-6 text-base transition-all duration-200">
-                  View Services
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-
-        {/* Trust Indicators */}
-        <div className="container mx-auto px-4 mt-20 relative z-10">
-          <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8">
-            {[
-              { icon: Users, value: '1,000+', label: 'Happy Customers' },
-              { icon: Clock, value: '60s', label: 'Book in Seconds' },
-              { icon: Shield, value: '100%', label: 'Safe & Insured' },
-              { icon: Award, value: '4.9★', label: 'Customer Rating' }
-            ].map((stat, index) => {
-              const Icon = stat.icon;
-              return (
-                <div key={index} className="text-center p-6 bg-white/5 backdrop-blur-sm rounded-xl border border-gold/20 hover:bg-white/10 transition-all duration-200">
-                  <Icon className="w-8 h-8 text-gold mx-auto mb-3" />
-                  <div className="text-3xl font-bold text-gold mb-1">{stat.value}</div>
-                  <div className="text-sm text-white/70">{stat.label}</div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* Services Section */}
-      <section className="py-24 bg-white">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <div className="inline-block mb-4">
-              <span className="bg-gold text-black text-xs font-bold px-4 py-2 rounded-full uppercase tracking-wide">
+          <AnimatedSection className="text-center mb-16">
+            <div className="inline-block mb-4" data-aos="zoom-in">
+              <span className="bg-gold/20 backdrop-blur-sm text-gold text-xs font-bold px-4 py-2 rounded-full uppercase tracking-wide border border-gold/30">
                 ⚡ Instant Online Booking Available
               </span>
             </div>
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">Our Services</h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Whatever your transportation needs, we've got you covered
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4" data-aos="fade-up">{t('services.title')}</h2>
+            <p className="text-lg text-white/70 max-w-2xl mx-auto" data-aos="fade-up" data-aos-delay="100">
+              {t('services.description')}
             </p>
-          </div>
+          </AnimatedSection>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
-            {services.map((service) => {
+            {services.map((service, index) => {
               const Icon = iconMap[service.icon];
               return (
-                <Card key={service.id} className="border-2 border-gray-200 hover:border-gold hover:shadow-xl transition-all duration-200 group">
-                  <CardContent className="p-8">
-                    <div className="w-16 h-16 bg-gray-900 rounded-xl flex items-center justify-center mb-6 group-hover:bg-gold transition-colors duration-200">
+                <div key={service.id} data-aos="fade-up" data-aos-delay={index * 100}>
+                  {/* Glassmorphism Card */}
+                  <div className="h-full bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8 transition-all duration-300 hover:bg-white/10 hover:border-gold/30 hover:shadow-[0_0_30px_rgba(212,175,55,0.15)] group hover:-translate-y-1">
+                    <div className="w-16 h-16 bg-gradient-to-br from-gold/20 to-gold/5 backdrop-blur-sm rounded-xl flex items-center justify-center mb-6 group-hover:from-gold group-hover:to-yellow-500 transition-all duration-300 border border-gold/20 group-hover:border-gold">
                       <Icon className="w-8 h-8 text-gold group-hover:text-black transition-colors duration-200" />
                     </div>
-                    <h3 className="text-2xl font-semibold text-gray-900 mb-3">{service.title}</h3>
-                    <p className="text-gray-600 mb-6 text-sm leading-relaxed">{service.description}</p>
+                    <h3 className="text-2xl font-semibold text-white mb-3">{service.title}</h3>
+                    <p className="text-white/60 mb-6 text-sm leading-relaxed">{service.description}</p>
                     <ul className="space-y-3">
                       {service.features.map((feature, idx) => (
-                        <li key={idx} className="flex items-center text-sm text-gray-700">
+                        <li key={idx} className="flex items-center text-sm text-white/70">
                           <Check className="w-4 h-4 text-gold mr-3 flex-shrink-0" />
                           {feature}
                         </li>
                       ))}
                     </ul>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               );
             })}
           </div>
@@ -300,8 +498,8 @@ export const Home = () => {
                   <div className="bg-gradient-to-br from-gold/20 to-gold/5 p-10 lg:p-12 flex items-center justify-center">
                     <div className="text-center">
                       <div className="text-8xl mb-6">🧙‍♂️</div>
-                      <p className="text-gold font-bold text-2xl mb-2">From $612.50</p>
-                      <p className="text-gray-400 text-sm">Based on distance</p>
+                      <p className="text-gold font-bold text-2xl mb-2">Get Instant Quote</p>
+                      <p className="text-gray-400 text-sm">Live pricing online</p>
                     </div>
                   </div>
                 </div>
@@ -389,6 +587,15 @@ export const Home = () => {
           </Link>
         </div>
       </section>
+
+      {/* Trust Badges */}
+      <TrustBadges />
+
+      {/* Vehicle Gallery */}
+      <VehicleGallery />
+
+      {/* Testimonials Carousel */}
+      <TestimonialsCarousel />
     </div>
   );
 };

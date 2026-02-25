@@ -105,12 +105,14 @@ export const fleet = [
   }
 ];
 
+import siteConfig from './config/siteConfig';
+
 export const companyInfo = {
-  name: "Airport Shuttle Service NZ",
-  tagline: "Reliable Airport Shuttles - Best Value in Auckland",
-  phone: "+64 21 743 321",
-  email: "info@airportshuttleservice.co.nz",
-  address: "Auckland, New Zealand",
+  name: siteConfig.siteName,
+  tagline: siteConfig.tagline,
+  phone: siteConfig.phone,
+  email: siteConfig.email,
+  address: siteConfig.address,
   operatingHours: "24/7",
   serviceAreas: ["Auckland", "Hamilton", "Whangarei"],
   socialMedia: {
