@@ -602,8 +602,9 @@ export const AdminDashboard = () => {
   const [searchingCustomers, setSearchingCustomers] = useState(false);
   const customerSearchRef = useRef(null);
 
-  // Guard against selectedBookings ever not being a Set (e.g. hydration/corruption)
-  const safeSelectedSet = selectedBookings instanceof Set ? selectedBookings : new Set();
+  // Guard against selectedBookings ever not being a Set; use let + assign so minifier cannot reorder (avoids "Cannot access 'gr' before initialization")
+  let safeSelectedSet = new Set();
+  safeSelectedSet = selectedBookings instanceof Set ? selectedBookings : new Set();
   
   // Preview confirmation modal states
   const [showPreviewModal, setShowPreviewModal] = useState(false);
