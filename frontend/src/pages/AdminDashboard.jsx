@@ -647,9 +647,10 @@ export const AdminDashboard = () => {
     if (dateFrom || dateTo) fetchBookingsRef.current?.(1, false);
   }, [dateFrom, dateTo]);
 
-  // When the displayed list is empty (including when filters return no results), fetch counts for the empty state
+  // When list is empty (no active bookings in DB at all), fetch active/deleted counts so we can show "0 active, 47 deleted"
+  // NOTE: use bookings.length (raw fetch result), NOT filteredBookings.length — filters can hide bookings that exist
   useEffect(() => {
-    if (loading || filteredBookings.length > 0) {
+    if (loading || bookings.length > 0) {
       setRetentionCounts(null);
       return;
     }
@@ -658,7 +659,7 @@ export const AdminDashboard = () => {
       if (!cancelled && r.data) setRetentionCounts({ active: r.data.active ?? 0, deleted: r.data.deleted ?? 0 });
     }).catch(() => { if (!cancelled) setRetentionCounts(null); });
     return () => { cancelled = true; };
-  }, [loading, filteredBookings.length]);
+  }, [loading, bookings.length]);
 
   // When on Bookings tab, fetch deleted count so we can show "Restore all" banner if any are in Deleted
   useEffect(() => {
@@ -1105,6 +1106,72 @@ export const AdminDashboard = () => {
       toast.error(error.response?.data?.detail || 'Failed to restore all bookings');
     } finally {
       setRestoringAll(false);
+    }
+  };
+
+  // State for JSON backup file restore
+  const [restoringFromFile, setRestoringFromFile] = useState(false);
+  const [restoringFromServerBackup, setRestoringFromServerBackup] = useState(false);
+  const [backupRestoreResult, setBackupRestoreResult] = useState(null);
+  const backupFileInputRef = useRef(null);
+
+  const handleRestoreFromBackupFile = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!file.name.endsWith('.json')) {
+      toast.error('Please select a JSON file');
+      return;
+    }
+    if (!window.confirm(`Restore bookings from "${file.name}"? Existing bookings with the same ID will be skipped (no duplicates).`)) {
+      e.target.value = '';
+      return;
+    }
+    setRestoringFromFile(true);
+    setBackupRestoreResult(null);
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      // Handle both formats: plain array OR export format { active: [...], deleted: [...] }
+      let bookings = [];
+      if (Array.isArray(parsed)) {
+        bookings = parsed;
+      } else if (parsed.active && Array.isArray(parsed.active)) {
+        bookings = [...parsed.active, ...(parsed.deleted || [])];
+      } else {
+        toast.error('Unrecognised backup format. Expected a JSON array or export file.');
+        return;
+      }
+      const res = await axios.post(`${API}/bookings/restore-backup`, { bookings }, getAuthHeaders());
+      setBackupRestoreResult(res.data);
+      const { imported_count, skipped_count, error_count } = res.data;
+      toast.success(`Restored ${imported_count} booking(s) from backup. Skipped ${skipped_count} duplicates.${error_count ? ` ${error_count} errors.` : ''}`);
+      fetchBookingsRef.current?.();
+    } catch (error) {
+      const msg = error.response?.data?.detail || error.message || 'Restore failed';
+      toast.error(msg);
+      setBackupRestoreResult({ error: msg });
+    } finally {
+      setRestoringFromFile(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleRestoreFromServerBackup = async () => {
+    if (!window.confirm('Restore bookings from the backup file stored on the server (backup_bookings_full.json)? Existing bookings will not be duplicated.')) return;
+    setRestoringFromServerBackup(true);
+    setBackupRestoreResult(null);
+    try {
+      const res = await axios.post(`${API}/admin/bookings/restore-from-repo-backup`, {}, getAuthHeaders());
+      setBackupRestoreResult(res.data);
+      const { imported_count, skipped_count, source_file } = res.data;
+      toast.success(`Restored ${imported_count} booking(s) from ${source_file || 'server backup'}. Skipped ${skipped_count} duplicates.`);
+      fetchBookingsRef.current?.();
+    } catch (error) {
+      const msg = error.response?.data?.detail || error.message || 'Restore failed';
+      toast.error(msg);
+      setBackupRestoreResult({ error: msg });
+    } finally {
+      setRestoringFromServerBackup(false);
     }
   };
 
@@ -2540,46 +2607,63 @@ onViewBooking={(booking) => {
             ) : filteredBookings.length === 0 ? (
               <div className="space-y-4">
                 <div className="text-center py-8">
-                  <p className="text-gray-600 font-medium">No bookings in this view</p>
+                  <p className="text-gray-600 font-medium">
+                    {bookings.length > 0
+                      ? `No bookings match your current filter (${bookings.length} booking${bookings.length !== 1 ? ‘s’ : ‘’} exist — clear filters to see them)`
+                      : ‘No bookings found’}
+                  </p>
                 </div>
-                <Card className="border-amber-200 bg-amber-50/50 max-w-2xl mx-auto">
-                  <CardContent className="p-4 space-y-3">
-                    {retentionCounts && (
-                      <p className="text-sm font-semibold text-amber-900">
-                        Database: {retentionCounts.active} active, {retentionCounts.deleted} in Deleted.
-                        {retentionCounts.deleted > 0 && ' Restore them from the Deleted tab.'}
-                      </p>
-                    )}
-                    <p className="font-medium text-amber-900">Get your bookings back:</p>
-                    <ul className="list-disc list-inside text-sm text-amber-800 space-y-1">
-                      {(dateFrom || dateTo) && (
-                        <li>You have date filters on—clearing them may show bookings.</li>
+                {/* Only show recovery guidance when the database is genuinely empty */}
+                {bookings.length === 0 && (
+                  <Card className="border-amber-200 bg-amber-50/50 max-w-2xl mx-auto">
+                    <CardContent className="p-4 space-y-3">
+                      {retentionCounts && (
+                        <p className="text-sm font-semibold text-amber-900">
+                          Database: {retentionCounts.active} active, {retentionCounts.deleted} in Deleted.
+                          {retentionCounts.deleted > 0 && ‘ Restore them from the Deleted tab.’}
+                        </p>
                       )}
-                      <li>If bookings disappeared after an update, they may be in the <strong>Deleted</strong> tab. Open Deleted and click <strong>Restore all</strong> to reinstate them.</li>
-                      <li>Use <strong>Deleted → Download backup (JSON)</strong> to see exactly what’s stored (active + deleted).</li>
-                    </ul>
-                    <div className="flex flex-wrap gap-2 pt-2">
-                      {(dateFrom || dateTo) && (
+                      <p className="font-medium text-amber-900">Get your bookings back:</p>
+                      <ul className="list-disc list-inside text-sm text-amber-800 space-y-1">
+                        <li>If bookings disappeared after an update, they may be in the <strong>Deleted</strong> tab. Open Deleted and click <strong>Restore all</strong> to reinstate them.</li>
+                        <li>Click <strong>Restore from server backup</strong> in the Deleted tab to recover from the backup file on the server.</li>
+                        <li>Use <strong>Deleted → Download backup (JSON)</strong> to see exactly what’s stored (active + deleted).</li>
+                      </ul>
+                      <div className="flex flex-wrap gap-2 pt-2">
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => { setDateFrom(''); setDateTo(''); fetchBookingsRef.current?.(1, false); }}
+                          onClick={() => setActiveTab(‘deleted’)}
                           className="border-amber-500 text-amber-800 hover:bg-amber-100"
                         >
-                          Clear date filters & show all
+                          Open Deleted tab
                         </Button>
-                      )}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setActiveTab('deleted')}
-                        className="border-amber-500 text-amber-800 hover:bg-amber-100"
-                      >
-                        Open Deleted tab
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                        <Button
+                          size="sm"
+                          onClick={handleRestoreFromServerBackup}
+                          disabled={restoringFromServerBackup}
+                          className="bg-orange-600 hover:bg-orange-700 text-white"
+                        >
+                          {restoringFromServerBackup ? <RefreshCw className="w-4 h-4 mr-1 animate-spin" /> : <Shield className="w-4 h-4 mr-1" />}
+                          Restore from server backup
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+                {/* When filters are hiding bookings, show a quick-clear option */}
+                {bookings.length > 0 && (dateFrom || dateTo || searchTerm || statusFilter !== ‘all’) && (
+                  <div className="flex flex-wrap gap-2 justify-center">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => { setDateFrom(‘’); setDateTo(‘’); setSearchTerm(‘’); setStatusFilter(‘all’); fetchBookingsRef.current?.(1, false); }}
+                      className="border-amber-500 text-amber-800 hover:bg-amber-100"
+                    >
+                      Clear all filters & show all bookings
+                    </Button>
+                  </div>
+                )}
               </div>
             ) : (
             <>
@@ -2797,7 +2881,7 @@ onViewBooking={(booking) => {
                                 </span>
                               </SelectValue>
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="z-[9999]">
                               <SelectItem value="pending_approval">🚨 Approval</SelectItem>
                               <SelectItem value="pending">Pending</SelectItem>
                               <SelectItem value="confirmed">Confirmed</SelectItem>
@@ -3165,6 +3249,42 @@ onViewBooking={(booking) => {
                       )}
                       Download backup (JSON)
                     </Button>
+                    {/* Restore from a backup JSON file (e.g. backup_bookings_full.json) */}
+                    <input
+                      ref={backupFileInputRef}
+                      type="file"
+                      accept=".json"
+                      className="hidden"
+                      onChange={handleRestoreFromBackupFile}
+                    />
+                    <Button
+                      onClick={() => backupFileInputRef.current?.click()}
+                      disabled={restoringFromFile}
+                      variant="outline"
+                      className="border-blue-400 text-blue-700 hover:bg-blue-50"
+                      title="Upload a JSON backup file to restore bookings"
+                    >
+                      {restoringFromFile ? (
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Upload className="w-4 h-4 mr-2" />
+                      )}
+                      Restore from backup file
+                    </Button>
+                    {/* One-click restore from backup_bookings_full.json on the server */}
+                    <Button
+                      onClick={handleRestoreFromServerBackup}
+                      disabled={restoringFromServerBackup}
+                      className="bg-orange-600 hover:bg-orange-700 text-white"
+                      title="Restore bookings from the backup_bookings_full.json file stored on the server"
+                    >
+                      {restoringFromServerBackup ? (
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Shield className="w-4 h-4 mr-2" />
+                      )}
+                      Restore from server backup
+                    </Button>
                     {deletedBookings.length > 0 && (
                       <Button
                         onClick={handleRestoreAllBookings}
@@ -3187,8 +3307,21 @@ onViewBooking={(booking) => {
                   </div>
                 </div>
                 <p className="text-sm text-red-700 mb-4">
-                  Bookings are always retained—we never permanently remove them without your action. Deleted items stay here for recovery; use <strong>Restore all</strong> to reinstate. If bookings disappeared after an update, they may be here.
+                  Bookings are always retained—we never permanently remove them without your action. Deleted items stay here for recovery; use <strong>Restore all</strong> to reinstate. If bookings disappeared after an update, they may be here. To restore from a backup JSON file, click <strong>Restore from backup file</strong>.
                 </p>
+                {backupRestoreResult && (
+                  <div className={`mb-4 p-3 rounded-lg text-sm ${backupRestoreResult.error ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-800'}`}>
+                    {backupRestoreResult.error ? (
+                      <span>Error: {backupRestoreResult.error}</span>
+                    ) : (
+                      <span>
+                        Restored <strong>{backupRestoreResult.imported_count}</strong> bookings.
+                        Skipped <strong>{backupRestoreResult.skipped_count}</strong> duplicates.
+                        {backupRestoreResult.error_count > 0 && <span className="text-red-600 ml-1">{backupRestoreResult.error_count} errors.</span>}
+                      </span>
+                    )}
+                  </div>
+                )}
                 
                 {loadingDeleted ? (
                   <div className="text-center py-8">
