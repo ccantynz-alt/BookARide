@@ -12472,6 +12472,113 @@ async def trigger_auto_archive(current_admin: dict = Depends(get_current_admin))
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ==================== AUTO DAILY BACKUP ====================
+
+async def auto_backup_bookings():
+    """
+    Create an automatic daily snapshot of all bookings (active + deleted) stored in MongoDB.
+    Keeps the last 7 daily backups so you can always roll back up to a week.
+    Runs daily at 1 AM NZ time via the scheduler.
+    """
+    try:
+        nz_tz = pytz.timezone('Pacific/Auckland')
+        now_nz = datetime.now(nz_tz)
+        label = now_nz.strftime('%Y-%m-%d')
+
+        logger.info(f"[AutoBackup] Starting daily backup for {label}")
+
+        active = await db.bookings.find({}, {"_id": 0}).to_list(10000)
+        deleted = await db.deleted_bookings.find({}, {"_id": 0}).sort("deletedAt", -1).to_list(10000)
+
+        doc = {
+            "label": label,
+            "createdAt": datetime.now(timezone.utc).isoformat(),
+            "activeCount": len(active),
+            "deletedCount": len(deleted),
+            "active": active,
+            "deleted": deleted,
+        }
+
+        # Upsert by label (one backup per calendar day)
+        await db.booking_backups.update_one(
+            {"label": label},
+            {"$set": doc},
+            upsert=True
+        )
+
+        # Prune: keep only the 7 most recent backups
+        all_backups = await db.booking_backups.find({}, {"_id": 1, "label": 1}).sort("label", -1).to_list(100)
+        if len(all_backups) > 7:
+            old_ids = [b["_id"] for b in all_backups[7:]]
+            await db.booking_backups.delete_many({"_id": {"$in": old_ids}})
+            logger.info(f"[AutoBackup] Pruned {len(old_ids)} old backup(s)")
+
+        logger.info(f"[AutoBackup] Done - {len(active)} active, {len(deleted)} deleted bookings saved")
+        return {"label": label, "activeCount": len(active), "deletedCount": len(deleted)}
+
+    except Exception as e:
+        logger.error(f"[AutoBackup] Error: {str(e)}")
+        return {"error": str(e)}
+
+
+@api_router.get("/admin/backups")
+async def list_backups(current_admin: dict = Depends(get_current_admin)):
+    """List all automatic daily backups (most recent first)."""
+    try:
+        backups = await db.booking_backups.find(
+            {}, {"_id": 0, "label": 1, "createdAt": 1, "activeCount": 1, "deletedCount": 1}
+        ).sort("label", -1).to_list(10)
+        return {"backups": backups}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/admin/backups/{label}/restore")
+async def restore_from_auto_backup(label: str, current_admin: dict = Depends(get_current_admin)):
+    """
+    Restore bookings from a specific daily auto-backup.
+    Only restores bookings whose IDs are NOT already in the active collection,
+    so it is safe to run without duplicating existing bookings.
+    """
+    try:
+        backup = await db.booking_backups.find_one({"label": label}, {"_id": 0})
+        if not backup:
+            raise HTTPException(status_code=404, detail=f"No backup found for {label}")
+
+        active_snapshot = backup.get("active", [])
+        existing_ids = set(
+            b["id"] for b in await db.bookings.find({}, {"_id": 0, "id": 1}).to_list(10000)
+            if "id" in b
+        )
+
+        to_restore = [b for b in active_snapshot if b.get("id") not in existing_ids]
+
+        if to_restore:
+            await db.bookings.insert_many(to_restore)
+
+        logger.info(f"[AutoBackup] Restored {len(to_restore)} missing bookings from backup {label}")
+        return {
+            "restored": len(to_restore),
+            "skipped": len(active_snapshot) - len(to_restore),
+            "label": label,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[AutoBackup] Restore error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/admin/backups/trigger")
+async def trigger_backup(current_admin: dict = Depends(get_current_admin)):
+    """Manually trigger an immediate backup (useful after a large change)."""
+    try:
+        result = await auto_backup_bookings()
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ==================== HOTEL CONCIERGE PORTAL API ====================
 
 class HotelLoginRequest(BaseModel):
@@ -13653,6 +13760,16 @@ async def startup_event():
         name='Auto-archive completed bookings',
         replace_existing=True,
         misfire_grace_time=3600 * 4  # Allow 4 hour grace period
+    )
+
+    # AUTO DAILY BACKUP - Runs at 1 AM NZ time, keeps 7 rolling daily snapshots in MongoDB
+    scheduler.add_job(
+        auto_backup_bookings,
+        CronTrigger(hour=1, minute=0, timezone=nz_tz),
+        id='auto_daily_backup',
+        name='Auto daily booking backup (7-day rolling)',
+        replace_existing=True,
+        misfire_grace_time=3600 * 4
     )
     
     # Startup sync DISABLED - was overwriting local changes
