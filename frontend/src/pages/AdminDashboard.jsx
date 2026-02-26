@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogOut, Search, Filter, Mail, DollarSign, CheckCircle, XCircle, Clock, Eye, Edit2, Users, BookOpen, Car, Settings, Trash2, MapPin, Calendar, RefreshCw, Send, Bell, Facebook, Globe, Square, CheckSquare, FileText, Smartphone, RotateCcw, AlertTriangle, AlertCircle, Home, Bus, ExternalLink, Navigation, Upload, Archive, Activity, Download, Shield } from 'lucide-react';
 import { Button } from '../components/ui/button';
@@ -606,10 +606,14 @@ export const AdminDashboard = () => {
   const [searchingCustomers, setSearchingCustomers] = useState(false);
   const customerSearchRef = useRef(null);
 
-  // Guard against selectedBookings ever not being a Set; use let + assign so minifier cannot reorder (avoids "Cannot access 'gr' before initialization")
-  let safeSelectedSet = new Set();
-  safeSelectedSet = selectedBookings instanceof Set ? selectedBookings : new Set();
-  
+  // useMemo guarantees stable render-time ordering that minifiers cannot reorder,
+  // fixing the "Cannot read properties of undefined (reading 'add')" crash that
+  // occurred when minifier reordered the let-based two-step assignment.
+  const safeSelectedSet = useMemo(
+    () => (selectedBookings instanceof Set ? selectedBookings : new Set()),
+    [selectedBookings]
+  );
+
   // Preview confirmation modal states
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [previewHtml, setPreviewHtml] = useState('');
