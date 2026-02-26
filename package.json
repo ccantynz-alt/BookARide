@@ -1,6 +1,5 @@
 {
   "scripts": {
-    "build": "cd frontend && npm install && npm run build",
     "test": "echo 'No tests defined' && exit 0"
   },
   "dependencies": {
