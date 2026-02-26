@@ -1119,6 +1119,55 @@ export const AdminDashboard = () => {
   const [backupRestoreResult, setBackupRestoreResult] = useState(null);
   const backupFileInputRef = useRef(null);
 
+  // Auto daily backup state
+  const [autoBackups, setAutoBackups] = useState([]);
+  const [loadingAutoBackups, setLoadingAutoBackups] = useState(false);
+  const [triggeringBackup, setTriggeringBackup] = useState(false);
+  const [restoringAutoBackup, setRestoringAutoBackup] = useState(null);
+
+  const fetchAutoBackups = async () => {
+    setLoadingAutoBackups(true);
+    try {
+      const res = await axios.get(`${API}/admin/backups`, getAuthHeaders());
+      setAutoBackups(res.data.backups || []);
+    } catch (e) {
+      console.error('Failed to load auto-backups', e);
+    } finally {
+      setLoadingAutoBackups(false);
+    }
+  };
+
+  const handleTriggerBackup = async () => {
+    setTriggeringBackup(true);
+    try {
+      const res = await axios.post(`${API}/admin/backups/trigger`, {}, getAuthHeaders());
+      toast.success(`Backup saved: ${res.data.activeCount} active + ${res.data.deletedCount} deleted bookings`);
+      fetchAutoBackups();
+    } catch (e) {
+      toast.error('Backup failed');
+    } finally {
+      setTriggeringBackup(false);
+    }
+  };
+
+  const handleRestoreAutoBackup = async (label) => {
+    if (!window.confirm(`Restore missing bookings from the ${label} backup?\n\nThis is safe — it only adds back bookings that are no longer in your active list.`)) return;
+    setRestoringAutoBackup(label);
+    try {
+      const res = await axios.post(`${API}/admin/backups/${label}/restore`, {}, getAuthHeaders());
+      if (res.data.restored > 0) {
+        toast.success(`Restored ${res.data.restored} missing booking(s) from ${label}`);
+        fetchBookingsRef.current?.();
+      } else {
+        toast.info(`No missing bookings found in ${label} backup — all bookings already present`);
+      }
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Restore failed');
+    } finally {
+      setRestoringAutoBackup(null);
+    }
+  };
+
   const handleRestoreFromBackupFile = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -2278,7 +2327,7 @@ export const AdminDashboard = () => {
         {/* Tabs Navigation */}
         <Tabs defaultValue="bookings" value={activeTab} onValueChange={(val) => {
           setActiveTab(val);
-          if (val === 'deleted') fetchDeletedBookings();
+          if (val === 'deleted') { fetchDeletedBookings(); fetchAutoBackups(); }
           if (val === 'shuttle') fetchShuttleData();
           if (val === 'archive') fetchArchivedBookings(1, '');
         }} className="w-full">
@@ -3327,6 +3376,50 @@ onViewBooking={(booking) => {
                   </div>
                 )}
                 
+                {/* AUTO DAILY BACKUPS PANEL */}
+                <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <h4 className="font-semibold text-blue-900 text-sm">Automatic Daily Backups</h4>
+                      <p className="text-xs text-blue-700 mt-0.5">Snapshots saved every night at 1 AM — 7 days rolling. Click Restore to recover any missing bookings.</p>
+                    </div>
+                    <Button
+                      onClick={handleTriggerBackup}
+                      disabled={triggeringBackup}
+                      size="sm"
+                      variant="outline"
+                      className="border-blue-400 text-blue-700 hover:bg-blue-100 text-xs"
+                    >
+                      {triggeringBackup ? <RefreshCw className="w-3 h-3 mr-1 animate-spin" /> : <Archive className="w-3 h-3 mr-1" />}
+                      Backup now
+                    </Button>
+                  </div>
+                  {loadingAutoBackups ? (
+                    <p className="text-xs text-blue-600">Loading backups...</p>
+                  ) : autoBackups.length === 0 ? (
+                    <p className="text-xs text-blue-600">No automatic backups yet. Click "Backup now" to create the first one.</p>
+                  ) : (
+                    <div className="space-y-1">
+                      {autoBackups.map(b => (
+                        <div key={b.label} className="flex items-center justify-between bg-white rounded px-3 py-2 border border-blue-100 text-xs">
+                          <div>
+                            <span className="font-medium text-gray-800">{b.label}</span>
+                            <span className="text-gray-500 ml-2">{b.activeCount} active · {b.deletedCount} deleted</span>
+                          </div>
+                          <Button
+                            onClick={() => handleRestoreAutoBackup(b.label)}
+                            disabled={restoringAutoBackup === b.label}
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700 text-white text-xs py-1 h-7"
+                          >
+                            {restoringAutoBackup === b.label ? <RefreshCw className="w-3 h-3 animate-spin" /> : 'Restore missing'}
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 {loadingDeleted ? (
                   <div className="text-center py-8">
                     <RefreshCw className="w-8 h-8 animate-spin mx-auto text-gray-400" />
