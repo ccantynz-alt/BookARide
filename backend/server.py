@@ -5332,6 +5332,80 @@ async def restore_bookings_from_backup(request: RestoreBookingData, current_admi
         raise HTTPException(status_code=500, detail=f"Error restoring bookings: {str(e)}")
 
 
+@api_router.post("/admin/bookings/restore-from-repo-backup")
+async def restore_from_repo_backup(current_admin: dict = Depends(get_current_admin)):
+    """
+    Restore bookings from the backup JSON files committed to the repository.
+    Tries backup_bookings_full.json first, then bookings_backup.json.
+    Skips bookings that already exist (by ID or reference number).
+    """
+    import os, json as _json
+
+    # Locate backup files relative to server.py (backend dir) or repo root
+    base_dirs = [
+        os.path.dirname(os.path.abspath(__file__)),          # backend/
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."),  # repo root
+    ]
+    candidates = ["backup_bookings_full.json", "bookings_backup.json", "backup_real_customers.json"]
+
+    found_file = None
+    found_bookings = []
+    for base in base_dirs:
+        for fname in candidates:
+            path = os.path.join(base, fname)
+            if os.path.exists(path):
+                try:
+                    with open(path) as f:
+                        data = _json.load(f)
+                    if isinstance(data, list) and len(data) > 0:
+                        found_bookings = data
+                        found_file = path
+                        break
+                    elif isinstance(data, dict):
+                        # Export format: { active: [...], deleted: [...] }
+                        combined = data.get("active", []) + data.get("deleted", [])
+                        if combined:
+                            found_bookings = combined
+                            found_file = path
+                            break
+                except Exception:
+                    continue
+        if found_bookings:
+            break
+
+    if not found_bookings:
+        raise HTTPException(status_code=404, detail="No backup file found in repository. Expected backup_bookings_full.json or bookings_backup.json.")
+
+    imported, skipped, errors = [], [], []
+    for booking in found_bookings:
+        try:
+            existing = await db.bookings.find_one({"id": booking.get("id")})
+            if existing:
+                skipped.append({"id": booking.get("id"), "reason": "ID already exists"})
+                continue
+            if booking.get("referenceNumber"):
+                existing_ref = await db.bookings.find_one({"referenceNumber": booking.get("referenceNumber")})
+                if existing_ref:
+                    skipped.append({"id": booking.get("id"), "reason": "Reference already exists"})
+                    continue
+            await db.bookings.insert_one(booking)
+            imported.append({"id": booking.get("id"), "name": booking.get("name"), "referenceNumber": booking.get("referenceNumber")})
+        except Exception as e:
+            errors.append({"id": booking.get("id"), "error": str(e)})
+
+    logger.info(f"Repo backup restore: {len(imported)} imported, {len(skipped)} skipped, {len(errors)} errors from {found_file}")
+    return {
+        "success": True,
+        "source_file": os.path.basename(found_file) if found_file else None,
+        "total_in_file": len(found_bookings),
+        "imported_count": len(imported),
+        "skipped_count": len(skipped),
+        "error_count": len(errors),
+        "imported": imported,
+        "skipped": skipped,
+        "errors": errors,
+    }
+
 
 # Google Calendar OAuth Endpoints
 
