@@ -1,2 +1,11 @@
-{"dependencies":{"babel-loader":"8.2.5","schema-utils":"2.7.1"}}
+{
+  "scripts": {
+    "build": "cd frontend && npm install && npm run build",
+    "test": "echo 'No tests defined' && exit 0"
+  },
+  "dependencies": {
+    "babel-loader": "8.2.5",
+    "schema-utils": "2.7.1"
+  }
+}
 
