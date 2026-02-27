@@ -1302,6 +1302,38 @@ DEFAULT_FALLBACK_DISTANCE_KM = 75.0
 # Long-distance fallback when addresses indicate Tauranga/BOP/Hamilton/Whangarei (prevents ~$200 charge for 200km+ trip)
 LONG_DISTANCE_FALLBACK_KM = 200.0
 
+# Address Autocomplete Endpoint (Geoapify)
+@api_router.get("/places/autocomplete")
+async def places_autocomplete(input: str = "", types: str = "address", region: str = "nz"):
+    """Return address suggestions using Geoapify Autocomplete API."""
+    if len(input) < 3:
+        return {"predictions": []}
+    geoapify_key = os.environ.get('GEOAPIFY_API_KEY', '')
+    if not geoapify_key:
+        return {"predictions": []}
+    try:
+        url = "https://api.geoapify.com/v1/geocode/autocomplete"
+        params = {
+            "text": input,
+            "apiKey": geoapify_key,
+            "filter": "countrycode:nz",
+            "format": "json",
+            "limit": 5,
+        }
+        r = requests.get(url, params=params, timeout=5)
+        data = r.json()
+        results = data.get("results", [])
+        predictions = [
+            {"description": item.get("formatted", ""), "place_id": item.get("place_id", "")}
+            for item in results
+            if item.get("formatted")
+        ]
+        return {"predictions": predictions}
+    except Exception as e:
+        logger.warning(f"Geoapify autocomplete error: {e}")
+        return {"predictions": []}
+
+
 # Price Calculation Endpoint
 @api_router.post("/calculate-price", response_model=PricingBreakdown)
 async def calculate_price(request: PriceCalculationRequest):
@@ -5600,11 +5632,11 @@ async def create_payment_checkout(request: PaymentCheckoutRequest, http_request:
 @api_router.get("/payment/status/{session_id}")
 async def get_payment_status(session_id: str):
     try:
-        # Get Stripe API key
-        stripe_api_key = os.environ.get('STRIPE_API_KEY')
+        # Get Stripe API key (support both env var names)
+        stripe_api_key = os.environ.get('STRIPE_API_KEY') or os.environ.get('STRIPE_SECRET_KEY')
         if not stripe_api_key:
             raise HTTPException(status_code=500, detail="Stripe API key not configured")
-        
+
         # Check if we've already processed this payment
         existing_transaction = await db.payment_transactions.find_one(
             {"session_id": session_id, "payment_status": "paid"}, 
@@ -5787,8 +5819,8 @@ async def recover_booking_from_payment(body: RecoverBookingFromPayment, current_
 @api_router.post("/webhook/stripe")
 async def stripe_webhook(request: Request):
     try:
-        # Get Stripe API key
-        stripe_api_key = os.environ.get('STRIPE_API_KEY')
+        # Get Stripe API key (support both env var names)
+        stripe_api_key = os.environ.get('STRIPE_API_KEY') or os.environ.get('STRIPE_SECRET_KEY')
         if not stripe_api_key:
             raise HTTPException(status_code=500, detail="Stripe API key not configured")
         
