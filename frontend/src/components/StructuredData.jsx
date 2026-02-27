@@ -1,5 +1,6 @@
 import React from 'react';
 import { Helmet } from '@vuer-ai/react-helmet-async';
+import siteConfig from '../config/siteConfig';
 
 const StructuredData = () => {
   const organizationSchema = {
