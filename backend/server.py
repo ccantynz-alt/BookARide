@@ -1302,6 +1302,61 @@ DEFAULT_FALLBACK_DISTANCE_KM = 75.0
 # Long-distance fallback when addresses indicate Tauranga/BOP/Hamilton/Whangarei (prevents ~$200 charge for 200km+ trip)
 LONG_DISTANCE_FALLBACK_KM = 200.0
 
+# Places Autocomplete Endpoint (proxy for frontend address search)
+@api_router.get("/places/autocomplete")
+async def places_autocomplete(input: str = "", region: str = "nz"):
+    """Address autocomplete using Geoapify geocoding API. Used by booking form."""
+    if not input or len(input) < 2:
+        return {"predictions": []}
+    geoapify_key = os.environ.get('GEOAPIFY_API_KEY', '')
+    google_key = os.environ.get('GOOGLE_MAPS_API_KEY', '')
+    predictions = []
+    # Try Geoapify first
+    if geoapify_key:
+        try:
+            url = "https://api.geoapify.com/v1/geocode/autocomplete"
+            params = {
+                "text": input,
+                "apiKey": geoapify_key,
+                "limit": 5,
+                "filter": f"countrycode:{region}",
+            }
+            resp = requests.get(url, params=params, timeout=10)
+            data = resp.json()
+            for feat in data.get("features", []):
+                props = feat.get("properties", {})
+                predictions.append({
+                    "place_id": props.get("place_id", ""),
+                    "description": props.get("formatted", props.get("address_line1", "")),
+                    "formatted": props.get("formatted", ""),
+                })
+            return {"predictions": predictions}
+        except Exception as e:
+            logger.warning(f"Geoapify autocomplete error: {e}")
+    # Fallback to Google Places if available
+    if google_key:
+        try:
+            url = "https://maps.googleapis.com/maps/api/place/autocomplete/json"
+            params = {
+                "input": input,
+                "key": google_key,
+                "components": f"country:{region}",
+                "types": "address",
+            }
+            resp = requests.get(url, params=params, timeout=10)
+            data = resp.json()
+            for p in data.get("predictions", []):
+                predictions.append({
+                    "place_id": p.get("place_id", ""),
+                    "description": p.get("description", ""),
+                    "formatted": p.get("description", ""),
+                })
+            return {"predictions": predictions}
+        except Exception as e:
+            logger.warning(f"Google Places autocomplete error: {e}")
+    return {"predictions": []}
+
+
 # Price Calculation Endpoint
 @api_router.post("/calculate-price", response_model=PricingBreakdown)
 async def calculate_price(request: PriceCalculationRequest):
