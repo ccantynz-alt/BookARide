@@ -3,9 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Check, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '../components/ui/card';
 import axios from 'axios';
-
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+import { API } from '../config/api';
 
 export const PaymentSuccess = () => {
   const [searchParams] = useSearchParams();
@@ -125,12 +123,14 @@ export const PaymentSuccess = () => {
                             <span className="font-bold text-2xl text-gold">#{paymentDetails.referenceNumber}</span>
                           </div>
                         )}
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Amount Paid:</span>
-                          <span className="font-semibold text-gray-900">
-                            ${(paymentDetails.amount_total / 100).toFixed(2)} {paymentDetails.currency.toUpperCase()}
-                          </span>
-                        </div>
+                        {paymentDetails.amount_total != null && paymentDetails.currency && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Amount Paid:</span>
+                            <span className="font-semibold text-gray-900">
+                              ${(paymentDetails.amount_total / 100).toFixed(2)} {paymentDetails.currency.toUpperCase()}
+                            </span>
+                          </div>
+                        )}
                         <div className="flex justify-between">
                           <span className="text-gray-600">Status:</span>
                           <span className="font-semibold text-green-600">Confirmed</span>

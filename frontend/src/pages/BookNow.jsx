@@ -154,6 +154,22 @@ export const BookNow = () => {
   const [selectedAddOns, setSelectedAddOns] = useState([]);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
+  // Address autocomplete state
+  const [pickupSuggestions, setPickupSuggestions] = useState([]);
+  const [dropoffSuggestions, setDropoffSuggestions] = useState([]);
+  const [showPickupSuggestions, setShowPickupSuggestions] = useState(false);
+  const [showDropoffSuggestions, setShowDropoffSuggestions] = useState(false);
+
+  const fetchAddressSuggestions = async (query, setter, showSetter) => {
+    if (query.length < 3) { setter([]); showSetter(false); return; }
+    try {
+      const res = await axios.get(`${API}/places/autocomplete`, { params: { input: query } });
+      const predictions = res.data?.predictions || [];
+      setter(predictions);
+      showSetter(predictions.length > 0);
+    } catch { setter([]); showSetter(false); }
+  };
+
   // Calculate total add-ons price
   const addOnsTotal = selectedAddOns.reduce((total, id) => {
     const addOn = addOns.find(a => a.id === id);
@@ -537,7 +553,7 @@ export const BookNow = () => {
                       </div>
 
                       {/* Pickup Address */}
-                      <div className="space-y-2 mb-6">
+                      <div className="space-y-2 mb-6 relative">
                         <Label htmlFor="pickupAddress" className="flex items-center space-x-2">
                           <MapPin className="w-4 h-4 text-gold" />
                           <span>Pickup Location 1 *</span>
@@ -546,12 +562,30 @@ export const BookNow = () => {
                           id="pickupAddress"
                           name="pickupAddress"
                           value={formData.pickupAddress}
-                          onChange={(e) => setFormData(prev => ({ ...prev, pickupAddress: e.target.value }))}
-                          placeholder="Enter full address..."
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setFormData(prev => ({ ...prev, pickupAddress: val }));
+                            fetchAddressSuggestions(val, setPickupSuggestions, setShowPickupSuggestions);
+                          }}
+                          onBlur={() => setTimeout(() => setShowPickupSuggestions(false), 200)}
+                          placeholder="Start typing your address..."
                           required
+                          autoComplete="off"
                           className="transition-all duration-200 focus:ring-2 focus:ring-gold"
                         />
-                        <p className="text-xs text-gray-500">Address suggestions as you type</p>
+                        {showPickupSuggestions && pickupSuggestions.length > 0 && (
+                          <ul className="absolute z-50 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+                            {pickupSuggestions.map((s, i) => (
+                              <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm border-b last:border-b-0"
+                                onMouseDown={() => {
+                                  setFormData(prev => ({ ...prev, pickupAddress: s.description }));
+                                  setShowPickupSuggestions(false);
+                                }}>
+                                {s.description}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
                       </div>
 
                       {/* Additional Pickup Addresses */}
@@ -602,7 +636,7 @@ export const BookNow = () => {
                       </div>
 
                       {/* Dropoff Address */}
-                      <div className="space-y-2 mb-6">
+                      <div className="space-y-2 mb-6 relative">
                         <Label htmlFor="dropoffAddress" className="flex items-center space-x-2">
                           <MapPin className="w-4 h-4 text-gold" />
                           <span>Drop-off Address *</span>
@@ -611,12 +645,43 @@ export const BookNow = () => {
                           id="dropoffAddress"
                           name="dropoffAddress"
                           value={formData.dropoffAddress}
-                          onChange={(e) => setFormData(prev => ({ ...prev, dropoffAddress: e.target.value }))}
-                          placeholder="Enter full address or pick below..."
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setFormData(prev => ({ ...prev, dropoffAddress: val }));
+                            fetchAddressSuggestions(val, setDropoffSuggestions, setShowDropoffSuggestions);
+                          }}
+                          onBlur={() => setTimeout(() => setShowDropoffSuggestions(false), 200)}
+                          placeholder="Start typing your address..."
                           required
+                          autoComplete="off"
                           className="transition-all duration-200 focus:ring-2 focus:ring-gold"
                         />
-                        <p className="text-xs text-gray-500">Address suggestions as you type</p>
+                        {showDropoffSuggestions && dropoffSuggestions.length > 0 && (
+                          <ul className="absolute z-50 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+                            {dropoffSuggestions.map((s, i) => (
+                              <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm border-b last:border-b-0"
+                                onMouseDown={() => {
+                                  setFormData(prev => ({ ...prev, dropoffAddress: s.description }));
+                                  setShowDropoffSuggestions(false);
+                                }}>
+                                {s.description}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                        {/* Quick airport selections */}
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {DROPOFF_QUICK_ADDRESSES.map((qa) => (
+                            <button
+                              key={qa.label}
+                              type="button"
+                              onClick={() => setFormData(prev => ({ ...prev, dropoffAddress: qa.address }))}
+                              className="text-xs px-3 py-1.5 rounded-full bg-gray-100 hover:bg-gold/20 hover:text-gray-900 text-gray-600 border border-gray-200 hover:border-gold/40 transition-colors"
+                            >
+                              {qa.label}
+                            </button>
+                          ))}
+                        </div>
                       </div>
 
                       {/* Date and Time */}
