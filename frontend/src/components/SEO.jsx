@@ -2,33 +2,7 @@ import React from 'react';
 import { Helmet } from '@vuer-ai/react-helmet-async';
 import { useLocation } from 'react-router-dom';
 import { getSiteConfig } from '../config/siteConfig';
-
-// Supported languages for hreflang tags
-const SUPPORTED_LANGUAGES = [
-  { code: 'en', name: 'English', hreflang: 'en-NZ' },
-  { code: 'zh', name: '中文', hreflang: 'zh' },
-  { code: 'ja', name: '日本語', hreflang: 'ja' },
-  { code: 'ko', name: '한국어', hreflang: 'ko' },
-  { code: 'fr', name: 'Français', hreflang: 'fr' },
-  { code: 'hi', name: 'हिन्दी', hreflang: 'hi' }
-];
-
-// Helper: Remove language prefix from path (e.g., /zh/services -> /services)
-const getPathWithoutLang = (pathname) => {
-  const langCodes = SUPPORTED_LANGUAGES.map(l => l.code);
-  const parts = pathname.split('/').filter(Boolean);
-  if (parts.length > 0 && langCodes.includes(parts[0])) {
-    return '/' + parts.slice(1).join('/') || '/';
-  }
-  return pathname;
-};
-
-// Helper: Add language prefix to path (e.g., /services -> /zh/services)
-const getLocalizedPath = (path, langCode) => {
-  if (langCode === 'en') return path; // English is the default, no prefix
-  const cleanPath = path === '/' ? '' : path;
-  return `/${langCode}${cleanPath}`;
-};
+import { SUPPORTED_LANGUAGES, getPathWithoutLang, getLocalizedPath } from '../config/languages';
 
 const siteConfig = getSiteConfig();
 
