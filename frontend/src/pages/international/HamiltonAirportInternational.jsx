@@ -1,5 +1,5 @@
 import React from 'react';
-import { Helmet } from 'react-helmet-async';
+import { Helmet } from '@vuer-ai/react-helmet-async';
 import { Link } from 'react-router-dom';
 import { Clock, Shield, CreditCard, Users, Plane, MapPin } from 'lucide-react';
 import { Button } from '../../components/ui/button';
