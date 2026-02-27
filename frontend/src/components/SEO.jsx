@@ -1,10 +1,8 @@
 import React from 'react';
 import { Helmet } from '@vuer-ai/react-helmet-async';
 import { useLocation } from 'react-router-dom';
-import { getSiteConfig } from '../config/siteConfig';
+import siteConfig from '../config/siteConfig';
 import { SUPPORTED_LANGUAGES, getPathWithoutLang, getLocalizedPath } from '../config/languages';
-
-const siteConfig = getSiteConfig();
 
 export const SEO = ({ 
   title, 
