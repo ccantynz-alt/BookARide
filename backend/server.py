@@ -1837,12 +1837,12 @@ async def get_bookings(
 ):
     """Get bookings with pagination and filtering for faster loading.
     No filter by payment_status - cash/pay-on-pickup are included like all others.
-    Use limit=0 to return ALL active bookings (capped at 5000) so admin never misses one."""
+    Use limit=0 to return ALL active bookings (capped at 50k) so admin never misses one."""
     try:
         # limit=0 means "return all" for admin dashboard - no pagination, no missed bookings
         return_all = limit == 0
         if return_all:
-            limit = 5000  # Safety cap when returning all
+            limit = 50000  # Safety cap when returning all (Cockpit total may be 13k+; must show all)
         else:
             limit = min(int(limit), 500) if limit else 50
 
@@ -12245,8 +12245,9 @@ async def get_system_health(current_admin: dict = Depends(get_current_admin)):
             sort=[("created_at", -1)]
         )
         
-        # Quick live stats
+        # Quick live stats (active = main list; archived = long-term storage)
         total_bookings = await db.bookings.count_documents({})
+        archived_count = await db.bookings_archive.count_documents({})
         today_bookings = await db.bookings.count_documents({'date': today_str})
         tomorrow_bookings = await db.bookings.count_documents({'date': tomorrow_str})
         
@@ -12283,6 +12284,7 @@ async def get_system_health(current_admin: dict = Depends(get_current_admin)):
             "health_message": health_message,
             "live_stats": {
                 "total_bookings": total_bookings,
+                "archived_bookings": archived_count,
                 "today_bookings": today_bookings,
                 "tomorrow_bookings": tomorrow_bookings,
                 "unassigned_today": unassigned_today,
