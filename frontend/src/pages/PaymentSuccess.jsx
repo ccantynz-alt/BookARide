@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Check, Loader2 } from 'lucide-react';
+import { Check, Loader2, AlertTriangle } from 'lucide-react';
 import { Card, CardContent } from '../components/ui/card';
 import axios from 'axios';
 import { API } from '../config/api';
@@ -56,9 +56,10 @@ export const PaymentSuccess = () => {
     }
   };
 
-  const pollPaymentStatus = async (attempts = 0) => {
-    const maxAttempts = 5;
-    const pollInterval = 2000; // 2 seconds
+  const pollPaymentStatus = async (attempts = 0, errorCount = 0) => {
+    const maxAttempts = 10;
+    const maxErrors = 3;
+    const pollInterval = 3000; // 3 seconds
 
     if (attempts >= maxAttempts) {
       setPaymentStatus('timeout');
@@ -80,10 +81,16 @@ export const PaymentSuccess = () => {
 
       // If payment is still pending, continue polling
       setPaymentStatus('processing');
-      setTimeout(() => pollPaymentStatus(attempts + 1), pollInterval);
+      setTimeout(() => pollPaymentStatus(attempts + 1, 0), pollInterval);
     } catch (error) {
       console.error('Error checking payment status:', error);
-      setPaymentStatus('error');
+      // Retry on transient errors instead of immediately showing error
+      if (errorCount < maxErrors) {
+        setPaymentStatus('processing');
+        setTimeout(() => pollPaymentStatus(attempts + 1, errorCount + 1), pollInterval);
+      } else {
+        setPaymentStatus('timeout');
+      }
     }
   };
 
@@ -150,27 +157,42 @@ export const PaymentSuccess = () => {
                 </>
               ) : (
                 <>
-                  <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-red-100 flex items-center justify-center">
-                    <span className="text-4xl text-red-600">✕</span>
+                  <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-amber-100 flex items-center justify-center">
+                    {paymentStatus === 'expired' ? (
+                      <span className="text-4xl text-red-600">✕</span>
+                    ) : (
+                      <AlertTriangle className="w-12 h-12 text-amber-600" />
+                    )}
                   </div>
                   <h1 className="text-3xl font-bold text-gray-900 mb-4">
                     {paymentStatus === 'expired' ? 'Payment Session Expired' :
-                     paymentStatus === 'timeout' ? 'Payment Check Timeout' :
-                     'Payment Error'}
+                     'Payment Verification Pending'}
                   </h1>
                   <p className="text-gray-600 mb-8">
                     {paymentStatus === 'expired'
                       ? 'Your payment session has expired. Please try booking again.'
-                      : paymentStatus === 'timeout'
-                      ? 'We could not verify your payment in time. Please check your email for confirmation.'
-                      : 'There was an error processing your payment. Please contact us for assistance.'}
+                      : 'Your payment may have been processed successfully but we were unable to confirm it immediately. Please check your email for a booking confirmation. If you do not receive an email within 10 minutes, please contact us and we will verify your payment.'}
                   </p>
-                  <button
-                    onClick={() => navigate('/book-now')}
-                    className="bg-gray-900 hover:bg-gray-800 text-white font-semibold px-8 py-3 rounded-lg transition-colors"
-                  >
-                    Try Again
-                  </button>
+                  {paymentStatus === 'expired' ? (
+                    <button
+                      onClick={() => navigate('/book-now')}
+                      className="bg-gray-900 hover:bg-gray-800 text-white font-semibold px-8 py-3 rounded-lg transition-colors"
+                    >
+                      Try Again
+                    </button>
+                  ) : (
+                    <div className="space-y-3">
+                      <p className="text-sm text-gray-500">
+                        Do not attempt to pay again until you have confirmed with us.
+                      </p>
+                      <button
+                        onClick={() => navigate('/')}
+                        className="bg-gold hover:bg-gold/90 text-black font-semibold px-8 py-3 rounded-lg transition-colors"
+                      >
+                        Return to Home
+                      </button>
+                    </div>
+                  )}
                 </>
               )}
             </CardContent>
