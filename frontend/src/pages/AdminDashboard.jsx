@@ -4664,7 +4664,8 @@ onViewBooking={(booking) => {
                     <ul className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
                       {adminPickupSuggestions.map((s, i) => (
                         <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm border-b last:border-b-0"
-                          onMouseDown={() => {
+                          onPointerDown={(e) => {
+                            e.preventDefault();
                             setNewBooking(prev => ({ ...prev, pickupAddress: s.description }));
                             setShowAdminPickupSuggestions(false);
                           }}>
@@ -4738,7 +4739,8 @@ onViewBooking={(booking) => {
                     <ul className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
                       {adminDropoffSuggestions.map((s, i) => (
                         <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm border-b last:border-b-0"
-                          onMouseDown={() => {
+                          onPointerDown={(e) => {
+                            e.preventDefault();
                             setNewBooking(prev => ({ ...prev, dropoffAddress: s.description }));
                             setShowAdminDropoffSuggestions(false);
                           }}>
@@ -5193,7 +5195,8 @@ onViewBooking={(booking) => {
                       <ul className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
                         {editPickupSuggestions.map((s, i) => (
                           <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm border-b last:border-b-0"
-                            onMouseDown={() => {
+                            onPointerDown={(e) => {
+                              e.preventDefault();
                               setEditingBooking(prev => ({ ...prev, pickupAddress: s.description }));
                               setShowEditPickupSuggestions(false);
                             }}>
@@ -5258,7 +5261,8 @@ onViewBooking={(booking) => {
                       <ul className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
                         {editDropoffSuggestions.map((s, i) => (
                           <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm border-b last:border-b-0"
-                            onMouseDown={() => {
+                            onPointerDown={(e) => {
+                              e.preventDefault();
                               setEditingBooking(prev => ({ ...prev, dropoffAddress: s.description }));
                               setShowEditDropoffSuggestions(false);
                             }}>
