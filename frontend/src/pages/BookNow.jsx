@@ -22,8 +22,6 @@ import { API } from '../config/api';
 const DROPOFF_QUICK_ADDRESSES = [
   { label: 'Auckland Airport', address: 'Auckland Airport, Ray Emery Drive, Mangere, Auckland 2022, New Zealand' },
   { label: 'Auckland Domestic', address: 'Auckland Airport, Ray Emery Drive, Mangere, Auckland 2022, New Zealand' },
-  { label: 'Hamilton Airport', address: 'Hamilton Airport, 20 Airport Road, Hamilton 3281, New Zealand' },
-  { label: 'Whangarei Airport', address: 'Whangarei Airport, Handforth Street, Whangarei 0110, New Zealand' },
 ];
 
 export const BookNow = () => {
