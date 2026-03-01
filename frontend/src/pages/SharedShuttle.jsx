@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Helmet } from '@vuer-ai/react-helmet-async';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -34,8 +34,7 @@ import {
 } from 'lucide-react';
 import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
-
-const API = process.env.REACT_APP_BACKEND_URL + '/api';
+import { API } from '../config/api';
 
 // Shared Shuttle Pricing Model - City to Airport
 // Minimum: $100 (covers costs for 1-2 passengers)
@@ -139,24 +138,31 @@ const SharedShuttle = () => {
   const savings = privateTransferPrice - totalPrice;
   const savingsPercent = Math.round((savings / privateTransferPrice) * 100);
   
-  const handleAddressChange = async (value) => {
+  const shuttleDebounceRef = useRef(null);
+  const handleAddressChange = (value) => {
     setPickupAddress(value);
-    if (value.length > 3) {
-      try {
-        const response = await axios.get(`${API}/places/autocomplete`, {
-          params: { input: value, types: 'address', region: 'nz' }
-        });
-        setAddressSuggestions(response.data.predictions || []);
-        setShowSuggestions(true);
-      } catch (error) {
-        console.error('Autocomplete error:', error);
-      }
+    if (shuttleDebounceRef.current) clearTimeout(shuttleDebounceRef.current);
+    if (value.length >= 3) {
+      shuttleDebounceRef.current = setTimeout(async () => {
+        try {
+          const response = await axios.get(`${API}/places/autocomplete`, {
+            params: { input: value, types: 'address', region: 'nz' }
+          });
+          const predictions = response.data?.predictions || [];
+          setAddressSuggestions(predictions);
+          setShowSuggestions(predictions.length > 0);
+        } catch (error) {
+          console.error('Autocomplete error:', error);
+          setAddressSuggestions([]);
+          setShowSuggestions(false);
+        }
+      }, 300);
     } else {
       setAddressSuggestions([]);
       setShowSuggestions(false);
     }
   };
-  
+
   const selectAddress = (address) => {
     setPickupAddress(address);
     setShowSuggestions(false);
@@ -827,11 +833,14 @@ const SharedShuttle = () => {
                               type="text"
                               value={pickupAddress}
                               onChange={(e) => handleAddressChange(e.target.value)}
+                              onFocus={() => { if (addressSuggestions.length > 0) setShowSuggestions(true); }}
+                              onBlur={() => setTimeout(() => setShowSuggestions(false), 300)}
                               placeholder="Enter hotel or address in Auckland CBD"
                               className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-yellow-500"
+                              autoComplete="off"
                             />
                             {showSuggestions && addressSuggestions.length > 0 && (
-                              <div className="absolute z-10 w-full mt-1 bg-gray-800 border border-gray-600 rounded-lg shadow-lg max-h-60 overflow-auto">
+                              <div className="absolute left-0 right-0 top-full z-[9999] mt-1 bg-gray-800 border border-gray-600 rounded-lg shadow-xl max-h-60 overflow-auto" style={{ position: 'absolute' }}>
                                 {addressSuggestions.map((s, i) => (
                                   <button
                                     key={i}

@@ -1310,6 +1310,7 @@ async def places_autocomplete(input: str = "", types: str = "address", region: s
         return {"predictions": []}
     geoapify_key = os.environ.get('GEOAPIFY_API_KEY', '')
     if not geoapify_key:
+        logger.error("GEOAPIFY_API_KEY not set - address autocomplete will not work! Set this environment variable.")
         return {"predictions": []}
     try:
         url = "https://api.geoapify.com/v1/geocode/autocomplete"
@@ -1320,17 +1321,27 @@ async def places_autocomplete(input: str = "", types: str = "address", region: s
             "format": "json",
             "limit": 5,
         }
-        r = requests.get(url, params=params, timeout=5)
+        r = requests.get(url, params=params, timeout=10)
+        r.raise_for_status()
         data = r.json()
+        # Handle both format=json (results) and GeoJSON (features) response formats
         results = data.get("results", [])
+        if not results:
+            features = data.get("features", [])
+            results = [f.get("properties", {}) for f in features]
         predictions = [
             {"description": item.get("formatted", ""), "place_id": item.get("place_id", "")}
             for item in results
             if item.get("formatted")
         ]
+        if not predictions:
+            logger.info(f"Geoapify returned 0 predictions for '{input[:30]}'. Response keys: {list(data.keys())}")
         return {"predictions": predictions}
+    except requests.exceptions.HTTPError as e:
+        logger.error(f"Geoapify autocomplete HTTP error for '{input[:30]}': {e} - Status: {e.response.status_code if e.response else 'N/A'}")
+        return {"predictions": []}
     except Exception as e:
-        logger.warning(f"Geoapify autocomplete error: {e}")
+        logger.error(f"Geoapify autocomplete error for '{input[:30]}': {type(e).__name__}: {e}")
         return {"predictions": []}
 
 

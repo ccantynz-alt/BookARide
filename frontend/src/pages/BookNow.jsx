@@ -134,15 +134,27 @@ export const BookNow = () => {
   const [dropoffSuggestions, setDropoffSuggestions] = useState([]);
   const [showPickupSuggestions, setShowPickupSuggestions] = useState(false);
   const [showDropoffSuggestions, setShowDropoffSuggestions] = useState(false);
+  const [addressLoading, setAddressLoading] = useState(false);
+  const debounceTimerRef = useRef(null);
 
-  const fetchAddressSuggestions = async (query, setter, showSetter) => {
+  const fetchAddressSuggestions = (query, setter, showSetter) => {
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     if (query.length < 3) { setter([]); showSetter(false); return; }
-    try {
-      const res = await axios.get(`${API}/places/autocomplete`, { params: { input: query } });
-      const predictions = res.data?.predictions || [];
-      setter(predictions);
-      showSetter(predictions.length > 0);
-    } catch { setter([]); showSetter(false); }
+    setAddressLoading(true);
+    debounceTimerRef.current = setTimeout(async () => {
+      try {
+        const res = await axios.get(`${API}/places/autocomplete`, { params: { input: query } });
+        const predictions = res.data?.predictions || [];
+        setter(predictions);
+        showSetter(predictions.length > 0);
+      } catch (err) {
+        console.error('Address autocomplete error:', err);
+        setter([]);
+        showSetter(false);
+      } finally {
+        setAddressLoading(false);
+      }
+    }, 300);
   };
 
   const finalTotal = pricing.totalPrice;
@@ -456,8 +468,8 @@ export const BookNow = () => {
                       </div>
 
                       {/* Pickup Address */}
-                      <div className="space-y-2 mb-6 relative">
-                        <Label htmlFor="pickupAddress" className="flex items-center space-x-2">
+                      <div className="mb-6 relative">
+                        <Label htmlFor="pickupAddress" className="flex items-center space-x-2 mb-2">
                           <MapPin className="w-4 h-4 text-gold" />
                           <span>Pickup Location 1 *</span>
                         </Label>
@@ -470,16 +482,17 @@ export const BookNow = () => {
                             setFormData(prev => ({ ...prev, pickupAddress: val }));
                             fetchAddressSuggestions(val, setPickupSuggestions, setShowPickupSuggestions);
                           }}
-                          onBlur={() => setTimeout(() => setShowPickupSuggestions(false), 200)}
+                          onFocus={() => { if (pickupSuggestions.length > 0) setShowPickupSuggestions(true); }}
+                          onBlur={() => setTimeout(() => setShowPickupSuggestions(false), 300)}
                           placeholder="Start typing your address..."
                           required
                           autoComplete="off"
                           className="transition-all duration-200 focus:ring-2 focus:ring-gold"
                         />
                         {showPickupSuggestions && pickupSuggestions.length > 0 && (
-                          <ul className="absolute z-50 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+                          <ul className="absolute left-0 right-0 top-full z-[9999] bg-white border border-gray-200 rounded-lg shadow-xl mt-1 max-h-48 overflow-y-auto" style={{ position: 'absolute' }}>
                             {pickupSuggestions.map((s, i) => (
-                              <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm border-b last:border-b-0"
+                              <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm text-gray-900 border-b last:border-b-0"
                                 onPointerDown={(e) => {
                                   e.preventDefault();
                                   setFormData(prev => ({ ...prev, pickupAddress: s.description }));
@@ -518,8 +531,8 @@ export const BookNow = () => {
                       )}
 
                       {/* Drop-off Address */}
-                      <div className="space-y-2 mb-6 relative">
-                        <Label htmlFor="dropoffAddress" className="flex items-center space-x-2">
+                      <div className="mb-6 relative">
+                        <Label htmlFor="dropoffAddress" className="flex items-center space-x-2 mb-2">
                           <MapPin className="w-4 h-4 text-gold" />
                           <span>Drop-off Location *</span>
                         </Label>
@@ -549,16 +562,17 @@ export const BookNow = () => {
                             setFormData(prev => ({ ...prev, dropoffAddress: val }));
                             fetchAddressSuggestions(val, setDropoffSuggestions, setShowDropoffSuggestions);
                           }}
-                          onBlur={() => setTimeout(() => setShowDropoffSuggestions(false), 200)}
+                          onFocus={() => { if (dropoffSuggestions.length > 0) setShowDropoffSuggestions(true); }}
+                          onBlur={() => setTimeout(() => setShowDropoffSuggestions(false), 300)}
                           placeholder="Start typing destination..."
                           required
                           autoComplete="off"
                           className="transition-all duration-200 focus:ring-2 focus:ring-gold"
                         />
                         {showDropoffSuggestions && dropoffSuggestions.length > 0 && (
-                          <ul className="absolute z-50 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+                          <ul className="absolute left-0 right-0 top-full z-[9999] bg-white border border-gray-200 rounded-lg shadow-xl mt-1 max-h-48 overflow-y-auto" style={{ position: 'absolute' }}>
                             {dropoffSuggestions.map((s, i) => (
-                              <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm border-b last:border-b-0"
+                              <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm text-gray-900 border-b last:border-b-0"
                                 onPointerDown={(e) => {
                                   e.preventDefault();
                                   setFormData(prev => ({ ...prev, dropoffAddress: s.description }));

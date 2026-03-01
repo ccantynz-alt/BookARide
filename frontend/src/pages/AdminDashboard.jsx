@@ -1633,14 +1633,22 @@ export const AdminDashboard = () => {
   };
   
   // Address autocomplete for admin forms (Geoapify)
-  const fetchAdminAddressSuggestions = async (query, setter, showSetter) => {
+  const adminDebounceRef = useRef(null);
+  const fetchAdminAddressSuggestions = (query, setter, showSetter) => {
+    if (adminDebounceRef.current) clearTimeout(adminDebounceRef.current);
     if (query.length < 3) { setter([]); showSetter(false); return; }
-    try {
-      const res = await axios.get(`${API}/places/autocomplete`, { params: { input: query } });
-      const predictions = res.data?.predictions || [];
-      setter(predictions);
-      showSetter(predictions.length > 0);
-    } catch { setter([]); showSetter(false); }
+    adminDebounceRef.current = setTimeout(async () => {
+      try {
+        const res = await axios.get(`${API}/places/autocomplete`, { params: { input: query } });
+        const predictions = res.data?.predictions || [];
+        setter(predictions);
+        showSetter(predictions.length > 0);
+      } catch (err) {
+        console.error('Admin address autocomplete error:', err);
+        setter([]);
+        showSetter(false);
+      }
+    }, 300);
   };
 
   const handleRemovePickup = (index) => {
@@ -4600,7 +4608,7 @@ export const AdminDashboard = () => {
             <div>
               <h3 className="font-semibold text-gray-900 mb-3">Trip Information</h3>
               <div className="space-y-4">
-                <div className="relative">
+                <div className="relative" style={{ overflow: 'visible' }}>
                   <Label>Pickup Address 1 *</Label>
                   <Input
                     value={newBooking.pickupAddress}
@@ -4609,15 +4617,16 @@ export const AdminDashboard = () => {
                       setNewBooking(prev => ({ ...prev, pickupAddress: val }));
                       fetchAdminAddressSuggestions(val, setAdminPickupSuggestions, setShowAdminPickupSuggestions);
                     }}
-                    onBlur={() => setTimeout(() => setShowAdminPickupSuggestions(false), 200)}
+                    onFocus={() => { if (adminPickupSuggestions.length > 0) setShowAdminPickupSuggestions(true); }}
+                    onBlur={() => setTimeout(() => setShowAdminPickupSuggestions(false), 300)}
                     placeholder="Start typing address..."
                     autoComplete="off"
                     className="mt-1"
                   />
                   {showAdminPickupSuggestions && adminPickupSuggestions.length > 0 && (
-                    <ul className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+                    <ul className="absolute left-0 right-0 top-full z-[9999] bg-white border border-gray-200 rounded-lg shadow-xl mt-1 max-h-48 overflow-y-auto" style={{ position: 'absolute' }}>
                       {adminPickupSuggestions.map((s, i) => (
-                        <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm border-b last:border-b-0"
+                        <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm text-gray-900 border-b last:border-b-0"
                           onPointerDown={(e) => {
                             e.preventDefault();
                             setNewBooking(prev => ({ ...prev, pickupAddress: s.description }));
@@ -4675,7 +4684,7 @@ export const AdminDashboard = () => {
                   </p>
                 </div>
 
-                <div className="relative">
+                <div className="relative" style={{ overflow: 'visible' }}>
                   <Label>Drop-off Address *</Label>
                   <Input
                     value={newBooking.dropoffAddress}
@@ -4684,15 +4693,16 @@ export const AdminDashboard = () => {
                       setNewBooking(prev => ({ ...prev, dropoffAddress: val }));
                       fetchAdminAddressSuggestions(val, setAdminDropoffSuggestions, setShowAdminDropoffSuggestions);
                     }}
-                    onBlur={() => setTimeout(() => setShowAdminDropoffSuggestions(false), 200)}
+                    onFocus={() => { if (adminDropoffSuggestions.length > 0) setShowAdminDropoffSuggestions(true); }}
+                    onBlur={() => setTimeout(() => setShowAdminDropoffSuggestions(false), 300)}
                     placeholder="Start typing address..."
                     autoComplete="off"
                     className="mt-1"
                   />
                   {showAdminDropoffSuggestions && adminDropoffSuggestions.length > 0 && (
-                    <ul className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+                    <ul className="absolute left-0 right-0 top-full z-[9999] bg-white border border-gray-200 rounded-lg shadow-xl mt-1 max-h-48 overflow-y-auto" style={{ position: 'absolute' }}>
                       {adminDropoffSuggestions.map((s, i) => (
-                        <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm border-b last:border-b-0"
+                        <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm text-gray-900 border-b last:border-b-0"
                           onPointerDown={(e) => {
                             e.preventDefault();
                             setNewBooking(prev => ({ ...prev, dropoffAddress: s.description }));
@@ -5131,7 +5141,7 @@ export const AdminDashboard = () => {
               <div>
                 <h3 className="font-semibold text-gray-900 mb-3">Trip Information</h3>
                 <div className="space-y-4">
-                  <div className="relative">
+                  <div className="relative" style={{ overflow: 'visible' }}>
                     <Label>Pickup Address 1 *</Label>
                     <Input
                       value={editingBooking.pickupAddress}
@@ -5140,15 +5150,16 @@ export const AdminDashboard = () => {
                         setEditingBooking(prev => ({ ...prev, pickupAddress: val }));
                         fetchAdminAddressSuggestions(val, setEditPickupSuggestions, setShowEditPickupSuggestions);
                       }}
-                      onBlur={() => setTimeout(() => setShowEditPickupSuggestions(false), 200)}
+                      onFocus={() => { if (editPickupSuggestions.length > 0) setShowEditPickupSuggestions(true); }}
+                      onBlur={() => setTimeout(() => setShowEditPickupSuggestions(false), 300)}
                       placeholder="Start typing address..."
                       autoComplete="off"
                       className="mt-1"
                     />
                     {showEditPickupSuggestions && editPickupSuggestions.length > 0 && (
-                      <ul className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+                      <ul className="absolute left-0 right-0 top-full z-[9999] bg-white border border-gray-200 rounded-lg shadow-xl mt-1 max-h-48 overflow-y-auto" style={{ position: 'absolute' }}>
                         {editPickupSuggestions.map((s, i) => (
-                          <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm border-b last:border-b-0"
+                          <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm text-gray-900 border-b last:border-b-0"
                             onPointerDown={(e) => {
                               e.preventDefault();
                               setEditingBooking(prev => ({ ...prev, pickupAddress: s.description }));
@@ -5197,7 +5208,7 @@ export const AdminDashboard = () => {
                     </button>
                   </div>
 
-                  <div className="relative">
+                  <div className="relative" style={{ overflow: 'visible' }}>
                     <Label>Drop-off Address *</Label>
                     <Input
                       value={editingBooking.dropoffAddress}
@@ -5206,15 +5217,16 @@ export const AdminDashboard = () => {
                         setEditingBooking(prev => ({ ...prev, dropoffAddress: val }));
                         fetchAdminAddressSuggestions(val, setEditDropoffSuggestions, setShowEditDropoffSuggestions);
                       }}
-                      onBlur={() => setTimeout(() => setShowEditDropoffSuggestions(false), 200)}
+                      onFocus={() => { if (editDropoffSuggestions.length > 0) setShowEditDropoffSuggestions(true); }}
+                      onBlur={() => setTimeout(() => setShowEditDropoffSuggestions(false), 300)}
                       placeholder="Start typing address..."
                       autoComplete="off"
                       className="mt-1"
                     />
                     {showEditDropoffSuggestions && editDropoffSuggestions.length > 0 && (
-                      <ul className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+                      <ul className="absolute left-0 right-0 top-full z-[9999] bg-white border border-gray-200 rounded-lg shadow-xl mt-1 max-h-48 overflow-y-auto" style={{ position: 'absolute' }}>
                         {editDropoffSuggestions.map((s, i) => (
-                          <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm border-b last:border-b-0"
+                          <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm text-gray-900 border-b last:border-b-0"
                             onPointerDown={(e) => {
                               e.preventDefault();
                               setEditingBooking(prev => ({ ...prev, dropoffAddress: s.description }));
