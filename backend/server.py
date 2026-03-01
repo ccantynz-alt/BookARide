@@ -1619,11 +1619,17 @@ async def create_booking(booking: BookingCreate, background_tasks: BackgroundTas
         booking_obj = Booking(**booking.dict())
         booking_dict = booking_obj.dict()
         
-        # Ensure return flight number is preserved (check both field names)
-        if booking.returnDepartureFlightNumber:
-            booking_dict['returnDepartureFlightNumber'] = booking.returnDepartureFlightNumber
-            booking_dict['returnFlightNumber'] = booking.returnDepartureFlightNumber  # Also set the alias
-            logger.info(f"Set returnDepartureFlightNumber: {booking.returnDepartureFlightNumber}")
+        # Normalize flight number fields - sync all aliases so lookups always work
+        outbound_flight = booking.flightNumber or booking.departureFlightNumber or booking.arrivalFlightNumber or ''
+        if outbound_flight:
+            booking_dict['flightNumber'] = outbound_flight
+            booking_dict['departureFlightNumber'] = outbound_flight
+            booking_dict['arrivalFlightNumber'] = outbound_flight
+
+        return_flight = booking.returnDepartureFlightNumber or booking.returnFlightNumber or ''
+        if return_flight:
+            booking_dict['returnDepartureFlightNumber'] = return_flight
+            booking_dict['returnFlightNumber'] = return_flight
         
         # Get sequential reference number (store as string so admin search by "74" finds booking #74)
         ref_number = await get_next_reference_number()
