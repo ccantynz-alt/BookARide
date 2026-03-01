@@ -68,6 +68,26 @@ GMAIL_API_SETUP_GUIDE.md
 GOOGLE_WORKSPACE_EMAIL_SETUP.md
 check_mailgun_dns.py
 
+# Service account keys and credentials (NEVER commit these)
+**/service_account.json
+**/service_account*.json
+
+# Backup data files (may contain customer PII)
+backup_*.json
+bookings_backup.json
+**/*.csv
+
+# Test results and reports
+*_test_results.json
+test_results_*.json
+test_reports/
+
+# Deployment artifacts
+RENDER_BUILD_STAMP.txt
+.render_ping.txt
+redeploy.txt
+VERCEL_IDENTITY_FIX_*.txt
+
 # Deployment
 .vercel
 
@@ -87,43 +107,14 @@ agenthub/agents/youtube/db
 .cache/
 
 # Mobile development
-android-sdk/ -e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
-frontend/node_modules/.cache/default-development/0.pack
-frontend/node_modules/.cache/default-development/2.pack
-frontend/node_modules/.cache/default-development/1.pack
-frontend/node_modules/.cache/default-development/3.pack
-frontend/node_modules/.cache/default-development/5.pack
-frontend/node_modules/.cache/default-development/7.pack
-frontend/node_modules/.cache/default-development/4.pack
-frontend/node_modules/.cache/default-development/6.pack
-frontend/node_modules/.cache/default-development/8.pack
-frontend/node_modules/.cache/default-development/10.pack
-frontend/node_modules/.cache/default-development/9.pack
-frontend/node_modules/.cache/default-development/11.pack
-frontend/node_modules/.cache/default-development/7.pack_
-frontend/node_modules/.cache/default-development/12.pack
--e 
-# Environment files
-*.env
-*.env.*
-frontend/node_modules/.cache/default-development/13.pack
-frontend/node_modules/.cache/default-development/14.pack
-frontend/node_modules/.cache/default-development/15.pack
-frontend/node_modules/.cache/default-development/16.pack
-frontend/node_modules/.cache/default-development/18.pack
-frontend/node_modules/.cache/default-development/17.pack
-frontend/node_modules/.cache/default-development/20.pack
-frontend/node_modules/.cache/default-development/19.pack
-frontend/node_modules/.cache/default-development/21.pack
+android-sdk/
 
-# Ignore timestamped backup files created by patch scripts
+# Environment files
+*.env
+*.env.*
+
+# Ignore backup files created by patch scripts
+*.bak
 *.bak.*
 # Local scratch/notes files (often contain secrets)
 backend/*.txt
