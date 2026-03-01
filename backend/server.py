@@ -2118,13 +2118,13 @@ async def send_booking_email(email_data: dict, current_admin: dict = Depends(get
             return {"message": "Email sent successfully"}
         else:
             logger.error(f"Mailgun error: {response.status_code} - {response.text}")
-            raise HTTPException(status_code=500, detail=f"Failed to send email: {response.text}")
+            raise HTTPException(status_code=500, detail="Failed to send email. Please try again later.")
         
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error sending email: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error sending email: {str(e)}")
+        raise HTTPException(status_code=500, detail="Error sending email. Please try again later.")
 
 
 @api_router.post("/bookings/{booking_id}/send-to-admin")
@@ -2234,13 +2234,13 @@ async def send_booking_to_admin(booking_id: str, current_admin: dict = Depends(g
             return {"message": f"Booking details sent to {admin_email}"}
         else:
             logger.error(f"Mailgun error: {response.status_code} - {response.text}")
-            raise HTTPException(status_code=500, detail=f"Failed to send email: {response.text}")
+            raise HTTPException(status_code=500, detail="Failed to send email. Please try again later.")
         
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error sending booking to admin: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error sending booking to admin: {str(e)}")
+        raise HTTPException(status_code=500, detail="Error sending booking to admin. Please try again later.")
 
 
 # ============================================
@@ -3363,11 +3363,11 @@ async def handle_incoming_email(request: Request):
             return {"status": "success", "message": "AI response sent"}
         else:
             logger.error(f"Failed to send auto-reply: {response.text}")
-            return {"status": "error", "reason": response.text}
+            return {"status": "error", "reason": "Failed to send auto-reply. Please try again later."}
         
     except Exception as e:
         logger.error(f"Email auto-responder error: {str(e)}")
-        return {"status": "error", "reason": str(e)}
+        return {"status": "error", "reason": "Email auto-responder error. Please try again later."}
 
 
 @api_router.get("/admin/email-logs")

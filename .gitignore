@@ -60,6 +60,13 @@ chainlit.md
 
 # Sensitive documentation files that must not be re-committed
 EMAIL_SYSTEM_READY.md
+MAILGUN_SETUP_GUIDE.md
+MAILGUN_COMPLIANCE.md
+TEST_EMAIL_WHEN_READY.md
+ADMIN_MAILBOX_FEATURE.md
+GMAIL_API_SETUP_GUIDE.md
+GOOGLE_WORKSPACE_EMAIL_SETUP.md
+check_mailgun_dns.py
 
 # Deployment
 .vercel
