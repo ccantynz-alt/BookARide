@@ -1872,12 +1872,33 @@ async def get_bookings(
             if search.strip().isdigit():
                 query['$or'].append({'referenceNumber': int(search.strip())})
         
-        # Date range filter
-        if date_from:
-            query['date'] = query.get('date', {})
-            query['date']['$gte'] = date_from
-        if date_to:
-            query.setdefault('date', {})['$lte'] = date_to
+        # Date range filter - include bookings where EITHER the outbound date OR
+        # the return date falls within the range, so return trips don't disappear
+        # after the outbound leg is done.
+        if date_from or date_to:
+            date_conditions = []
+            # Match on outbound date
+            outbound_cond = {}
+            if date_from:
+                outbound_cond['$gte'] = date_from
+            if date_to:
+                outbound_cond['$lte'] = date_to
+            if outbound_cond:
+                date_conditions.append({'date': outbound_cond})
+            # Also match on return date (so return bookings stay visible)
+            return_cond = {}
+            if date_from:
+                return_cond['$gte'] = date_from
+            if date_to:
+                return_cond['$lte'] = date_to
+            if return_cond:
+                date_conditions.append({'returnDate': return_cond})
+            if date_conditions:
+                if '$or' in query:
+                    # Wrap existing $or with $and to combine
+                    query = {'$and': [{'$or': query['$or']}, {'$or': date_conditions}]}
+                else:
+                    query['$or'] = date_conditions
         
         # Calculate skip for pagination (only when not return_all)
         skip = (page - 1) * limit if not return_all else 0
@@ -1933,10 +1954,19 @@ async def get_bookings(
         all_bookings = list(all_bookings) + list(shuttle_raw)
         total = len(all_bookings)
         
-        # Custom sort: prioritize today, then tomorrow, then upcoming dates, then past dates
+        # Custom sort: use the "effective date" — for return bookings where the
+        # outbound is past but the return is still upcoming, sort by return date
+        # so they stay visible near the top instead of sinking to the bottom.
         def sort_key(b):
-            date = b.get('date', '9999-99-99')
+            outbound_date = b.get('date', '9999-99-99')
+            return_date = b.get('returnDate', '')
             time = b.get('time', '00:00')
+            # Use the latest relevant date: if there's a future return date, use it
+            if return_date and return_date >= today_str and outbound_date < today_str:
+                date = return_date
+                time = b.get('returnTime', '00:00')
+            else:
+                date = outbound_date
             if date == today_str:
                 return (0, time)  # Today first
             elif date > today_str:
