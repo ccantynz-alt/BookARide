@@ -2422,6 +2422,27 @@ export const AdminDashboard = () => {
           </Card>
         )}
 
+        {/* ALERT: Bookings needing approval */}
+        {stats.pendingApproval > 0 && (
+          <Card className="border-orange-400 bg-orange-50 shadow-md">
+            <CardContent className="p-4 flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="w-8 h-8 text-orange-600 shrink-0 animate-pulse" />
+                <div>
+                  <p className="font-bold text-orange-900">{stats.pendingApproval} booking{stats.pendingApproval !== 1 ? 's' : ''} need{stats.pendingApproval === 1 ? 's' : ''} your approval!</p>
+                  <p className="text-sm text-orange-800 mt-0.5">These are last-minute bookings (within 24 hours). They won't be confirmed until you approve them.</p>
+                </div>
+              </div>
+              <Button
+                onClick={() => setStatusFilter('pending_approval')}
+                className="bg-orange-600 hover:bg-orange-700 text-white font-semibold shrink-0"
+              >
+                View &amp; Approve
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
         {/* PROFESSIONAL STATS BAR - Clean white theme */}
         <ProfessionalStatsBar bookings={bookings} drivers={drivers} />
         
@@ -5416,11 +5437,11 @@ onViewBooking={(booking) => {
                 <strong>⚠️ No notifications will be sent</strong>
               </p>
               <p className="text-sm text-yellow-700 mt-1">
-                The selected bookings will be permanently deleted without sending any SMS or email notifications to customers.
+                The selected bookings will be moved to the Deleted tab without sending any SMS or email notifications to customers.
               </p>
             </div>
             <p className="text-gray-600 text-sm">
-              This action cannot be undone. Are you sure you want to delete these test/spam bookings?
+              You can restore these bookings later from the Deleted tab if needed.
             </p>
           </div>
           <div className="flex justify-end gap-3">
