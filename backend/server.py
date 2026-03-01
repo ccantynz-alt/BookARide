@@ -1310,6 +1310,7 @@ async def places_autocomplete(input: str = "", types: str = "address", region: s
         return {"predictions": []}
     geoapify_key = os.environ.get('GEOAPIFY_API_KEY', '')
     if not geoapify_key:
+        logger.warning("GEOAPIFY_API_KEY not set - address autocomplete disabled")
         return {"predictions": []}
     try:
         url = "https://api.geoapify.com/v1/geocode/autocomplete"
@@ -1320,7 +1321,9 @@ async def places_autocomplete(input: str = "", types: str = "address", region: s
             "format": "json",
             "limit": 5,
         }
-        r = requests.get(url, params=params, timeout=5)
+        # Use async httpx instead of blocking requests.get — prevents event loop stalling
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            r = await client.get(url, params=params)
         data = r.json()
         results = data.get("results", [])
         predictions = [

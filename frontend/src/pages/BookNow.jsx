@@ -127,20 +127,36 @@ export const BookNow = () => {
 
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
-  // Address autocomplete
+  // Address autocomplete with debounce + stale-request cancellation
   const [pickupSuggestions, setPickupSuggestions] = useState([]);
   const [dropoffSuggestions, setDropoffSuggestions] = useState([]);
   const [showPickupSuggestions, setShowPickupSuggestions] = useState(false);
   const [showDropoffSuggestions, setShowDropoffSuggestions] = useState(false);
+  const addressDebounceRef = useRef({});
+  const addressRequestRef = useRef(0);
 
-  const fetchAddressSuggestions = async (query, setter, showSetter) => {
+  const fetchAddressSuggestions = (query, setter, showSetter) => {
+    // Clear previous debounce timer for this setter
+    const key = setter === setPickupSuggestions ? 'pickup' : 'dropoff';
+    if (addressDebounceRef.current[key]) clearTimeout(addressDebounceRef.current[key]);
+
     if (query.length < 3) { setter([]); showSetter(false); return; }
-    try {
-      const res = await axios.get(`${API}/places/autocomplete`, { params: { input: query } });
-      const predictions = res.data?.predictions || [];
-      setter(predictions);
-      showSetter(predictions.length > 0);
-    } catch { setter([]); showSetter(false); }
+
+    // Debounce 300ms so rapid typing doesn't fire on every keystroke
+    addressDebounceRef.current[key] = setTimeout(async () => {
+      const requestId = ++addressRequestRef.current;
+      try {
+        const res = await axios.get(`${API}/places/autocomplete`, { params: { input: query } });
+        // Only apply if this is still the latest request (ignore stale responses)
+        if (requestId !== addressRequestRef.current) return;
+        const predictions = res.data?.predictions || [];
+        setter(predictions);
+        showSetter(predictions.length > 0);
+      } catch {
+        if (requestId !== addressRequestRef.current) return;
+        setter([]); showSetter(false);
+      }
+    }, 300);
   };
 
   const finalTotal = pricing.totalPrice;
@@ -475,7 +491,7 @@ export const BookNow = () => {
                           className="transition-all duration-200 focus:ring-2 focus:ring-gold"
                         />
                         {showPickupSuggestions && pickupSuggestions.length > 0 && (
-                          <ul className="absolute z-50 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+                          <ul className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
                             {pickupSuggestions.map((s, i) => (
                               <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm border-b last:border-b-0"
                                 onPointerDown={(e) => {
@@ -554,7 +570,7 @@ export const BookNow = () => {
                           className="transition-all duration-200 focus:ring-2 focus:ring-gold"
                         />
                         {showDropoffSuggestions && dropoffSuggestions.length > 0 && (
-                          <ul className="absolute z-50 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+                          <ul className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
                             {dropoffSuggestions.map((s, i) => (
                               <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm border-b last:border-b-0"
                                 onPointerDown={(e) => {

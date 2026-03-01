@@ -1631,15 +1631,28 @@ export const AdminDashboard = () => {
     }
   };
   
-  // Address autocomplete for admin forms (Geoapify)
-  const fetchAdminAddressSuggestions = async (query, setter, showSetter) => {
+  // Address autocomplete for admin forms (Geoapify) with debounce + stale-request guard
+  const adminAddrDebounceRef = useRef({});
+  const adminAddrRequestRef = useRef(0);
+  const fetchAdminAddressSuggestions = (query, setter, showSetter) => {
+    const key = [setAdminPickupSuggestions, setEditPickupSuggestions].includes(setter) ? 'pickup' : 'dropoff';
+    if (adminAddrDebounceRef.current[key]) clearTimeout(adminAddrDebounceRef.current[key]);
+
     if (query.length < 3) { setter([]); showSetter(false); return; }
-    try {
-      const res = await axios.get(`${API}/places/autocomplete`, { params: { input: query } });
-      const predictions = res.data?.predictions || [];
-      setter(predictions);
-      showSetter(predictions.length > 0);
-    } catch { setter([]); showSetter(false); }
+
+    adminAddrDebounceRef.current[key] = setTimeout(async () => {
+      const requestId = ++adminAddrRequestRef.current;
+      try {
+        const res = await axios.get(`${API}/places/autocomplete`, { params: { input: query } });
+        if (requestId !== adminAddrRequestRef.current) return;
+        const predictions = res.data?.predictions || [];
+        setter(predictions);
+        showSetter(predictions.length > 0);
+      } catch {
+        if (requestId !== adminAddrRequestRef.current) return;
+        setter([]); showSetter(false);
+      }
+    }, 300);
   };
 
   const handleRemovePickup = (index) => {
