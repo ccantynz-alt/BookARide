@@ -1770,7 +1770,13 @@ export const AdminDashboard = () => {
   const openEditBookingModal = (booking) => {
     setEditingBooking({
       ...booking,
-      pickupAddresses: booking.pickupAddresses || []
+      pickupAddresses: booking.pickupAddresses || [],
+      // Normalize flight field names: customer bookings use arrivalFlightNumber/departureFlightNumber,
+      // admin bookings use flightArrivalNumber/flightDepartureNumber — merge both so the edit form works
+      flightArrivalNumber: booking.flightArrivalNumber || booking.arrivalFlightNumber || '',
+      flightArrivalTime: booking.flightArrivalTime || booking.arrivalTime || '',
+      flightDepartureNumber: booking.flightDepartureNumber || booking.departureFlightNumber || '',
+      flightDepartureTime: booking.flightDepartureTime || booking.departureTime || '',
     });
     setShowEditBookingModal(true);
   };
@@ -1795,6 +1801,11 @@ export const AdminDashboard = () => {
         flightArrivalTime: editingBooking.flightArrivalTime,
         flightDepartureNumber: editingBooking.flightDepartureNumber,
         flightDepartureTime: editingBooking.flightDepartureTime,
+        // Also write customer-facing field names so all code paths see updated values
+        arrivalFlightNumber: editingBooking.flightArrivalNumber,
+        arrivalTime: editingBooking.flightArrivalTime,
+        departureFlightNumber: editingBooking.flightDepartureNumber,
+        departureTime: editingBooking.flightDepartureTime,
         // Return trip - inferred from filled return date + time
         bookReturn: !!(editingBooking.returnDate && editingBooking.returnTime),
         returnDate: editingBooking.returnDate,
@@ -2786,7 +2797,7 @@ onViewBooking={(booking) => {
                       const hasReturn = booking.returnDate && booking.returnTime;
                       const isUnassigned = !booking.driver_id && !booking.driver_name && !booking.assignedDriver;
                       const isUrgentUnassigned = isToday(booking.date) && isUnassigned;
-                      const flightNum = booking.flightNumber || booking.flight_number || '';
+                      const flightNum = booking.flightNumber || booking.flight_number || booking.flightArrivalNumber || booking.arrivalFlightNumber || booking.flightDepartureNumber || booking.departureFlightNumber || '';
                       
                       return (
                       <tr key={booking.id} className={`border-b hover:bg-gray-50 transition-colors
@@ -3889,7 +3900,7 @@ onViewBooking={(booking) => {
               </div>
 
               {/* Outbound Flight Info */}
-              {(selectedBooking.flightArrivalNumber || selectedBooking.flightDepartureNumber || selectedBooking.flightNumber) && (
+              {(selectedBooking.flightArrivalNumber || selectedBooking.arrivalFlightNumber || selectedBooking.flightDepartureNumber || selectedBooking.departureFlightNumber || selectedBooking.flightNumber) && (
                 <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                   <h3 className="font-semibold text-gray-900 mb-1 flex items-center gap-2">
                     ✈️ Outbound flight numbers
@@ -3897,24 +3908,24 @@ onViewBooking={(booking) => {
                   <p className="text-xs text-gray-500 mb-3">Pickup leg — arrival/departure at airport</p>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     {/* Show flightNumber from WordPress imports */}
-                    {selectedBooking.flightNumber && !selectedBooking.flightArrivalNumber && !selectedBooking.flightDepartureNumber && (
+                    {selectedBooking.flightNumber && !selectedBooking.flightArrivalNumber && !selectedBooking.arrivalFlightNumber && !selectedBooking.flightDepartureNumber && !selectedBooking.departureFlightNumber && (
                       <div>
                         <span className="text-gray-600">Flight:</span>
                         <p className="font-medium">{selectedBooking.flightNumber}</p>
                       </div>
                     )}
-                    {selectedBooking.flightArrivalNumber && (
+                    {(selectedBooking.flightArrivalNumber || selectedBooking.arrivalFlightNumber) && (
                       <div>
                         <span className="text-gray-600">Arrival Flight:</span>
-                        <p className="font-medium">{selectedBooking.flightArrivalNumber}</p>
-                        {selectedBooking.flightArrivalTime && <p className="text-xs text-gray-500">Arrival: {selectedBooking.flightArrivalTime}</p>}
+                        <p className="font-medium">{selectedBooking.flightArrivalNumber || selectedBooking.arrivalFlightNumber}</p>
+                        {(selectedBooking.flightArrivalTime || selectedBooking.arrivalTime) && <p className="text-xs text-gray-500">Arrival: {selectedBooking.flightArrivalTime || selectedBooking.arrivalTime}</p>}
                       </div>
                     )}
-                    {selectedBooking.flightDepartureNumber && (
+                    {(selectedBooking.flightDepartureNumber || selectedBooking.departureFlightNumber) && (
                       <div>
                         <span className="text-gray-600">Departure Flight:</span>
-                        <p className="font-medium">{selectedBooking.flightDepartureNumber}</p>
-                        {selectedBooking.flightDepartureTime && <p className="text-xs text-gray-500">Departure: {selectedBooking.flightDepartureTime}</p>}
+                        <p className="font-medium">{selectedBooking.flightDepartureNumber || selectedBooking.departureFlightNumber}</p>
+                        {(selectedBooking.flightDepartureTime || selectedBooking.departureTime) && <p className="text-xs text-gray-500">Departure: {selectedBooking.flightDepartureTime || selectedBooking.departureTime}</p>}
                       </div>
                     )}
                   </div>
