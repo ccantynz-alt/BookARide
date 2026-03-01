@@ -577,7 +577,8 @@ export const BookNow = () => {
                           <ul className="absolute z-50 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
                             {pickupSuggestions.map((s, i) => (
                               <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm border-b last:border-b-0"
-                                onMouseDown={() => {
+                                onPointerDown={(e) => {
+                                  e.preventDefault();
                                   setFormData(prev => ({ ...prev, pickupAddress: s.description }));
                                   setShowPickupSuggestions(false);
                                 }}>
@@ -660,7 +661,8 @@ export const BookNow = () => {
                           <ul className="absolute z-50 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
                             {dropoffSuggestions.map((s, i) => (
                               <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm border-b last:border-b-0"
-                                onMouseDown={() => {
+                                onPointerDown={(e) => {
+                                  e.preventDefault();
                                   setFormData(prev => ({ ...prev, dropoffAddress: s.description }));
                                   setShowDropoffSuggestions(false);
                                 }}>
