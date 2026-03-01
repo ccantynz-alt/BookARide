@@ -623,8 +623,17 @@ export const AdminDashboard = () => {
   // Xero invoice date state (for backdating)
   const [xeroInvoiceDate, setXeroInvoiceDate] = useState(null);
   
-  // Refs for edit modal autocomplete
-  
+  // Address autocomplete state for admin forms (create + edit)
+  const [adminPickupSuggestions, setAdminPickupSuggestions] = useState([]);
+  const [adminDropoffSuggestions, setAdminDropoffSuggestions] = useState([]);
+  const [showAdminPickupSuggestions, setShowAdminPickupSuggestions] = useState(false);
+  const [showAdminDropoffSuggestions, setShowAdminDropoffSuggestions] = useState(false);
+  // Edit modal address autocomplete
+  const [editPickupSuggestions, setEditPickupSuggestions] = useState([]);
+  const [editDropoffSuggestions, setEditDropoffSuggestions] = useState([]);
+  const [showEditPickupSuggestions, setShowEditPickupSuggestions] = useState(false);
+  const [showEditDropoffSuggestions, setShowEditDropoffSuggestions] = useState(false);
+
   // Date/Time picker states for admin form
   const [adminPickupDate, setAdminPickupDate] = useState(null);
   const [adminPickupTime, setAdminPickupTime] = useState(null);
@@ -1629,6 +1638,17 @@ export const AdminDashboard = () => {
     }
   };
   
+  // Address autocomplete for admin forms (Geoapify)
+  const fetchAdminAddressSuggestions = async (query, setter, showSetter) => {
+    if (query.length < 3) { setter([]); showSetter(false); return; }
+    try {
+      const res = await axios.get(`${API}/places/autocomplete`, { params: { input: query } });
+      const predictions = res.data?.predictions || [];
+      setter(predictions);
+      showSetter(predictions.length > 0);
+    } catch { setter([]); showSetter(false); }
+  };
+
   const handleRemovePickup = (index) => {
     setNewBooking(prev => ({
       ...prev,
@@ -1770,7 +1790,13 @@ export const AdminDashboard = () => {
   const openEditBookingModal = (booking) => {
     setEditingBooking({
       ...booking,
-      pickupAddresses: booking.pickupAddresses || []
+      pickupAddresses: booking.pickupAddresses || [],
+      // Normalize flight field names: customer bookings use arrivalFlightNumber/departureFlightNumber,
+      // admin bookings use flightArrivalNumber/flightDepartureNumber — merge both so the edit form works
+      flightArrivalNumber: booking.flightArrivalNumber || booking.arrivalFlightNumber || '',
+      flightArrivalTime: booking.flightArrivalTime || booking.arrivalTime || '',
+      flightDepartureNumber: booking.flightDepartureNumber || booking.departureFlightNumber || '',
+      flightDepartureTime: booking.flightDepartureTime || booking.departureTime || '',
     });
     setShowEditBookingModal(true);
   };
@@ -1795,6 +1821,11 @@ export const AdminDashboard = () => {
         flightArrivalTime: editingBooking.flightArrivalTime,
         flightDepartureNumber: editingBooking.flightDepartureNumber,
         flightDepartureTime: editingBooking.flightDepartureTime,
+        // Also write customer-facing field names so all code paths see updated values
+        arrivalFlightNumber: editingBooking.flightArrivalNumber,
+        arrivalTime: editingBooking.flightArrivalTime,
+        departureFlightNumber: editingBooking.flightDepartureNumber,
+        departureTime: editingBooking.flightDepartureTime,
         // Return trip - inferred from filled return date + time
         bookReturn: !!(editingBooking.returnDate && editingBooking.returnTime),
         returnDate: editingBooking.returnDate,
@@ -2411,6 +2442,27 @@ export const AdminDashboard = () => {
           </Card>
         )}
 
+        {/* ALERT: Bookings needing approval */}
+        {stats.pendingApproval > 0 && (
+          <Card className="border-orange-400 bg-orange-50 shadow-md">
+            <CardContent className="p-4 flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="w-8 h-8 text-orange-600 shrink-0 animate-pulse" />
+                <div>
+                  <p className="font-bold text-orange-900">{stats.pendingApproval} booking{stats.pendingApproval !== 1 ? 's' : ''} need{stats.pendingApproval === 1 ? 's' : ''} your approval!</p>
+                  <p className="text-sm text-orange-800 mt-0.5">These are last-minute bookings (within 24 hours). They won't be confirmed until you approve them.</p>
+                </div>
+              </div>
+              <Button
+                onClick={() => setStatusFilter('pending_approval')}
+                className="bg-orange-600 hover:bg-orange-700 text-white font-semibold shrink-0"
+              >
+                View &amp; Approve
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
         {/* PROFESSIONAL STATS BAR - Clean white theme */}
         <ProfessionalStatsBar bookings={bookings} drivers={drivers} />
         
@@ -2786,7 +2838,7 @@ onViewBooking={(booking) => {
                       const hasReturn = booking.returnDate && booking.returnTime;
                       const isUnassigned = !booking.driver_id && !booking.driver_name && !booking.assignedDriver;
                       const isUrgentUnassigned = isToday(booking.date) && isUnassigned;
-                      const flightNum = booking.flightNumber || booking.flight_number || '';
+                      const flightNum = booking.flightNumber || booking.flight_number || booking.flightArrivalNumber || booking.arrivalFlightNumber || booking.flightDepartureNumber || booking.departureFlightNumber || '';
                       
                       return (
                       <tr key={booking.id} className={`border-b hover:bg-gray-50 transition-colors
@@ -3889,7 +3941,7 @@ onViewBooking={(booking) => {
               </div>
 
               {/* Outbound Flight Info */}
-              {(selectedBooking.flightArrivalNumber || selectedBooking.flightDepartureNumber || selectedBooking.flightNumber) && (
+              {(selectedBooking.flightArrivalNumber || selectedBooking.arrivalFlightNumber || selectedBooking.flightDepartureNumber || selectedBooking.departureFlightNumber || selectedBooking.flightNumber) && (
                 <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                   <h3 className="font-semibold text-gray-900 mb-1 flex items-center gap-2">
                     ✈️ Outbound flight numbers
@@ -3897,24 +3949,24 @@ onViewBooking={(booking) => {
                   <p className="text-xs text-gray-500 mb-3">Pickup leg — arrival/departure at airport</p>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     {/* Show flightNumber from WordPress imports */}
-                    {selectedBooking.flightNumber && !selectedBooking.flightArrivalNumber && !selectedBooking.flightDepartureNumber && (
+                    {selectedBooking.flightNumber && !selectedBooking.flightArrivalNumber && !selectedBooking.arrivalFlightNumber && !selectedBooking.flightDepartureNumber && !selectedBooking.departureFlightNumber && (
                       <div>
                         <span className="text-gray-600">Flight:</span>
                         <p className="font-medium">{selectedBooking.flightNumber}</p>
                       </div>
                     )}
-                    {selectedBooking.flightArrivalNumber && (
+                    {(selectedBooking.flightArrivalNumber || selectedBooking.arrivalFlightNumber) && (
                       <div>
                         <span className="text-gray-600">Arrival Flight:</span>
-                        <p className="font-medium">{selectedBooking.flightArrivalNumber}</p>
-                        {selectedBooking.flightArrivalTime && <p className="text-xs text-gray-500">Arrival: {selectedBooking.flightArrivalTime}</p>}
+                        <p className="font-medium">{selectedBooking.flightArrivalNumber || selectedBooking.arrivalFlightNumber}</p>
+                        {(selectedBooking.flightArrivalTime || selectedBooking.arrivalTime) && <p className="text-xs text-gray-500">Arrival: {selectedBooking.flightArrivalTime || selectedBooking.arrivalTime}</p>}
                       </div>
                     )}
-                    {selectedBooking.flightDepartureNumber && (
+                    {(selectedBooking.flightDepartureNumber || selectedBooking.departureFlightNumber) && (
                       <div>
                         <span className="text-gray-600">Departure Flight:</span>
-                        <p className="font-medium">{selectedBooking.flightDepartureNumber}</p>
-                        {selectedBooking.flightDepartureTime && <p className="text-xs text-gray-500">Departure: {selectedBooking.flightDepartureTime}</p>}
+                        <p className="font-medium">{selectedBooking.flightDepartureNumber || selectedBooking.departureFlightNumber}</p>
+                        {(selectedBooking.flightDepartureTime || selectedBooking.departureTime) && <p className="text-xs text-gray-500">Departure: {selectedBooking.flightDepartureTime || selectedBooking.departureTime}</p>}
                       </div>
                     )}
                   </div>
@@ -4594,14 +4646,33 @@ onViewBooking={(booking) => {
             <div>
               <h3 className="font-semibold text-gray-900 mb-3">Trip Information</h3>
               <div className="space-y-4">
-                <div>
+                <div className="relative">
                   <Label>Pickup Address 1 *</Label>
                   <Input
                     value={newBooking.pickupAddress}
-                    onChange={(e) => setNewBooking(prev => ({ ...prev, pickupAddress: e.target.value }))}
-                    placeholder="Enter full address..."
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setNewBooking(prev => ({ ...prev, pickupAddress: val }));
+                      fetchAdminAddressSuggestions(val, setAdminPickupSuggestions, setShowAdminPickupSuggestions);
+                    }}
+                    onBlur={() => setTimeout(() => setShowAdminPickupSuggestions(false), 200)}
+                    placeholder="Start typing address..."
+                    autoComplete="off"
                     className="mt-1"
                   />
+                  {showAdminPickupSuggestions && adminPickupSuggestions.length > 0 && (
+                    <ul className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+                      {adminPickupSuggestions.map((s, i) => (
+                        <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm border-b last:border-b-0"
+                          onMouseDown={() => {
+                            setNewBooking(prev => ({ ...prev, pickupAddress: s.description }));
+                            setShowAdminPickupSuggestions(false);
+                          }}>
+                          {s.description}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
 
                 {/* Additional Pickup Addresses */}
@@ -4649,14 +4720,33 @@ onViewBooking={(booking) => {
                   </p>
                 </div>
 
-                <div>
+                <div className="relative">
                   <Label>Drop-off Address *</Label>
                   <Input
                     value={newBooking.dropoffAddress}
-                    onChange={(e) => setNewBooking(prev => ({ ...prev, dropoffAddress: e.target.value }))}
-                    placeholder="Enter full address..."
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setNewBooking(prev => ({ ...prev, dropoffAddress: val }));
+                      fetchAdminAddressSuggestions(val, setAdminDropoffSuggestions, setShowAdminDropoffSuggestions);
+                    }}
+                    onBlur={() => setTimeout(() => setShowAdminDropoffSuggestions(false), 200)}
+                    placeholder="Start typing address..."
+                    autoComplete="off"
                     className="mt-1"
                   />
+                  {showAdminDropoffSuggestions && adminDropoffSuggestions.length > 0 && (
+                    <ul className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+                      {adminDropoffSuggestions.map((s, i) => (
+                        <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm border-b last:border-b-0"
+                          onMouseDown={() => {
+                            setNewBooking(prev => ({ ...prev, dropoffAddress: s.description }));
+                            setShowAdminDropoffSuggestions(false);
+                          }}>
+                          {s.description}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
@@ -5085,14 +5175,33 @@ onViewBooking={(booking) => {
               <div>
                 <h3 className="font-semibold text-gray-900 mb-3">Trip Information</h3>
                 <div className="space-y-4">
-                  <div>
+                  <div className="relative">
                     <Label>Pickup Address 1 *</Label>
                     <Input
                       value={editingBooking.pickupAddress}
-                      onChange={(e) => setEditingBooking(prev => ({ ...prev, pickupAddress: e.target.value }))}
-                      placeholder="Enter full address..."
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setEditingBooking(prev => ({ ...prev, pickupAddress: val }));
+                        fetchAdminAddressSuggestions(val, setEditPickupSuggestions, setShowEditPickupSuggestions);
+                      }}
+                      onBlur={() => setTimeout(() => setShowEditPickupSuggestions(false), 200)}
+                      placeholder="Start typing address..."
+                      autoComplete="off"
                       className="mt-1"
                     />
+                    {showEditPickupSuggestions && editPickupSuggestions.length > 0 && (
+                      <ul className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+                        {editPickupSuggestions.map((s, i) => (
+                          <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm border-b last:border-b-0"
+                            onMouseDown={() => {
+                              setEditingBooking(prev => ({ ...prev, pickupAddress: s.description }));
+                              setShowEditPickupSuggestions(false);
+                            }}>
+                            {s.description}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
 
                   {/* Additional Pickup Addresses */}
@@ -5131,14 +5240,33 @@ onViewBooking={(booking) => {
                     </button>
                   </div>
 
-                  <div>
+                  <div className="relative">
                     <Label>Drop-off Address *</Label>
                     <Input
                       value={editingBooking.dropoffAddress}
-                      onChange={(e) => setEditingBooking(prev => ({ ...prev, dropoffAddress: e.target.value }))}
-                      placeholder="Enter full address..."
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setEditingBooking(prev => ({ ...prev, dropoffAddress: val }));
+                        fetchAdminAddressSuggestions(val, setEditDropoffSuggestions, setShowEditDropoffSuggestions);
+                      }}
+                      onBlur={() => setTimeout(() => setShowEditDropoffSuggestions(false), 200)}
+                      placeholder="Start typing address..."
+                      autoComplete="off"
                       className="mt-1"
                     />
+                    {showEditDropoffSuggestions && editDropoffSuggestions.length > 0 && (
+                      <ul className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+                        {editDropoffSuggestions.map((s, i) => (
+                          <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm border-b last:border-b-0"
+                            onMouseDown={() => {
+                              setEditingBooking(prev => ({ ...prev, dropoffAddress: s.description }));
+                              setShowEditDropoffSuggestions(false);
+                            }}>
+                            {s.description}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -5148,7 +5276,6 @@ onViewBooking={(booking) => {
                         type="date"
                         value={editingBooking.date}
                         onChange={(e) => setEditingBooking(prev => ({...prev, date: e.target.value}))}
-                        min={new Date().toISOString().split('T')[0]}
                         className="mt-1"
                       />
                     </div>
@@ -5405,11 +5532,11 @@ onViewBooking={(booking) => {
                 <strong>⚠️ No notifications will be sent</strong>
               </p>
               <p className="text-sm text-yellow-700 mt-1">
-                The selected bookings will be permanently deleted without sending any SMS or email notifications to customers.
+                The selected bookings will be moved to the Deleted tab without sending any SMS or email notifications to customers.
               </p>
             </div>
             <p className="text-gray-600 text-sm">
-              This action cannot be undone. Are you sure you want to delete these test/spam bookings?
+              You can restore these bookings later from the Deleted tab if needed.
             </p>
           </div>
           <div className="flex justify-end gap-3">

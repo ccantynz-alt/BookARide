@@ -5680,28 +5680,29 @@ async def get_payment_status(session_id: str):
         reference_number = None
         
         # If payment is successful, update booking status and send confirmations
-        if checkout_status.payment_status == "paid" and result.modified_count > 0:
+        if checkout_status.payment_status == "paid":
             booking_id = checkout_status.metadata.get('booking_id')
             if booking_id:
-                await db.bookings.update_one(
-                    {"id": booking_id},
-                    {"$set": {"payment_status": "paid", "status": "confirmed"}}
-                )
-                logger.info(f"Booking {booking_id} confirmed after successful payment")
-                
-                # Get booking details for notifications
+                # Always ensure booking is confirmed when payment is paid
+                # (handles retries where transaction was already updated but booking update failed)
                 booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
                 if booking:
                     reference_number = booking.get('referenceNumber')
-                    
-                    # Send confirmations based on customer's notification preference
-                    send_customer_confirmation(booking)
-                    
-                    # Send admin notification
-                    await send_booking_notification_to_admin(booking)
-                    
-                    # Create Google Calendar event
-                    await create_calendar_event(booking)
+                    needs_confirmation = booking.get('payment_status') != 'paid'
+
+                    await db.bookings.update_one(
+                        {"id": booking_id},
+                        {"$set": {"payment_status": "paid", "status": "confirmed"}}
+                    )
+                    logger.info(f"Booking {booking_id} confirmed after successful payment")
+
+                    # Only send notifications on first confirmation to avoid duplicates
+                    if needs_confirmation:
+                        send_customer_confirmation(booking)
+                        await send_booking_notification_to_admin(booking)
+                        await create_calendar_event(booking)
+                else:
+                    logger.error(f"Payment succeeded but booking {booking_id} not found in database - potential orphan payment")
         
         # Return response with reference number
         return {
@@ -12446,39 +12447,46 @@ async def auto_archive_completed_bookings():
         
         logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ [Auto-Archive] Found {len(completed_bookings)} completed bookings to check")
         
+        # Grace period: keep completed bookings visible for 3 days after trip ends
+        grace_cutoff = (now_nz - timedelta(days=3)).strftime(‘%Y-%m-%d’)
+
         for booking in completed_bookings:
             try:
-                booking_date = booking.get('date', '')
-                is_return = booking.get('bookReturn', False)
-                return_date = booking.get('returnDate', '')
-                
-                # Determine the "trip end date"
+                booking_date = booking.get(‘date’, ‘’)
+                is_return = booking.get(‘bookReturn’, False)
+                return_date = booking.get(‘returnDate’, ‘’)
+
+                # Determine the “trip end date”
                 # For return bookings, use return date; otherwise use booking date
                 trip_end_date = return_date if is_return and return_date else booking_date
-                
+
                 # Skip if no valid date
                 if not trip_end_date:
                     skipped_count += 1
                     continue
-                
-                # Check if trip has passed (trip end date is before today)
-                if trip_end_date < today_str:
+
+                # Only archive if trip ended more than 3 days ago (grace period)
+                if trip_end_date < grace_cutoff:
                     # Archive this booking
-                    booking['archivedAt'] = datetime.now(timezone.utc).isoformat()
-                    booking['archivedBy'] = 'auto-archive'
-                    booking['archiveReason'] = 'auto' if not is_return else 'auto-return'
-                    booking['retentionExpiry'] = (datetime.now(timezone.utc) + timedelta(days=365*7)).isoformat()
-                    
-                    # Insert into archive
-                    await db.bookings_archive.insert_one(booking)
-                    
-                    # Remove from active bookings
-                    await db.bookings.delete_one({"id": booking.get('id')})
-                    
+                    booking[‘archivedAt’] = datetime.now(timezone.utc).isoformat()
+                    booking[‘archivedBy’] = ‘auto-archive’
+                    booking[‘archiveReason’] = ‘auto’ if not is_return else ‘auto-return’
+                    booking[‘retentionExpiry’] = (datetime.now(timezone.utc) + timedelta(days=365*7)).isoformat()
+
+                    # Insert into archive FIRST and verify before deleting
+                    archive_result = await db.bookings_archive.insert_one(booking)
+                    if not archive_result.acknowledged or not archive_result.inserted_id:
+                        logger.error(f”Failed to archive booking {booking.get(‘id’)} - skipping delete to prevent data loss”)
+                        skipped_count += 1
+                        continue
+
+                    # Only remove from active bookings after confirmed archive
+                    await db.bookings.delete_one({“id”: booking.get(‘id’)})
+
                     archived_count += 1
-                    
+
                     if archived_count <= 5:  # Only log first 5 for brevity
-                        logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ Auto-archived: Ref #{booking.get('referenceNumber')} - {booking.get('name')} (trip ended: {trip_end_date})")
+                        logger.info(f”Auto-archived: Ref #{booking.get(‘referenceNumber’)} - {booking.get(‘name’)} (trip ended: {trip_end_date})”)
                 else:
                     skipped_count += 1
                     
