@@ -279,6 +279,9 @@ export const BookNow = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Prevent double-submit while processing
+    if (isProcessingPayment) return;
+
     if (!formData.serviceType) { toast.error('Please select a service type'); return; }
     if (!formData.pickupAddress || !formData.dropoffAddress) { toast.error('Please enter both pickup and drop-off addresses'); return; }
     if (!formData.date || !formData.time) { toast.error('Please select pickup date and time'); return; }
@@ -996,9 +999,9 @@ export const BookNow = () => {
                       <Button
                         type="submit"
                         className="w-full mt-6 bg-gold hover:bg-gold/90 text-black font-semibold py-6 text-lg transition-colors duration-200"
-                        disabled={pricing.calculating || pricing.totalPrice === 0}
+                        disabled={pricing.calculating || pricing.totalPrice === 0 || isProcessingPayment}
                       >
-                        Book Now
+                        {isProcessingPayment ? 'Processing...' : 'Book Now'}
                       </Button>
                     </CardContent>
                   </Card>
