@@ -397,7 +397,7 @@ def validate_booking_date(self):
     if hasattr(self, '_skip_date_validation') or getattr(self, 'id', None):    
         return self
     
-    if self.date:  # ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ NOW PROPERLY INSIDE THE FUNCTION
+    if self.date:  # ÃƒÆ'Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ'Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ'Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ NOW PROPERLY INSIDE THE FUNCTION
         try:
             nz_tz = pytz.timezone('Pacific/Auckland')
             today = datetime.now(nz_tz).strftime('%Y-%m-%d')
@@ -1478,7 +1478,7 @@ async def calculate_price(request: PriceCalculationRequest):
         else:
             rate_per_km = 3.50   # $3.50 per km for 100km+
         
-        # Calculate base price: distance ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â rate for that bracket
+        # Calculate base price: distance ÃƒÆ'Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ'Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â rate for that bracket
         base_price = distance_km * rate_per_km
         
         # VIP Airport Pickup fee: Optional $15 extra service
@@ -12448,15 +12448,15 @@ async def auto_archive_completed_bookings():
         logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ [Auto-Archive] Found {len(completed_bookings)} completed bookings to check")
         
         # Grace period: keep completed bookings visible for 3 days after trip ends
-        grace_cutoff = (now_nz - timedelta(days=3)).strftime(‘%Y-%m-%d’)
+        grace_cutoff = (now_nz - timedelta(days=3)).strftime('%Y-%m-%d')
 
         for booking in completed_bookings:
             try:
-                booking_date = booking.get(‘date’, ‘’)
-                is_return = booking.get(‘bookReturn’, False)
-                return_date = booking.get(‘returnDate’, ‘’)
+                booking_date = booking.get('date', '')
+                is_return = booking.get('bookReturn', False)
+                return_date = booking.get('returnDate', '')
 
-                # Determine the “trip end date”
+                # Determine the "trip end date"
                 # For return bookings, use return date; otherwise use booking date
                 trip_end_date = return_date if is_return and return_date else booking_date
 
@@ -12468,25 +12468,25 @@ async def auto_archive_completed_bookings():
                 # Only archive if trip ended more than 3 days ago (grace period)
                 if trip_end_date < grace_cutoff:
                     # Archive this booking
-                    booking[‘archivedAt’] = datetime.now(timezone.utc).isoformat()
-                    booking[‘archivedBy’] = ‘auto-archive’
-                    booking[‘archiveReason’] = ‘auto’ if not is_return else ‘auto-return’
-                    booking[‘retentionExpiry’] = (datetime.now(timezone.utc) + timedelta(days=365*7)).isoformat()
+                    booking['archivedAt'] = datetime.now(timezone.utc).isoformat()
+                    booking['archivedBy'] = 'auto-archive'
+                    booking['archiveReason'] = 'auto' if not is_return else 'auto-return'
+                    booking['retentionExpiry'] = (datetime.now(timezone.utc) + timedelta(days=365*7)).isoformat()
 
                     # Insert into archive FIRST and verify before deleting
                     archive_result = await db.bookings_archive.insert_one(booking)
                     if not archive_result.acknowledged or not archive_result.inserted_id:
-                        logger.error(f”Failed to archive booking {booking.get(‘id’)} - skipping delete to prevent data loss”)
+                        logger.error(f"Failed to archive booking {booking.get('id')} - skipping delete to prevent data loss")
                         skipped_count += 1
                         continue
 
                     # Only remove from active bookings after confirmed archive
-                    await db.bookings.delete_one({“id”: booking.get(‘id’)})
+                    await db.bookings.delete_one({"id": booking.get('id')})
 
                     archived_count += 1
 
                     if archived_count <= 5:  # Only log first 5 for brevity
-                        logger.info(f”Auto-archived: Ref #{booking.get(‘referenceNumber’)} - {booking.get(‘name’)} (trip ended: {trip_end_date})”)
+                        logger.info(f"Auto-archived: Ref #{booking.get('referenceNumber')} - {booking.get('name')} (trip ended: {trip_end_date})")
                 else:
                     skipped_count += 1
                     
