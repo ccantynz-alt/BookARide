@@ -75,7 +75,7 @@ check_mailgun_dns.py
 # Backup data files (may contain customer PII)
 backup_*.json
 bookings_backup.json
-**/*.csv
+backend/*.csv
 
 # Test results and reports
 *_test_results.json
@@ -115,7 +115,6 @@ android-sdk/
 
 # Ignore backup files created by patch scripts
 *.bak
-*.bak.*
 # Local scratch/notes files (often contain secrets)
 backend/*.txt
 backend/#*.txt
