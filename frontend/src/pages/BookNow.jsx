@@ -133,10 +133,9 @@ export const BookNow = () => {
   const [showPickupSuggestions, setShowPickupSuggestions] = useState(false);
   const [showDropoffSuggestions, setShowDropoffSuggestions] = useState(false);
   const addressDebounceRef = useRef({});
-  const addressRequestRef = useRef(0);
+  const addressRequestIdRef = useRef({ pickup: 0, dropoff: 0 });
 
   const fetchAddressSuggestions = (query, setter, showSetter) => {
-    // Clear previous debounce timer for this setter
     const key = setter === setPickupSuggestions ? 'pickup' : 'dropoff';
     if (addressDebounceRef.current[key]) clearTimeout(addressDebounceRef.current[key]);
 
@@ -144,16 +143,17 @@ export const BookNow = () => {
 
     // Debounce 300ms so rapid typing doesn't fire on every keystroke
     addressDebounceRef.current[key] = setTimeout(async () => {
-      const requestId = ++addressRequestRef.current;
+      const requestId = ++addressRequestIdRef.current[key];
       try {
         const res = await axios.get(`${API}/places/autocomplete`, { params: { input: query } });
-        // Only apply if this is still the latest request (ignore stale responses)
-        if (requestId !== addressRequestRef.current) return;
+        // Only apply if this is still the latest request for THIS field
+        if (requestId !== addressRequestIdRef.current[key]) return;
         const predictions = res.data?.predictions || [];
         setter(predictions);
         showSetter(predictions.length > 0);
-      } catch {
-        if (requestId !== addressRequestRef.current) return;
+      } catch (err) {
+        if (requestId !== addressRequestIdRef.current[key]) return;
+        console.error('[BookARide] Address autocomplete failed:', err?.message || err, 'URL:', `${API}/places/autocomplete`);
         setter([]); showSetter(false);
       }
     }, 300);

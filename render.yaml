@@ -22,6 +22,8 @@ services:
         sync: false
       - key: MAILGUN_API_KEY
         sync: false
+      - key: GEOAPIFY_API_KEY
+        sync: false
 
   # Frontend (React)
   - type: static

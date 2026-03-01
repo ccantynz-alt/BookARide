@@ -1632,24 +1632,28 @@ export const AdminDashboard = () => {
   };
   
   // Address autocomplete for admin forms (Geoapify) with debounce + stale-request guard
+  // Each setter gets its own request counter to prevent cross-field cancellation
   const adminAddrDebounceRef = useRef({});
-  const adminAddrRequestRef = useRef(0);
+  const adminAddrRequestIdRef = useRef({});
   const fetchAdminAddressSuggestions = (query, setter, showSetter) => {
+    // Use setter reference as unique key per field
     const key = [setAdminPickupSuggestions, setEditPickupSuggestions].includes(setter) ? 'pickup' : 'dropoff';
     if (adminAddrDebounceRef.current[key]) clearTimeout(adminAddrDebounceRef.current[key]);
 
     if (query.length < 3) { setter([]); showSetter(false); return; }
 
     adminAddrDebounceRef.current[key] = setTimeout(async () => {
-      const requestId = ++adminAddrRequestRef.current;
+      if (!adminAddrRequestIdRef.current[key]) adminAddrRequestIdRef.current[key] = 0;
+      const requestId = ++adminAddrRequestIdRef.current[key];
       try {
         const res = await axios.get(`${API}/places/autocomplete`, { params: { input: query } });
-        if (requestId !== adminAddrRequestRef.current) return;
+        if (requestId !== adminAddrRequestIdRef.current[key]) return;
         const predictions = res.data?.predictions || [];
         setter(predictions);
         showSetter(predictions.length > 0);
-      } catch {
-        if (requestId !== adminAddrRequestRef.current) return;
+      } catch (err) {
+        if (requestId !== adminAddrRequestIdRef.current[key]) return;
+        console.error('Admin address autocomplete error:', err);
         setter([]); showSetter(false);
       }
     }, 300);

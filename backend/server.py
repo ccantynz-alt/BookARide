@@ -1047,8 +1047,15 @@ async def root():
 
 @api_router.get("/health")
 async def health_check():
-    """Health check endpoint for Kubernetes"""
-    return {"status": "healthy", "service": "bookaride-api"}
+    """Health check endpoint — also reports which integrations are configured."""
+    geoapify = bool(os.environ.get('GEOAPIFY_API_KEY', ''))
+    return {
+        "status": "healthy",
+        "service": "bookaride-api",
+        "integrations": {
+            "geoapify_autocomplete": "configured" if geoapify else "MISSING - set GEOAPIFY_API_KEY",
+        }
+    }
 
 
 # Google Reviews Endpoint - Fetches reviews from Google Places API
@@ -11176,6 +11183,10 @@ if cors_origins_env == '*':
         "https://dazzling-leakey.preview.emergentagent.com",
         "http://localhost:3000"
     ]
+    # Also allow any Vercel preview/production deployments
+    cors_origins_vercel_env = os.environ.get('VERCEL_ORIGINS', '')
+    if cors_origins_vercel_env:
+        cors_origins.extend([o.strip() for o in cors_origins_vercel_env.split(',') if o.strip()])
 else:
     cors_origins = cors_origins_env.split(',')
 
@@ -11183,6 +11194,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
     allow_origins=cors_origins,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_methods=["*"],
     allow_headers=["*"],
 )
