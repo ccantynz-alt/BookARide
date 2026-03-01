@@ -16,12 +16,6 @@ import { CustomersTab } from '../components/admin/CustomersTab';
 import { DriverApplicationsTab } from '../components/admin/DriverApplicationsTab';
 import { LandingPagesTab } from '../components/admin/LandingPagesTab';
 import { AdminBreadcrumb } from '../components/admin/AdminBreadcrumb';
-import UrgentReturnsPanel from '../components/admin/UrgentReturnsPanel';
-import DashboardStatsPanel from '../components/admin/DashboardStatsPanel';
-import TodaysOperationsPanel from '../components/admin/TodaysOperationsPanel';
-import ProfessionalStatsBar from '../components/admin/ProfessionalStatsBar';
-import UrgentNotificationsCenter from '../components/admin/UrgentNotificationsCenter';
-import ConfirmationStatusPanel from '../components/admin/ConfirmationStatusPanel';
 import ReturnsOverviewPanel from '../components/admin/ReturnsOverviewPanel';
 import { API } from '../config/api';
 import Cockpit from '../admin/Cockpit';
@@ -2384,19 +2378,11 @@ export const AdminDashboard = () => {
               <span className="md:hidden">Arc</span>
               {archivedCount > 0 && <span className="text-[10px]">({archivedCount})</span>}
             </TabsTrigger>
-            <TabsTrigger value="customers" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 hidden lg:flex">
+            <TabsTrigger value="customers" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4">
               <Users className="w-3 h-3 md:w-4 md:h-4" />
               <span>Customers</span>
             </TabsTrigger>
-            <TabsTrigger value="applications" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 hidden xl:flex">
-              <FileText className="w-3 h-3 md:w-4 md:h-4" />
-              <span>Apps</span>
-            </TabsTrigger>
-            <TabsTrigger value="marketing" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 hidden xl:flex">
-              <Globe className="w-3 h-3 md:w-4 md:h-4" />
-              <span>Marketing</span>
-            </TabsTrigger>
-            <TabsTrigger value="import" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 hidden xl:flex text-purple-600">
+            <TabsTrigger value="import" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 text-purple-600">
               <FileText className="w-3 h-3 md:w-4 md:h-4" />
               <span>Import</span>
             </TabsTrigger>
@@ -2463,42 +2449,10 @@ export const AdminDashboard = () => {
           </Card>
         )}
 
-        {/* PROFESSIONAL STATS BAR - Clean white theme */}
-        <ProfessionalStatsBar bookings={bookings} drivers={drivers} />
-        
-        {/* URGENT NOTIFICATIONS CENTER - Action required items */}
-        <UrgentNotificationsCenter 
-          bookings={bookings} 
+        {/* RETURNS OVERVIEW - Shows bookings with return trips attached */}
+        <ReturnsOverviewPanel
+          bookings={bookings}
           drivers={drivers}
-          onAssignDriver={(booking) => {
-            setSelectedBooking(booking);
-            setShowDetailsModal(true);
-          }}
-          onViewBooking={(booking) => {
-            setSelectedBooking(booking);
-            setShowDetailsModal(true);
-          }}
-        />
-        
-        {/* Two Column Layout for Confirmations and Returns */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* CONFIRMATION STATUS PANEL - Track email/SMS confirmations */}
-          <ConfirmationStatusPanel bookings={bookings} />
-          
-          {/* RETURNS OVERVIEW PANEL - All upcoming returns */}
-          <ReturnsOverviewPanel 
-            bookings={bookings}
-            drivers={drivers}
-onViewBooking={(booking) => {
-            setSelectedBooking(booking);
-            setShowDetailsModal(true);
-          }}
-          />
-        </div>
-        
-        {/* TODAY'S OPERATIONS - Unified view of all pickups */}
-        <TodaysOperationsPanel 
-          bookings={bookings} 
           onViewBooking={(booking) => {
             setSelectedBooking(booking);
             setShowDetailsModal(true);
