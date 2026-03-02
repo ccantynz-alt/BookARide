@@ -361,9 +361,12 @@ export const BookNow = () => {
           }
         }
       } catch (paymentError) {
+        console.error('Payment checkout error:', paymentError?.response?.data || paymentError);
         setIsProcessingPayment(false);
         const ref = booking?.referenceNumber || booking?.id?.slice(0, 8);
-        toast.success(`Booking #${ref} created! Payment redirect failed - we'll contact you with payment details.`);
+        const detail = paymentError?.response?.data?.detail;
+        const errorMsg = typeof detail === 'string' && detail ? ` (${detail})` : '';
+        toast.success(`Booking #${ref} created! Payment redirect failed${errorMsg} - we'll contact you with payment details.`);
       }
     } catch (error) {
       console.error('Error submitting booking:', error);

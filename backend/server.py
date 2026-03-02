@@ -5878,8 +5878,14 @@ async def create_payment_checkout(request: PaymentCheckoutRequest, http_request:
         cancel_url = f"{request.origin_url}/book-now"
         
         # Get amount from booking (server-side only, never from frontend)
-        amount = float(booking.get('totalPrice', 0))
+        # Check both top-level totalPrice and pricing.totalPrice for resilience
+        amount = 0
+        if booking.get('pricing') and booking.get('pricing', {}).get('totalPrice'):
+            amount = float(booking.get('pricing', {}).get('totalPrice', 0))
+        elif booking.get('totalPrice'):
+            amount = float(booking.get('totalPrice', 0))
         if amount <= 0:
+            logger.error(f"Invalid booking amount for booking {request.booking_id}: totalPrice={booking.get('totalPrice')}, pricing.totalPrice={booking.get('pricing', {}).get('totalPrice')}")
             raise HTTPException(status_code=400, detail="Invalid booking amount")
         
         # Stripe expects amount in cents
