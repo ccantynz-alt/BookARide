@@ -493,7 +493,7 @@ export const BookNow = () => {
                             setFormData(prev => ({ ...prev, pickupAddress: val }));
                             fetchAddressSuggestions(val, setPickupSuggestions, setShowPickupSuggestions);
                           }}
-                          onBlur={() => setTimeout(() => setShowPickupSuggestions(false), 200)}
+                          onBlur={() => setTimeout(() => setShowPickupSuggestions(false), 350)}
                           placeholder="Start typing your address..."
                           required
                           autoComplete="off"
@@ -577,7 +577,7 @@ export const BookNow = () => {
                             setFormData(prev => ({ ...prev, dropoffAddress: val }));
                             fetchAddressSuggestions(val, setDropoffSuggestions, setShowDropoffSuggestions);
                           }}
-                          onBlur={() => setTimeout(() => setShowDropoffSuggestions(false), 200)}
+                          onBlur={() => setTimeout(() => setShowDropoffSuggestions(false), 350)}
                           placeholder="Start typing destination..."
                           required
                           autoComplete="off"
