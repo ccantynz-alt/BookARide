@@ -1358,7 +1358,7 @@ export const AdminDashboard = () => {
       filtered = filtered.filter(b => b && b.status === statusFilter);
     }
 
-    // Search filter - also search archive via API
+    // Search filter (local only - archive search is debounced separately below)
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
       filtered = filtered.filter(b => b && (
@@ -1369,31 +1369,38 @@ export const AdminDashboard = () => {
         b.dropoffAddress?.toLowerCase().includes(searchLower) ||
         String(b.referenceNumber)?.includes(searchTerm)
       ));
-      
-      // Also search archive for matching results
-      searchAllBookings(searchTerm);
     }
 
     setFilteredBookings(filtered);
   };
   filterBookingsRef.current = filterBookings;
 
-  // Search across all bookings (active + archived)
+  // Search across all bookings (active + archived) - debounced separately from filter
   const [archiveSearchResults, setArchiveSearchResults] = useState([]);
-  const searchAllBookings = async (term) => {
-    if (!term || term.length < 2) {
+  const archiveSearchDebounceRef = useRef(null);
+  const archiveSearchRequestRef = useRef(0);
+  useEffect(() => {
+    if (!searchTerm || searchTerm.length < 2) {
       setArchiveSearchResults([]);
       return;
     }
-    try {
-      const response = await axios.get(`${API}/bookings/search-all?search=${encodeURIComponent(term)}&include_archived=true`, getAuthHeaders());
-      const results = Array.isArray(response.data?.results) ? response.data.results : [];
-      const archivedOnly = results.filter(b => b && b.isArchived);
-      setArchiveSearchResults(archivedOnly);
-    } catch (error) {
-      console.error('Error searching all bookings:', error);
-    }
-  };
+    // Debounce archive search to avoid hammering API on every keystroke
+    if (archiveSearchDebounceRef.current) clearTimeout(archiveSearchDebounceRef.current);
+    archiveSearchDebounceRef.current = setTimeout(async () => {
+      const requestId = ++archiveSearchRequestRef.current;
+      try {
+        const response = await axios.get(`${API}/bookings/search-all?search=${encodeURIComponent(searchTerm)}&include_archived=true`, getAuthHeaders());
+        if (requestId !== archiveSearchRequestRef.current) return; // Discard stale
+        const results = Array.isArray(response.data?.results) ? response.data.results : [];
+        const archivedOnly = results.filter(b => b && b.isArchived);
+        setArchiveSearchResults(archivedOnly);
+      } catch (error) {
+        if (requestId !== archiveSearchRequestRef.current) return;
+        console.error('Error searching all bookings:', error);
+      }
+    }, 500);
+    return () => { if (archiveSearchDebounceRef.current) clearTimeout(archiveSearchDebounceRef.current); };
+  }, [searchTerm]);
 
   const handleLogout = () => {
     localStorage.removeItem('adminAuth');

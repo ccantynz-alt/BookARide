@@ -176,13 +176,21 @@ export const BookNow = () => {
   ];
 
   // Calculate price when key fields change
+  const priceCalcRef = useRef(0); // Guard against stale API responses
+  const priceCalcTimerRef = useRef(null);
   useEffect(() => {
     if (formData.pickupAddress && formData.dropoffAddress && formData.serviceType) {
-      calculatePrice();
+      // Debounce price calculation to avoid hammering API when multiple fields change at once
+      if (priceCalcTimerRef.current) clearTimeout(priceCalcTimerRef.current);
+      priceCalcTimerRef.current = setTimeout(() => {
+        calculatePrice();
+      }, 400);
     }
+    return () => { if (priceCalcTimerRef.current) clearTimeout(priceCalcTimerRef.current); };
   }, [formData.pickupAddress, formData.dropoffAddress, formData.pickupAddresses, formData.passengers, formData.serviceType, formData.returnDate, formData.returnTime, formData.vipAirportPickup, formData.oversizedLuggage]);
 
   const calculatePrice = async () => {
+    const requestId = ++priceCalcRef.current;
     setPricing(prev => ({ ...prev, calculating: true }));
 
     try {
@@ -190,13 +198,16 @@ export const BookNow = () => {
       const response = await axios.post(`${API}/calculate-price`, {
         serviceType: formData.serviceType,
         pickupAddress: formData.pickupAddress,
-        pickupAddresses: formData.pickupAddresses.filter(addr => addr.trim()),
+        pickupAddresses: (formData.pickupAddresses || []).filter(addr => addr.trim()),
         dropoffAddress: formData.dropoffAddress,
-        passengers: parseInt(formData.passengers),
+        passengers: parseInt(formData.passengers) || 1,
         vipAirportPickup: formData.vipAirportPickup,
         oversizedLuggage: formData.oversizedLuggage,
         bookReturn: hasReturnTrip
       });
+
+      // Discard stale response if a newer request was fired
+      if (requestId !== priceCalcRef.current) return;
 
       const data = response.data;
       setPricing({
@@ -211,14 +222,13 @@ export const BookNow = () => {
         calculating: false
       });
 
-      if (promoCode.trim() && !promoApplied) {
-        setTimeout(() => {
-          handleApplyPromoWithSubtotal(promoCode.trim(), data.subtotal);
-        }, 100);
-      } else {
-        setPromoApplied(null);
+      // Re-apply promo if one was already applied (don't trigger on every calc)
+      const currentPromo = promoCode.trim();
+      if (currentPromo && promoApplied) {
+        handleApplyPromoWithSubtotal(currentPromo, data.subtotal);
       }
     } catch (error) {
+      if (requestId !== priceCalcRef.current) return;
       console.error('Error calculating price:', error);
       setPricing(prev => ({ ...prev, calculating: false }));
       toast.error('Unable to calculate distance. Please check addresses.');
