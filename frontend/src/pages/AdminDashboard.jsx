@@ -549,25 +549,24 @@ export const AdminDashboard = () => {
   const [showDriverAssignPreview, setShowDriverAssignPreview] = useState(false);
   const [pendingAssignment, setPendingAssignment] = useState(null); // {tripType, driverPayout, driver}
   const [showCreateBookingModal, setShowCreateBookingModal] = useState(false);
-  const [newBooking, setNewBooking] = useState({
+  const initialBookingState = useMemo(() => ({
     name: '',
     email: '',
-    ccEmail: '',  // CC email for confirmation
+    ccEmail: '',
     phone: '',
     serviceType: 'airport-shuttle',
     pickupAddress: '',
-    pickupAddresses: [],  // Multiple pickups support
+    pickupAddresses: [],
     dropoffAddress: '',
     date: '',
     time: '',
     passengers: '1',
-    paymentMethod: 'stripe',  // Default to Stripe payment link (mandatory online payment)
+    paymentMethod: 'stripe',
     notes: '',
     flightArrivalNumber: '',
     flightArrivalTime: '',
     flightDepartureNumber: '',
     flightDepartureTime: '',
-    // Return trip fields
     bookReturn: false,
     returnDate: '',
     returnTime: '',
@@ -575,7 +574,8 @@ export const AdminDashboard = () => {
     returnDepartureTime: '',
     returnArrivalFlightNumber: '',
     returnArrivalTime: ''
-  });
+  }), []);
+  const [newBooking, setNewBooking] = useState(initialBookingState);
   const [bookingPricing, setBookingPricing] = useState({
     distance: 0,
     basePrice: 0,
@@ -635,6 +635,11 @@ export const AdminDashboard = () => {
   const [adminReturnTime, setAdminReturnTime] = useState(null);
   const [adminFlightArrivalTime, setAdminFlightArrivalTime] = useState(null);
   const [adminFlightDepartureTime, setAdminFlightDepartureTime] = useState(null);
+
+  // Stable date references to prevent re-renders (new Date() in JSX causes infinite loops)
+  const todayDate = useMemo(() => new Date(), []);
+  const minDatePast = useMemo(() => new Date('2020-01-01'), []);
+  const maxDateFuture = useMemo(() => new Date('2030-12-31'), []);
 
   // Pagination state (must be before useEffects that depend on dateFrom/dateTo)
   const [currentPage, setCurrentPage] = useState(1);
@@ -1633,11 +1638,12 @@ export const AdminDashboard = () => {
   };
   
   // Address autocomplete for admin forms (Geoapify)
-  const adminDebounceRef = useRef(null);
-  const fetchAdminAddressSuggestions = (query, setter, showSetter) => {
-    if (adminDebounceRef.current) clearTimeout(adminDebounceRef.current);
+  // Separate debounce refs per input to prevent race conditions
+  const adminDebounceRefs = useRef({});
+  const fetchAdminAddressSuggestions = useCallback((query, setter, showSetter, inputKey = 'default') => {
+    if (adminDebounceRefs.current[inputKey]) clearTimeout(adminDebounceRefs.current[inputKey]);
     if (query.length < 3) { setter([]); showSetter(false); return; }
-    adminDebounceRef.current = setTimeout(async () => {
+    adminDebounceRefs.current[inputKey] = setTimeout(async () => {
       try {
         const res = await axios.get(`${API}/places/autocomplete`, { params: { input: query } });
         const predictions = res.data?.predictions || [];
@@ -1649,28 +1655,28 @@ export const AdminDashboard = () => {
         showSetter(false);
       }
     }, 300);
-  };
+  }, []);
 
-  const handleRemovePickup = (index) => {
+  const handleRemovePickup = useCallback((index) => {
     setNewBooking(prev => ({
       ...prev,
       pickupAddresses: prev.pickupAddresses.filter((_, i) => i !== index)
     }));
-  };
+  }, []);
 
-  const handlePickupAddressChange = (index, value) => {
+  const handlePickupAddressChange = useCallback((index, value) => {
     setNewBooking(prev => ({
       ...prev,
       pickupAddresses: prev.pickupAddresses.map((addr, i) => i === index ? value : addr)
     }));
-  };
+  }, []);
 
-  const handleAddPickup = () => {
+  const handleAddPickup = useCallback(() => {
     setNewBooking(prev => ({
       ...prev,
       pickupAddresses: [...prev.pickupAddresses, '']
     }));
-  };
+  }, []);
 
   const exportToCSV = () => {
     try {
@@ -1845,28 +1851,26 @@ export const AdminDashboard = () => {
   };
 
   // Handle adding pickup to edit form
-  const handleAddEditPickup = () => {
+  const handleAddEditPickup = useCallback(() => {
     setEditingBooking(prev => ({
       ...prev,
       pickupAddresses: [...(prev.pickupAddresses || []), '']
     }));
-  };
+  }, []);
 
-  // Handle removing pickup from edit form
-  const handleRemoveEditPickup = (index) => {
+  const handleRemoveEditPickup = useCallback((index) => {
     setEditingBooking(prev => ({
       ...prev,
       pickupAddresses: prev.pickupAddresses.filter((_, i) => i !== index)
     }));
-  };
+  }, []);
 
-  // Handle edit pickup address change
-  const handleEditPickupAddressChange = (index, value) => {
+  const handleEditPickupAddressChange = useCallback((index, value) => {
     setEditingBooking(prev => ({
       ...prev,
       pickupAddresses: prev.pickupAddresses.map((addr, i) => i === index ? value : addr)
     }));
-  };
+  }, []);
 
   // Manual calendar sync
   const handleManualCalendarSync = async (bookingId) => {
@@ -2218,42 +2222,19 @@ export const AdminDashboard = () => {
 
       toast.success('Booking created successfully! Customer will receive email & SMS confirmation.');
       setShowCreateBookingModal(false);
-      // Reset form
-      setNewBooking({
-        name: '',
-        email: '',
-        ccEmail: '',
-        phone: '',
-        serviceType: 'airport-shuttle',
-        pickupAddress: '',
-        pickupAddresses: [],
-        dropoffAddress: '',
-        date: '',
-        time: '',
-        passengers: '1',
-        paymentMethod: 'stripe',  // Default to Stripe payment link
-        notes: '',
-        flightArrivalNumber: '',
-        flightArrivalTime: '',
-        flightDepartureNumber: '',
-        flightDepartureTime: '',
-        bookReturn: false,
-        returnDate: '',
-        returnTime: '',
-        returnDepartureFlightNumber: '',
-        returnDepartureTime: '',
-        returnArrivalFlightNumber: '',
-        returnArrivalTime: ''
-      });
+      // Reset all form state cleanly
+      setNewBooking(initialBookingState);
+      setAdminPickupDate(null);
+      setAdminPickupTime(null);
       setAdminReturnDate(null);
       setAdminReturnTime(null);
-      setBookingPricing({
-        distance: 0,
-        basePrice: 0,
-        airportFee: 0,
-        passengerFee: 0,
-        totalPrice: 0
-      });
+      setAdminFlightArrivalTime(null);
+      setAdminFlightDepartureTime(null);
+      setAdminPickupSuggestions([]);
+      setAdminDropoffSuggestions([]);
+      setShowAdminPickupSuggestions(false);
+      setShowAdminDropoffSuggestions(false);
+      setBookingPricing({ distance: 0, basePrice: 0, airportFee: 0, passengerFee: 0, totalPrice: 0 });
       setManualPriceOverride('');
       fetchBookingsRef.current?.(); // Refresh bookings list
     } catch (error) {
@@ -4205,8 +4186,8 @@ export const AdminDashboard = () => {
                           <CustomDatePicker
                             selected={xeroInvoiceDate || (selectedBooking.date ? new Date(selectedBooking.date + 'T00:00:00') : new Date())}
                             onChange={(date) => setXeroInvoiceDate(date)}
-                            minDate={new Date('2020-01-01')}
-                            maxDate={new Date('2030-12-31')}
+                            minDate={minDatePast}
+                            maxDate={maxDateFuture}
                             showMonthDropdown
                             showYearDropdown
                             dropdownMode="select"
@@ -4615,7 +4596,7 @@ export const AdminDashboard = () => {
                     onChange={(e) => {
                       const val = e.target.value;
                       setNewBooking(prev => ({ ...prev, pickupAddress: val }));
-                      fetchAdminAddressSuggestions(val, setAdminPickupSuggestions, setShowAdminPickupSuggestions);
+                      fetchAdminAddressSuggestions(val, setAdminPickupSuggestions, setShowAdminPickupSuggestions, 'createPickup');
                     }}
                     onFocus={() => { if (adminPickupSuggestions.length > 0) setShowAdminPickupSuggestions(true); }}
                     onBlur={() => setTimeout(() => setShowAdminPickupSuggestions(false), 300)}
@@ -4691,7 +4672,7 @@ export const AdminDashboard = () => {
                     onChange={(e) => {
                       const val = e.target.value;
                       setNewBooking(prev => ({ ...prev, dropoffAddress: val }));
-                      fetchAdminAddressSuggestions(val, setAdminDropoffSuggestions, setShowAdminDropoffSuggestions);
+                      fetchAdminAddressSuggestions(val, setAdminDropoffSuggestions, setShowAdminDropoffSuggestions, 'createDropoff');
                     }}
                     onFocus={() => { if (adminDropoffSuggestions.length > 0) setShowAdminDropoffSuggestions(true); }}
                     onBlur={() => setTimeout(() => setShowAdminDropoffSuggestions(false), 300)}
@@ -4732,8 +4713,8 @@ export const AdminDashboard = () => {
                           }
                         }}
                         placeholder="Select date"
-                        minDate={new Date()}
-                        maxDate={new Date('2030-12-31')}
+                        minDate={todayDate}
+                        maxDate={maxDateFuture}
                         showMonthDropdown
                         showYearDropdown
                         dropdownMode="select"
@@ -4867,8 +4848,8 @@ export const AdminDashboard = () => {
                                 }
                               }}
                               placeholder="Select return date"
-                              minDate={new Date('2020-01-01')}
-                              maxDate={new Date('2030-12-31')}
+                              minDate={minDatePast}
+                              maxDate={maxDateFuture}
                               showMonthDropdown
                               showYearDropdown
                               dropdownMode="select"
@@ -5041,19 +5022,17 @@ export const AdminDashboard = () => {
                 variant="outline"
                 onClick={() => {
                   setShowCreateBookingModal(false);
-                  setNewBooking({
-                    name: '',
-                    email: '',
-                    phone: '',
-                    serviceType: 'airport-shuttle',
-                    pickupAddress: '',
-                    dropoffAddress: '',
-                    date: '',
-                    time: '',
-                    passengers: '1',
-                    paymentMethod: 'stripe',  // Default to Stripe payment link
-                    notes: ''
-                  });
+                  setNewBooking(initialBookingState);
+                  setAdminPickupDate(null);
+                  setAdminPickupTime(null);
+                  setAdminReturnDate(null);
+                  setAdminReturnTime(null);
+                  setAdminFlightArrivalTime(null);
+                  setAdminFlightDepartureTime(null);
+                  setAdminPickupSuggestions([]);
+                  setAdminDropoffSuggestions([]);
+                  setShowAdminPickupSuggestions(false);
+                  setShowAdminDropoffSuggestions(false);
                   setBookingPricing({
                     distance: 0,
                     basePrice: 0,
@@ -5148,7 +5127,7 @@ export const AdminDashboard = () => {
                       onChange={(e) => {
                         const val = e.target.value;
                         setEditingBooking(prev => ({ ...prev, pickupAddress: val }));
-                        fetchAdminAddressSuggestions(val, setEditPickupSuggestions, setShowEditPickupSuggestions);
+                        fetchAdminAddressSuggestions(val, setEditPickupSuggestions, setShowEditPickupSuggestions, 'editPickup');
                       }}
                       onFocus={() => { if (editPickupSuggestions.length > 0) setShowEditPickupSuggestions(true); }}
                       onBlur={() => setTimeout(() => setShowEditPickupSuggestions(false), 300)}
@@ -5215,7 +5194,7 @@ export const AdminDashboard = () => {
                       onChange={(e) => {
                         const val = e.target.value;
                         setEditingBooking(prev => ({ ...prev, dropoffAddress: val }));
-                        fetchAdminAddressSuggestions(val, setEditDropoffSuggestions, setShowEditDropoffSuggestions);
+                        fetchAdminAddressSuggestions(val, setEditDropoffSuggestions, setShowEditDropoffSuggestions, 'editDropoff');
                       }}
                       onFocus={() => { if (editDropoffSuggestions.length > 0) setShowEditDropoffSuggestions(true); }}
                       onBlur={() => setTimeout(() => setShowEditDropoffSuggestions(false), 300)}
