@@ -44,8 +44,8 @@ except ImportError:
     get_noreply_email = lambda: os.environ.get("NOREPLY_EMAIL") or os.environ.get("SENDER_EMAIL", "noreply@bookaride.co.nz")
 
 
-def _send_email_with_fallbacks(to_email, subject, html_content, from_email=None, from_name="BookaRide"):
-    """Send email trying all available providers: email_sender module -> Google SMTP -> Mailgun.
+def _send_email_with_fallbacks(to_email, subject, html_content, from_email=None, from_name="BookaRide", cc=None, text_content=None, reply_to=None):
+    """Send email trying available providers: email_sender module -> Google SMTP.
     Returns True if any provider succeeds."""
     sender = from_email or get_noreply_email()
 
@@ -66,6 +66,12 @@ def _send_email_with_fallbacks(to_email, subject, html_content, from_email=None,
             message['Subject'] = subject
             message['From'] = f"{from_name} <{sender}>" if from_name else sender
             message['To'] = to_email
+            if cc:
+                message['Cc'] = cc
+            if reply_to:
+                message['Reply-To'] = reply_to
+            if text_content:
+                message.attach(MIMEText(text_content, 'plain'))
             message.attach(MIMEText(html_content, 'html'))
             smtp_host = os.environ.get('SMTP_HOST', 'smtp.gmail.com')
             smtp_port = int(os.environ.get('SMTP_PORT', '587'))
@@ -78,33 +84,13 @@ def _send_email_with_fallbacks(to_email, subject, html_content, from_email=None,
         except Exception as e:
             logging.getLogger(__name__).warning(f"SMTP send failed: {e}")
 
-    # 3) Try Mailgun API
-    mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
-    mailgun_domain = os.environ.get('MAILGUN_DOMAIN', 'mg.bookaride.co.nz')
-    if mailgun_api_key:
-        try:
-            response = requests.post(
-                f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
-                auth=("api", mailgun_api_key),
-                data={
-                    "from": f"{from_name} <{sender}>",
-                    "to": to_email,
-                    "subject": subject,
-                    "html": html_content,
-                },
-                timeout=15,
-            )
-            if response.status_code == 200:
-                logging.getLogger(__name__).info(f"Email sent via Mailgun to {to_email}")
-                return True
-            else:
-                logging.getLogger(__name__).error(f"Mailgun failed: {response.status_code} - {response.text}")
-        except Exception as e:
-            logging.getLogger(__name__).warning(f"Mailgun send failed: {e}")
-
-    logging.getLogger(__name__).error(f"ALL email providers failed for {to_email}. Configure SMTP_USER+SMTP_PASS (Google) or MAILGUN_API_KEY.")
+    logging.getLogger(__name__).error(f"ALL email providers failed for {to_email}. Configure SMTP_USER+SMTP_PASS (Google App Password).")
     return False
 
+
+def _send_email_compat(to_email, subject, html_content, from_name="BookaRide", text_content=None, cc=None, reply_to=None):
+    """Compatibility wrapper - replaces direct Mailgun API calls with Google SMTP."""
+    return _send_email_with_fallbacks(to_email, subject, html_content, from_name=from_name, text_content=text_content, cc=cc, reply_to=reply_to)
 
 # Global lock to prevent concurrent reminder sending
 reminder_lock = asyncio.Lock()
@@ -190,25 +176,21 @@ async def root_health_check():
 @app.get("/api/email-status")
 async def root_email_status():
     """Email config check – same as /api/email-status. No auth."""
+    smtp_configured = bool(os.environ.get("SMTP_USER") and os.environ.get("SMTP_PASS"))
     try:
-        from email_sender import is_email_configured, get_noreply_email
+        from email_sender import is_email_configured, get_noreply_email as _get_noreply
+        noreply = _get_noreply()
+        email_configured = is_email_configured()
     except ImportError:
-        return {
-            "email_provider": os.environ.get("EMAIL_PROVIDER") or "sendgrid",
-            "sendgrid_configured": bool(os.environ.get("SENDGRID_API_KEY")),
-            "smtp_configured": bool(os.environ.get("SMTP_USER") and os.environ.get("SMTP_PASS")),
-            "mailgun_configured": bool(os.environ.get("MAILGUN_API_KEY") and os.environ.get("MAILGUN_DOMAIN")),
-            "noreply_email": os.environ.get("NOREPLY_EMAIL") or os.environ.get("SENDER_EMAIL") or "(not set)",
-            "hint": "SendGrid only: set SENDGRID_API_KEY and NOREPLY_EMAIL (verified sender). Remove Mailgun/SMTP vars.",
-        }
+        noreply = os.environ.get("NOREPLY_EMAIL") or os.environ.get("SENDER_EMAIL") or "(not set)"
+        email_configured = smtp_configured
     return {
-        "email_provider": os.environ.get("EMAIL_PROVIDER") or "sendgrid",
-        "sendgrid_configured": bool(os.environ.get("SENDGRID_API_KEY")),
-        "smtp_configured": bool(os.environ.get("SMTP_USER") and os.environ.get("SMTP_PASS")),
-        "mailgun_configured": bool(os.environ.get("MAILGUN_API_KEY") and os.environ.get("MAILGUN_DOMAIN")),
-        "noreply_email": get_noreply_email(),
-        "email_configured": is_email_configured(),
-        "hint": "SendGrid only: SENDGRID_API_KEY + NOREPLY_EMAIL (verified sender in SendGrid). Remove Mailgun/SMTP.",
+        "email_provider": "google_smtp",
+        "smtp_configured": smtp_configured,
+        "smtp_host": os.environ.get("SMTP_HOST", "smtp.gmail.com") if smtp_configured else "(not set)",
+        "noreply_email": noreply,
+        "email_configured": email_configured,
+        "hint": "Set SMTP_USER (your Google email) and SMTP_PASS (Google App Password) for Google SMTP.",
     }
 
 # Google auth start - app-level routes (try multiple paths for compatibility)
@@ -954,7 +936,7 @@ async def request_password_reset(reset_request: PasswordResetRequest):
             "created_at": datetime.now(timezone.utc).isoformat()
         })
         
-        # Send reset email (Mailgun or Google Workspace SMTP)
+        # Send reset email (Google Workspace SMTP)
         public_domain = os.environ.get('PUBLIC_DOMAIN', 'https://www.bookaride.co.nz').rstrip('/')
         reset_link = f"{public_domain}/admin/reset-password?token={reset_token}"
         
@@ -2350,14 +2332,6 @@ async def send_booking_email(email_data: dict, current_admin: dict = Depends(get
         if not recipient_email or not subject or not message:
             raise HTTPException(status_code=400, detail="Missing required email fields")
         
-        # Send via Mailgun
-        mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
-        mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
-        sender_email = os.environ.get('SENDER_EMAIL', 'noreply@mg.bookaride.co.nz')
-        
-        if not mailgun_api_key or not mailgun_domain:
-            raise HTTPException(status_code=500, detail="Mailgun not configured")
-        
         # Create HTML email content
         html_content = f"""
         <html>
@@ -2376,32 +2350,15 @@ async def send_booking_email(email_data: dict, current_admin: dict = Depends(get
         </html>
         """
         
-        # Build email data
-        email_payload = {
-            "from": f"BookaRide Admin <{sender_email}>",
-            "to": recipient_email,
-            "subject": subject,
-            "html": html_content,
-            "text": message
-        }
-        
-        # Add CC if provided
-        if cc_emails and cc_emails.strip():
-            email_payload["cc"] = cc_emails.strip()
-        
-        # Send email via Mailgun API
-        response = requests.post(
-            f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
-            auth=("api", mailgun_api_key),
-            data=email_payload
-        )
-        
-        if response.status_code == 200:
+
+        cc = cc_emails.strip() if cc_emails and cc_emails.strip() else None
+        ok = _send_email_with_fallbacks(recipient_email, subject, html_content, from_name="BookaRide Admin", cc=cc, text_content=message)
+
+        if ok:
             cc_info = f" (CC: {cc_emails})" if cc_emails else ""
             logger.info(f"Admin email sent to {recipient_email}{cc_info} - Subject: {subject}")
             return {"message": "Email sent successfully"}
         else:
-            logger.error(f"Mailgun error: {response.status_code} - {response.text}")
             raise HTTPException(status_code=500, detail="Failed to send email. Please try again later.")
         
     except HTTPException:
@@ -2422,14 +2379,6 @@ async def send_booking_to_admin(booking_id: str, current_admin: dict = Depends(g
         
         # Get admin email from environment or use default
         admin_email = os.environ.get('ADMIN_EMAIL', 'admin@bookaride.co.nz')
-        
-        # Send via Mailgun
-        mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
-        mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
-        sender_email = os.environ.get('SENDER_EMAIL', 'noreply@mg.bookaride.co.nz')
-        
-        if not mailgun_api_key or not mailgun_domain:
-            raise HTTPException(status_code=500, detail="Mailgun not configured")
         
         # Format booking details
         total_price = booking.get('totalPrice', 0)
@@ -2501,23 +2450,13 @@ async def send_booking_to_admin(booking_id: str, current_admin: dict = Depends(g
         </html>
         """
         
-        # Send email via Mailgun API
-        response = requests.post(
-            f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
-            auth=("api", mailgun_api_key),
-            data={
-                "from": f"BookaRide System <{sender_email}>",
-                "to": admin_email,
-                "subject": f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¹ Booking Details - {booking.get('name', 'Customer')} - {booking.get('id', '')[:8].upper()}",
-                "html": html_content
-            }
-        )
-        
-        if response.status_code == 200:
+        email_subject = f"Booking Details - {booking.get('name', 'Customer')} - {booking.get('id', '')[:8].upper()}"
+        ok = _send_email_with_fallbacks(admin_email, email_subject, html_content, from_name="BookaRide System")
+
+        if ok:
             logger.info(f"Booking details sent to admin: {admin_email} - Booking: {booking_id}")
             return {"message": f"Booking details sent to {admin_email}"}
         else:
-            logger.error(f"Mailgun error: {response.status_code} - {response.text}")
             raise HTTPException(status_code=500, detail="Failed to send email. Please try again later.")
         
     except HTTPException:
@@ -2724,65 +2663,6 @@ def send_booking_confirmation_email(booking: dict, include_payment_link: bool = 
     return _send_email_with_fallbacks(recipient_email, subject, html_content, from_email=from_email, from_name="BookaRide")
 
 
-def send_via_mailgun(booking: dict):
-    """Try sending via Mailgun with beautiful email template"""
-    try:
-        mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
-        mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
-        sender_email = get_noreply_email()
-        
-        if not mailgun_api_key or not mailgun_domain:
-            logger.warning("Mailgun credentials not configured")
-            return False
-        
-        # Get booking reference for subject line
-        booking_ref = get_booking_reference(booking)
-        
-        # Get language preference for subject (default to English)
-        lang = booking.get('language', 'en')
-        if lang not in EMAIL_TRANSLATIONS:
-            lang = 'en'
-        t = EMAIL_TRANSLATIONS[lang]
-        
-        subject = f"{t['subject']} - Ref: {booking_ref}"
-        recipient_email = booking.get('email')
-        
-        # Use the beautiful email template
-        html_content = generate_confirmation_email_html(booking)
-        
-        # Build email data with CC support
-        email_data = {
-            "from": f"BookaRide <{sender_email}>",
-            "to": recipient_email,
-            "subject": subject,
-            "html": html_content
-        }
-        
-        # Add CC if provided
-        cc_email = booking.get('ccEmail', '')
-        if cc_email and cc_email.strip():
-            email_data["cc"] = cc_email.strip()
-        
-        # Send email via Mailgun API
-        response = requests.post(
-            f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
-            auth=("api", mailgun_api_key),
-            data=email_data
-        )
-        
-        if response.status_code == 200:
-            cc_info = f" (CC: {cc_email})" if cc_email else ""
-            logger.info(f"Confirmation email sent to {recipient_email}{cc_info} via Mailgun")
-            return True
-        else:
-            logger.error(f"Mailgun error: {response.status_code} - {response.text}")
-            return False
-        
-    except Exception as e:
-        logger.error(f"Mailgun error: {str(e)}")
-        return False
-
-
 def send_via_smtp(booking: dict):
     """Fallback: Send via Gmail SMTP"""
     try:
@@ -2975,13 +2855,7 @@ def send_reminder_email(booking: dict):
             logger.warning(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â Skipping reminder email for CANCELLED booking: {booking.get('name')} (Ref: {booking.get('referenceNumber')})")
             return False
         
-        mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
-        mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
         sender_email = get_noreply_email()
-        
-        if not mailgun_api_key or not mailgun_domain:
-            logger.warning("Mailgun credentials not configured for reminder")
-            return False
         
         booking_ref = get_booking_reference(booking)
         formatted_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
@@ -3123,23 +2997,13 @@ def send_reminder_email(booking: dict):
         </html>
         '''
         
-        response = requests.post(
-            f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
-            auth=("api", mailgun_api_key),
-            data={
-                "from": f"BookaRide <{sender_email}>",
-                "to": recipient_email,
-                "subject": f"Your Ride Tomorrow - {formatted_date} at {formatted_time} - Ref: {booking_ref}",
-                "html": html_content
-            }
-        )
-        
-        if response.status_code == 200:
+        reminder_subject = f"Your Ride Tomorrow - {formatted_date} at {formatted_time} - Ref: {booking_ref}"
+        ok = _send_email_with_fallbacks(recipient_email, reminder_subject, html_content, from_email=sender_email)
+        if ok:
             logger.info(f"Reminder email sent to {recipient_email}")
-            return True
         else:
-            logger.error(f"Reminder email failed: {response.status_code} - {response.text}")
-            return False
+            logger.error(f"Reminder email failed for {recipient_email}")
+        return ok
             
     except Exception as e:
         logger.error(f"Error sending reminder email: {str(e)}")
@@ -3580,13 +3444,7 @@ async def handle_incoming_email(request: Request):
             "Best regards,\nBookaRide Team"
         )
         
-        # Send the response via Mailgun
-        mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
-        mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
-        
-        if not mailgun_api_key or not mailgun_domain:
-            logger.error("Mailgun not configured for auto-reply")
-            return {"status": "error", "reason": "email service not configured"}
+        # Send auto-reply email
         
         # Prepare the reply
         reply_subject = f"Re: {subject}" if not subject.startswith('Re:') else subject
@@ -3612,21 +3470,11 @@ async def handle_incoming_email(request: Request):
         </div>
         """
         
-        # Send via Mailgun
-        response = requests.post(
-            f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
-            auth=("api", mailgun_api_key),
-            data={
-                "from": f"BookaRide NZ <bookings@{mailgun_domain}>",
-                "to": reply_to_email,
-                "subject": reply_subject,
-                "text": ai_response,
-                "html": html_response,
-                "h:Reply-To": "info@bookaride.co.nz"
-            }
-        )
-        
-        if response.status_code == 200:
+        # Send via Google SMTP
+        # Send via Google SMTP
+        ok = _send_email_with_fallbacks(reply_to_email, reply_subject, html_response, from_name="BookaRide NZ", text_content=ai_response, reply_to="info@bookaride.co.nz")
+
+        if ok:
             logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ AI auto-reply sent to {reply_to_email}")
             
             # Store the email interaction for admin review
@@ -3738,11 +3586,6 @@ async def send_abandoned_booking_emails():
             }
         }, {"_id": 0}).to_list(50)
         
-        mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
-        mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
-        
-        if not mailgun_api_key or not mailgun_domain:
-            return
         
         for booking in abandoned:
             try:
@@ -3788,18 +3631,9 @@ async def send_abandoned_booking_emails():
                 </div>
                 """
                 
-                response = requests.post(
-                    f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
-                    auth=("api", mailgun_api_key),
-                    data={
-                        "from": f"BookaRide NZ <bookings@{mailgun_domain}>",
-                        "to": email,
-                        "subject": subject,
-                        "html": html_content
-                    }
-                )
-                
-                if response.status_code == 200:
+                ok = _send_email_with_fallbacks(email, subject, html_content, from_name="BookaRide NZ")
+
+                if ok:
                     await db.abandoned_bookings.update_one(
                         {"email": email, "recovered": False},
                         {"$set": {"email_sent": True, "email_sent_at": datetime.now(timezone.utc).isoformat()}}
@@ -4089,10 +3923,6 @@ async def send_urgent_approval_notification(booking: dict):
     """Send urgent notification for bookings requiring manual approval (within 24 hours)"""
     try:
         admin_emails = _get_booking_notification_emails()
-        mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
-        mailgun_domain = os.environ.get('MAILGUN_DOMAIN', 'mg.bookaride.co.nz')
-        sender_email = os.environ.get('SENDER_EMAIL', 'noreply@mg.bookaride.co.nz')
-
         # Format booking details
         total_price = booking.get('totalPrice', 0)
         formatted_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
@@ -4307,11 +4137,7 @@ async def send_driver_notification(booking: dict, driver: dict, trip_type: str =
         logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â§ Driver Payout: ${driver_payout:.2f} for {trip_type} trip")
         
         # Send Email to Driver
-        mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
-        mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
-        sender_email = os.environ.get('SENDER_EMAIL', 'noreply@bookaride.co.nz')
-        
-        if mailgun_api_key and mailgun_domain:
+        if True:
             # Build pickup addresses list
             pickup_addresses = [booking.get('pickupAddress', 'N/A')]
             additional_pickups = booking.get('pickupAddresses', [])
@@ -4452,23 +4278,12 @@ BookaRide NZ
 bookaride.co.nz | +64 21 743 321
 """
             
-            response = requests.post(
-                f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
-                auth=("api", mailgun_api_key),
-                data={
-                    "from": f"BookaRide <{sender_email}>",
-                    "to": driver.get('email'),
-                    "subject": f"New Booking Assignment - Ref: {booking_ref} - {formatted_date}",
-                    "text": text_content,
-                    "html": html_content
-                }
-            )
-            
-            if response.status_code == 200:
-                logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Driver notification email sent to {driver.get('email')}")
-                logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â§ Mailgun response: {response.text}")
+            driver_email_subject = f"New Booking Assignment - Ref: {booking_ref} - {formatted_date}"
+            ok = _send_email_with_fallbacks(driver.get('email'), driver_email_subject, html_content, text_content=text_content)
+            if ok:
+                logger.info(f"Driver notification email sent to {driver.get('email')}")
             else:
-                logger.error(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Failed to send driver email: {response.status_code} - {response.text}")
+                logger.error(f"Failed to send driver email to {driver.get('email')}")
         
         # Send SMS to Driver (separate try block so email failures don't block SMS)
         try:
@@ -4961,17 +4776,15 @@ async def resend_booking_confirmation(booking_id: str, current_admin: dict = Dep
 async def get_email_status():
     """Check if email is configured on this server (no auth). Use to verify Render env vars."""
     smtp_configured = bool(os.environ.get("SMTP_USER") and os.environ.get("SMTP_PASS"))
-    mailgun_configured = bool(os.environ.get("MAILGUN_API_KEY"))
 
     return {
         "email_sender_module": send_email_unified is not None,
         "smtp_configured": smtp_configured,
         "smtp_host": os.environ.get("SMTP_HOST", "smtp.gmail.com") if smtp_configured else "(not set)",
         "smtp_user": os.environ.get("SMTP_USER", "(not set)")[:3] + "***" if smtp_configured else "(not set)",
-        "mailgun_configured": mailgun_configured,
         "noreply_email": get_noreply_email(),
-        "any_provider_available": send_email_unified is not None or smtp_configured or mailgun_configured,
-        "fallback_chain": "email_sender -> Google SMTP -> Mailgun",
+        "any_provider_available": send_email_unified is not None or smtp_configured,
+        "fallback_chain": "email_sender -> Google SMTP",
         "hint": "Set SMTP_USER (your Google email) and SMTP_PASS (Google App Password) for Google SMTP.",
     }
 
@@ -4985,7 +4798,7 @@ async def admin_send_test_email(body: dict = Body(default={}), current_admin: di
 
     html = """<h2>BookaRide Test Email</h2>
     <p>If you are reading this, email sending is working correctly.</p>
-    <p><strong>Provider chain:</strong> email_sender module &rarr; Google SMTP &rarr; Mailgun</p>
+    <p><strong>Provider:</strong> Google SMTP</p>
     <p>Sent via <code>_send_email_with_fallbacks()</code></p>"""
 
     ok = _send_email_with_fallbacks(to, "BookaRide Test Email - Email Is Working!", html)
@@ -4996,7 +4809,6 @@ async def admin_send_test_email(body: dict = Body(default={}), current_admin: di
     diag = {
         "smtp_user_set": bool(os.environ.get("SMTP_USER")),
         "smtp_pass_set": bool(os.environ.get("SMTP_PASS")),
-        "mailgun_key_set": bool(os.environ.get("MAILGUN_API_KEY")),
         "email_sender_available": send_email_unified is not None,
     }
     raise HTTPException(status_code=500, detail=f"All email providers failed. Config: {diag}")
@@ -6109,38 +5921,28 @@ async def stripe_webhook(request: Request):
                         if shuttle_booking:
                             # Send email confirmation for shuttle
                             try:
-                                mailgun_key = os.environ.get('MAILGUN_API_KEY')
-                                mailgun_domain = os.environ.get('MAILGUN_DOMAIN', 'mg.bookaride.co.nz')
-                                if mailgun_key:
-                                    requests.post(
-                                        f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
-                                        auth=("api", mailgun_key),
-                                        data={
-                                            "from": f"Book A Ride NZ <bookings@{mailgun_domain}>",
-                                            "to": shuttle_booking['email'],
-                                            "subject": f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â Shuttle Booking Confirmed - {shuttle_booking['date']} {shuttle_booking['departureTime']}",
-                                            "html": f"""
-                                            <h2>Your Shuttle Seat is Reserved!</h2>
-                                            <p>Hi {shuttle_booking['name']},</p>
-                                            <p>Great news! Your seat on the shared shuttle is confirmed.</p>
-                                            <h3>Booking Details:</h3>
-                                            <ul>
-                                                <li><strong>Date:</strong> {shuttle_booking['date']}</li>
-                                                <li><strong>Departure Time:</strong> {shuttle_booking['departureTime']}</li>
-                                                <li><strong>Pickup:</strong> {shuttle_booking['pickupAddress']}</li>
-                                                <li><strong>Destination:</strong> Auckland International Airport</li>
-                                                <li><strong>Passengers:</strong> {shuttle_booking['passengers']}</li>
-                                            </ul>
-                                            <h3>Payment Info:</h3>
-                                            <p>ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³ A hold of <strong>${shuttle_booking.get('totalEstimated', 100)}</strong> has been placed on your card.</p>
-                                            <p>ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ You will only be charged the <strong>final price</strong> when the shuttle arrives at the airport.</p>
-                                            <p>ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â° The more passengers on your shuttle, the cheaper everyone pays!</p>
-                                            <p>We'll be in touch closer to your departure date with pickup details.</p>
-                                            <p>Thank you for choosing Book A Ride!</p>
-                                            """
-                                        }
-                                    )
-                                    logger.info(f"Shuttle confirmation email sent to {shuttle_booking['email']}")
+                                shuttle_subject = f"Shuttle Booking Confirmed - {shuttle_booking['date']} {shuttle_booking['departureTime']}"
+                                shuttle_html = f"""
+                                <h2>Your Shuttle Seat is Reserved!</h2>
+                                <p>Hi {shuttle_booking['name']},</p>
+                                <p>Great news! Your seat on the shared shuttle is confirmed.</p>
+                                <h3>Booking Details:</h3>
+                                <ul>
+                                    <li><strong>Date:</strong> {shuttle_booking['date']}</li>
+                                    <li><strong>Departure Time:</strong> {shuttle_booking['departureTime']}</li>
+                                    <li><strong>Pickup:</strong> {shuttle_booking['pickupAddress']}</li>
+                                    <li><strong>Destination:</strong> Auckland International Airport</li>
+                                    <li><strong>Passengers:</strong> {shuttle_booking['passengers']}</li>
+                                </ul>
+                                <h3>Payment Info:</h3>
+                                <p>A hold of <strong>${shuttle_booking.get('totalEstimated', 100)}</strong> has been placed on your card.</p>
+                                <p>You will only be charged the <strong>final price</strong> when the shuttle arrives at the airport.</p>
+                                <p>The more passengers on your shuttle, the cheaper everyone pays!</p>
+                                <p>We'll be in touch closer to your departure date with pickup details.</p>
+                                <p>Thank you for choosing Book A Ride!</p>
+                                """
+                                _send_email_with_fallbacks(shuttle_booking['email'], shuttle_subject, shuttle_html, from_name='Book A Ride NZ')
+                                logger.info(f"Shuttle confirmation email sent to {shuttle_booking['email']}")
                             except Exception as email_error:
                                 logger.error(f"Failed to send shuttle confirmation email: {email_error}")
                     else:
@@ -6409,37 +6211,24 @@ async def twilio_sms_webhook(request: Request):
                     # Notify admin of driver acknowledgment
                     try:
                         admin_email = os.environ.get('ADMIN_EMAIL', 'bookings@bookaride.co.nz')
-                        mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
-                        mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
-                        sender_email = os.environ.get('SENDER_EMAIL', 'noreply@mg.bookaride.co.nz')
-                        
-                        if mailgun_api_key and mailgun_domain:
-                            html_content = f"""
-                            <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px;">
-                                <div style="background: #22c55e; color: white; padding: 15px; border-radius: 8px 8px 0 0; text-align: center;">
-                                    <h2 style="margin: 0;">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Driver Acknowledged Job</h2>
-                                </div>
-                                <div style="background: #f0fdf4; padding: 20px; border: 1px solid #86efac; border-top: none; border-radius: 0 0 8px 8px;">
-                                    <p><strong>Driver:</strong> {driver_name}</p>
-                                    <p><strong>Booking:</strong> #{booking_ref}</p>
-                                    <p><strong>Trip Type:</strong> {trip_type}</p>
-                                    <p><strong>Customer:</strong> {booking.get('name')}</p>
-                                    <p><strong>Date:</strong> {format_date_ddmmyyyy(booking.get('date'))} at {booking.get('time')}</p>
-                                    <p style="color: #16a34a; font-weight: bold;">Driver has confirmed receipt of this job assignment.</p>
-                                </div>
+                        html_content = f"""
+                        <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px;">
+                            <div style="background: #22c55e; color: white; padding: 15px; border-radius: 8px 8px 0 0; text-align: center;">
+                                <h2 style="margin: 0;">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Driver Acknowledged Job</h2>
                             </div>
-                            """
-                            
-                            requests.post(
-                                f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
-                                auth=("api", mailgun_api_key),
-                                data={
-                                    "from": f"BookaRide System <{sender_email}>",
-                                    "to": admin_email,
-                                    "subject": f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Driver {driver_name} Acknowledged Job #{booking_ref}",
-                                    "html": html_content
-                                }
-                            )
+                            <div style="background: #f0fdf4; padding: 20px; border: 1px solid #86efac; border-top: none; border-radius: 0 0 8px 8px;">
+                                <p><strong>Driver:</strong> {driver_name}</p>
+                                <p><strong>Booking:</strong> #{booking_ref}</p>
+                                <p><strong>Trip Type:</strong> {trip_type}</p>
+                                <p><strong>Customer:</strong> {booking.get('name')}</p>
+                                <p><strong>Date:</strong> {format_date_ddmmyyyy(booking.get('date'))} at {booking.get('time')}</p>
+                                <p style="color: #16a34a; font-weight: bold;">Driver has confirmed receipt of this job assignment.</p>
+                            </div>
+                        </div>
+                        """
+                        
+                        ack_subject = f"Driver {driver_name} Acknowledged Job #{booking_ref}"
+                        _send_email_with_fallbacks(admin_email, ack_subject, html_content, from_name="BookaRide System")
                     except Exception as email_error:
                         logger.error(f"Failed to notify admin of acknowledgment: {str(email_error)}")
                     
@@ -9158,7 +8947,7 @@ async def send_payment_link_email(booking: dict, payment_link: str, payment_type
         </html>
         '''
         
-        # Send via Google SMTP / Mailgun fallback
+        # Send via Google SMTP
         if _send_email_with_fallbacks(
             customer_email,
             f"Payment Link - Booking {booking_ref} - ${total_price:.2f} NZD",
@@ -9584,46 +9373,32 @@ async def submit_driver_application(application: DriverApplication):
         await db.driver_applications.insert_one(app_data)
         
         # Send notification email to admin
-        mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
-        mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
-        admin_email = os.environ.get('ADMIN_EMAIL', 'bookings@bookaride.co.nz')
+        html_content = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <div style="background-color: #D4AF37; color: #1a1a1a; padding: 20px; text-align: center;">
+                    <h1 style="margin: 0;">New Driver Application</h1>
+                </div>
+                <div style="padding: 20px; background-color: #f5f5f5;">
+                    <h2>ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â Driver Application Received</h2>
+                    <div style="background-color: white; padding: 20px; border-radius: 8px; border-left: 4px solid #D4AF37;">
+                        <p><strong>Name:</strong> {application.name}</p>
+                        <p><strong>Phone:</strong> {application.phone}</p>
+                        <p><strong>Email:</strong> {application.email}</p>
+                        <p><strong>Suburb:</strong> {application.suburb}</p>
+                        <hr style="border: 0; border-top: 1px solid #e0e0e0;">
+                        <p><strong>Vehicle:</strong> {application.vehicleType} ({application.vehicleYear})</p>
+                        <p><strong>Experience:</strong> {application.experience or 'Not specified'}</p>
+                        <p><strong>Availability:</strong> {application.availability or 'Not specified'}</p>
+                        <p><strong>Message:</strong> {application.message or 'None'}</p>
+                    </div>
+                    <p style="margin-top: 20px;">Review this application in your <a href="https://bookaride.co.nz/admin/dashboard" style="color: #D4AF37;">Admin Dashboard</a>.</p>
+                </div>
+            </body>
+        </html>
+        """
         
-        if mailgun_api_key and mailgun_domain:
-            html_content = f"""
-            <html>
-                <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                    <div style="background-color: #D4AF37; color: #1a1a1a; padding: 20px; text-align: center;">
-                        <h1 style="margin: 0;">New Driver Application</h1>
-                    </div>
-                    <div style="padding: 20px; background-color: #f5f5f5;">
-                        <h2>ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â Driver Application Received</h2>
-                        <div style="background-color: white; padding: 20px; border-radius: 8px; border-left: 4px solid #D4AF37;">
-                            <p><strong>Name:</strong> {application.name}</p>
-                            <p><strong>Phone:</strong> {application.phone}</p>
-                            <p><strong>Email:</strong> {application.email}</p>
-                            <p><strong>Suburb:</strong> {application.suburb}</p>
-                            <hr style="border: 0; border-top: 1px solid #e0e0e0;">
-                            <p><strong>Vehicle:</strong> {application.vehicleType} ({application.vehicleYear})</p>
-                            <p><strong>Experience:</strong> {application.experience or 'Not specified'}</p>
-                            <p><strong>Availability:</strong> {application.availability or 'Not specified'}</p>
-                            <p><strong>Message:</strong> {application.message or 'None'}</p>
-                        </div>
-                        <p style="margin-top: 20px;">Review this application in your <a href="https://bookaride.co.nz/admin/dashboard" style="color: #D4AF37;">Admin Dashboard</a>.</p>
-                    </div>
-                </body>
-            </html>
-            """
-            
-            requests.post(
-                f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
-                auth=("api", mailgun_api_key),
-                data={
-                    "from": f"BookaRide <noreply@{mailgun_domain}>",
-                    "to": admin_email,
-                    "subject": f"New Driver Application - {application.name}",
-                    "html": html_content
-                }
-            )
+        _send_email_with_fallbacks(admin_email, f"New Driver Application - {application.name}", html_content)
         
         logger.info(f"Driver application received from {application.name} ({application.email})")
         return {"success": True, "message": "Application submitted successfully"}
@@ -10197,14 +9972,9 @@ async def send_cancellation_notifications(booking: dict):
             logger.error(f"Failed to send cancellation SMS: {str(e)}")
 
 async def send_cancellation_email(booking: dict, to_email: str, customer_name: str):
-    """Send cancellation email via Mailgun (from noreply address)"""
-    mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
-    mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
+    """Send cancellation email via Google SMTP"""
     sender_email = get_noreply_email()
     
-    if not mailgun_api_key or not mailgun_domain:
-        logger.warning("Mailgun credentials not configured for cancellation email")
-        return
     
     # Format date and get references
     formatted_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
@@ -10272,21 +10042,11 @@ async def send_cancellation_email(booking: dict, to_email: str, customer_name: s
     </html>
     """
     
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
-            auth=("api", mailgun_api_key),
-            data={
-                "from": f"Book A Ride NZ <{sender_email}>",
-                "to": to_email,
-                "subject": f"Booking Cancelled - Ref: {booking_ref} - Book A Ride NZ",
-                "html": html_content
-            }
-        )
-        
-        if response.status_code != 200:
-            logger.error(f"Mailgun cancellation email failed: {response.text}")
-            raise Exception(f"Failed to send email: {response.status_code}")
+    cancel_subject = f"Booking Cancelled - Ref: {booking_ref} - Book A Ride NZ"
+    ok = _send_email_with_fallbacks(to_email, cancel_subject, html_content, from_email=sender_email, from_name="Book A Ride NZ")
+    if not ok:
+        logger.error(f"Cancellation email failed for {to_email}")
+        raise Exception("Failed to send cancellation email")
 
 def send_cancellation_sms(booking: dict, to_phone: str, customer_name: str):
     """Send cancellation SMS via Twilio"""
@@ -13336,13 +13096,11 @@ async def send_arrival_pickup_emails():
         logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã¢â‚¬Â¹ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â [Arrival Emails] Found {len(bookings)} airport arrivals for {tomorrow}")
         
         # Get email settings
-        mailgun_api_key = os.environ.get('MAILGUN_API_KEY', '')
-        mailgun_domain = os.environ.get('MAILGUN_DOMAIN', '')
-        public_domain = os.environ.get('PUBLIC_DOMAIN', 'https://bookaride.co.nz')
+        smtp_configured = bool(os.environ.get("SMTP_USER") and os.environ.get("SMTP_PASS"))
         
-        if not mailgun_api_key or not mailgun_domain:
-            logger.warning("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã¢â‚¬Â¹ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â [Arrival Emails] Mailgun not configured")
-            return {"sent": 0, "error": "Mailgun not configured"}
+        if not smtp_configured and send_email_unified is None:
+            logger.warning("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã¢â‚¬Â¹ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â [Arrival Emails] Email not configured")
+            return {"sent": 0, "error": "Email not configured"}
         
         sent_count = 0
         
@@ -13381,18 +13139,11 @@ async def send_arrival_pickup_emails():
                 )
                 
                 # Send email
-                response = requests.post(
-                    f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
-                    auth=("api", mailgun_api_key),
-                    data={
-                        "from": f"BookaRide NZ <noreply@{mailgun_domain}>",
-                        "to": email,
-                        "subject": f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã¢â‚¬Â¹ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â Your Airport Pickup Tomorrow - Where to Meet Your Driver",
-                        "html": email_html
-                    }
-                )
+                # Send email
+                arrival_subject = "Your Airport Pickup Tomorrow - Where to Meet Your Driver"
+                ok = _send_email_with_fallbacks(email, arrival_subject, email_html, from_name="BookaRide NZ")
                 
-                if response.status_code == 200:
+                if ok:
                     # Mark as sent
                     await db.bookings.update_one(
                         {"id": booking.get('id')},
@@ -13404,7 +13155,7 @@ async def send_arrival_pickup_emails():
                     sent_count += 1
                     logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã¢â‚¬Â¹ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â Arrival email sent to {email} for booking {booking.get('id')}")
                 else:
-                    logger.error(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã¢â‚¬Â¹ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â Failed to send arrival email to {email}: {response.text}")
+                    logger.error(f"Failed to send arrival email to {email}")
                     
             except Exception as e:
                 logger.error(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã¢â‚¬Â¹ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â Error sending arrival email: {str(e)}")
@@ -13632,36 +13383,22 @@ async def run_daily_error_check():
         # Send email report
         try:
             admin_email = os.environ.get('ADMIN_EMAIL', 'info@bookaride.co.nz')
-            mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
-            mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
-            sender_email = os.environ.get('SENDER_EMAIL', 'noreply@mg.bookaride.co.nz')
+            subject = f"{'ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¨ ISSUES FOUND' if issues else 'ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ All Clear'} - BookaRide Daily Check {report_time}"
             
-            if mailgun_api_key and mailgun_domain:
-                subject = f"{'ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¨ ISSUES FOUND' if issues else 'ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ All Clear'} - BookaRide Daily Check {report_time}"
-                
-                html_report = f"""
-                <html>
-                <body style="font-family: 'Courier New', monospace; background: #1a1a1a; color: #00ff00; padding: 20px;">
-                    <pre style="white-space: pre-wrap; font-size: 12px;">{report}</pre>
-                </body>
-                </html>
-                """
-                
-                response = requests.post(
-                    f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
-                    auth=("api", mailgun_api_key),
-                    data={
-                        "from": f"BookaRide System <{sender_email}>",
-                        "to": admin_email,
-                        "subject": subject,
-                        "html": html_report
-                    }
-                )
-                
-                if response.status_code == 200:
-                    logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â [Daily Error Check] Email report sent to {admin_email}")
-                else:
-                    logger.error(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â [Daily Error Check] Failed to send email: {response.text}")
+            html_report = f"""
+            <html>
+            <body style="font-family: 'Courier New', monospace; background: #1a1a1a; color: #00ff00; padding: 20px;">
+                <pre style="white-space: pre-wrap; font-size: 12px;">{report}</pre>
+            </body>
+            </html>
+            """
+            
+            ok = _send_email_with_fallbacks(admin_email, subject, html_report, from_name="BookaRide System")
+
+            if ok:
+                logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â [Daily Error Check] Email report sent to {admin_email}")
+            else:
+                logger.error(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â [Daily Error Check] Failed to send email")
         except Exception as email_err:
             logger.error(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â [Daily Error Check] Email error: {str(email_err)}")
         
