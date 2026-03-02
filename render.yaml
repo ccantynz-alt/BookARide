@@ -20,11 +20,7 @@ services:
         generateValue: true
       - key: STRIPE_SECRET_KEY
         sync: false
-      - key: MAILGUN_API_KEY
-        sync: false
-      - key: MAILGUN_DOMAIN
-        value: mg.bookaride.co.nz
-      - key: GEOAPIFY_API_KEY
+      - key: GOOGLE_MAPS_API_KEY
         sync: false
       - key: STRIPE_WEBHOOK_SECRET
         sync: false
