@@ -1111,21 +1111,19 @@ async def root():
 @api_router.get("/health")
 async def health_check():
     """Health check endpoint — also reports which integrations are configured."""
-    geoapify = bool(os.environ.get('GEOAPIFY_API_KEY', ''))
-    mailgun = bool(os.environ.get('MAILGUN_API_KEY', ''))
+    google_maps = bool(os.environ.get('GOOGLE_MAPS_API_KEY', ''))
+    smtp_ok = bool(os.environ.get('SMTP_USER') and os.environ.get('SMTP_PASS'))
     stripe_key = bool(os.environ.get('STRIPE_SECRET_KEY') or os.environ.get('STRIPE_API_KEY'))
     stripe_webhook = bool(os.environ.get('STRIPE_WEBHOOK_SECRET', ''))
     google_cal = bool(os.environ.get('GOOGLE_SERVICE_ACCOUNT_JSON', ''))
-    email_module = send_email_unified is not None
     return {
         "status": "healthy",
         "service": "bookaride-api",
         "integrations": {
-            "geoapify_autocomplete": "ok" if geoapify else "MISSING - set GEOAPIFY_API_KEY",
+            "google_maps": "ok" if google_maps else "MISSING - set GOOGLE_MAPS_API_KEY (autocomplete + distance)",
             "stripe_payments": "ok" if stripe_key else "MISSING - set STRIPE_SECRET_KEY",
             "stripe_webhook": "ok" if stripe_webhook else "MISSING - set STRIPE_WEBHOOK_SECRET (payments won't auto-confirm)",
-            "mailgun_email": "ok" if mailgun else "MISSING - set MAILGUN_API_KEY (no email notifications)",
-            "email_sender_module": "loaded" if email_module else "not found (using Mailgun fallback)",
+            "email_smtp": "ok" if smtp_ok else "MISSING - set SMTP_USER + SMTP_PASS (Google SMTP for notifications)",
             "google_calendar": "ok" if google_cal else "MISSING - set GOOGLE_SERVICE_ACCOUNT_JSON",
         }
     }
@@ -1292,29 +1290,31 @@ async def get_status_checks():
     
     return status_checks
 
-def _geocode_geoapify(address: str, api_key: str) -> tuple:
-    """Geocode address via Geoapify. Returns (lat, lon) or (None, None)."""
+def _geocode_google(address: str, api_key: str) -> tuple:
+    """Geocode address via Google Maps Geocoding API. Returns (lat, lon) or (None, None)."""
     try:
-        url = "https://api.geoapify.com/v1/geocode/search"
-        params = {"text": address, "apiKey": api_key, "limit": 1, "filter": "countrycode:nz"}
+        url = "https://maps.googleapis.com/maps/api/geocode/json"
+        params = {"address": address, "key": api_key, "region": "nz", "components": "country:NZ"}
         r = requests.get(url, params=params, timeout=10)
         data = r.json()
-        features = data.get("features", [])
-        if features:
-            coords = features[0].get("geometry", {}).get("coordinates", [])
-            if len(coords) >= 2:
-                return (coords[1], coords[0])  # GeoJSON is [lon, lat]
+        results = data.get("results", [])
+        if results:
+            location = results[0].get("geometry", {}).get("location", {})
+            lat = location.get("lat")
+            lng = location.get("lng")
+            if lat is not None and lng is not None:
+                return (lat, lng)
     except Exception as e:
-        logger.warning(f"Geoapify geocode error for '{address[:50]}...': {e}")
+        logger.warning(f"Google geocode error for '{address[:50]}...': {e}")
     return (None, None)
 
 
-# Canonical addresses for reliable routing (Geoapify can mis-geocode variants like "Shared Path")
+# Canonical addresses for reliable routing
 _CANONICAL_AIRPORT = "Auckland Airport, Ray Emery Drive, Mangere, Auckland 2022, New Zealand"
 _CANONICAL_AIRPORT_LOWER = "auckland airport"
 
 def _normalize_address_for_routing(address: str) -> str:
-    """Use canonical airport address when user selects airport variants (avoids mis-geocoding)."""
+    """Use canonical airport address when user selects airport variants."""
     if not address or not address.strip():
         return address
     lower = address.lower()
@@ -1323,97 +1323,104 @@ def _normalize_address_for_routing(address: str) -> str:
     return address.strip()
 
 
-def _get_distance_geoapify(pickup_address: str, dropoff_address: str, waypoint_addresses: list, api_key: str) -> float | None:
-    """Get driving distance in km via Geoapify Routing API. Returns None on failure."""
+def _get_distance_google(pickup_address: str, dropoff_address: str, waypoint_addresses: list, api_key: str) -> float | None:
+    """Get driving distance in km via Google Maps Distance Matrix / Directions API. Returns None on failure."""
     try:
         pickup_norm = _normalize_address_for_routing(pickup_address)
         dropoff_norm = _normalize_address_for_routing(dropoff_address)
-        waypoints = [pickup_norm] + [_normalize_address_for_routing(a) for a in (waypoint_addresses or [])] + [dropoff_norm]
-        coords_list = []
-        for addr in waypoints:
-            if not addr or not addr.strip():
-                continue
-            lat, lon = _geocode_geoapify(addr.strip(), api_key)
-            if lat is None:
-                return None
-            coords_list.append(f"{lat},{lon}")
-        if len(coords_list) < 2:
-            return None
-        waypoints_str = "|".join(coords_list)
-        url = f"https://api.geoapify.com/v1/routing?waypoints={waypoints_str}&mode=drive&apiKey={api_key}"
-        r = requests.get(url, timeout=15)
-        data = r.json()
-        features = data.get("features", [])
-        if features:
-            props = features[0].get("properties", {})
-            dist_m = props.get("distance", 0)
-            return round(dist_m / 1000, 2)
+        extra = [_normalize_address_for_routing(a) for a in (waypoint_addresses or []) if a and a.strip()]
+
+        if extra:
+            # Use Directions API for waypoint support
+            url = "https://maps.googleapis.com/maps/api/directions/json"
+            params = {
+                "origin": pickup_norm,
+                "destination": dropoff_norm,
+                "waypoints": "|".join(extra),
+                "key": api_key,
+                "region": "nz",
+            }
+            r = requests.get(url, params=params, timeout=15)
+            data = r.json()
+            if data.get("status") == "OK" and data.get("routes"):
+                total_m = sum(
+                    leg.get("distance", {}).get("value", 0)
+                    for leg in data["routes"][0].get("legs", [])
+                )
+                return round(total_m / 1000, 2)
+        else:
+            # Simple origin->destination: use Distance Matrix
+            url = "https://maps.googleapis.com/maps/api/distancematrix/json"
+            params = {
+                "origins": pickup_norm,
+                "destinations": dropoff_norm,
+                "key": api_key,
+                "region": "nz",
+            }
+            r = requests.get(url, params=params, timeout=15)
+            data = r.json()
+            if data.get("status") == "OK":
+                rows = data.get("rows", [])
+                if rows:
+                    elements = rows[0].get("elements", [])
+                    if elements and elements[0].get("status") == "OK":
+                        dist_m = elements[0].get("distance", {}).get("value", 0)
+                        return round(dist_m / 1000, 2)
     except Exception as e:
-        logger.warning(f"Geoapify routing error: {e}")
+        logger.warning(f"Google Maps distance error: {e}")
     return None
 
 
-def _build_maps_route_url(origin: str, destination: str, waypoint_addresses: list, geoapify_key: str) -> str:
-    """Build OpenStreetMap directions URL. Uses Geoapify to geocode if key set, else returns OSM search URL."""
+def _build_maps_route_url(origin: str, destination: str, waypoint_addresses: list, api_key: str = "") -> str:
+    """Build a Google Maps directions URL."""
     if not origin or not destination:
-        return "https://www.openstreetmap.org"
-    if geoapify_key:
-        try:
-            addrs = [origin] + list(waypoint_addresses or []) + [destination]
-            coords = []
-            for addr in addrs:
-                if not (addr and addr.strip()):
-                    continue
-                lat, lon = _geocode_geoapify(addr.strip(), geoapify_key)
-                if lat is not None and lon is not None:
-                    coords.append(f"{lat},{lon}")
-            if len(coords) >= 2:
-                route_param = ";".join(coords)
-                return f"https://www.openstreetmap.org/directions?engine=osrm_car&route={route_param}"
-        except Exception as e:
-            logger.warning(f"Geoapify geocode for maps URL: {e}")
-    query = requests.utils.quote(f"{origin} to {destination}")
-    return f"https://www.openstreetmap.org/search?query={query}"
+        return "https://www.google.com/maps"
+    base = "https://www.google.com/maps/dir/"
+    parts = [requests.utils.quote(origin)]
+    for wp in (waypoint_addresses or []):
+        if wp and wp.strip():
+            parts.append(requests.utils.quote(wp.strip()))
+    parts.append(requests.utils.quote(destination))
+    return base + "/".join(parts)
 
 
-# Default distance when Geoapify fails or is not set (was 25km - caused massive undercharging for 60-70km trips)
-# Use 75km to cover common long routes (Orewa, Hibiscus Coast, Warkworth) - better to slightly overcharge than lose money
+# Default distance when Google Maps fails or key is not set
 DEFAULT_FALLBACK_DISTANCE_KM = 75.0
-# Long-distance fallback when addresses indicate Tauranga/BOP/Hamilton/Whangarei (prevents ~$200 charge for 200km+ trip)
+# Long-distance fallback for Tauranga/BOP/Hamilton/Whangarei routes
 LONG_DISTANCE_FALLBACK_KM = 200.0
 
-# Address Autocomplete Endpoint (Geoapify)
+# Address Autocomplete Endpoint (Google Places API)
 @api_router.get("/places/autocomplete")
 async def places_autocomplete(input: str = "", types: str = "address", region: str = "nz"):
-    """Return address suggestions using Geoapify Autocomplete API."""
+    """Return address suggestions using Google Places Autocomplete API."""
     if len(input) < 3:
         return {"predictions": []}
-    geoapify_key = os.environ.get('GEOAPIFY_API_KEY', '')
-    if not geoapify_key:
-        logger.warning("GEOAPIFY_API_KEY not set - address autocomplete disabled")
+    google_key = os.environ.get('GOOGLE_MAPS_API_KEY', '')
+    if not google_key:
+        logger.warning("GOOGLE_MAPS_API_KEY not set - address autocomplete disabled")
         return {"predictions": []}
     try:
-        url = "https://api.geoapify.com/v1/geocode/autocomplete"
+        url = "https://maps.googleapis.com/maps/api/place/autocomplete/json"
         params = {
-            "text": input,
-            "apiKey": geoapify_key,
-            "filter": "countrycode:nz",
-            "format": "json",
-            "limit": 5,
+            "input": input,
+            "key": google_key,
+            "components": "country:nz",
+            "types": types,
         }
-        # Use async httpx instead of blocking requests.get — prevents event loop stalling
         async with httpx.AsyncClient(timeout=5.0) as client:
             r = await client.get(url, params=params)
         data = r.json()
-        results = data.get("results", [])
+        if data.get("status") != "OK":
+            logger.warning(f"Google Places autocomplete status: {data.get('status')} - {data.get('error_message', '')}")
+            return {"predictions": []}
         predictions = [
-            {"description": item.get("formatted", ""), "place_id": item.get("place_id", "")}
-            for item in results
-            if item.get("formatted")
+            {"description": p.get("description", ""), "place_id": p.get("place_id", "")}
+            for p in data.get("predictions", [])
+            if p.get("description")
         ]
         return {"predictions": predictions}
     except Exception as e:
-        logger.warning(f"Geoapify autocomplete error: {e}")
+        logger.warning(f"Google Places autocomplete error: {e}")
         return {"predictions": []}
 
 
@@ -1421,8 +1428,8 @@ async def places_autocomplete(input: str = "", types: str = "address", region: s
 @api_router.post("/calculate-price", response_model=PricingBreakdown)
 async def calculate_price(request: PriceCalculationRequest):
     try:
-        # Geoapify only for distance; fallback estimate if not set or API fails
-        geoapify_key = os.environ.get('GEOAPIFY_API_KEY', '')
+        # Google Maps for distance; fallback estimate if not set or API fails
+        google_key = os.environ.get('GOOGLE_MAPS_API_KEY', '')
         distance_km = None
         # Normalize addresses early so we can use long-distance fallback when API fails
         def _norm(s):
@@ -1433,23 +1440,22 @@ async def calculate_price(request: PriceCalculationRequest):
         _is_long_distance_route = any(kw in _pickup_lower or kw in _dropoff_lower for kw in _long_distance_keywords)
         _fallback_km = LONG_DISTANCE_FALLBACK_KM if _is_long_distance_route else DEFAULT_FALLBACK_DISTANCE_KM
 
-        if geoapify_key:
+        if google_key:
             # Route: pickup -> additional pickups -> dropoff
             waypoint_addrs = [a for a in (request.pickupAddresses or []) if a and a.strip()]
-            distance_km = _get_distance_geoapify(
+            distance_km = _get_distance_google(
                 request.pickupAddress,
                 request.dropoffAddress,
                 waypoint_addrs,
-                geoapify_key
+                google_key
             )
             if distance_km is not None:
-                logger.info(f"Geoapify route distance: {distance_km}km")
-        
+                logger.info(f"Google Maps route distance: {distance_km}km")
+
         if distance_km is None:
-            # No Google Maps - use fallback only
             pickup_count = 1 + len([addr for addr in (request.pickupAddresses or []) if addr])
             distance_km = _fallback_km * pickup_count
-            logger.warning(f"GEOAPIFY_API_KEY not set or geocoding failed. Using default distance estimate: {distance_km}km for {pickup_count} stops - SET GEOAPIFY_API_KEY FOR ACCURATE PRICING")
+            logger.warning(f"GOOGLE_MAPS_API_KEY not set or distance lookup failed. Using fallback estimate: {distance_km}km for {pickup_count} stops")
         # Calculate pricing with tiered rates - FLAT RATE per bracket
         # The rate is determined by which distance bracket the trip falls into
         # Then that rate is applied to the ENTIRE distance
@@ -4795,25 +4801,19 @@ async def resend_booking_confirmation(booking_id: str, current_admin: dict = Dep
 @api_router.get("/email-status")
 async def get_email_status():
     """Check if email is configured on this server (no auth). Use to verify Render env vars."""
-    try:
-        from email_sender import is_email_configured, get_noreply_email
-    except ImportError:
-        return {
-            "email_provider": os.environ.get("EMAIL_PROVIDER") or "sendgrid",
-            "sendgrid_configured": bool(os.environ.get("SENDGRID_API_KEY")),
-            "smtp_configured": bool(os.environ.get("SMTP_USER") and os.environ.get("SMTP_PASS")),
-            "mailgun_configured": bool(os.environ.get("MAILGUN_API_KEY") and os.environ.get("MAILGUN_DOMAIN")),
-            "noreply_email": os.environ.get("NOREPLY_EMAIL") or os.environ.get("SENDER_EMAIL") or "(not set)",
-            "hint": "SendGrid only: set SENDGRID_API_KEY and NOREPLY_EMAIL (verified sender). Remove Mailgun/SMTP vars.",
-        }
+    smtp_configured = bool(os.environ.get("SMTP_USER") and os.environ.get("SMTP_PASS"))
+    mailgun_configured = bool(os.environ.get("MAILGUN_API_KEY"))
+
     return {
-        "email_provider": os.environ.get("EMAIL_PROVIDER") or "sendgrid",
-        "sendgrid_configured": bool(os.environ.get("SENDGRID_API_KEY")),
-        "smtp_configured": bool(os.environ.get("SMTP_USER") and os.environ.get("SMTP_PASS")),
-        "mailgun_configured": bool(os.environ.get("MAILGUN_API_KEY") and os.environ.get("MAILGUN_DOMAIN")),
+        "email_sender_module": send_email_unified is not None,
+        "smtp_configured": smtp_configured,
+        "smtp_host": os.environ.get("SMTP_HOST", "smtp.gmail.com") if smtp_configured else "(not set)",
+        "smtp_user": os.environ.get("SMTP_USER", "(not set)")[:3] + "***" if smtp_configured else "(not set)",
+        "mailgun_configured": mailgun_configured,
         "noreply_email": get_noreply_email(),
-        "email_configured": is_email_configured(),
-        "hint": "SendGrid only: SENDGRID_API_KEY + NOREPLY_EMAIL (verified sender in SendGrid). Remove Mailgun/SMTP.",
+        "any_provider_available": send_email_unified is not None or smtp_configured or mailgun_configured,
+        "fallback_chain": "email_sender -> Google SMTP -> Mailgun",
+        "hint": "Set SMTP_USER (your Google email) and SMTP_PASS (Google App Password) for Google SMTP.",
     }
 
 
@@ -4823,17 +4823,24 @@ async def admin_send_test_email(body: dict = Body(default={}), current_admin: di
     to = (body.get("to") or "").strip() or os.environ.get("BOOKINGS_NOTIFICATION_EMAIL") or current_admin.get("email") or "bookings@bookaride.co.nz"
     if "@" not in to:
         raise HTTPException(status_code=400, detail="Provide a valid 'to' email in the request body.")
-    try:
-        from email_sender import send_test_email as do_send_test_email
-    except ImportError:
-        # Fallback without email_sender
-        if not os.environ.get("SMTP_USER") or not os.environ.get("SMTP_PASS"):
-            raise HTTPException(status_code=500, detail="SMTP_USER or SMTP_PASS not set on this server. Add them in Render Environment.")
-        raise HTTPException(status_code=500, detail="email_sender module not available.")
-    ok, err = do_send_test_email(to)
+
+    html = """<h2>BookaRide Test Email</h2>
+    <p>If you are reading this, email sending is working correctly.</p>
+    <p><strong>Provider chain:</strong> email_sender module &rarr; Google SMTP &rarr; Mailgun</p>
+    <p>Sent via <code>_send_email_with_fallbacks()</code></p>"""
+
+    ok = _send_email_with_fallbacks(to, "BookaRide Test Email - Email Is Working!", html)
     if ok:
         return {"success": True, "message": f"Test email sent to {to}. Check inbox and spam."}
-    raise HTTPException(status_code=500, detail=err or "Email failed (no details).")
+
+    # Build diagnostic info
+    diag = {
+        "smtp_user_set": bool(os.environ.get("SMTP_USER")),
+        "smtp_pass_set": bool(os.environ.get("SMTP_PASS")),
+        "mailgun_key_set": bool(os.environ.get("MAILGUN_API_KEY")),
+        "email_sender_available": send_email_unified is not None,
+    }
+    raise HTTPException(status_code=500, detail=f"All email providers failed. Config: {diag}")
 
 
 @api_router.post("/bookings/{booking_id}/resend-payment-link")
@@ -7174,9 +7181,8 @@ async def get_optimized_shuttle_route(date: str, time: str, current_admin: dict 
         
         destination = "Auckland International Airport, New Zealand"
         route_info = {"note": "Route order as listed; open in maps for directions"}
-        geoapify_key = os.environ.get('GEOAPIFY_API_KEY', '')
         waypoint_list = pickup_addresses[1:] if len(pickup_addresses) > 1 else []
-        maps_url = _build_maps_route_url(pickup_addresses[0], destination, waypoint_list, geoapify_key)
+        maps_url = _build_maps_route_url(pickup_addresses[0], destination, waypoint_list)
         
         # Build pickup list with passenger details
         pickup_list = []
