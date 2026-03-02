@@ -14,21 +14,25 @@ export const PaymentSuccess = () => {
   const orderToken = searchParams.get('orderToken');
   const paymentMethod = searchParams.get('method');
   const status = searchParams.get('status');
+  const cancelledRef = React.useRef(false);
 
   useEffect(() => {
+    cancelledRef.current = false;
+
     // Handle Afterpay callback
     if (paymentMethod === 'afterpay' && orderToken) {
       handleAfterpayCallback();
-      return;
+      return () => { cancelledRef.current = true; };
     }
 
     // Handle Stripe callback
     if (!sessionId) {
       navigate('/book-now');
-      return;
+      return () => { cancelledRef.current = true; };
     }
 
     pollPaymentStatus();
+    return () => { cancelledRef.current = true; };
   }, [sessionId, orderToken, paymentMethod]);
 
   const handleAfterpayCallback = async () => {
@@ -57,6 +61,7 @@ export const PaymentSuccess = () => {
   };
 
   const pollPaymentStatus = async (attempts = 0) => {
+    if (cancelledRef.current) return;
     const maxAttempts = 10;
     const pollInterval = 3000; // 3 seconds (total wait: 30s)
 
@@ -64,18 +69,20 @@ export const PaymentSuccess = () => {
       // Before giving up, try one last direct status check
       try {
         const lastCheck = await axios.get(`${API}/payment/status/${sessionId}`);
+        if (cancelledRef.current) return;
         if (lastCheck.data?.payment_status === 'paid') {
           setPaymentStatus('success');
           setPaymentDetails(lastCheck.data);
           return;
         }
       } catch {}
-      setPaymentStatus('timeout');
+      if (!cancelledRef.current) setPaymentStatus('timeout');
       return;
     }
 
     try {
       const response = await axios.get(`${API}/payment/status/${sessionId}`);
+      if (cancelledRef.current) return;
       const data = response.data;
 
       if (data.payment_status === 'paid') {
@@ -89,8 +96,9 @@ export const PaymentSuccess = () => {
 
       // If payment is still pending, continue polling
       setPaymentStatus('processing');
-      setTimeout(() => pollPaymentStatus(attempts + 1), pollInterval);
+      if (!cancelledRef.current) setTimeout(() => pollPaymentStatus(attempts + 1), pollInterval);
     } catch (error) {
+      if (cancelledRef.current) return;
       console.error('Error checking payment status:', error);
       // Don't give up on network errors — retry
       if (attempts < maxAttempts - 1) {

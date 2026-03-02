@@ -73,7 +73,7 @@ def _send_email_with_fallbacks(to_email, subject, html_content, from_email=None,
             message.attach(MIMEText(html_content, 'html'))
             smtp_host = os.environ.get('SMTP_HOST', 'smtp.gmail.com')
             smtp_port = int(os.environ.get('SMTP_PORT', '587'))
-            with smtplib.SMTP(smtp_host, smtp_port) as server:
+            with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as server:
                 server.starttls()
                 server.login(smtp_user, smtp_pass)
                 server.send_message(message)
@@ -1401,49 +1401,51 @@ def _normalize_address_for_routing(address: str) -> str:
     return address.strip()
 
 
-def _get_distance_google(pickup_address: str, dropoff_address: str, waypoint_addresses: list, api_key: str) -> float | None:
-    """Get driving distance in km via Google Maps Distance Matrix / Directions API. Returns None on failure."""
+async def _get_distance_google(pickup_address: str, dropoff_address: str, waypoint_addresses: list, api_key: str) -> float | None:
+    """Get driving distance in km via Google Maps Distance Matrix / Directions API.
+    Uses httpx.AsyncClient so the event loop is never blocked. Returns None on failure."""
     try:
         pickup_norm = _normalize_address_for_routing(pickup_address)
         dropoff_norm = _normalize_address_for_routing(dropoff_address)
         extra = [_normalize_address_for_routing(a) for a in (waypoint_addresses or []) if a and a.strip()]
 
-        if extra:
-            # Use Directions API for waypoint support
-            url = "https://maps.googleapis.com/maps/api/directions/json"
-            params = {
-                "origin": pickup_norm,
-                "destination": dropoff_norm,
-                "waypoints": "|".join(extra),
-                "key": api_key,
-                "region": "nz",
-            }
-            r = requests.get(url, params=params, timeout=15)
-            data = r.json()
-            if data.get("status") == "OK" and data.get("routes"):
-                total_m = sum(
-                    leg.get("distance", {}).get("value", 0)
-                    for leg in data["routes"][0].get("legs", [])
-                )
-                return round(total_m / 1000, 2)
-        else:
-            # Simple origin->destination: use Distance Matrix
-            url = "https://maps.googleapis.com/maps/api/distancematrix/json"
-            params = {
-                "origins": pickup_norm,
-                "destinations": dropoff_norm,
-                "key": api_key,
-                "region": "nz",
-            }
-            r = requests.get(url, params=params, timeout=15)
-            data = r.json()
-            if data.get("status") == "OK":
-                rows = data.get("rows", [])
-                if rows:
-                    elements = rows[0].get("elements", [])
-                    if elements and elements[0].get("status") == "OK":
-                        dist_m = elements[0].get("distance", {}).get("value", 0)
-                        return round(dist_m / 1000, 2)
+        async with httpx.AsyncClient(timeout=10.0) as http:
+            if extra:
+                # Use Directions API for waypoint support
+                url = "https://maps.googleapis.com/maps/api/directions/json"
+                params = {
+                    "origin": pickup_norm,
+                    "destination": dropoff_norm,
+                    "waypoints": "|".join(extra),
+                    "key": api_key,
+                    "region": "nz",
+                }
+                r = await http.get(url, params=params)
+                data = r.json()
+                if data.get("status") == "OK" and data.get("routes"):
+                    total_m = sum(
+                        leg.get("distance", {}).get("value", 0)
+                        for leg in data["routes"][0].get("legs", [])
+                    )
+                    return round(total_m / 1000, 2)
+            else:
+                # Simple origin->destination: use Distance Matrix
+                url = "https://maps.googleapis.com/maps/api/distancematrix/json"
+                params = {
+                    "origins": pickup_norm,
+                    "destinations": dropoff_norm,
+                    "key": api_key,
+                    "region": "nz",
+                }
+                r = await http.get(url, params=params)
+                data = r.json()
+                if data.get("status") == "OK":
+                    rows = data.get("rows", [])
+                    if rows:
+                        elements = rows[0].get("elements", [])
+                        if elements and elements[0].get("status") == "OK":
+                            dist_m = elements[0].get("distance", {}).get("value", 0)
+                            return round(dist_m / 1000, 2)
     except Exception as e:
         logger.warning(f"Google Maps distance error: {e}")
     return None
@@ -1670,7 +1672,7 @@ async def calculate_price(request: PriceCalculationRequest):
         if google_key:
             # Route: pickup -> additional pickups -> dropoff
             waypoint_addrs = [a for a in (request.pickupAddresses or []) if a and a.strip()]
-            distance_km = _get_distance_google(
+            distance_km = await _get_distance_google(
                 request.pickupAddress,
                 request.dropoffAddress,
                 waypoint_addrs,
@@ -2835,9 +2837,10 @@ def send_via_mailgun(booking: dict):
         response = requests.post(
             f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
             auth=("api", mailgun_api_key),
-            data=email_data
+            data=email_data,
+            timeout=15,
         )
-        
+
         if response.status_code == 200:
             cc_info = f" (CC: {cc_email})" if cc_email else ""
             logger.info(f"Confirmation email sent to {recipient_email}{cc_info} via Mailgun")
@@ -2883,11 +2886,11 @@ def send_via_smtp(booking: dict):
         # Send via SMTP (Google Workspace / Gmail)
         smtp_host = os.environ.get('SMTP_HOST', 'smtp.gmail.com')
         smtp_port = int(os.environ.get('SMTP_PORT', '587'))
-        with smtplib.SMTP(smtp_host, smtp_port) as server:
+        with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as server:
             server.starttls()
             server.login(smtp_user, smtp_pass)
             server.send_message(message)
-        
+
         logger.info(f"Confirmation email sent to {recipient_email} via SMTP")
         return True
         
@@ -2988,12 +2991,13 @@ def send_customer_confirmation(booking: dict):
     if booking_id:
         try:
             from pymongo import MongoClient
-            sync_client = MongoClient(os.environ.get('MONGO_URL', 'mongodb://localhost:27017'))
-            sync_db = sync_client[os.environ.get('DB_NAME', 'test_database')]
-            
+            sync_client = MongoClient(os.environ.get('MONGO_URL', 'mongodb://localhost:27017'),
+                                      serverSelectionTimeoutMS=5000, connectTimeoutMS=5000)
+            sync_db = sync_client[os.environ.get('DB_NAME', 'bookaride')]
+
             nz_tz = pytz.timezone('Pacific/Auckland')
             now = datetime.now(nz_tz).isoformat()
-            
+
             sync_db.bookings.update_one(
                 {"id": booking_id},
                 {"$set": {
