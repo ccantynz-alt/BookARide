@@ -1551,6 +1551,10 @@ async def places_autocomplete(input: str = "", types: str = "", region: str = "n
         logger.warning("GOOGLE_MAPS_API_KEY not set - using fallback address list")
         query_lower = input.lower()
         matches = [a for a in _NZ_FALLBACK_ADDRESSES if query_lower in a["description"].lower()]
+        if not matches:
+            words = [w for w in query_lower.split() if len(w) >= 3]
+            if words:
+                matches = [a for a in _NZ_FALLBACK_ADDRESSES if any(w in a["description"].lower() for w in words)]
         return {"predictions": matches[:5]}
 
     # --- Try Google Places API (Legacy) first ---
@@ -1567,7 +1571,7 @@ async def places_autocomplete(input: str = "", types: str = "", region: str = "n
         # Only add types if explicitly provided and non-empty
         if types:
             params["types"] = types
-        async with httpx.AsyncClient(timeout=8.0) as client:
+        async with httpx.AsyncClient(timeout=3.0) as client:
             r = await client.get(url, params=params)
         data = r.json()
         status = data.get("status", "UNKNOWN")
@@ -1606,7 +1610,7 @@ async def places_autocomplete(input: str = "", types: str = "", region: str = "n
                 }
             },
         }
-        async with httpx.AsyncClient(timeout=8.0) as client:
+        async with httpx.AsyncClient(timeout=3.0) as client:
             r = await client.post(new_url, json=body, headers=headers)
         if r.status_code == 200:
             data = r.json()
@@ -1628,7 +1632,16 @@ async def places_autocomplete(input: str = "", types: str = "", region: str = "n
 
     # --- Final fallback: match against known NZ addresses ---
     query_lower = input.lower()
+    # First try exact substring match
     matches = [a for a in _NZ_FALLBACK_ADDRESSES if query_lower in a["description"].lower()]
+    # If no exact match, try matching individual words (e.g. "queen street" matches even if user typed "123 queen")
+    if not matches:
+        words = [w for w in query_lower.split() if len(w) >= 3]
+        if words:
+            matches = [
+                a for a in _NZ_FALLBACK_ADDRESSES
+                if any(w in a["description"].lower() for w in words)
+            ]
     if matches:
         logger.info(f"Using fallback addresses for: {input} ({len(matches)} matches)")
     return {"predictions": matches[:5]}
