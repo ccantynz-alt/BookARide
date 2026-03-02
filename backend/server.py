@@ -43,6 +43,69 @@ except ImportError:
     send_email_unified = None
     get_noreply_email = lambda: os.environ.get("NOREPLY_EMAIL") or os.environ.get("SENDER_EMAIL", "noreply@bookaride.co.nz")
 
+
+def _send_email_with_fallbacks(to_email, subject, html_content, from_email=None, from_name="BookaRide"):
+    """Send email trying all available providers: email_sender module -> Google SMTP -> Mailgun.
+    Returns True if any provider succeeds."""
+    sender = from_email or get_noreply_email()
+
+    # 1) Try email_sender module (may not exist)
+    if send_email_unified:
+        try:
+            if send_email_unified(to_email, subject, html_content, from_email=sender, from_name=from_name):
+                return True
+        except Exception as e:
+            logging.getLogger(__name__).warning(f"email_sender module failed: {e}")
+
+    # 2) Try SMTP (Google Workspace / Gmail)
+    smtp_user = os.environ.get('SMTP_USER')
+    smtp_pass = os.environ.get('SMTP_PASS')
+    if smtp_user and smtp_pass:
+        try:
+            message = MIMEMultipart('alternative')
+            message['Subject'] = subject
+            message['From'] = f"{from_name} <{sender}>" if from_name else sender
+            message['To'] = to_email
+            message.attach(MIMEText(html_content, 'html'))
+            smtp_host = os.environ.get('SMTP_HOST', 'smtp.gmail.com')
+            smtp_port = int(os.environ.get('SMTP_PORT', '587'))
+            with smtplib.SMTP(smtp_host, smtp_port) as server:
+                server.starttls()
+                server.login(smtp_user, smtp_pass)
+                server.send_message(message)
+            logging.getLogger(__name__).info(f"Email sent via SMTP to {to_email}")
+            return True
+        except Exception as e:
+            logging.getLogger(__name__).warning(f"SMTP send failed: {e}")
+
+    # 3) Try Mailgun API
+    mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
+    mailgun_domain = os.environ.get('MAILGUN_DOMAIN', 'mg.bookaride.co.nz')
+    if mailgun_api_key:
+        try:
+            response = requests.post(
+                f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
+                auth=("api", mailgun_api_key),
+                data={
+                    "from": f"{from_name} <{sender}>",
+                    "to": to_email,
+                    "subject": subject,
+                    "html": html_content,
+                },
+                timeout=15,
+            )
+            if response.status_code == 200:
+                logging.getLogger(__name__).info(f"Email sent via Mailgun to {to_email}")
+                return True
+            else:
+                logging.getLogger(__name__).error(f"Mailgun failed: {response.status_code} - {response.text}")
+        except Exception as e:
+            logging.getLogger(__name__).warning(f"Mailgun send failed: {e}")
+
+    logging.getLogger(__name__).error(f"ALL email providers failed for {to_email}. Configure SMTP_USER+SMTP_PASS (Google) or MAILGUN_API_KEY.")
+    return False
+
+
 # Global lock to prevent concurrent reminder sending
 reminder_lock = asyncio.Lock()
 
@@ -939,10 +1002,10 @@ async def request_password_reset(reset_request: PasswordResetRequest):
             </html>
             """
             
-            if send_email_unified and send_email_unified(email, "Password Reset Request - Book A Ride NZ Admin", email_html):
+            if _send_email_with_fallbacks(email, "Password Reset Request - Book A Ride NZ Admin", email_html):
                 logger.info(f"Password reset email sent to: {email}")
             else:
-                logger.warning("Password reset email NOT sent - configure Mailgun or SMTP (see GOOGLE_WORKSPACE_EMAIL_SETUP.md)")
+                logger.warning("Password reset email NOT sent - configure SMTP_USER/SMTP_PASS env vars")
         
         return {"message": "If this email is registered, you will receive a password reset link."}
         
@@ -1047,8 +1110,25 @@ async def root():
 
 @api_router.get("/health")
 async def health_check():
-    """Health check endpoint for Kubernetes"""
-    return {"status": "healthy", "service": "bookaride-api"}
+    """Health check endpoint — also reports which integrations are configured."""
+    geoapify = bool(os.environ.get('GEOAPIFY_API_KEY', ''))
+    mailgun = bool(os.environ.get('MAILGUN_API_KEY', ''))
+    stripe_key = bool(os.environ.get('STRIPE_SECRET_KEY') or os.environ.get('STRIPE_API_KEY'))
+    stripe_webhook = bool(os.environ.get('STRIPE_WEBHOOK_SECRET', ''))
+    google_cal = bool(os.environ.get('GOOGLE_SERVICE_ACCOUNT_JSON', ''))
+    email_module = send_email_unified is not None
+    return {
+        "status": "healthy",
+        "service": "bookaride-api",
+        "integrations": {
+            "geoapify_autocomplete": "ok" if geoapify else "MISSING - set GEOAPIFY_API_KEY",
+            "stripe_payments": "ok" if stripe_key else "MISSING - set STRIPE_SECRET_KEY",
+            "stripe_webhook": "ok" if stripe_webhook else "MISSING - set STRIPE_WEBHOOK_SECRET (payments won't auto-confirm)",
+            "mailgun_email": "ok" if mailgun else "MISSING - set MAILGUN_API_KEY (no email notifications)",
+            "email_sender_module": "loaded" if email_module else "not found (using Mailgun fallback)",
+            "google_calendar": "ok" if google_cal else "MISSING - set GOOGLE_SERVICE_ACCOUNT_JSON",
+        }
+    }
 
 
 # Google Reviews Endpoint - Fetches reviews from Google Places API
@@ -1310,6 +1390,7 @@ async def places_autocomplete(input: str = "", types: str = "address", region: s
         return {"predictions": []}
     geoapify_key = os.environ.get('GEOAPIFY_API_KEY', '')
     if not geoapify_key:
+        logger.warning("GEOAPIFY_API_KEY not set - address autocomplete disabled")
         return {"predictions": []}
     try:
         url = "https://api.geoapify.com/v1/geocode/autocomplete"
@@ -1320,7 +1401,9 @@ async def places_autocomplete(input: str = "", types: str = "address", region: s
             "format": "json",
             "limit": 5,
         }
-        r = requests.get(url, params=params, timeout=5)
+        # Use async httpx instead of blocking requests.get — prevents event loop stalling
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            r = await client.get(url, params=params)
         data = r.json()
         results = data.get("results", [])
         predictions = [
@@ -1872,12 +1955,33 @@ async def get_bookings(
             if search.strip().isdigit():
                 query['$or'].append({'referenceNumber': int(search.strip())})
         
-        # Date range filter
-        if date_from:
-            query['date'] = query.get('date', {})
-            query['date']['$gte'] = date_from
-        if date_to:
-            query.setdefault('date', {})['$lte'] = date_to
+        # Date range filter - include bookings where EITHER the outbound date OR
+        # the return date falls within the range, so return trips don't disappear
+        # after the outbound leg is done.
+        if date_from or date_to:
+            date_conditions = []
+            # Match on outbound date
+            outbound_cond = {}
+            if date_from:
+                outbound_cond['$gte'] = date_from
+            if date_to:
+                outbound_cond['$lte'] = date_to
+            if outbound_cond:
+                date_conditions.append({'date': outbound_cond})
+            # Also match on return date (so return bookings stay visible)
+            return_cond = {}
+            if date_from:
+                return_cond['$gte'] = date_from
+            if date_to:
+                return_cond['$lte'] = date_to
+            if return_cond:
+                date_conditions.append({'returnDate': return_cond})
+            if date_conditions:
+                if '$or' in query:
+                    # Wrap existing $or with $and to combine
+                    query = {'$and': [{'$or': query['$or']}, {'$or': date_conditions}]}
+                else:
+                    query['$or'] = date_conditions
         
         # Calculate skip for pagination (only when not return_all)
         skip = (page - 1) * limit if not return_all else 0
@@ -1933,10 +2037,19 @@ async def get_bookings(
         all_bookings = list(all_bookings) + list(shuttle_raw)
         total = len(all_bookings)
         
-        # Custom sort: prioritize today, then tomorrow, then upcoming dates, then past dates
+        # Custom sort: use the "effective date" — for return bookings where the
+        # outbound is past but the return is still upcoming, sort by return date
+        # so they stay visible near the top instead of sinking to the bottom.
         def sort_key(b):
-            date = b.get('date', '9999-99-99')
+            outbound_date = b.get('date', '9999-99-99')
+            return_date = b.get('returnDate', '')
             time = b.get('time', '00:00')
+            # Use the latest relevant date: if there's a future return date, use it
+            if return_date and return_date >= today_str and outbound_date < today_str:
+                date = return_date
+                time = b.get('returnTime', '00:00')
+            else:
+                date = outbound_date
             if date == today_str:
                 return (0, time)  # Today first
             elif date > today_str:
@@ -2443,10 +2556,7 @@ def send_booking_confirmation_email(booking: dict, include_payment_link: bool = 
     html_content = generate_confirmation_email_html(booking)
     from_email = get_noreply_email()
 
-    # SendGrid only (no Mailgun / Google fallback)
-    if send_email_unified:
-        return send_email_unified(recipient_email, subject, html_content, from_email=from_email, from_name="BookaRide")
-    return False
+    return _send_email_with_fallbacks(recipient_email, subject, html_content, from_email=from_email, from_name="BookaRide")
 
 
 def send_via_mailgun(booking: dict):
@@ -3767,52 +3877,13 @@ async def send_booking_notification_to_admin(booking: dict):
         html_content = generate_confirmation_email_html(booking, for_admin=True)
         
         subject = f"New Booking - {booking.get('name', 'Customer')} - {formatted_date} - Ref: {booking_ref}"
-        reply_to = os.environ.get("ADMIN_EMAIL", "info@bookaride.co.nz").split(',')[0].strip()
         email_sent = False
-        if send_email_unified:
-            for admin_email in admin_emails:
-                try:
-                    if send_email_unified(
-                        admin_email,
-                        subject,
-                        html_content,
-                        from_email=get_noreply_email(),
-                        from_name="BookaRide System",
-                        reply_to=reply_to,
-                    ):
-                        logger.info(f"Auto-notification sent to {admin_email} for booking: {booking_ref}")
-                        email_sent = True
-                    else:
-                        logger.error(f"Failed to send admin notification to {admin_email}")
-                except Exception as e:
-                    logger.error(f"Error sending to {admin_email}: {e}")
-        else:
-            mailgun_api_key = os.environ.get("MAILGUN_API_KEY")
-            mailgun_domain = os.environ.get("MAILGUN_DOMAIN")
-            sender_email = get_noreply_email()
-            if mailgun_api_key and mailgun_domain:
-                for admin_email in admin_emails:
-                    try:
-                        response = requests.post(
-                            f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
-                            auth=("api", mailgun_api_key),
-                            data={
-                                "from": f"BookaRide System <{sender_email}>",
-                                "to": admin_email,
-                                "subject": subject,
-                                "html": html_content,
-                            },
-                            timeout=15,
-                        )
-                        if response.status_code == 200:
-                            logger.info(f"Auto-notification sent to {admin_email} for booking: {booking_ref}")
-                            email_sent = True
-                        else:
-                            logger.error(f"Failed to send to {admin_email}: {response.status_code} - {response.text}")
-                    except Exception as e:
-                        logger.error(f"Error sending to {admin_email}: {e}")
+        for admin_email in admin_emails:
+            if _send_email_with_fallbacks(admin_email, subject, html_content, from_name="BookaRide System"):
+                logger.info(f"Admin notification sent to {admin_email} for booking: {booking_ref}")
+                email_sent = True
             else:
-                logger.error("No email provider configured (Mailgun or SMTP) - admin notifications not sent")
+                logger.error(f"Failed to send admin notification to {admin_email} (all providers failed)")
             
     except Exception as e:
         logger.error(f"Error sending admin notification: {str(e)}")
@@ -3854,9 +3925,9 @@ async def send_urgent_approval_notification(booking: dict):
     try:
         admin_emails = _get_booking_notification_emails()
         mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
-        mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
+        mailgun_domain = os.environ.get('MAILGUN_DOMAIN', 'mg.bookaride.co.nz')
         sender_email = os.environ.get('SENDER_EMAIL', 'noreply@mg.bookaride.co.nz')
-        
+
         # Format booking details
         total_price = booking.get('totalPrice', 0)
         formatted_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
@@ -3920,33 +3991,12 @@ async def send_urgent_approval_notification(booking: dict):
         
         subject = f"URGENT APPROVAL - {booking.get('name', 'Customer')} - {formatted_date} {booking.get('time', '')} - Ref: {booking_ref}"
         recipient = admin_emails[0] if admin_emails else "bookings@bookaride.co.nz"
-        email_sent = False
-        
-        # Try unified sender first (SMTP/Mailgun)
-        if send_email_unified:
-            if send_email_unified(recipient, subject, html_content, from_email=sender_email or get_noreply_email(), from_name="BookaRide URGENT"):
-                logger.info(f"Urgent approval notification sent to {recipient} for booking: {booking_ref}")
-                email_sent = True
-        
-        # Fallback to Mailgun API
-        if not email_sent and mailgun_api_key and mailgun_domain:
-            response = requests.post(
-            f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
-            auth=("api", mailgun_api_key),
-            data={
-                "from": f"BookaRide URGENT <{sender_email}>",
-                "to": recipient,
-                "subject": f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¨ URGENT APPROVAL - {booking.get('name', 'Customer')} - {formatted_date} {booking.get('time', '')} - Ref: {booking_ref}",
-                "html": html_content
-            }
-        )
-        
-        if response.status_code == 200:
+
+        email_sent = _send_email_with_fallbacks(recipient, subject, html_content, from_name="BookaRide URGENT")
+        if email_sent:
             logger.info(f"Urgent approval notification sent to {recipient} for booking: {booking_ref}")
-            email_sent = True
         else:
-            logger.error(f"Failed to send urgent approval notification: {response.status_code} - {response.text}")
-            email_sent = False
+            logger.error(f"Failed to send urgent approval notification to {recipient} for booking: {booking_ref}")
             
     except Exception as e:
         logger.error(f"Error sending urgent approval notification: {str(e)}")
@@ -8943,16 +8993,15 @@ async def send_payment_link_email(booking: dict, payment_link: str, payment_type
         </html>
         '''
         
-        # Send via Mailgun or Google Workspace SMTP (from noreply address)
-        if send_email_unified and send_email_unified(
+        # Send via Google SMTP / Mailgun fallback
+        if _send_email_with_fallbacks(
             customer_email,
             f"Payment Link - Booking {booking_ref} - ${total_price:.2f} NZD",
-            html_content,
-            from_email=get_noreply_email()
+            html_content
         ):
             logger.info(f"Payment link email sent to {customer_email}")
         else:
-            logger.warning("Email not configured - payment link not sent (see GOOGLE_WORKSPACE_EMAIL_SETUP.md)")
+            logger.warning("Email not configured - payment link not sent. Set SMTP_USER/SMTP_PASS env vars.")
             
     except Exception as e:
         logger.error(f"Error sending payment link email: {str(e)}")
@@ -11143,6 +11192,10 @@ if cors_origins_env == '*':
         "https://dazzling-leakey.preview.emergentagent.com",
         "http://localhost:3000"
     ]
+    # Also allow any Vercel preview/production deployments
+    cors_origins_vercel_env = os.environ.get('VERCEL_ORIGINS', '')
+    if cors_origins_vercel_env:
+        cors_origins.extend([o.strip() for o in cors_origins_vercel_env.split(',') if o.strip()])
 else:
     cors_origins = cors_origins_env.split(',')
 
@@ -11150,6 +11203,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
     allow_origins=cors_origins,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_methods=["*"],
     allow_headers=["*"],
 )

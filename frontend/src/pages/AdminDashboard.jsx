@@ -706,14 +706,13 @@ export const AdminDashboard = () => {
       
       const newBookings = Array.isArray(response.data) ? response.data : [];
       
-      // Cache bookings in localStorage for offline access
+      // Cache a small subset for offline fallback (keeps localStorage fast)
       try {
-        const cached = JSON.parse(localStorage.getItem('cachedBookings') || '[]');
-        const updatedCache = append ? [...(Array.isArray(cached) ? cached : []), ...newBookings] : newBookings;
-        localStorage.setItem('cachedBookings', JSON.stringify(updatedCache.slice(0, 500)));
+        const toCache = (append ? newBookings : newBookings.slice(0, 50));
+        localStorage.setItem('cachedBookings', JSON.stringify(toCache));
         localStorage.setItem('cachedBookingsTime', new Date().toISOString());
       } catch (e) {
-        console.warn('Could not cache bookings:', e);
+        // localStorage full or unavailable - not critical
       }
       
       // Defer heavy state update to next tick to avoid "[Violation] 'load' handler took Xms"
@@ -1632,15 +1631,32 @@ export const AdminDashboard = () => {
     }
   };
   
-  // Address autocomplete for admin forms (Geoapify)
-  const fetchAdminAddressSuggestions = async (query, setter, showSetter) => {
+  // Address autocomplete for admin forms (Geoapify) with debounce + stale-request guard
+  // Each setter gets its own request counter to prevent cross-field cancellation
+  const adminAddrDebounceRef = useRef({});
+  const adminAddrRequestIdRef = useRef({});
+  const fetchAdminAddressSuggestions = (query, setter, showSetter) => {
+    // Use setter reference as unique key per field
+    const key = [setAdminPickupSuggestions, setEditPickupSuggestions].includes(setter) ? 'pickup' : 'dropoff';
+    if (adminAddrDebounceRef.current[key]) clearTimeout(adminAddrDebounceRef.current[key]);
+
     if (query.length < 3) { setter([]); showSetter(false); return; }
-    try {
-      const res = await axios.get(`${API}/places/autocomplete`, { params: { input: query } });
-      const predictions = res.data?.predictions || [];
-      setter(predictions);
-      showSetter(predictions.length > 0);
-    } catch { setter([]); showSetter(false); }
+
+    adminAddrDebounceRef.current[key] = setTimeout(async () => {
+      if (!adminAddrRequestIdRef.current[key]) adminAddrRequestIdRef.current[key] = 0;
+      const requestId = ++adminAddrRequestIdRef.current[key];
+      try {
+        const res = await axios.get(`${API}/places/autocomplete`, { params: { input: query } });
+        if (requestId !== adminAddrRequestIdRef.current[key]) return;
+        const predictions = res.data?.predictions || [];
+        setter(predictions);
+        showSetter(predictions.length > 0);
+      } catch (err) {
+        if (requestId !== adminAddrRequestIdRef.current[key]) return;
+        console.error('Admin address autocomplete error:', err);
+        setter([]); showSetter(false);
+      }
+    }, 300);
   };
 
   const handleRemovePickup = (index) => {
@@ -1800,6 +1816,7 @@ export const AdminDashboard = () => {
     if (!editingBooking) return;
 
     try {
+      const flightNum = editingBooking.flightNumber || editingBooking.flightArrivalNumber || editingBooking.flightDepartureNumber || '';
       await axios.patch(`${API}/bookings/${editingBooking.id}`, {
         name: editingBooking.name,
         email: editingBooking.email,
@@ -1811,19 +1828,18 @@ export const AdminDashboard = () => {
         time: editingBooking.time,
         passengers: editingBooking.passengers,
         notes: editingBooking.notes,
-        flightArrivalNumber: editingBooking.flightArrivalNumber,
-        flightArrivalTime: editingBooking.flightArrivalTime,
-        flightDepartureNumber: editingBooking.flightDepartureNumber,
-        flightDepartureTime: editingBooking.flightDepartureTime,
-        // Also write customer-facing field names so all code paths see updated values
-        arrivalFlightNumber: editingBooking.flightArrivalNumber,
-        arrivalTime: editingBooking.flightArrivalTime,
-        departureFlightNumber: editingBooking.flightDepartureNumber,
-        departureTime: editingBooking.flightDepartureTime,
+        // Single flight number synced to all field name variants
+        flightNumber: flightNum,
+        flightArrivalNumber: flightNum,
+        flightDepartureNumber: flightNum,
+        arrivalFlightNumber: flightNum,
+        departureFlightNumber: flightNum,
         // Return trip - inferred from filled return date + time
         bookReturn: !!(editingBooking.returnDate && editingBooking.returnTime),
-        returnDate: editingBooking.returnDate,
-        returnTime: editingBooking.returnTime
+        returnDate: editingBooking.returnDate || '',
+        returnTime: editingBooking.returnTime || '',
+        returnFlightNumber: editingBooking.returnFlightNumber || editingBooking.returnDepartureFlightNumber || '',
+        returnDepartureFlightNumber: editingBooking.returnDepartureFlightNumber || editingBooking.returnFlightNumber || ''
       }, getAuthHeaders());
 
       toast.success('Booking updated successfully!');
@@ -5248,48 +5264,26 @@ export const AdminDashboard = () => {
                     </div>
                   </div>
 
-                  {/* Flight Details */}
+                  {/* Flight Number */}
                   <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                     <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                      ✈️ Flight Details (Optional)
+                      Flight Number
                     </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label>Flight Arrival Number</Label>
-                        <Input
-                          value={editingBooking.flightArrivalNumber || ''}
-                          onChange={(e) => setEditingBooking(prev => ({...prev, flightArrivalNumber: e.target.value}))}
-                          placeholder="e.g., NZ123"
-                          className="mt-1 bg-white"
-                        />
-                      </div>
-                      <div>
-                        <Label>Flight Arrival Time</Label>
-                        <Input
-                          type="time"
-                          value={editingBooking.flightArrivalTime || ''}
-                          onChange={(e) => setEditingBooking(prev => ({...prev, flightArrivalTime: e.target.value}))}
-                          className="mt-1 bg-white"
-                        />
-                      </div>
-                      <div>
-                        <Label>Flight Departure Number</Label>
-                        <Input
-                          value={editingBooking.flightDepartureNumber || ''}
-                          onChange={(e) => setEditingBooking(prev => ({...prev, flightDepartureNumber: e.target.value}))}
-                          placeholder="e.g., NZ456"
-                          className="mt-1 bg-white"
-                        />
-                      </div>
-                      <div>
-                        <Label>Flight Departure Time</Label>
-                        <Input
-                          type="time"
-                          value={editingBooking.flightDepartureTime || ''}
-                          onChange={(e) => setEditingBooking(prev => ({...prev, flightDepartureTime: e.target.value}))}
-                          className="mt-1 bg-white"
-                        />
-                      </div>
+                    <div>
+                      <Label>Flight Number</Label>
+                      <Input
+                        value={editingBooking.flightNumber || editingBooking.flightArrivalNumber || editingBooking.flightDepartureNumber || editingBooking.arrivalFlightNumber || editingBooking.departureFlightNumber || ''}
+                        onChange={(e) => setEditingBooking(prev => ({
+                          ...prev,
+                          flightNumber: e.target.value,
+                          flightArrivalNumber: e.target.value,
+                          flightDepartureNumber: e.target.value,
+                          arrivalFlightNumber: e.target.value,
+                          departureFlightNumber: e.target.value
+                        }))}
+                        placeholder="e.g., NZ123"
+                        className="mt-1 bg-white"
+                      />
                     </div>
                   </div>
 

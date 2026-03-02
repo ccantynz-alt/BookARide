@@ -57,10 +57,19 @@ export const PaymentSuccess = () => {
   };
 
   const pollPaymentStatus = async (attempts = 0) => {
-    const maxAttempts = 5;
-    const pollInterval = 2000; // 2 seconds
+    const maxAttempts = 10;
+    const pollInterval = 3000; // 3 seconds (total wait: 30s)
 
     if (attempts >= maxAttempts) {
+      // Before giving up, try one last direct status check
+      try {
+        const lastCheck = await axios.get(`${API}/payment/status/${sessionId}`);
+        if (lastCheck.data?.payment_status === 'paid') {
+          setPaymentStatus('success');
+          setPaymentDetails(lastCheck.data);
+          return;
+        }
+      } catch {}
       setPaymentStatus('timeout');
       return;
     }
@@ -83,7 +92,12 @@ export const PaymentSuccess = () => {
       setTimeout(() => pollPaymentStatus(attempts + 1), pollInterval);
     } catch (error) {
       console.error('Error checking payment status:', error);
-      setPaymentStatus('error');
+      // Don't give up on network errors — retry
+      if (attempts < maxAttempts - 1) {
+        setTimeout(() => pollPaymentStatus(attempts + 1), pollInterval);
+      } else {
+        setPaymentStatus('error');
+      }
     }
   };
 

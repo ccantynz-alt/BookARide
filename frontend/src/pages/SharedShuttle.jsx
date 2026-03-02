@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Helmet } from '@vuer-ai/react-helmet-async';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -139,22 +139,26 @@ const SharedShuttle = () => {
   const savings = privateTransferPrice - totalPrice;
   const savingsPercent = Math.round((savings / privateTransferPrice) * 100);
   
-  const handleAddressChange = async (value) => {
+  const shuttleAddrDebounceRef = useRef(null);
+  const shuttleAddrRequestRef = useRef(0);
+  const handleAddressChange = (value) => {
     setPickupAddress(value);
-    if (value.length > 3) {
+    if (shuttleAddrDebounceRef.current) clearTimeout(shuttleAddrDebounceRef.current);
+    if (value.length < 3) { setAddressSuggestions([]); setShowSuggestions(false); return; }
+    shuttleAddrDebounceRef.current = setTimeout(async () => {
+      const requestId = ++shuttleAddrRequestRef.current;
       try {
         const response = await axios.get(`${API}/places/autocomplete`, {
           params: { input: value, types: 'address', region: 'nz' }
         });
+        if (requestId !== shuttleAddrRequestRef.current) return;
         setAddressSuggestions(response.data.predictions || []);
         setShowSuggestions(true);
       } catch (error) {
+        if (requestId !== shuttleAddrRequestRef.current) return;
         console.error('Autocomplete error:', error);
       }
-    } else {
-      setAddressSuggestions([]);
-      setShowSuggestions(false);
-    }
+    }, 300);
   };
   
   const selectAddress = (address) => {
