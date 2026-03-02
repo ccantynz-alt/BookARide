@@ -518,10 +518,6 @@ export const AdminDashboard = () => {
   const [loadingOrphans, setLoadingOrphans] = useState(false);
   const [recoverSessionId, setRecoverSessionId] = useState('');
   const [recovering, setRecovering] = useState(false);
-  // Shuttle state
-  const [shuttleDate, setShuttleDate] = useState(new Date().toISOString().split('T')[0]);
-  const [shuttleData, setShuttleData] = useState({});
-  const [loadingShuttle, setLoadingShuttle] = useState(false);
   const [loadingDeleted, setLoadingDeleted] = useState(false);
   const [restoringAll, setRestoringAll] = useState(false);
   const [downloadingBackup, setDownloadingBackup] = useState(false);
@@ -914,99 +910,6 @@ export const AdminDashboard = () => {
       toast.error(error.response?.data?.detail || 'Failed to run auto-archive');
     } finally {
       setRunningAutoArchive(false);
-    }
-  };
-
-  // Fetch shuttle data for admin
-  const fetchShuttleData = async (date = shuttleDate) => {
-    setLoadingShuttle(true);
-    try {
-      const response = await axios.get(`${API}/shuttle/departures?date=${date}`, getAuthHeaders());
-      setShuttleData(response.data || {});
-    } catch (error) {
-      console.error('Error fetching shuttle data:', error);
-      // Don't show error for 401 (might not have shuttle feature)
-    } finally {
-      setLoadingShuttle(false);
-    }
-  };
-
-  // Get optimized shuttle route (opens maps URL from backend – Geoapify/OSM)
-  const getShuttleRoute = async (date, time) => {
-    try {
-      const response = await axios.get(`${API}/shuttle/route/${date}/${time}`, getAuthHeaders());
-      const url = response.data.mapsUrl || response.data.googleMapsUrl;
-      if (url) {
-        window.open(url, '_blank');
-        toast.success('Route opened in maps');
-      }
-      return response.data;
-    } catch (error) {
-      console.error('Error getting shuttle route:', error);
-      toast.error('Failed to get route');
-    }
-  };
-
-  // Capture all shuttle payments for a departure
-  const captureShuttlePayments = async (date, time) => {
-    try {
-      const response = await axios.post(`${API}/shuttle/capture-all/${date}/${time}`, {}, getAuthHeaders());
-      toast.success(`Captured payments for ${response.data.totalPassengers} passengers at $${response.data.finalPricePerPerson}/person`);
-      fetchShuttleData(date);
-    } catch (error) {
-      console.error('Error capturing shuttle payments:', error);
-      toast.error('Failed to capture payments');
-    }
-  };
-
-  // Start shuttle run - calculates ETAs and schedules "arriving soon" SMS for all customers
-  const startShuttleRun = async (date, time, driverId = null, driverName = null) => {
-    try {
-      toast.loading('Starting shuttle and scheduling notifications...');
-      const response = await axios.post(`${API}/shuttle/start/${date}/${time}`, {
-        driverId,
-        driverName
-      }, getAuthHeaders());
-      toast.dismiss();
-      
-      if (response.data.success) {
-        toast.success(`Shuttle started! ${response.data.scheduledNotifications} "Arriving Soon" SMS scheduled automatically.`);
-        fetchShuttleData(date);
-      }
-    } catch (error) {
-      toast.dismiss();
-      console.error('Error starting shuttle:', error);
-      toast.error(error.response?.data?.detail || 'Failed to start shuttle');
-    }
-  };
-
-  // Assign driver to shuttle - automatically starts the shuttle and schedules SMS
-  const assignShuttleDriver = async (date, time, driverId) => {
-    if (!driverId) return;
-    
-    const driver = drivers.find(d => d.id === driverId);
-    if (!driver) return;
-    
-    try {
-      toast.loading(`Assigning ${driver.name} and scheduling notifications...`);
-      
-      // Call the assign endpoint which handles everything
-      const response = await axios.post(`${API}/shuttle/assign-driver/${date}/${time}`, {
-        driverId: driverId,
-        driverName: driver.name,
-        driverPhone: driver.phone
-      }, getAuthHeaders());
-      
-      toast.dismiss();
-      
-      if (response.data.success) {
-        toast.success(`${driver.name} assigned! Route sent to driver, ${response.data.scheduledNotifications} customer SMS scheduled.`);
-        fetchShuttleData(date);
-      }
-    } catch (error) {
-      toast.dismiss();
-      console.error('Error assigning driver:', error);
-      toast.error(error.response?.data?.detail || 'Failed to assign driver');
     }
   };
 
@@ -1631,7 +1534,7 @@ export const AdminDashboard = () => {
     }
   };
   
-  // Address autocomplete for admin forms (Geoapify) with debounce + stale-request guard
+  // Address autocomplete for admin forms with debounce + stale-request guard
   // Each setter gets its own request counter to prevent cross-field cancellation
   const adminAddrDebounceRef = useRef({});
   const adminAddrRequestIdRef = useRef({});
@@ -2369,7 +2272,6 @@ export const AdminDashboard = () => {
         <Tabs defaultValue="bookings" value={activeTab} onValueChange={(val) => {
           setActiveTab(val);
           if (val === 'deleted') { fetchDeletedBookings(); fetchAutoBackups(); }
-          if (val === 'shuttle') fetchShuttleData();
           if (val === 'archive') fetchArchivedBookings(1, '');
         }} className="w-full">
           <TabsList className="flex flex-wrap w-full gap-1 mb-4 md:mb-8 bg-transparent">
@@ -2377,10 +2279,6 @@ export const AdminDashboard = () => {
               <BookOpen className="w-3 h-3 md:w-4 md:h-4" />
               <span className="hidden sm:inline">Bookings</span>
               <span className="sm:hidden">Book</span>
-            </TabsTrigger>
-            <TabsTrigger value="shuttle" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 text-yellow-600">
-              <Bus className="w-3 h-3 md:w-4 md:h-4" />
-              <span>Shuttle</span>
             </TabsTrigger>
             <TabsTrigger value="deleted" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 text-red-600">
               <Trash2 className="w-3 h-3 md:w-4 md:h-4" />
@@ -3134,157 +3032,6 @@ export const AdminDashboard = () => {
         </Card>
         </TabsContent>
 
-          {/* Shuttle Service Tab */}
-          <TabsContent value="shuttle" className="space-y-6">
-            <Card className="border-yellow-200 bg-yellow-50">
-              <CardContent className="p-4 md:p-6">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-                  <div className="flex items-center gap-3">
-
-                    <Bus className="w-8 h-8 text-yellow-600" />
-                    <div>
-                      <h3 className="text-xl font-bold text-gray-800">Shared Shuttle Service</h3>
-                      <p className="text-sm text-gray-600">Auckland CBD → Airport (Every 2 Hours)</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Input 
-                      type="date" 
-                      value={shuttleDate} 
-                      onChange={(e) => {
-                        setShuttleDate(e.target.value);
-                        fetchShuttleData(e.target.value);
-                      }}
-                      className="w-40"
-                    />
-                    <Button 
-                      onClick={() => fetchShuttleData(shuttleDate)}
-                      variant="outline"
-                      disabled={loadingShuttle}
-                    >
-                      <RefreshCw className={`w-4 h-4 mr-2 ${loadingShuttle ? 'animate-spin' : ''}`} />
-                      Refresh
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Departure Times Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {shuttleData.departures && Object.entries(shuttleData.departures).map(([time, data]) => (
-                    <div 
-                      key={time} 
-                      className={`p-4 rounded-lg border-2 ${
-                        data.totalPassengers > 0 
-                          ? 'bg-white border-yellow-500 shadow-md' 
-                          : 'bg-gray-50 border-gray-200'
-                      }`}
-                    >
-                      <div className="flex justify-between items-start mb-3">
-                        <div>
-                          <p className="text-lg font-bold text-gray-800">
-                            {time.replace(':00', ':00').replace(/(\d{2}):(\d{2})/, (m, h, min) => {
-                              const hour = parseInt(h);
-                              const ampm = hour >= 12 ? 'PM' : 'AM';
-                              const hour12 = hour % 12 || 12;
-                              return `${hour12}:${min} ${ampm}`;
-                            })}
-                          </p>
-                          <p className="text-sm text-gray-500">{shuttleDate}</p>
-                        </div>
-                        <div className={`px-2 py-1 rounded text-xs font-medium ${
-                          data.totalPassengers >= 6 ? 'bg-green-100 text-green-800' :
-                          data.totalPassengers >= 3 ? 'bg-yellow-100 text-yellow-800' :
-                          data.totalPassengers > 0 ? 'bg-blue-100 text-blue-800' :
-                          'bg-gray-100 text-gray-500'
-                        }`}>
-                          {data.totalPassengers || 0} pax
-                        </div>
-                      </div>
-
-                      {data.bookings && data.bookings.length > 0 ? (
-                        <>
-                          <div className="space-y-2 mb-3 max-h-40 overflow-y-auto">
-                            {data.bookings.map((booking, idx) => (
-                              <div key={idx} className="text-xs bg-gray-100 rounded p-2">
-                                <div className="font-medium">{booking.name} ({booking.passengers})</div>
-                                <div className="text-gray-500 truncate">{booking.pickupAddress}</div>
-                                <div className="text-gray-400">{booking.phone}</div>
-                                {booking.arrivingSoonSent && (
-                                  <div className="text-green-600 text-xs mt-1">✓ Notified</div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                          <div className="flex justify-between items-center text-sm mb-3">
-                            <span className="text-gray-600">Est. Revenue:</span>
-                            <span className="font-bold text-green-600">${data.totalRevenue || 0}</span>
-                          </div>
-                          
-                          {/* Driver Assignment - triggers auto SMS when assigned */}
-                          <div className="mb-3">
-                            <label className="text-xs text-gray-600 mb-1 block">Assign Driver:</label>
-                            <select
-                              className="w-full text-sm border border-gray-300 rounded px-2 py-2 bg-white"
-                              value={data.assignedDriverId || ''}
-                              onChange={(e) => assignShuttleDriver(shuttleDate, time, e.target.value)}
-                            >
-                              <option value="">Select driver...</option>
-                              {drivers.map(driver => (
-                                <option key={driver.id} value={driver.id}>{driver.name}</option>
-                              ))}
-                            </select>
-                            {data.assignedDriverName && (
-                              <div className="text-xs text-green-600 mt-1 flex items-center gap-1">
-                                <CheckCircle className="w-3 h-3" />
-                                {data.assignedDriverName} assigned - SMS scheduled!
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="flex gap-2">
-                            <Button 
-                              size="sm" 
-                              className="flex-1 bg-blue-600 hover:bg-blue-700"
-                              onClick={() => getShuttleRoute(shuttleDate, time)}
-                            >
-                              <Navigation className="w-3 h-3 mr-1" />
-                              Route
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              className="flex-1 bg-green-600 hover:bg-green-700"
-                              onClick={() => captureShuttlePayments(shuttleDate, time)}
-                            >
-                              <DollarSign className="w-3 h-3 mr-1" />
-                              Charge All
-                            </Button>
-                          </div>
-                        </>
-                      ) : (
-                        <p className="text-sm text-gray-400 italic">No bookings yet</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                {/* Pricing Info */}
-                <div className="mt-6 p-4 bg-white rounded-lg border">
-                  <h4 className="font-semibold text-gray-700 mb-2">Dynamic Pricing Tiers</h4>
-                  <div className="flex flex-wrap gap-2 text-xs">
-                    <span className="px-2 py-1 bg-gray-100 rounded">1-2 pax: $100/ea</span>
-                    <span className="px-2 py-1 bg-gray-100 rounded">3 pax: $70/ea</span>
-                    <span className="px-2 py-1 bg-gray-100 rounded">4 pax: $55/ea</span>
-                    <span className="px-2 py-1 bg-gray-100 rounded">5 pax: $45/ea</span>
-                    <span className="px-2 py-1 bg-gray-100 rounded">6 pax: $40/ea</span>
-                    <span className="px-2 py-1 bg-gray-100 rounded">7+ pax: $35-25/ea</span>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-2">
-                    💳 Cards are authorized at booking, charged when shuttle arrives at airport
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
 
           {/* Customers Tab */}
           <TabsContent value="customers">

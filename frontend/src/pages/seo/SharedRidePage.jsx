@@ -132,9 +132,9 @@ const SharedRidePage = () => {
                     Book Shared Ride
                   </Button>
                 </Link>
-                <Link to="/shared-shuttle">
+                <Link to="/book-now">
                   <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10 px-8 py-6 text-lg">
-                    View Shared Shuttle
+                    Book Now
                   </Button>
                 </Link>
               </div>
