@@ -1535,12 +1535,17 @@ export const AdminDashboard = () => {
   };
   
   // Address autocomplete for admin forms with debounce + stale-request guard
-  // Each setter gets its own request counter to prevent cross-field cancellation
+  // Each field (create-pickup, create-dropoff, edit-pickup, edit-dropoff) gets its own key
   const adminAddrDebounceRef = useRef({});
   const adminAddrRequestIdRef = useRef({});
   const fetchAdminAddressSuggestions = (query, setter, showSetter) => {
-    // Use setter reference as unique key per field
-    const key = [setAdminPickupSuggestions, setEditPickupSuggestions].includes(setter) ? 'pickup' : 'dropoff';
+    // Use unique key per field to prevent cross-field/cross-modal collisions
+    let key;
+    if (setter === setAdminPickupSuggestions) key = 'create-pickup';
+    else if (setter === setAdminDropoffSuggestions) key = 'create-dropoff';
+    else if (setter === setEditPickupSuggestions) key = 'edit-pickup';
+    else key = 'edit-dropoff';
+
     if (adminAddrDebounceRef.current[key]) clearTimeout(adminAddrDebounceRef.current[key]);
 
     if (query.length < 3) { setter([]); showSetter(false); return; }
@@ -1549,7 +1554,7 @@ export const AdminDashboard = () => {
       if (!adminAddrRequestIdRef.current[key]) adminAddrRequestIdRef.current[key] = 0;
       const requestId = ++adminAddrRequestIdRef.current[key];
       try {
-        const res = await axios.get(`${API}/places/autocomplete`, { params: { input: query } });
+        const res = await axios.get(`${API}/places/autocomplete`, { params: { input: query }, timeout: 10000 });
         if (requestId !== adminAddrRequestIdRef.current[key]) return;
         const predictions = res.data?.predictions || [];
         setter(predictions);
@@ -1560,6 +1565,21 @@ export const AdminDashboard = () => {
         setter([]); showSetter(false);
       }
     }, 300);
+  };
+
+  // Clear all admin address suggestion state and cancel pending requests
+  const clearAdminAddressSuggestions = () => {
+    Object.keys(adminAddrDebounceRef.current).forEach(k => clearTimeout(adminAddrDebounceRef.current[k]));
+    adminAddrDebounceRef.current = {};
+    setAdminPickupSuggestions([]); setShowAdminPickupSuggestions(false);
+    setAdminDropoffSuggestions([]); setShowAdminDropoffSuggestions(false);
+  };
+  const clearEditAddressSuggestions = () => {
+    Object.keys(adminAddrDebounceRef.current).forEach(k => {
+      if (k.startsWith('edit-')) clearTimeout(adminAddrDebounceRef.current[k]);
+    });
+    setEditPickupSuggestions([]); setShowEditPickupSuggestions(false);
+    setEditDropoffSuggestions([]); setShowEditDropoffSuggestions(false);
   };
 
   const handleRemovePickup = (index) => {
@@ -1748,6 +1768,7 @@ export const AdminDashboard = () => {
       toast.success('Booking updated successfully!');
       setShowEditBookingModal(false);
       setEditingBooking(null);
+      clearEditAddressSuggestions();
       fetchBookingsRef.current?.();
     } catch (error) {
       console.error('Error updating booking:', error);
@@ -2129,6 +2150,7 @@ export const AdminDashboard = () => {
 
       toast.success('Booking created successfully! Customer will receive email & SMS confirmation.');
       setShowCreateBookingModal(false);
+      clearAdminAddressSuggestions();
       // Reset form
       setNewBooking({
         name: '',
@@ -4209,7 +4231,10 @@ export const AdminDashboard = () => {
       </Dialog>
 
       {/* Create Booking Modal */}
-      <Dialog open={showCreateBookingModal} onOpenChange={setShowCreateBookingModal}>
+      <Dialog open={showCreateBookingModal} onOpenChange={(open) => {
+        setShowCreateBookingModal(open);
+        if (!open) clearAdminAddressSuggestions();
+      }}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create Manual Booking</DialogTitle>
@@ -4372,7 +4397,7 @@ export const AdminDashboard = () => {
                       setNewBooking(prev => ({ ...prev, pickupAddress: val }));
                       fetchAdminAddressSuggestions(val, setAdminPickupSuggestions, setShowAdminPickupSuggestions);
                     }}
-                    onBlur={() => setTimeout(() => setShowAdminPickupSuggestions(false), 200)}
+                    onBlur={() => setTimeout(() => setShowAdminPickupSuggestions(false), 350)}
                     placeholder="Start typing address..."
                     autoComplete="off"
                     className="mt-1"
@@ -4447,7 +4472,7 @@ export const AdminDashboard = () => {
                       setNewBooking(prev => ({ ...prev, dropoffAddress: val }));
                       fetchAdminAddressSuggestions(val, setAdminDropoffSuggestions, setShowAdminDropoffSuggestions);
                     }}
-                    onBlur={() => setTimeout(() => setShowAdminDropoffSuggestions(false), 200)}
+                    onBlur={() => setTimeout(() => setShowAdminDropoffSuggestions(false), 350)}
                     placeholder="Start typing address..."
                     autoComplete="off"
                     className="mt-1"
@@ -4794,6 +4819,7 @@ export const AdminDashboard = () => {
                 variant="outline"
                 onClick={() => {
                   setShowCreateBookingModal(false);
+                  clearAdminAddressSuggestions();
                   setNewBooking({
                     name: '',
                     email: '',
@@ -4832,7 +4858,10 @@ export const AdminDashboard = () => {
       </Dialog>
 
       {/* Edit Booking Modal */}
-      <Dialog open={showEditBookingModal} onOpenChange={setShowEditBookingModal}>
+      <Dialog open={showEditBookingModal} onOpenChange={(open) => {
+        setShowEditBookingModal(open);
+        if (!open) { setEditingBooking(null); clearEditAddressSuggestions(); }
+      }}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Booking #{editingBooking?.referenceNumber || editingBooking?.id?.slice(0, 8)}</DialogTitle>
@@ -4903,7 +4932,7 @@ export const AdminDashboard = () => {
                         setEditingBooking(prev => ({ ...prev, pickupAddress: val }));
                         fetchAdminAddressSuggestions(val, setEditPickupSuggestions, setShowEditPickupSuggestions);
                       }}
-                      onBlur={() => setTimeout(() => setShowEditPickupSuggestions(false), 200)}
+                      onBlur={() => setTimeout(() => setShowEditPickupSuggestions(false), 350)}
                       placeholder="Start typing address..."
                       autoComplete="off"
                       className="mt-1"
@@ -4969,7 +4998,7 @@ export const AdminDashboard = () => {
                         setEditingBooking(prev => ({ ...prev, dropoffAddress: val }));
                         fetchAdminAddressSuggestions(val, setEditDropoffSuggestions, setShowEditDropoffSuggestions);
                       }}
-                      onBlur={() => setTimeout(() => setShowEditDropoffSuggestions(false), 200)}
+                      onBlur={() => setTimeout(() => setShowEditDropoffSuggestions(false), 350)}
                       placeholder="Start typing address..."
                       autoComplete="off"
                       className="mt-1"
@@ -5150,6 +5179,7 @@ export const AdminDashboard = () => {
                   onClick={() => {
                     setShowEditBookingModal(false);
                     setEditingBooking(null);
+                    clearEditAddressSuggestions();
                   }}
                 >
                   Cancel
