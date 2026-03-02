@@ -4795,25 +4795,19 @@ async def resend_booking_confirmation(booking_id: str, current_admin: dict = Dep
 @api_router.get("/email-status")
 async def get_email_status():
     """Check if email is configured on this server (no auth). Use to verify Render env vars."""
-    try:
-        from email_sender import is_email_configured, get_noreply_email
-    except ImportError:
-        return {
-            "email_provider": os.environ.get("EMAIL_PROVIDER") or "sendgrid",
-            "sendgrid_configured": bool(os.environ.get("SENDGRID_API_KEY")),
-            "smtp_configured": bool(os.environ.get("SMTP_USER") and os.environ.get("SMTP_PASS")),
-            "mailgun_configured": bool(os.environ.get("MAILGUN_API_KEY") and os.environ.get("MAILGUN_DOMAIN")),
-            "noreply_email": os.environ.get("NOREPLY_EMAIL") or os.environ.get("SENDER_EMAIL") or "(not set)",
-            "hint": "SendGrid only: set SENDGRID_API_KEY and NOREPLY_EMAIL (verified sender). Remove Mailgun/SMTP vars.",
-        }
+    smtp_configured = bool(os.environ.get("SMTP_USER") and os.environ.get("SMTP_PASS"))
+    mailgun_configured = bool(os.environ.get("MAILGUN_API_KEY"))
+
     return {
-        "email_provider": os.environ.get("EMAIL_PROVIDER") or "sendgrid",
-        "sendgrid_configured": bool(os.environ.get("SENDGRID_API_KEY")),
-        "smtp_configured": bool(os.environ.get("SMTP_USER") and os.environ.get("SMTP_PASS")),
-        "mailgun_configured": bool(os.environ.get("MAILGUN_API_KEY") and os.environ.get("MAILGUN_DOMAIN")),
+        "email_sender_module": send_email_unified is not None,
+        "smtp_configured": smtp_configured,
+        "smtp_host": os.environ.get("SMTP_HOST", "smtp.gmail.com") if smtp_configured else "(not set)",
+        "smtp_user": os.environ.get("SMTP_USER", "(not set)")[:3] + "***" if smtp_configured else "(not set)",
+        "mailgun_configured": mailgun_configured,
         "noreply_email": get_noreply_email(),
-        "email_configured": is_email_configured(),
-        "hint": "SendGrid only: SENDGRID_API_KEY + NOREPLY_EMAIL (verified sender in SendGrid). Remove Mailgun/SMTP.",
+        "any_provider_available": send_email_unified is not None or smtp_configured or mailgun_configured,
+        "fallback_chain": "email_sender -> Google SMTP -> Mailgun",
+        "hint": "Set SMTP_USER (your Google email) and SMTP_PASS (Google App Password) for Google SMTP.",
     }
 
 
@@ -4823,17 +4817,24 @@ async def admin_send_test_email(body: dict = Body(default={}), current_admin: di
     to = (body.get("to") or "").strip() or os.environ.get("BOOKINGS_NOTIFICATION_EMAIL") or current_admin.get("email") or "bookings@bookaride.co.nz"
     if "@" not in to:
         raise HTTPException(status_code=400, detail="Provide a valid 'to' email in the request body.")
-    try:
-        from email_sender import send_test_email as do_send_test_email
-    except ImportError:
-        # Fallback without email_sender
-        if not os.environ.get("SMTP_USER") or not os.environ.get("SMTP_PASS"):
-            raise HTTPException(status_code=500, detail="SMTP_USER or SMTP_PASS not set on this server. Add them in Render Environment.")
-        raise HTTPException(status_code=500, detail="email_sender module not available.")
-    ok, err = do_send_test_email(to)
+
+    html = """<h2>BookaRide Test Email</h2>
+    <p>If you are reading this, email sending is working correctly.</p>
+    <p><strong>Provider chain:</strong> email_sender module &rarr; Google SMTP &rarr; Mailgun</p>
+    <p>Sent via <code>_send_email_with_fallbacks()</code></p>"""
+
+    ok = _send_email_with_fallbacks(to, "BookaRide Test Email - Email Is Working!", html)
     if ok:
         return {"success": True, "message": f"Test email sent to {to}. Check inbox and spam."}
-    raise HTTPException(status_code=500, detail=err or "Email failed (no details).")
+
+    # Build diagnostic info
+    diag = {
+        "smtp_user_set": bool(os.environ.get("SMTP_USER")),
+        "smtp_pass_set": bool(os.environ.get("SMTP_PASS")),
+        "mailgun_key_set": bool(os.environ.get("MAILGUN_API_KEY")),
+        "email_sender_available": send_email_unified is not None,
+    }
+    raise HTTPException(status_code=500, detail=f"All email providers failed. Config: {diag}")
 
 
 @api_router.post("/bookings/{booking_id}/resend-payment-link")
