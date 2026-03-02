@@ -149,7 +149,7 @@ const SharedShuttle = () => {
       const requestId = ++shuttleAddrRequestRef.current;
       try {
         const response = await axios.get(`${API}/places/autocomplete`, {
-          params: { input: value, types: 'address', region: 'nz' }
+          params: { input: value }
         });
         if (requestId !== shuttleAddrRequestRef.current) return;
         setAddressSuggestions(response.data.predictions || []);

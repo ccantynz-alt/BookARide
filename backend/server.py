@@ -1129,6 +1129,80 @@ async def health_check():
     }
 
 
+# Diagnostic endpoint to test Google Places API key
+@api_router.get("/places/test")
+async def places_api_test():
+    """Test Google Places API key with a known address query.
+
+    Returns detailed diagnostic info to help troubleshoot autocomplete issues.
+    """
+    google_key = os.environ.get('GOOGLE_MAPS_API_KEY', '').strip()
+    result = {
+        "key_configured": bool(google_key),
+        "key_prefix": google_key[:8] + "..." if len(google_key) > 8 else "(too short or empty)",
+        "legacy_api": {"status": "not_tested"},
+        "new_api": {"status": "not_tested"},
+    }
+    if not google_key:
+        result["recommendation"] = "Set GOOGLE_MAPS_API_KEY environment variable"
+        return result
+
+    # Test legacy Places API
+    try:
+        url = "https://maps.googleapis.com/maps/api/place/autocomplete/json"
+        params = {"input": "Auckland Airport", "key": google_key, "components": "country:nz"}
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            r = await client.get(url, params=params)
+        data = r.json()
+        result["legacy_api"] = {
+            "status": data.get("status", "UNKNOWN"),
+            "error_message": data.get("error_message", ""),
+            "prediction_count": len(data.get("predictions", [])),
+        }
+    except Exception as e:
+        result["legacy_api"] = {"status": "EXCEPTION", "error": str(e)}
+
+    # Test new Places API
+    try:
+        new_url = "https://places.googleapis.com/v1/places:autocomplete"
+        headers = {"Content-Type": "application/json", "X-Goog-Api-Key": google_key}
+        body = {"input": "Auckland Airport", "includedRegionCodes": ["nz"]}
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            r = await client.post(new_url, json=body, headers=headers)
+        if r.status_code == 200:
+            data = r.json()
+            result["new_api"] = {
+                "status": "OK",
+                "suggestion_count": len(data.get("suggestions", [])),
+            }
+        else:
+            result["new_api"] = {
+                "status": f"HTTP_{r.status_code}",
+                "error": r.text[:300],
+            }
+    except Exception as e:
+        result["new_api"] = {"status": "EXCEPTION", "error": str(e)}
+
+    # Recommendation
+    legacy_ok = result["legacy_api"].get("status") == "OK"
+    new_ok = result["new_api"].get("status") == "OK"
+    if legacy_ok or new_ok:
+        result["recommendation"] = "API key is working! Autocomplete should function."
+    elif result["legacy_api"].get("status") == "REQUEST_DENIED":
+        result["recommendation"] = (
+            "API key is DENIED. In Google Cloud Console, enable: "
+            "'Places API' and/or 'Places API (New)'. "
+            "Also ensure billing is active and the key has no IP restrictions blocking your server."
+        )
+    else:
+        result["recommendation"] = (
+            f"Legacy API: {result['legacy_api'].get('status')}. "
+            f"New API: {result['new_api'].get('status')}. "
+            "Check Google Cloud Console for API enablement and billing."
+        )
+    return result
+
+
 # Google Reviews Endpoint - Fetches reviews from Google Places API
 @api_router.get("/google-reviews")
 async def get_google_reviews():
@@ -1390,38 +1464,123 @@ DEFAULT_FALLBACK_DISTANCE_KM = 75.0
 LONG_DISTANCE_FALLBACK_KM = 200.0
 
 # Address Autocomplete Endpoint (Google Places API)
+# Common NZ addresses as fallback when Google API is unavailable
+_NZ_FALLBACK_ADDRESSES = [
+    {"description": "Auckland Airport (AKL), Ray Emery Drive, Mangere, Auckland 2022, New Zealand", "place_id": "fallback_akl"},
+    {"description": "Auckland CBD, Auckland, New Zealand", "place_id": "fallback_akl_cbd"},
+    {"description": "Hamilton Airport, Airport Road, Hamilton, New Zealand", "place_id": "fallback_hml"},
+    {"description": "Hamilton CBD, Hamilton, New Zealand", "place_id": "fallback_hml_cbd"},
+    {"description": "Whangarei, New Zealand", "place_id": "fallback_wre"},
+    {"description": "Tauranga, New Zealand", "place_id": "fallback_trg"},
+    {"description": "Orewa, Auckland, New Zealand", "place_id": "fallback_orewa"},
+    {"description": "Whangaparaoa, Auckland, New Zealand", "place_id": "fallback_whangaparaoa"},
+    {"description": "Silverdale, Auckland, New Zealand", "place_id": "fallback_silverdale"},
+    {"description": "Red Beach, Auckland, New Zealand", "place_id": "fallback_redbeach"},
+    {"description": "Stanmore Bay, Auckland, New Zealand", "place_id": "fallback_stanmorebay"},
+    {"description": "Gulf Harbour, Auckland, New Zealand", "place_id": "fallback_gulfharbour"},
+    {"description": "Manly, Auckland, New Zealand", "place_id": "fallback_manly"},
+    {"description": "Hibiscus Coast, Auckland, New Zealand", "place_id": "fallback_hibiscus"},
+    {"description": "Mount Maunganui, Tauranga, New Zealand", "place_id": "fallback_mtmaunganui"},
+    {"description": "Papamoa, Tauranga, New Zealand", "place_id": "fallback_papamoa"},
+    {"description": "Cambridge, Waikato, New Zealand", "place_id": "fallback_cambridge"},
+]
+
+
 @api_router.get("/places/autocomplete")
-async def places_autocomplete(input: str = "", types: str = "address", region: str = "nz"):
-    """Return address suggestions using Google Places Autocomplete API."""
+async def places_autocomplete(input: str = "", types: str = "", region: str = "nz"):
+    """Return address suggestions using Google Places Autocomplete API.
+
+    No types filter by default so results include addresses AND
+    establishments (airports, hotels, etc.).
+    """
     if len(input) < 3:
         return {"predictions": []}
-    google_key = os.environ.get('GOOGLE_MAPS_API_KEY', '')
+    google_key = os.environ.get('GOOGLE_MAPS_API_KEY', '').strip()
     if not google_key:
-        logger.warning("GOOGLE_MAPS_API_KEY not set - address autocomplete disabled")
-        return {"predictions": []}
+        logger.warning("GOOGLE_MAPS_API_KEY not set - using fallback address list")
+        query_lower = input.lower()
+        matches = [a for a in _NZ_FALLBACK_ADDRESSES if query_lower in a["description"].lower()]
+        return {"predictions": matches[:5]}
+
+    # --- Try Google Places API (Legacy) first ---
     try:
         url = "https://maps.googleapis.com/maps/api/place/autocomplete/json"
         params = {
             "input": input,
             "key": google_key,
             "components": "country:nz",
-            "types": types,
+            # Bias towards NZ (Auckland region) for better local results
+            "location": "-36.8485,174.7633",
+            "radius": "500000",
         }
-        async with httpx.AsyncClient(timeout=5.0) as client:
+        # Only add types if explicitly provided and non-empty
+        if types:
+            params["types"] = types
+        async with httpx.AsyncClient(timeout=8.0) as client:
             r = await client.get(url, params=params)
         data = r.json()
-        if data.get("status") != "OK":
-            logger.warning(f"Google Places autocomplete status: {data.get('status')} - {data.get('error_message', '')}")
-            return {"predictions": []}
-        predictions = [
-            {"description": p.get("description", ""), "place_id": p.get("place_id", "")}
-            for p in data.get("predictions", [])
-            if p.get("description")
-        ]
-        return {"predictions": predictions}
+        status = data.get("status", "UNKNOWN")
+        if status == "OK":
+            predictions = [
+                {"description": p.get("description", ""), "place_id": p.get("place_id", "")}
+                for p in data.get("predictions", [])
+                if p.get("description")
+            ]
+            if predictions:
+                return {"predictions": predictions}
+            # OK status but empty results - fall through to fallback
+            logger.info(f"Google Places returned OK but 0 predictions for: {input}")
+        elif status == "ZERO_RESULTS":
+            logger.info(f"Google Places returned ZERO_RESULTS for: {input}")
+        else:
+            error_msg = data.get('error_message', 'no details')
+            logger.error(f"Google Places autocomplete FAILED - status: {status}, error: {error_msg}, input: {input}")
     except Exception as e:
-        logger.warning(f"Google Places autocomplete error: {e}")
-        return {"predictions": []}
+        logger.error(f"Google Places autocomplete exception: {e}")
+
+    # --- Try Google Places API (New) as fallback ---
+    try:
+        new_url = "https://places.googleapis.com/v1/places:autocomplete"
+        headers = {
+            "Content-Type": "application/json",
+            "X-Goog-Api-Key": google_key,
+        }
+        body = {
+            "input": input,
+            "includedRegionCodes": ["nz"],
+            "locationBias": {
+                "circle": {
+                    "center": {"latitude": -36.8485, "longitude": 174.7633},
+                    "radius": 500000.0,
+                }
+            },
+        }
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            r = await client.post(new_url, json=body, headers=headers)
+        if r.status_code == 200:
+            data = r.json()
+            suggestions = data.get("suggestions", [])
+            predictions = []
+            for s in suggestions:
+                pred = s.get("placePrediction", {})
+                text = pred.get("text", {}).get("text", "")
+                place_id = pred.get("placeId", "")
+                if text:
+                    predictions.append({"description": text, "place_id": place_id})
+            if predictions:
+                logger.info(f"Google Places (New) API returned {len(predictions)} results for: {input}")
+                return {"predictions": predictions}
+        else:
+            logger.warning(f"Google Places (New) API returned status {r.status_code}: {r.text[:200]}")
+    except Exception as e:
+        logger.warning(f"Google Places (New) API exception: {e}")
+
+    # --- Final fallback: match against known NZ addresses ---
+    query_lower = input.lower()
+    matches = [a for a in _NZ_FALLBACK_ADDRESSES if query_lower in a["description"].lower()]
+    if matches:
+        logger.info(f"Using fallback addresses for: {input} ({len(matches)} matches)")
+    return {"predictions": matches[:5]}
 
 
 # Price Calculation Endpoint
