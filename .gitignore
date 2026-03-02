@@ -112,6 +112,7 @@ android-sdk/
 # Environment files
 *.env
 *.env.*
+!*.env.example
 
 # Ignore backup files created by patch scripts
 *.bak
