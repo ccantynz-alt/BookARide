@@ -132,20 +132,24 @@ export const BookNow = () => {
   const [dropoffSuggestions, setDropoffSuggestions] = useState([]);
   const [showPickupSuggestions, setShowPickupSuggestions] = useState(false);
   const [showDropoffSuggestions, setShowDropoffSuggestions] = useState(false);
+  const [loadingPickupSuggestions, setLoadingPickupSuggestions] = useState(false);
+  const [loadingDropoffSuggestions, setLoadingDropoffSuggestions] = useState(false);
   const addressDebounceRef = useRef({});
   const addressRequestIdRef = useRef({ pickup: 0, dropoff: 0 });
 
   const fetchAddressSuggestions = (query, setter, showSetter) => {
     const key = setter === setPickupSuggestions ? 'pickup' : 'dropoff';
+    const setLoading = key === 'pickup' ? setLoadingPickupSuggestions : setLoadingDropoffSuggestions;
     if (addressDebounceRef.current[key]) clearTimeout(addressDebounceRef.current[key]);
 
-    if (query.length < 3) { setter([]); showSetter(false); return; }
+    if (query.length < 3) { setter([]); showSetter(false); setLoading(false); return; }
 
+    setLoading(true);
     // Debounce 300ms so rapid typing doesn't fire on every keystroke
     addressDebounceRef.current[key] = setTimeout(async () => {
       const requestId = ++addressRequestIdRef.current[key];
       try {
-        const res = await axios.get(`${API}/places/autocomplete`, { params: { input: query } });
+        const res = await axios.get(`${API}/places/autocomplete`, { params: { input: query }, timeout: 10000 });
         // Only apply if this is still the latest request for THIS field
         if (requestId !== addressRequestIdRef.current[key]) return;
         const predictions = res.data?.predictions || [];
@@ -155,6 +159,8 @@ export const BookNow = () => {
         if (requestId !== addressRequestIdRef.current[key]) return;
         console.error('[BookARide] Address autocomplete failed:', err?.message || err, 'URL:', `${API}/places/autocomplete`);
         setter([]); showSetter(false);
+      } finally {
+        if (requestId === addressRequestIdRef.current[key]) setLoading(false);
       }
     }, 300);
   };
@@ -493,7 +499,12 @@ export const BookNow = () => {
                           autoComplete="off"
                           className="transition-all duration-200 focus:ring-2 focus:ring-gold"
                         />
-                        {showPickupSuggestions && pickupSuggestions.length > 0 && (
+                        {loadingPickupSuggestions && (
+                          <div className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 px-4 py-3 text-sm text-gray-500">
+                            Searching addresses...
+                          </div>
+                        )}
+                        {showPickupSuggestions && pickupSuggestions.length > 0 && !loadingPickupSuggestions && (
                           <ul className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
                             {pickupSuggestions.map((s, i) => (
                               <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm border-b last:border-b-0"
@@ -572,7 +583,12 @@ export const BookNow = () => {
                           autoComplete="off"
                           className="transition-all duration-200 focus:ring-2 focus:ring-gold"
                         />
-                        {showDropoffSuggestions && dropoffSuggestions.length > 0 && (
+                        {loadingDropoffSuggestions && (
+                          <div className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 px-4 py-3 text-sm text-gray-500">
+                            Searching addresses...
+                          </div>
+                        )}
+                        {showDropoffSuggestions && dropoffSuggestions.length > 0 && !loadingDropoffSuggestions && (
                           <ul className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
                             {dropoffSuggestions.map((s, i) => (
                               <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm border-b last:border-b-0"

@@ -35,7 +35,19 @@ import {
 import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
 
-const API = process.env.REACT_APP_BACKEND_URL + '/api';
+// Use centralized API config with production fallback (avoids "undefined/api" when env var is missing)
+const RENDER_BACKEND = 'https://bookaride-backend.onrender.com';
+const getApiUrl = () => {
+  const env = process.env.REACT_APP_BACKEND_URL;
+  if (env && env !== 'undefined') return (env.endsWith('/') ? env.slice(0, -1) : env) + '/api';
+  if (typeof window !== 'undefined') {
+    const origin = window.location.origin || '';
+    if (['bookaride.co.nz', 'airportshuttleservice.co.nz', 'hibiscustoairport.co.nz', 'aucklandshuttles.co.nz', 'bookaridenz.com'].some(d => origin.includes(d))) return RENDER_BACKEND + '/api';
+    if (origin.includes('localhost') || origin.includes('127.0.0.1') || origin.includes('vercel.app')) return RENDER_BACKEND + '/api';
+  }
+  return RENDER_BACKEND + '/api';
+};
+const API = getApiUrl();
 
 // Shared Shuttle Pricing Model - City to Airport
 // Minimum: $100 (covers costs for 1-2 passengers)
@@ -106,6 +118,7 @@ const SharedShuttle = () => {
   const [shuttleData, setShuttleData] = useState({});
   const [addressSuggestions, setAddressSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [showBookingForm, setShowBookingForm] = useState(false);
   
   useEffect(() => {
@@ -144,19 +157,26 @@ const SharedShuttle = () => {
   const handleAddressChange = (value) => {
     setPickupAddress(value);
     if (shuttleAddrDebounceRef.current) clearTimeout(shuttleAddrDebounceRef.current);
-    if (value.length < 3) { setAddressSuggestions([]); setShowSuggestions(false); return; }
+    if (value.length < 3) { setAddressSuggestions([]); setShowSuggestions(false); setLoadingSuggestions(false); return; }
+    setLoadingSuggestions(true);
     shuttleAddrDebounceRef.current = setTimeout(async () => {
       const requestId = ++shuttleAddrRequestRef.current;
       try {
         const response = await axios.get(`${API}/places/autocomplete`, {
-          params: { input: value }
+          params: { input: value },
+          timeout: 10000
         });
         if (requestId !== shuttleAddrRequestRef.current) return;
-        setAddressSuggestions(response.data.predictions || []);
-        setShowSuggestions(true);
+        const predictions = response.data.predictions || [];
+        setAddressSuggestions(predictions);
+        setShowSuggestions(predictions.length > 0);
       } catch (error) {
         if (requestId !== shuttleAddrRequestRef.current) return;
         console.error('Autocomplete error:', error);
+        setAddressSuggestions([]);
+        setShowSuggestions(false);
+      } finally {
+        if (requestId === shuttleAddrRequestRef.current) setLoadingSuggestions(false);
       }
     }, 300);
   };
@@ -831,11 +851,18 @@ const SharedShuttle = () => {
                               type="text"
                               value={pickupAddress}
                               onChange={(e) => handleAddressChange(e.target.value)}
+                              onBlur={() => setTimeout(() => setShowSuggestions(false), 250)}
                               placeholder="Enter hotel or address in Auckland CBD"
                               className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-yellow-500"
+                              autoComplete="off"
                             />
-                            {showSuggestions && addressSuggestions.length > 0 && (
-                              <div className="absolute z-10 w-full mt-1 bg-gray-800 border border-gray-600 rounded-lg shadow-lg max-h-60 overflow-auto">
+                            {loadingSuggestions && (
+                              <div className="absolute z-[9999] w-full mt-1 bg-gray-800 border border-gray-600 rounded-lg shadow-lg px-4 py-3 text-sm text-gray-400">
+                                Searching addresses...
+                              </div>
+                            )}
+                            {showSuggestions && addressSuggestions.length > 0 && !loadingSuggestions && (
+                              <div className="absolute z-[9999] w-full mt-1 bg-gray-800 border border-gray-600 rounded-lg shadow-lg max-h-60 overflow-auto">
                                 {addressSuggestions.map((s, i) => (
                                   <button
                                     key={i}

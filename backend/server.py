@@ -1463,15 +1463,46 @@ DEFAULT_FALLBACK_DISTANCE_KM = 75.0
 # Long-distance fallback for Tauranga/BOP/Hamilton/Whangarei routes
 LONG_DISTANCE_FALLBACK_KM = 200.0
 
-# Address Autocomplete Endpoint (Google Places API)
-# Common NZ addresses as fallback when Google API is unavailable
+# Address Autocomplete Endpoint (Google Places API + Geoapify fallback)
+# Common NZ addresses as fallback when all APIs are unavailable
 _NZ_FALLBACK_ADDRESSES = [
+    # Airports
     {"description": "Auckland Airport (AKL), Ray Emery Drive, Mangere, Auckland 2022, New Zealand", "place_id": "fallback_akl"},
-    {"description": "Auckland CBD, Auckland, New Zealand", "place_id": "fallback_akl_cbd"},
+    {"description": "Auckland Domestic Terminal, George Bolt Memorial Drive, Auckland Airport, New Zealand", "place_id": "fallback_akl_domestic"},
+    {"description": "Auckland International Terminal, Ray Emery Drive, Auckland Airport, New Zealand", "place_id": "fallback_akl_intl"},
     {"description": "Hamilton Airport, Airport Road, Hamilton, New Zealand", "place_id": "fallback_hml"},
-    {"description": "Hamilton CBD, Hamilton, New Zealand", "place_id": "fallback_hml_cbd"},
-    {"description": "Whangarei, New Zealand", "place_id": "fallback_wre"},
-    {"description": "Tauranga, New Zealand", "place_id": "fallback_trg"},
+    {"description": "Tauranga Airport, Jean Batten Drive, Mount Maunganui, New Zealand", "place_id": "fallback_trg_airport"},
+    # Auckland suburbs
+    {"description": "Auckland CBD, Auckland, New Zealand", "place_id": "fallback_akl_cbd"},
+    {"description": "Ponsonby, Auckland, New Zealand", "place_id": "fallback_ponsonby"},
+    {"description": "Parnell, Auckland, New Zealand", "place_id": "fallback_parnell"},
+    {"description": "Newmarket, Auckland, New Zealand", "place_id": "fallback_newmarket"},
+    {"description": "Remuera, Auckland, New Zealand", "place_id": "fallback_remuera"},
+    {"description": "Mt Eden, Auckland, New Zealand", "place_id": "fallback_mteden"},
+    {"description": "Grey Lynn, Auckland, New Zealand", "place_id": "fallback_greylynn"},
+    {"description": "Epsom, Auckland, New Zealand", "place_id": "fallback_epsom"},
+    {"description": "Mt Albert, Auckland, New Zealand", "place_id": "fallback_mtalbert"},
+    {"description": "Henderson, Auckland, New Zealand", "place_id": "fallback_henderson"},
+    {"description": "New Lynn, Auckland, New Zealand", "place_id": "fallback_newlynn"},
+    {"description": "Manukau, Auckland, New Zealand", "place_id": "fallback_manukau"},
+    {"description": "Botany, Auckland, New Zealand", "place_id": "fallback_botany"},
+    {"description": "Pakuranga, Auckland, New Zealand", "place_id": "fallback_pakuranga"},
+    {"description": "Howick, Auckland, New Zealand", "place_id": "fallback_howick"},
+    {"description": "Mangere, Auckland, New Zealand", "place_id": "fallback_mangere"},
+    {"description": "Otahuhu, Auckland, New Zealand", "place_id": "fallback_otahuhu"},
+    {"description": "Papatoetoe, Auckland, New Zealand", "place_id": "fallback_papatoetoe"},
+    {"description": "Takapuna, Auckland, New Zealand", "place_id": "fallback_takapuna"},
+    {"description": "Devonport, Auckland, New Zealand", "place_id": "fallback_devonport"},
+    {"description": "Birkenhead, Auckland, New Zealand", "place_id": "fallback_birkenhead"},
+    {"description": "Albany, Auckland, New Zealand", "place_id": "fallback_albany"},
+    {"description": "Browns Bay, Auckland, New Zealand", "place_id": "fallback_brownsbay"},
+    {"description": "Ellerslie, Auckland, New Zealand", "place_id": "fallback_ellerslie"},
+    {"description": "Mt Wellington, Auckland, New Zealand", "place_id": "fallback_mtwellington"},
+    {"description": "Onehunga, Auckland, New Zealand", "place_id": "fallback_onehunga"},
+    {"description": "Mission Bay, Auckland, New Zealand", "place_id": "fallback_missionbay"},
+    {"description": "St Heliers, Auckland, New Zealand", "place_id": "fallback_stheliers"},
+    {"description": "Avondale, Auckland, New Zealand", "place_id": "fallback_avondale"},
+    # Hibiscus Coast / North Shore
     {"description": "Orewa, Auckland, New Zealand", "place_id": "fallback_orewa"},
     {"description": "Whangaparaoa, Auckland, New Zealand", "place_id": "fallback_whangaparaoa"},
     {"description": "Silverdale, Auckland, New Zealand", "place_id": "fallback_silverdale"},
@@ -1480,16 +1511,70 @@ _NZ_FALLBACK_ADDRESSES = [
     {"description": "Gulf Harbour, Auckland, New Zealand", "place_id": "fallback_gulfharbour"},
     {"description": "Manly, Auckland, New Zealand", "place_id": "fallback_manly"},
     {"description": "Hibiscus Coast, Auckland, New Zealand", "place_id": "fallback_hibiscus"},
+    {"description": "Millwater, Auckland, New Zealand", "place_id": "fallback_millwater"},
+    # South Auckland
+    {"description": "Papakura, Auckland, New Zealand", "place_id": "fallback_papakura"},
+    {"description": "Pukekohe, Auckland, New Zealand", "place_id": "fallback_pukekohe"},
+    {"description": "Drury, Auckland, New Zealand", "place_id": "fallback_drury"},
+    # Other cities
+    {"description": "Hamilton CBD, Hamilton, New Zealand", "place_id": "fallback_hml_cbd"},
+    {"description": "Whangarei, New Zealand", "place_id": "fallback_wre"},
+    {"description": "Tauranga, New Zealand", "place_id": "fallback_trg"},
     {"description": "Mount Maunganui, Tauranga, New Zealand", "place_id": "fallback_mtmaunganui"},
     {"description": "Papamoa, Tauranga, New Zealand", "place_id": "fallback_papamoa"},
     {"description": "Cambridge, Waikato, New Zealand", "place_id": "fallback_cambridge"},
+    {"description": "Rotorua, New Zealand", "place_id": "fallback_rotorua"},
+    {"description": "Matamata, Waikato, New Zealand", "place_id": "fallback_matamata"},
+    {"description": "Te Awamutu, Waikato, New Zealand", "place_id": "fallback_teawamutu"},
+    # Hotels & landmarks
+    {"description": "SkyCity Auckland, 72 Victoria Street West, Auckland CBD, New Zealand", "place_id": "fallback_skycity"},
+    {"description": "Hilton Auckland, 147 Quay Street, Auckland CBD, New Zealand", "place_id": "fallback_hilton"},
+    {"description": "Pullman Auckland Hotel, Corner of Waterloo Quadrant and Princes Street, Auckland, New Zealand", "place_id": "fallback_pullman"},
+    {"description": "Britomart Transport Centre, Auckland CBD, New Zealand", "place_id": "fallback_britomart"},
+    {"description": "Spark Arena, Mahuhu Crescent, Auckland CBD, New Zealand", "place_id": "fallback_sparkarena"},
+    {"description": "Cruise Ship Terminal, Princes Wharf, Auckland, New Zealand", "place_id": "fallback_cruise"},
 ]
+
+
+async def _geoapify_autocomplete(query: str) -> list:
+    """Try Geoapify autocomplete API as a fallback when Google is unavailable."""
+    geoapify_key = os.environ.get('GEOAPIFY_API_KEY', '').strip()
+    if not geoapify_key:
+        return []
+    try:
+        url = "https://api.geoapify.com/v1/geocode/autocomplete"
+        params = {
+            "text": query,
+            "apiKey": geoapify_key,
+            "filter": "countrycode:nz",
+            "bias": "proximity:-36.8485,174.7633",
+            "limit": 5,
+            "format": "json",
+        }
+        async with httpx.AsyncClient(timeout=6.0) as client:
+            r = await client.get(url, params=params)
+        if r.status_code == 200:
+            data = r.json()
+            results = data.get("results", [])
+            predictions = []
+            for item in results:
+                formatted = item.get("formatted", "")
+                place_id = item.get("place_id", "")
+                if formatted:
+                    predictions.append({"description": formatted, "place_id": place_id or f"geoapify_{len(predictions)}"})
+            if predictions:
+                logger.info(f"Geoapify returned {len(predictions)} results for: {query}")
+            return predictions
+    except Exception as e:
+        logger.warning(f"Geoapify autocomplete exception: {e}")
+    return []
 
 
 @api_router.get("/places/autocomplete")
 async def places_autocomplete(input: str = "", types: str = "", region: str = "nz"):
     """Return address suggestions using Google Places Autocomplete API.
 
+    Fallback chain: Google Legacy -> Google New -> Geoapify -> hardcoded NZ addresses.
     No types filter by default so results include addresses AND
     establishments (airports, hotels, etc.).
     """
@@ -1497,7 +1582,11 @@ async def places_autocomplete(input: str = "", types: str = "", region: str = "n
         return {"predictions": []}
     google_key = os.environ.get('GOOGLE_MAPS_API_KEY', '').strip()
     if not google_key:
-        logger.warning("GOOGLE_MAPS_API_KEY not set - using fallback address list")
+        logger.warning("GOOGLE_MAPS_API_KEY not set - trying Geoapify then fallback")
+        # Try Geoapify before falling back to hardcoded list
+        geoapify_results = await _geoapify_autocomplete(input)
+        if geoapify_results:
+            return {"predictions": geoapify_results}
         query_lower = input.lower()
         matches = [a for a in _NZ_FALLBACK_ADDRESSES if query_lower in a["description"].lower()]
         return {"predictions": matches[:5]}
@@ -1574,6 +1663,11 @@ async def places_autocomplete(input: str = "", types: str = "", region: str = "n
             logger.warning(f"Google Places (New) API returned status {r.status_code}: {r.text[:200]}")
     except Exception as e:
         logger.warning(f"Google Places (New) API exception: {e}")
+
+    # --- Try Geoapify as another fallback ---
+    geoapify_results = await _geoapify_autocomplete(input)
+    if geoapify_results:
+        return {"predictions": geoapify_results}
 
     # --- Final fallback: match against known NZ addresses ---
     query_lower = input.lower()
