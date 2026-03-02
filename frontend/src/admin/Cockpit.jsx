@@ -194,8 +194,12 @@ export default function Cockpit() {
               {/* Live stats */}
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 mb-6">
                 <div className="rounded-lg bg-slate-50 p-3 border border-slate-100">
-                  <p className="text-xs text-slate-500">Total bookings</p>
+                  <p className="text-xs text-slate-500">Active (in list)</p>
                   <p className="text-lg font-semibold text-slate-900">{live.total_bookings ?? '–'}</p>
+                </div>
+                <div className="rounded-lg bg-slate-50 p-3 border border-slate-100">
+                  <p className="text-xs text-slate-500">Archived</p>
+                  <p className="text-lg font-semibold text-slate-900">{live.archived_bookings ?? '–'}</p>
                 </div>
                 <div className="rounded-lg bg-slate-50 p-3 border border-slate-100">
                   <p className="text-xs text-slate-500">Today</p>
