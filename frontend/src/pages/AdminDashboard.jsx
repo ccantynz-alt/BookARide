@@ -1528,9 +1528,9 @@ export const AdminDashboard = () => {
 
   const openDetailsModal = (booking) => {
     setSelectedBooking(booking);
+    setSelectedPaymentStatus('');
     const totalPrice = booking.pricing?.totalPrice ?? booking.totalPrice ?? 0;
     setPriceOverride(totalPrice.toString());
-    // Reset Xero invoice date to booking date
     setXeroInvoiceDate(booking.date ? new Date(booking.date + 'T00:00:00') : new Date());
     setShowDetailsModal(true);
   };
@@ -1834,10 +1834,15 @@ export const AdminDashboard = () => {
         arrivalTime: editingBooking.flightArrivalTime,
         departureFlightNumber: editingBooking.flightDepartureNumber,
         departureTime: editingBooking.flightDepartureTime,
-        // Return trip - inferred from filled return date + time
+        // Return trip fields
         bookReturn: !!(editingBooking.returnDate && editingBooking.returnTime),
         returnDate: editingBooking.returnDate,
-        returnTime: editingBooking.returnTime
+        returnTime: editingBooking.returnTime,
+        returnFlightNumber: editingBooking.returnFlightNumber || editingBooking.returnDepartureFlightNumber,
+        returnDepartureFlightNumber: editingBooking.returnDepartureFlightNumber || editingBooking.returnFlightNumber,
+        returnDepartureTime: editingBooking.returnDepartureTime,
+        returnArrivalFlightNumber: editingBooking.returnArrivalFlightNumber,
+        returnArrivalTime: editingBooking.returnArrivalTime
       }, getAuthHeaders());
 
       toast.success('Booking updated successfully!');
@@ -4848,7 +4853,7 @@ export const AdminDashboard = () => {
                                 }
                               }}
                               placeholder="Select return date"
-                              minDate={minDatePast}
+                              minDate={adminPickupDate || todayDate}
                               maxDate={maxDateFuture}
                               showMonthDropdown
                               showYearDropdown

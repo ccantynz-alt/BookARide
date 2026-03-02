@@ -113,8 +113,6 @@ import GreyLynnAirportPageNew from './pages/seo/GreyLynnAirportPage';
 import PonsonbyAirportPageNew from './pages/seo/PonsonbyAirportPage';
 // International Market Landing Pages
 import CountryLandingPage from './pages/international/CountryLandingPage';
-// Shared Shuttle Service
-import SharedShuttle from './pages/SharedShuttle';
 import ShuttleDriverPortal from './pages/ShuttleDriverPortal';
 // Live GPS Tracking
 import DriverTracking from './pages/DriverTracking';
@@ -307,7 +305,6 @@ function App() {
     { path: "about", element: <About /> },
     { path: "contact", element: <Contact /> },
     { path: "book-now", element: <BookNow /> },
-    { path: "shared-shuttle", element: <SharedShuttle /> },
     { path: "shuttle-driver", element: <ShuttleDriverPortal /> },
     { path: "hobbiton-transfers", element: <HobbitonTransfers /> },
     { path: "cruise-transfers", element: <CruiseTransfers /> },

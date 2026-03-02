@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { MapPin, Calendar, Users, DollarSign, Clock, Mail, Phone, User, Wrench, Plane } from 'lucide-react';
@@ -91,7 +91,10 @@ export const BookNow = () => {
     setIsReturningCustomer(false);
   };
 
-  // Date/Time picker states - simplified from 8 to 4
+  // Stable date reference to prevent re-renders
+  const todayDate = useMemo(() => new Date(), []);
+
+  // Date/Time picker states
   const [pickupDate, setPickupDate] = useState(null);
   const [pickupTime, setPickupTime] = useState(null);
   const [returnDatePicker, setReturnDatePicker] = useState(null);
@@ -116,7 +119,6 @@ export const BookNow = () => {
   const [promoApplied, setPromoApplied] = useState(null);
   const [promoError, setPromoError] = useState('');
   const [applyingPromo, setApplyingPromo] = useState(false);
-  const [hasPromoFromPopup, setHasPromoFromPopup] = useState(false);
 
   useEffect(() => {
     const savedPromo = localStorage.getItem('promoCode');
@@ -135,7 +137,14 @@ export const BookNow = () => {
   const [showPickupSuggestions, setShowPickupSuggestions] = useState(false);
   const [showDropoffSuggestions, setShowDropoffSuggestions] = useState(false);
   const [addressLoading, setAddressLoading] = useState(false);
+  const [extraPickupSuggestions, setExtraPickupSuggestions] = useState([]);
+  const [showExtraPickupSuggestions, setShowExtraPickupSuggestions] = useState(-1); // -1 = none, 0+ = index
   const debounceTimerRef = useRef(null);
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => { if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current); };
+  }, []);
 
   const fetchAddressSuggestions = (query, setter, showSetter) => {
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
@@ -278,12 +287,17 @@ export const BookNow = () => {
     e.preventDefault();
 
     if (!formData.serviceType) { toast.error('Please select a service type'); return; }
-    if (!formData.pickupAddress || !formData.dropoffAddress) { toast.error('Please enter both pickup and drop-off addresses'); return; }
+    if (!formData.pickupAddress?.trim() || !formData.dropoffAddress?.trim()) { toast.error('Please enter both pickup and drop-off addresses'); return; }
     if (!formData.date || !formData.time) { toast.error('Please select pickup date and time'); return; }
-    if (!formData.name || !formData.email || !formData.phone) { toast.error('Please fill in all contact information'); return; }
+    if (!formData.name?.trim() || !formData.email?.trim() || !formData.phone?.trim()) { toast.error('Please fill in all contact information'); return; }
 
-    // Validate return flight number for airport shuttle return bookings
+    // Validate return trip
     const hasReturnTrip = !!(formData.returnDate && formData.returnTime);
+    if (formData.returnDate && !formData.returnTime) { toast.error('Please select a return time for your return journey'); return; }
+    if (!formData.returnDate && formData.returnTime) { toast.error('Please select a return date for your return journey'); return; }
+    if (hasReturnTrip && formData.returnDate < formData.date) { toast.error('Return date cannot be before pickup date'); return; }
+
+    // Validate flight number for airport shuttle return bookings
     const isAirportShuttle = formData.serviceType?.toLowerCase().includes('airport') ||
                             formData.serviceType?.toLowerCase().includes('shuttle');
     if (isAirportShuttle && hasReturnTrip) {
@@ -348,8 +362,9 @@ export const BookNow = () => {
         }
       } catch (paymentError) {
         setIsProcessingPayment(false);
+        console.error('Payment redirect error:', paymentError);
         const ref = booking?.referenceNumber || booking?.id?.slice(0, 8);
-        toast.success(`Booking #${ref} created! Payment redirect failed - we'll contact you with payment details.`);
+        toast.info(`Booking #${ref} created! We'll email you a payment link shortly.`);
       }
     } catch (error) {
       console.error('Error submitting booking:', error);
@@ -507,20 +522,40 @@ export const BookNow = () => {
 
                       {/* Additional Pickup Addresses */}
                       {formData.pickupAddresses.map((pickup, index) => (
-                        <div key={index} className="space-y-2 mb-6">
-                          <Label className="flex items-center space-x-2">
+                        <div key={index} className="mb-6 relative">
+                          <Label className="flex items-center space-x-2 mb-2">
                             <MapPin className="w-4 h-4 text-gold" />
                             <span>Pickup Location {index + 2}</span>
                           </Label>
                           <div className="flex gap-2">
                             <Input
                               value={pickup}
-                              onChange={(e) => handlePickupAddressChange(index, e.target.value)}
-                              placeholder="Additional pickup address..."
+                              onChange={(e) => {
+                                handlePickupAddressChange(index, e.target.value);
+                                fetchAddressSuggestions(e.target.value, setExtraPickupSuggestions, (show) => setShowExtraPickupSuggestions(show ? index : -1));
+                              }}
+                              onFocus={() => { if (extraPickupSuggestions.length > 0) setShowExtraPickupSuggestions(index); }}
+                              onBlur={() => setTimeout(() => setShowExtraPickupSuggestions(-1), 300)}
+                              placeholder="Start typing address..."
+                              autoComplete="off"
                               className="flex-1"
                             />
                             <Button type="button" variant="outline" size="sm" onClick={() => handleRemovePickup(index)} className="text-red-500 hover:text-red-700">Remove</Button>
                           </div>
+                          {showExtraPickupSuggestions === index && extraPickupSuggestions.length > 0 && (
+                            <ul className="absolute left-0 right-0 top-full z-[9999] bg-white border border-gray-200 rounded-lg shadow-xl mt-1 max-h-48 overflow-y-auto" style={{ position: 'absolute' }}>
+                              {extraPickupSuggestions.map((s, i) => (
+                                <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm text-gray-900 border-b last:border-b-0"
+                                  onPointerDown={(e) => {
+                                    e.preventDefault();
+                                    handlePickupAddressChange(index, s.description);
+                                    setShowExtraPickupSuggestions(-1);
+                                  }}>
+                                  {s.description}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
                         </div>
                       ))}
 
@@ -542,7 +577,7 @@ export const BookNow = () => {
                             <button
                               key={i}
                               type="button"
-                              onClick={() => setFormData(prev => ({ ...prev, dropoffAddress: qa.address }))}
+                              onClick={() => { setFormData(prev => ({ ...prev, dropoffAddress: qa.address })); setShowDropoffSuggestions(false); }}
                               className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
                                 formData.dropoffAddress === qa.address
                                   ? 'bg-gold text-black border-gold'
@@ -734,7 +769,7 @@ export const BookNow = () => {
                                 }
                               }}
                               placeholder="Select return date"
-                              minDate={pickupDate || new Date()}
+                              minDate={pickupDate || todayDate}
                             />
                           </div>
                           <div className="space-y-2">

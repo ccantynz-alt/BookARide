@@ -5585,9 +5585,20 @@ async def create_payment_checkout(request: PaymentCheckoutRequest, http_request:
         webhook_url = f"{host_url}/api/webhook/stripe"
         stripe_checkout = StripeCheckout(api_key=stripe_api_key, webhook_url=webhook_url)
         
-        # Build success and cancel URLs from frontend origin
-        success_url = f"{request.origin_url}/payment-success?session_id={{CHECKOUT_SESSION_ID}}"
-        cancel_url = f"{request.origin_url}/book-now"
+        # Build success and cancel URLs - validate origin against allowed domains
+        allowed_origins = [
+            "https://bookaride.co.nz", "https://www.bookaride.co.nz",
+            "https://airportshuttleservice.co.nz", "https://www.airportshuttleservice.co.nz",
+            "https://hibiscustoairport.co.nz", "https://www.hibiscustoairport.co.nz",
+            "https://aucklandshuttles.co.nz", "https://www.aucklandshuttles.co.nz",
+            "https://bookaridenz.com", "https://www.bookaridenz.com",
+            "http://localhost:3000"
+        ]
+        origin = request.origin_url.rstrip('/') if request.origin_url else ""
+        if origin not in allowed_origins:
+            origin = "https://bookaride.co.nz"
+        success_url = f"{origin}/payment-success?session_id={{CHECKOUT_SESSION_ID}}"
+        cancel_url = f"{origin}/book-now"
         
         # Get amount from booking (server-side only, never from frontend)
         amount = float(booking.get('totalPrice', 0))
@@ -6917,7 +6928,7 @@ async def create_shuttle_booking(booking: ShuttleBookingCreate):
                 }],
                 customer_email=booking.email,
                 success_url=f"{public_domain}/payment-success?type=shuttle&booking_id={booking_id}",
-                cancel_url=f"{public_domain}/shared-shuttle?cancelled=true",
+                cancel_url=f"{public_domain}/book-now?cancelled=true",
                 metadata={
                     'booking_id': booking_id,
                     'booking_type': 'shuttle'
