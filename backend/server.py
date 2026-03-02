@@ -1555,7 +1555,7 @@ async def places_autocomplete(input: str = "", types: str = "", region: str = "n
             words = [w for w in query_lower.split() if len(w) >= 3]
             if words:
                 matches = [a for a in _NZ_FALLBACK_ADDRESSES if any(w in a["description"].lower() for w in words)]
-        return {"predictions": matches[:5]}
+        return {"predictions": matches[:5], "source": "fallback", "reason": "GOOGLE_MAPS_API_KEY not set in environment"}
 
     # --- Try Google Places API (Legacy) first ---
     try:
@@ -1582,7 +1582,7 @@ async def places_autocomplete(input: str = "", types: str = "", region: str = "n
                 if p.get("description")
             ]
             if predictions:
-                return {"predictions": predictions}
+                return {"predictions": predictions, "source": "google"}
             # OK status but empty results - fall through to fallback
             logger.info(f"Google Places returned OK but 0 predictions for: {input}")
         elif status == "ZERO_RESULTS":
@@ -1624,7 +1624,7 @@ async def places_autocomplete(input: str = "", types: str = "", region: str = "n
                     predictions.append({"description": text, "place_id": place_id})
             if predictions:
                 logger.info(f"Google Places (New) API returned {len(predictions)} results for: {input}")
-                return {"predictions": predictions}
+                return {"predictions": predictions, "source": "google-new"}
         else:
             logger.warning(f"Google Places (New) API returned status {r.status_code}: {r.text[:200]}")
     except Exception as e:
@@ -1644,7 +1644,7 @@ async def places_autocomplete(input: str = "", types: str = "", region: str = "n
             ]
     if matches:
         logger.info(f"Using fallback addresses for: {input} ({len(matches)} matches)")
-    return {"predictions": matches[:5]}
+    return {"predictions": matches[:5], "source": "fallback", "reason": "Google API failed, using hardcoded NZ addresses"}
 
 
 # Price Calculation Endpoint
@@ -5040,6 +5040,25 @@ async def get_email_status():
     }
 
 
+@api_router.get("/config-check")
+async def config_check():
+    """Quick diagnostic: which services are configured? No auth required.
+    Call this endpoint to verify Render env vars are set."""
+    google_key = os.environ.get('GOOGLE_MAPS_API_KEY', '').strip()
+    stripe_key = os.environ.get('STRIPE_API_KEY') or os.environ.get('STRIPE_SECRET_KEY')
+    smtp_ok = bool(os.environ.get("SMTP_USER") and os.environ.get("SMTP_PASS"))
+    mailgun_ok = bool(os.environ.get("MAILGUN_API_KEY"))
+    return {
+        "google_maps_api_key": f"{google_key[:8]}***" if google_key else "NOT SET",
+        "stripe_key": f"{stripe_key[:8]}***" if stripe_key else "NOT SET",
+        "email_smtp": smtp_ok,
+        "email_mailgun": mailgun_ok,
+        "email_any_provider": send_email_unified is not None or smtp_ok or mailgun_ok,
+        "twilio_sms": bool(os.environ.get("TWILIO_ACCOUNT_SID")),
+        "hint": "If any key shows NOT SET, add it in Render > Environment > Env Vars",
+    }
+
+
 @api_router.post("/admin/test-email")
 async def admin_send_test_email(body: dict = Body(default={}), current_admin: dict = Depends(get_current_admin)):
     """Send one test email and return success or the exact error. Use to fix 'not receiving confirmations'."""
@@ -8056,7 +8075,7 @@ async def send_payment_link_email(booking: dict, payment_link: str, payment_type
     try:
         customer_email = booking.get('email', '')
         customer_name = booking.get('name', '')
-        booking_ref = booking.get('booking_ref', booking.get('id', '')[:6])
+        booking_ref = booking.get('referenceNumber', booking.get('booking_ref', booking.get('id', '')[:6]))
         total_price = booking.get('totalPrice', 0)
         
         payment_type_display = "Stripe" if payment_type == "stripe" else "PayPal"

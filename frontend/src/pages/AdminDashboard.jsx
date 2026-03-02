@@ -1557,6 +1557,9 @@ export const AdminDashboard = () => {
         const res = await axios.get(`${API}/places/autocomplete`, { params: { input: query }, timeout: 10000 });
         if (requestId !== adminAddrRequestIdRef.current[key]) return;
         const predictions = res.data?.predictions || [];
+        if (res.data?.source === 'fallback') {
+          console.warn('[BookARide] Google Maps API not available on backend. Reason:', res.data?.reason);
+        }
         setter(predictions);
         showSetter(predictions.length > 0);
       } catch (err) {

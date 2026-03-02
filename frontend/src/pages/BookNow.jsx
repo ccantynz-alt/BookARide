@@ -153,6 +153,9 @@ export const BookNow = () => {
         // Only apply if this is still the latest request for THIS field
         if (requestId !== addressRequestIdRef.current[key]) return;
         const predictions = res.data?.predictions || [];
+        if (res.data?.source === 'fallback') {
+          console.warn('[BookARide] Google Maps API not available, using fallback addresses. Reason:', res.data?.reason);
+        }
         setter(predictions);
         showSetter(predictions.length > 0);
       } catch (err) {
