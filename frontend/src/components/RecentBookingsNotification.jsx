@@ -46,7 +46,7 @@ const RecentBookingsNotification = () => {
     }, 5000);
 
     return () => clearTimeout(initialDelay);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (isDismissed) return;
