@@ -46,35 +46,46 @@ except ImportError:
 # Global lock to prevent concurrent reminder sending
 reminder_lock = asyncio.Lock()
 
-# === Background Task Helpers ===
+# === Background Task Helpers (with health tracking) ===
+import time as _time_mod
+
 def run_async_task(coro_func, arg, task_description="background task"):
     """Run an async function in a new event loop for background tasks"""
+    _start = _time_mod.time()
     try:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
             loop.run_until_complete(coro_func(arg))
-            logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Background task completed: {task_description}")
+            logger.info(f"Background task completed: {task_description}")
+            health_tracker.record_bg_task(task_description, True, _time_mod.time() - _start)
         finally:
             loop.close()
     except Exception as e:
-        logger.error(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Background task failed ({task_description}): {str(e)}")
+        logger.error(f"Background task failed ({task_description}): {str(e)}")
+        health_tracker.record_bg_task(task_description, False, _time_mod.time() - _start, str(e))
 
 def run_sync_task(sync_func, arg, task_description="background task"):
     """Run a synchronous function for background tasks"""
+    _start = _time_mod.time()
     try:
         sync_func(arg)
-        logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Background task completed: {task_description}")
+        logger.info(f"Background task completed: {task_description}")
+        health_tracker.record_bg_task(task_description, True, _time_mod.time() - _start)
     except Exception as e:
-        logger.error(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Background task failed ({task_description}): {str(e)}")
+        logger.error(f"Background task failed ({task_description}): {str(e)}")
+        health_tracker.record_bg_task(task_description, False, _time_mod.time() - _start, str(e))
 
 def run_sync_task_with_args(sync_func, arg1, arg2, task_description="background task"):
     """Run a synchronous function with two arguments for background tasks"""
+    _start = _time_mod.time()
     try:
         sync_func(arg1, arg2)
-        logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Background task completed: {task_description}")
+        logger.info(f"Background task completed: {task_description}")
+        health_tracker.record_bg_task(task_description, True, _time_mod.time() - _start)
     except Exception as e:
-        logger.error(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Background task failed ({task_description}): {str(e)}")
+        logger.error(f"Background task failed ({task_description}): {str(e)}")
+        health_tracker.record_bg_task(task_description, False, _time_mod.time() - _start, str(e))
 
 ROOT_DIR = Path(__file__).parent
 sys.path.insert(0, str(ROOT_DIR))
@@ -85,7 +96,16 @@ mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
 db_name = os.environ.get('DB_NAME', 'bookaride')
 if 'MONGO_URL' not in os.environ or 'DB_NAME' not in os.environ:
     logging.warning("MONGO_URL or DB_NAME missing; using fallback values for startup.")
-client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=2000, connectTimeoutMS=2000)
+client = AsyncIOMotorClient(
+    mongo_url,
+    serverSelectionTimeoutMS=5000,
+    connectTimeoutMS=5000,
+    socketTimeoutMS=30000,
+    maxPoolSize=50,
+    minPoolSize=5,
+    retryWrites=True,
+    retryReads=True,
+)
 db = client[db_name]
 
 # Authentication configuration
@@ -96,6 +116,100 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 1440  # 24 hours
 # Support both bcrypt (legacy from create_admin.py) and pbkdf2_sha256 for backward compatibility
 pwd_context = CryptContext(schemes=["pbkdf2_sha256", "bcrypt"], deprecated="auto")
 security = HTTPBearer()
+
+# ============================================
+# SYSTEM HEALTH TRACKING (in-memory for cockpit)
+# ============================================
+import time as _time
+import traceback as _traceback
+from collections import deque
+
+class SystemHealthTracker:
+    """Tracks request metrics, errors, and background task health for the cockpit."""
+
+    def __init__(self, max_errors=200, max_slow=100):
+        self.start_time = _time.time()
+        self.total_requests = 0
+        self.total_errors = 0
+        self.active_requests = 0
+        self.status_counts: Dict[int, int] = {}
+        self.recent_errors: deque = deque(maxlen=max_errors)
+        self.slow_requests: deque = deque(maxlen=max_slow)
+        self.endpoint_stats: Dict[str, dict] = {}
+        self.bg_task_runs: deque = deque(maxlen=100)
+        self.self_heal_log: deque = deque(maxlen=50)
+        self._lock = asyncio.Lock()
+
+    def record_request(self, method: str, path: str, status: int, duration_ms: float, error: str = None):
+        self.total_requests += 1
+        self.status_counts[status] = self.status_counts.get(status, 0) + 1
+        key = f"{method} {path}"
+        if key not in self.endpoint_stats:
+            self.endpoint_stats[key] = {"count": 0, "errors": 0, "total_ms": 0, "max_ms": 0}
+        ep = self.endpoint_stats[key]
+        ep["count"] += 1
+        ep["total_ms"] += duration_ms
+        if duration_ms > ep["max_ms"]:
+            ep["max_ms"] = duration_ms
+        if status >= 500:
+            self.total_errors += 1
+            ep["errors"] += 1
+            self.recent_errors.append({
+                "ts": datetime.now(timezone.utc).isoformat(),
+                "method": method,
+                "path": path,
+                "status": status,
+                "error": (error or "")[:500],
+                "duration_ms": round(duration_ms, 1),
+            })
+        if duration_ms > 3000:
+            self.slow_requests.append({
+                "ts": datetime.now(timezone.utc).isoformat(),
+                "method": method,
+                "path": path,
+                "duration_ms": round(duration_ms, 1),
+            })
+
+    def record_bg_task(self, name: str, success: bool, duration_s: float = 0, error: str = None):
+        self.bg_task_runs.append({
+            "ts": datetime.now(timezone.utc).isoformat(),
+            "name": name,
+            "success": success,
+            "duration_s": round(duration_s, 2),
+            "error": (error or "")[:300],
+        })
+
+    def record_self_heal(self, action: str, result: str):
+        self.self_heal_log.append({
+            "ts": datetime.now(timezone.utc).isoformat(),
+            "action": action,
+            "result": result,
+        })
+
+    def snapshot(self) -> dict:
+        uptime = _time.time() - self.start_time
+        error_rate = (self.total_errors / max(self.total_requests, 1)) * 100
+        return {
+            "uptime_seconds": round(uptime),
+            "uptime_human": f"{int(uptime // 3600)}h {int((uptime % 3600) // 60)}m",
+            "total_requests": self.total_requests,
+            "total_errors": self.total_errors,
+            "active_requests": self.active_requests,
+            "error_rate_pct": round(error_rate, 2),
+            "status_counts": dict(self.status_counts),
+            "recent_errors": list(self.recent_errors)[-20:],
+            "slow_requests": list(self.slow_requests)[-20:],
+            "top_endpoints": sorted(
+                [{"endpoint": k, **v, "avg_ms": round(v["total_ms"] / max(v["count"], 1), 1)}
+                 for k, v in self.endpoint_stats.items()],
+                key=lambda x: x["count"], reverse=True
+            )[:20],
+            "bg_task_runs": list(self.bg_task_runs)[-30:],
+            "self_heal_log": list(self.self_heal_log)[-20:],
+        }
+
+
+health_tracker = SystemHealthTracker()
 
 # Create the main app without a prefix
 app = FastAPI()
@@ -1084,15 +1198,15 @@ async def get_google_reviews():
             'key': google_api_key
         }
         
-        search_response = requests.get(search_url, params=search_params)
+        search_response = requests.get(search_url, params=search_params, timeout=10)
         search_data = search_response.json()
-        
+
         if search_data.get('status') != 'OK' or not search_data.get('candidates'):
             logger.warning(f"Could not find business in Google Places: {search_data.get('status')}")
             return get_fallback_reviews()
-        
+
         place_id = search_data['candidates'][0]['place_id']
-        
+
         # Fetch place details with reviews
         details_url = "https://maps.googleapis.com/maps/api/place/details/json"
         details_params = {
@@ -1100,8 +1214,8 @@ async def get_google_reviews():
             'fields': 'name,rating,user_ratings_total,reviews',
             'key': google_api_key
         }
-        
-        details_response = requests.get(details_url, params=details_params)
+
+        details_response = requests.get(details_url, params=details_params, timeout=10)
         details_data = details_response.json()
         
         if details_data.get('status') != 'OK':
@@ -6448,7 +6562,7 @@ async def get_customer_tracking(tracking_ref: str):
                         'destinations': destination,
                         'key': google_api_key
                     }
-                    response = requests.get(url, params=params)
+                    response = requests.get(url, params=params, timeout=10)
                     data = response.json()
                     
                     if data['status'] == 'OK' and data['rows']:
@@ -7191,7 +7305,7 @@ async def update_driver_location(location: DriverLocationUpdate, current_driver:
                     'key': google_api_key
                 }
                 
-                response = requests.get(url, params=params)
+                response = requests.get(url, params=params, timeout=10)
                 data = response.json()
                 
                 if data['status'] == 'OK' and data['rows']:
@@ -7351,7 +7465,7 @@ async def start_shuttle_run(date: str, time: str, current_admin: dict = Depends(
                 'departure_time': 'now'
             }
             
-            response = requests.get(url, params=params)
+            response = requests.get(url, params=params, timeout=10)
             data = response.json()
             
             if data['status'] == 'OK' and data['routes']:
@@ -7626,7 +7740,7 @@ Customers will be auto-notified 5 mins before their pickup. Drive safe! ÃƒÆ�
                 'departure_time': 'now'
             }
             
-            response = requests.get(url, params=params)
+            response = requests.get(url, params=params, timeout=10)
             data = response.json()
             
             if data['status'] == 'OK' and data['routes']:
@@ -10996,6 +11110,47 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # ============================================
+# REQUEST TRACKING MIDDLEWARE
+# ============================================
+from starlette.middleware.base import BaseHTTPMiddleware
+
+class RequestTrackingMiddleware(BaseHTTPMiddleware):
+    """Tracks every request for the cockpit: duration, status, errors."""
+
+    SKIP_PATHS = {"/health", "/healthz", "/", "/docs", "/openapi.json", "/favicon.ico"}
+
+    async def dispatch(self, request: Request, call_next):
+        if request.url.path in self.SKIP_PATHS:
+            return await call_next(request)
+        request_id = str(uuid.uuid4())[:8]
+        request.state.request_id = request_id
+        health_tracker.active_requests += 1
+        start = _time.time()
+        error_detail = None
+        status_code = 500
+        try:
+            response = await call_next(request)
+            status_code = response.status_code
+            return response
+        except Exception as exc:
+            error_detail = str(exc)[:500]
+            raise
+        finally:
+            health_tracker.active_requests = max(0, health_tracker.active_requests - 1)
+            duration_ms = (_time.time() - start) * 1000
+            path = request.url.path
+            # Collapse path params to reduce cardinality
+            parts = path.split("/")
+            normalised = "/".join(
+                p if not (len(p) > 20 or (p and p[0].isdigit())) else "{id}" for p in parts
+            )
+            health_tracker.record_request(
+                request.method, normalised, status_code, duration_ms, error_detail
+            )
+
+app.add_middleware(RequestTrackingMiddleware)
+
+# ============================================
 # XERO ACCOUNTING INTEGRATION
 # ============================================
 
@@ -12156,6 +12311,209 @@ async def manual_run_error_check(current_admin: dict = Depends(get_current_admin
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ============================================
+# ADMIN COCKPIT API - Full system monitoring & self-healing
+# ============================================
+
+@api_router.get("/admin/cockpit/metrics")
+async def cockpit_metrics(current_admin: dict = Depends(get_current_admin)):
+    """Full runtime metrics for the admin cockpit: uptime, request stats, errors, slow endpoints, background tasks."""
+    try:
+        snapshot = health_tracker.snapshot()
+
+        # Add MongoDB connection pool info
+        try:
+            server_status = await asyncio.wait_for(db.command("serverStatus"), timeout=3.0)
+            snapshot["mongo"] = {
+                "ok": True,
+                "connections": server_status.get("connections", {}),
+                "opcounters": server_status.get("opcounters", {}),
+            }
+        except Exception:
+            snapshot["mongo"] = {"ok": False}
+
+        # Add scheduler job info
+        try:
+            jobs = scheduler.get_jobs()
+            snapshot["scheduler_jobs"] = [
+                {
+                    "id": j.id,
+                    "name": j.name,
+                    "next_run": j.next_run_time.isoformat() if j.next_run_time else None,
+                }
+                for j in jobs
+            ]
+        except Exception:
+            snapshot["scheduler_jobs"] = []
+
+        return snapshot
+    except Exception as e:
+        logger.error(f"Cockpit metrics error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/admin/cockpit/db-health")
+async def cockpit_db_health(current_admin: dict = Depends(get_current_admin)):
+    """Deep database health: collection stats, index info, orphan detection."""
+    try:
+        nz_tz = pytz.timezone('Pacific/Auckland')
+        now_nz = datetime.now(nz_tz)
+        today_str = now_nz.strftime('%Y-%m-%d')
+
+        # Collection counts
+        collections = {}
+        for col_name in ["bookings", "bookings_archive", "deleted_bookings", "drivers",
+                         "vehicles", "admin_users", "email_logs", "payment_transactions",
+                         "shuttle_bookings", "tracking_sessions", "abandoned_bookings"]:
+            try:
+                collections[col_name] = await db[col_name].count_documents({})
+            except Exception:
+                collections[col_name] = -1
+
+        # Orphan checks
+        orphans = {}
+        try:
+            # Bookings with invalid dates (past and no status update)
+            orphans["bookings_no_status"] = await db.bookings.count_documents({"status": {"$exists": False}})
+            orphans["bookings_no_date"] = await db.bookings.count_documents({
+                "$or": [{"date": {"$exists": False}}, {"date": ""}, {"date": None}]
+            })
+            orphans["bookings_no_email"] = await db.bookings.count_documents({
+                "$or": [{"email": {"$exists": False}}, {"email": ""}, {"email": None}]
+            })
+            # Payment transactions with no matching booking
+            orphan_payments = 0
+            async for txn in db.payment_transactions.find({}, {"booking_id": 1}).limit(500):
+                bid = txn.get("booking_id")
+                if bid:
+                    match = await db.bookings.find_one({"id": bid}, {"_id": 1})
+                    if not match:
+                        orphan_payments += 1
+            orphans["orphan_payments"] = orphan_payments
+        except Exception as e:
+            orphans["error"] = str(e)
+
+        # Index info for bookings
+        try:
+            indexes = await db.bookings.index_information()
+            index_list = [{"name": k, "keys": list(v.get("key", []))} for k, v in indexes.items()]
+        except Exception:
+            index_list = []
+
+        return {
+            "collections": collections,
+            "orphans": orphans,
+            "indexes": index_list,
+            "checked_at": now_nz.isoformat(),
+        }
+    except Exception as e:
+        logger.error(f"Cockpit db-health error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/admin/cockpit/self-heal")
+async def cockpit_self_heal(
+    action: str = Body(..., embed=True),
+    current_admin: dict = Depends(get_current_admin),
+):
+    """Run a self-healing action.
+    Supported actions:
+      - fix_orphan_statuses: Set status='pending' on bookings missing status
+      - fix_missing_dates: Flag bookings with no date
+      - fix_missing_refs: Generate reference numbers for bookings without one
+      - reconnect_db: Force reconnect MongoDB client
+      - restart_scheduler: Restart APScheduler
+      - purge_old_errors: Clear error_check_reports older than 90 days
+      - fix_encoding: Clean mojibake in recent email logs
+    """
+    results = {"action": action, "success": False, "details": ""}
+    try:
+        if action == "fix_orphan_statuses":
+            r = await db.bookings.update_many(
+                {"status": {"$exists": False}},
+                {"$set": {"status": "pending"}}
+            )
+            results["details"] = f"Fixed {r.modified_count} bookings without status"
+            results["success"] = True
+
+        elif action == "fix_missing_refs":
+            cursor = db.bookings.find(
+                {"$or": [{"referenceNumber": {"$exists": False}}, {"referenceNumber": None}]}
+            )
+            fixed = 0
+            async for booking in cursor:
+                counter = await db.counters.find_one_and_update(
+                    {"_id": "booking_reference"},
+                    {"$inc": {"seq": 1}},
+                    upsert=True,
+                    return_document=True
+                )
+                ref = counter["seq"]
+                await db.bookings.update_one(
+                    {"_id": booking["_id"]},
+                    {"$set": {"referenceNumber": ref}}
+                )
+                fixed += 1
+            results["details"] = f"Generated reference numbers for {fixed} bookings"
+            results["success"] = True
+
+        elif action == "reconnect_db":
+            # Close and reopen
+            client.close()
+            await asyncio.sleep(1)
+            await asyncio.wait_for(db.command("ping"), timeout=5.0)
+            results["details"] = "MongoDB reconnected successfully"
+            results["success"] = True
+
+        elif action == "restart_scheduler":
+            scheduler.shutdown(wait=False)
+            await asyncio.sleep(1)
+            scheduler.start()
+            results["details"] = f"Scheduler restarted with {len(scheduler.get_jobs())} jobs"
+            results["success"] = True
+
+        elif action == "purge_old_errors":
+            cutoff = datetime.now(timezone.utc) - timedelta(days=90)
+            r = await db.error_check_reports.delete_many({"created_at": {"$lt": cutoff.isoformat()}})
+            results["details"] = f"Purged {r.deleted_count} old error reports"
+            results["success"] = True
+
+        elif action == "fix_missing_dates":
+            count = await db.bookings.count_documents({
+                "$or": [{"date": {"$exists": False}}, {"date": ""}, {"date": None}]
+            })
+            results["details"] = f"Found {count} bookings with missing dates. These need manual review in the bookings tab."
+            results["success"] = True
+
+        else:
+            results["details"] = f"Unknown action: {action}"
+
+        health_tracker.record_self_heal(action, results["details"])
+        return results
+    except Exception as e:
+        logger.error(f"Self-heal action '{action}' failed: {str(e)}")
+        health_tracker.record_self_heal(action, f"FAILED: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/admin/cockpit/error-timeline")
+async def cockpit_error_timeline(
+    days: int = 7,
+    current_admin: dict = Depends(get_current_admin),
+):
+    """Return error check reports for the last N days, for charting."""
+    try:
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+        reports = await db.error_check_reports.find(
+            {"created_at": {"$gte": cutoff}},
+            {"_id": 0}
+        ).sort("created_at", 1).to_list(200)
+        return {"reports": reports, "days": days}
+    except Exception as e:
+        logger.error(f"Cockpit error-timeline: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ==================== SEO HEALTH AGENT ====================
 # Continuous technical SEO monitoring (sitemap + key URLs). For rank tracking see SEO-AGENT-DESIGN.md.
 
@@ -12600,7 +12958,7 @@ async def check_availability(request: AirlineAvailabilityRequest, airline: dict 
                     "key": google_api_key,
                     "mode": "driving"
                 }
-                response = requests.get(url, params=params)
+                response = requests.get(url, params=params, timeout=10)
                 data = response.json()
                 
                 if data.get("status") == "OK":

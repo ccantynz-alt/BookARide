@@ -25,25 +25,30 @@ const ExitIntentPopup = () => {
       return;
     }
 
+    // Use ref-like flag to avoid stale closure issue
+    let shown = hasShown;
     const handleMouseLeave = (e) => {
-      // Only trigger when mouse leaves through top of viewport
-      if (e.clientY <= 0 && !hasShown) {
+      if (e.clientY <= 0 && !shown) {
+        shown = true;
         setIsVisible(true);
         setHasShown(true);
         sessionStorage.setItem('exitPopupShown', 'true');
+        document.removeEventListener('mouseleave', handleMouseLeave);
       }
     };
 
     // Add delay before enabling exit intent (10 seconds)
     const timer = setTimeout(() => {
-      document.addEventListener('mouseleave', handleMouseLeave);
+      if (!shown) {
+        document.addEventListener('mouseleave', handleMouseLeave);
+      }
     }, 10000);
 
     return () => {
       clearTimeout(timer);
       document.removeEventListener('mouseleave', handleMouseLeave);
     };
-  }, [hasShown]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSubmit = async (e) => {
     e.preventDefault();
