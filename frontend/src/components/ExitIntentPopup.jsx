@@ -67,14 +67,13 @@ const ExitIntentPopup = () => {
     setIsVisible(false);
   };
 
-  if (!isVisible) return null;
-
   return (
     <AnimatePresence>
       {isVisible && (
         <>
           {/* Backdrop */}
           <motion.div
+            key="exit-backdrop"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -84,6 +83,7 @@ const ExitIntentPopup = () => {
 
           {/* Popup - centered with max-height constraint */}
           <motion.div
+            key="exit-popup"
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
