@@ -35,9 +35,9 @@ const RecentBookingsNotification = () => {
 
   useEffect(() => {
     // Don't show on admin pages
-    if (window.location.pathname.startsWith('/admin') || 
+    if (window.location.pathname.startsWith('/admin') ||
         window.location.pathname.startsWith('/driver')) {
-      return;
+      return () => {}; // always return cleanup to prevent leak
     }
 
     // Initial delay before first notification (5 seconds)
