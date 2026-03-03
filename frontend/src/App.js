@@ -128,8 +128,15 @@ import HotelConciergePortal from './pages/HotelConciergePortal';
 
 import RecentBookingsNotification from './components/RecentBookingsNotification';
 import ExitIntentPopup from './components/ExitIntentPopup';
-import AIChatbot from './components/AIChatbot';
 import MobileStickyButton from './components/MobileStickyButton';
+
+// Silent error boundary for non-critical overlay components
+class OverlayErrorBoundary extends React.Component {
+  state = { hasError: false };
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(err) { console.error('Overlay error:', err); }
+  render() { return this.state.hasError ? null : this.props.children; }
+}
 
 // Layout component with Header/Footer
 const MainLayout = () => (
@@ -141,10 +148,9 @@ const MainLayout = () => (
     </main>
     <Footer />
     <BackToTop />
-    <RecentBookingsNotification />
-    <ExitIntentPopup />
-    <AIChatbot />
-    <MobileStickyButton />
+    <OverlayErrorBoundary><RecentBookingsNotification /></OverlayErrorBoundary>
+    <OverlayErrorBoundary><ExitIntentPopup /></OverlayErrorBoundary>
+    <OverlayErrorBoundary><MobileStickyButton /></OverlayErrorBoundary>
   </>
 );
 
