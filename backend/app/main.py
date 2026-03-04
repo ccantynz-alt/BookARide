@@ -1,0 +1,78 @@
+import asyncio
+import logging
+import os
+
+from fastapi import FastAPI, HTTPException
+from starlette.middleware.cors import CORSMiddleware
+
+from app.core.config import settings
+from app.core.database import NeonDatabase
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logger = logging.getLogger(__name__)
+
+app = FastAPI(title="BookARide API", version="2.0.0")
+
+# CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Database handle — set on startup
+db: NeonDatabase = None  # type: ignore
+
+
+@app.on_event("startup")
+async def startup():
+    global db
+    if not settings.DATABASE_URL:
+        logger.error("DATABASE_URL not set — cannot connect to database")
+        return
+    db = await NeonDatabase.connect(settings.DATABASE_URL, min_size=5, max_size=50)
+    logger.info("Connected to Neon PostgreSQL")
+
+    # Apply schema
+    schema_path = os.path.join(os.path.dirname(__file__), "..", "schema.sql")
+    if os.path.exists(schema_path):
+        async with db.pool.acquire() as conn:
+            await conn.execute(open(schema_path).read())
+        logger.info("Schema applied")
+
+
+@app.on_event("shutdown")
+async def shutdown():
+    if db:
+        await db.close()
+
+
+# ── Health ───────────────────────────────────────────────────────
+
+@app.get("/")
+async def root():
+    return {"status": "ok", "service": "bookaride-api", "version": "2.0.0"}
+
+
+@app.get("/health")
+@app.get("/healthz")
+async def health():
+    try:
+        await asyncio.wait_for(db.command("ping"), timeout=2.0)
+        return {"status": "healthy", "database": "ok"}
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Database unreachable: {e}")
+
+
+# ── Routes ───────────────────────────────────────────────────────
+
+from app.routes import auth, bookings, places, payments, drivers, admin
+
+app.include_router(auth.router, prefix="/api")
+app.include_router(bookings.router, prefix="/api")
+app.include_router(places.router, prefix="/api")
+app.include_router(payments.router, prefix="/api")
+app.include_router(drivers.router, prefix="/api")
+app.include_router(admin.router, prefix="/api")
