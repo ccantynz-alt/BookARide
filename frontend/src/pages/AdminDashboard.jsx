@@ -1487,20 +1487,26 @@ export const AdminDashboard = () => {
 
   const fetchAddrSuggestions = (value, fieldId) => {
     clearTimeout(addrDebounceRef.current[fieldId]);
-    if (!value || value.length < 4) {
+    if (!value || value.length < 3) {
       setAddrSuggestions(prev => ({ ...prev, [fieldId]: [] }));
       setAddrActiveField(null);
       return;
     }
     addrDebounceRef.current[fieldId] = setTimeout(async () => {
       try {
-        const resp = await axios.get(`${API}/places/autocomplete`, {
+        const url = `${API}/places/autocomplete`;
+        console.log('[Admin Autocomplete] Fetching:', url, { input: value });
+        const resp = await axios.get(url, {
           params: { input: value, types: 'address', region: 'nz' }
         });
-        setAddrSuggestions(prev => ({ ...prev, [fieldId]: resp.data.predictions || [] }));
-        setAddrActiveField(fieldId);
-      } catch {
-        // fail silently
+        console.log('[Admin Autocomplete] Response:', resp.data);
+        const preds = resp.data.predictions || [];
+        setAddrSuggestions(prev => ({ ...prev, [fieldId]: preds }));
+        if (preds.length > 0) {
+          setAddrActiveField(fieldId);
+        }
+      } catch (err) {
+        console.error('[Admin Autocomplete] Error:', err.message, err.response?.status, err.response?.data);
       }
     }, 300);
   };

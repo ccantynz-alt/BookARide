@@ -1155,6 +1155,45 @@ async def health_check():
     return {"status": "healthy", "service": "bookaride-api"}
 
 
+@api_router.get("/places/test")
+async def places_test():
+    """Quick diagnostic: test if Google Places API key works."""
+    google_api_key = os.environ.get('GOOGLE_MAPS_API_KEY', '')
+    if not google_api_key:
+        return {"ok": False, "error": "GOOGLE_MAPS_API_KEY not set", "key_length": 0}
+    result = {"ok": False, "key_length": len(google_api_key), "key_prefix": google_api_key[:8] + "..."}
+    # Test new Places API
+    try:
+        new_url = "https://places.googleapis.com/v1/places:autocomplete"
+        headers = {"Content-Type": "application/json", "X-Goog-Api-Key": google_api_key}
+        body = {"input": "Auckland Airport", "includedRegionCodes": ["NZ"]}
+        resp = requests.post(new_url, json=body, headers=headers, timeout=5)
+        result["new_api_status"] = resp.status_code
+        if resp.status_code == 200:
+            data = resp.json()
+            result["new_api_suggestions"] = len(data.get("suggestions", []))
+            result["ok"] = result["new_api_suggestions"] > 0
+        else:
+            result["new_api_error"] = resp.text[:300]
+    except Exception as e:
+        result["new_api_error"] = str(e)
+    # Test legacy Places API
+    try:
+        url = "https://maps.googleapis.com/maps/api/place/autocomplete/json"
+        params = {"input": "Auckland Airport", "types": "address", "components": "country:nz", "key": google_api_key}
+        resp = requests.get(url, params=params, timeout=5)
+        data = resp.json()
+        result["legacy_api_status"] = data.get("status")
+        result["legacy_api_predictions"] = len(data.get("predictions", []))
+        if data.get("status") == "OK":
+            result["ok"] = True
+        else:
+            result["legacy_api_error"] = data.get("error_message", "")
+    except Exception as e:
+        result["legacy_api_error"] = str(e)
+    return result
+
+
 # Google Places Autocomplete - proxy for address suggestions
 # Supports both the new Places API (New) and legacy Places API
 @api_router.get("/places/autocomplete")
@@ -1166,7 +1205,9 @@ async def places_autocomplete(input: str = "", types: str = "address", region: s
     google_api_key = os.environ.get('GOOGLE_MAPS_API_KEY', '')
     if not google_api_key:
         logger.warning("GOOGLE_MAPS_API_KEY not configured for autocomplete")
-        return {"predictions": []}
+        return {"predictions": [], "error": "API key not configured"}
+
+    logger.info(f"Autocomplete request: input='{input}', types='{types}', region='{region}'")
 
     # --- Try new Google Places API (New) first ---
     try:
@@ -1179,13 +1220,13 @@ async def places_autocomplete(input: str = "", types: str = "address", region: s
             "input": input,
             "includedRegionCodes": [region.upper()],
         }
-        # Map 'address' type to the new API's includedPrimaryTypes
-        if types == "address":
-            body["includedPrimaryTypes"] = ["street_address", "subpremise", "route", "premise"]
+        logger.info(f"Calling Places API (New): {new_url} with body={body}")
         resp = requests.post(new_url, json=body, headers=headers, timeout=5)
+        logger.info(f"Places API (New) response status: {resp.status_code}")
         if resp.status_code == 200:
             data = resp.json()
             suggestions_list = data.get("suggestions", [])
+            logger.info(f"Places API (New) returned {len(suggestions_list)} suggestions")
             if suggestions_list:
                 predictions = []
                 for s in suggestions_list:
@@ -1196,10 +1237,12 @@ async def places_autocomplete(input: str = "", types: str = "address", region: s
                     if description:
                         predictions.append({"description": description, "place_id": place_id})
                 if predictions:
-                    logger.info(f"Places API (New) returned {len(predictions)} results for '{input}'")
+                    logger.info(f"Places API (New) returning {len(predictions)} results for '{input}'")
                     return {"predictions": predictions}
+            else:
+                logger.warning(f"Places API (New) returned 200 but no suggestions. Response: {resp.text[:500]}")
         else:
-            logger.warning(f"Places API (New) returned status {resp.status_code}: {resp.text[:200]}")
+            logger.warning(f"Places API (New) returned status {resp.status_code}: {resp.text[:500]}")
     except Exception as e:
         logger.warning(f"Places API (New) error, trying legacy: {e}")
 
@@ -1212,11 +1255,13 @@ async def places_autocomplete(input: str = "", types: str = "address", region: s
             "components": f"country:{region}",
             "key": google_api_key,
         }
+        logger.info(f"Calling Legacy Places API: {url}")
         resp = requests.get(url, params=params, timeout=5)
         data = resp.json()
+        logger.info(f"Legacy Places API status: {data.get('status')}")
         if data.get("status") != "OK":
             logger.warning(f"Legacy Places autocomplete status: {data.get('status')} - {data.get('error_message', '')}")
-            return {"predictions": []}
+            return {"predictions": [], "debug": {"legacy_status": data.get("status"), "legacy_error": data.get("error_message", ""), "new_api_tried": True}}
         predictions = [
             {"description": p["description"], "place_id": p["place_id"]}
             for p in data.get("predictions", [])
@@ -1225,7 +1270,7 @@ async def places_autocomplete(input: str = "", types: str = "address", region: s
         return {"predictions": predictions}
     except Exception as e:
         logger.error(f"Google Places autocomplete error: {e}")
-        return {"predictions": []}
+        return {"predictions": [], "error": str(e)}
 
 
 # Google Reviews Endpoint - Fetches reviews from Google Places API
