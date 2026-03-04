@@ -4,7 +4,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import Response, RedirectResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
-from motor.motor_asyncio import AsyncIOMotorClient
+from database import NeonDatabase
 import os
 import logging
 from pathlib import Path
@@ -91,22 +91,30 @@ ROOT_DIR = Path(__file__).parent
 sys.path.insert(0, str(ROOT_DIR))
 load_dotenv(ROOT_DIR / '.env')
 
-# MongoDB connection
-mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
-db_name = os.environ.get('DB_NAME', 'bookaride')
-if 'MONGO_URL' not in os.environ or 'DB_NAME' not in os.environ:
-    logging.warning("MONGO_URL or DB_NAME missing; using fallback values for startup.")
-client = AsyncIOMotorClient(
-    mongo_url,
-    serverSelectionTimeoutMS=5000,
-    connectTimeoutMS=5000,
-    socketTimeoutMS=30000,
-    maxPoolSize=50,
-    minPoolSize=5,
-    retryWrites=True,
-    retryReads=True,
-)
-db = client[db_name]
+# Database connection (Neon PostgreSQL)
+# Supports both DATABASE_URL (Neon) and legacy MONGO_URL (for migration period)
+database_url = os.environ.get('DATABASE_URL', '')
+if not database_url:
+    logging.warning("DATABASE_URL not set — database will connect on first request")
+
+# db is initialised asynchronously in the startup event below.
+# During import-time it is set to None; the startup handler replaces it.
+db = None
+
+async def _init_db():
+    """Connect to Neon PostgreSQL and set the global db handle."""
+    global db
+    url = os.environ.get('DATABASE_URL', '')
+    if not url:
+        logging.error("DATABASE_URL is required. Set it in .env or environment.")
+        return
+    db = await NeonDatabase.connect(
+        url,
+        min_size=5,
+        max_size=50,
+        command_timeout=30,
+    )
+    logging.info("Connected to Neon PostgreSQL")
 
 # Authentication configuration
 SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'your-secret-key-change-in-production-' + str(uuid.uuid4()))
@@ -214,6 +222,11 @@ health_tracker = SystemHealthTracker()
 # Create the main app without a prefix
 app = FastAPI()
 
+@app.on_event("startup")
+async def startup_event():
+    """Connect to Neon PostgreSQL on startup."""
+    await _init_db()
+
 # Root and health - Render/Kubernetes may check / or /health or /healthz
 @app.get("/")
 async def root():
@@ -227,14 +240,14 @@ async def root():
 @app.get("/health")
 @app.get("/healthz")
 async def root_health_check():
-    """Root health check for Render/Kubernetes. Pings MongoDB so readiness = app + DB up."""
+    """Root health check for Render/Kubernetes. Pings DB so readiness = app + DB up."""
     try:
         await asyncio.wait_for(db.command("ping"), timeout=2.0)
-        return {"status": "healthy", "service": "bookaride-api", "mongo": "ok"}
+        return {"status": "healthy", "service": "bookaride-api", "database": "ok"}
     except asyncio.TimeoutError:
-        raise HTTPException(status_code=503, detail="MongoDB ping timeout")
+        raise HTTPException(status_code=503, detail="Database ping timeout")
     except Exception as e:
-        raise HTTPException(status_code=503, detail=f"MongoDB unreachable: {str(e)}")
+        raise HTTPException(status_code=503, detail=f"Database unreachable: {str(e)}")
 
 
 @app.get("/email-status")
@@ -591,7 +604,7 @@ async def get_next_reference_number():
     """Get the next sequential reference number for bookings, starting from 10"""
     # Use a counter collection to maintain sequential numbers
     counter = await db.counters.find_one_and_update(
-        {"_id": "booking_reference"},
+        {"id": "booking_reference"},
         {"$inc": {"seq": 1}},
         upsert=True,
         return_document=True
@@ -599,7 +612,7 @@ async def get_next_reference_number():
     # Start from 10 if this is a new counter
     if counter is None or counter.get('seq', 0) < 10:
         await db.counters.update_one(
-            {"_id": "booking_reference"},
+            {"id": "booking_reference"},
             {"$set": {"seq": 10}},
             upsert=True
         )
@@ -2825,27 +2838,29 @@ def send_customer_confirmation(booking: dict):
     elif preference == 'sms':
         logger.info(f"Customer prefers SMS only - skipping email for booking {get_booking_reference(booking)}")
     
-    # Update database with confirmation status (sync version)
+    # Update database with confirmation status (async via new event loop)
     if booking_id:
         try:
-            from pymongo import MongoClient
-            sync_client = MongoClient(os.environ.get('MONGO_URL', 'mongodb://localhost:27017'))
-            sync_db = sync_client[os.environ.get('DB_NAME', 'bookaride')]
-            
-            nz_tz = pytz.timezone('Pacific/Auckland')
-            now = datetime.now(nz_tz).isoformat()
-            
-            sync_db.bookings.update_one(
-                {"id": booking_id},
-                {"$set": {
-                    'confirmation_sent': results['email'] or results['sms'],
-                    'confirmation_sent_at': now,
-                    'email_confirmation_sent': results['email'],
-                    'sms_confirmation_sent': results['sms'],
-                    'notifications_sent': True
-                }}
-            )
-            sync_client.close()
+            async def _update_confirmation():
+                nz_tz = pytz.timezone('Pacific/Auckland')
+                now = datetime.now(nz_tz).isoformat()
+                await db.bookings.update_one(
+                    {"id": booking_id},
+                    {"$set": {
+                        'confirmation_sent': results['email'] or results['sms'],
+                        'confirmation_sent_at': now,
+                        'email_confirmation_sent': results['email'],
+                        'sms_confirmation_sent': results['sms'],
+                        'notifications_sent': True
+                    }}
+                )
+
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                loop.run_until_complete(_update_confirmation())
+            finally:
+                loop.close()
             logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Confirmation status updated for booking {booking_id}")
         except Exception as e:
             logger.error(f"Error updating confirmation status: {e}")
@@ -4176,22 +4191,25 @@ Price: ${booking.get('totalPrice', 0):.2f}
             )
             logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Urgent SMS sent to admin {admin_phone} for booking: #{booking_ref} - SID: {message.sid}")
             
-            # Store booking ID in database for SMS reply matching (using sync client)
+            # Store booking ID in database for SMS reply matching
             try:
-                from pymongo import MongoClient
-                sync_client = MongoClient(os.environ.get('MONGO_URL', 'mongodb://localhost:27017'))
-                sync_db = sync_client[os.environ.get('DB_NAME', 'bookaride')]
-                sync_db.pending_approvals.update_one(
-                    {"admin_phone": admin_phone},
-                    {"$set": {
-                        "booking_id": booking.get('id'),
-                        "booking_ref": booking_ref,
-                        "customer_name": booking.get('name'),
-                        "created_at": datetime.now(timezone.utc).isoformat()
-                    }},
-                    upsert=True
-                )
-                sync_client.close()
+                async def _store_pending():
+                    await db.pending_approvals.update_one(
+                        {"admin_phone": admin_phone},
+                        {"$set": {
+                            "booking_id": booking.get('id'),
+                            "booking_ref": booking_ref,
+                            "customer_name": booking.get('name'),
+                            "created_at": datetime.now(timezone.utc).isoformat()
+                        }},
+                        upsert=True
+                    )
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    loop.run_until_complete(_store_pending())
+                finally:
+                    loop.close()
                 logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Stored pending approval for booking #{booking_ref}")
             except Exception as db_error:
                 logger.error(f"Failed to store pending approval: {db_error}")
@@ -12083,9 +12101,9 @@ async def fix_imported_bookings():
         fixed_dates = 0
         
         # Find ALL imported bookings and fix them
-        cursor = db.bookings.find({"imported_from": "wordpress_chauffeur"})
-        
-        async for booking in cursor:
+        imported_bookings = await db.bookings.find({"imported_from": "wordpress_chauffeur"}).to_list(10000)
+
+        for booking in imported_bookings:
             updates = {
                 'status': 'confirmed',
                 'deleted': False,
@@ -12138,8 +12156,8 @@ async def fix_now():
         fixed_dates = 0
         
         # STEP 1: Move bookings from deleted_bookings collection back to bookings
-        deleted_cursor = db.deleted_bookings.find({"imported_from": "wordpress_chauffeur"})
-        async for booking in deleted_cursor:
+        deleted_bookings_list = await db.deleted_bookings.find({"imported_from": "wordpress_chauffeur"}).to_list(10000)
+        for booking in deleted_bookings_list:
             # Remove deletion metadata
             booking.pop('deletedAt', None)
             booking.pop('deletedBy', None)
@@ -12167,8 +12185,8 @@ async def fix_now():
             restored += 1
         
         # STEP 2: Fix dates in main bookings collection
-        cursor = db.bookings.find({"imported_from": "wordpress_chauffeur"})
-        async for booking in cursor:
+        wp_bookings = await db.bookings.find({"imported_from": "wordpress_chauffeur"}).to_list(10000)
+        for booking in wp_bookings:
             updates = {}
             date_str = booking.get('date', '')
             if date_str:
@@ -12251,10 +12269,10 @@ async def batch_sync_calendar_task(query: dict):
         synced = 0
         failed = 0
         
-        # Process bookings in batches to avoid memory issues
-        cursor = db.bookings.find(query, {"_id": 0})
-        
-        async for booking in cursor:
+        # Process bookings
+        all_bookings = await db.bookings.find(query, {"_id": 0}).to_list(10000)
+
+        for booking in all_bookings:
             try:
                 # Add small delay between requests to avoid rate limiting
                 await asyncio.sleep(0.5)
@@ -12429,16 +12447,16 @@ async def cockpit_metrics(current_admin: dict = Depends(get_current_admin)):
     try:
         snapshot = health_tracker.snapshot()
 
-        # Add MongoDB connection pool info
+        # Add database connection info
         try:
             server_status = await asyncio.wait_for(db.command("serverStatus"), timeout=3.0)
-            snapshot["mongo"] = {
+            snapshot["database"] = {
                 "ok": True,
+                "type": "postgresql",
                 "connections": server_status.get("connections", {}),
-                "opcounters": server_status.get("opcounters", {}),
             }
         except Exception:
-            snapshot["mongo"] = {"ok": False}
+            snapshot["database"] = {"ok": False}
 
         # Add scheduler job info
         try:
@@ -12491,7 +12509,8 @@ async def cockpit_db_health(current_admin: dict = Depends(get_current_admin)):
             })
             # Payment transactions with no matching booking
             orphan_payments = 0
-            async for txn in db.payment_transactions.find({}, {"booking_id": 1}).limit(500):
+            txns = await db.payment_transactions.find({}, {"_id": 0, "booking_id": 1}).to_list(500)
+            for txn in txns:
                 bid = txn.get("booking_id")
                 if bid:
                     match = await db.bookings.find_one({"id": bid}, {"_id": 1})
@@ -12545,20 +12564,20 @@ async def cockpit_self_heal(
             results["success"] = True
 
         elif action == "fix_missing_refs":
-            cursor = db.bookings.find(
+            bookings_without_ref = await db.bookings.find(
                 {"$or": [{"referenceNumber": {"$exists": False}}, {"referenceNumber": None}]}
-            )
+            ).to_list(10000)
             fixed = 0
-            async for booking in cursor:
+            for booking in bookings_without_ref:
                 counter = await db.counters.find_one_and_update(
-                    {"_id": "booking_reference"},
+                    {"id": "booking_reference"},
                     {"$inc": {"seq": 1}},
                     upsert=True,
                     return_document=True
                 )
                 ref = counter["seq"]
                 await db.bookings.update_one(
-                    {"_id": booking["_id"]},
+                    {"id": booking.get("id")},
                     {"$set": {"referenceNumber": ref}}
                 )
                 fixed += 1
@@ -12567,10 +12586,11 @@ async def cockpit_self_heal(
 
         elif action == "reconnect_db":
             # Close and reopen
-            client.close()
+            await db.close()
             await asyncio.sleep(1)
+            await _init_db()
             await asyncio.wait_for(db.command("ping"), timeout=5.0)
-            results["details"] = "MongoDB reconnected successfully"
+            results["details"] = "Database reconnected successfully"
             results["success"] = True
 
         elif action == "restart_scheduler":
@@ -14022,4 +14042,5 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_db_client():
     scheduler.shutdown()
-    client.close()
+    if db:
+        await db.close()

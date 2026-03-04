@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
 ndb = None  # Will be injected from server.py
-from motor.motor_asyncio import AsyncIOMotorDatabase
+from database import NeonDatabase
 from models import EmailTemplate, EmailTemplateCreate
 from datetime import datetime
 import uuid
