@@ -6,6 +6,9 @@ on:
     paths:
       - 'frontend/**'
 
+permissions:
+  contents: read
+
 jobs:
   build:
     name: Build frontend
