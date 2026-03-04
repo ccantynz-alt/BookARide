@@ -25,30 +25,25 @@ const ExitIntentPopup = () => {
       return;
     }
 
-    // Use ref-like flag to avoid stale closure issue
-    let shown = hasShown;
     const handleMouseLeave = (e) => {
-      if (e.clientY <= 0 && !shown) {
-        shown = true;
+      // Only trigger when mouse leaves through top of viewport
+      if (e.clientY <= 0 && !hasShown) {
         setIsVisible(true);
         setHasShown(true);
         sessionStorage.setItem('exitPopupShown', 'true');
-        document.removeEventListener('mouseleave', handleMouseLeave);
       }
     };
 
     // Add delay before enabling exit intent (10 seconds)
     const timer = setTimeout(() => {
-      if (!shown) {
-        document.addEventListener('mouseleave', handleMouseLeave);
-      }
+      document.addEventListener('mouseleave', handleMouseLeave);
     }, 10000);
 
     return () => {
       clearTimeout(timer);
       document.removeEventListener('mouseleave', handleMouseLeave);
     };
-  }, []);
+  }, [hasShown]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -67,13 +62,14 @@ const ExitIntentPopup = () => {
     setIsVisible(false);
   };
 
+  if (!isVisible) return null;
+
   return (
     <AnimatePresence>
       {isVisible && (
         <>
           {/* Backdrop */}
           <motion.div
-            key="exit-backdrop"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -83,7 +79,6 @@ const ExitIntentPopup = () => {
 
           {/* Popup - centered with max-height constraint */}
           <motion.div
-            key="exit-popup"
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}

@@ -3,9 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Check, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '../components/ui/card';
 import axios from 'axios';
-
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+import { API } from '../config/api';
 
 export const PaymentSuccess = () => {
   const [searchParams] = useSearchParams();
@@ -16,21 +14,25 @@ export const PaymentSuccess = () => {
   const orderToken = searchParams.get('orderToken');
   const paymentMethod = searchParams.get('method');
   const status = searchParams.get('status');
+  const cancelledRef = React.useRef(false);
 
   useEffect(() => {
+    cancelledRef.current = false;
+
     // Handle Afterpay callback
     if (paymentMethod === 'afterpay' && orderToken) {
       handleAfterpayCallback();
-      return;
+      return () => { cancelledRef.current = true; };
     }
 
     // Handle Stripe callback
     if (!sessionId) {
       navigate('/book-now');
-      return;
+      return () => { cancelledRef.current = true; };
     }
 
     pollPaymentStatus();
+    return () => { cancelledRef.current = true; };
   }, [sessionId, orderToken, paymentMethod]);
 
   const handleAfterpayCallback = async () => {
@@ -59,16 +61,28 @@ export const PaymentSuccess = () => {
   };
 
   const pollPaymentStatus = async (attempts = 0) => {
-    const maxAttempts = 5;
-    const pollInterval = 2000; // 2 seconds
+    if (cancelledRef.current) return;
+    const maxAttempts = 10;
+    const pollInterval = 3000; // 3 seconds (total wait: 30s)
 
     if (attempts >= maxAttempts) {
-      setPaymentStatus('timeout');
+      // Before giving up, try one last direct status check
+      try {
+        const lastCheck = await axios.get(`${API}/payment/status/${sessionId}`);
+        if (cancelledRef.current) return;
+        if (lastCheck.data?.payment_status === 'paid') {
+          setPaymentStatus('success');
+          setPaymentDetails(lastCheck.data);
+          return;
+        }
+      } catch {}
+      if (!cancelledRef.current) setPaymentStatus('timeout');
       return;
     }
 
     try {
       const response = await axios.get(`${API}/payment/status/${sessionId}`);
+      if (cancelledRef.current) return;
       const data = response.data;
 
       if (data.payment_status === 'paid') {
@@ -82,10 +96,16 @@ export const PaymentSuccess = () => {
 
       // If payment is still pending, continue polling
       setPaymentStatus('processing');
-      setTimeout(() => pollPaymentStatus(attempts + 1), pollInterval);
+      if (!cancelledRef.current) setTimeout(() => pollPaymentStatus(attempts + 1), pollInterval);
     } catch (error) {
+      if (cancelledRef.current) return;
       console.error('Error checking payment status:', error);
-      setPaymentStatus('error');
+      // Don't give up on network errors — retry
+      if (attempts < maxAttempts - 1) {
+        setTimeout(() => pollPaymentStatus(attempts + 1), pollInterval);
+      } else {
+        setPaymentStatus('error');
+      }
     }
   };
 
@@ -125,12 +145,14 @@ export const PaymentSuccess = () => {
                             <span className="font-bold text-2xl text-gold">#{paymentDetails.referenceNumber}</span>
                           </div>
                         )}
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Amount Paid:</span>
-                          <span className="font-semibold text-gray-900">
-                            ${(paymentDetails.amount_total / 100).toFixed(2)} {paymentDetails.currency.toUpperCase()}
-                          </span>
-                        </div>
+                        {paymentDetails.amount_total != null && paymentDetails.currency && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Amount Paid:</span>
+                            <span className="font-semibold text-gray-900">
+                              ${(paymentDetails.amount_total / 100).toFixed(2)} {paymentDetails.currency.toUpperCase()}
+                            </span>
+                          </div>
+                        )}
                         <div className="flex justify-between">
                           <span className="text-gray-600">Status:</span>
                           <span className="font-semibold text-green-600">Confirmed</span>

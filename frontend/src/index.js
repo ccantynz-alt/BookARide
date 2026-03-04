@@ -31,8 +31,7 @@ window.onunhandledrejection = function (e) {
   const msg = e.reason?.message ?? String(e.reason);
   const stack = e.reason?.stack;
   console.error('Unhandled rejection:', msg, stack);
-  // Only show fatal error for critical failures, not minor async errors
-  // (e.g. failed analytics calls, widget loading errors should not blank the page)
+  showFatalError(msg, stack);
 };
 
 if (!rootEl) {

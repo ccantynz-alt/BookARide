@@ -1,5 +1,6 @@
 import React from 'react';
 import './App.css';
+import './i18n/config';
 import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
@@ -51,6 +52,8 @@ import { Toaster } from './components/ui/sonner';
 import BackToTop from './components/BackToTop';
 import AdminBackButton from './components/AdminBackButton';
 import InternationalBanner from './components/InternationalBanner';
+import LanguageRedirect from './components/LanguageRedirect';
+import { SUPPORTED_LANGUAGES } from './config/languages';
 // New SEO Pages
 import AucklandAirportShuttle from './pages/seo/AucklandAirportShuttle';
 import GlobalLanding from './pages/seo/GlobalLanding';
@@ -110,9 +113,6 @@ import GreyLynnAirportPageNew from './pages/seo/GreyLynnAirportPage';
 import PonsonbyAirportPageNew from './pages/seo/PonsonbyAirportPage';
 // International Market Landing Pages
 import CountryLandingPage from './pages/international/CountryLandingPage';
-// Shared Shuttle Service
-import SharedShuttle from './pages/SharedShuttle';
-import ShuttleDriverPortal from './pages/ShuttleDriverPortal';
 // Live GPS Tracking
 import DriverTracking from './pages/DriverTracking';
 import CustomerTracking from './pages/CustomerTracking';
@@ -124,16 +124,8 @@ import TravelAgents from './pages/TravelAgents';
 import HotelConciergePortal from './pages/HotelConciergePortal';
 
 import RecentBookingsNotification from './components/RecentBookingsNotification';
-import ExitIntentPopup from './components/ExitIntentPopup';
+import AIChatbot from './components/AIChatbot';
 import MobileStickyButton from './components/MobileStickyButton';
-
-// Silent error boundary for non-critical overlay components
-class OverlayErrorBoundary extends React.Component {
-  state = { hasError: false };
-  static getDerivedStateFromError() { return { hasError: true }; }
-  componentDidCatch(err) { console.error('Overlay error:', err); }
-  render() { return this.state.hasError ? null : this.props.children; }
-}
 
 // Layout component with Header/Footer
 const MainLayout = () => (
@@ -145,9 +137,9 @@ const MainLayout = () => (
     </main>
     <Footer />
     <BackToTop />
-    <OverlayErrorBoundary><RecentBookingsNotification /></OverlayErrorBoundary>
-    <OverlayErrorBoundary><ExitIntentPopup /></OverlayErrorBoundary>
-    <OverlayErrorBoundary><MobileStickyButton /></OverlayErrorBoundary>
+    <RecentBookingsNotification />
+    <AIChatbot />
+    <MobileStickyButton />
   </>
 );
 
@@ -155,6 +147,10 @@ const MainLayout = () => (
 const HomePage = siteConfig.isInternational ? InternationalHomePage : Home;
 
 function App() {
+  // Generate language-prefixed routes
+  const languagePrefixes = SUPPORTED_LANGUAGES.filter(l => l.code !== 'en').map(l => l.code);
+
+  // Define common routes as an array to avoid repetition
   const commonRoutes = [
     { index: true, element: <HomePage /> },
     // International Pages
@@ -308,8 +304,6 @@ function App() {
     { path: "about", element: <About /> },
     { path: "contact", element: <Contact /> },
     { path: "book-now", element: <BookNow /> },
-    { path: "shared-shuttle", element: <SharedShuttle /> },
-    { path: "shuttle-driver", element: <ShuttleDriverPortal /> },
     { path: "hobbiton-transfers", element: <HobbitonTransfers /> },
     { path: "cruise-transfers", element: <CruiseTransfers /> },
     { path: "airport-pickup-guide", element: <AirportPickupGuide /> },
@@ -333,6 +327,7 @@ function App() {
     <RootErrorBoundary>
       <div className="App">
         <BrowserRouter>
+          <LanguageRedirect>
             <Routes>
             {/* Driver Routes (No Header/Footer) */}
             <Route path="/driver/login" element={<DriverLogin />} />
@@ -352,7 +347,21 @@ function App() {
             <Route path="/admin/seo" element={<SEODashboard />} />
             <Route path="/admin/facebook-strategy" element={<FacebookStrategy />} />
             
-            {/* Main routes */}
+            {/* Language-prefixed routes (zh, ja, ko, es, fr) */}
+            {languagePrefixes.map(lang => (
+              <Route key={lang} path={`/${lang}`} element={<MainLayout />}>
+                {commonRoutes.map((route, idx) => (
+                  <Route 
+                    key={`${lang}-${idx}`}
+                    index={route.index}
+                    path={route.path}
+                    element={route.element}
+                  />
+                ))}
+              </Route>
+            ))}
+            
+            {/* Default English routes (no prefix) */}
             <Route path="/" element={<MainLayout />}>
               {commonRoutes.map((route, idx) => (
                 <Route 
@@ -365,6 +374,7 @@ function App() {
             </Route>
           </Routes>
             <Toaster />
+          </LanguageRedirect>
         </BrowserRouter>
       </div>
     </RootErrorBoundary>

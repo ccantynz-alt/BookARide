@@ -30,9 +30,11 @@ const MobileStickyButton = () => {
     };
   }, []);
 
+  if (!shouldShow || !isVisible) return null;
+
   return (
     <AnimatePresence>
-      {shouldShow && isVisible && isScrolled && (
+      {isScrolled && (
         <motion.div
           initial={{ y: 100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}

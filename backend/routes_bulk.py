@@ -27,11 +27,30 @@ async def bulk_status_update(booking_ids: List[str], new_status: str):
 
 @bulk_router.delete("/delete")
 async def bulk_delete(booking_ids: List[str]):
-    """Delete multiple bookings"""
+    """Soft-delete multiple bookings (moves to deleted_bookings for recovery)"""
     try:
-        result = await db.bookings.delete_many({"id": {"$in": booking_ids}})
+        from datetime import datetime
+        # Fetch all bookings first so we can preserve them
+        bookings = await db.bookings.find(
+            {"id": {"$in": booking_ids}},
+            {"_id": 0}
+        ).to_list(None)
+
+        if not bookings:
+            return {"message": "No bookings found to delete", "deleted_count": 0}
+
+        # Soft-delete: move each booking to deleted_bookings collection
+        for booking in bookings:
+            booking['deletedAt'] = datetime.utcnow().isoformat()
+            booking['deletedBy'] = 'bulk_delete'
+            await db.deleted_bookings.insert_one(booking)
+
+        # Now remove from active bookings
+        found_ids = [b['id'] for b in bookings]
+        result = await db.bookings.delete_many({"id": {"$in": found_ids}})
+        logger.info(f"Bulk soft-deleted {result.deleted_count} bookings (recoverable from deleted_bookings)")
         return {
-            "message": "Bookings deleted successfully",
+            "message": "Bookings deleted successfully (recoverable from Deleted tab)",
             "deleted_count": result.deleted_count
         }
     except Exception as e:
