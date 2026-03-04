@@ -315,20 +315,26 @@ export const BookNow = () => {
 
   const fetchSuggestions = (value, fieldId) => {
     clearTimeout(debounceRef.current[fieldId]);
-    if (!value || value.length < 4) {
+    if (!value || value.length < 3) {
       setSuggestions(prev => ({ ...prev, [fieldId]: [] }));
       setActiveField(null);
       return;
     }
     debounceRef.current[fieldId] = setTimeout(async () => {
       try {
-        const resp = await axios.get(`${API}/places/autocomplete`, {
+        const url = `${API}/places/autocomplete`;
+        console.log('[Autocomplete] Fetching:', url, { input: value, types: 'address', region: 'nz' });
+        const resp = await axios.get(url, {
           params: { input: value, types: 'address', region: 'nz' }
         });
-        setSuggestions(prev => ({ ...prev, [fieldId]: resp.data.predictions || [] }));
-        setActiveField(fieldId);
-      } catch {
-        // fail silently – user can still type manually
+        console.log('[Autocomplete] Response:', resp.data);
+        const preds = resp.data.predictions || [];
+        setSuggestions(prev => ({ ...prev, [fieldId]: preds }));
+        if (preds.length > 0) {
+          setActiveField(fieldId);
+        }
+      } catch (err) {
+        console.error('[Autocomplete] Error:', err.message, err.response?.status, err.response?.data);
       }
     }, 300);
   };
