@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useParams, Link, Navigate, useNavigate } from 'react-router-dom';
-import { MapPin, Clock, DollarSign, CheckCircle, ArrowRight, Star, Phone, Calendar, Car, Shield, CreditCard, ChevronDown, ChevronUp, Navigation, Route } from 'lucide-react';
+import { MapPin, Clock, DollarSign, CheckCircle, ArrowRight, Star, Phone, Calendar, Car, Shield, CreditCard, ChevronDown, ChevronUp, Navigation, Route, Mail } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent } from '../../components/ui/card';
 import SEO from '../../components/SEO';
