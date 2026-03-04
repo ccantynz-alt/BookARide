@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { MapPin, Calendar, Users, DollarSign, Clock, Mail, Phone, User, Wrench } from 'lucide-react';
 import siteConfig from '../config/siteConfig';
@@ -33,8 +32,6 @@ import SocialProofCounter from '../components/SocialProofCounter';
 import { API } from '../config/api';
 
 export const BookNow = () => {
-  const { i18n } = useTranslation();
-
   const [formData, setFormData] = useState({
     serviceType: '',
     pickupAddress: '',
@@ -365,7 +362,7 @@ export const BookNow = () => {
         bookReturn: hasReturnTrip,
         pricing: pricing,
         status: 'pending',
-        language: i18n.language, // Capture selected language
+        language: 'en',
         createdAt: new Date()
       };
 
