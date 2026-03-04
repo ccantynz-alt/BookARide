@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, X, Phone } from 'lucide-react';
 import { Button } from './ui/button';
-import { LanguageSelector } from './LanguageSelector';
+
 
 export const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -61,9 +61,8 @@ export const Header = () => {
             ))}
           </div>
 
-          {/* CTA Button & Language Selector - Enhanced */}
+          {/* CTA Button */}
           <div className="hidden md:flex items-center space-x-4">
-            <LanguageSelector />
             <Link to="/book-now">
               <Button className="bg-gold hover:bg-yellow-500 text-black font-semibold transition-all duration-300 shadow-lg hover:shadow-xl hover:shadow-gold/30 hover:scale-105">
                 Book a Ride
@@ -98,10 +97,6 @@ export const Header = () => {
               </Link>
             ))}
             
-            {/* Mobile Language Selector */}
-            <div className="pt-2 pb-2">
-              <LanguageSelector />
-            </div>
             
             {/* Mobile CTA */}
             <Link to="/book-now" onClick={() => setIsMenuOpen(false)}>

@@ -16,8 +16,10 @@ services:
         value: 3.11.9
       - key: MONGO_URL
         sync: false
-      - key: JWT_SECRET
+      - key: JWT_SECRET_KEY
         generateValue: true
+      - key: DB_NAME
+        value: bookaride
       - key: STRIPE_SECRET_KEY
         sync: false
       - key: MAILGUN_API_KEY

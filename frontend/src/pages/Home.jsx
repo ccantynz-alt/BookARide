@@ -1,6 +1,5 @@
 import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import { ArrowRight, Plane, Briefcase, MapPin, Calendar, Star, Check, Shield, Clock, Award, Users, Sparkles, DollarSign } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
@@ -25,8 +24,6 @@ const iconMap = {
 };
 
 export const Home = () => {
-  const { t } = useTranslation();
-  
   useEffect(() => {
     AOS.init({
       duration: 800,
@@ -293,9 +290,9 @@ export const Home = () => {
                 ⚡ Instant Online Booking Available
               </span>
             </div>
-            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4" data-aos="fade-up">{t('services.title')}</h2>
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4" data-aos="fade-up">Our Services</h2>
             <p className="text-lg text-white/70 max-w-2xl mx-auto" data-aos="fade-up" data-aos-delay="100">
-              {t('services.description')}
+              Whatever your transportation needs, we've got you covered
             </p>
           </AnimatedSection>
 

@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { MapPin, Calendar, Users, DollarSign, Clock, Mail, Phone, User, Wrench } from 'lucide-react';
 import siteConfig from '../config/siteConfig';
@@ -33,8 +32,6 @@ import SocialProofCounter from '../components/SocialProofCounter';
 import { API } from '../config/api';
 
 export const BookNow = () => {
-  const { i18n } = useTranslation();
-
   const [formData, setFormData] = useState({
     serviceType: '',
     pickupAddress: '',
@@ -205,14 +202,11 @@ export const BookNow = () => {
         calculating: false
       });
       
-      // Auto-apply promo code if one was entered before price calculation
-      if (promoCode.trim() && !promoApplied) {
+      // Auto-apply or re-apply promo code after price recalculation
+      if (promoCode.trim()) {
         setTimeout(() => {
           handleApplyPromoWithSubtotal(promoCode.trim(), data.subtotal);
         }, 100);
-      } else {
-        // Reset promo if price changes and there's no pending code
-        setPromoApplied(null);
       }
     } catch (error) {
       console.error('Error calculating price:', error);
@@ -368,7 +362,7 @@ export const BookNow = () => {
         bookReturn: hasReturnTrip,
         pricing: pricing,
         status: 'pending',
-        language: i18n.language, // Capture selected language
+        language: 'en',
         createdAt: new Date()
       };
 

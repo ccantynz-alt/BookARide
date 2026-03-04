@@ -1,6 +1,5 @@
 import React from 'react';
 import './App.css';
-import './i18n/config';
 import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
@@ -52,8 +51,6 @@ import { Toaster } from './components/ui/sonner';
 import BackToTop from './components/BackToTop';
 import AdminBackButton from './components/AdminBackButton';
 import InternationalBanner from './components/InternationalBanner';
-import LanguageRedirect from './components/LanguageRedirect';
-import { SUPPORTED_LANGUAGES } from './config/languages';
 // New SEO Pages
 import AucklandAirportShuttle from './pages/seo/AucklandAirportShuttle';
 import GlobalLanding from './pages/seo/GlobalLanding';
@@ -158,10 +155,6 @@ const MainLayout = () => (
 const HomePage = siteConfig.isInternational ? InternationalHomePage : Home;
 
 function App() {
-  // Generate language-prefixed routes
-  const languagePrefixes = SUPPORTED_LANGUAGES.filter(l => l.code !== 'en').map(l => l.code);
-
-  // Define common routes as an array to avoid repetition
   const commonRoutes = [
     { index: true, element: <HomePage /> },
     // International Pages
@@ -340,7 +333,6 @@ function App() {
     <RootErrorBoundary>
       <div className="App">
         <BrowserRouter>
-          <LanguageRedirect>
             <Routes>
             {/* Driver Routes (No Header/Footer) */}
             <Route path="/driver/login" element={<DriverLogin />} />
@@ -360,21 +352,7 @@ function App() {
             <Route path="/admin/seo" element={<SEODashboard />} />
             <Route path="/admin/facebook-strategy" element={<FacebookStrategy />} />
             
-            {/* Language-prefixed routes (zh, ja, ko, es, fr) */}
-            {languagePrefixes.map(lang => (
-              <Route key={lang} path={`/${lang}`} element={<MainLayout />}>
-                {commonRoutes.map((route, idx) => (
-                  <Route 
-                    key={`${lang}-${idx}`}
-                    index={route.index}
-                    path={route.path}
-                    element={route.element}
-                  />
-                ))}
-              </Route>
-            ))}
-            
-            {/* Default English routes (no prefix) */}
+            {/* Main routes */}
             <Route path="/" element={<MainLayout />}>
               {commonRoutes.map((route, idx) => (
                 <Route 
@@ -387,7 +365,6 @@ function App() {
             </Route>
           </Routes>
             <Toaster />
-          </LanguageRedirect>
         </BrowserRouter>
       </div>
     </RootErrorBoundary>

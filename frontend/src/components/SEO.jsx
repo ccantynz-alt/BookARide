@@ -3,14 +3,13 @@ import { Helmet } from '@vuer-ai/react-helmet-async';
 import { useLocation } from 'react-router-dom';
 import siteConfig from '../config/siteConfig';
 
-export const SEO = ({ 
-  title, 
-  description, 
+export const SEO = ({
+  title,
+  description,
   keywords,
   canonical,
   ogImage,
   ogType = 'website',
-  currentLang = 'en'
 }) => {
   const location = useLocation();
   const siteName = siteConfig.siteName;
@@ -22,44 +21,22 @@ export const SEO = ({
   const fullTitle = title ? `${title} | ${siteName}` : siteName;
   const metaDescription = description || defaultDescription;
   const metaKeywords = keywords || defaultKeywords;
-  
-  // Get the clean path without language prefix for canonical and hreflang
-  const cleanPath = canonical || getPathWithoutLang(location.pathname);
+
+  const cleanPath = canonical || location.pathname;
   const canonicalUrl = `${siteUrl}${cleanPath === '/' ? '' : cleanPath}`;
   const imageUrl = ogImage || defaultImage;
-
-  // Generate hreflang URLs for all supported languages
-  const generateHreflangUrls = () => {
-    return SUPPORTED_LANGUAGES.map(lang => ({
-      lang: lang.hreflang,
-      url: `${siteUrl}${getLocalizedPath(cleanPath, lang.code)}`
-    }));
-  };
-
-  const hreflangUrls = generateHreflangUrls();
-
-  // Get language name for meta tag
-  const currentLanguage = SUPPORTED_LANGUAGES.find(l => l.code === currentLang);
-  const languageName = currentLanguage ? currentLanguage.name : 'English';
 
   return (
     <Helmet>
       {/* Primary Meta Tags */}
-      <html lang={currentLang} />
+      <html lang="en" />
       <title>{fullTitle}</title>
       <meta name="title" content={fullTitle} />
       <meta name="description" content={metaDescription} />
       <meta name="keywords" content={metaKeywords} />
-      
+
       {/* Canonical URL */}
       <link rel="canonical" href={canonicalUrl} />
-
-      {/* Hreflang Tags for International SEO */}
-      {hreflangUrls.map(({ lang, url }) => (
-        <link key={lang} rel="alternate" hrefLang={lang} href={url} />
-      ))}
-      {/* x-default for language selector page */}
-      <link rel="alternate" hrefLang="x-default" href={canonicalUrl} />
 
       {/* Open Graph / Facebook */}
       <meta property="og:type" content={ogType} />
@@ -68,11 +45,7 @@ export const SEO = ({
       <meta property="og:description" content={metaDescription} />
       <meta property="og:image" content={imageUrl} />
       <meta property="og:site_name" content={siteName} />
-      <meta property="og:locale" content={currentLang === 'en' ? 'en_NZ' : `${currentLang}_${currentLang.toUpperCase()}`} />
-      {/* Alternate locales for Open Graph */}
-      {SUPPORTED_LANGUAGES.filter(l => l.code !== currentLang).map(lang => (
-        <meta key={lang.code} property="og:locale:alternate" content={lang.code === 'en' ? 'en_NZ' : `${lang.code}_${lang.code.toUpperCase()}`} />
-      ))}
+      <meta property="og:locale" content="en_NZ" />
 
       {/* Twitter */}
       <meta property="twitter:card" content="summary_large_image" />
@@ -83,10 +56,10 @@ export const SEO = ({
 
       {/* Additional SEO Tags */}
       <meta name="robots" content="index, follow" />
-      <meta name="language" content={languageName} />
+      <meta name="language" content="English" />
       <meta name="revisit-after" content="7 days" />
       <meta name="author" content="Book A Ride NZ" />
-      
+
       {/* Geo Tags for Local SEO */}
       <meta name="geo.region" content="NZ" />
       <meta name="geo.placename" content="Auckland" />
@@ -94,7 +67,7 @@ export const SEO = ({
       <meta name="ICBM" content="-36.8485, 174.7633" />
 
       {/* Content Language */}
-      <meta httpEquiv="content-language" content={currentLang} />
+      <meta httpEquiv="content-language" content="en" />
     </Helmet>
   );
 };
