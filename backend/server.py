@@ -286,7 +286,8 @@ async def admin_google_auth_start_app():
         "prompt=select_account"
     )
     response = RedirectResponse(url=auth_url)
-    response.set_cookie(key="admin_oauth_state", value=state, httponly=True, max_age=600, samesite="lax")
+    is_https = backend_url.startswith("https://")
+    response.set_cookie(key="admin_oauth_state", value=state, httponly=True, secure=is_https, max_age=600, samesite="lax")
     return response
 
 # Create a router with the /api prefix
@@ -783,7 +784,8 @@ async def admin_google_auth_start():
         "prompt=select_account"
     )
     response = RedirectResponse(url=auth_url)
-    response.set_cookie(key="admin_oauth_state", value=state, httponly=True, max_age=600, samesite="lax")
+    is_https = backend_url.startswith("https://")
+    response.set_cookie(key="admin_oauth_state", value=state, httponly=True, secure=is_https, max_age=600, samesite="lax")
     return response
 
 @api_router.get("/admin/google-auth/callback")
