@@ -1155,34 +1155,63 @@ async def health_check():
     return {"status": "healthy", "service": "bookaride-api"}
 
 
-# Google Places Autocomplete - proxy for address suggestions
+# Address Autocomplete - proxy for address suggestions
+# Tries Geoapify first (used for all routing), falls back to Google Places
 @api_router.get("/places/autocomplete")
 async def places_autocomplete(input: str = "", types: str = "address", region: str = "nz"):
-    """Proxy Google Places Autocomplete to keep API key server-side."""
+    """Proxy address autocomplete to keep API keys server-side."""
     if not input or len(input) < 3:
         return {"predictions": []}
+
+    # --- Try Geoapify first (same API used for distance calculation) ---
+    geoapify_key = os.environ.get('GEOAPIFY_API_KEY', '')
+    if geoapify_key:
+        try:
+            url = "https://api.geoapify.com/v1/geocode/autocomplete"
+            params = {
+                "text": input,
+                "apiKey": geoapify_key,
+                "limit": 5,
+                "filter": f"countrycode:{region}",
+                "format": "json",
+                "type": "street" if types == "address" else types,
+            }
+            resp = requests.get(url, params=params, timeout=5)
+            data = resp.json()
+            results = data.get("results", [])
+            if results:
+                predictions = [
+                    {"description": r.get("formatted", ""), "place_id": f"geoapify-{i}"}
+                    for i, r in enumerate(results)
+                    if r.get("formatted")
+                ]
+                return {"predictions": predictions}
+        except Exception as e:
+            logger.warning(f"Geoapify autocomplete error: {e}")
+
+    # --- Fallback to Google Places ---
     google_api_key = os.environ.get('GOOGLE_MAPS_API_KEY', '')
-    if not google_api_key:
-        logger.warning("Google Maps API key not configured for autocomplete")
-        return {"predictions": []}
-    try:
-        url = "https://maps.googleapis.com/maps/api/place/autocomplete/json"
-        params = {
-            "input": input,
-            "types": types,
-            "components": f"country:{region}",
-            "key": google_api_key,
-        }
-        resp = requests.get(url, params=params, timeout=5)
-        data = resp.json()
-        predictions = [
-            {"description": p["description"], "place_id": p["place_id"]}
-            for p in data.get("predictions", [])
-        ]
-        return {"predictions": predictions}
-    except Exception as e:
-        logger.error(f"Places autocomplete error: {e}")
-        return {"predictions": []}
+    if google_api_key:
+        try:
+            url = "https://maps.googleapis.com/maps/api/place/autocomplete/json"
+            params = {
+                "input": input,
+                "types": types,
+                "components": f"country:{region}",
+                "key": google_api_key,
+            }
+            resp = requests.get(url, params=params, timeout=5)
+            data = resp.json()
+            predictions = [
+                {"description": p["description"], "place_id": p["place_id"]}
+                for p in data.get("predictions", [])
+            ]
+            return {"predictions": predictions}
+        except Exception as e:
+            logger.error(f"Google Places autocomplete error: {e}")
+
+    logger.warning("No API keys configured for address autocomplete (GEOAPIFY_API_KEY or GOOGLE_MAPS_API_KEY)")
+    return {"predictions": []}
 
 
 # Google Reviews Endpoint - Fetches reviews from Google Places API
