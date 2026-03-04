@@ -474,6 +474,12 @@ class BookingCreate(BaseModel):
     notificationPreference: Optional[str] = "both"
     skipNotifications: Optional[bool] = False
     createdAt: datetime = Field(default_factory=datetime.utcnow)
+    # Fields sent by frontend that were previously silently dropped
+    paymentMethod: Optional[str] = "card"
+    language: Optional[str] = "en"
+    vipAirportPickup: Optional[bool] = False
+    oversizedLuggage: Optional[bool] = False
+    selectedAddOns: Optional[List[str]] = []
     
     @model_validator(mode='after')
     def validate_return_flight_for_airport_shuttle(self):
@@ -487,41 +493,25 @@ class BookingCreate(BaseModel):
             if not return_flight or not return_flight.strip():
                 raise ValueError('Return flight number is required for airport shuttle return bookings. Without a flight number, your booking may face cancellation.')
         return self
-    
-    # @model_validator(mode='after')
-    # def validate_booking_date(self):
-    #     """Validate that booking date is not in the past"""
-    #     if self.date:
-    #         try:
-    #             nz_tz = pytz.timezone('Pacific/Auckland')
-    #             today = datetime.now(nz_tz).strftime('%Y-%m-%d')
-    #             # Allow bookings for today and future only
-    #             if self.date < today:
-    #                 raise ValueError(f'Booking date ({self.date}) cannot be in the past. Today is {today}.')
-    #         except Exception as e:
-    #             if 'cannot be in the past' in str(e):
-    #                 raise
-    #             # If date parsing fails, let it through (will fail elsewhere)
-    #             pass
-    #     return self
 
-@model_validator(mode='after')
-def validate_booking_date(self):       
-    # Skip validation for data retrieval operations    
-    if hasattr(self, '_skip_date_validation') or getattr(self, 'id', None):    
+    @model_validator(mode='after')
+    def validate_booking_date(self):
+        """Validate that booking date is not in the past"""
+        # Skip validation for data retrieval operations
+        if hasattr(self, '_skip_date_validation') or getattr(self, 'id', None):
+            return self
+
+        if self.date:
+            try:
+                nz_tz = pytz.timezone('Pacific/Auckland')
+                today = datetime.now(nz_tz).strftime('%Y-%m-%d')
+                if self.date < today:
+                    raise ValueError(f'Booking date ({self.date}) cannot be in the past. Today is {today}.')
+            except Exception as e:
+                if 'cannot be in the past' in str(e):
+                    raise
+                pass
         return self
-    
-    if self.date:  # ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ NOW PROPERLY INSIDE THE FUNCTION
-        try:
-            nz_tz = pytz.timezone('Pacific/Auckland')
-            today = datetime.now(nz_tz).strftime('%Y-%m-%d')
-            if self.date < today:
-                raise ValueError(f'Booking date ({self.date}) cannot be in the past. Today is {today}.')
-        except Exception as e:
-            if 'cannot be in the past' in str(e):
-                raise
-            pass
-    return self
 
 class Booking(BookingCreate):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -1462,11 +1452,9 @@ async def calculate_price(request: PriceCalculationRequest):
         hibiscus_coast_keywords = ['orewa', 'whangaparaoa', 'silverdale', 'red beach', 'stanmore bay', 'army bay', 'gulf harbour', 'manly', 'hibiscus coast', 'millwater', 'milldale', 'hatfields beach', 'waiwera', 'alec craig', 'orewa beach', 'stillwater', 'coatesville']
         
         # Check if this is specifically the concert venue (not general Matakana)
-        # Normalize macrons for matching (Māngere -> Mangere)
-        def _norm(s):
-            return (s or '').lower().replace('\u0101', 'a').replace('ā', 'a')
-        pickup_lower = _norm(request.pickupAddress)
-        dropoff_lower = _norm(request.dropoffAddress)
+        # Reuse normalized addresses from above
+        pickup_lower = _pickup_lower
+        dropoff_lower = _dropoff_lower
         
         is_concert_venue_destination = any(keyword in dropoff_lower for keyword in matakana_concert_keywords)
         is_concert_venue_pickup = any(keyword in pickup_lower for keyword in matakana_concert_keywords)
@@ -2722,7 +2710,7 @@ def send_customer_confirmation(booking: dict):
         try:
             from pymongo import MongoClient
             sync_client = MongoClient(os.environ.get('MONGO_URL', 'mongodb://localhost:27017'))
-            sync_db = sync_client[os.environ.get('DB_NAME', 'test_database')]
+            sync_db = sync_client[os.environ.get('DB_NAME', 'bookaride')]
             
             nz_tz = pytz.timezone('Pacific/Auckland')
             now = datetime.now(nz_tz).isoformat()
@@ -4072,7 +4060,7 @@ Price: ${booking.get('totalPrice', 0):.2f}
             try:
                 from pymongo import MongoClient
                 sync_client = MongoClient(os.environ.get('MONGO_URL', 'mongodb://localhost:27017'))
-                sync_db = sync_client[os.environ.get('DB_NAME', 'test_database')]
+                sync_db = sync_client[os.environ.get('DB_NAME', 'bookaride')]
                 sync_db.pending_approvals.update_one(
                     {"admin_phone": admin_phone},
                     {"$set": {

@@ -205,14 +205,11 @@ export const BookNow = () => {
         calculating: false
       });
       
-      // Auto-apply promo code if one was entered before price calculation
-      if (promoCode.trim() && !promoApplied) {
+      // Auto-apply or re-apply promo code after price recalculation
+      if (promoCode.trim()) {
         setTimeout(() => {
           handleApplyPromoWithSubtotal(promoCode.trim(), data.subtotal);
         }, 100);
-      } else {
-        // Reset promo if price changes and there's no pending code
-        setPromoApplied(null);
       }
     } catch (error) {
       console.error('Error calculating price:', error);
