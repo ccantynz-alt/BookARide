@@ -17,6 +17,7 @@ import TripCostSplitter from '../components/TripCostSplitter';
 import WeatherWidget from '../components/WeatherWidget';
 import LiveJourneyVisualizer from '../components/LiveJourneyVisualizer';
 import { CustomDatePicker, CustomTimePicker } from '../components/DateTimePicker';
+import AddressAutocomplete from '../components/AddressAutocomplete';
 
 const DROPOFF_QUICK_ADDRESSES = [
   { label: 'Auckland Airport', address: 'Auckland Airport, Ray Emery Drive, Mangere, Auckland 2022, New Zealand' },
@@ -299,94 +300,7 @@ export const BookNow = () => {
     }));
   };
 
-  const handlePickupAddressChange = (index, value) => {
-    setFormData(prev => ({
-      ...prev,
-      pickupAddresses: prev.pickupAddresses.map((addr, i) => i === index ? value : addr)
-    }));
-    fetchSuggestions(value, `extra-${index}`);
-  };
-
-  // --- Address autocomplete ---
-  const [suggestions, setSuggestions] = useState({});      // keyed by field id
-  const [activeField, setActiveField] = useState(null);
-  const debounceRef = useRef({});
-  const suggestionsRef = useRef(null);
-
-  const fetchSuggestions = (value, fieldId) => {
-    clearTimeout(debounceRef.current[fieldId]);
-    if (!value || value.length < 3) {
-      setSuggestions(prev => ({ ...prev, [fieldId]: [] }));
-      setActiveField(null);
-      return;
-    }
-    debounceRef.current[fieldId] = setTimeout(async () => {
-      try {
-        const url = `${API}/places/autocomplete`;
-        console.log('[Autocomplete] Fetching:', url, { input: value, types: 'address', region: 'nz' });
-        const resp = await axios.get(url, {
-          params: { input: value, types: 'address', region: 'nz' }
-        });
-        console.log('[Autocomplete] Response:', resp.data);
-        const preds = resp.data.predictions || [];
-        setSuggestions(prev => ({ ...prev, [fieldId]: preds }));
-        if (preds.length > 0) {
-          setActiveField(fieldId);
-        }
-      } catch (err) {
-        console.error('[Autocomplete] Error:', err.message, err.response?.status, err.response?.data);
-      }
-    }, 300);
-  };
-
-  const selectSuggestion = (fieldId, description) => {
-    if (fieldId === 'pickup') {
-      setFormData(prev => ({ ...prev, pickupAddress: description }));
-    } else if (fieldId === 'dropoff') {
-      setFormData(prev => ({ ...prev, dropoffAddress: description }));
-    } else if (fieldId.startsWith('extra-')) {
-      const idx = parseInt(fieldId.replace('extra-', ''), 10);
-      setFormData(prev => ({
-        ...prev,
-        pickupAddresses: prev.pickupAddresses.map((a, i) => i === idx ? description : a)
-      }));
-    }
-    setSuggestions(prev => ({ ...prev, [fieldId]: [] }));
-    setActiveField(null);
-  };
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (suggestionsRef.current && !suggestionsRef.current.contains(e.target)) {
-        setActiveField(null);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const SuggestionsDropdown = ({ fieldId }) => {
-    const items = suggestions[fieldId] || [];
-    if (activeField !== fieldId || items.length === 0) return null;
-    return (
-      <div ref={suggestionsRef} className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
-        {items.map((s, i) => (
-          <button
-            key={i}
-            type="button"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => selectSuggestion(fieldId, s.description)}
-            className="w-full px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-100 last:border-0"
-          >
-            <MapPin className="w-3 h-3 inline mr-2 text-gray-400" />
-            {s.description}
-          </button>
-        ))}
-      </div>
-    );
-  };
-  // --- End address autocomplete ---
+  // --- Address autocomplete (handled by <AddressAutocomplete> component) ---
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -613,44 +527,46 @@ export const BookNow = () => {
                       </div>
 
                       {/* Pickup Address */}
-                      <div className="space-y-2 mb-6 relative">
+                      <div className="space-y-2 mb-6">
                         <Label htmlFor="pickupAddress" className="flex items-center space-x-2">
                           <MapPin className="w-4 h-4 text-gold" />
                           <span>Pickup Location 1 *</span>
                         </Label>
-                        <Input
+                        <AddressAutocomplete
                           id="pickupAddress"
-                          name="pickupAddress"
                           value={formData.pickupAddress}
-                          onChange={(e) => {
-                            setFormData(prev => ({ ...prev, pickupAddress: e.target.value }));
-                            fetchSuggestions(e.target.value, 'pickup');
-                          }}
+                          onChange={(val) => setFormData(prev => ({ ...prev, pickupAddress: val }))}
+                          onSelect={(val) => setFormData(prev => ({ ...prev, pickupAddress: val }))}
                           placeholder="Start typing an address..."
                           required
-                          autoComplete="off"
-                          className="transition-all duration-200 focus:ring-2 focus:ring-gold"
                         />
-                        <SuggestionsDropdown fieldId="pickup" />
                       </div>
 
                       {/* Additional Pickup Addresses */}
                       {formData.pickupAddresses.map((pickup, index) => (
-                        <div key={index} className="space-y-2 mb-6 relative">
+                        <div key={index} className="space-y-2 mb-6">
                           <Label className="flex items-center space-x-2">
                             <MapPin className="w-4 h-4 text-gold" />
                             <span>Pickup Location {index + 2}</span>
                           </Label>
                           <div className="flex gap-2">
-                            <div className="flex-1 relative">
-                              <Input
+                            <div className="flex-1">
+                              <AddressAutocomplete
                                 value={pickup}
-                                onChange={(e) => handlePickupAddressChange(index, e.target.value)}
+                                onChange={(val) => {
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    pickupAddresses: prev.pickupAddresses.map((a, i) => i === index ? val : a)
+                                  }));
+                                }}
+                                onSelect={(val) => {
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    pickupAddresses: prev.pickupAddresses.map((a, i) => i === index ? val : a)
+                                  }));
+                                }}
                                 placeholder="Start typing an address..."
-                                autoComplete="off"
-                                className="w-full transition-all duration-200 focus:ring-2 focus:ring-gold"
                               />
-                              <SuggestionsDropdown fieldId={`extra-${index}`} />
                             </div>
                             <Button
                               type="button"
@@ -686,25 +602,19 @@ export const BookNow = () => {
                       </div>
 
                       {/* Dropoff Address */}
-                      <div className="space-y-2 mb-6 relative">
+                      <div className="space-y-2 mb-6">
                         <Label htmlFor="dropoffAddress" className="flex items-center space-x-2">
                           <MapPin className="w-4 h-4 text-gold" />
                           <span>Drop-off Address *</span>
                         </Label>
-                        <Input
+                        <AddressAutocomplete
                           id="dropoffAddress"
-                          name="dropoffAddress"
                           value={formData.dropoffAddress}
-                          onChange={(e) => {
-                            setFormData(prev => ({ ...prev, dropoffAddress: e.target.value }));
-                            fetchSuggestions(e.target.value, 'dropoff');
-                          }}
+                          onChange={(val) => setFormData(prev => ({ ...prev, dropoffAddress: val }))}
+                          onSelect={(val) => setFormData(prev => ({ ...prev, dropoffAddress: val }))}
                           placeholder="Enter full address or pick below..."
                           required
-                          autoComplete="off"
-                          className="transition-all duration-200 focus:ring-2 focus:ring-gold"
                         />
-                        <SuggestionsDropdown fieldId="dropoff" />
                       </div>
 
                       {/* Date and Time */}
