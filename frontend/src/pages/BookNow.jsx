@@ -376,8 +376,10 @@ export const BookNow = () => {
           <button
             key={i}
             type="button"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => selectSuggestion(fieldId, s.description)}
+            onMouseDown={(e) => {
+              e.preventDefault(); // keep focus on input
+              selectSuggestion(fieldId, s.description);
+            }}
             className="w-full px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-100 last:border-0"
           >
             <MapPin className="w-3 h-3 inline mr-2 text-gray-400" />
