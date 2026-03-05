@@ -845,11 +845,19 @@ class NeonDatabase:
     @classmethod
     async def connect(cls, database_url: str, **kwargs) -> "NeonDatabase":
         """Create a connection pool and return a NeonDatabase instance."""
+        # asyncpg does not support channel_binding — strip it from the URL
+        from urllib.parse import urlparse, urlencode, parse_qs, urlunparse
+        parsed = urlparse(database_url)
+        qs = parse_qs(parsed.query, keep_blank_values=True)
+        qs.pop("channel_binding", None)
+        clean_url = urlunparse(parsed._replace(query=urlencode(qs, doseq=True)))
+
         pool = await asyncpg.create_pool(
-            database_url,
+            clean_url,
             min_size=kwargs.get("min_size", 5),
             max_size=kwargs.get("max_size", 20),
             command_timeout=kwargs.get("command_timeout", 30),
+            ssl="require",
         )
         logger.info("Connected to Neon PostgreSQL")
         return cls(pool)
