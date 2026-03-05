@@ -38,6 +38,7 @@ const AddressAutocomplete = ({
   const [open, setOpen] = useState(false);
   const [dropdownStyle, setDropdownStyle] = useState({});
   const inputRef = useRef(null);
+  const dropdownRef = useRef(null);
   const debounceRef = useRef(null);
 
   const fetchSuggestions = useCallback(
@@ -95,10 +96,12 @@ const AddressAutocomplete = ({
     else if (onChange) onChange(description);
   };
 
-  // Close when clicking outside
+  // Close when clicking outside (must check both input and portal dropdown)
   useEffect(() => {
     const handler = (e) => {
-      if (inputRef.current && !inputRef.current.contains(e.target)) {
+      const inInput = inputRef.current && inputRef.current.contains(e.target);
+      const inDropdown = dropdownRef.current && dropdownRef.current.contains(e.target);
+      if (!inInput && !inDropdown) {
         setOpen(false);
       }
     };
@@ -110,6 +113,7 @@ const AddressAutocomplete = ({
     open && suggestions.length > 0
       ? ReactDOM.createPortal(
           <div
+            ref={dropdownRef}
             style={dropdownStyle}
             className="bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto"
             onMouseDown={(e) => e.preventDefault()} // prevent input blur
