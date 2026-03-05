@@ -366,7 +366,7 @@ export const BookNow = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const SuggestionsDropdown = ({ fieldId }) => {
+  const renderSuggestions = (fieldId) => {
     const items = suggestions[fieldId] || [];
     if (activeField !== fieldId || items.length === 0) return null;
     return (
@@ -631,7 +631,7 @@ export const BookNow = () => {
                           autoComplete="off"
                           className="transition-all duration-200 focus:ring-2 focus:ring-gold"
                         />
-                        <SuggestionsDropdown fieldId="pickup" />
+                        {renderSuggestions("pickup")}
                       </div>
 
                       {/* Additional Pickup Addresses */}
@@ -650,7 +650,7 @@ export const BookNow = () => {
                                 autoComplete="off"
                                 className="w-full transition-all duration-200 focus:ring-2 focus:ring-gold"
                               />
-                              <SuggestionsDropdown fieldId={`extra-${index}`} />
+                              {renderSuggestions(`extra-${index}`)}
                             </div>
                             <Button
                               type="button"
@@ -704,7 +704,7 @@ export const BookNow = () => {
                           autoComplete="off"
                           className="transition-all duration-200 focus:ring-2 focus:ring-gold"
                         />
-                        <SuggestionsDropdown fieldId="dropoff" />
+                        {renderSuggestions("dropoff")}
                       </div>
 
                       {/* Date and Time */}
