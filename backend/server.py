@@ -13880,27 +13880,28 @@ async def startup_event():
             logger.warning(f"Admin seed error: {repr(e)}")
     
     # Create database indexes for faster queries
-    try:
-        await db.bookings.create_index("date")
-        await db.bookings.create_index("status")
-        await db.bookings.create_index("name")
-        await db.bookings.create_index("email")
-        await db.bookings.create_index("referenceNumber")
-        await db.bookings.create_index("original_booking_id")
-        await db.bookings.create_index([("date", -1), ("status", 1)])
-        logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Database indexes created for faster queries")
-    except Exception as e:
-        logger.warning(f"Index creation note: {str(e)}")
-    
-    # Create index for archive collection
-    try:
-        await db.bookings_archive.create_index("archivedAt")
-        await db.bookings_archive.create_index("name")
-        await db.bookings_archive.create_index("email")
-        await db.bookings_archive.create_index("referenceNumber")
-        logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Archive indexes created")
-    except Exception as e:
-        logger.warning(f"Archive index creation note: {str(e)}")
+    if db is not None:
+        try:
+            await db.bookings.create_index("date")
+            await db.bookings.create_index("status")
+            await db.bookings.create_index("name")
+            await db.bookings.create_index("email")
+            await db.bookings.create_index("referenceNumber")
+            await db.bookings.create_index("original_booking_id")
+            await db.bookings.create_index([("date", -1), ("status", 1)])
+            logger.info("Database indexes created for faster queries")
+        except Exception as e:
+            logger.warning(f"Index creation note: {str(e)}")
+
+        # Create index for archive collection
+        try:
+            await db.bookings_archive.create_index("archivedAt")
+            await db.bookings_archive.create_index("name")
+            await db.bookings_archive.create_index("email")
+            await db.bookings_archive.create_index("referenceNumber")
+            logger.info("Archive indexes created")
+        except Exception as e:
+            logger.warning(f"Archive index creation note: {str(e)}")
     
     # ============================================
     # RELIABLE REMINDER SYSTEM - 3 LAYERS
