@@ -275,33 +275,11 @@ async def root_email_status():
         "hint": "SendGrid only: SENDGRID_API_KEY + NOREPLY_EMAIL (verified sender in SendGrid). Remove Mailgun/SMTP.",
     }
 
-# Google auth start - app-level routes (try multiple paths for compatibility)
-@app.get("/api/admin/google-auth/start")
-@app.get("/api/google-auth-start")  # Simpler path fallback
+# Google auth start - short-path alias for compatibility
+@app.get("/api/google-auth-start")
 async def admin_google_auth_start_app():
-    """Start Google OAuth - app-level route for reliability"""
-    client_id = os.environ.get('GOOGLE_CLIENT_ID')
-    client_secret = os.environ.get('GOOGLE_CLIENT_SECRET')
-    if not client_id or not client_secret:
-        raise HTTPException(status_code=500, detail="Google OAuth not configured. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.")
-    public_domain = os.environ.get('PUBLIC_DOMAIN', 'https://bookaride.co.nz')
-    backend_url = os.environ.get('BACKEND_URL') or os.environ.get('RENDER_EXTERNAL_URL') or public_domain
-    redirect_uri = f"{backend_url.rstrip('/')}/api/admin/google-auth/callback"
-    state = f"bookaride_admin_oauth_{uuid.uuid4().hex}"
-    auth_url = (
-        "https://accounts.google.com/o/oauth2/v2/auth?"
-        f"client_id={client_id}&"
-        f"redirect_uri={requests.utils.quote(redirect_uri)}&"
-        "response_type=code&"
-        "scope=openid%20email%20profile&"
-        f"state={state}&"
-        "access_type=offline&"
-        "prompt=select_account"
-    )
-    response = RedirectResponse(url=auth_url)
-    is_https = backend_url.startswith("https://")
-    response.set_cookie(key="admin_oauth_state", value=state, httponly=True, secure=is_https, max_age=600, samesite="lax")
-    return response
+    """Start Google OAuth - short-path alias, delegates to the canonical router route"""
+    return RedirectResponse(url="/api/admin/google-auth/start")
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
@@ -13872,33 +13850,34 @@ def create_arrival_email_html(customer_name: str, booking_date: str, pickup_time
 async def startup_event():
     """Start the scheduler when the app starts and ensure default admin exists"""
     # Ensure default admin exists with correct email for Google OAuth
-    try:
-        default_admin = await db.admin_users.find_one({"username": "admin"})
-    except Exception as e:
-        print("WARN: admin seed skipped (db unavailable):", repr(e))
-        default_admin = {"_skip": True}
-    if not default_admin:
-        hashed_pw = "$2b$12$C6UzMDM.H6dfI/f/IKcEeO8m8Y4YkQkQ1h6s4H6c3Z8Y5G7c8Y4r2"
-        await db.admin_users.insert_one({
-            "id": str(uuid.uuid4()),
-            "username": "admin",
-            "email": "info@bookaride.co.nz",
-            "hashed_password": hashed_pw,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "is_active": True
-        })
-        logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Default admin user created")
+    if db is None:
+        logger.warning("WARN: admin seed skipped (db unavailable — DATABASE_URL not set)")
     else:
-        # Update password and email to ensure they're correct
-        hashed_pw = "$2b$12$C6UzMDM.H6dfI/f/IKcEeO8m8Y4YkQkQ1h6s4H6c3Z8Y5G7c8Y4r2"
-        await db.admin_users.update_one(
-            {"username": "admin"},
-            {"$set": {
-                "hashed_password": hashed_pw,
-                "email": "info@bookaride.co.nz"
-            }}
-        )
-        logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Admin password reset and email updated to info@bookaride.co.nz")
+        try:
+            default_admin = await db.admin_users.find_one({"username": "admin"})
+            hashed_pw = "$2b$12$C6UzMDM.H6dfI/f/IKcEeO8m8Y4YkQkQ1h6s4H6c3Z8Y5G7c8Y4r2"
+            if not default_admin:
+                await db.admin_users.insert_one({
+                    "id": str(uuid.uuid4()),
+                    "username": "admin",
+                    "email": "info@bookaride.co.nz",
+                    "hashed_password": hashed_pw,
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "is_active": True
+                })
+                logger.info("Default admin user created")
+            else:
+                # Update password and email to ensure they’re correct
+                await db.admin_users.update_one(
+                    {"username": "admin"},
+                    {"$set": {
+                        "hashed_password": hashed_pw,
+                        "email": "info@bookaride.co.nz"
+                    }}
+                )
+                logger.info("Admin password reset and email updated to info@bookaride.co.nz")
+        except Exception as e:
+            logger.warning(f"Admin seed error: {repr(e)}")
     
     # Create database indexes for faster queries
     try:
