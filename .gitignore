@@ -123,3 +123,4 @@ backend/#*.txt
 RUN_LOGS/
 D8_CONTROL/
 .env*.local
+bfg.jar

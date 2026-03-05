@@ -1917,16 +1917,26 @@ async def get_bookings(
             bookings = all_bookings[skip:skip + limit]
             logger.info(f"Fetched {len(bookings)} bookings (page {page}, total {total})")
         
-        # Validate and return; allow shuttle docs that may have minimal fields
+        # Validate and return; never drop a doc that exists in Mongo (old/imported docs may have different shape)
         out = []
         for b in bookings:
             try:
-                # Ensure required Booking fields exist for shuttle
-                b.setdefault('pickupAddress', b.get('pickupAddress') or '')
-                b.setdefault('notes', '')
-                b.setdefault('bookReturn', False)
-                b.setdefault('returnDate', '')
-                b.setdefault('returnTime', '')
+                # Ensure all required Booking/BookingCreate fields exist so validation never drops a row
+                b.setdefault('pickupAddress', b.get('pickupAddress') or b.get('pickup_address') or '')
+                b.setdefault('dropoffAddress', b.get('dropoffAddress') or b.get('dropoff_address') or '')
+                b.setdefault('notes', b.get('notes') or '')
+                b.setdefault('bookReturn', b.get('bookReturn') or False)
+                b.setdefault('returnDate', b.get('returnDate') or '')
+                b.setdefault('returnTime', b.get('returnTime') or '')
+                b.setdefault('serviceType', b.get('serviceType') or 'airport-shuttle')
+                b.setdefault('date', b.get('date') or '')
+                b.setdefault('time', b.get('time') or '')
+                b.setdefault('passengers', str(b.get('passengers', 1)))
+                b.setdefault('name', b.get('name') or b.get('customerName') or '')
+                b.setdefault('email', b.get('email') or '')
+                b.setdefault('phone', b.get('phone') or '')
+                b.setdefault('pricing', b.get('pricing') or {'totalPrice': b.get('totalPrice', 0)})
+                b.setdefault('status', b.get('status') or 'pending')
                 out.append(Booking(**b))
             except Exception as e:
                 logger.warning(f"Skip booking (validation): id={b.get('id')} ref={b.get('referenceNumber')} err={e}")
@@ -5331,6 +5341,60 @@ async def restore_bookings_from_backup(request: RestoreBookingData, current_admi
         logger.error(f"Error restoring bookings: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error restoring bookings: {str(e)}")
 
+
+class FullBackupRestoreData(BaseModel):
+    """Format from export-backup: restore both active and deleted into main list."""
+    active: Optional[List[dict]] = None
+    deleted: Optional[List[dict]] = None
+
+
+@api_router.post("/admin/bookings/restore-from-export")
+async def restore_from_export_backup(request: FullBackupRestoreData, current_admin: dict = Depends(get_current_admin)):
+    """Restore from a downloaded backup file (export-backup format). Puts all active + deleted back into the main bookings list. Use when bookings or deleted list was lost."""
+    try:
+        active_list = request.active or []
+        deleted_list = request.deleted or []
+        def clean(b):
+            doc = dict(b)
+            doc.pop("deletedAt", None)
+            doc.pop("deletedBy", None)
+            doc.pop("notificationSent", None)
+            doc.pop("restoredAt", None)
+            doc.pop("restoredBy", None)
+            doc.pop("_id", None)
+            return doc
+        to_insert = [clean(b) for b in (active_list + deleted_list) if b.get("id")]
+        imported = []
+        skipped = []
+        errors = []
+        for booking in to_insert:
+            try:
+                existing = await db.bookings.find_one({"id": booking.get("id")})
+                if existing:
+                    skipped.append({"id": booking.get("id"), "name": booking.get("name"), "reason": "Already exists"})
+                    continue
+                if booking.get("referenceNumber"):
+                    existing_ref = await db.bookings.find_one({"referenceNumber": booking.get("referenceNumber")})
+                    if existing_ref:
+                        skipped.append({"id": booking.get("id"), "name": booking.get("name"), "reason": "Ref exists"})
+                        continue
+                await db.bookings.insert_one(booking)
+                imported.append({"id": booking.get("id"), "name": booking.get("name"), "referenceNumber": booking.get("referenceNumber")})
+            except Exception as e:
+                errors.append({"id": booking.get("id"), "name": booking.get("name"), "error": str(e)})
+        logger.info(f"Restore-from-export: {len(imported)} imported, {len(skipped)} skipped by {current_admin.get('username')}")
+        return {
+            "success": True,
+            "imported_count": len(imported),
+            "skipped_count": len(skipped),
+            "error_count": len(errors),
+            "imported": imported,
+            "skipped": skipped[:50],
+            "errors": errors[:50],
+        }
+    except Exception as e:
+        logger.error(f"Error restoring from export: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # Google Calendar OAuth Endpoints

@@ -531,8 +531,10 @@ export const AdminDashboard = () => {
   const [loadingDeleted, setLoadingDeleted] = useState(false);
   const [restoringAll, setRestoringAll] = useState(false);
   const [downloadingBackup, setDownloadingBackup] = useState(false);
+  const [restoringFromFile, setRestoringFromFile] = useState(false);
   const [retentionCounts, setRetentionCounts] = useState(null); // { active, deleted } when list empty
   const [deletedCountForBanner, setDeletedCountForBanner] = useState(null); // deleted count for "Restore all" banner on Bookings tab
+  const backupFileInputRef = useRef(null);
   const [xeroConnected, setXeroConnected] = useState(false);
   const [xeroOrg, setXeroOrg] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -1125,6 +1127,34 @@ export const AdminDashboard = () => {
       toast.error(error.response?.data?.detail || 'Failed to download backup');
     } finally {
       setDownloadingBackup(false);
+    }
+  };
+
+  const handleRestoreFromBackupFile = async (e) => {
+    const file = e?.target?.files?.[0];
+    if (!file) return;
+    setRestoringFromFile(true);
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      const active = Array.isArray(data.active) ? data.active : [];
+      const deleted = Array.isArray(data.deleted) ? data.deleted : [];
+      if (active.length === 0 && deleted.length === 0) {
+        toast.error('File has no active or deleted bookings. Use a backup from Download backup.');
+        return;
+      }
+      const res = await axios.post(`${API}/admin/bookings/restore-from-export`, { active, deleted }, getAuthHeaders());
+      const n = res.data?.imported_count ?? 0;
+      toast.success(n ? `Restored ${n} booking(s) into your list. Refresh the Bookings tab.` : `No new bookings to add (${res.data?.skipped_count ?? 0} already existed).`);
+      fetchBookingsRef.current?.();
+      fetchDeletedBookings();
+      if (deletedCountForBanner !== null) setDeletedCountForBanner((c) => (c || 0) - (res.data?.imported_count ?? 0));
+      if (backupFileInputRef.current) backupFileInputRef.current.value = '';
+    } catch (err) {
+      console.error('Restore from file:', err);
+      toast.error(err.response?.data?.detail || err.message || 'Failed to restore from file');
+    } finally {
+      setRestoringFromFile(false);
     }
   };
 
@@ -2138,6 +2168,14 @@ export const AdminDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 pt-20">
+      {/* Hidden file input for restore-from-backup (used from Bookings + Deleted tab) */}
+      <input
+        ref={backupFileInputRef}
+        type="file"
+        accept=".json,application/json"
+        className="hidden"
+        onChange={handleRestoreFromBackupFile}
+      />
       {/* Professional Light Header */}
       <div className="bg-white border-b border-gray-200 py-6">
         <div className="container mx-auto px-4">
@@ -2542,6 +2580,23 @@ onViewBooking={(booking) => {
                 <div className="text-center py-8">
                   <p className="text-gray-600 font-medium">No bookings in this view</p>
                 </div>
+                {retentionCounts && retentionCounts.active === 0 && retentionCounts.deleted === 0 && (
+                  <Card className="border-red-400 bg-red-50 shadow-lg max-w-2xl mx-auto">
+                    <CardContent className="p-5 space-y-3">
+                      <p className="font-bold text-red-900 text-lg">Emergency: no bookings in database</p>
+                      <p className="text-sm text-red-800">The database shows 0 active and 0 deleted. Do this now:</p>
+                      <ol className="list-decimal list-inside text-sm text-red-800 space-y-2">
+                        <li><strong>If you have a backup file</strong> (JSON from &quot;Download backup&quot; or any export): click <strong>Recover from backup file</strong> below and select it. Bookings will be restored.</li>
+                        <li><strong>If you have no backup:</strong> contact your database host (e.g. Render, MongoDB Atlas) immediately and ask for a <strong>database backup or point-in-time restore</strong>.</li>
+                      </ol>
+                      <div className="pt-2">
+                        <Button onClick={() => backupFileInputRef.current?.click()} disabled={restoringFromFile} className="bg-red-600 hover:bg-red-700 text-white font-semibold">
+                          {restoringFromFile ? <><RefreshCw className="w-4 h-4 mr-2 animate-spin" /> Restoring...</> : <><Upload className="w-4 h-4 mr-2" /> Recover from backup file</>}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
                 <Card className="border-amber-200 bg-amber-50/50 max-w-2xl mx-auto">
                   <CardContent className="p-4 space-y-3">
                     {retentionCounts && (
@@ -2577,7 +2632,17 @@ onViewBooking={(booking) => {
                       >
                         Open Deleted tab
                       </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => backupFileInputRef.current?.click()}
+                        disabled={restoringFromFile}
+                        className="border-green-600 text-green-800 hover:bg-green-50"
+                      >
+                        {restoringFromFile ? 'Restoring...' : 'Recover from backup file'}
+                      </Button>
                     </div>
+                    <p className="text-xs text-amber-700 mt-3">If you have a backup JSON (from Deleted → Download backup), use &quot;Recover from backup file&quot; to restore everything.</p>
                   </CardContent>
                 </Card>
               </div>
@@ -3144,6 +3209,25 @@ onViewBooking={(booking) => {
 
           {/* Deleted Bookings Tab */}
           <TabsContent value="deleted" className="space-y-6">
+            {/* CRITICAL: Recover from backup when bookings or deleted list was lost */}
+            <Card className="border-red-300 bg-red-50 shadow-lg">
+              <CardContent className="p-5">
+                <p className="font-bold text-red-900 text-lg">No bookings? Recover from backup</p>
+                <p className="text-sm text-red-800 mt-2">If you ever downloaded a backup (Deleted tab → Download backup), or have any JSON export of your bookings, upload it here. Every booking in that file will be restored into your main list.</p>
+                <div className="mt-4">
+                  <Button
+                    onClick={() => backupFileInputRef.current?.click()}
+                    disabled={restoringFromFile}
+                    className="bg-red-600 hover:bg-red-700 text-white font-semibold"
+                  >
+                    {restoringFromFile ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
+                    {restoringFromFile ? 'Restoring...' : 'Recover from backup file'}
+                  </Button>
+                </div>
+                <p className="text-xs text-red-700 mt-3">No backup? Contact your database host (e.g. Render, MongoDB Atlas) and request a database restore from their backups.</p>
+              </CardContent>
+            </Card>
+
             <Card className="border-red-200 bg-red-50">
               <CardContent className="p-6">
                 <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
