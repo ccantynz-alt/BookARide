@@ -116,13 +116,15 @@ const AddressAutocomplete = ({
             ref={dropdownRef}
             style={dropdownStyle}
             className="bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto"
-            onMouseDown={(e) => e.preventDefault()} // prevent input blur
           >
             {suggestions.map((s, i) => (
               <button
                 key={i}
                 type="button"
-                onClick={() => handleSelect(s.description)}
+                onMouseDown={(e) => {
+                  e.preventDefault(); // keep focus on input
+                  handleSelect(s.description);
+                }}
                 className="w-full px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-100 last:border-0"
               >
                 <MapPin className="w-3 h-3 inline mr-2 text-gray-400" />
