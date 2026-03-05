@@ -300,7 +300,94 @@ export const BookNow = () => {
     }));
   };
 
-  // --- Address autocomplete (handled by <AddressAutocomplete> component) ---
+  const handlePickupAddressChange = (index, value) => {
+    setFormData(prev => ({
+      ...prev,
+      pickupAddresses: prev.pickupAddresses.map((addr, i) => i === index ? value : addr)
+    }));
+    fetchSuggestions(value, `extra-${index}`);
+  };
+
+  // --- Address autocomplete ---
+  const [suggestions, setSuggestions] = useState({});      // keyed by field id
+  const [activeField, setActiveField] = useState(null);
+  const debounceRef = useRef({});
+  const suggestionsRef = useRef(null);
+
+  const fetchSuggestions = (value, fieldId) => {
+    clearTimeout(debounceRef.current[fieldId]);
+    if (!value || value.length < 3) {
+      setSuggestions(prev => ({ ...prev, [fieldId]: [] }));
+      setActiveField(null);
+      return;
+    }
+    debounceRef.current[fieldId] = setTimeout(async () => {
+      try {
+        const url = `${API}/places/autocomplete`;
+        console.log('[Autocomplete] Fetching:', url, { input: value, types: 'address', region: 'nz' });
+        const resp = await axios.get(url, {
+          params: { input: value, types: 'address', region: 'nz' }
+        });
+        console.log('[Autocomplete] Response:', resp.data);
+        const preds = resp.data.predictions || [];
+        setSuggestions(prev => ({ ...prev, [fieldId]: preds }));
+        if (preds.length > 0) {
+          setActiveField(fieldId);
+        }
+      } catch (err) {
+        console.error('[Autocomplete] Error:', err.message, err.response?.status, err.response?.data);
+      }
+    }, 300);
+  };
+
+  const selectSuggestion = (fieldId, description) => {
+    if (fieldId === 'pickup') {
+      setFormData(prev => ({ ...prev, pickupAddress: description }));
+    } else if (fieldId === 'dropoff') {
+      setFormData(prev => ({ ...prev, dropoffAddress: description }));
+    } else if (fieldId.startsWith('extra-')) {
+      const idx = parseInt(fieldId.replace('extra-', ''), 10);
+      setFormData(prev => ({
+        ...prev,
+        pickupAddresses: prev.pickupAddresses.map((a, i) => i === idx ? description : a)
+      }));
+    }
+    setSuggestions(prev => ({ ...prev, [fieldId]: [] }));
+    setActiveField(null);
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (suggestionsRef.current && !suggestionsRef.current.contains(e.target)) {
+        setActiveField(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const renderSuggestions = (fieldId) => {
+    const items = suggestions[fieldId] || [];
+    if (activeField !== fieldId || items.length === 0) return null;
+    return (
+      <div ref={suggestionsRef} className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
+        {items.map((s, i) => (
+          <button
+            key={i}
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => selectSuggestion(fieldId, s.description)}
+            className="w-full px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-100 last:border-0"
+          >
+            <MapPin className="w-3 h-3 inline mr-2 text-gray-400" />
+            {s.description}
+          </button>
+        ))}
+      </div>
+    );
+  };
+  // --- End address autocomplete ---
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -540,6 +627,7 @@ export const BookNow = () => {
                           placeholder="Start typing an address..."
                           required
                         />
+                        {renderSuggestions("pickup")}
                       </div>
 
                       {/* Additional Pickup Addresses */}
@@ -567,6 +655,7 @@ export const BookNow = () => {
                                 }}
                                 placeholder="Start typing an address..."
                               />
+                              {renderSuggestions(`extra-${index}`)}
                             </div>
                             <Button
                               type="button"
@@ -615,6 +704,7 @@ export const BookNow = () => {
                           placeholder="Enter full address or pick below..."
                           required
                         />
+                        {renderSuggestions("dropoff")}
                       </div>
 
                       {/* Date and Time */}

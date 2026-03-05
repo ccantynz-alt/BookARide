@@ -835,6 +835,8 @@ const SharedShuttle = () => {
                                 {addressSuggestions.map((s, i) => (
                                   <button
                                     key={i}
+                                    type="button"
+                                    onMouseDown={(e) => e.preventDefault()}
                                     onClick={() => selectAddress(s.description)}
                                     className="w-full px-4 py-3 text-left text-white hover:bg-gray-700 border-b border-gray-700 last:border-0"
                                   >
