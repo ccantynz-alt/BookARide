@@ -753,6 +753,18 @@ async def set_password(
 # Standalone Google OAuth (no Emergent) - redirect flow
 ADMIN_GOOGLE_OAUTH_STATE = "bookaride_admin_oauth"
 
+# Server-side state store: state_value -> expiry timestamp
+# Used as the primary validation mechanism so OAuth works even when
+# the cookie is blocked (cross-subdomain / browser SameSite restrictions).
+_oauth_state_store: Dict[str, float] = {}
+_OAUTH_STATE_TTL = 600  # seconds (10 minutes)
+
+def _purge_expired_oauth_states():
+    now = _time_mod.time()
+    expired = [k for k, exp in _oauth_state_store.items() if now > exp]
+    for k in expired:
+        _oauth_state_store.pop(k, None)
+
 @api_router.get("/admin/google-auth/start")
 async def admin_google_auth_start():
     """Start Google OAuth flow for admin login - redirects to Google"""
@@ -774,8 +786,13 @@ async def admin_google_auth_start():
         "access_type=offline&"
         "prompt=select_account"
     )
+    # Store state server-side (primary check — cookie can be blocked cross-subdomain)
+    _purge_expired_oauth_states()
+    _oauth_state_store[state] = _time_mod.time() + _OAUTH_STATE_TTL
+
     response = RedirectResponse(url=auth_url)
     is_https = backend_url.startswith("https://")
+    # Also set cookie as secondary/legacy fallback
     response.set_cookie(key="admin_oauth_state", value=state, httponly=True, secure=is_https, max_age=600, samesite="lax")
     return response
 
@@ -795,8 +812,18 @@ async def admin_google_auth_callback(request: Request, code: Optional[str] = Non
     client_secret = os.environ.get('GOOGLE_CLIENT_SECRET')
     if not client_id or not client_secret:
         return RedirectResponse(url=f"{callback_url}?error=config&message=Server%20OAuth%20not%20configured.")
+    # Validate state — prefer server-side store (works even when cookie is blocked
+    # by SameSite/cross-subdomain restrictions), fall back to cookie comparison.
+    _purge_expired_oauth_states()
+    state_in_store = state in _oauth_state_store and _time_mod.time() <= _oauth_state_store[state]
     saved_state = request.cookies.get("admin_oauth_state")
-    if not saved_state or saved_state != state or not state.startswith(ADMIN_GOOGLE_OAUTH_STATE):
+    state_valid = (
+        state.startswith(ADMIN_GOOGLE_OAUTH_STATE)
+        and (state_in_store or (saved_state is not None and saved_state == state))
+    )
+    if state_in_store:
+        _oauth_state_store.pop(state, None)  # consume — one-time use
+    if not state_valid:
         return RedirectResponse(
             url=f"{callback_url}?error=invalid_state&message=Invalid%20or%20expired%20sign-in.%20Please%20try%20again."
         )

@@ -17,6 +17,7 @@ import TripCostSplitter from '../components/TripCostSplitter';
 import WeatherWidget from '../components/WeatherWidget';
 import LiveJourneyVisualizer from '../components/LiveJourneyVisualizer';
 import { CustomDatePicker, CustomTimePicker } from '../components/DateTimePicker';
+import AddressAutocomplete from '../components/AddressAutocomplete';
 
 const DROPOFF_QUICK_ADDRESSES = [
   { label: 'Auckland Airport', address: 'Auckland Airport, Ray Emery Drive, Mangere, Auckland 2022, New Zealand' },
@@ -613,42 +614,46 @@ export const BookNow = () => {
                       </div>
 
                       {/* Pickup Address */}
-                      <div className="space-y-2 mb-6 relative">
+                      <div className="space-y-2 mb-6">
                         <Label htmlFor="pickupAddress" className="flex items-center space-x-2">
                           <MapPin className="w-4 h-4 text-gold" />
                           <span>Pickup Location 1 *</span>
                         </Label>
-                        <Input
+                        <AddressAutocomplete
                           id="pickupAddress"
-                          name="pickupAddress"
                           value={formData.pickupAddress}
-                          onChange={(e) => {
-                            setFormData(prev => ({ ...prev, pickupAddress: e.target.value }));
-                            fetchSuggestions(e.target.value, 'pickup');
-                          }}
+                          onChange={(val) => setFormData(prev => ({ ...prev, pickupAddress: val }))}
+                          onSelect={(val) => setFormData(prev => ({ ...prev, pickupAddress: val }))}
                           placeholder="Start typing an address..."
                           required
-                          autoComplete="off"
-                          className="transition-all duration-200 focus:ring-2 focus:ring-gold"
                         />
                         {renderSuggestions("pickup")}
                       </div>
 
                       {/* Additional Pickup Addresses */}
                       {formData.pickupAddresses.map((pickup, index) => (
-                        <div key={index} className="space-y-2 mb-6 relative">
+                        <div key={index} className="space-y-2 mb-6">
                           <Label className="flex items-center space-x-2">
                             <MapPin className="w-4 h-4 text-gold" />
                             <span>Pickup Location {index + 2}</span>
                           </Label>
                           <div className="flex gap-2">
-                            <div className="flex-1 relative">
-                              <Input
+                            <div className="flex-1">
+                              <AddressAutocomplete
                                 value={pickup}
-                                onChange={(e) => handlePickupAddressChange(index, e.target.value)}
+                                onChange={(val) => {
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    pickupAddresses: prev.pickupAddresses.map((a, i) => i === index ? val : a)
+                                  }));
+                                }}
+                                onSelect={(val) => {
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    pickupAddresses: prev.pickupAddresses.map((a, i) => i === index ? val : a)
+                                  }));
+                                }}
                                 placeholder="Start typing an address..."
-                                autoComplete="off"
-                                className="w-full transition-all duration-200 focus:ring-2 focus:ring-gold"
                               />
                               {renderSuggestions(`extra-${index}`)}
                             </div>
@@ -686,23 +691,18 @@ export const BookNow = () => {
                       </div>
 
                       {/* Dropoff Address */}
-                      <div className="space-y-2 mb-6 relative">
+                      <div className="space-y-2 mb-6">
                         <Label htmlFor="dropoffAddress" className="flex items-center space-x-2">
                           <MapPin className="w-4 h-4 text-gold" />
                           <span>Drop-off Address *</span>
                         </Label>
-                        <Input
+                        <AddressAutocomplete
                           id="dropoffAddress"
-                          name="dropoffAddress"
                           value={formData.dropoffAddress}
-                          onChange={(e) => {
-                            setFormData(prev => ({ ...prev, dropoffAddress: e.target.value }));
-                            fetchSuggestions(e.target.value, 'dropoff');
-                          }}
+                          onChange={(val) => setFormData(prev => ({ ...prev, dropoffAddress: val }))}
+                          onSelect={(val) => setFormData(prev => ({ ...prev, dropoffAddress: val }))}
                           placeholder="Enter full address or pick below..."
                           required
-                          autoComplete="off"
-                          className="transition-all duration-200 focus:ring-2 focus:ring-gold"
                         />
                         {renderSuggestions("dropoff")}
                       </div>

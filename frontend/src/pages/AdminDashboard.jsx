@@ -11,6 +11,7 @@ import { Textarea } from '../components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { toast } from 'sonner';
 import { CustomDatePicker, CustomTimePicker } from '../components/DateTimePicker';
+import AddressAutocomplete from '../components/AddressAutocomplete';
 import axios from 'axios';
 import { CustomersTab } from '../components/admin/CustomersTab';
 import { DriverApplicationsTab } from '../components/admin/DriverApplicationsTab';
@@ -1479,98 +1480,7 @@ export const AdminDashboard = () => {
     }));
   };
 
-  // --- Address autocomplete for admin forms ---
-  const [addrSuggestions, setAddrSuggestions] = useState({});
-  const [addrActiveField, setAddrActiveField] = useState(null);
-  const addrDebounceRef = useRef({});
-  const addrDropdownRef = useRef(null);
-
-  const fetchAddrSuggestions = (value, fieldId) => {
-    clearTimeout(addrDebounceRef.current[fieldId]);
-    if (!value || value.length < 3) {
-      setAddrSuggestions(prev => ({ ...prev, [fieldId]: [] }));
-      setAddrActiveField(null);
-      return;
-    }
-    addrDebounceRef.current[fieldId] = setTimeout(async () => {
-      try {
-        const url = `${API}/places/autocomplete`;
-        console.log('[Admin Autocomplete] Fetching:', url, { input: value });
-        const resp = await axios.get(url, {
-          params: { input: value, types: 'address', region: 'nz' }
-        });
-        console.log('[Admin Autocomplete] Response:', resp.data);
-        const preds = resp.data.predictions || [];
-        setAddrSuggestions(prev => ({ ...prev, [fieldId]: preds }));
-        if (preds.length > 0) {
-          setAddrActiveField(fieldId);
-        }
-      } catch (err) {
-        console.error('[Admin Autocomplete] Error:', err.message, err.response?.status, err.response?.data);
-      }
-    }, 300);
-  };
-
-  const selectAddrSuggestion = (fieldId, description) => {
-    // Create-modal fields
-    if (fieldId === 'new-pickup') {
-      setNewBooking(prev => ({ ...prev, pickupAddress: description }));
-    } else if (fieldId === 'new-dropoff') {
-      setNewBooking(prev => ({ ...prev, dropoffAddress: description }));
-    } else if (fieldId.startsWith('new-extra-')) {
-      const idx = parseInt(fieldId.replace('new-extra-', ''), 10);
-      setNewBooking(prev => ({
-        ...prev,
-        pickupAddresses: prev.pickupAddresses.map((a, i) => i === idx ? description : a)
-      }));
-    }
-    // Edit-modal fields
-    else if (fieldId === 'edit-pickup') {
-      setEditingBooking(prev => ({ ...prev, pickupAddress: description }));
-    } else if (fieldId === 'edit-dropoff') {
-      setEditingBooking(prev => ({ ...prev, dropoffAddress: description }));
-    } else if (fieldId.startsWith('edit-extra-')) {
-      const idx = parseInt(fieldId.replace('edit-extra-', ''), 10);
-      setEditingBooking(prev => ({
-        ...prev,
-        pickupAddresses: prev.pickupAddresses.map((a, i) => i === idx ? description : a)
-      }));
-    }
-    setAddrSuggestions(prev => ({ ...prev, [fieldId]: [] }));
-    setAddrActiveField(null);
-  };
-
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (addrDropdownRef.current && !addrDropdownRef.current.contains(e.target)) {
-        setAddrActiveField(null);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const AdminAddrDropdown = ({ fieldId }) => {
-    const items = addrSuggestions[fieldId] || [];
-    if (addrActiveField !== fieldId || items.length === 0) return null;
-    return (
-      <div ref={addrDropdownRef} className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
-        {items.map((s, i) => (
-          <button
-            key={i}
-            type="button"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => selectAddrSuggestion(fieldId, s.description)}
-            className="w-full px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-100 last:border-0"
-          >
-            <MapPin className="w-3 h-3 inline mr-2 text-gray-400" />
-            {s.description}
-          </button>
-        ))}
-      </div>
-    );
-  };
-  // --- End address autocomplete ---
+  // --- Address autocomplete handled by <AddressAutocomplete> component (portal-based) ---
 
   const exportToCSV = () => {
     try {
@@ -4310,38 +4220,35 @@ onViewBooking={(booking) => {
             <div>
               <h3 className="font-semibold text-gray-900 mb-3">Trip Information</h3>
               <div className="space-y-4">
-                <div className="relative">
+                <div>
                   <Label>Pickup Address 1 *</Label>
-                  <Input
+                  <AddressAutocomplete
                     value={newBooking.pickupAddress}
-                    onChange={(e) => {
-                      setNewBooking(prev => ({ ...prev, pickupAddress: e.target.value }));
-                      fetchAddrSuggestions(e.target.value, 'new-pickup');
-                    }}
+                    onChange={(val) => setNewBooking(prev => ({ ...prev, pickupAddress: val }))}
+                    onSelect={(val) => setNewBooking(prev => ({ ...prev, pickupAddress: val }))}
                     placeholder="Start typing an address..."
-                    autoComplete="off"
                     className="mt-1"
                   />
-                  <AdminAddrDropdown fieldId="new-pickup" />
                 </div>
 
                 {/* Additional Pickup Addresses */}
                 {newBooking.pickupAddresses.map((pickup, index) => (
-                  <div key={index} className="relative">
+                  <div key={index}>
                     <Label>Pickup Address {index + 2}</Label>
                     <div className="flex gap-2 mt-1">
-                      <div className="flex-1 relative">
-                        <Input
+                      <div className="flex-1">
+                        <AddressAutocomplete
                           value={pickup}
-                          onChange={(e) => {
-                            handlePickupAddressChange(index, e.target.value);
-                            fetchAddrSuggestions(e.target.value, `new-extra-${index}`);
-                          }}
+                          onChange={(val) => setNewBooking(prev => ({
+                            ...prev,
+                            pickupAddresses: prev.pickupAddresses.map((a, i) => i === index ? val : a)
+                          }))}
+                          onSelect={(val) => setNewBooking(prev => ({
+                            ...prev,
+                            pickupAddresses: prev.pickupAddresses.map((a, i) => i === index ? val : a)
+                          }))}
                           placeholder="Start typing an address..."
-                          autoComplete="off"
-                          className="w-full"
                         />
-                        <AdminAddrDropdown fieldId={`new-extra-${index}`} />
                       </div>
                       <Button
                         type="button"
@@ -4377,19 +4284,15 @@ onViewBooking={(booking) => {
                   </p>
                 </div>
 
-                <div className="relative">
+                <div>
                   <Label>Drop-off Address *</Label>
-                  <Input
+                  <AddressAutocomplete
                     value={newBooking.dropoffAddress}
-                    onChange={(e) => {
-                      setNewBooking(prev => ({ ...prev, dropoffAddress: e.target.value }));
-                      fetchAddrSuggestions(e.target.value, 'new-dropoff');
-                    }}
+                    onChange={(val) => setNewBooking(prev => ({ ...prev, dropoffAddress: val }))}
+                    onSelect={(val) => setNewBooking(prev => ({ ...prev, dropoffAddress: val }))}
                     placeholder="Start typing an address..."
-                    autoComplete="off"
                     className="mt-1"
                   />
-                  <AdminAddrDropdown fieldId="new-dropoff" />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
@@ -4818,38 +4721,35 @@ onViewBooking={(booking) => {
               <div>
                 <h3 className="font-semibold text-gray-900 mb-3">Trip Information</h3>
                 <div className="space-y-4">
-                  <div className="relative">
+                  <div>
                     <Label>Pickup Address 1 *</Label>
-                    <Input
+                    <AddressAutocomplete
                       value={editingBooking.pickupAddress}
-                      onChange={(e) => {
-                        setEditingBooking(prev => ({ ...prev, pickupAddress: e.target.value }));
-                        fetchAddrSuggestions(e.target.value, 'edit-pickup');
-                      }}
+                      onChange={(val) => setEditingBooking(prev => ({ ...prev, pickupAddress: val }))}
+                      onSelect={(val) => setEditingBooking(prev => ({ ...prev, pickupAddress: val }))}
                       placeholder="Start typing an address..."
-                      autoComplete="off"
                       className="mt-1"
                     />
-                    <AdminAddrDropdown fieldId="edit-pickup" />
                   </div>
 
                   {/* Additional Pickup Addresses */}
                   {editingBooking.pickupAddresses?.map((pickup, index) => (
-                    <div key={index} className="relative">
+                    <div key={index}>
                       <Label>Pickup Address {index + 2}</Label>
                       <div className="flex gap-2 mt-1">
-                        <div className="flex-1 relative">
-                          <Input
+                        <div className="flex-1">
+                          <AddressAutocomplete
                             value={pickup}
-                            onChange={(e) => {
-                              handleEditPickupAddressChange(index, e.target.value);
-                              fetchAddrSuggestions(e.target.value, `edit-extra-${index}`);
-                            }}
+                            onChange={(val) => setEditingBooking(prev => ({
+                              ...prev,
+                              pickupAddresses: prev.pickupAddresses.map((a, i) => i === index ? val : a)
+                            }))}
+                            onSelect={(val) => setEditingBooking(prev => ({
+                              ...prev,
+                              pickupAddresses: prev.pickupAddresses.map((a, i) => i === index ? val : a)
+                            }))}
                             placeholder="Start typing an address..."
-                            autoComplete="off"
-                            className="w-full"
                           />
-                          <AdminAddrDropdown fieldId={`edit-extra-${index}`} />
                         </div>
                         <Button
                           type="button"
@@ -4876,19 +4776,15 @@ onViewBooking={(booking) => {
                     </button>
                   </div>
 
-                  <div className="relative">
+                  <div>
                     <Label>Drop-off Address *</Label>
-                    <Input
+                    <AddressAutocomplete
                       value={editingBooking.dropoffAddress}
-                      onChange={(e) => {
-                        setEditingBooking(prev => ({ ...prev, dropoffAddress: e.target.value }));
-                        fetchAddrSuggestions(e.target.value, 'edit-dropoff');
-                      }}
+                      onChange={(val) => setEditingBooking(prev => ({ ...prev, dropoffAddress: val }))}
+                      onSelect={(val) => setEditingBooking(prev => ({ ...prev, dropoffAddress: val }))}
                       placeholder="Start typing an address..."
-                      autoComplete="off"
                       className="mt-1"
                     />
-                    <AdminAddrDropdown fieldId="edit-dropoff" />
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
