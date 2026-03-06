@@ -35,9 +35,9 @@ const RecentBookingsNotification = () => {
 
   useEffect(() => {
     // Don't show on admin pages
-    if (window.location.pathname.startsWith('/admin') ||
+    if (window.location.pathname.startsWith('/admin') || 
         window.location.pathname.startsWith('/driver')) {
-      return () => {}; // always return cleanup to prevent leak
+      return;
     }
 
     // Initial delay before first notification (5 seconds)
@@ -92,9 +92,11 @@ const RecentBookingsNotification = () => {
     setIsDismissed(true);
   };
 
+  if (isDismissed) return null;
+
   return (
     <AnimatePresence>
-      {isVisible && currentBooking && !isDismissed && (
+      {isVisible && currentBooking && (
         <motion.div
           initial={{ opacity: 0, x: -100, y: 0 }}
           animate={{ opacity: 1, x: 0, y: 0 }}

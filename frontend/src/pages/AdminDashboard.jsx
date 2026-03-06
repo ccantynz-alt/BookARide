@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Search, Filter, Mail, DollarSign, CheckCircle, XCircle, Clock, Eye, Edit2, Users, BookOpen, Car, Settings, Trash2, MapPin, Calendar, RefreshCw, Send, Bell, Facebook, Globe, Square, CheckSquare, FileText, Smartphone, RotateCcw, AlertTriangle, AlertCircle, Home, Bus, ExternalLink, Navigation, Upload, Archive, Activity } from 'lucide-react';
+import { LogOut, Search, Filter, Mail, DollarSign, CheckCircle, XCircle, Clock, Eye, Edit2, Users, BookOpen, Car, Settings, Trash2, MapPin, Calendar, RefreshCw, Send, Bell, Facebook, Globe, Square, CheckSquare, FileText, Smartphone, RotateCcw, AlertTriangle, AlertCircle, Home, Bus, ExternalLink, Navigation, Upload, Archive, Activity, Download, Shield } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent } from '../components/ui/card';
@@ -17,12 +17,6 @@ import { CustomersTab } from '../components/admin/CustomersTab';
 import { DriverApplicationsTab } from '../components/admin/DriverApplicationsTab';
 import { LandingPagesTab } from '../components/admin/LandingPagesTab';
 import { AdminBreadcrumb } from '../components/admin/AdminBreadcrumb';
-import UrgentReturnsPanel from '../components/admin/UrgentReturnsPanel';
-import DashboardStatsPanel from '../components/admin/DashboardStatsPanel';
-import TodaysOperationsPanel from '../components/admin/TodaysOperationsPanel';
-import ProfessionalStatsBar from '../components/admin/ProfessionalStatsBar';
-import UrgentNotificationsCenter from '../components/admin/UrgentNotificationsCenter';
-import ConfirmationStatusPanel from '../components/admin/ConfirmationStatusPanel';
 import ReturnsOverviewPanel from '../components/admin/ReturnsOverviewPanel';
 import { API } from '../config/api';
 import Cockpit from '../admin/Cockpit';
@@ -525,12 +519,11 @@ export const AdminDashboard = () => {
   const [loadingOrphans, setLoadingOrphans] = useState(false);
   const [recoverSessionId, setRecoverSessionId] = useState('');
   const [recovering, setRecovering] = useState(false);
-  // Shuttle state
-  const [shuttleDate, setShuttleDate] = useState(new Date().toISOString().split('T')[0]);
-  const [shuttleData, setShuttleData] = useState({});
-  const [loadingShuttle, setLoadingShuttle] = useState(false);
   const [loadingDeleted, setLoadingDeleted] = useState(false);
   const [restoringAll, setRestoringAll] = useState(false);
+  const [downloadingBackup, setDownloadingBackup] = useState(false);
+  const [retentionCounts, setRetentionCounts] = useState(null); // { active, deleted } when list empty
+  const [deletedCountForBanner, setDeletedCountForBanner] = useState(null); // deleted count for "Restore all" banner on Bookings tab
   const [xeroConnected, setXeroConnected] = useState(false);
   const [xeroOrg, setXeroOrg] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -604,10 +597,14 @@ export const AdminDashboard = () => {
   const [searchingCustomers, setSearchingCustomers] = useState(false);
   const customerSearchRef = useRef(null);
 
-  // Guard against selectedBookings ever not being a Set; use let + assign so minifier cannot reorder (avoids "Cannot access 'gr' before initialization")
-  let safeSelectedSet = new Set();
-  safeSelectedSet = selectedBookings instanceof Set ? selectedBookings : new Set();
-  
+  // useMemo guarantees stable render-time ordering that minifiers cannot reorder,
+  // fixing the "Cannot read properties of undefined (reading 'add')" crash that
+  // occurred when minifier reordered the let-based two-step assignment.
+  const safeSelectedSet = useMemo(
+    () => (selectedBookings instanceof Set ? selectedBookings : new Set()),
+    [selectedBookings]
+  );
+
   // Preview confirmation modal states
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [previewHtml, setPreviewHtml] = useState('');
@@ -617,8 +614,17 @@ export const AdminDashboard = () => {
   // Xero invoice date state (for backdating)
   const [xeroInvoiceDate, setXeroInvoiceDate] = useState(null);
   
-  // Refs for edit modal autocomplete
-  
+  // Address autocomplete state for admin forms (create + edit)
+  const [adminPickupSuggestions, setAdminPickupSuggestions] = useState([]);
+  const [adminDropoffSuggestions, setAdminDropoffSuggestions] = useState([]);
+  const [showAdminPickupSuggestions, setShowAdminPickupSuggestions] = useState(false);
+  const [showAdminDropoffSuggestions, setShowAdminDropoffSuggestions] = useState(false);
+  // Edit modal address autocomplete
+  const [editPickupSuggestions, setEditPickupSuggestions] = useState([]);
+  const [editDropoffSuggestions, setEditDropoffSuggestions] = useState([]);
+  const [showEditPickupSuggestions, setShowEditPickupSuggestions] = useState(false);
+  const [showEditDropoffSuggestions, setShowEditDropoffSuggestions] = useState(false);
+
   // Date/Time picker states for admin form
   const [adminPickupDate, setAdminPickupDate] = useState(null);
   const [adminPickupTime, setAdminPickupTime] = useState(null);
@@ -644,6 +650,30 @@ export const AdminDashboard = () => {
     if (!localStorage.getItem('adminToken')) return;
     if (dateFrom || dateTo) fetchBookingsRef.current?.(1, false);
   }, [dateFrom, dateTo]);
+
+  // When list is empty (no active bookings in DB at all), fetch active/deleted counts so we can show "0 active, 47 deleted"
+  // NOTE: use bookings.length (raw fetch result), NOT filteredBookings.length — filters can hide bookings that exist
+  useEffect(() => {
+    if (loading || bookings.length > 0) {
+      setRetentionCounts(null);
+      return;
+    }
+    let cancelled = false;
+    axios.get(`${API}/admin/bookings/retention-counts`, getAuthHeaders()).then((r) => {
+      if (!cancelled && r.data) setRetentionCounts({ active: r.data.active ?? 0, deleted: r.data.deleted ?? 0 });
+    }).catch(() => { if (!cancelled) setRetentionCounts(null); });
+    return () => { cancelled = true; };
+  }, [loading, bookings.length]);
+
+  // When on Bookings tab, fetch deleted count so we can show "Restore all" banner if any are in Deleted
+  useEffect(() => {
+    if (activeTab !== 'bookings') return;
+    let cancelled = false;
+    axios.get(`${API}/admin/bookings/retention-counts`, getAuthHeaders()).then((r) => {
+      if (!cancelled && r.data && typeof r.data.deleted === 'number') setDeletedCountForBanner(r.data.deleted);
+    }).catch(() => { if (!cancelled) setDeletedCountForBanner(null); });
+    return () => { cancelled = true; };
+  }, [activeTab]);
 
   const getAuthHeaders = () => {
     const token = localStorage.getItem('adminToken');
@@ -673,14 +703,13 @@ export const AdminDashboard = () => {
       
       const newBookings = Array.isArray(response.data) ? response.data : [];
       
-      // Cache bookings in localStorage for offline access
+      // Cache a small subset for offline fallback (keeps localStorage fast)
       try {
-        const cached = JSON.parse(localStorage.getItem('cachedBookings') || '[]');
-        const updatedCache = append ? [...(Array.isArray(cached) ? cached : []), ...newBookings] : newBookings;
-        localStorage.setItem('cachedBookings', JSON.stringify(updatedCache.slice(0, 500)));
+        const toCache = (append ? newBookings : newBookings.slice(0, 50));
+        localStorage.setItem('cachedBookings', JSON.stringify(toCache));
         localStorage.setItem('cachedBookingsTime', new Date().toISOString());
       } catch (e) {
-        console.warn('Could not cache bookings:', e);
+        // localStorage full or unavailable - not critical
       }
       
       // Defer heavy state update to next tick to avoid "[Violation] 'load' handler took Xms"
@@ -885,99 +914,6 @@ export const AdminDashboard = () => {
     }
   };
 
-  // Fetch shuttle data for admin
-  const fetchShuttleData = async (date = shuttleDate) => {
-    setLoadingShuttle(true);
-    try {
-      const response = await axios.get(`${API}/shuttle/departures?date=${date}`, getAuthHeaders());
-      setShuttleData(response.data || {});
-    } catch (error) {
-      console.error('Error fetching shuttle data:', error);
-      // Don't show error for 401 (might not have shuttle feature)
-    } finally {
-      setLoadingShuttle(false);
-    }
-  };
-
-  // Get optimized shuttle route (opens maps URL from backend – Geoapify/OSM)
-  const getShuttleRoute = async (date, time) => {
-    try {
-      const response = await axios.get(`${API}/shuttle/route/${date}/${time}`, getAuthHeaders());
-      const url = response.data.mapsUrl || response.data.googleMapsUrl;
-      if (url) {
-        window.open(url, '_blank');
-        toast.success('Route opened in maps');
-      }
-      return response.data;
-    } catch (error) {
-      console.error('Error getting shuttle route:', error);
-      toast.error('Failed to get route');
-    }
-  };
-
-  // Capture all shuttle payments for a departure
-  const captureShuttlePayments = async (date, time) => {
-    try {
-      const response = await axios.post(`${API}/shuttle/capture-all/${date}/${time}`, {}, getAuthHeaders());
-      toast.success(`Captured payments for ${response.data.totalPassengers} passengers at $${response.data.finalPricePerPerson}/person`);
-      fetchShuttleData(date);
-    } catch (error) {
-      console.error('Error capturing shuttle payments:', error);
-      toast.error('Failed to capture payments');
-    }
-  };
-
-  // Start shuttle run - calculates ETAs and schedules "arriving soon" SMS for all customers
-  const startShuttleRun = async (date, time, driverId = null, driverName = null) => {
-    try {
-      toast.loading('Starting shuttle and scheduling notifications...');
-      const response = await axios.post(`${API}/shuttle/start/${date}/${time}`, {
-        driverId,
-        driverName
-      }, getAuthHeaders());
-      toast.dismiss();
-      
-      if (response.data.success) {
-        toast.success(`Shuttle started! ${response.data.scheduledNotifications} "Arriving Soon" SMS scheduled automatically.`);
-        fetchShuttleData(date);
-      }
-    } catch (error) {
-      toast.dismiss();
-      console.error('Error starting shuttle:', error);
-      toast.error(error.response?.data?.detail || 'Failed to start shuttle');
-    }
-  };
-
-  // Assign driver to shuttle - automatically starts the shuttle and schedules SMS
-  const assignShuttleDriver = async (date, time, driverId) => {
-    if (!driverId) return;
-    
-    const driver = drivers.find(d => d.id === driverId);
-    if (!driver) return;
-    
-    try {
-      toast.loading(`Assigning ${driver.name} and scheduling notifications...`);
-      
-      // Call the assign endpoint which handles everything
-      const response = await axios.post(`${API}/shuttle/assign-driver/${date}/${time}`, {
-        driverId: driverId,
-        driverName: driver.name,
-        driverPhone: driver.phone
-      }, getAuthHeaders());
-      
-      toast.dismiss();
-      
-      if (response.data.success) {
-        toast.success(`${driver.name} assigned! Route sent to driver, ${response.data.scheduledNotifications} customer SMS scheduled.`);
-        fetchShuttleData(date);
-      }
-    } catch (error) {
-      toast.dismiss();
-      console.error('Error assigning driver:', error);
-      toast.error(error.response?.data?.detail || 'Failed to assign driver');
-    }
-  };
-
   const checkXeroStatus = async () => {
     try {
       const response = await axios.get(`${API}/xero/status`, getAuthHeaders());
@@ -1061,13 +997,18 @@ export const AdminDashboard = () => {
   };
 
   const handleRestoreAllBookings = async () => {
-    if (deletedBookings.length === 0) return;
-    if (!window.confirm(`Restore all ${deletedBookings.length} deleted booking(s) back to active bookings?`)) return;
+    const countToShow = deletedBookings.length > 0 ? deletedBookings.length : (deletedCountForBanner ?? 0);
+    if (countToShow === 0) {
+      toast.info('No deleted bookings to restore');
+      return;
+    }
+    if (!window.confirm(`Restore all ${countToShow} deleted booking(s) back to active bookings? This will reinstate your full list.`)) return;
     setRestoringAll(true);
     try {
       const res = await axios.post(`${API}/bookings/restore-all`, {}, getAuthHeaders());
       const count = res.data?.restored_count ?? 0;
-      toast.success(count ? `Restored ${count} booking(s) successfully` : res.data?.message || 'Done');
+      toast.success(count ? `Restored ${count} booking(s). Your list is reinstated.` : res.data?.message || 'Done');
+      setDeletedCountForBanner(0);
       fetchDeletedBookings();
       fetchBookingsRef.current?.();
     } catch (error) {
@@ -1075,6 +1016,141 @@ export const AdminDashboard = () => {
       toast.error(error.response?.data?.detail || 'Failed to restore all bookings');
     } finally {
       setRestoringAll(false);
+    }
+  };
+
+  // State for JSON backup file restore
+  const [restoringFromFile, setRestoringFromFile] = useState(false);
+  const [restoringFromServerBackup, setRestoringFromServerBackup] = useState(false);
+  const [backupRestoreResult, setBackupRestoreResult] = useState(null);
+  const backupFileInputRef = useRef(null);
+
+  // Auto daily backup state
+  const [autoBackups, setAutoBackups] = useState([]);
+  const [loadingAutoBackups, setLoadingAutoBackups] = useState(false);
+  const [triggeringBackup, setTriggeringBackup] = useState(false);
+  const [restoringAutoBackup, setRestoringAutoBackup] = useState(null);
+
+  const fetchAutoBackups = async () => {
+    setLoadingAutoBackups(true);
+    try {
+      const res = await axios.get(`${API}/admin/backups`, getAuthHeaders());
+      setAutoBackups(res.data.backups || []);
+    } catch (e) {
+      console.error('Failed to load auto-backups', e);
+    } finally {
+      setLoadingAutoBackups(false);
+    }
+  };
+
+  const handleTriggerBackup = async () => {
+    setTriggeringBackup(true);
+    try {
+      const res = await axios.post(`${API}/admin/backups/trigger`, {}, getAuthHeaders());
+      toast.success(`Backup saved: ${res.data.activeCount} active + ${res.data.deletedCount} deleted bookings`);
+      fetchAutoBackups();
+    } catch (e) {
+      toast.error('Backup failed');
+    } finally {
+      setTriggeringBackup(false);
+    }
+  };
+
+  const handleRestoreAutoBackup = async (label) => {
+    if (!window.confirm(`Restore missing bookings from the ${label} backup?\n\nThis is safe — it only adds back bookings that are no longer in your active list.`)) return;
+    setRestoringAutoBackup(label);
+    try {
+      const res = await axios.post(`${API}/admin/backups/${label}/restore`, {}, getAuthHeaders());
+      if (res.data.restored > 0) {
+        toast.success(`Restored ${res.data.restored} missing booking(s) from ${label}`);
+        fetchBookingsRef.current?.();
+      } else {
+        toast.info(`No missing bookings found in ${label} backup — all bookings already present`);
+      }
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Restore failed');
+    } finally {
+      setRestoringAutoBackup(null);
+    }
+  };
+
+  const handleRestoreFromBackupFile = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!file.name.endsWith('.json')) {
+      toast.error('Please select a JSON file');
+      return;
+    }
+    if (!window.confirm(`Restore bookings from "${file.name}"? Existing bookings with the same ID will be skipped (no duplicates).`)) {
+      e.target.value = '';
+      return;
+    }
+    setRestoringFromFile(true);
+    setBackupRestoreResult(null);
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      // Handle both formats: plain array OR export format { active: [...], deleted: [...] }
+      let bookings = [];
+      if (Array.isArray(parsed)) {
+        bookings = parsed;
+      } else if (parsed.active && Array.isArray(parsed.active)) {
+        bookings = [...parsed.active, ...(parsed.deleted || [])];
+      } else {
+        toast.error('Unrecognised backup format. Expected a JSON array or export file.');
+        return;
+      }
+      const res = await axios.post(`${API}/bookings/restore-backup`, { bookings }, getAuthHeaders());
+      setBackupRestoreResult(res.data);
+      const { imported_count, skipped_count, error_count } = res.data;
+      toast.success(`Restored ${imported_count} booking(s) from backup. Skipped ${skipped_count} duplicates.${error_count ? ` ${error_count} errors.` : ''}`);
+      fetchBookingsRef.current?.();
+    } catch (error) {
+      const msg = error.response?.data?.detail || error.message || 'Restore failed';
+      toast.error(msg);
+      setBackupRestoreResult({ error: msg });
+    } finally {
+      setRestoringFromFile(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleRestoreFromServerBackup = async () => {
+    if (!window.confirm('Restore bookings from the backup file stored on the server (backup_bookings_full.json)? Existing bookings will not be duplicated.')) return;
+    setRestoringFromServerBackup(true);
+    setBackupRestoreResult(null);
+    try {
+      const res = await axios.post(`${API}/admin/bookings/restore-from-repo-backup`, {}, getAuthHeaders());
+      setBackupRestoreResult(res.data);
+      const { imported_count, skipped_count, source_file } = res.data;
+      toast.success(`Restored ${imported_count} booking(s) from ${source_file || 'server backup'}. Skipped ${skipped_count} duplicates.`);
+      fetchBookingsRef.current?.();
+    } catch (error) {
+      const msg = error.response?.data?.detail || error.message || 'Restore failed';
+      toast.error(msg);
+      setBackupRestoreResult({ error: msg });
+    } finally {
+      setRestoringFromServerBackup(false);
+    }
+  };
+
+  const handleDownloadBackup = async () => {
+    setDownloadingBackup(true);
+    try {
+      const res = await axios.get(`${API}/admin/bookings/export-backup`, getAuthHeaders());
+      const blob = new Blob([JSON.stringify(res.data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `bookings-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(`Backup downloaded: ${res.data?.activeCount ?? 0} active, ${res.data?.deletedCount ?? 0} deleted`);
+    } catch (error) {
+      console.error('Error downloading backup:', error);
+      toast.error(error.response?.data?.detail || 'Failed to download backup');
+    } finally {
+      setDownloadingBackup(false);
     }
   };
 
@@ -1283,7 +1359,7 @@ export const AdminDashboard = () => {
       filtered = filtered.filter(b => b && b.status === statusFilter);
     }
 
-    // Search filter - also search archive via API
+    // Search filter (local only - archive search is debounced separately below)
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
       filtered = filtered.filter(b => b && (
@@ -1294,31 +1370,38 @@ export const AdminDashboard = () => {
         b.dropoffAddress?.toLowerCase().includes(searchLower) ||
         String(b.referenceNumber)?.includes(searchTerm)
       ));
-      
-      // Also search archive for matching results
-      searchAllBookings(searchTerm);
     }
 
     setFilteredBookings(filtered);
   };
   filterBookingsRef.current = filterBookings;
 
-  // Search across all bookings (active + archived)
+  // Search across all bookings (active + archived) - debounced separately from filter
   const [archiveSearchResults, setArchiveSearchResults] = useState([]);
-  const searchAllBookings = async (term) => {
-    if (!term || term.length < 2) {
+  const archiveSearchDebounceRef = useRef(null);
+  const archiveSearchRequestRef = useRef(0);
+  useEffect(() => {
+    if (!searchTerm || searchTerm.length < 2) {
       setArchiveSearchResults([]);
       return;
     }
-    try {
-      const response = await axios.get(`${API}/bookings/search-all?search=${encodeURIComponent(term)}&include_archived=true`, getAuthHeaders());
-      const results = Array.isArray(response.data?.results) ? response.data.results : [];
-      const archivedOnly = results.filter(b => b && b.isArchived);
-      setArchiveSearchResults(archivedOnly);
-    } catch (error) {
-      console.error('Error searching all bookings:', error);
-    }
-  };
+    // Debounce archive search to avoid hammering API on every keystroke
+    if (archiveSearchDebounceRef.current) clearTimeout(archiveSearchDebounceRef.current);
+    archiveSearchDebounceRef.current = setTimeout(async () => {
+      const requestId = ++archiveSearchRequestRef.current;
+      try {
+        const response = await axios.get(`${API}/bookings/search-all?search=${encodeURIComponent(searchTerm)}&include_archived=true`, getAuthHeaders());
+        if (requestId !== archiveSearchRequestRef.current) return; // Discard stale
+        const results = Array.isArray(response.data?.results) ? response.data.results : [];
+        const archivedOnly = results.filter(b => b && b.isArchived);
+        setArchiveSearchResults(archivedOnly);
+      } catch (error) {
+        if (requestId !== archiveSearchRequestRef.current) return;
+        console.error('Error searching all bookings:', error);
+      }
+    }, 500);
+    return () => { if (archiveSearchDebounceRef.current) clearTimeout(archiveSearchDebounceRef.current); };
+  }, [searchTerm]);
 
   const handleLogout = () => {
     localStorage.removeItem('adminAuth');
@@ -1459,6 +1542,57 @@ export const AdminDashboard = () => {
     }
   };
   
+  // Address autocomplete for admin forms with debounce + stale-request guard
+  // Each field (create-pickup, create-dropoff, edit-pickup, edit-dropoff) gets its own key
+  const adminAddrDebounceRef = useRef({});
+  const adminAddrRequestIdRef = useRef({});
+  const fetchAdminAddressSuggestions = (query, setter, showSetter) => {
+    // Use unique key per field to prevent cross-field/cross-modal collisions
+    let key;
+    if (setter === setAdminPickupSuggestions) key = 'create-pickup';
+    else if (setter === setAdminDropoffSuggestions) key = 'create-dropoff';
+    else if (setter === setEditPickupSuggestions) key = 'edit-pickup';
+    else key = 'edit-dropoff';
+
+    if (adminAddrDebounceRef.current[key]) clearTimeout(adminAddrDebounceRef.current[key]);
+
+    if (query.length < 3) { setter([]); showSetter(false); return; }
+
+    adminAddrDebounceRef.current[key] = setTimeout(async () => {
+      if (!adminAddrRequestIdRef.current[key]) adminAddrRequestIdRef.current[key] = 0;
+      const requestId = ++adminAddrRequestIdRef.current[key];
+      try {
+        const res = await axios.get(`${API}/places/autocomplete`, { params: { input: query }, timeout: 10000 });
+        if (requestId !== adminAddrRequestIdRef.current[key]) return;
+        const predictions = res.data?.predictions || [];
+        if (res.data?.source === 'fallback') {
+          console.warn('[BookARide] Google Maps API not available on backend. Reason:', res.data?.reason);
+        }
+        setter(predictions);
+        showSetter(predictions.length > 0);
+      } catch (err) {
+        if (requestId !== adminAddrRequestIdRef.current[key]) return;
+        console.error('Admin address autocomplete error:', err);
+        setter([]); showSetter(false);
+      }
+    }, 300);
+  };
+
+  // Clear all admin address suggestion state and cancel pending requests
+  const clearAdminAddressSuggestions = () => {
+    Object.keys(adminAddrDebounceRef.current).forEach(k => clearTimeout(adminAddrDebounceRef.current[k]));
+    adminAddrDebounceRef.current = {};
+    setAdminPickupSuggestions([]); setShowAdminPickupSuggestions(false);
+    setAdminDropoffSuggestions([]); setShowAdminDropoffSuggestions(false);
+  };
+  const clearEditAddressSuggestions = () => {
+    Object.keys(adminAddrDebounceRef.current).forEach(k => {
+      if (k.startsWith('edit-')) clearTimeout(adminAddrDebounceRef.current[k]);
+    });
+    setEditPickupSuggestions([]); setShowEditPickupSuggestions(false);
+    setEditDropoffSuggestions([]); setShowEditDropoffSuggestions(false);
+  };
+
   const handleRemovePickup = (index) => {
     setNewBooking(prev => ({
       ...prev,
@@ -1479,8 +1613,6 @@ export const AdminDashboard = () => {
       pickupAddresses: [...prev.pickupAddresses, '']
     }));
   };
-
-  // --- Address autocomplete handled by <AddressAutocomplete> component (portal-based) ---
 
   const exportToCSV = () => {
     try {
@@ -1602,7 +1734,13 @@ export const AdminDashboard = () => {
   const openEditBookingModal = (booking) => {
     setEditingBooking({
       ...booking,
-      pickupAddresses: booking.pickupAddresses || []
+      pickupAddresses: booking.pickupAddresses || [],
+      // Normalize flight field names: customer bookings use arrivalFlightNumber/departureFlightNumber,
+      // admin bookings use flightArrivalNumber/flightDepartureNumber — merge both so the edit form works
+      flightArrivalNumber: booking.flightArrivalNumber || booking.arrivalFlightNumber || '',
+      flightArrivalTime: booking.flightArrivalTime || booking.arrivalTime || '',
+      flightDepartureNumber: booking.flightDepartureNumber || booking.departureFlightNumber || '',
+      flightDepartureTime: booking.flightDepartureTime || booking.departureTime || '',
     });
     setShowEditBookingModal(true);
   };
@@ -1612,6 +1750,7 @@ export const AdminDashboard = () => {
     if (!editingBooking) return;
 
     try {
+      const flightNum = editingBooking.flightNumber || editingBooking.flightArrivalNumber || editingBooking.flightDepartureNumber || '';
       await axios.patch(`${API}/bookings/${editingBooking.id}`, {
         name: editingBooking.name,
         email: editingBooking.email,
@@ -1623,19 +1762,24 @@ export const AdminDashboard = () => {
         time: editingBooking.time,
         passengers: editingBooking.passengers,
         notes: editingBooking.notes,
-        flightArrivalNumber: editingBooking.flightArrivalNumber,
-        flightArrivalTime: editingBooking.flightArrivalTime,
-        flightDepartureNumber: editingBooking.flightDepartureNumber,
-        flightDepartureTime: editingBooking.flightDepartureTime,
+        // Single flight number synced to all field name variants
+        flightNumber: flightNum,
+        flightArrivalNumber: flightNum,
+        flightDepartureNumber: flightNum,
+        arrivalFlightNumber: flightNum,
+        departureFlightNumber: flightNum,
         // Return trip - inferred from filled return date + time
         bookReturn: !!(editingBooking.returnDate && editingBooking.returnTime),
-        returnDate: editingBooking.returnDate,
-        returnTime: editingBooking.returnTime
+        returnDate: editingBooking.returnDate || '',
+        returnTime: editingBooking.returnTime || '',
+        returnFlightNumber: editingBooking.returnFlightNumber || editingBooking.returnDepartureFlightNumber || '',
+        returnDepartureFlightNumber: editingBooking.returnDepartureFlightNumber || editingBooking.returnFlightNumber || ''
       }, getAuthHeaders());
 
       toast.success('Booking updated successfully!');
       setShowEditBookingModal(false);
       setEditingBooking(null);
+      clearEditAddressSuggestions();
       fetchBookingsRef.current?.();
     } catch (error) {
       console.error('Error updating booking:', error);
@@ -2017,6 +2161,7 @@ export const AdminDashboard = () => {
 
       toast.success('Booking created successfully! Customer will receive email & SMS confirmation.');
       setShowCreateBookingModal(false);
+      clearAdminAddressSuggestions();
       // Reset form
       setNewBooking({
         name: '',
@@ -2159,8 +2304,7 @@ export const AdminDashboard = () => {
         {/* Tabs Navigation */}
         <Tabs defaultValue="bookings" value={activeTab} onValueChange={(val) => {
           setActiveTab(val);
-          if (val === 'deleted') fetchDeletedBookings();
-          if (val === 'shuttle') fetchShuttleData();
+          if (val === 'deleted') { fetchDeletedBookings(); fetchAutoBackups(); }
           if (val === 'archive') fetchArchivedBookings(1, '');
         }} className="w-full">
           <TabsList className="flex flex-wrap w-full gap-1 mb-4 md:mb-8 bg-transparent">
@@ -2168,10 +2312,6 @@ export const AdminDashboard = () => {
               <BookOpen className="w-3 h-3 md:w-4 md:h-4" />
               <span className="hidden sm:inline">Bookings</span>
               <span className="sm:hidden">Book</span>
-            </TabsTrigger>
-            <TabsTrigger value="shuttle" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 text-yellow-600">
-              <Bus className="w-3 h-3 md:w-4 md:h-4" />
-              <span>Shuttle</span>
             </TabsTrigger>
             <TabsTrigger value="deleted" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 text-red-600">
               <Trash2 className="w-3 h-3 md:w-4 md:h-4" />
@@ -2185,19 +2325,11 @@ export const AdminDashboard = () => {
               <span className="md:hidden">Arc</span>
               {archivedCount > 0 && <span className="text-[10px]">({archivedCount})</span>}
             </TabsTrigger>
-            <TabsTrigger value="customers" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 hidden lg:flex">
+            <TabsTrigger value="customers" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4">
               <Users className="w-3 h-3 md:w-4 md:h-4" />
               <span>Customers</span>
             </TabsTrigger>
-            <TabsTrigger value="applications" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 hidden xl:flex">
-              <FileText className="w-3 h-3 md:w-4 md:h-4" />
-              <span>Apps</span>
-            </TabsTrigger>
-            <TabsTrigger value="marketing" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 hidden xl:flex">
-              <Globe className="w-3 h-3 md:w-4 md:h-4" />
-              <span>Marketing</span>
-            </TabsTrigger>
-            <TabsTrigger value="import" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 hidden xl:flex text-purple-600">
+            <TabsTrigger value="import" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 text-purple-600">
               <FileText className="w-3 h-3 md:w-4 md:h-4" />
               <span>Import</span>
             </TabsTrigger>
@@ -2211,42 +2343,63 @@ export const AdminDashboard = () => {
           {/* Bookings Tab */}
           <TabsContent value="bookings" className="space-y-6">
         
-        {/* PROFESSIONAL STATS BAR - Clean white theme */}
-        <ProfessionalStatsBar bookings={bookings} drivers={drivers} />
-        
-        {/* URGENT NOTIFICATIONS CENTER - Action required items */}
-        <UrgentNotificationsCenter 
-          bookings={bookings} 
+        {/* CRITICAL: Restore all deleted bookings - prominent so user can reinstate full list immediately */}
+        {deletedCountForBanner != null && deletedCountForBanner > 0 && (
+          <Card className="border-red-300 bg-red-50 shadow-md">
+            <CardContent className="p-4 flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="w-8 h-8 text-red-600 shrink-0" />
+                <div>
+                  <p className="font-bold text-red-900">You have {deletedCountForBanner} booking{deletedCountForBanner !== 1 ? 's' : ''} in Deleted — they are not in this list.</p>
+                  <p className="text-sm text-red-800 mt-0.5">Restore them now to reinstate your full bookings list.</p>
+                </div>
+              </div>
+              <Button
+                onClick={handleRestoreAllBookings}
+                disabled={restoringAll}
+                className="bg-green-600 hover:bg-green-700 text-white font-semibold shrink-0"
+              >
+                {restoringAll ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    Restoring...
+                  </>
+                ) : (
+                  <>
+                    <RotateCcw className="w-4 h-4 mr-2" />
+                    Restore all {deletedCountForBanner} now
+                  </>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* ALERT: Bookings needing approval */}
+        {stats.pendingApproval > 0 && (
+          <Card className="border-orange-400 bg-orange-50 shadow-md">
+            <CardContent className="p-4 flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="w-8 h-8 text-orange-600 shrink-0 animate-pulse" />
+                <div>
+                  <p className="font-bold text-orange-900">{stats.pendingApproval} booking{stats.pendingApproval !== 1 ? 's' : ''} need{stats.pendingApproval === 1 ? 's' : ''} your approval!</p>
+                  <p className="text-sm text-orange-800 mt-0.5">These are last-minute bookings (within 24 hours). They won't be confirmed until you approve them.</p>
+                </div>
+              </div>
+              <Button
+                onClick={() => setStatusFilter('pending_approval')}
+                className="bg-orange-600 hover:bg-orange-700 text-white font-semibold shrink-0"
+              >
+                View &amp; Approve
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* RETURNS OVERVIEW - Shows bookings with return trips attached */}
+        <ReturnsOverviewPanel
+          bookings={bookings}
           drivers={drivers}
-          onAssignDriver={(booking) => {
-            setSelectedBooking(booking);
-            setShowDetailsModal(true);
-          }}
-          onViewBooking={(booking) => {
-            setSelectedBooking(booking);
-            setShowDetailsModal(true);
-          }}
-        />
-        
-        {/* Two Column Layout for Confirmations and Returns */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* CONFIRMATION STATUS PANEL - Track email/SMS confirmations */}
-          <ConfirmationStatusPanel bookings={bookings} />
-          
-          {/* RETURNS OVERVIEW PANEL - All upcoming returns */}
-          <ReturnsOverviewPanel 
-            bookings={bookings}
-            drivers={drivers}
-onViewBooking={(booking) => {
-            setSelectedBooking(booking);
-            setShowDetailsModal(true);
-          }}
-          />
-        </div>
-        
-        {/* TODAY'S OPERATIONS - Unified view of all pickups */}
-        <TodaysOperationsPanel 
-          bookings={bookings} 
           onViewBooking={(booking) => {
             setSelectedBooking(booking);
             setShowDetailsModal(true);
@@ -2392,6 +2545,16 @@ onViewBooking={(booking) => {
           </CardContent>
         </Card>
 
+        {/* Data retention: bookings are never lost */}
+        <Card className="mb-6 border-green-200 bg-green-50/50">
+          <CardContent className="p-3">
+            <div className="flex flex-wrap items-center gap-2 text-sm text-green-800">
+              <Shield className="w-4 h-4 shrink-0 text-green-600" />
+              <span><strong>Bookings are always retained.</strong> Deletions only move items to the Deleted tab where you can Restore all. Download a full backup (Deleted tab → Download backup) anytime.</span>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Recover missing bookings (e.g. #74 – payment in Stripe but booking never appeared) */}
         <Card className="mb-6 border-amber-200 bg-amber-50/50">
           <CardContent className="p-4">
@@ -2448,8 +2611,65 @@ onViewBooking={(booking) => {
                 <p className="text-gray-600 mt-4">Loading bookings...</p>
               </div>
             ) : filteredBookings.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-gray-600">No bookings found</p>
+              <div className="space-y-4">
+                <div className="text-center py-8">
+                  <p className="text-gray-600 font-medium">
+                    {bookings.length > 0
+                      ? `No bookings match your current filter (${bookings.length} booking${bookings.length !== 1 ? 's' : ''} exist — clear filters to see them)`
+                      : 'No bookings found'}
+                  </p>
+                </div>
+                {/* Only show recovery guidance when the database is genuinely empty */}
+                {bookings.length === 0 && (
+                  <Card className="border-amber-200 bg-amber-50/50 max-w-2xl mx-auto">
+                    <CardContent className="p-4 space-y-3">
+                      {retentionCounts && (
+                        <p className="text-sm font-semibold text-amber-900">
+                          Database: {retentionCounts.active} active, {retentionCounts.deleted} in Deleted.
+                          {retentionCounts.deleted > 0 && ' Restore them from the Deleted tab.'}
+                        </p>
+                      )}
+                      <p className="font-medium text-amber-900">Get your bookings back:</p>
+                      <ul className="list-disc list-inside text-sm text-amber-800 space-y-1">
+                        <li>If bookings disappeared after an update, they may be in the <strong>Deleted</strong> tab. Open Deleted and click <strong>Restore all</strong> to reinstate them.</li>
+                        <li>Click <strong>Restore from server backup</strong> in the Deleted tab to recover from the backup file on the server.</li>
+                        <li>Use <strong>Deleted → Download backup (JSON)</strong> to see exactly what's stored (active + deleted).</li>
+                      </ul>
+                      <div className="flex flex-wrap gap-2 pt-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setActiveTab('deleted')}
+                          className="border-amber-500 text-amber-800 hover:bg-amber-100"
+                        >
+                          Open Deleted tab
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={handleRestoreFromServerBackup}
+                          disabled={restoringFromServerBackup}
+                          className="bg-orange-600 hover:bg-orange-700 text-white"
+                        >
+                          {restoringFromServerBackup ? <RefreshCw className="w-4 h-4 mr-1 animate-spin" /> : <Shield className="w-4 h-4 mr-1" />}
+                          Restore from server backup
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+                {/* When filters are hiding bookings, show a quick-clear option */}
+                {bookings.length > 0 && (dateFrom || dateTo || searchTerm || statusFilter !== 'all') && (
+                  <div className="flex flex-wrap gap-2 justify-center">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => { setDateFrom(''); setDateTo(''); setSearchTerm(''); setStatusFilter('all'); fetchBookingsRef.current?.(1, false); }}
+                      className="border-amber-500 text-amber-800 hover:bg-amber-100"
+                    >
+                      Clear all filters & show all bookings
+                    </Button>
+                  </div>
+                )}
               </div>
             ) : (
             <>
@@ -2519,7 +2739,7 @@ onViewBooking={(booking) => {
                       const hasReturn = booking.returnDate && booking.returnTime;
                       const isUnassigned = !booking.driver_id && !booking.driver_name && !booking.assignedDriver;
                       const isUrgentUnassigned = isToday(booking.date) && isUnassigned;
-                      const flightNum = booking.flightNumber || booking.flight_number || '';
+                      const flightNum = booking.flightNumber || booking.flight_number || booking.flightArrivalNumber || booking.arrivalFlightNumber || booking.flightDepartureNumber || booking.departureFlightNumber || '';
                       
                       return (
                       <tr key={booking.id} className={`border-b hover:bg-gray-50 transition-colors
@@ -2667,7 +2887,7 @@ onViewBooking={(booking) => {
                                 </span>
                               </SelectValue>
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="z-[9999]">
                               <SelectItem value="pending_approval">🚨 Approval</SelectItem>
                               <SelectItem value="pending">Pending</SelectItem>
                               <SelectItem value="confirmed">Confirmed</SelectItem>
@@ -2845,157 +3065,6 @@ onViewBooking={(booking) => {
         </Card>
         </TabsContent>
 
-          {/* Shuttle Service Tab */}
-          <TabsContent value="shuttle" className="space-y-6">
-            <Card className="border-yellow-200 bg-yellow-50">
-              <CardContent className="p-4 md:p-6">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-                  <div className="flex items-center gap-3">
-
-                    <Bus className="w-8 h-8 text-yellow-600" />
-                    <div>
-                      <h3 className="text-xl font-bold text-gray-800">Shared Shuttle Service</h3>
-                      <p className="text-sm text-gray-600">Auckland CBD → Airport (Every 2 Hours)</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Input 
-                      type="date" 
-                      value={shuttleDate} 
-                      onChange={(e) => {
-                        setShuttleDate(e.target.value);
-                        fetchShuttleData(e.target.value);
-                      }}
-                      className="w-40"
-                    />
-                    <Button 
-                      onClick={() => fetchShuttleData(shuttleDate)}
-                      variant="outline"
-                      disabled={loadingShuttle}
-                    >
-                      <RefreshCw className={`w-4 h-4 mr-2 ${loadingShuttle ? 'animate-spin' : ''}`} />
-                      Refresh
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Departure Times Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {shuttleData.departures && Object.entries(shuttleData.departures).map(([time, data]) => (
-                    <div 
-                      key={time} 
-                      className={`p-4 rounded-lg border-2 ${
-                        data.totalPassengers > 0 
-                          ? 'bg-white border-yellow-500 shadow-md' 
-                          : 'bg-gray-50 border-gray-200'
-                      }`}
-                    >
-                      <div className="flex justify-between items-start mb-3">
-                        <div>
-                          <p className="text-lg font-bold text-gray-800">
-                            {time.replace(':00', ':00').replace(/(\d{2}):(\d{2})/, (m, h, min) => {
-                              const hour = parseInt(h);
-                              const ampm = hour >= 12 ? 'PM' : 'AM';
-                              const hour12 = hour % 12 || 12;
-                              return `${hour12}:${min} ${ampm}`;
-                            })}
-                          </p>
-                          <p className="text-sm text-gray-500">{shuttleDate}</p>
-                        </div>
-                        <div className={`px-2 py-1 rounded text-xs font-medium ${
-                          data.totalPassengers >= 6 ? 'bg-green-100 text-green-800' :
-                          data.totalPassengers >= 3 ? 'bg-yellow-100 text-yellow-800' :
-                          data.totalPassengers > 0 ? 'bg-blue-100 text-blue-800' :
-                          'bg-gray-100 text-gray-500'
-                        }`}>
-                          {data.totalPassengers || 0} pax
-                        </div>
-                      </div>
-
-                      {data.bookings && data.bookings.length > 0 ? (
-                        <>
-                          <div className="space-y-2 mb-3 max-h-40 overflow-y-auto">
-                            {data.bookings.map((booking, idx) => (
-                              <div key={idx} className="text-xs bg-gray-100 rounded p-2">
-                                <div className="font-medium">{booking.name} ({booking.passengers})</div>
-                                <div className="text-gray-500 truncate">{booking.pickupAddress}</div>
-                                <div className="text-gray-400">{booking.phone}</div>
-                                {booking.arrivingSoonSent && (
-                                  <div className="text-green-600 text-xs mt-1">✓ Notified</div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                          <div className="flex justify-between items-center text-sm mb-3">
-                            <span className="text-gray-600">Est. Revenue:</span>
-                            <span className="font-bold text-green-600">${data.totalRevenue || 0}</span>
-                          </div>
-                          
-                          {/* Driver Assignment - triggers auto SMS when assigned */}
-                          <div className="mb-3">
-                            <label className="text-xs text-gray-600 mb-1 block">Assign Driver:</label>
-                            <select
-                              className="w-full text-sm border border-gray-300 rounded px-2 py-2 bg-white"
-                              value={data.assignedDriverId || ''}
-                              onChange={(e) => assignShuttleDriver(shuttleDate, time, e.target.value)}
-                            >
-                              <option value="">Select driver...</option>
-                              {drivers.map(driver => (
-                                <option key={driver.id} value={driver.id}>{driver.name}</option>
-                              ))}
-                            </select>
-                            {data.assignedDriverName && (
-                              <div className="text-xs text-green-600 mt-1 flex items-center gap-1">
-                                <CheckCircle className="w-3 h-3" />
-                                {data.assignedDriverName} assigned - SMS scheduled!
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="flex gap-2">
-                            <Button 
-                              size="sm" 
-                              className="flex-1 bg-blue-600 hover:bg-blue-700"
-                              onClick={() => getShuttleRoute(shuttleDate, time)}
-                            >
-                              <Navigation className="w-3 h-3 mr-1" />
-                              Route
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              className="flex-1 bg-green-600 hover:bg-green-700"
-                              onClick={() => captureShuttlePayments(shuttleDate, time)}
-                            >
-                              <DollarSign className="w-3 h-3 mr-1" />
-                              Charge All
-                            </Button>
-                          </div>
-                        </>
-                      ) : (
-                        <p className="text-sm text-gray-400 italic">No bookings yet</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                {/* Pricing Info */}
-                <div className="mt-6 p-4 bg-white rounded-lg border">
-                  <h4 className="font-semibold text-gray-700 mb-2">Dynamic Pricing Tiers</h4>
-                  <div className="flex flex-wrap gap-2 text-xs">
-                    <span className="px-2 py-1 bg-gray-100 rounded">1-2 pax: $100/ea</span>
-                    <span className="px-2 py-1 bg-gray-100 rounded">3 pax: $70/ea</span>
-                    <span className="px-2 py-1 bg-gray-100 rounded">4 pax: $55/ea</span>
-                    <span className="px-2 py-1 bg-gray-100 rounded">5 pax: $45/ea</span>
-                    <span className="px-2 py-1 bg-gray-100 rounded">6 pax: $40/ea</span>
-                    <span className="px-2 py-1 bg-gray-100 rounded">7+ pax: $35-25/ea</span>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-2">
-                    💳 Cards are authorized at booking, charged when shuttle arrives at airport
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
 
           {/* Customers Tab */}
           <TabsContent value="customers">
@@ -3021,31 +3090,138 @@ onViewBooking={(booking) => {
                     <AlertTriangle className="w-6 h-6 text-red-600" />
                     <h3 className="text-lg font-semibold text-red-800">Recently Deleted Bookings</h3>
                   </div>
-                  {deletedBookings.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2">
                     <Button
-                      onClick={handleRestoreAllBookings}
-                      disabled={restoringAll}
-                      className="bg-green-600 hover:bg-green-700 text-white"
+                      onClick={handleDownloadBackup}
+                      disabled={downloadingBackup}
+                      variant="outline"
+                      className="border-gray-400 text-gray-700 hover:bg-gray-100"
                     >
-                      {restoringAll ? (
-                        <>
-                          <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                          Restoring...
-                        </>
+                      {downloadingBackup ? (
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
                       ) : (
-                        <>
-                          <RotateCcw className="w-4 h-4 mr-2" />
-                          Restore all {deletedBookings.length} booking{deletedBookings.length !== 1 ? 's' : ''}
-                        </>
+                        <Download className="w-4 h-4 mr-2" />
                       )}
+                      Download backup (JSON)
                     </Button>
-                  )}
+                    {/* Restore from a backup JSON file (e.g. backup_bookings_full.json) */}
+                    <input
+                      ref={backupFileInputRef}
+                      type="file"
+                      accept=".json"
+                      className="hidden"
+                      onChange={handleRestoreFromBackupFile}
+                    />
+                    <Button
+                      onClick={() => backupFileInputRef.current?.click()}
+                      disabled={restoringFromFile}
+                      variant="outline"
+                      className="border-blue-400 text-blue-700 hover:bg-blue-50"
+                      title="Upload a JSON backup file to restore bookings"
+                    >
+                      {restoringFromFile ? (
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Upload className="w-4 h-4 mr-2" />
+                      )}
+                      Restore from backup file
+                    </Button>
+                    {/* One-click restore from backup_bookings_full.json on the server */}
+                    <Button
+                      onClick={handleRestoreFromServerBackup}
+                      disabled={restoringFromServerBackup}
+                      className="bg-orange-600 hover:bg-orange-700 text-white"
+                      title="Restore bookings from the backup_bookings_full.json file stored on the server"
+                    >
+                      {restoringFromServerBackup ? (
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Shield className="w-4 h-4 mr-2" />
+                      )}
+                      Restore from server backup
+                    </Button>
+                    {deletedBookings.length > 0 && (
+                      <Button
+                        onClick={handleRestoreAllBookings}
+                        disabled={restoringAll}
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                      >
+                        {restoringAll ? (
+                          <>
+                            <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                            Restoring...
+                          </>
+                        ) : (
+                          <>
+                            <RotateCcw className="w-4 h-4 mr-2" />
+                            Restore all {deletedBookings.length} booking{deletedBookings.length !== 1 ? 's' : ''}
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </div>
                 </div>
                 <p className="text-sm text-red-700 mb-4">
-                  These bookings have been deleted but can be restored. They will be kept for 30 days before permanent deletion.
-                  If your bookings disappeared after an update, they may be here—click <strong>Restore all</strong> above to reinstate them.
+                  Bookings are always retained—we never permanently remove them without your action. Deleted items stay here for recovery; use <strong>Restore all</strong> to reinstate. If bookings disappeared after an update, they may be here. To restore from a backup JSON file, click <strong>Restore from backup file</strong>.
                 </p>
+                {backupRestoreResult && (
+                  <div className={`mb-4 p-3 rounded-lg text-sm ${backupRestoreResult.error ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-800'}`}>
+                    {backupRestoreResult.error ? (
+                      <span>Error: {backupRestoreResult.error}</span>
+                    ) : (
+                      <span>
+                        Restored <strong>{backupRestoreResult.imported_count}</strong> bookings.
+                        Skipped <strong>{backupRestoreResult.skipped_count}</strong> duplicates.
+                        {backupRestoreResult.error_count > 0 && <span className="text-red-600 ml-1">{backupRestoreResult.error_count} errors.</span>}
+                      </span>
+                    )}
+                  </div>
+                )}
                 
+                {/* AUTO DAILY BACKUPS PANEL */}
+                <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <h4 className="font-semibold text-blue-900 text-sm">Automatic Daily Backups</h4>
+                      <p className="text-xs text-blue-700 mt-0.5">Snapshots saved every night at 1 AM — 7 days rolling. Click Restore to recover any missing bookings.</p>
+                    </div>
+                    <Button
+                      onClick={handleTriggerBackup}
+                      disabled={triggeringBackup}
+                      size="sm"
+                      variant="outline"
+                      className="border-blue-400 text-blue-700 hover:bg-blue-100 text-xs"
+                    >
+                      {triggeringBackup ? <RefreshCw className="w-3 h-3 mr-1 animate-spin" /> : <Archive className="w-3 h-3 mr-1" />}
+                      Backup now
+                    </Button>
+                  </div>
+                  {loadingAutoBackups ? (
+                    <p className="text-xs text-blue-600">Loading backups...</p>
+                  ) : autoBackups.length === 0 ? (
+                    <p className="text-xs text-blue-600">No automatic backups yet. Click "Backup now" to create the first one.</p>
+                  ) : (
+                    <div className="space-y-1">
+                      {autoBackups.map(b => (
+                        <div key={b.label} className="flex items-center justify-between bg-white rounded px-3 py-2 border border-blue-100 text-xs">
+                          <div>
+                            <span className="font-medium text-gray-800">{b.label}</span>
+                            <span className="text-gray-500 ml-2">{b.activeCount} active · {b.deletedCount} deleted</span>
+                          </div>
+                          <Button
+                            onClick={() => handleRestoreAutoBackup(b.label)}
+                            disabled={restoringAutoBackup === b.label}
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700 text-white text-xs py-1 h-7"
+                          >
+                            {restoringAutoBackup === b.label ? <RefreshCw className="w-3 h-3 animate-spin" /> : 'Restore missing'}
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 {loadingDeleted ? (
                   <div className="text-center py-8">
                     <RefreshCw className="w-8 h-8 animate-spin mx-auto text-gray-400" />
@@ -3515,7 +3691,7 @@ onViewBooking={(booking) => {
               </div>
 
               {/* Outbound Flight Info */}
-              {(selectedBooking.flightArrivalNumber || selectedBooking.flightDepartureNumber || selectedBooking.flightNumber) && (
+              {(selectedBooking.flightArrivalNumber || selectedBooking.arrivalFlightNumber || selectedBooking.flightDepartureNumber || selectedBooking.departureFlightNumber || selectedBooking.flightNumber) && (
                 <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                   <h3 className="font-semibold text-gray-900 mb-1 flex items-center gap-2">
                     ✈️ Outbound flight numbers
@@ -3523,24 +3699,24 @@ onViewBooking={(booking) => {
                   <p className="text-xs text-gray-500 mb-3">Pickup leg — arrival/departure at airport</p>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     {/* Show flightNumber from WordPress imports */}
-                    {selectedBooking.flightNumber && !selectedBooking.flightArrivalNumber && !selectedBooking.flightDepartureNumber && (
+                    {selectedBooking.flightNumber && !selectedBooking.flightArrivalNumber && !selectedBooking.arrivalFlightNumber && !selectedBooking.flightDepartureNumber && !selectedBooking.departureFlightNumber && (
                       <div>
                         <span className="text-gray-600">Flight:</span>
                         <p className="font-medium">{selectedBooking.flightNumber}</p>
                       </div>
                     )}
-                    {selectedBooking.flightArrivalNumber && (
+                    {(selectedBooking.flightArrivalNumber || selectedBooking.arrivalFlightNumber) && (
                       <div>
                         <span className="text-gray-600">Arrival Flight:</span>
-                        <p className="font-medium">{selectedBooking.flightArrivalNumber}</p>
-                        {selectedBooking.flightArrivalTime && <p className="text-xs text-gray-500">Arrival: {selectedBooking.flightArrivalTime}</p>}
+                        <p className="font-medium">{selectedBooking.flightArrivalNumber || selectedBooking.arrivalFlightNumber}</p>
+                        {(selectedBooking.flightArrivalTime || selectedBooking.arrivalTime) && <p className="text-xs text-gray-500">Arrival: {selectedBooking.flightArrivalTime || selectedBooking.arrivalTime}</p>}
                       </div>
                     )}
-                    {selectedBooking.flightDepartureNumber && (
+                    {(selectedBooking.flightDepartureNumber || selectedBooking.departureFlightNumber) && (
                       <div>
                         <span className="text-gray-600">Departure Flight:</span>
-                        <p className="font-medium">{selectedBooking.flightDepartureNumber}</p>
-                        {selectedBooking.flightDepartureTime && <p className="text-xs text-gray-500">Departure: {selectedBooking.flightDepartureTime}</p>}
+                        <p className="font-medium">{selectedBooking.flightDepartureNumber || selectedBooking.departureFlightNumber}</p>
+                        {(selectedBooking.flightDepartureTime || selectedBooking.departureTime) && <p className="text-xs text-gray-500">Departure: {selectedBooking.flightDepartureTime || selectedBooking.departureTime}</p>}
                       </div>
                     )}
                   </div>
@@ -4067,16 +4243,8 @@ onViewBooking={(booking) => {
 
       {/* Create Booking Modal */}
       <Dialog open={showCreateBookingModal} onOpenChange={(open) => {
-        if (!open) {
-          setShowCreateBookingModal(false);
-          setNewBooking({ name: '', email: '', ccEmail: '', phone: '', serviceType: 'airport-shuttle', pickupAddress: '', pickupAddresses: [], dropoffAddress: '', date: '', time: '', passengers: '1', paymentMethod: 'stripe', notes: '', flightArrivalNumber: '', flightArrivalTime: '', flightDepartureNumber: '', flightDepartureTime: '', bookReturn: false, returnDate: '', returnTime: '', returnDepartureFlightNumber: '', returnDepartureTime: '', returnArrivalFlightNumber: '', returnArrivalTime: '' });
-          setAdminPickupDate(null); setAdminPickupTime(null); setAdminReturnDate(null); setAdminReturnTime(null); setAdminFlightArrivalTime(null); setAdminFlightDepartureTime(null);
-          setCustomerSearchQuery(''); setCustomerSearchResults([]); setShowCustomerDropdown(false);
-          setBookingPricing({ distance: 0, basePrice: 0, airportFee: 0, passengerFee: 0, totalPrice: 0 });
-          setManualPriceOverride('');
-        } else {
-          setShowCreateBookingModal(true);
-        }
+        setShowCreateBookingModal(open);
+        if (!open) clearAdminAddressSuggestions();
       }}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -4235,11 +4403,30 @@ onViewBooking={(booking) => {
                   <Label>Pickup Address 1 *</Label>
                   <AddressAutocomplete
                     value={newBooking.pickupAddress}
-                    onChange={(val) => setNewBooking(prev => ({ ...prev, pickupAddress: val }))}
-                    onSelect={(val) => setNewBooking(prev => ({ ...prev, pickupAddress: val }))}
-                    placeholder="Start typing an address..."
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setNewBooking(prev => ({ ...prev, pickupAddress: val }));
+                      fetchAdminAddressSuggestions(val, setAdminPickupSuggestions, setShowAdminPickupSuggestions);
+                    }}
+                    onBlur={() => setTimeout(() => setShowAdminPickupSuggestions(false), 350)}
+                    placeholder="Start typing address..."
+                    autoComplete="off"
                     className="mt-1"
                   />
+                  {showAdminPickupSuggestions && adminPickupSuggestions.length > 0 && (
+                    <ul className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+                      {adminPickupSuggestions.map((s, i) => (
+                        <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm border-b last:border-b-0"
+                          onPointerDown={(e) => {
+                            e.preventDefault();
+                            setNewBooking(prev => ({ ...prev, pickupAddress: s.description }));
+                            setShowAdminPickupSuggestions(false);
+                          }}>
+                          {s.description}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
 
                 {/* Additional Pickup Addresses */}
@@ -4247,20 +4434,12 @@ onViewBooking={(booking) => {
                   <div key={index}>
                     <Label>Pickup Address {index + 2}</Label>
                     <div className="flex gap-2 mt-1">
-                      <div className="flex-1">
-                        <AddressAutocomplete
-                          value={pickup}
-                          onChange={(val) => setNewBooking(prev => ({
-                            ...prev,
-                            pickupAddresses: prev.pickupAddresses.map((a, i) => i === index ? val : a)
-                          }))}
-                          onSelect={(val) => setNewBooking(prev => ({
-                            ...prev,
-                            pickupAddresses: prev.pickupAddresses.map((a, i) => i === index ? val : a)
-                          }))}
-                          placeholder="Start typing an address..."
-                        />
-                      </div>
+                      <Input
+                        value={pickup}
+                        onChange={(e) => handlePickupAddressChange(index, e.target.value)}
+                        placeholder="Enter full address..."
+                        className="flex-1"
+                      />
                       <Button
                         type="button"
                         variant="outline"
@@ -4278,11 +4457,30 @@ onViewBooking={(booking) => {
                   <Label>Drop-off Address *</Label>
                   <AddressAutocomplete
                     value={newBooking.dropoffAddress}
-                    onChange={(val) => setNewBooking(prev => ({ ...prev, dropoffAddress: val }))}
-                    onSelect={(val) => setNewBooking(prev => ({ ...prev, dropoffAddress: val }))}
-                    placeholder="Start typing an address..."
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setNewBooking(prev => ({ ...prev, dropoffAddress: val }));
+                      fetchAdminAddressSuggestions(val, setAdminDropoffSuggestions, setShowAdminDropoffSuggestions);
+                    }}
+                    onBlur={() => setTimeout(() => setShowAdminDropoffSuggestions(false), 350)}
+                    placeholder="Start typing address..."
+                    autoComplete="off"
                     className="mt-1"
                   />
+                  {showAdminDropoffSuggestions && adminDropoffSuggestions.length > 0 && (
+                    <ul className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+                      {adminDropoffSuggestions.map((s, i) => (
+                        <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm border-b last:border-b-0"
+                          onPointerDown={(e) => {
+                            e.preventDefault();
+                            setNewBooking(prev => ({ ...prev, dropoffAddress: s.description }));
+                            setShowAdminDropoffSuggestions(false);
+                          }}>
+                          {s.description}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
@@ -4644,10 +4842,27 @@ onViewBooking={(booking) => {
                 variant="outline"
                 onClick={() => {
                   setShowCreateBookingModal(false);
-                  setNewBooking({ name: '', email: '', ccEmail: '', phone: '', serviceType: 'airport-shuttle', pickupAddress: '', pickupAddresses: [], dropoffAddress: '', date: '', time: '', passengers: '1', paymentMethod: 'stripe', notes: '', flightArrivalNumber: '', flightArrivalTime: '', flightDepartureNumber: '', flightDepartureTime: '', bookReturn: false, returnDate: '', returnTime: '', returnDepartureFlightNumber: '', returnDepartureTime: '', returnArrivalFlightNumber: '', returnArrivalTime: '' });
-                  setAdminPickupDate(null); setAdminPickupTime(null); setAdminReturnDate(null); setAdminReturnTime(null); setAdminFlightArrivalTime(null); setAdminFlightDepartureTime(null);
-                  setCustomerSearchQuery(''); setCustomerSearchResults([]); setShowCustomerDropdown(false);
-                  setBookingPricing({ distance: 0, basePrice: 0, airportFee: 0, passengerFee: 0, totalPrice: 0 });
+                  clearAdminAddressSuggestions();
+                  setNewBooking({
+                    name: '',
+                    email: '',
+                    phone: '',
+                    serviceType: 'airport-shuttle',
+                    pickupAddress: '',
+                    dropoffAddress: '',
+                    date: '',
+                    time: '',
+                    passengers: '1',
+                    paymentMethod: 'stripe',  // Default to Stripe payment link
+                    notes: ''
+                  });
+                  setBookingPricing({
+                    distance: 0,
+                    basePrice: 0,
+                    airportFee: 0,
+                    passengerFee: 0,
+                    totalPrice: 0
+                  });
                   setManualPriceOverride('');
                 }}
               >
@@ -4666,7 +4881,10 @@ onViewBooking={(booking) => {
       </Dialog>
 
       {/* Edit Booking Modal */}
-      <Dialog open={showEditBookingModal} onOpenChange={setShowEditBookingModal}>
+      <Dialog open={showEditBookingModal} onOpenChange={(open) => {
+        setShowEditBookingModal(open);
+        if (!open) { setEditingBooking(null); clearEditAddressSuggestions(); }
+      }}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Booking #{editingBooking?.referenceNumber || editingBooking?.id?.slice(0, 8)}</DialogTitle>
@@ -4732,11 +4950,30 @@ onViewBooking={(booking) => {
                     <Label>Pickup Address 1 *</Label>
                     <AddressAutocomplete
                       value={editingBooking.pickupAddress}
-                      onChange={(val) => setEditingBooking(prev => ({ ...prev, pickupAddress: val }))}
-                      onSelect={(val) => setEditingBooking(prev => ({ ...prev, pickupAddress: val }))}
-                      placeholder="Start typing an address..."
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setEditingBooking(prev => ({ ...prev, pickupAddress: val }));
+                        fetchAdminAddressSuggestions(val, setEditPickupSuggestions, setShowEditPickupSuggestions);
+                      }}
+                      onBlur={() => setTimeout(() => setShowEditPickupSuggestions(false), 350)}
+                      placeholder="Start typing address..."
+                      autoComplete="off"
                       className="mt-1"
                     />
+                    {showEditPickupSuggestions && editPickupSuggestions.length > 0 && (
+                      <ul className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+                        {editPickupSuggestions.map((s, i) => (
+                          <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm border-b last:border-b-0"
+                            onPointerDown={(e) => {
+                              e.preventDefault();
+                              setEditingBooking(prev => ({ ...prev, pickupAddress: s.description }));
+                              setShowEditPickupSuggestions(false);
+                            }}>
+                            {s.description}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
 
                   {/* Additional Pickup Addresses */}
@@ -4744,20 +4981,12 @@ onViewBooking={(booking) => {
                     <div key={index}>
                       <Label>Pickup Address {index + 2}</Label>
                       <div className="flex gap-2 mt-1">
-                        <div className="flex-1">
-                          <AddressAutocomplete
-                            value={pickup}
-                            onChange={(val) => setEditingBooking(prev => ({
-                              ...prev,
-                              pickupAddresses: prev.pickupAddresses.map((a, i) => i === index ? val : a)
-                            }))}
-                            onSelect={(val) => setEditingBooking(prev => ({
-                              ...prev,
-                              pickupAddresses: prev.pickupAddresses.map((a, i) => i === index ? val : a)
-                            }))}
-                            placeholder="Start typing an address..."
-                          />
-                        </div>
+                        <Input
+                          value={pickup}
+                          onChange={(e) => handleEditPickupAddressChange(index, e.target.value)}
+                          placeholder="Enter full address..."
+                          className="flex-1"
+                        />
                         <Button
                           type="button"
                           variant="outline"
@@ -4775,11 +5004,30 @@ onViewBooking={(booking) => {
                     <Label>Drop-off Address *</Label>
                     <AddressAutocomplete
                       value={editingBooking.dropoffAddress}
-                      onChange={(val) => setEditingBooking(prev => ({ ...prev, dropoffAddress: val }))}
-                      onSelect={(val) => setEditingBooking(prev => ({ ...prev, dropoffAddress: val }))}
-                      placeholder="Start typing an address..."
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setEditingBooking(prev => ({ ...prev, dropoffAddress: val }));
+                        fetchAdminAddressSuggestions(val, setEditDropoffSuggestions, setShowEditDropoffSuggestions);
+                      }}
+                      onBlur={() => setTimeout(() => setShowEditDropoffSuggestions(false), 350)}
+                      placeholder="Start typing address..."
+                      autoComplete="off"
                       className="mt-1"
                     />
+                    {showEditDropoffSuggestions && editDropoffSuggestions.length > 0 && (
+                      <ul className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+                        {editDropoffSuggestions.map((s, i) => (
+                          <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm border-b last:border-b-0"
+                            onPointerDown={(e) => {
+                              e.preventDefault();
+                              setEditingBooking(prev => ({ ...prev, dropoffAddress: s.description }));
+                              setShowEditDropoffSuggestions(false);
+                            }}>
+                            {s.description}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -4803,48 +5051,26 @@ onViewBooking={(booking) => {
                     </div>
                   </div>
 
-                  {/* Flight Details */}
+                  {/* Flight Number */}
                   <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                     <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                      ✈️ Flight Details (Optional)
+                      Flight Number
                     </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label>Flight Arrival Number</Label>
-                        <Input
-                          value={editingBooking.flightArrivalNumber || ''}
-                          onChange={(e) => setEditingBooking(prev => ({...prev, flightArrivalNumber: e.target.value}))}
-                          placeholder="e.g., NZ123"
-                          className="mt-1 bg-white"
-                        />
-                      </div>
-                      <div>
-                        <Label>Flight Arrival Time</Label>
-                        <Input
-                          type="time"
-                          value={editingBooking.flightArrivalTime || ''}
-                          onChange={(e) => setEditingBooking(prev => ({...prev, flightArrivalTime: e.target.value}))}
-                          className="mt-1 bg-white"
-                        />
-                      </div>
-                      <div>
-                        <Label>Flight Departure Number</Label>
-                        <Input
-                          value={editingBooking.flightDepartureNumber || ''}
-                          onChange={(e) => setEditingBooking(prev => ({...prev, flightDepartureNumber: e.target.value}))}
-                          placeholder="e.g., NZ456"
-                          className="mt-1 bg-white"
-                        />
-                      </div>
-                      <div>
-                        <Label>Flight Departure Time</Label>
-                        <Input
-                          type="time"
-                          value={editingBooking.flightDepartureTime || ''}
-                          onChange={(e) => setEditingBooking(prev => ({...prev, flightDepartureTime: e.target.value}))}
-                          className="mt-1 bg-white"
-                        />
-                      </div>
+                    <div>
+                      <Label>Flight Number</Label>
+                      <Input
+                        value={editingBooking.flightNumber || editingBooking.flightArrivalNumber || editingBooking.flightDepartureNumber || editingBooking.arrivalFlightNumber || editingBooking.departureFlightNumber || ''}
+                        onChange={(e) => setEditingBooking(prev => ({
+                          ...prev,
+                          flightNumber: e.target.value,
+                          flightArrivalNumber: e.target.value,
+                          flightDepartureNumber: e.target.value,
+                          arrivalFlightNumber: e.target.value,
+                          departureFlightNumber: e.target.value
+                        }))}
+                        placeholder="e.g., NZ123"
+                        className="mt-1 bg-white"
+                      />
                     </div>
                   </div>
 
@@ -4964,6 +5190,7 @@ onViewBooking={(booking) => {
                   onClick={() => {
                     setShowEditBookingModal(false);
                     setEditingBooking(null);
+                    clearEditAddressSuggestions();
                   }}
                 >
                   Cancel
@@ -5045,11 +5272,11 @@ onViewBooking={(booking) => {
                 <strong>⚠️ No notifications will be sent</strong>
               </p>
               <p className="text-sm text-yellow-700 mt-1">
-                The selected bookings will be permanently deleted without sending any SMS or email notifications to customers.
+                The selected bookings will be moved to the Deleted tab without sending any SMS or email notifications to customers.
               </p>
             </div>
             <p className="text-gray-600 text-sm">
-              This action cannot be undone. Are you sure you want to delete these test/spam bookings?
+              You can restore these bookings later from the Deleted tab if needed.
             </p>
           </div>
           <div className="flex justify-end gap-3">

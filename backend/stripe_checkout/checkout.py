@@ -101,14 +101,12 @@ class StripeCheckout:
         event_type = getattr(event, "type", None)
         session_id = None
         payment_status = None
-        metadata: Dict[str, Any] = {}
+        metadata = {}
         try:
             obj = event.data.object
             session_id = getattr(obj, "id", None)
             payment_status = getattr(obj, "payment_status", None)
-            raw_meta = getattr(obj, "metadata", None)
-            if raw_meta:
-                metadata = dict(raw_meta)
+            metadata = dict(getattr(obj, "metadata", {}) or {})
         except Exception:
             pass
         return WebhookResponse(
