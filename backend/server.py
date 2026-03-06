@@ -385,7 +385,7 @@ class BookingCreate(BaseModel):
     dropoffAddress: str
     date: str
     time: str
-    passengers: str
+    passengers: int
     departureFlightNumber: Optional[str] = ""
     departureTime: Optional[str] = ""
     arrivalFlightNumber: Optional[str] = ""
@@ -410,7 +410,7 @@ class BookingCreate(BaseModel):
     # Notification preference: 'email', 'sms', or 'both'
     notificationPreference: Optional[str] = "both"
     skipNotifications: Optional[bool] = False
-    createdAt: datetime = Field(default_factory=datetime.utcnow)
+    createdAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     @model_validator(mode='after')
     def validate_return_flight_for_airport_shuttle(self):
@@ -424,41 +424,21 @@ class BookingCreate(BaseModel):
             if not return_flight or not return_flight.strip():
                 raise ValueError('Return flight number is required for airport shuttle return bookings. Without a flight number, your booking may face cancellation.')
         return self
-    
-    # @model_validator(mode='after')
-    # def validate_booking_date(self):
-    #     """Validate that booking date is not in the past"""
-    #     if self.date:
-    #         try:
-    #             nz_tz = pytz.timezone('Pacific/Auckland')
-    #             today = datetime.now(nz_tz).strftime('%Y-%m-%d')
-    #             # Allow bookings for today and future only
-    #             if self.date < today:
-    #                 raise ValueError(f'Booking date ({self.date}) cannot be in the past. Today is {today}.')
-    #         except Exception as e:
-    #             if 'cannot be in the past' in str(e):
-    #                 raise
-    #             # If date parsing fails, let it through (will fail elsewhere)
-    #             pass
-    #     return self
 
-@model_validator(mode='after')
-def validate_booking_date(self):       
-    # Skip validation for data retrieval operations    
-    if hasattr(self, '_skip_date_validation') or getattr(self, 'id', None):    
-        return self
-    
-    if self.date:  # ÃƒÆ'Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ'Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ'Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ NOW PROPERLY INSIDE THE FUNCTION
-        try:
-            nz_tz = pytz.timezone('Pacific/Auckland')
-            today = datetime.now(nz_tz).strftime('%Y-%m-%d')
-            if self.date < today:
-                raise ValueError(f'Booking date ({self.date}) cannot be in the past. Today is {today}.')
-        except Exception as e:
-            if 'cannot be in the past' in str(e):
+    @model_validator(mode='after')
+    def validate_booking_date(self):
+        """Validate that booking date is not in the past (NZ timezone)."""
+        if self.date:
+            try:
+                nz_tz = pytz.timezone('Pacific/Auckland')
+                today = datetime.now(nz_tz).strftime('%Y-%m-%d')
+                if self.date < today:
+                    raise ValueError(f'Booking date ({self.date}) cannot be in the past. Today is {today}.')
+            except ValueError:
                 raise
-            pass
-    return self
+            except Exception:
+                pass  # non-date-related errors, let it through
+        return self
 
 class Booking(BookingCreate):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -533,23 +513,42 @@ def is_booking_within_24_hours(date_str: str, time_str: str) -> bool:
         return False
 
 
+# Valid booking status transitions
+VALID_STATUS_TRANSITIONS = {
+    "pending": {"confirmed", "cancelled", "pending_approval"},
+    "pending_approval": {"confirmed", "cancelled"},
+    "confirmed": {"completed", "cancelled"},
+    "completed": {"confirmed"},  # allow revert if marked completed by mistake
+    "cancelled": {"pending", "confirmed"},  # allow reactivation
+}
+
+def validate_status_transition(current_status: str, new_status: str) -> bool:
+    """Check if a booking status transition is allowed."""
+    if current_status == new_status:
+        return True  # no-op is always fine
+    allowed = VALID_STATUS_TRANSITIONS.get(current_status, set())
+    return new_status in allowed
+
+
 async def get_next_reference_number():
-    """Get the next sequential reference number for bookings, starting from 10"""
-    # Use a counter collection to maintain sequential numbers
+    """Get the next sequential reference number for bookings, starting from 10.
+
+    Uses a single atomic find_one_and_update to avoid race conditions.
+    If the counter doesn't exist or is below 10, we set it to 10 atomically first.
+    """
+    # Ensure counter exists and is at least 10 (idempotent, safe to call concurrently)
+    await db.counters.update_one(
+        {"id": "booking_reference", "seq": {"$lt": 10}},
+        {"$set": {"seq": 10}},
+        upsert=True
+    )
+    # Atomically increment and return — no race condition possible
     counter = await db.counters.find_one_and_update(
         {"id": "booking_reference"},
         {"$inc": {"seq": 1}},
         upsert=True,
         return_document=True
     )
-    # Start from 10 if this is a new counter
-    if counter is None or counter.get('seq', 0) < 10:
-        await db.counters.update_one(
-            {"id": "booking_reference"},
-            {"$set": {"seq": 10}},
-            upsert=True
-        )
-        return 10
     return counter.get('seq', 10)
 
 # Authentication Endpoints
@@ -2055,19 +2054,38 @@ async def create_booking(booking: BookingCreate, background_tasks: BackgroundTas
         raise HTTPException(status_code=500, detail=f"Error creating booking: {str(e)}")
 
 
-# Quick Approve/Reject Endpoint (for email links - no auth required, uses secure token)
+# HMAC helper for quick-approve email links
+import hmac as _hmac
+import hashlib as _hashlib
+
+def generate_booking_token(booking_id: str) -> str:
+    """Generate an HMAC token for a booking ID to prevent unauthorized access."""
+    return _hmac.new(SECRET_KEY.encode(), booking_id.encode(), _hashlib.sha256).hexdigest()[:32]
+
+# Quick Approve/Reject Endpoint (for email links - secured with HMAC token)
 @api_router.get("/booking/quick-approve/{booking_id}")
-async def quick_approve_booking(booking_id: str, action: str = "approve"):
+async def quick_approve_booking(booking_id: str, action: str = "approve", token: str = ""):
     """
     Quick approve or reject a booking directly from email link.
-    No authentication required - accessed via unique booking ID from email.
+    Secured via HMAC token in the URL (generated when email is sent).
     """
     from fastapi.responses import HTMLResponse
-    
+
     try:
+        # Verify HMAC token to prevent unauthorized access
+        expected_token = generate_booking_token(booking_id)
+        if not token or not _hmac.compare_digest(token, expected_token):
+            return HTMLResponse(content="""
+                <html><body style="font-family: Arial; text-align: center; padding: 50px;">
+                    <h1 style="color: #DC2626;">Unauthorized</h1>
+                    <p>This link is invalid or has expired. Please use the admin dashboard.</p>
+                    <a href="https://bookaride.co.nz/admin/dashboard" style="display: inline-block; margin-top: 20px; padding: 15px 30px; background-color: #f59e0b; color: white; text-decoration: none; border-radius: 8px;">Go to Admin Dashboard</a>
+                </body></html>
+            """, status_code=403)
+
         # Find the booking
         booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
-        
+
         if not booking:
             return HTMLResponse(content="""
                 <html><body style="font-family: Arial; text-align: center; padding: 50px;">
@@ -2271,7 +2289,7 @@ async def get_bookings(
             s['referenceNumber'] = s.get('referenceNumber') or ('S-' + (s.get('id') or '')[:8])
             s['pricing'] = s.get('pricing') or {'totalPrice': s.get('totalEstimated') or s.get('finalPrice') or 0}
             s['serviceType'] = 'airport-shuttle'
-            s['passengers'] = str(s.get('passengers', 1))
+            s['passengers'] = int(s.get('passengers', 1))
             s['bookingType'] = 'shuttle'
             s.setdefault('pickupAddresses', [])
             s.setdefault('dropoffAddress', 'Auckland International Airport')
@@ -2280,7 +2298,7 @@ async def get_bookings(
             s.setdefault('bookReturn', False)
             s.setdefault('returnDate', '')
             s.setdefault('returnTime', '')
-            s.setdefault('payment_status', s.get('paymentStatus') or 'unpaid')
+            s['payment_status'] = s.pop('paymentStatus', None) or s.get('payment_status') or 'unpaid'
         all_bookings = list(all_bookings) + list(shuttle_raw)
         total = len(all_bookings)
         
@@ -2369,6 +2387,15 @@ async def get_bookings_count(current_admin: dict = Depends(get_current_admin)):
 @api_router.patch("/bookings/{booking_id}")
 async def update_booking(booking_id: str, update_data: dict, current_admin: dict = Depends(get_current_admin)):
     try:
+        # Validate status transition if status is being changed
+        if 'status' in update_data:
+            existing = await db.bookings.find_one({"id": booking_id}, {"_id": 0, "status": 1})
+            if existing and not validate_status_transition(existing.get('status', 'pending'), update_data['status']):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Cannot change status from '{existing.get('status')}' to '{update_data['status']}'"
+                )
+
         # Auto-sync bookReturn flag when returnDate is set/cleared
         if 'returnDate' in update_data:
             if update_data['returnDate'] and update_data['returnDate'].strip():
@@ -4221,8 +4248,8 @@ async def send_urgent_approval_notification(booking: dict):
                         <p style="margin: 10px 0 0 0; font-size: 14px; color: #7F1D1D;">Approve or reject this booking:</p>
                         
                         <div style="margin-top: 20px;">
-                            <a href="https://bookaride.co.nz/api/booking/quick-approve/{booking.get('id')}?action=approve" style="display: inline-block; margin: 5px; padding: 15px 40px; background-color: #16a34a; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ APPROVE</a>
-                            <a href="https://bookaride.co.nz/api/booking/quick-approve/{booking.get('id')}?action=reject" style="display: inline-block; margin: 5px; padding: 15px 40px; background-color: #DC2626; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ REJECT</a>
+                            <a href="https://bookaride.co.nz/api/booking/quick-approve/{booking.get('id')}?action=approve&token={generate_booking_token(booking.get('id', ''))}" style="display: inline-block; margin: 5px; padding: 15px 40px; background-color: #16a34a; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ APPROVE</a>
+                            <a href="https://bookaride.co.nz/api/booking/quick-approve/{booking.get('id')}?action=reject&token={generate_booking_token(booking.get('id', ''))}" style="display: inline-block; margin: 5px; padding: 15px 40px; background-color: #DC2626; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ REJECT</a>
                         </div>
                         
                         <p style="margin: 15px 0 0 0; font-size: 12px; color: #7F1D1D;">Or open the admin dashboard for more options:</p>
@@ -6248,20 +6275,25 @@ async def stripe_webhook(request: Request):
                                 logger.error(f"Failed to send shuttle confirmation email: {email_error}")
                     else:
                         # Regular booking - charge immediately
-                        await db.bookings.update_one(
-                            {"id": booking_id},
-                            {"$set": {"payment_status": "paid", "status": "confirmed"}}
-                        )
-                        logger.info(f"Booking {booking_id} confirmed via webhook")
-                        
-                        # Get booking details for notifications
-                        booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
-                        if booking:
-                            # Send confirmations based on customer's notification preference
-                            send_customer_confirmation(booking)
-                            
-                            # Send admin notification
-                            await send_booking_notification_to_admin(booking)
+                        # Idempotency: skip if already paid (prevents duplicate confirmations on webhook replay)
+                        existing_booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0, "payment_status": 1})
+                        if existing_booking and existing_booking.get('payment_status') == 'paid':
+                            logger.info(f"Booking {booking_id} already paid - skipping duplicate webhook")
+                        else:
+                            await db.bookings.update_one(
+                                {"id": booking_id},
+                                {"$set": {"payment_status": "paid", "status": "confirmed"}}
+                            )
+                            logger.info(f"Booking {booking_id} confirmed via webhook")
+
+                            # Get booking details for notifications
+                            booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+                            if booking:
+                                # Send confirmations based on customer's notification preference
+                                send_customer_confirmation(booking)
+
+                                # Send admin notification
+                                await send_booking_notification_to_admin(booking)
                             
                             # Create Google Calendar event
                             await create_calendar_event(booking)
@@ -8358,7 +8390,7 @@ class ManualBooking(BaseModel):
     dropoffAddress: str
     date: str
     time: str
-    passengers: str
+    passengers: int
     pricing: dict
     paymentMethod: str = "cash"
     notes: Optional[str] = ""
@@ -11863,7 +11895,7 @@ class HotelBookingRequest(BaseModel):
     pickupTime: str
     flightNumber: Optional[str] = ""
     destination: str
-    passengers: str
+    passengers: int
     luggage: Optional[str] = "1"
     specialRequests: Optional[str] = ""
 
