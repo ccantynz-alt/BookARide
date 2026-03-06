@@ -123,6 +123,8 @@ const AddressAutocomplete = ({
             ref={dropdownRef}
             style={dropdownStyle}
             className="bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto"
+            onMouseDown={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
           >
             {suggestions.map((s, i) => (
               <button
@@ -130,6 +132,7 @@ const AddressAutocomplete = ({
                 type="button"
                 onMouseDown={(e) => {
                   e.preventDefault(); // keep focus on input
+                  e.stopPropagation(); // prevent Radix Dialog from intercepting
                   handleSelect(s.description);
                 }}
                 className="w-full px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-100 last:border-0"
