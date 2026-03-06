@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo, useTransition } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogOut, Search, Filter, Mail, DollarSign, CheckCircle, XCircle, Clock, Eye, Edit2, Users, BookOpen, Car, Settings, Trash2, MapPin, Calendar, RefreshCw, Send, Bell, Facebook, Globe, Square, CheckSquare, FileText, Smartphone, RotateCcw, AlertTriangle, AlertCircle, Home, Bus, ExternalLink, Navigation, Upload, Archive, Activity, Download, Shield } from 'lucide-react';
 import { Button } from '../components/ui/button';
@@ -496,6 +496,7 @@ const ImportBookingsSection = ({ onSuccess }) => {
 
 export const AdminDashboard = () => {
   const navigate = useNavigate();
+  const [isPending, startTransition] = useTransition();
   // Initialized to no-ops so never in TDZ (minifier can reorder; avoids "Cannot access 'mr' before initialization")
   let fetchBookings = () => {};
   let filterBookings = () => {};
@@ -503,7 +504,7 @@ export const AdminDashboard = () => {
   const filterBookingsRef = useRef(null);
   const [activeTab, setActiveTab] = useState('bookings');
   const [bookings, setBookings] = useState([]);
-  const [filteredBookings, setFilteredBookings] = useState([]);
+  // filteredBookings is now derived via useMemo (declared after bookings/searchTerm/statusFilter are available)
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [deletedBookings, setDeletedBookings] = useState([]);
@@ -642,9 +643,24 @@ export const AdminDashboard = () => {
   const [dateTo, setDateTo] = useState('');
   const [loadAllBookings] = useState(true); // Always load full list so we never miss a booking
 
-  // Use refs only - never reference fetchBookings/filterBookings here (they are declared later)
-  useEffect(() => {
-    if (filterBookingsRef.current) filterBookingsRef.current();
+  // Derive filtered bookings synchronously via useMemo (no double-render from useEffect+setState)
+  const filteredBookings = useMemo(() => {
+    let filtered = Array.isArray(bookings) ? bookings : [];
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(b => b && b.status === statusFilter);
+    }
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      filtered = filtered.filter(b => b && (
+        b.name?.toLowerCase().includes(searchLower) ||
+        b.email?.toLowerCase().includes(searchLower) ||
+        b.phone?.includes(searchTerm) ||
+        b.pickupAddress?.toLowerCase().includes(searchLower) ||
+        b.dropoffAddress?.toLowerCase().includes(searchLower) ||
+        String(b.referenceNumber)?.includes(searchTerm)
+      ));
+    }
+    return filtered;
   }, [bookings, searchTerm, statusFilter]);
   useEffect(() => {
     if (!localStorage.getItem('adminToken')) return;
@@ -1352,29 +1368,8 @@ export const AdminDashboard = () => {
     }
   };
 
-  filterBookings = () => {
-    let filtered = Array.isArray(bookings) ? bookings : [];
-
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(b => b && b.status === statusFilter);
-    }
-
-    // Search filter (local only - archive search is debounced separately below)
-    if (searchTerm) {
-      const searchLower = searchTerm.toLowerCase();
-      filtered = filtered.filter(b => b && (
-        b.name?.toLowerCase().includes(searchLower) ||
-        b.email?.toLowerCase().includes(searchLower) ||
-        b.phone?.includes(searchTerm) ||
-        b.pickupAddress?.toLowerCase().includes(searchLower) ||
-        b.dropoffAddress?.toLowerCase().includes(searchLower) ||
-        String(b.referenceNumber)?.includes(searchTerm)
-      ));
-    }
-
-    setFilteredBookings(filtered);
-  };
-  filterBookingsRef.current = filterBookings;
+  // filterBookings is now handled by useMemo (filteredBookings) declared earlier
+  filterBookingsRef.current = () => {}; // kept for any callers that still invoke it
 
   // Search across all bookings (active + archived) - debounced separately from filter
   const [archiveSearchResults, setArchiveSearchResults] = useState([]);
@@ -2387,7 +2382,7 @@ export const AdminDashboard = () => {
                 </div>
               </div>
               <Button
-                onClick={() => setStatusFilter('pending_approval')}
+                onClick={() => startTransition(() => setStatusFilter('pending_approval'))}
                 className="bg-orange-600 hover:bg-orange-700 text-white font-semibold shrink-0"
               >
                 View &amp; Approve
@@ -2477,7 +2472,7 @@ export const AdminDashboard = () => {
                 )}
               </div>
               <div className="w-full md:w-48">
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <Select value={statusFilter} onValueChange={(v) => startTransition(() => setStatusFilter(v))}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -2663,7 +2658,7 @@ export const AdminDashboard = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => { setDateFrom(''); setDateTo(''); setSearchTerm(''); setStatusFilter('all'); fetchBookingsRef.current?.(1, false); }}
+                      onClick={() => { setDateFrom(''); setDateTo(''); startTransition(() => { setSearchTerm(''); setStatusFilter('all'); }); fetchBookingsRef.current?.(1, false); }}
                       className="border-amber-500 text-amber-800 hover:bg-amber-100"
                     >
                       Clear all filters & show all bookings
@@ -4403,30 +4398,11 @@ export const AdminDashboard = () => {
                   <Label>Pickup Address 1 *</Label>
                   <AddressAutocomplete
                     value={newBooking.pickupAddress}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setNewBooking(prev => ({ ...prev, pickupAddress: val }));
-                      fetchAdminAddressSuggestions(val, setAdminPickupSuggestions, setShowAdminPickupSuggestions);
-                    }}
-                    onBlur={() => setTimeout(() => setShowAdminPickupSuggestions(false), 350)}
+                    onChange={(val) => setNewBooking(prev => ({ ...prev, pickupAddress: val }))}
+                    onSelect={(val) => setNewBooking(prev => ({ ...prev, pickupAddress: val }))}
                     placeholder="Start typing address..."
-                    autoComplete="off"
                     className="mt-1"
                   />
-                  {showAdminPickupSuggestions && adminPickupSuggestions.length > 0 && (
-                    <ul className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
-                      {adminPickupSuggestions.map((s, i) => (
-                        <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm border-b last:border-b-0"
-                          onPointerDown={(e) => {
-                            e.preventDefault();
-                            setNewBooking(prev => ({ ...prev, pickupAddress: s.description }));
-                            setShowAdminPickupSuggestions(false);
-                          }}>
-                          {s.description}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
                 </div>
 
                 {/* Additional Pickup Addresses */}
@@ -4457,30 +4433,11 @@ export const AdminDashboard = () => {
                   <Label>Drop-off Address *</Label>
                   <AddressAutocomplete
                     value={newBooking.dropoffAddress}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setNewBooking(prev => ({ ...prev, dropoffAddress: val }));
-                      fetchAdminAddressSuggestions(val, setAdminDropoffSuggestions, setShowAdminDropoffSuggestions);
-                    }}
-                    onBlur={() => setTimeout(() => setShowAdminDropoffSuggestions(false), 350)}
+                    onChange={(val) => setNewBooking(prev => ({ ...prev, dropoffAddress: val }))}
+                    onSelect={(val) => setNewBooking(prev => ({ ...prev, dropoffAddress: val }))}
                     placeholder="Start typing address..."
-                    autoComplete="off"
                     className="mt-1"
                   />
-                  {showAdminDropoffSuggestions && adminDropoffSuggestions.length > 0 && (
-                    <ul className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
-                      {adminDropoffSuggestions.map((s, i) => (
-                        <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm border-b last:border-b-0"
-                          onPointerDown={(e) => {
-                            e.preventDefault();
-                            setNewBooking(prev => ({ ...prev, dropoffAddress: s.description }));
-                            setShowAdminDropoffSuggestions(false);
-                          }}>
-                          {s.description}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
@@ -4950,30 +4907,11 @@ export const AdminDashboard = () => {
                     <Label>Pickup Address 1 *</Label>
                     <AddressAutocomplete
                       value={editingBooking.pickupAddress}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setEditingBooking(prev => ({ ...prev, pickupAddress: val }));
-                        fetchAdminAddressSuggestions(val, setEditPickupSuggestions, setShowEditPickupSuggestions);
-                      }}
-                      onBlur={() => setTimeout(() => setShowEditPickupSuggestions(false), 350)}
+                      onChange={(val) => setEditingBooking(prev => ({ ...prev, pickupAddress: val }))}
+                      onSelect={(val) => setEditingBooking(prev => ({ ...prev, pickupAddress: val }))}
                       placeholder="Start typing address..."
-                      autoComplete="off"
                       className="mt-1"
                     />
-                    {showEditPickupSuggestions && editPickupSuggestions.length > 0 && (
-                      <ul className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
-                        {editPickupSuggestions.map((s, i) => (
-                          <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm border-b last:border-b-0"
-                            onPointerDown={(e) => {
-                              e.preventDefault();
-                              setEditingBooking(prev => ({ ...prev, pickupAddress: s.description }));
-                              setShowEditPickupSuggestions(false);
-                            }}>
-                            {s.description}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
                   </div>
 
                   {/* Additional Pickup Addresses */}
@@ -5004,30 +4942,11 @@ export const AdminDashboard = () => {
                     <Label>Drop-off Address *</Label>
                     <AddressAutocomplete
                       value={editingBooking.dropoffAddress}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setEditingBooking(prev => ({ ...prev, dropoffAddress: val }));
-                        fetchAdminAddressSuggestions(val, setEditDropoffSuggestions, setShowEditDropoffSuggestions);
-                      }}
-                      onBlur={() => setTimeout(() => setShowEditDropoffSuggestions(false), 350)}
+                      onChange={(val) => setEditingBooking(prev => ({ ...prev, dropoffAddress: val }))}
+                      onSelect={(val) => setEditingBooking(prev => ({ ...prev, dropoffAddress: val }))}
                       placeholder="Start typing address..."
-                      autoComplete="off"
                       className="mt-1"
                     />
-                    {showEditDropoffSuggestions && editDropoffSuggestions.length > 0 && (
-                      <ul className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
-                        {editDropoffSuggestions.map((s, i) => (
-                          <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm border-b last:border-b-0"
-                            onPointerDown={(e) => {
-                              e.preventDefault();
-                              setEditingBooking(prev => ({ ...prev, dropoffAddress: s.description }));
-                              setShowEditDropoffSuggestions(false);
-                            }}>
-                            {s.description}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
