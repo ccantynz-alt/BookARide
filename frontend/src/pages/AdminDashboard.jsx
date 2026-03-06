@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo, useTransition } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogOut, Search, Filter, Mail, DollarSign, CheckCircle, XCircle, Clock, Eye, Edit2, Users, BookOpen, Car, Settings, Trash2, MapPin, Calendar, RefreshCw, Send, Bell, Facebook, Globe, Square, CheckSquare, FileText, Smartphone, RotateCcw, AlertTriangle, AlertCircle, Home, Bus, ExternalLink, Navigation, Upload, Archive, Activity, Download, Shield } from 'lucide-react';
 import { Button } from '../components/ui/button';
@@ -496,6 +496,7 @@ const ImportBookingsSection = ({ onSuccess }) => {
 
 export const AdminDashboard = () => {
   const navigate = useNavigate();
+  const [isPending, startTransition] = useTransition();
   // Initialized to no-ops so never in TDZ (minifier can reorder; avoids "Cannot access 'mr' before initialization")
   let fetchBookings = () => {};
   let filterBookings = () => {};
@@ -503,7 +504,7 @@ export const AdminDashboard = () => {
   const filterBookingsRef = useRef(null);
   const [activeTab, setActiveTab] = useState('bookings');
   const [bookings, setBookings] = useState([]);
-  const [filteredBookings, setFilteredBookings] = useState([]);
+  // filteredBookings is now derived via useMemo (declared after bookings/searchTerm/statusFilter are available)
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [deletedBookings, setDeletedBookings] = useState([]);
@@ -642,9 +643,24 @@ export const AdminDashboard = () => {
   const [dateTo, setDateTo] = useState('');
   const [loadAllBookings] = useState(true); // Always load full list so we never miss a booking
 
-  // Use refs only - never reference fetchBookings/filterBookings here (they are declared later)
-  useEffect(() => {
-    if (filterBookingsRef.current) filterBookingsRef.current();
+  // Derive filtered bookings synchronously via useMemo (no double-render from useEffect+setState)
+  const filteredBookings = useMemo(() => {
+    let filtered = Array.isArray(bookings) ? bookings : [];
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(b => b && b.status === statusFilter);
+    }
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      filtered = filtered.filter(b => b && (
+        b.name?.toLowerCase().includes(searchLower) ||
+        b.email?.toLowerCase().includes(searchLower) ||
+        b.phone?.includes(searchTerm) ||
+        b.pickupAddress?.toLowerCase().includes(searchLower) ||
+        b.dropoffAddress?.toLowerCase().includes(searchLower) ||
+        String(b.referenceNumber)?.includes(searchTerm)
+      ));
+    }
+    return filtered;
   }, [bookings, searchTerm, statusFilter]);
   useEffect(() => {
     if (!localStorage.getItem('adminToken')) return;
@@ -1352,29 +1368,8 @@ export const AdminDashboard = () => {
     }
   };
 
-  filterBookings = () => {
-    let filtered = Array.isArray(bookings) ? bookings : [];
-
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(b => b && b.status === statusFilter);
-    }
-
-    // Search filter (local only - archive search is debounced separately below)
-    if (searchTerm) {
-      const searchLower = searchTerm.toLowerCase();
-      filtered = filtered.filter(b => b && (
-        b.name?.toLowerCase().includes(searchLower) ||
-        b.email?.toLowerCase().includes(searchLower) ||
-        b.phone?.includes(searchTerm) ||
-        b.pickupAddress?.toLowerCase().includes(searchLower) ||
-        b.dropoffAddress?.toLowerCase().includes(searchLower) ||
-        String(b.referenceNumber)?.includes(searchTerm)
-      ));
-    }
-
-    setFilteredBookings(filtered);
-  };
-  filterBookingsRef.current = filterBookings;
+  // filterBookings is now handled by useMemo (filteredBookings) declared earlier
+  filterBookingsRef.current = () => {}; // kept for any callers that still invoke it
 
   // Search across all bookings (active + archived) - debounced separately from filter
   const [archiveSearchResults, setArchiveSearchResults] = useState([]);
@@ -2387,7 +2382,7 @@ export const AdminDashboard = () => {
                 </div>
               </div>
               <Button
-                onClick={() => setStatusFilter('pending_approval')}
+                onClick={() => startTransition(() => setStatusFilter('pending_approval'))}
                 className="bg-orange-600 hover:bg-orange-700 text-white font-semibold shrink-0"
               >
                 View &amp; Approve
@@ -2477,7 +2472,7 @@ export const AdminDashboard = () => {
                 )}
               </div>
               <div className="w-full md:w-48">
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <Select value={statusFilter} onValueChange={(v) => startTransition(() => setStatusFilter(v))}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -2663,7 +2658,7 @@ export const AdminDashboard = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => { setDateFrom(''); setDateTo(''); setSearchTerm(''); setStatusFilter('all'); fetchBookingsRef.current?.(1, false); }}
+                      onClick={() => { setDateFrom(''); setDateTo(''); setSearchTerm(''); startTransition(() => setStatusFilter('all')); fetchBookingsRef.current?.(1, false); }}
                       className="border-amber-500 text-amber-800 hover:bg-amber-100"
                     >
                       Clear all filters & show all bookings
