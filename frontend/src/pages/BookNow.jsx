@@ -127,47 +127,6 @@ export const BookNow = () => {
 
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
-  // Address autocomplete with debounce + stale-request cancellation
-  const [pickupSuggestions, setPickupSuggestions] = useState([]);
-  const [dropoffSuggestions, setDropoffSuggestions] = useState([]);
-  const [showPickupSuggestions, setShowPickupSuggestions] = useState(false);
-  const [showDropoffSuggestions, setShowDropoffSuggestions] = useState(false);
-  const [loadingPickupSuggestions, setLoadingPickupSuggestions] = useState(false);
-  const [loadingDropoffSuggestions, setLoadingDropoffSuggestions] = useState(false);
-  const addressDebounceRef = useRef({});
-  const addressRequestIdRef = useRef({ pickup: 0, dropoff: 0 });
-
-  const fetchAddressSuggestions = (query, setter, showSetter) => {
-    const key = setter === setPickupSuggestions ? 'pickup' : 'dropoff';
-    const setLoading = key === 'pickup' ? setLoadingPickupSuggestions : setLoadingDropoffSuggestions;
-    if (addressDebounceRef.current[key]) clearTimeout(addressDebounceRef.current[key]);
-
-    if (query.length < 3) { setter([]); showSetter(false); setLoading(false); return; }
-
-    setLoading(true);
-    // Debounce 300ms so rapid typing doesn't fire on every keystroke
-    addressDebounceRef.current[key] = setTimeout(async () => {
-      const requestId = ++addressRequestIdRef.current[key];
-      try {
-        const res = await axios.get(`${API}/places/autocomplete`, { params: { input: query }, timeout: 10000 });
-        // Only apply if this is still the latest request for THIS field
-        if (requestId !== addressRequestIdRef.current[key]) return;
-        const predictions = res.data?.predictions || [];
-        if (res.data?.source === 'fallback') {
-          console.warn('[BookARide] Google Maps API not available, using fallback addresses. Reason:', res.data?.reason);
-        }
-        setter(predictions);
-        showSetter(predictions.length > 0);
-      } catch (err) {
-        if (requestId !== addressRequestIdRef.current[key]) return;
-        console.error('[BookARide] Address autocomplete failed:', err?.message || err, 'URL:', `${API}/places/autocomplete`);
-        setter([]); showSetter(false);
-      } finally {
-        if (requestId === addressRequestIdRef.current[key]) setLoading(false);
-      }
-    }, 300);
-  };
-
   const finalTotal = pricing.totalPrice;
 
   const serviceOptions = [
@@ -500,34 +459,11 @@ export const BookNow = () => {
                         <AddressAutocomplete
                           id="pickupAddress"
                           value={formData.pickupAddress}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setFormData(prev => ({ ...prev, pickupAddress: val }));
-                            fetchAddressSuggestions(val, setPickupSuggestions, setShowPickupSuggestions);
-                          }}
-                          onBlur={() => setTimeout(() => setShowPickupSuggestions(false), 350)}
+                          onChange={(val) => setFormData(prev => ({ ...prev, pickupAddress: val }))}
+                          onSelect={(val) => setFormData(prev => ({ ...prev, pickupAddress: val }))}
                           placeholder="Start typing your address..."
                           required
                         />
-                        {loadingPickupSuggestions && (
-                          <div className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 px-4 py-3 text-sm text-gray-500">
-                            Searching addresses...
-                          </div>
-                        )}
-                        {showPickupSuggestions && pickupSuggestions.length > 0 && !loadingPickupSuggestions && (
-                          <ul className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
-                            {pickupSuggestions.map((s, i) => (
-                              <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm border-b last:border-b-0"
-                                onPointerDown={(e) => {
-                                  e.preventDefault();
-                                  setFormData(prev => ({ ...prev, pickupAddress: s.description }));
-                                  setShowPickupSuggestions(false);
-                                }}>
-                                {s.description}
-                              </li>
-                            ))}
-                          </ul>
-                        )}
                       </div>
 
                       {/* Additional Pickup Addresses */}
@@ -578,37 +514,14 @@ export const BookNow = () => {
                             </button>
                           ))}
                         </div>
-                        <Input
+                        <AddressAutocomplete
                           id="dropoffAddress"
                           value={formData.dropoffAddress}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setFormData(prev => ({ ...prev, dropoffAddress: val }));
-                            fetchAddressSuggestions(val, setDropoffSuggestions, setShowDropoffSuggestions);
-                          }}
-                          onBlur={() => setTimeout(() => setShowDropoffSuggestions(false), 350)}
+                          onChange={(val) => setFormData(prev => ({ ...prev, dropoffAddress: val }))}
+                          onSelect={(val) => setFormData(prev => ({ ...prev, dropoffAddress: val }))}
                           placeholder="Start typing destination..."
                           required
                         />
-                        {loadingDropoffSuggestions && (
-                          <div className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 px-4 py-3 text-sm text-gray-500">
-                            Searching addresses...
-                          </div>
-                        )}
-                        {showDropoffSuggestions && dropoffSuggestions.length > 0 && !loadingDropoffSuggestions && (
-                          <ul className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
-                            {dropoffSuggestions.map((s, i) => (
-                              <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm border-b last:border-b-0"
-                                onPointerDown={(e) => {
-                                  e.preventDefault();
-                                  setFormData(prev => ({ ...prev, dropoffAddress: s.description }));
-                                  setShowDropoffSuggestions(false);
-                                }}>
-                                {s.description}
-                              </li>
-                            ))}
-                          </ul>
-                        )}
                       </div>
 
                       {/* Date & Time */}
