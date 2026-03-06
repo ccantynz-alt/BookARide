@@ -2044,8 +2044,8 @@ export const AdminDashboard = () => {
         returnArrivalFlightNumber: '',
         returnArrivalTime: ''
       });
-      setAdminReturnDate(null);
-      setAdminReturnTime(null);
+      setAdminPickupDate(null); setAdminPickupTime(null); setAdminReturnDate(null); setAdminReturnTime(null); setAdminFlightArrivalTime(null); setAdminFlightDepartureTime(null);
+      setCustomerSearchQuery(''); setCustomerSearchResults([]); setShowCustomerDropdown(false);
       setBookingPricing({
         distance: 0,
         basePrice: 0,
@@ -4066,7 +4066,18 @@ onViewBooking={(booking) => {
       </Dialog>
 
       {/* Create Booking Modal */}
-      <Dialog open={showCreateBookingModal} onOpenChange={setShowCreateBookingModal}>
+      <Dialog open={showCreateBookingModal} onOpenChange={(open) => {
+        if (!open) {
+          setShowCreateBookingModal(false);
+          setNewBooking({ name: '', email: '', ccEmail: '', phone: '', serviceType: 'airport-shuttle', pickupAddress: '', pickupAddresses: [], dropoffAddress: '', date: '', time: '', passengers: '1', paymentMethod: 'stripe', notes: '', flightArrivalNumber: '', flightArrivalTime: '', flightDepartureNumber: '', flightDepartureTime: '', bookReturn: false, returnDate: '', returnTime: '', returnDepartureFlightNumber: '', returnDepartureTime: '', returnArrivalFlightNumber: '', returnArrivalTime: '' });
+          setAdminPickupDate(null); setAdminPickupTime(null); setAdminReturnDate(null); setAdminReturnTime(null); setAdminFlightArrivalTime(null); setAdminFlightDepartureTime(null);
+          setCustomerSearchQuery(''); setCustomerSearchResults([]); setShowCustomerDropdown(false);
+          setBookingPricing({ distance: 0, basePrice: 0, airportFee: 0, passengerFee: 0, totalPrice: 0 });
+          setManualPriceOverride('');
+        } else {
+          setShowCreateBookingModal(true);
+        }
+      }}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create Manual Booking</DialogTitle>
@@ -4312,7 +4323,6 @@ onViewBooking={(booking) => {
                           }
                         }}
                         placeholder="Select date"
-                        minDate={new Date()}
                         maxDate={new Date('2030-12-31')}
                         showMonthDropdown
                         showYearDropdown
@@ -4478,13 +4488,30 @@ onViewBooking={(booking) => {
                         <Label className="text-sm font-medium text-gray-700 mb-2 block">Return Flight Information (required if booking return)</Label>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
-                            <Label className="text-xs">Return Flight Number</Label>
+                            <Label className="text-xs">Return Departure Flight Number</Label>
                             <Input
                               value={newBooking.returnDepartureFlightNumber || ''}
                               onChange={(e) => setNewBooking(prev => ({...prev, returnDepartureFlightNumber: e.target.value}))}
                               placeholder="e.g. NZ456"
                               className="mt-1"
                             />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Return Departure Time</Label>
+                            <div className="mt-1">
+                              <CustomTimePicker
+                                selected={adminFlightDepartureTime}
+                                onChange={(time) => {
+                                  setAdminFlightDepartureTime(time);
+                                  if (time) {
+                                    const hours = time.getHours().toString().padStart(2, '0');
+                                    const minutes = time.getMinutes().toString().padStart(2, '0');
+                                    setNewBooking(prev => ({...prev, returnDepartureTime: `${hours}:${minutes}`}));
+                                  }
+                                }}
+                                placeholder="Select departure time"
+                              />
+                            </div>
                           </div>
                           <div>
                             <Label className="text-xs">Return Arrival Flight (optional)</Label>
@@ -4494,6 +4521,23 @@ onViewBooking={(booking) => {
                               placeholder="e.g. NZ789"
                               className="mt-1"
                             />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Return Arrival Time (optional)</Label>
+                            <div className="mt-1">
+                              <CustomTimePicker
+                                selected={adminFlightArrivalTime}
+                                onChange={(time) => {
+                                  setAdminFlightArrivalTime(time);
+                                  if (time) {
+                                    const hours = time.getHours().toString().padStart(2, '0');
+                                    const minutes = time.getMinutes().toString().padStart(2, '0');
+                                    setNewBooking(prev => ({...prev, returnArrivalTime: `${hours}:${minutes}`}));
+                                  }
+                                }}
+                                placeholder="Select arrival time"
+                              />
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -4621,26 +4665,10 @@ onViewBooking={(booking) => {
                 variant="outline"
                 onClick={() => {
                   setShowCreateBookingModal(false);
-                  setNewBooking({
-                    name: '',
-                    email: '',
-                    phone: '',
-                    serviceType: 'airport-shuttle',
-                    pickupAddress: '',
-                    dropoffAddress: '',
-                    date: '',
-                    time: '',
-                    passengers: '1',
-                    paymentMethod: 'stripe',  // Default to Stripe payment link
-                    notes: ''
-                  });
-                  setBookingPricing({
-                    distance: 0,
-                    basePrice: 0,
-                    airportFee: 0,
-                    passengerFee: 0,
-                    totalPrice: 0
-                  });
+                  setNewBooking({ name: '', email: '', ccEmail: '', phone: '', serviceType: 'airport-shuttle', pickupAddress: '', pickupAddresses: [], dropoffAddress: '', date: '', time: '', passengers: '1', paymentMethod: 'stripe', notes: '', flightArrivalNumber: '', flightArrivalTime: '', flightDepartureNumber: '', flightDepartureTime: '', bookReturn: false, returnDate: '', returnTime: '', returnDepartureFlightNumber: '', returnDepartureTime: '', returnArrivalFlightNumber: '', returnArrivalTime: '' });
+                  setAdminPickupDate(null); setAdminPickupTime(null); setAdminReturnDate(null); setAdminReturnTime(null); setAdminFlightArrivalTime(null); setAdminFlightDepartureTime(null);
+                  setCustomerSearchQuery(''); setCustomerSearchResults([]); setShowCustomerDropdown(false);
+                  setBookingPricing({ distance: 0, basePrice: 0, airportFee: 0, passengerFee: 0, totalPrice: 0 });
                   setManualPriceOverride('');
                 }}
               >
@@ -4794,7 +4822,6 @@ onViewBooking={(booking) => {
                         type="date"
                         value={editingBooking.date}
                         onChange={(e) => setEditingBooking(prev => ({...prev, date: e.target.value}))}
-                        min={new Date().toISOString().split('T')[0]}
                         className="mt-1"
                       />
                     </div>
