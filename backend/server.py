@@ -36,6 +36,7 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 import vobject
 import asyncio
+from motor.motor_asyncio import AsyncIOMotorClient
 
 try:
     from email_sender import send_email as send_email_unified, get_noreply_email
