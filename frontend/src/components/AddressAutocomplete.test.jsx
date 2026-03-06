@@ -164,28 +164,39 @@ test('when onSelect is not provided, onChange is called instead', async () => {
 // Simulates a debounced API response arriving WHILE the user is clicking.
 // With onClick this would re-open the dropdown; onMouseDown fires first and wins.
 
-test('stale API response after selection does not re-open dropdown', async () => {
+test('in-flight API response arriving after selection does NOT re-open the dropdown', async () => {
+  // Simulates the real-world race: user types, debounce fires, axios is in-flight,
+  // user clicks a suggestion — then the axios response lands. The dropdown must
+  // stay closed (generation counter mismatch discards the stale response).
+  let resolveAxios;
+  axios.get.mockImplementationOnce(
+    () => new Promise((resolve) => { resolveAxios = resolve; })
+  );
+
   const { input, onSelect } = setup();
 
-  // First response populates dropdown
+  // Trigger fetch (debounce fires, axios starts but hasn't resolved yet)
   fireEvent.change(input, { target: { value: 'Queen' } });
+  act(() => jest.runAllTimers());
+
+  // First call is pending. Show initial suggestions from previous mock for click target.
+  // Re-seed with a resolved response for the visible dropdown.
+  axios.get.mockResolvedValueOnce({ data: { predictions: SUGGESTIONS } });
+  fireEvent.change(input, { target: { value: 'Queen S' } });
   act(() => jest.runAllTimers());
   await waitFor(() => screen.getAllByRole('button'));
 
-  // User clicks first suggestion (mousedown)
+  // User selects a suggestion
   fireEvent.mouseDown(screen.getAllByRole('button')[0]);
   expect(onSelect).toHaveBeenCalledTimes(1);
 
-  // A second API call resolves right after (race condition scenario)
+  // Now the original in-flight request resolves (stale — should be ignored)
   await act(async () => {
-    axios.get.mockResolvedValueOnce({ data: { predictions: SUGGESTIONS } });
-    fireEvent.change(input, { target: { value: 'Queen S' } });
-    jest.runAllTimers();
+    resolveAxios({ data: { predictions: SUGGESTIONS } });
   });
 
-  // Dropdown should show again only because user typed again — that's fine.
-  // The key assertion: onSelect was only called ONCE (no ghost selection)
-  expect(onSelect).toHaveBeenCalledTimes(1);
+  // Dropdown must remain closed
+  expect(screen.queryByRole('button')).not.toBeInTheDocument();
 });
 
 // ── 5. Click-outside closes dropdown ──────────────────────────────────────────

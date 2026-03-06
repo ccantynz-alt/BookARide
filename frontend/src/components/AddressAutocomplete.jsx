@@ -40,6 +40,8 @@ const AddressAutocomplete = ({
   const inputRef = useRef(null);
   const dropdownRef = useRef(null);
   const debounceRef = useRef(null);
+  // Incremented on every selection to discard in-flight responses that arrive after.
+  const fetchGenRef = useRef(0);
 
   const fetchSuggestions = useCallback(
     (text) => {
@@ -49,11 +51,14 @@ const AddressAutocomplete = ({
         setOpen(false);
         return;
       }
+      const gen = ++fetchGenRef.current;
       debounceRef.current = setTimeout(async () => {
         try {
           const resp = await axios.get(`${API}/places/autocomplete`, {
             params: { input: text, types: 'address', region },
           });
+          // Ignore if a selection happened while the request was in-flight
+          if (gen !== fetchGenRef.current) return;
           const preds = resp.data.predictions || [];
           setSuggestions(preds);
           setOpen(preds.length > 0);
@@ -90,6 +95,8 @@ const AddressAutocomplete = ({
   }, [open, updatePosition]);
 
   const handleSelect = (description) => {
+    clearTimeout(debounceRef.current);  // cancel pending debounce
+    fetchGenRef.current++;              // invalidate any in-flight request
     setOpen(false);
     setSuggestions([]);
     if (onSelect) onSelect(description);
