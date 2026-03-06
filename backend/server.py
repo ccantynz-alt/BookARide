@@ -4,7 +4,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import Response, RedirectResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
-from motor.motor_asyncio import AsyncIOMotorClient
+from database import NeonDatabase
 import os
 import logging
 from pathlib import Path
@@ -167,6 +167,11 @@ security = HTTPBearer()
 # Create the main app without a prefix
 app = FastAPI()
 
+@app.on_event("startup")
+async def startup_event():
+    """Connect to Neon PostgreSQL on startup."""
+    await _init_db()
+
 # Root and health - Render/Kubernetes may check / or /health or /healthz
 @app.get("/")
 async def root():
@@ -180,14 +185,14 @@ async def root():
 @app.get("/health")
 @app.get("/healthz")
 async def root_health_check():
-    """Root health check for Render/Kubernetes. Pings MongoDB so readiness = app + DB up."""
+    """Root health check for Render/Kubernetes. Pings DB so readiness = app + DB up."""
     try:
         await asyncio.wait_for(db.command("ping"), timeout=2.0)
-        return {"status": "healthy", "service": "bookaride-api", "mongo": "ok"}
+        return {"status": "healthy", "service": "bookaride-api", "database": "ok"}
     except asyncio.TimeoutError:
-        raise HTTPException(status_code=503, detail="MongoDB ping timeout")
+        raise HTTPException(status_code=503, detail="Database ping timeout")
     except Exception as e:
-        raise HTTPException(status_code=503, detail=f"MongoDB unreachable: {str(e)}")
+        raise HTTPException(status_code=503, detail=f"Database unreachable: {str(e)}")
 
 
 @app.get("/email-status")
@@ -215,32 +220,11 @@ async def root_email_status():
         "hint": "SendGrid only: SENDGRID_API_KEY + NOREPLY_EMAIL (verified sender in SendGrid). Remove Mailgun/SMTP.",
     }
 
-# Google auth start - app-level routes (try multiple paths for compatibility)
-@app.get("/api/admin/google-auth/start")
-@app.get("/api/google-auth-start")  # Simpler path fallback
+# Google auth start - short-path alias for compatibility
+@app.get("/api/google-auth-start")
 async def admin_google_auth_start_app():
-    """Start Google OAuth - app-level route for reliability"""
-    client_id = os.environ.get('GOOGLE_CLIENT_ID')
-    client_secret = os.environ.get('GOOGLE_CLIENT_SECRET')
-    if not client_id or not client_secret:
-        raise HTTPException(status_code=500, detail="Google OAuth not configured. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.")
-    public_domain = os.environ.get('PUBLIC_DOMAIN', 'https://bookaride.co.nz')
-    backend_url = os.environ.get('BACKEND_URL') or os.environ.get('RENDER_EXTERNAL_URL') or public_domain
-    redirect_uri = f"{backend_url.rstrip('/')}/api/admin/google-auth/callback"
-    state = f"bookaride_admin_oauth_{uuid.uuid4().hex}"
-    auth_url = (
-        "https://accounts.google.com/o/oauth2/v2/auth?"
-        f"client_id={client_id}&"
-        f"redirect_uri={requests.utils.quote(redirect_uri)}&"
-        "response_type=code&"
-        "scope=openid%20email%20profile&"
-        f"state={state}&"
-        "access_type=offline&"
-        "prompt=select_account"
-    )
-    response = RedirectResponse(url=auth_url)
-    response.set_cookie(key="admin_oauth_state", value=state, httponly=True, max_age=600, samesite="lax")
-    return response
+    """Start Google OAuth - short-path alias, delegates to the canonical router route"""
+    return RedirectResponse(url="/api/admin/google-auth/start")
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
@@ -553,7 +537,7 @@ async def get_next_reference_number():
     """Get the next sequential reference number for bookings, starting from 10"""
     # Use a counter collection to maintain sequential numbers
     counter = await db.counters.find_one_and_update(
-        {"_id": "booking_reference"},
+        {"id": "booking_reference"},
         {"$inc": {"seq": 1}},
         upsert=True,
         return_document=True
@@ -561,7 +545,7 @@ async def get_next_reference_number():
     # Start from 10 if this is a new counter
     if counter is None or counter.get('seq', 0) < 10:
         await db.counters.update_one(
-            {"_id": "booking_reference"},
+            {"id": "booking_reference"},
             {"$set": {"seq": 10}},
             upsert=True
         )
@@ -724,6 +708,18 @@ async def set_password(
 # Standalone Google OAuth (no Emergent) - redirect flow
 ADMIN_GOOGLE_OAUTH_STATE = "bookaride_admin_oauth"
 
+# Server-side state store: state_value -> expiry timestamp
+# Used as the primary validation mechanism so OAuth works even when
+# the cookie is blocked (cross-subdomain / browser SameSite restrictions).
+_oauth_state_store: Dict[str, float] = {}
+_OAUTH_STATE_TTL = 600  # seconds (10 minutes)
+
+def _purge_expired_oauth_states():
+    now = _time_mod.time()
+    expired = [k for k, exp in _oauth_state_store.items() if now > exp]
+    for k in expired:
+        _oauth_state_store.pop(k, None)
+
 @api_router.get("/admin/google-auth/start")
 async def admin_google_auth_start():
     """Start Google OAuth flow for admin login - redirects to Google"""
@@ -745,8 +741,14 @@ async def admin_google_auth_start():
         "access_type=offline&"
         "prompt=select_account"
     )
+    # Store state server-side (primary check — cookie can be blocked cross-subdomain)
+    _purge_expired_oauth_states()
+    _oauth_state_store[state] = _time_mod.time() + _OAUTH_STATE_TTL
+
     response = RedirectResponse(url=auth_url)
-    response.set_cookie(key="admin_oauth_state", value=state, httponly=True, max_age=600, samesite="lax")
+    is_https = backend_url.startswith("https://")
+    # Also set cookie as secondary/legacy fallback
+    response.set_cookie(key="admin_oauth_state", value=state, httponly=True, secure=is_https, max_age=600, samesite="lax")
     return response
 
 @api_router.get("/admin/google-auth/callback")
@@ -765,8 +767,18 @@ async def admin_google_auth_callback(request: Request, code: Optional[str] = Non
     client_secret = os.environ.get('GOOGLE_CLIENT_SECRET')
     if not client_id or not client_secret:
         return RedirectResponse(url=f"{callback_url}?error=config&message=Server%20OAuth%20not%20configured.")
+    # Validate state — prefer server-side store (works even when cookie is blocked
+    # by SameSite/cross-subdomain restrictions), fall back to cookie comparison.
+    _purge_expired_oauth_states()
+    state_in_store = state in _oauth_state_store and _time_mod.time() <= _oauth_state_store[state]
     saved_state = request.cookies.get("admin_oauth_state")
-    if not saved_state or saved_state != state or not state.startswith(ADMIN_GOOGLE_OAUTH_STATE):
+    state_valid = (
+        state.startswith(ADMIN_GOOGLE_OAUTH_STATE)
+        and (state_in_store or (saved_state is not None and saved_state == state))
+    )
+    if state_in_store:
+        _oauth_state_store.pop(state, None)  # consume — one-time use
+    if not state_valid:
         return RedirectResponse(
             url=f"{callback_url}?error=invalid_state&message=Invalid%20or%20expired%20sign-in.%20Please%20try%20again."
         )
@@ -2987,7 +2999,7 @@ def send_customer_confirmation(booking: dict):
     elif preference == 'sms':
         logger.info(f"Customer prefers SMS only - skipping email for booking {get_booking_reference(booking)}")
     
-    # Update database with confirmation status (sync version)
+    # Update database with confirmation status (async via new event loop)
     if booking_id:
         try:
             from pymongo import MongoClient
@@ -4279,7 +4291,7 @@ Price: ${booking.get('totalPrice', 0):.2f}
             )
             logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Urgent SMS sent to admin {admin_phone} for booking: #{booking_ref} - SID: {message.sid}")
             
-            # Store booking ID in database for SMS reply matching (using sync client)
+            # Store booking ID in database for SMS reply matching
             try:
                 from pymongo import MongoClient
                 sync_client = MongoClient(os.environ.get('MONGO_URL', 'mongodb://localhost:27017'))
@@ -11197,9 +11209,9 @@ async def fix_imported_bookings():
         fixed_dates = 0
         
         # Find ALL imported bookings and fix them
-        cursor = db.bookings.find({"imported_from": "wordpress_chauffeur"})
-        
-        async for booking in cursor:
+        imported_bookings = await db.bookings.find({"imported_from": "wordpress_chauffeur"}).to_list(10000)
+
+        for booking in imported_bookings:
             updates = {
                 'status': 'confirmed',
                 'deleted': False,
@@ -11252,8 +11264,8 @@ async def fix_now():
         fixed_dates = 0
         
         # STEP 1: Move bookings from deleted_bookings collection back to bookings
-        deleted_cursor = db.deleted_bookings.find({"imported_from": "wordpress_chauffeur"})
-        async for booking in deleted_cursor:
+        deleted_bookings_list = await db.deleted_bookings.find({"imported_from": "wordpress_chauffeur"}).to_list(10000)
+        for booking in deleted_bookings_list:
             # Remove deletion metadata
             booking.pop('deletedAt', None)
             booking.pop('deletedBy', None)
@@ -11281,8 +11293,8 @@ async def fix_now():
             restored += 1
         
         # STEP 2: Fix dates in main bookings collection
-        cursor = db.bookings.find({"imported_from": "wordpress_chauffeur"})
-        async for booking in cursor:
+        wp_bookings = await db.bookings.find({"imported_from": "wordpress_chauffeur"}).to_list(10000)
+        for booking in wp_bookings:
             updates = {}
             date_str = booking.get('date', '')
             if date_str:
@@ -11365,10 +11377,10 @@ async def batch_sync_calendar_task(query: dict):
         synced = 0
         failed = 0
         
-        # Process bookings in batches to avoid memory issues
-        cursor = db.bookings.find(query, {"_id": 0})
-        
-        async for booking in cursor:
+        # Process bookings
+        all_bookings = await db.bookings.find(query, {"_id": 0}).to_list(10000)
+
+        for booking in all_bookings:
             try:
                 # Add small delay between requests to avoid rate limiting
                 await asyncio.sleep(0.5)
@@ -12877,56 +12889,58 @@ def create_arrival_email_html(customer_name: str, booking_date: str, pickup_time
 async def startup_event():
     """Start the scheduler when the app starts and ensure default admin exists"""
     # Ensure default admin exists with correct email for Google OAuth
-    try:
-        default_admin = await db.admin_users.find_one({"username": "admin"})
-    except Exception as e:
-        print("WARN: admin seed skipped (db unavailable):", repr(e))
-        default_admin = {"_skip": True}
-    if not default_admin:
-        hashed_pw = "$2b$12$C6UzMDM.H6dfI/f/IKcEeO8m8Y4YkQkQ1h6s4H6c3Z8Y5G7c8Y4r2"
-        await db.admin_users.insert_one({
-            "id": str(uuid.uuid4()),
-            "username": "admin",
-            "email": "info@bookaride.co.nz",
-            "hashed_password": hashed_pw,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "is_active": True
-        })
-        logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Default admin user created")
+    if db is None:
+        logger.warning("WARN: admin seed skipped (db unavailable — DATABASE_URL not set)")
     else:
-        # Update password and email to ensure they're correct
-        hashed_pw = "$2b$12$C6UzMDM.H6dfI/f/IKcEeO8m8Y4YkQkQ1h6s4H6c3Z8Y5G7c8Y4r2"
-        await db.admin_users.update_one(
-            {"username": "admin"},
-            {"$set": {
-                "hashed_password": hashed_pw,
-                "email": "info@bookaride.co.nz"
-            }}
-        )
-        logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Admin password reset and email updated to info@bookaride.co.nz")
+        try:
+            default_admin = await db.admin_users.find_one({"username": "admin"})
+            hashed_pw = "$2b$12$C6UzMDM.H6dfI/f/IKcEeO8m8Y4YkQkQ1h6s4H6c3Z8Y5G7c8Y4r2"
+            if not default_admin:
+                await db.admin_users.insert_one({
+                    "id": str(uuid.uuid4()),
+                    "username": "admin",
+                    "email": "info@bookaride.co.nz",
+                    "hashed_password": hashed_pw,
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "is_active": True
+                })
+                logger.info("Default admin user created")
+            else:
+                # Update password and email to ensure they’re correct
+                await db.admin_users.update_one(
+                    {"username": "admin"},
+                    {"$set": {
+                        "hashed_password": hashed_pw,
+                        "email": "info@bookaride.co.nz"
+                    }}
+                )
+                logger.info("Admin password reset and email updated to info@bookaride.co.nz")
+        except Exception as e:
+            logger.warning(f"Admin seed error: {repr(e)}")
     
     # Create database indexes for faster queries
-    try:
-        await db.bookings.create_index("date")
-        await db.bookings.create_index("status")
-        await db.bookings.create_index("name")
-        await db.bookings.create_index("email")
-        await db.bookings.create_index("referenceNumber")
-        await db.bookings.create_index("original_booking_id")
-        await db.bookings.create_index([("date", -1), ("status", 1)])
-        logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Database indexes created for faster queries")
-    except Exception as e:
-        logger.warning(f"Index creation note: {str(e)}")
-    
-    # Create index for archive collection
-    try:
-        await db.bookings_archive.create_index("archivedAt")
-        await db.bookings_archive.create_index("name")
-        await db.bookings_archive.create_index("email")
-        await db.bookings_archive.create_index("referenceNumber")
-        logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Archive indexes created")
-    except Exception as e:
-        logger.warning(f"Archive index creation note: {str(e)}")
+    if db is not None:
+        try:
+            await db.bookings.create_index("date")
+            await db.bookings.create_index("status")
+            await db.bookings.create_index("name")
+            await db.bookings.create_index("email")
+            await db.bookings.create_index("referenceNumber")
+            await db.bookings.create_index("original_booking_id")
+            await db.bookings.create_index([("date", -1), ("status", 1)])
+            logger.info("Database indexes created for faster queries")
+        except Exception as e:
+            logger.warning(f"Index creation note: {str(e)}")
+
+        # Create index for archive collection
+        try:
+            await db.bookings_archive.create_index("archivedAt")
+            await db.bookings_archive.create_index("name")
+            await db.bookings_archive.create_index("email")
+            await db.bookings_archive.create_index("referenceNumber")
+            logger.info("Archive indexes created")
+        except Exception as e:
+            logger.warning(f"Archive index creation note: {str(e)}")
     
     # ============================================
     # RELIABLE REMINDER SYSTEM - 3 LAYERS
@@ -13057,4 +13071,5 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_db_client():
     scheduler.shutdown()
-    client.close()
+    if db:
+        await db.close()

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
 ndb = None  # Will be injected from server.py
-from motor.motor_asyncio import AsyncIOMotorDatabase
+from database import NeonDatabase
 from datetime import datetime, timedelta
 from typing import Dict, List
 import pandas as pd

@@ -1,29 +1,40 @@
 """
 BookaRide Booking Import Script
-Run this script with your production MongoDB URL to import bookings.
+Imports hardcoded historical bookings into the Neon PostgreSQL database.
 
 Usage:
-  python IMPORT_BOOKINGS_SCRIPT.py "mongodb+srv://user:pass@cluster.mongodb.net/dbname"
-
-Or set environment variable:
-  export MONGO_URL="mongodb+srv://..."
   python IMPORT_BOOKINGS_SCRIPT.py
+
+Environment variables (required):
+  DATABASE_URL  - Neon/PostgreSQL connection string
+                  e.g. postgresql://user:pass@host/dbname
+
+Optional:
+  DRY_RUN=1     - Print what would be imported without writing to DB
 """
 
 import asyncio
-from motor.motor_asyncio import AsyncIOMotorClient
-from datetime import datetime
-import sys
+import asyncpg
+import json
 import os
+import sys
+from datetime import datetime
 from uuid import uuid4
 
-# Get MongoDB URL from argument or environment
-MONGO_URL = sys.argv[1] if len(sys.argv) > 1 else os.environ.get('MONGO_URL', '')
+DATABASE_URL = os.environ.get('DATABASE_URL', '')
+DRY_RUN = os.environ.get('DRY_RUN', '').strip() in ('1', 'true', 'yes')
 
-if not MONGO_URL:
-    print("ERROR: Please provide MongoDB URL as argument or set MONGO_URL environment variable")
-    print("Usage: python IMPORT_BOOKINGS_SCRIPT.py 'mongodb+srv://...'")
+if not DATABASE_URL:
+    print("ERROR: DATABASE_URL environment variable is required.")
+    print("  export DATABASE_URL='postgresql://user:pass@host/dbname'")
     sys.exit(1)
+
+
+def _json_serial(obj):
+    if isinstance(obj, datetime):
+        return obj.isoformat()
+    raise TypeError(f"Type {type(obj)} not serializable")
+
 
 # All bookings to import (no notifications will be sent)
 BOOKINGS = [
@@ -313,117 +324,147 @@ BOOKINGS = [
         "bookReturn": False,
         "linkedBooking": "14427",
         "comment": "RETURN TRIP"
-    }
+    },
+    # ADDITIONAL BOOKING
+    {
+        "referenceNumber": 61,
+        "serviceType": "Airport Drop-off",
+        "name": "Tamer Abdellatif",
+        "email": "TAMERMAHER_ICT@YAHOO.COM",
+        "phone": "+64211876654",
+        "pickupAddress": "39 Chivalry Road, Glenfield, Auckland 0629",
+        "dropoffAddress": "Ray Emery Drive, Māngere, Auckland 2022",
+        "pickupAddresses": [],
+        "date": "2025-12-18",
+        "time": "06:15",
+        "passengers": "1",
+        "totalPrice": 95.00,
+        "distance": 35,
+        "duration": "00:35",
+        "departureFlightNumber": "",
+        "departureTime": "",
+        "arrivalFlightNumber": "",
+        "arrivalTime": "",
+        "driverName": "",
+        "bookReturn": False,
+        "comment": ""
+    },
 ]
 
+
+def _build_doc(booking: dict) -> dict:
+    ref = str(booking["referenceNumber"])
+    doc = {
+        "id": str(uuid4()),
+        "referenceNumber": booking["referenceNumber"],
+        "serviceType": booking["serviceType"],
+        "name": booking["name"],
+        "email": booking["email"],
+        "phone": booking["phone"],
+        "pickupAddress": booking["pickupAddress"],
+        "dropoffAddress": booking["dropoffAddress"],
+        "pickupAddresses": booking.get("pickupAddresses", []),
+        "additionalPickups": booking.get("pickupAddresses", []),
+        "date": booking["date"],
+        "time": booking["time"],
+        "passengers": booking["passengers"],
+        "luggage": "Standard",
+        "totalPrice": booking["totalPrice"],
+        "pricing": {"totalPrice": booking["totalPrice"], "distance": booking.get("distance", 0)},
+        "distance": booking.get("distance", 0),
+        "duration": booking.get("duration", ""),
+        "flightNumber": booking.get("arrivalFlightNumber") or booking.get("departureFlightNumber", ""),
+        "flightTime": booking.get("arrivalTime") or booking.get("departureTime", ""),
+        "departureFlightNumber": booking.get("departureFlightNumber", ""),
+        "departureTime": booking.get("departureTime", ""),
+        "arrivalFlightNumber": booking.get("arrivalFlightNumber", ""),
+        "arrivalTime": booking.get("arrivalTime", ""),
+        "paymentMethod": "stripe",
+        "paymentStatus": "paid",
+        "payment_status": "paid",
+        "status": "confirmed",
+        "driverName": booking.get("driverName", ""),
+        "bookReturn": booking.get("bookReturn", False),
+        "returnDate": booking.get("returnDate", ""),
+        "returnTime": booking.get("returnTime", ""),
+        "specialRequirements": booking.get("comment", ""),
+        "comment": booking.get("comment", ""),
+        "notes": booking.get("comment", ""),
+        "createdAt": datetime.utcnow().isoformat(),
+        "importedFrom": "external_system",
+        "confirmationSent": True,
+        "adminNotified": True,
+        "notificationsSent": False,
+    }
+    if booking.get("linkedBooking"):
+        doc["linkedBooking"] = booking["linkedBooking"]
+    return doc
+
+
 async def import_bookings():
-    print(f"Connecting to: {MONGO_URL[:50]}...")
-    client = AsyncIOMotorClient(MONGO_URL)
-    
-    # Get database name from URL or use default
-    db_name = MONGO_URL.split('/')[-1].split('?')[0] if '/' in MONGO_URL else 'bookaride'
-    db = client[db_name]
-    
-    print(f"Using database: {db_name}")
+    print(f"Connecting to PostgreSQL (Neon)...")
+    pool = await asyncpg.create_pool(DATABASE_URL, min_size=1, max_size=5)
+
+    # Ensure bookings table exists (matches NeonDatabase schema)
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS bookings (
+                _id BIGSERIAL PRIMARY KEY,
+                id TEXT UNIQUE,
+                data JSONB NOT NULL DEFAULT '{}'::jsonb,
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            )
+        """)
+
     print(f"Importing {len(BOOKINGS)} bookings...")
     print("-" * 50)
-    
+
     imported = 0
     skipped = 0
-    
+
     for booking in BOOKINGS:
-        # Check if exists
-        existing = await db.bookings.find_one({"referenceNumber": booking["referenceNumber"]})
-        if existing:
-            print(f"⏭️  Skip #{booking['referenceNumber']} {booking['name']} - already exists")
-            skipped += 1
+        ref = booking["referenceNumber"]
+        doc = _build_doc(booking)
+        data_json = json.dumps(doc, default=_json_serial)
+
+        if DRY_RUN:
+            print(f"[DRY RUN] Would import #{ref} {booking['name']} ({booking['date']} {booking['time']})")
+            imported += 1
             continue
-        
-        # Create full booking document
-        doc = {
-            "id": str(uuid4()),
-            "referenceNumber": booking["referenceNumber"],
-            "serviceType": booking["serviceType"],
-            "name": booking["name"],
-            "email": booking["email"],
-            "phone": booking["phone"],
-            "pickupAddress": booking["pickupAddress"],
-            "dropoffAddress": booking["dropoffAddress"],
-            "pickupAddresses": booking.get("pickupAddresses", []),
-            "additionalPickups": booking.get("pickupAddresses", []),
-            "date": booking["date"],
-            "time": booking["time"],
-            "passengers": booking["passengers"],
-            "luggage": "Standard",
-            "totalPrice": booking["totalPrice"],
-            "pricing": {"totalPrice": booking["totalPrice"], "distance": booking["distance"]},
-            "distance": booking["distance"],
-            "duration": booking["duration"],
-            "flightNumber": booking.get("arrivalFlightNumber") or booking.get("departureFlightNumber", ""),
-            "flightTime": booking.get("arrivalTime") or booking.get("departureTime", ""),
-            "departureFlightNumber": booking.get("departureFlightNumber", ""),
-            "departureTime": booking.get("departureTime", ""),
-            "arrivalFlightNumber": booking.get("arrivalFlightNumber", ""),
-            "arrivalTime": booking.get("arrivalTime", ""),
-            "paymentMethod": "stripe",
-            "paymentStatus": "paid",
-            "payment_status": "paid",
-            "status": "confirmed",
-            "driverName": booking.get("driverName", ""),
-            "bookReturn": booking.get("bookReturn", False),
-            "returnDate": booking.get("returnDate", ""),
-            "returnTime": booking.get("returnTime", ""),
-            "specialRequirements": booking.get("comment", ""),
-            "comment": booking.get("comment", ""),
-            "notes": booking.get("comment", ""),
-            "createdAt": datetime.utcnow().isoformat(),
-            "importedFrom": "external_system",
-            "confirmationSent": True,  # Prevents auto-sending confirmation
-            "adminNotified": True,
-            "notificationsSent": False
-        }
-        
-        if booking.get("linkedBooking"):
-            doc["linkedBooking"] = booking["linkedBooking"]
-        
-        await db.bookings.insert_one(doc)
-        print(f"✅ #{booking['referenceNumber']} {booking['name']} ({booking['date']} {booking['time']})")
-        imported += 1
-    
+
+        async with pool.acquire() as conn:
+            # Check if a booking with this referenceNumber already exists
+            existing = await conn.fetchrow(
+                "SELECT id FROM bookings WHERE data->>'referenceNumber' = $1",
+                str(ref)
+            )
+            if existing:
+                print(f"⏭️  Skip #{ref} {booking['name']} - already exists")
+                skipped += 1
+                continue
+
+            try:
+                await conn.execute(
+                    """INSERT INTO bookings (id, data)
+                       VALUES ($1, $2::jsonb)
+                       ON CONFLICT (id) DO NOTHING""",
+                    doc["id"], data_json
+                )
+                print(f"✅ #{ref} {booking['name']} ({booking['date']} {booking['time']})")
+                imported += 1
+            except Exception as e:
+                print(f"❌ #{ref} {booking['name']} - ERROR: {e}")
+
+    await pool.close()
+
     print("-" * 50)
-    print(f"✅ Imported: {imported}")
-    print(f"⏭️  Skipped: {skipped}")
-    print(f"📊 Total: {imported + skipped}")
-    
-    client.close()
+    if DRY_RUN:
+        print(f"[DRY RUN] Would import: {imported}")
+    else:
+        print(f"✅ Imported: {imported}")
+        print(f"⏭️  Skipped:  {skipped}")
+        print(f"📊 Total:    {imported + skipped}")
+
 
 if __name__ == "__main__":
     asyncio.run(import_bookings())
-
-# ADDITIONAL BOOKING - Tamer Abdellatif (missing from production)
-TAMER_BOOKING = {
-    "referenceNumber": 61,
-    "serviceType": "Airport Drop-off",
-    "name": "Tamer Abdellatif",
-    "email": "TAMERMAHER_ICT@YAHOO.COM",
-    "phone": "+64211876654",
-    "pickupAddress": "39 Chivalry Road, Glenfield, Auckland 0629",
-    "dropoffAddress": "Ray Emery Drive, Māngere, Auckland 2022",
-    "pickupAddresses": [],
-    "date": "2025-12-18",
-    "time": "06:15",
-    "passengers": "1",
-    "totalPrice": 95.00,
-    "distance": 35,
-    "duration": "00:35",
-    "departureFlightNumber": "",
-    "departureTime": "",
-    "arrivalFlightNumber": "",
-    "arrivalTime": "",
-    "driverName": "",
-    "bookReturn": False,
-    "comment": ""
-}
-
-# Add to BOOKINGS list
-BOOKINGS.append(TAMER_BOOKING)

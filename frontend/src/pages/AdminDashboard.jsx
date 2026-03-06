@@ -11,6 +11,7 @@ import { Textarea } from '../components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { toast } from 'sonner';
 import { CustomDatePicker, CustomTimePicker } from '../components/DateTimePicker';
+import AddressAutocomplete from '../components/AddressAutocomplete';
 import axios from 'axios';
 import { CustomersTab } from '../components/admin/CustomersTab';
 import { DriverApplicationsTab } from '../components/admin/DriverApplicationsTab';
@@ -2188,8 +2189,8 @@ export const AdminDashboard = () => {
         returnArrivalFlightNumber: '',
         returnArrivalTime: ''
       });
-      setAdminReturnDate(null);
-      setAdminReturnTime(null);
+      setAdminPickupDate(null); setAdminPickupTime(null); setAdminReturnDate(null); setAdminReturnTime(null); setAdminFlightArrivalTime(null); setAdminFlightDepartureTime(null);
+      setCustomerSearchQuery(''); setCustomerSearchResults([]); setShowCustomerDropdown(false);
       setBookingPricing({
         distance: 0,
         basePrice: 0,
@@ -4398,9 +4399,9 @@ export const AdminDashboard = () => {
             <div>
               <h3 className="font-semibold text-gray-900 mb-3">Trip Information</h3>
               <div className="space-y-4">
-                <div className="relative">
+                <div>
                   <Label>Pickup Address 1 *</Label>
-                  <Input
+                  <AddressAutocomplete
                     value={newBooking.pickupAddress}
                     onChange={(e) => {
                       const val = e.target.value;
@@ -4430,7 +4431,7 @@ export const AdminDashboard = () => {
 
                 {/* Additional Pickup Addresses */}
                 {newBooking.pickupAddresses.map((pickup, index) => (
-                  <div key={index} className="relative">
+                  <div key={index}>
                     <Label>Pickup Address {index + 2}</Label>
                     <div className="flex gap-2 mt-1">
                       <Input
@@ -4451,31 +4452,10 @@ export const AdminDashboard = () => {
                   </div>
                 ))}
 
-                {/* Add Pickup Button - Elegant Design */}
-                <div>
-                  <button
-                    type="button"
-                    onClick={handleAddPickup}
-                    className="group w-full flex items-center justify-center gap-3 px-6 py-4 bg-gradient-to-r from-gold/10 to-gold/5 hover:from-gold/20 hover:to-gold/10 border-2 border-dashed border-gold/40 hover:border-gold/60 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-[1.02] hover:shadow-md"
-                  >
-                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gold/20 group-hover:bg-gold/30 transition-colors">
-                      <MapPin className="w-4 h-4 text-gold" />
-                    </div>
-                    <span className="text-sm font-semibold text-gray-700 group-hover:text-gray-900">
-                      Add Another Pickup Location
-                    </span>
-                    <div className="flex items-center justify-center w-6 h-6 rounded-full bg-gold text-white text-xs font-bold group-hover:scale-110 transition-transform">
-                      +
-                    </div>
-                  </button>
-                  <p className="text-xs text-gray-500 mt-2 text-center">
-                    Add multiple pickup locations for shared rides or multi-stop trips
-                  </p>
-                </div>
 
-                <div className="relative">
+                <div>
                   <Label>Drop-off Address *</Label>
-                  <Input
+                  <AddressAutocomplete
                     value={newBooking.dropoffAddress}
                     onChange={(e) => {
                       const val = e.target.value;
@@ -4520,7 +4500,6 @@ export const AdminDashboard = () => {
                           }
                         }}
                         placeholder="Select date"
-                        minDate={new Date()}
                         maxDate={new Date('2030-12-31')}
                         showMonthDropdown
                         showYearDropdown
@@ -4686,13 +4665,30 @@ export const AdminDashboard = () => {
                         <Label className="text-sm font-medium text-gray-700 mb-2 block">Return Flight Information (required if booking return)</Label>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
-                            <Label className="text-xs">Return Flight Number</Label>
+                            <Label className="text-xs">Return Departure Flight Number</Label>
                             <Input
                               value={newBooking.returnDepartureFlightNumber || ''}
                               onChange={(e) => setNewBooking(prev => ({...prev, returnDepartureFlightNumber: e.target.value}))}
                               placeholder="e.g. NZ456"
                               className="mt-1"
                             />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Return Departure Time</Label>
+                            <div className="mt-1">
+                              <CustomTimePicker
+                                selected={adminFlightDepartureTime}
+                                onChange={(time) => {
+                                  setAdminFlightDepartureTime(time);
+                                  if (time) {
+                                    const hours = time.getHours().toString().padStart(2, '0');
+                                    const minutes = time.getMinutes().toString().padStart(2, '0');
+                                    setNewBooking(prev => ({...prev, returnDepartureTime: `${hours}:${minutes}`}));
+                                  }
+                                }}
+                                placeholder="Select departure time"
+                              />
+                            </div>
                           </div>
                           <div>
                             <Label className="text-xs">Return Arrival Flight (optional)</Label>
@@ -4702,6 +4698,23 @@ export const AdminDashboard = () => {
                               placeholder="e.g. NZ789"
                               className="mt-1"
                             />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Return Arrival Time (optional)</Label>
+                            <div className="mt-1">
+                              <CustomTimePicker
+                                selected={adminFlightArrivalTime}
+                                onChange={(time) => {
+                                  setAdminFlightArrivalTime(time);
+                                  if (time) {
+                                    const hours = time.getHours().toString().padStart(2, '0');
+                                    const minutes = time.getMinutes().toString().padStart(2, '0');
+                                    setNewBooking(prev => ({...prev, returnArrivalTime: `${hours}:${minutes}`}));
+                                  }
+                                }}
+                                placeholder="Select arrival time"
+                              />
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -4933,9 +4946,9 @@ export const AdminDashboard = () => {
               <div>
                 <h3 className="font-semibold text-gray-900 mb-3">Trip Information</h3>
                 <div className="space-y-4">
-                  <div className="relative">
+                  <div>
                     <Label>Pickup Address 1 *</Label>
-                    <Input
+                    <AddressAutocomplete
                       value={editingBooking.pickupAddress}
                       onChange={(e) => {
                         const val = e.target.value;
@@ -4965,7 +4978,7 @@ export const AdminDashboard = () => {
 
                   {/* Additional Pickup Addresses */}
                   {editingBooking.pickupAddresses?.map((pickup, index) => (
-                    <div key={index} className="relative">
+                    <div key={index}>
                       <Label>Pickup Address {index + 2}</Label>
                       <div className="flex gap-2 mt-1">
                         <Input
@@ -4986,22 +4999,10 @@ export const AdminDashboard = () => {
                     </div>
                   ))}
 
-                  {/* Add Pickup Button */}
-                  <div>
-                    <button
-                      type="button"
-                      onClick={handleAddEditPickup}
-                      className="group w-full flex items-center justify-center gap-3 px-6 py-4 bg-gradient-to-r from-gold/10 to-gold/5 hover:from-gold/20 hover:to-gold/10 border-2 border-dashed border-gold/40 hover:border-gold/60 rounded-lg transition-all duration-300"
-                    >
-                      <MapPin className="w-4 h-4 text-gold" />
-                      <span className="text-sm font-semibold text-gray-700">Add Another Pickup Location</span>
-                      <span className="w-6 h-6 rounded-full bg-gold text-white text-xs font-bold flex items-center justify-center">+</span>
-                    </button>
-                  </div>
 
-                  <div className="relative">
+                  <div>
                     <Label>Drop-off Address *</Label>
-                    <Input
+                    <AddressAutocomplete
                       value={editingBooking.dropoffAddress}
                       onChange={(e) => {
                         const val = e.target.value;

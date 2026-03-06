@@ -492,14 +492,13 @@ export const BookNow = () => {
                       </div>
 
                       {/* Pickup Address */}
-                      <div className="space-y-2 mb-6 relative">
+                      <div className="space-y-2 mb-6">
                         <Label htmlFor="pickupAddress" className="flex items-center space-x-2">
                           <MapPin className="w-4 h-4 text-gold" />
                           <span>Pickup Location 1 *</span>
                         </Label>
-                        <Input
+                        <AddressAutocomplete
                           id="pickupAddress"
-                          name="pickupAddress"
                           value={formData.pickupAddress}
                           onChange={(e) => {
                             const val = e.target.value;
@@ -509,8 +508,6 @@ export const BookNow = () => {
                           onBlur={() => setTimeout(() => setShowPickupSuggestions(false), 350)}
                           placeholder="Start typing your address..."
                           required
-                          autoComplete="off"
-                          className="transition-all duration-200 focus:ring-2 focus:ring-gold"
                         />
                         {loadingPickupSuggestions && (
                           <div className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 px-4 py-3 text-sm text-gray-500">
@@ -583,7 +580,6 @@ export const BookNow = () => {
                         </div>
                         <Input
                           id="dropoffAddress"
-                          name="dropoffAddress"
                           value={formData.dropoffAddress}
                           onChange={(e) => {
                             const val = e.target.value;
@@ -593,8 +589,6 @@ export const BookNow = () => {
                           onBlur={() => setTimeout(() => setShowDropoffSuggestions(false), 350)}
                           placeholder="Start typing destination..."
                           required
-                          autoComplete="off"
-                          className="transition-all duration-200 focus:ring-2 focus:ring-gold"
                         />
                         {loadingDropoffSuggestions && (
                           <div className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 px-4 py-3 text-sm text-gray-500">

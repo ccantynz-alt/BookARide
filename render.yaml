@@ -14,12 +14,10 @@ services:
         value: 10000
       - key: PYTHON_VERSION
         value: 3.11.9
-      - key: MONGO_URL
+      - key: DATABASE_URL
         sync: false
       - key: JWT_SECRET_KEY
         generateValue: true
-      - key: DB_NAME
-        value: bookaride
       - key: STRIPE_SECRET_KEY
         sync: false
       - key: MAILGUN_API_KEY
@@ -46,7 +44,7 @@ services:
     name: bookaride-frontend
     env: static
     rootDir: frontend
-    buildCommand: npm install && npm run build
+    buildCommand: npm install --legacy-peer-deps && npm run build
     publishPath: build
     autoDeploy: true
     envVars:
