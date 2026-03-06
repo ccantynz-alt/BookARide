@@ -2658,7 +2658,7 @@ export const AdminDashboard = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => { setDateFrom(''); setDateTo(''); setSearchTerm(''); startTransition(() => setStatusFilter('all')); fetchBookingsRef.current?.(1, false); }}
+                      onClick={() => { setDateFrom(''); setDateTo(''); startTransition(() => { setSearchTerm(''); setStatusFilter('all'); }); fetchBookingsRef.current?.(1, false); }}
                       className="border-amber-500 text-amber-800 hover:bg-amber-100"
                     >
                       Clear all filters & show all bookings
