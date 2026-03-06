@@ -4273,27 +4273,6 @@ onViewBooking={(booking) => {
                   </div>
                 ))}
 
-                {/* Add Pickup Button - Elegant Design */}
-                <div>
-                  <button
-                    type="button"
-                    onClick={handleAddPickup}
-                    className="group w-full flex items-center justify-center gap-3 px-6 py-4 bg-gradient-to-r from-gold/10 to-gold/5 hover:from-gold/20 hover:to-gold/10 border-2 border-dashed border-gold/40 hover:border-gold/60 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-[1.02] hover:shadow-md"
-                  >
-                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gold/20 group-hover:bg-gold/30 transition-colors">
-                      <MapPin className="w-4 h-4 text-gold" />
-                    </div>
-                    <span className="text-sm font-semibold text-gray-700 group-hover:text-gray-900">
-                      Add Another Pickup Location
-                    </span>
-                    <div className="flex items-center justify-center w-6 h-6 rounded-full bg-gold text-white text-xs font-bold group-hover:scale-110 transition-transform">
-                      +
-                    </div>
-                  </button>
-                  <p className="text-xs text-gray-500 mt-2 text-center">
-                    Add multiple pickup locations for shared rides or multi-stop trips
-                  </p>
-                </div>
 
                 <div>
                   <Label>Drop-off Address *</Label>
@@ -4791,18 +4770,6 @@ onViewBooking={(booking) => {
                     </div>
                   ))}
 
-                  {/* Add Pickup Button */}
-                  <div>
-                    <button
-                      type="button"
-                      onClick={handleAddEditPickup}
-                      className="group w-full flex items-center justify-center gap-3 px-6 py-4 bg-gradient-to-r from-gold/10 to-gold/5 hover:from-gold/20 hover:to-gold/10 border-2 border-dashed border-gold/40 hover:border-gold/60 rounded-lg transition-all duration-300"
-                    >
-                      <MapPin className="w-4 h-4 text-gold" />
-                      <span className="text-sm font-semibold text-gray-700">Add Another Pickup Location</span>
-                      <span className="w-6 h-6 rounded-full bg-gold text-white text-xs font-bold flex items-center justify-center">+</span>
-                    </button>
-                  </div>
 
                   <div>
                     <Label>Drop-off Address *</Label>
