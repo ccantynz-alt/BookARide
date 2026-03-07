@@ -1,8 +1,5 @@
 import React from 'react';
 import { Helmet } from '@vuer-ai/react-helmet-async';
-import { useLocation } from 'react-router-dom';
-import siteConfig from '../config/siteConfig';
-import { SUPPORTED_LANGUAGES, getPathWithoutLang, getLocalizedPath } from '../config/languages';
 
 export const SEO = ({ 
   title, 
@@ -70,7 +67,6 @@ export const SEO = ({
       <meta property="og:image" content={imageUrl} />
       <meta property="og:site_name" content={siteName} />
       <meta property="og:locale" content={currentLang === 'en' ? 'en_NZ' : `${currentLang}_${currentLang.toUpperCase()}`} />
-      
       {/* Alternate locales for Open Graph */}
       {SUPPORTED_LANGUAGES.filter(l => l.code !== currentLang).map(lang => (
         <meta key={lang.code} property="og:locale:alternate" content={lang.code === 'en' ? 'en_NZ' : `${lang.code}_${lang.code.toUpperCase()}`} />
