@@ -113,6 +113,9 @@ import GreyLynnAirportPageNew from './pages/seo/GreyLynnAirportPage';
 import PonsonbyAirportPageNew from './pages/seo/PonsonbyAirportPage';
 // International Market Landing Pages
 import CountryLandingPage from './pages/international/CountryLandingPage';
+// Shared Shuttle Service
+import SharedShuttle from './pages/SharedShuttle';
+import ShuttleDriverPortal from './pages/ShuttleDriverPortal';
 // Live GPS Tracking
 import DriverTracking from './pages/DriverTracking';
 import CustomerTracking from './pages/CustomerTracking';
@@ -124,6 +127,7 @@ import TravelAgents from './pages/TravelAgents';
 import HotelConciergePortal from './pages/HotelConciergePortal';
 
 import RecentBookingsNotification from './components/RecentBookingsNotification';
+import ExitIntentPopup from './components/ExitIntentPopup';
 import AIChatbot from './components/AIChatbot';
 import MobileStickyButton from './components/MobileStickyButton';
 
@@ -138,6 +142,7 @@ const MainLayout = () => (
     <Footer />
     <BackToTop />
     <RecentBookingsNotification />
+    <ExitIntentPopup />
     <AIChatbot />
     <MobileStickyButton />
   </>
@@ -304,6 +309,8 @@ function App() {
     { path: "about", element: <About /> },
     { path: "contact", element: <Contact /> },
     { path: "book-now", element: <BookNow /> },
+    { path: "shared-shuttle", element: <SharedShuttle /> },
+    { path: "shuttle-driver", element: <ShuttleDriverPortal /> },
     { path: "hobbiton-transfers", element: <HobbitonTransfers /> },
     { path: "cruise-transfers", element: <CruiseTransfers /> },
     { path: "airport-pickup-guide", element: <AirportPickupGuide /> },
