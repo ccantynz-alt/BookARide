@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Helmet } from '@vuer-ai/react-helmet-async';
+import { Helmet } from 'react-helmet-async';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
@@ -835,11 +835,7 @@ const SharedShuttle = () => {
                                 {addressSuggestions.map((s, i) => (
                                   <button
                                     key={i}
-                                    type="button"
-                                    onMouseDown={(e) => {
-                                      e.preventDefault();
-                                      selectAddress(s.description);
-                                    }}
+                                    onClick={() => selectAddress(s.description)}
                                     className="w-full px-4 py-3 text-left text-white hover:bg-gray-700 border-b border-gray-700 last:border-0"
                                   >
                                     {s.description}
