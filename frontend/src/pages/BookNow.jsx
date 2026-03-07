@@ -17,6 +17,7 @@ import { CustomDatePicker, CustomTimePicker } from '../components/DateTimePicker
 import PriceComparison from '../components/PriceComparison';
 import TrustBadges from '../components/TrustBadges';
 import SocialProofCounter from '../components/SocialProofCounter';
+import AddressAutocomplete from '../components/AddressAutocomplete';
 import { API } from '../config/api';
 
 const DROPOFF_QUICK_ADDRESSES = [
