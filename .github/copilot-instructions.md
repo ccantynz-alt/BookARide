@@ -17,7 +17,7 @@ BookARide NZ is a full-stack airport shuttle / private transfer booking platform
 ## Startup Order
 1. Start MongoDB: `mongod --dbpath /data/db --fork --logpath /tmp/mongod.log`
 2. Start the backend: `cd /workspace/backend && PORT=10000 python3 start.py`
-   - On first run it seeds a default admin user (username: `admin`); change the password immediately after first login
+   - On first run it seeds a default admin user (username: `admin`); change the password immediately after the first login
 3. Start the frontend: `cd /workspace/frontend && BROWSER=none npm start`
    - Requires `REACT_APP_BACKEND_URL=http://localhost:10000` in `frontend/.env`
 
