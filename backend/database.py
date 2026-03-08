@@ -92,9 +92,14 @@ def _build_where(query: Optional[Dict], params: list) -> str:
                         # _id != value — skip, not meaningful in our schema
                         pass
             elif value is not None:
-                # Exact match on _id (our BIGSERIAL _id)
-                params.append(value)
-                clauses.append(f"_id = ${len(params)}")
+                if isinstance(value, str):
+                    # String _id (e.g. counters) maps to the "id" TEXT column
+                    params.append(value)
+                    clauses.append(f"id = ${len(params)}")
+                else:
+                    # Numeric _id maps to the BIGSERIAL _id column
+                    params.append(value)
+                    clauses.append(f"_id = ${len(params)}")
 
         elif isinstance(value, dict):
             # Operator query
@@ -611,8 +616,8 @@ class Collection:
             for k, v in query.items():
                 if not k.startswith("$") and not isinstance(v, dict):
                     doc[k] = v
-            doc_id = doc.get("id") or doc.get("_id")
-            doc.pop("_id", None)
+            mongo_id = doc.pop("_id", None)
+            doc_id = doc.get("id") or (mongo_id if isinstance(mongo_id, str) else None)
             data_json = _dumps(doc)
             row = await self._pool.fetchrow(
                 f"INSERT INTO {self._table} (id, data) VALUES ($1, $2::jsonb) RETURNING _id",
@@ -723,8 +728,8 @@ class Collection:
             for k, v in query.items():
                 if not k.startswith("$") and not isinstance(v, dict):
                     doc[k] = v
-            doc.pop("_id", None)
-            doc_id = doc.get("id") or doc.get("_id")
+            mongo_id = doc.pop("_id", None)
+            doc_id = doc.get("id") or (mongo_id if isinstance(mongo_id, str) else None)
             data_json = _dumps(doc)
             await self._pool.execute(
                 f"INSERT INTO {self._table} (id, data) VALUES ($1, $2::jsonb)",
