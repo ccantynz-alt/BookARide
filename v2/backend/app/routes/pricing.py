@@ -64,59 +64,53 @@ def _get_rate(km: float) -> float:
         return 3.50
 
 
-async def _get_distance_geoapify(
+async def _get_distance_google(
     pickup: str, dropoff: str, waypoints: list, api_key: str
 ) -> Optional[float]:
-    """Get route distance via Geoapify Routing API."""
+    """Get route distance via Google Maps Distance Matrix / Directions API."""
     try:
-
-        async def geocode(address: str):
-            async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient() as client:
+            if waypoints:
+                # Use Directions API for multi-stop routes
+                params = {
+                    "origin": pickup,
+                    "destination": dropoff,
+                    "waypoints": "|".join(waypoints),
+                    "key": api_key,
+                    "region": "nz",
+                }
                 resp = await client.get(
-                    "https://api.geoapify.com/v1/geocode/search",
-                    params={"text": address, "limit": 1, "apiKey": api_key},
-                    timeout=5.0,
+                    "https://maps.googleapis.com/maps/api/directions/json",
+                    params=params,
+                    timeout=15.0,
                 )
                 if resp.status_code == 200:
-                    features = resp.json().get("features", [])
-                    if features:
-                        coords = features[0]["geometry"]["coordinates"]
-                        return coords  # [lng, lat]
-            return None
-
-        origin = await geocode(pickup)
-        dest = await geocode(dropoff)
-        if not origin or not dest:
-            return None
-
-        wp_coords = []
-        for wp in waypoints:
-            c = await geocode(wp)
-            if c:
-                wp_coords.append(c)
-
-        all_points = [origin] + wp_coords + [dest]
-        waypoint_str = "|".join(f"{c[1]},{c[0]}" for c in all_points)
-
-        async with httpx.AsyncClient() as client:
-            resp = await client.get(
-                "https://api.geoapify.com/v1/routing",
-                params={
-                    "waypoints": waypoint_str,
-                    "mode": "drive",
-                    "apiKey": api_key,
-                },
-                timeout=10.0,
-            )
-            if resp.status_code == 200:
-                data = resp.json()
-                features = data.get("features", [])
-                if features:
-                    distance_m = features[0]["properties"]["distance"]
-                    return round(distance_m / 1000, 1)
+                    data = resp.json()
+                    if data.get("status") == "OK" and data.get("routes"):
+                        total_m = sum(leg["distance"]["value"] for leg in data["routes"][0]["legs"])
+                        return round(total_m / 1000, 1)
+            else:
+                # Simple origin->destination: use Distance Matrix
+                params = {
+                    "origins": pickup,
+                    "destinations": dropoff,
+                    "key": api_key,
+                    "region": "nz",
+                }
+                resp = await client.get(
+                    "https://maps.googleapis.com/maps/api/distancematrix/json",
+                    params=params,
+                    timeout=15.0,
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    if data.get("status") == "OK" and data.get("rows"):
+                        element = data["rows"][0]["elements"][0]
+                        if element.get("status") == "OK":
+                            return round(element["distance"]["value"] / 1000, 1)
         return None
     except Exception as e:
-        logger.warning(f"Geoapify error: {e}")
+        logger.warning(f"Google Maps error: {e}")
         return None
 
 
@@ -167,7 +161,7 @@ def _apply_zone_minimums(pickup: str, dropoff: str, distance_km: float) -> float
 @router.post("/calculate-price", response_model=PriceBreakdown)
 async def calculate_price(request: PriceRequest):
     try:
-        geoapify_key = os.environ.get("GEOAPIFY_API_KEY", "")
+        google_maps_key = os.environ.get("GOOGLE_MAPS_API_KEY", "")
         distance_km = None
 
         p_lower = _norm(request.pickupAddress)
@@ -175,11 +169,11 @@ async def calculate_price(request: PriceRequest):
         is_long = any(kw in p_lower or kw in d_lower for kw in LONG_DISTANCE_KW)
         fallback = LONG_DISTANCE_FALLBACK_KM if is_long else DEFAULT_FALLBACK_KM
 
-        # Get distance via Geoapify
-        if geoapify_key:
+        # Get distance via Google Maps
+        if google_maps_key:
             waypoints = [a for a in (request.pickupAddresses or []) if a and a.strip()]
-            distance_km = await _get_distance_geoapify(
-                request.pickupAddress, request.dropoffAddress, waypoints, geoapify_key
+            distance_km = await _get_distance_google(
+                request.pickupAddress, request.dropoffAddress, waypoints, google_maps_key
             )
 
         if distance_km is None:

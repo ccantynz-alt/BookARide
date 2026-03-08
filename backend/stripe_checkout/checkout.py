@@ -46,8 +46,6 @@ class WebhookResponse(BaseModel):
     status: str
     event_type: Optional[str] = None
     session_id: Optional[str] = None
-    payment_status: Optional[str] = None
-    metadata: Dict[str, Any] = {}
 
 
 class StripeCheckout:
@@ -63,6 +61,7 @@ class StripeCheckout:
             raise RuntimeError("STRIPE_SECRET_KEY is not set.")
         session = stripe.checkout.Session.create(
             mode=getattr(req, "mode", "payment"),
+            payment_method_types=["card"],
             line_items=[
                 {
                     "price_data": {
@@ -100,19 +99,9 @@ class StripeCheckout:
         event = stripe.Webhook.construct_event(payload=body, sig_header=signature, secret=secret)
         event_type = getattr(event, "type", None)
         session_id = None
-        payment_status = None
-        metadata = {}
         try:
             obj = event.data.object
             session_id = getattr(obj, "id", None)
-            payment_status = getattr(obj, "payment_status", None)
-            metadata = dict(getattr(obj, "metadata", {}) or {})
         except Exception:
             pass
-        return WebhookResponse(
-            status="ok",
-            event_type=event_type,
-            session_id=session_id,
-            payment_status=payment_status,
-            metadata=metadata,
-        )
+        return WebhookResponse(status="ok", event_type=event_type, session_id=session_id)

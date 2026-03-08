@@ -1,5 +1,5 @@
 import React from 'react';
-import { Helmet } from '@vuer-ai/react-helmet-async';
+import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import { Users, DollarSign, Clock, Leaf, MapPin, Star, CheckCircle, ArrowRight, Plane } from 'lucide-react';
 import { Button } from '../../components/ui/button';
@@ -132,9 +132,9 @@ const SharedRidePage = () => {
                     Book Shared Ride
                   </Button>
                 </Link>
-                <Link to="/book-now">
+                <Link to="/shared-shuttle">
                   <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10 px-8 py-6 text-lg">
-                    Book Now
+                    View Shared Shuttle
                   </Button>
                 </Link>
               </div>

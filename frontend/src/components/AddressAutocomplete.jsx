@@ -79,7 +79,7 @@ const AddressAutocomplete = ({
       top: rect.bottom + 4,
       left: rect.left,
       width: rect.width,
-      zIndex: 9999,
+      zIndex: 99999,
     });
   }, []);
 
@@ -103,17 +103,19 @@ const AddressAutocomplete = ({
     else if (onChange) onChange(description);
   };
 
-  // Close when clicking outside (exclude the portal dropdown itself)
+  // Close when clicking outside (exclude the portal dropdown itself).
+  // Uses CAPTURING phase so we see the event before any stopPropagation in bubbling.
   useEffect(() => {
     const handler = (e) => {
-      const inInput = inputRef.current && inputRef.current.contains(e.target);
-      const inDropdown = dropdownRef.current && dropdownRef.current.contains(e.target);
-      if (!inInput && !inDropdown) {
-        setOpen(false);
-      }
+      // If the click target is inside the dropdown, do nothing
+      if (dropdownRef.current && dropdownRef.current.contains(e.target)) return;
+      // If the click target is inside the input, do nothing
+      if (inputRef.current && inputRef.current.contains(e.target)) return;
+      setOpen(false);
     };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    // Use capture phase so this runs reliably regardless of stopPropagation in bubbling
+    document.addEventListener('pointerdown', handler, true);
+    return () => document.removeEventListener('pointerdown', handler, true);
   }, []);
 
   const dropdown =
@@ -122,18 +124,25 @@ const AddressAutocomplete = ({
           <div
             ref={dropdownRef}
             style={dropdownStyle}
+            data-autocomplete-dropdown=""
             className="bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto"
-            onMouseDown={(e) => e.stopPropagation()}
-            onPointerDown={(e) => e.stopPropagation()}
           >
             {suggestions.map((s, i) => (
               <button
                 key={i}
                 type="button"
-                onMouseDown={(e) => {
-                  e.preventDefault(); // keep focus on input
+                onPointerDown={(e) => {
+                  e.preventDefault();  // keep focus on input
                   e.stopPropagation(); // prevent Radix Dialog from intercepting
                   handleSelect(s.description);
+                }}
+                onMouseDown={(e) => {
+                  // Fallback for environments where pointerdown doesn't fire (e.g. jsdom tests).
+                  // In real browsers pointerdown fires first and handleSelect closes the dropdown
+                  // before mousedown fires, so this is effectively a no-op in production.
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (open) handleSelect(s.description);
                 }}
                 className="w-full px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-100 last:border-0"
               >

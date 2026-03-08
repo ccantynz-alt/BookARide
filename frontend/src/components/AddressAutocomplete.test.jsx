@@ -207,8 +207,8 @@ test('clicking outside the input and dropdown closes it', async () => {
   act(() => jest.runAllTimers());
   await waitFor(() => screen.getAllByRole('button'));
 
-  // Mousedown on something entirely outside
-  fireEvent.mouseDown(document.body);
+  // Pointerdown on something entirely outside (component uses pointerdown capture for click-outside)
+  fireEvent.pointerDown(document.body);
 
   await waitFor(() =>
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
