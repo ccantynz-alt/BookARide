@@ -2613,8 +2613,8 @@ onViewBooking={(booking) => {
                 <div className="text-center py-8">
                   <p className="text-gray-600 font-medium">
                     {bookings.length > 0
-                      ? `No bookings match your current filter (${bookings.length} booking${bookings.length !== 1 ? ‘s’ : ‘’} exist — clear filters to see them)`
-                      : ‘No bookings found’}
+                      ? `No bookings match your current filter (${bookings.length} booking${bookings.length !== 1 ? 's' : ''} exist — clear filters to see them)`
+                      : 'No bookings found'}
                   </p>
                 </div>
                 {/* Only show recovery guidance when the database is genuinely empty */}
@@ -2624,20 +2624,20 @@ onViewBooking={(booking) => {
                       {retentionCounts && (
                         <p className="text-sm font-semibold text-amber-900">
                           Database: {retentionCounts.active} active, {retentionCounts.deleted} in Deleted.
-                          {retentionCounts.deleted > 0 && ‘ Restore them from the Deleted tab.’}
+                          {retentionCounts.deleted > 0 && ' Restore them from the Deleted tab.'}
                         </p>
                       )}
                       <p className="font-medium text-amber-900">Get your bookings back:</p>
                       <ul className="list-disc list-inside text-sm text-amber-800 space-y-1">
                         <li>If bookings disappeared after an update, they may be in the <strong>Deleted</strong> tab. Open Deleted and click <strong>Restore all</strong> to reinstate them.</li>
                         <li>Click <strong>Restore from server backup</strong> in the Deleted tab to recover from the backup file on the server.</li>
-                        <li>Use <strong>Deleted → Download backup (JSON)</strong> to see exactly what’s stored (active + deleted).</li>
+                        <li>Use <strong>Deleted → Download backup (JSON)</strong> to see exactly what's stored (active + deleted).</li>
                       </ul>
                       <div className="flex flex-wrap gap-2 pt-2">
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => setActiveTab(‘deleted’)}
+                          onClick={() => setActiveTab('deleted')}
                           className="border-amber-500 text-amber-800 hover:bg-amber-100"
                         >
                           Open Deleted tab
@@ -2656,12 +2656,12 @@ onViewBooking={(booking) => {
                   </Card>
                 )}
                 {/* When filters are hiding bookings, show a quick-clear option */}
-                {bookings.length > 0 && (dateFrom || dateTo || searchTerm || statusFilter !== ‘all’) && (
+                {bookings.length > 0 && (dateFrom || dateTo || searchTerm || statusFilter !== 'all') && (
                   <div className="flex flex-wrap gap-2 justify-center">
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => { setDateFrom(‘’); setDateTo(‘’); setSearchTerm(‘’); setStatusFilter(‘all’); fetchBookingsRef.current?.(1, false); }}
+                      onClick={() => { setDateFrom(''); setDateTo(''); setSearchTerm(''); setStatusFilter('all'); fetchBookingsRef.current?.(1, false); }}
                       className="border-amber-500 text-amber-800 hover:bg-amber-100"
                     >
                       Clear all filters & show all bookings
