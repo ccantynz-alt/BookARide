@@ -61,6 +61,7 @@ class StripeCheckout:
             raise RuntimeError("STRIPE_SECRET_KEY is not set.")
         session = stripe.checkout.Session.create(
             mode=getattr(req, "mode", "payment"),
+            payment_method_types=["card"],
             line_items=[
                 {
                     "price_data": {

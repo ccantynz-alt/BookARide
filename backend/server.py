@@ -5670,7 +5670,19 @@ async def create_payment_checkout(request: PaymentCheckoutRequest, http_request:
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error creating payment checkout: {str(e)}")
+        logger.error(f"Error creating payment checkout: {str(e)}", exc_info=True)
+
+        # Fallback: try to send payment link via email so customer can still pay
+        try:
+            booking = await db.bookings.find_one({"id": request.booking_id}, {"_id": 0})
+            if booking:
+                payment_link = await generate_stripe_payment_link(booking)
+                if payment_link:
+                    await send_payment_link_email(booking, payment_link, 'stripe')
+                    logger.info(f"Sent fallback payment link email for booking {request.booking_id}")
+        except Exception as fallback_err:
+            logger.error(f"Fallback payment link also failed: {str(fallback_err)}")
+
         raise HTTPException(status_code=500, detail=f"Error creating checkout session: {str(e)}")
 
 

@@ -387,6 +387,7 @@ export const BookNow = () => {
           }
         }
       } catch (paymentError) {
+        console.error('Payment checkout error:', paymentError.response?.data || paymentError.message);
         setIsProcessingPayment(false);
         const detail = paymentError.response?.data?.detail;
         const ref = booking?.referenceNumber || booking?.id?.slice(0, 8);
