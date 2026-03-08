@@ -1259,24 +1259,26 @@ async def get_status_checks():
     
     return status_checks
 
-def _geocode_geoapify(address: str, api_key: str) -> tuple:
-    """Geocode address via Geoapify. Returns (lat, lon) or (None, None)."""
+def _geocode_google(address: str, api_key: str) -> tuple:
+    """Geocode address via Google Maps Geocoding API. Returns (lat, lon) or (None, None)."""
     try:
-        url = "https://api.geoapify.com/v1/geocode/search"
-        params = {"text": address, "apiKey": api_key, "limit": 1, "filter": "countrycode:nz"}
+        url = "https://maps.googleapis.com/maps/api/geocode/json"
+        params = {"address": address, "key": api_key, "region": "nz"}
         r = requests.get(url, params=params, timeout=10)
         data = r.json()
-        features = data.get("features", [])
-        if features:
-            coords = features[0].get("geometry", {}).get("coordinates", [])
-            if len(coords) >= 2:
-                return (coords[1], coords[0])  # GeoJSON is [lon, lat]
+        results = data.get("results", [])
+        if results:
+            location = results[0].get("geometry", {}).get("location", {})
+            lat = location.get("lat")
+            lng = location.get("lng")
+            if lat is not None and lng is not None:
+                return (lat, lng)
     except Exception as e:
-        logger.warning(f"Geoapify geocode error for '{address[:50]}...': {e}")
+        logger.warning(f"Google geocode error for '{address[:50]}...': {e}")
     return (None, None)
 
 
-# Canonical addresses for reliable routing (Geoapify can mis-geocode variants like "Shared Path")
+# Canonical addresses for reliable routing (avoids mis-geocoding variants like "Shared Path")
 _CANONICAL_AIRPORT = "Auckland Airport, Ray Emery Drive, Mangere, Auckland 2022, New Zealand"
 _CANONICAL_AIRPORT_LOWER = "auckland airport"
 
@@ -1290,60 +1292,63 @@ def _normalize_address_for_routing(address: str) -> str:
     return address.strip()
 
 
-def _get_distance_geoapify(pickup_address: str, dropoff_address: str, waypoint_addresses: list, api_key: str) -> float | None:
-    """Get driving distance in km via Geoapify Routing API. Returns None on failure."""
+def _get_distance_google(pickup_address: str, dropoff_address: str, waypoint_addresses: list, api_key: str) -> float | None:
+    """Get driving distance in km via Google Maps Distance Matrix / Directions API. Returns None on failure."""
     try:
         pickup_norm = _normalize_address_for_routing(pickup_address)
         dropoff_norm = _normalize_address_for_routing(dropoff_address)
-        waypoints = [pickup_norm] + [_normalize_address_for_routing(a) for a in (waypoint_addresses or [])] + [dropoff_norm]
-        coords_list = []
-        for addr in waypoints:
-            if not addr or not addr.strip():
-                continue
-            lat, lon = _geocode_geoapify(addr.strip(), api_key)
-            if lat is None:
-                return None
-            coords_list.append(f"{lat},{lon}")
-        if len(coords_list) < 2:
-            return None
-        waypoints_str = "|".join(coords_list)
-        url = f"https://api.geoapify.com/v1/routing?waypoints={waypoints_str}&mode=drive&apiKey={api_key}"
-        r = requests.get(url, timeout=15)
-        data = r.json()
-        features = data.get("features", [])
-        if features:
-            props = features[0].get("properties", {})
-            dist_m = props.get("distance", 0)
-            return round(dist_m / 1000, 2)
+        mid_stops = [_normalize_address_for_routing(a) for a in (waypoint_addresses or []) if a and a.strip()]
+
+        if mid_stops:
+            # Use Directions API for multi-stop routes (waypoints)
+            url = "https://maps.googleapis.com/maps/api/directions/json"
+            params = {
+                "origin": pickup_norm,
+                "destination": dropoff_norm,
+                "waypoints": "|".join(mid_stops),
+                "key": api_key,
+                "region": "nz",
+            }
+            r = requests.get(url, params=params, timeout=15)
+            data = r.json()
+            if data.get("status") == "OK" and data.get("routes"):
+                total_m = sum(leg["distance"]["value"] for leg in data["routes"][0]["legs"])
+                return round(total_m / 1000, 2)
+        else:
+            # Simple origin->destination: use Distance Matrix (cheaper)
+            url = "https://maps.googleapis.com/maps/api/distancematrix/json"
+            params = {
+                "origins": pickup_norm,
+                "destinations": dropoff_norm,
+                "key": api_key,
+                "region": "nz",
+            }
+            r = requests.get(url, params=params, timeout=15)
+            data = r.json()
+            if data.get("status") == "OK" and data.get("rows"):
+                element = data["rows"][0]["elements"][0]
+                if element.get("status") == "OK":
+                    dist_m = element["distance"]["value"]
+                    return round(dist_m / 1000, 2)
     except Exception as e:
-        logger.warning(f"Geoapify routing error: {e}")
+        logger.warning(f"Google Maps routing error: {e}")
     return None
 
 
-def _build_maps_route_url(origin: str, destination: str, waypoint_addresses: list, geoapify_key: str) -> str:
-    """Build OpenStreetMap directions URL. Uses Geoapify to geocode if key set, else returns OSM search URL."""
+def _build_maps_route_url(origin: str, destination: str, waypoint_addresses: list, _api_key: str = "") -> str:
+    """Build Google Maps directions URL."""
     if not origin or not destination:
-        return "https://www.openstreetmap.org"
-    if geoapify_key:
-        try:
-            addrs = [origin] + list(waypoint_addresses or []) + [destination]
-            coords = []
-            for addr in addrs:
-                if not (addr and addr.strip()):
-                    continue
-                lat, lon = _geocode_geoapify(addr.strip(), geoapify_key)
-                if lat is not None and lon is not None:
-                    coords.append(f"{lat},{lon}")
-            if len(coords) >= 2:
-                route_param = ";".join(coords)
-                return f"https://www.openstreetmap.org/directions?engine=osrm_car&route={route_param}"
-        except Exception as e:
-            logger.warning(f"Geoapify geocode for maps URL: {e}")
-    query = requests.utils.quote(f"{origin} to {destination}")
-    return f"https://www.openstreetmap.org/search?query={query}"
+        return "https://www.google.com/maps"
+    base = "https://www.google.com/maps/dir/"
+    parts = [requests.utils.quote(origin)]
+    for addr in (waypoint_addresses or []):
+        if addr and addr.strip():
+            parts.append(requests.utils.quote(addr.strip()))
+    parts.append(requests.utils.quote(destination))
+    return base + "/".join(parts)
 
 
-# Default distance when Geoapify fails or is not set (was 25km - caused massive undercharging for 60-70km trips)
+# Default distance when Google Maps API fails or key is not set (was 25km - caused massive undercharging for 60-70km trips)
 # Use 75km to cover common long routes (Orewa, Hibiscus Coast, Warkworth) - better to slightly overcharge than lose money
 DEFAULT_FALLBACK_DISTANCE_KM = 75.0
 # Long-distance fallback when addresses indicate Tauranga/BOP/Hamilton/Whangarei (prevents ~$200 charge for 200km+ trip)
@@ -1353,8 +1358,8 @@ LONG_DISTANCE_FALLBACK_KM = 200.0
 @api_router.post("/calculate-price", response_model=PricingBreakdown)
 async def calculate_price(request: PriceCalculationRequest):
     try:
-        # Geoapify only for distance; fallback estimate if not set or API fails
-        geoapify_key = os.environ.get('GEOAPIFY_API_KEY', '')
+        # Google Maps for distance; fallback estimate if not set or API fails
+        google_maps_key = os.environ.get('GOOGLE_MAPS_API_KEY', '')
         distance_km = None
         # Normalize addresses early so we can use long-distance fallback when API fails
         def _norm(s):
@@ -1365,23 +1370,23 @@ async def calculate_price(request: PriceCalculationRequest):
         _is_long_distance_route = any(kw in _pickup_lower or kw in _dropoff_lower for kw in _long_distance_keywords)
         _fallback_km = LONG_DISTANCE_FALLBACK_KM if _is_long_distance_route else DEFAULT_FALLBACK_DISTANCE_KM
 
-        if geoapify_key:
+        if google_maps_key:
             # Route: pickup -> additional pickups -> dropoff
             waypoint_addrs = [a for a in (request.pickupAddresses or []) if a and a.strip()]
-            distance_km = _get_distance_geoapify(
+            distance_km = _get_distance_google(
                 request.pickupAddress,
                 request.dropoffAddress,
                 waypoint_addrs,
-                geoapify_key
+                google_maps_key
             )
             if distance_km is not None:
-                logger.info(f"Geoapify route distance: {distance_km}km")
-        
+                logger.info(f"Google Maps route distance: {distance_km}km")
+
         if distance_km is None:
-            # No Google Maps - use fallback only
+            # Google Maps API failed or key not set - use fallback
             pickup_count = 1 + len([addr for addr in (request.pickupAddresses or []) if addr])
             distance_km = _fallback_km * pickup_count
-            logger.warning(f"GEOAPIFY_API_KEY not set or geocoding failed. Using default distance estimate: {distance_km}km for {pickup_count} stops - SET GEOAPIFY_API_KEY FOR ACCURATE PRICING")
+            logger.warning(f"GOOGLE_MAPS_API_KEY not set or geocoding failed. Using default distance estimate: {distance_km}km for {pickup_count} stops - SET GOOGLE_MAPS_API_KEY FOR ACCURATE PRICING")
         # Calculate pricing with tiered rates - FLAT RATE per bracket
         # The rate is determined by which distance bracket the trip falls into
         # Then that rate is applied to the ENTIRE distance
@@ -1406,7 +1411,7 @@ async def calculate_price(request: PriceCalculationRequest):
         is_from_hibiscus_coast = any(keyword in pickup_lower for keyword in hibiscus_coast_keywords)
         is_to_hibiscus_coast = any(keyword in dropoff_lower for keyword in hibiscus_coast_keywords)
         
-        # Minimum distance for Hibiscus Coast <-> Auckland Airport (Geoapify returns shorter than Google)
+        # Minimum distance for Hibiscus Coast <-> Auckland Airport (API may return shorter than actual)
         # Old system: 73.3 km for Gulf Harbour -> Airport = ~$186. Use 73 km minimum for this route.
         airport_keywords = ['airport', 'auckland airport', 'international airport', 'domestic airport', 'akl', 'ray emery', 'mangere']
         is_to_airport = any(kw in dropoff_lower for kw in airport_keywords)
@@ -1434,7 +1439,7 @@ async def calculate_price(request: PriceCalculationRequest):
             logger.info(f"Zone distance: Hamilton area <-> Airport applying minimum 125 km (API returned {distance_km} km)")
             distance_km = 125.0
         
-        # Minimum distance for Auckland Airport <-> Whangarei (Geoapify often fails, falls back to default)
+        # Minimum distance for Auckland Airport <-> Whangarei
         # Old system: 181.7 km = ~$646 for 2 passengers
         whangarei_keywords = ['whangarei', 'onerahi', 'kensington', 'tikipunga', 'regent', 'whangarei heads']
         is_to_whangarei = any(kw in dropoff_lower for kw in whangarei_keywords)
