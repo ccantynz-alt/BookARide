@@ -514,6 +514,59 @@ async def get_next_reference_number():
         return 10
     return counter.get('seq', 10)
 
+
+@api_router.post("/admin/sync-booking-counter")
+async def sync_booking_counter(current_user: dict = Depends(get_current_user)):
+    """Sync the booking reference counter to match the highest existing booking number."""
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    # Find the highest existing referenceNumber across all bookings
+    all_bookings = await db.bookings.find({})
+    max_ref = 0
+    for booking in all_bookings:
+        ref = booking.get("referenceNumber")
+        if ref is not None:
+            try:
+                ref_int = int(ref)
+                if ref_int > max_ref:
+                    max_ref = ref_int
+            except (ValueError, TypeError):
+                continue
+
+    if max_ref < 10:
+        max_ref = 10
+
+    # Set the counter to the highest existing number
+    await db.counters.update_one(
+        {"_id": "booking_reference"},
+        {"$set": {"seq": max_ref}},
+        upsert=True
+    )
+
+    return {
+        "success": True,
+        "message": f"Booking counter synced. Current highest booking is #{max_ref}. Next booking will be #{max_ref + 1}.",
+        "currentHighest": max_ref,
+        "nextBookingNumber": max_ref + 1
+    }
+
+
+@api_router.get("/admin/booking-counter")
+async def get_booking_counter(current_user: dict = Depends(get_current_user)):
+    """Get the current booking reference counter value."""
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    counter = await db.counters.find_one({"_id": "booking_reference"})
+    current_seq = counter.get("seq", 0) if counter else 0
+
+    return {
+        "currentCounter": current_seq,
+        "nextBookingNumber": current_seq + 1
+    }
+
+
 # Authentication Endpoints
 
 @api_router.post("/admin/register", response_model=Token)
