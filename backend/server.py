@@ -14,9 +14,6 @@ import uuid
 from datetime import datetime, timezone, timedelta
 import requests
 import httpx
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 from stripe_checkout import StripeCheckout, CheckoutSessionResponse, CheckoutStatusResponse, CheckoutSessionRequest
 try:
     from twilio.rest import Client
@@ -173,21 +170,17 @@ async def root_email_status():
         from email_sender import is_email_configured, get_noreply_email
     except ImportError:
         return {
-            "email_provider": os.environ.get("EMAIL_PROVIDER") or "sendgrid",
-            "sendgrid_configured": bool(os.environ.get("SENDGRID_API_KEY")),
-            "smtp_configured": bool(os.environ.get("SMTP_USER") and os.environ.get("SMTP_PASS")),
+            "email_provider": "mailgun",
             "mailgun_configured": bool(os.environ.get("MAILGUN_API_KEY") and os.environ.get("MAILGUN_DOMAIN")),
             "noreply_email": os.environ.get("NOREPLY_EMAIL") or os.environ.get("SENDER_EMAIL") or "(not set)",
-            "hint": "SendGrid only: set SENDGRID_API_KEY and NOREPLY_EMAIL (verified sender). Remove Mailgun/SMTP vars.",
+            "hint": "Set MAILGUN_API_KEY, MAILGUN_DOMAIN, and NOREPLY_EMAIL in Render env vars.",
         }
     return {
-        "email_provider": os.environ.get("EMAIL_PROVIDER") or "sendgrid",
-        "sendgrid_configured": bool(os.environ.get("SENDGRID_API_KEY")),
-        "smtp_configured": bool(os.environ.get("SMTP_USER") and os.environ.get("SMTP_PASS")),
+        "email_provider": "mailgun",
         "mailgun_configured": bool(os.environ.get("MAILGUN_API_KEY") and os.environ.get("MAILGUN_DOMAIN")),
         "noreply_email": get_noreply_email(),
         "email_configured": is_email_configured(),
-        "hint": "SendGrid only: SENDGRID_API_KEY + NOREPLY_EMAIL (verified sender in SendGrid). Remove Mailgun/SMTP.",
+        "hint": "Set MAILGUN_API_KEY, MAILGUN_DOMAIN, and NOREPLY_EMAIL in Render env vars.",
     }
 
 # Google auth start - app-level routes (try multiple paths for compatibility)
@@ -934,7 +927,7 @@ async def request_password_reset(reset_request: PasswordResetRequest):
             "created_at": datetime.now(timezone.utc).isoformat()
         })
         
-        # Send reset email (Mailgun or Google Workspace SMTP)
+        # Send reset email via Mailgun
         public_domain = os.environ.get('PUBLIC_DOMAIN', 'https://www.bookaride.co.nz').rstrip('/')
         reset_link = f"{public_domain}/admin/reset-password?token={reset_token}"
         
@@ -985,7 +978,7 @@ async def request_password_reset(reset_request: PasswordResetRequest):
             if send_email_unified and send_email_unified(email, "Password Reset Request - Book A Ride NZ Admin", email_html):
                 logger.info(f"Password reset email sent to: {email}")
             else:
-                logger.warning("Password reset email NOT sent - configure Mailgun or SMTP (see GOOGLE_WORKSPACE_EMAIL_SETUP.md)")
+                logger.warning("Password reset email NOT sent - configure MAILGUN_API_KEY and MAILGUN_DOMAIN")
         
         return {"message": "If this email is registered, you will receive a password reset link."}
         
@@ -2264,7 +2257,7 @@ async def send_booking_to_admin(booking_id: str, current_admin: dict = Depends(g
         subject = f"Booking Details - {booking.get('name', 'Customer')} - {booking.get('id', '')[:8].upper()}"
         from_email = get_noreply_email()
 
-        # Use unified email sender (supports Mailgun, SendGrid, and SMTP)
+        # Send via Mailgun
         if send_email_unified:
             success = send_email_unified(admin_email, subject, html_content, from_email=from_email, from_name="BookaRide System")
             if success:
@@ -2275,7 +2268,7 @@ async def send_booking_to_admin(booking_id: str, current_admin: dict = Depends(g
                 raise HTTPException(status_code=500, detail="Failed to send email. Check email provider configuration.")
         else:
             logger.error("No email sender configured")
-            raise HTTPException(status_code=500, detail="Email sending is not configured. Please set up Mailgun, SendGrid, or SMTP credentials.")
+            raise HTTPException(status_code=500, detail="Email sending is not configured. Please set up MAILGUN_API_KEY and MAILGUN_DOMAIN.")
 
     except HTTPException:
         raise
@@ -2478,7 +2471,7 @@ def send_booking_confirmation_email(booking: dict, include_payment_link: bool = 
     html_content = generate_confirmation_email_html(booking)
     from_email = get_noreply_email()
 
-    # SendGrid only (no Mailgun / Google fallback)
+    # Send via Mailgun
     if send_email_unified:
         return send_email_unified(recipient_email, subject, html_content, from_email=from_email, from_name="BookaRide")
     return False
@@ -2540,53 +2533,6 @@ def send_via_mailgun(booking: dict):
         
     except Exception as e:
         logger.error(f"Mailgun error: {str(e)}")
-        return False
-
-
-def send_via_smtp(booking: dict):
-    """Fallback: Send via Gmail SMTP"""
-    try:
-        smtp_user = os.environ.get('SMTP_USER')
-        smtp_pass = os.environ.get('SMTP_PASS')
-        sender_email = get_noreply_email()
-        
-        if not smtp_user or not smtp_pass:
-            logger.warning("SMTP credentials not configured")
-            return False
-        
-        # Create email content using the beautiful template
-        booking_ref = get_booking_reference(booking)
-        subject = f"Booking Confirmation - Ref: {booking_ref}"
-        recipient_email = booking.get('email')
-        
-        # Use the beautiful email template
-        html_content = generate_confirmation_email_html(booking)
-        
-        # Create message
-        message = MIMEMultipart('alternative')
-        message['Subject'] = subject
-        message['From'] = sender_email
-        message['To'] = recipient_email
-        
-        # Attach HTML
-        html_part = MIMEText(html_content, 'html')
-        message.attach(html_part)
-        
-        # Send via SMTP (Google Workspace / Gmail)
-        smtp_host = os.environ.get('SMTP_HOST', 'smtp.gmail.com')
-        smtp_port = int(os.environ.get('SMTP_PORT', '587'))
-        with smtplib.SMTP(smtp_host, smtp_port) as server:
-            server.starttls()
-            server.login(smtp_user, smtp_pass)
-            server.send_message(message)
-        
-        logger.info(f"Confirmation email sent to {recipient_email} via SMTP")
-        return True
-        
-    except Exception as e:
-        logger.error(f"SMTP error: {str(e)}")
-        import traceback
-        logger.error(traceback.format_exc())
         return False
 
 
@@ -4079,7 +4025,7 @@ async def send_booking_notification_to_admin(booking: dict):
                     except Exception as e:
                         logger.error(f"Error sending to {admin_email}: {e}")
             else:
-                logger.error("No email provider configured (Mailgun or SMTP) - admin notifications not sent")
+                logger.error("No email provider configured (Mailgun) - admin notifications not sent")
             
     except Exception as e:
         logger.error(f"Error sending admin notification: {str(e)}")
@@ -4189,7 +4135,7 @@ async def send_urgent_approval_notification(booking: dict):
         recipient = admin_emails[0] if admin_emails else "bookings@bookaride.co.nz"
         email_sent = False
         
-        # Try unified sender first (SMTP/Mailgun)
+        # Send via Mailgun
         if send_email_unified:
             if send_email_unified(recipient, subject, html_content, from_email=sender_email or get_noreply_email(), from_name="BookaRide URGENT"):
                 logger.info(f"Urgent approval notification sent to {recipient} for booking: {booking_ref}")
@@ -5013,21 +4959,17 @@ async def get_email_status():
         from email_sender import is_email_configured, get_noreply_email
     except ImportError:
         return {
-            "email_provider": os.environ.get("EMAIL_PROVIDER") or "sendgrid",
-            "sendgrid_configured": bool(os.environ.get("SENDGRID_API_KEY")),
-            "smtp_configured": bool(os.environ.get("SMTP_USER") and os.environ.get("SMTP_PASS")),
+            "email_provider": "mailgun",
             "mailgun_configured": bool(os.environ.get("MAILGUN_API_KEY") and os.environ.get("MAILGUN_DOMAIN")),
             "noreply_email": os.environ.get("NOREPLY_EMAIL") or os.environ.get("SENDER_EMAIL") or "(not set)",
-            "hint": "SendGrid only: set SENDGRID_API_KEY and NOREPLY_EMAIL (verified sender). Remove Mailgun/SMTP vars.",
+            "hint": "Set MAILGUN_API_KEY, MAILGUN_DOMAIN, and NOREPLY_EMAIL in Render env vars.",
         }
     return {
-        "email_provider": os.environ.get("EMAIL_PROVIDER") or "sendgrid",
-        "sendgrid_configured": bool(os.environ.get("SENDGRID_API_KEY")),
-        "smtp_configured": bool(os.environ.get("SMTP_USER") and os.environ.get("SMTP_PASS")),
+        "email_provider": "mailgun",
         "mailgun_configured": bool(os.environ.get("MAILGUN_API_KEY") and os.environ.get("MAILGUN_DOMAIN")),
         "noreply_email": get_noreply_email(),
         "email_configured": is_email_configured(),
-        "hint": "SendGrid only: SENDGRID_API_KEY + NOREPLY_EMAIL (verified sender in SendGrid). Remove Mailgun/SMTP.",
+        "hint": "Set MAILGUN_API_KEY, MAILGUN_DOMAIN, and NOREPLY_EMAIL in Render env vars.",
     }
 
 
@@ -5040,10 +4982,7 @@ async def admin_send_test_email(body: dict = Body(default={}), current_admin: di
     try:
         from email_sender import send_test_email as do_send_test_email
     except ImportError:
-        # Fallback without email_sender
-        if not os.environ.get("SMTP_USER") or not os.environ.get("SMTP_PASS"):
-            raise HTTPException(status_code=500, detail="SMTP_USER or SMTP_PASS not set on this server. Add them in Render Environment.")
-        raise HTTPException(status_code=500, detail="email_sender module not available.")
+        raise HTTPException(status_code=500, detail="Mailgun not configured. Set MAILGUN_API_KEY and MAILGUN_DOMAIN in Render env vars.")
     ok, err = do_send_test_email(to)
     if ok:
         return {"success": True, "message": f"Test email sent to {to}. Check inbox and spam."}
@@ -8133,7 +8072,7 @@ async def send_payment_link_email(booking: dict, payment_link: str, payment_type
         </html>
         '''
         
-        # Send via Mailgun or Google Workspace SMTP (from noreply address)
+        # Send via Mailgun (from noreply address)
         if send_email_unified and send_email_unified(
             customer_email,
             f"Payment Link - Booking {booking_ref} - ${total_price:.2f} NZD",
