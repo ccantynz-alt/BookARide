@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 ndb = None  # Will be injected from server.py
-from motor.motor_asyncio import AsyncIOMotorDatabase
+# Database type removed - using NeonDatabase via global db
 from models import BulkEmailRequest
 from typing import List
 import os

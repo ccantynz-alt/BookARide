@@ -4,7 +4,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import Response, RedirectResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
-from motor.motor_asyncio import AsyncIOMotorClient
+from database import NeonDatabase
 import os
 import logging
 from pathlib import Path
@@ -126,13 +126,8 @@ ROOT_DIR = Path(__file__).parent
 sys.path.insert(0, str(ROOT_DIR))
 load_dotenv(ROOT_DIR / '.env')
 
-# MongoDB connection
-mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
-db_name = os.environ.get('DB_NAME', 'bookaride')
-if 'MONGO_URL' not in os.environ or 'DB_NAME' not in os.environ:
-    logging.warning("MONGO_URL or DB_NAME missing; using fallback values for startup.")
-client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=2000, connectTimeoutMS=2000)
-db = client[db_name]
+# Neon PostgreSQL connection (initialized in startup event)
+db = None
 
 # Authentication configuration
 SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'your-secret-key-change-in-production-' + str(uuid.uuid4()))
@@ -159,14 +154,16 @@ async def root():
 @app.get("/health")
 @app.get("/healthz")
 async def root_health_check():
-    """Root health check for Render/Kubernetes. Pings MongoDB so readiness = app + DB up."""
+    """Root health check for Render/Kubernetes. Pings Neon DB so readiness = app + DB up."""
     try:
+        if db is None:
+            raise HTTPException(status_code=503, detail="Database not initialized")
         await asyncio.wait_for(db.command("ping"), timeout=2.0)
-        return {"status": "healthy", "service": "bookaride-api", "mongo": "ok"}
+        return {"status": "healthy", "service": "bookaride-api", "db": "ok"}
     except asyncio.TimeoutError:
-        raise HTTPException(status_code=503, detail="MongoDB ping timeout")
+        raise HTTPException(status_code=503, detail="Database ping timeout")
     except Exception as e:
-        raise HTTPException(status_code=503, detail=f"MongoDB unreachable: {str(e)}")
+        raise HTTPException(status_code=503, detail=f"Database unreachable: {str(e)}")
 
 
 @app.get("/email-status")
@@ -2821,30 +2818,14 @@ def send_customer_confirmation(booking: dict):
     elif preference == 'sms':
         logger.info(f"Customer prefers SMS only - skipping email for booking {get_booking_reference(booking)}")
     
-    # Update database with confirmation status (sync version)
+    # Update database with confirmation status via async helper
     if booking_id:
         try:
-            from pymongo import MongoClient
-            sync_client = MongoClient(os.environ.get('MONGO_URL', 'mongodb://localhost:27017'))
-            sync_db = sync_client[os.environ.get('DB_NAME', 'test_database')]
-            
-            nz_tz = pytz.timezone('Pacific/Auckland')
-            now = datetime.now(nz_tz).isoformat()
-            
-            sync_db.bookings.update_one(
-                {"id": booking_id},
-                {"$set": {
-                    'confirmation_sent': results['email'] or results['sms'],
-                    'confirmation_sent_at': now,
-                    'email_confirmation_sent': results['email'],
-                    'sms_confirmation_sent': results['sms'],
-                    'notifications_sent': True
-                }}
-            )
-            sync_client.close()
-            logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Confirmation status updated for booking {booking_id}")
+            import asyncio
+            loop = asyncio.get_event_loop()
+            loop.create_task(update_confirmation_status(booking_id, results))
         except Exception as e:
-            logger.error(f"Error updating confirmation status: {e}")
+            logger.error(f"Error scheduling confirmation status update: {e}")
     
     return results
 
@@ -4327,10 +4308,7 @@ Price: ${booking.get('totalPrice', 0):.2f}
             
             # Store booking ID in database for SMS reply matching (using sync client)
             try:
-                from pymongo import MongoClient
-                sync_client = MongoClient(os.environ.get('MONGO_URL', 'mongodb://localhost:27017'))
-                sync_db = sync_client[os.environ.get('DB_NAME', 'test_database')]
-                sync_db.pending_approvals.update_one(
+                await db.pending_approvals.update_one(
                     {"admin_phone": admin_phone},
                     {"$set": {
                         "booking_id": booking.get('id'),
@@ -4340,7 +4318,6 @@ Price: ${booking.get('totalPrice', 0):.2f}
                     }},
                     upsert=True
                 )
-                sync_client.close()
                 logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Stored pending approval for booking #{booking_ref}")
             except Exception as db_error:
                 logger.error(f"Failed to store pending approval: {db_error}")
@@ -13910,7 +13887,15 @@ def create_arrival_email_html(customer_name: str, booking_date: str, pickup_time
 
 @app.on_event("startup")
 async def startup_event():
-    """Start the scheduler when the app starts and ensure default admin exists"""
+    """Connect to Neon PostgreSQL, start the scheduler, ensure default admin exists"""
+    global db
+    database_url = os.environ.get('DATABASE_URL')
+    if not database_url:
+        logging.error("DATABASE_URL not set! Add your Neon connection string to Render env vars.")
+        raise RuntimeError("DATABASE_URL environment variable is required")
+    db = await NeonDatabase.connect(database_url)
+    logging.info("Connected to Neon PostgreSQL")
+
     # Ensure default admin exists with correct email for Google OAuth
     try:
         default_admin = await db.admin_users.find_one({"username": "admin"})
@@ -14092,4 +14077,5 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_db_client():
     scheduler.shutdown()
-    client.close()
+    if db is not None:
+        await db.close()
