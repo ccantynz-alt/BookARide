@@ -103,15 +103,14 @@ const AddressAutocomplete = ({
     else if (onChange) onChange(description);
   };
 
-  // Close when clicking outside (exclude the portal dropdown itself).
-  // Uses CAPTURING phase so we see the event before any stopPropagation in bubbling.
+  // Close when clicking outside (must check both input and portal dropdown)
   useEffect(() => {
     const handler = (e) => {
-      // If the click target is inside the dropdown, do nothing
-      if (dropdownRef.current && dropdownRef.current.contains(e.target)) return;
-      // If the click target is inside the input, do nothing
-      if (inputRef.current && inputRef.current.contains(e.target)) return;
-      setOpen(false);
+      const inInput = inputRef.current && inputRef.current.contains(e.target);
+      const inDropdown = dropdownRef.current && dropdownRef.current.contains(e.target);
+      if (!inInput && !inDropdown) {
+        setOpen(false);
+      }
     };
     // Use capture phase so this runs reliably regardless of stopPropagation in bubbling
     document.addEventListener('pointerdown', handler, true);
