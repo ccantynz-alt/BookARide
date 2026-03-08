@@ -14,39 +14,23 @@ services:
         value: 10000
       - key: PYTHON_VERSION
         value: 3.11.9
-      - key: DATABASE_URL
+      - key: MONGO_URL
         sync: false
-      - key: JWT_SECRET_KEY
+      - key: JWT_SECRET
         generateValue: true
       - key: STRIPE_SECRET_KEY
         sync: false
       - key: MAILGUN_API_KEY
         sync: false
-      - key: GOOGLE_MAPS_API_KEY
-        sync: false
-      - key: STRIPE_WEBHOOK_SECRET
-        sync: false
-      - key: GOOGLE_SERVICE_ACCOUNT_JSON
-        sync: false
-      - key: GOOGLE_CALENDAR_ID
-        sync: false
-      - key: SMTP_USER
-        sync: false
-      - key: SMTP_PASS
-        sync: false
-      - key: SMTP_HOST
-        value: smtp.gmail.com
-      - key: SMTP_PORT
-        value: 587
 
   # Frontend (React)
   - type: static
     name: bookaride-frontend
     env: static
     rootDir: frontend
-    buildCommand: npm install --legacy-peer-deps && npm run build
+    buildCommand: npm install && npm run build
     publishPath: build
     autoDeploy: true
     envVars:
       - key: REACT_APP_BACKEND_URL
-        value: https://api.bookaride.co.nz
+        value: https://bookaride-backend.onrender.com
