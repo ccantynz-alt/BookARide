@@ -36,6 +36,7 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 import vobject
 import asyncio
+from database import NeonDatabase
 
 try:
     from email_sender import send_email as send_email_unified, get_noreply_email
@@ -12489,57 +12490,65 @@ def create_arrival_email_html(customer_name: str, booking_date: str, pickup_time
 @app.on_event("startup")
 async def startup_event():
     """Start the scheduler when the app starts and ensure default admin exists"""
-    # Ensure default admin exists with correct email for Google OAuth
-    try:
-        default_admin = await db.admin_users.find_one({"username": "admin"})
-    except Exception as e:
-        print("WARN: admin seed skipped (db unavailable):", repr(e))
-        default_admin = {"_skip": True}
-    if not default_admin:
-        hashed_pw = "$2b$12$C6UzMDM.H6dfI/f/IKcEeO8m8Y4YkQkQ1h6s4H6c3Z8Y5G7c8Y4r2"
-        await db.admin_users.insert_one({
-            "id": str(uuid.uuid4()),
-            "username": "admin",
-            "email": "info@bookaride.co.nz",
-            "hashed_password": hashed_pw,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "is_active": True
-        })
-        logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Default admin user created")
-    else:
-        # Update password and email to ensure they're correct
-        hashed_pw = "$2b$12$C6UzMDM.H6dfI/f/IKcEeO8m8Y4YkQkQ1h6s4H6c3Z8Y5G7c8Y4r2"
-        await db.admin_users.update_one(
-            {"username": "admin"},
-            {"$set": {
+    # Initialize database connection
+    await _init_db()
+
+    if db is not None:
+        # Ensure default admin exists with correct email for Google OAuth
+        try:
+            default_admin = await db.admin_users.find_one({"username": "admin"})
+        except Exception as e:
+            print("WARN: admin seed skipped (db unavailable):", repr(e))
+            default_admin = {"_skip": True}
+        if not default_admin:
+            hashed_pw = "$2b$12$C6UzMDM.H6dfI/f/IKcEeO8m8Y4YkQkQ1h6s4H6c3Z8Y5G7c8Y4r2"
+            await db.admin_users.insert_one({
+                "id": str(uuid.uuid4()),
+                "username": "admin",
+                "email": "info@bookaride.co.nz",
                 "hashed_password": hashed_pw,
-                "email": "info@bookaride.co.nz"
-            }}
-        )
-        logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Admin password reset and email updated to info@bookaride.co.nz")
-    
-    # Create database indexes for faster queries
-    try:
-        await db.bookings.create_index("date")
-        await db.bookings.create_index("status")
-        await db.bookings.create_index("name")
-        await db.bookings.create_index("email")
-        await db.bookings.create_index("referenceNumber")
-        await db.bookings.create_index("original_booking_id")
-        await db.bookings.create_index([("date", -1), ("status", 1)])
-        logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Database indexes created for faster queries")
-    except Exception as e:
-        logger.warning(f"Index creation note: {str(e)}")
-    
-    # Create index for archive collection
-    try:
-        await db.bookings_archive.create_index("archivedAt")
-        await db.bookings_archive.create_index("name")
-        await db.bookings_archive.create_index("email")
-        await db.bookings_archive.create_index("referenceNumber")
-        logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Archive indexes created")
-    except Exception as e:
-        logger.warning(f"Archive index creation note: {str(e)}")
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "is_active": True
+            })
+            logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Default admin user created")
+        elif default_admin.get("_skip"):
+            pass  # db was unavailable, skip update too
+        else:
+            # Update password and email to ensure they’re correct
+            hashed_pw = "$2b$12$C6UzMDM.H6dfI/f/IKcEeO8m8Y4YkQkQ1h6s4H6c3Z8Y5G7c8Y4r2"
+            await db.admin_users.update_one(
+                {"username": "admin"},
+                {"$set": {
+                    "hashed_password": hashed_pw,
+                    "email": "info@bookaride.co.nz"
+                }}
+            )
+            logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Admin password reset and email updated to info@bookaride.co.nz")
+
+        # Create database indexes for faster queries
+        try:
+            await db.bookings.create_index("date")
+            await db.bookings.create_index("status")
+            await db.bookings.create_index("name")
+            await db.bookings.create_index("email")
+            await db.bookings.create_index("referenceNumber")
+            await db.bookings.create_index("original_booking_id")
+            await db.bookings.create_index([("date", -1), ("status", 1)])
+            logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Database indexes created for faster queries")
+        except Exception as e:
+            logger.warning(f"Index creation note: {str(e)}")
+
+        # Create index for archive collection
+        try:
+            await db.bookings_archive.create_index("archivedAt")
+            await db.bookings_archive.create_index("name")
+            await db.bookings_archive.create_index("email")
+            await db.bookings_archive.create_index("referenceNumber")
+            logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Archive indexes created")
+        except Exception as e:
+            logger.warning(f"Archive index creation note: {str(e)}")
+    else:
+        logging.warning("Database unavailable — skipping admin seed and index creation")
     
     # ============================================
     # RELIABLE REMINDER SYSTEM - 3 LAYERS
