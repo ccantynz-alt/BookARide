@@ -16,20 +16,10 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import CurrencyConverter from '../components/CurrencyConverter';
 import TripCostSplitter from '../components/TripCostSplitter';
 import WeatherWidget from '../components/WeatherWidget';
-import LiveJourneyVisualizer from '../components/LiveJourneyVisualizer';
 import { CustomDatePicker, CustomTimePicker } from '../components/DateTimePicker';
-
-const DROPOFF_QUICK_ADDRESSES = [
-  { label: 'Auckland Airport', address: 'Auckland Airport, Ray Emery Drive, Mangere, Auckland 2022, New Zealand' },
-  { label: 'Auckland Domestic', address: 'Auckland Airport, Ray Emery Drive, Mangere, Auckland 2022, New Zealand' },
-  { label: 'Hamilton Airport', address: 'Hamilton Airport, 20 Airport Road, Hamilton 3281, New Zealand' },
-  { label: 'Whangarei Airport', address: 'Whangarei Airport, Handforth Street, Whangarei 0110, New Zealand' },
-];
-import PriceComparison from '../components/PriceComparison';
+import AddressAutocomplete from '../components/AddressAutocomplete';
 import BookingAddOns, { addOns } from '../components/BookingAddOns';
 import TrustBadges from '../components/TrustBadges';
-import GoogleReviewsWidget from '../components/GoogleReviewsWidget';
-import SocialProofCounter from '../components/SocialProofCounter';
 import { API } from '../config/api';
 
 export const BookNow = () => {
@@ -138,18 +128,6 @@ export const BookNow = () => {
   const [promoApplied, setPromoApplied] = useState(null);
   const [promoError, setPromoError] = useState('');
   const [applyingPromo, setApplyingPromo] = useState(false);
-  const [hasPromoFromPopup, setHasPromoFromPopup] = useState(false);
-
-  // Check for saved promo code from exit popup on mount
-  useEffect(() => {
-    const savedPromo = localStorage.getItem('promoCode');
-    if (savedPromo) {
-      setPromoCode(savedPromo);
-      setHasPromoFromPopup(true);
-      // Clear it so it doesn't persist forever
-      localStorage.removeItem('promoCode');
-    }
-  }, []);
 
   const [selectedAddOns, setSelectedAddOns] = useState([]);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
@@ -542,16 +520,14 @@ export const BookNow = () => {
                           <MapPin className="w-4 h-4 text-gold" />
                           <span>Pickup Location 1 *</span>
                         </Label>
-                        <Input
+                        <AddressAutocomplete
                           id="pickupAddress"
-                          name="pickupAddress"
                           value={formData.pickupAddress}
-                          onChange={(e) => setFormData(prev => ({ ...prev, pickupAddress: e.target.value }))}
-                          placeholder="Enter full address..."
+                          onChange={(val) => setFormData(prev => ({ ...prev, pickupAddress: val }))}
+                          onSelect={(val) => setFormData(prev => ({ ...prev, pickupAddress: val }))}
+                          placeholder="Start typing an address..."
                           required
-                          className="transition-all duration-200 focus:ring-2 focus:ring-gold"
                         />
-                        <p className="text-xs text-gray-500">Address suggestions as you type</p>
                       </div>
 
                       {/* Additional Pickup Addresses */}
@@ -562,11 +538,12 @@ export const BookNow = () => {
                             <span>Pickup Location {index + 2}</span>
                           </Label>
                           <div className="flex gap-2">
-                            <Input
+                            <AddressAutocomplete
                               value={pickup}
-                              onChange={(e) => handlePickupAddressChange(index, e.target.value)}
-                              placeholder="Enter full address..."
-                              className="flex-1 transition-all duration-200 focus:ring-2 focus:ring-gold"
+                              onChange={(val) => handlePickupAddressChange(index, val)}
+                              onSelect={(val) => handlePickupAddressChange(index, val)}
+                              placeholder="Start typing an address..."
+                              className="flex-1"
                             />
                             <Button
                               type="button"
@@ -607,16 +584,14 @@ export const BookNow = () => {
                           <MapPin className="w-4 h-4 text-gold" />
                           <span>Drop-off Address *</span>
                         </Label>
-                        <Input
+                        <AddressAutocomplete
                           id="dropoffAddress"
-                          name="dropoffAddress"
                           value={formData.dropoffAddress}
-                          onChange={(e) => setFormData(prev => ({ ...prev, dropoffAddress: e.target.value }))}
-                          placeholder="Enter full address or pick below..."
+                          onChange={(val) => setFormData(prev => ({ ...prev, dropoffAddress: val }))}
+                          onSelect={(val) => setFormData(prev => ({ ...prev, dropoffAddress: val }))}
+                          placeholder="Start typing an address..."
                           required
-                          className="transition-all duration-200 focus:ring-2 focus:ring-gold"
                         />
-                        <p className="text-xs text-gray-500">Address suggestions as you type</p>
                       </div>
 
                       {/* Date and Time */}
