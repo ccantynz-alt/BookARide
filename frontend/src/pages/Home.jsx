@@ -13,9 +13,6 @@ import { AnimatedCounter } from '../components/AnimatedCounter';
 import { VehicleGallery } from '../components/VehicleGallery';
 import { TestimonialsCarousel } from '../components/TestimonialsCarousel';
 import TrustBadges from '../components/TrustBadges';
-import { motion } from 'framer-motion';
-import AOS from 'aos';
-import 'aos/dist/aos.css';
 
 const iconMap = {
   plane: Plane,
@@ -26,14 +23,6 @@ const iconMap = {
 
 export const Home = () => {
   const { t } = useTranslation();
-  
-  useEffect(() => {
-    AOS.init({
-      duration: 800,
-      once: true,
-      offset: 100
-    });
-  }, []);
 
   return (
     <div className="min-h-screen bg-white">
@@ -73,22 +62,12 @@ export const Home = () => {
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             
             {/* LEFT SIDE - POWERFUL MESSAGING */}
-            <motion.div
-              initial={{ opacity: 0, x: -50 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.8 }}
-              className="text-left"
-            >
+            <div className="text-left animate-fade-in">
               {/* Premium Badge */}
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: 0.2, duration: 0.6 }}
-                className="inline-flex items-center gap-2 bg-gold/10 border border-gold/30 rounded-full px-4 py-2 mb-6"
-              >
+              <div className="inline-flex items-center gap-2 bg-gold/10 border border-gold/30 rounded-full px-4 py-2 mb-6">
                 <Star className="w-4 h-4 text-gold fill-gold" />
                 <span className="text-gold font-semibold text-sm tracking-wide">★★★★★ 5-STAR RATED</span>
-              </motion.div>
+              </div>
 
               {/* Massive Headline */}
               <h1 className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-black text-white mb-6 leading-tight">
@@ -112,28 +91,20 @@ export const Home = () => {
                   { icon: Check, text: 'Fixed Rates - No Hidden Fees, Ever' },
                   { icon: Check, text: 'Flight Tracking - We Monitor Your Arrival' }
                 ].map((benefit, index) => (
-                  <motion.div
+                  <div
                     key={index}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.4 + index * 0.1, duration: 0.6 }}
                     className="flex items-center gap-4 group"
                   >
                     <div className="flex-shrink-0 w-8 h-8 bg-gold/20 rounded-full flex items-center justify-center group-hover:bg-gold/30 transition-colors">
                       <benefit.icon className="w-5 h-5 text-gold" strokeWidth={3} />
                     </div>
                     <span className="text-white text-lg font-medium">{benefit.text}</span>
-                  </motion.div>
+                  </div>
                 ))}
               </div>
 
               {/* CTA BUTTONS */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.8, duration: 0.6 }}
-                className="flex flex-col sm:flex-row gap-4"
-              >
+              <div className="flex flex-col sm:flex-row gap-4">
                 <Link to="/book-now" className="flex-1">
                   <Button
                     size="lg"
@@ -156,15 +127,10 @@ export const Home = () => {
                     VIEW SERVICES
                   </Button>
                 </Link>
-              </motion.div>
+              </div>
 
               {/* Trust Indicators */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 1, duration: 0.6 }}
-                className="mt-8 pt-8 border-t border-white/10"
-              >
+              <div className="mt-8 pt-8 border-t border-white/10">
                 <div className="flex flex-wrap items-center gap-8">
                   <div className="flex items-center gap-2">
                     <Shield className="w-5 h-5 text-gold" />
@@ -179,16 +145,11 @@ export const Home = () => {
                     <span className="text-white/80 text-sm font-medium">10,000+ Happy Clients</span>
                   </div>
                 </div>
-              </motion.div>
-            </motion.div>
+              </div>
+            </div>
 
             {/* RIGHT SIDE - COMPELLING SALES CONTENT */}
-            <motion.div
-              initial={{ opacity: 0, x: 50 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.8, delay: 0.3 }}
-              className="hidden lg:block"
-            >
+            <div className="hidden lg:block">
               <div className="relative">
                 {/* Glowing card effect - enhanced glow */}
                 <div className="absolute -inset-4 bg-gradient-to-br from-gold/30 to-yellow-500/20 rounded-[2rem] blur-2xl animate-pulse" />
@@ -256,25 +217,20 @@ export const Home = () => {
                   </div>
                 </div>
               </div>
-            </motion.div>
+            </div>
 
           </div>
         </div>
 
         {/* Scroll indicator */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.5, duration: 1 }}
-          className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-20"
-        >
+        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-20">
           <div className="flex flex-col items-center gap-2 animate-bounce">
             <span className="text-white/60 text-sm font-medium tracking-wider">SCROLL TO EXPLORE</span>
             <div className="w-6 h-10 border-2 border-white/30 rounded-full flex justify-center pt-2">
               <div className="w-1 h-3 bg-gold rounded-full animate-pulse" />
             </div>
           </div>
-        </motion.div>
+        </div>
 
       </section>
 
@@ -288,13 +244,13 @@ export const Home = () => {
         
         <div className="container mx-auto px-4 relative z-10">
           <AnimatedSection className="text-center mb-16">
-            <div className="inline-block mb-4" data-aos="zoom-in">
+            <div className="inline-block mb-4">
               <span className="bg-gold/20 backdrop-blur-sm text-gold text-xs font-bold px-4 py-2 rounded-full uppercase tracking-wide border border-gold/30">
                 ⚡ Instant Online Booking Available
               </span>
             </div>
-            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4" data-aos="fade-up">{t('services.title')}</h2>
-            <p className="text-lg text-white/70 max-w-2xl mx-auto" data-aos="fade-up" data-aos-delay="100">
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">{t('services.title')}</h2>
+            <p className="text-lg text-white/70 max-w-2xl mx-auto">
               {t('services.description')}
             </p>
           </AnimatedSection>
@@ -303,7 +259,7 @@ export const Home = () => {
             {services.map((service, index) => {
               const Icon = iconMap[service.icon];
               return (
-                <div key={service.id} data-aos="fade-up" data-aos-delay={index * 100}>
+                <div key={service.id}>
                   {/* Glassmorphism Card */}
                   <div className="h-full bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8 transition-all duration-300 hover:bg-white/10 hover:border-gold/30 hover:shadow-[0_0_30px_rgba(212,175,55,0.15)] group hover:-translate-y-1">
                     <div className="w-16 h-16 bg-gradient-to-br from-gold/20 to-gold/5 backdrop-blur-sm rounded-xl flex items-center justify-center mb-6 group-hover:from-gold group-hover:to-yellow-500 transition-all duration-300 border border-gold/20 group-hover:border-gold">
