@@ -13,15 +13,11 @@ import { toast } from 'sonner';
 import axios from 'axios';
 import SEO from '../components/SEO';
 import LoadingSpinner from '../components/LoadingSpinner';
-import CurrencyConverter from '../components/CurrencyConverter';
-import TripCostSplitter from '../components/TripCostSplitter';
-import WeatherWidget from '../components/WeatherWidget';
 import { CustomDatePicker, CustomTimePicker } from '../components/DateTimePicker';
 import AddressAutocomplete from '../components/AddressAutocomplete';
 import BookingAddOns, { addOns } from '../components/BookingAddOns';
 import TrustBadges from '../components/TrustBadges';
 import PriceComparison from '../components/PriceComparison';
-import SocialProofCounter from '../components/SocialProofCounter';
 import { API } from '../config/api';
 
 export const BookNow = () => {
@@ -1085,25 +1081,6 @@ export const BookNow = () => {
                             />
                           </div>
                           
-                          {/* Currency Converter */}
-                          <div className="mt-6">
-                            <CurrencyConverter nzdPrice={finalTotal} />
-                          </div>
-
-                          {/* Trip Cost Splitter - for group bookings */}
-                          {formData.passengers > 1 && (
-                            <div className="mt-4">
-                              <TripCostSplitter 
-                                totalPrice={finalTotal} 
-                                passengers={parseInt(formData.passengers) || 2} 
-                              />
-                            </div>
-                          )}
-
-                          {/* Weather at Destination */}
-                          <div className="mt-4">
-                            <WeatherWidget location={formData.dropoffAddress || 'Auckland'} />
-                          </div>
 
                           {/* Route summary */}
                           {formData.pickupAddress && formData.dropoffAddress && (
@@ -1117,10 +1094,6 @@ export const BookNow = () => {
                             </div>
                           )}
 
-                          {/* Social Proof */}
-                          <div className="mt-6">
-                            <SocialProofCounter variant="urgency" />
-                          </div>
                         </div>
                       ) : (
                         <div className="text-center py-8">
