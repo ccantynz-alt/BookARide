@@ -5954,6 +5954,27 @@ async def create_payment_checkout(request: PaymentCheckoutRequest, http_request:
         raise HTTPException(status_code=500, detail=f"Error creating checkout session: {str(e)}")
 
 
+def _extract_booking_summary(booking: dict) -> dict:
+    """Extract key booking details for the confirmation page."""
+    if not booking:
+        return {}
+    summary = {
+        "pickupDate": booking.get("pickupDate", ""),
+        "pickupTime": booking.get("pickupTime", ""),
+        "pickupAddress": booking.get("pickupAddress", ""),
+        "dropoffAddress": booking.get("dropoffAddress", ""),
+        "serviceType": booking.get("serviceType", ""),
+        "passengers": booking.get("passengers", ""),
+        "flightNumber": booking.get("departureFlightNumber") or booking.get("arrivalFlightNumber") or booking.get("flightNumber", ""),
+        "bookReturn": booking.get("bookReturn", False),
+    }
+    if booking.get("bookReturn"):
+        summary["returnDate"] = booking.get("returnDate", "")
+        summary["returnTime"] = booking.get("returnTime", "")
+        summary["returnFlightNumber"] = booking.get("returnDepartureFlightNumber") or booking.get("returnFlightNumber", "")
+    return summary
+
+
 @api_router.get("/payment/status/{session_id}")
 async def get_payment_status(session_id: str):
     try:
@@ -5970,18 +5991,20 @@ async def get_payment_status(session_id: str):
         
         if existing_transaction:
             logger.info(f"Payment already processed for session: {session_id}")
-            # Get the booking to retrieve reference number
+            # Get the booking to retrieve reference number and trip details
             booking = await db.bookings.find_one(
-                {"id": existing_transaction['booking_id']}, 
-                {"_id": 0, "referenceNumber": 1}
+                {"id": existing_transaction['booking_id']},
+                {"_id": 0}
             )
+            booking_summary = _extract_booking_summary(booking) if booking else {}
             return {
                 "status": existing_transaction['status'],
                 "payment_status": existing_transaction['payment_status'],
                 "amount_total": int(existing_transaction['amount'] * 100),
                 "currency": existing_transaction['currency'],
                 "metadata": {"booking_id": existing_transaction['booking_id']},
-                "referenceNumber": booking.get('referenceNumber') if booking else None
+                "referenceNumber": booking.get('referenceNumber') if booking else None,
+                **booking_summary
             }
         
         # Initialize Stripe Checkout (webhook_url not needed for status check)
@@ -6029,14 +6052,16 @@ async def get_payment_status(session_id: str):
                 else:
                     logger.error(f"Payment succeeded but booking {booking_id} not found in database - potential orphan payment")
         
-        # Return response with reference number
+        # Return response with reference number and booking summary
+        booking_summary = _extract_booking_summary(booking) if booking else {}
         return {
             "status": checkout_status.status,
             "payment_status": checkout_status.payment_status,
             "amount_total": checkout_status.amount_total,
             "currency": checkout_status.currency,
             "metadata": checkout_status.metadata,
-            "referenceNumber": reference_number
+            "referenceNumber": reference_number,
+            **booking_summary
         }
     
     except Exception as e:
