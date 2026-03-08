@@ -545,22 +545,25 @@ async def get_next_reference_number():
     """Get the next sequential reference number for bookings, starting from 10.
 
     Uses a single atomic find_one_and_update to avoid race conditions.
-    If the counter doesn't exist or is below 10, we set it to 10 atomically first.
+    If the counter doesn't exist, we create it first.
     """
-    # Ensure counter exists and is at least 10 (idempotent, safe to call concurrently)
-    await db.counters.update_one(
-        {"id": "booking_reference", "seq": {"$lt": 10}},
-        {"$set": {"seq": 10}},
-        upsert=True
-    )
-    # Atomically increment and return — no race condition possible
+    # Atomically increment and return
     counter = await db.counters.find_one_and_update(
         {"id": "booking_reference"},
         {"$inc": {"seq": 1}},
         upsert=True,
         return_document=True
     )
-    return counter.get('seq', 10)
+    seq = counter.get('seq', 1) if counter else 1
+    # Ensure we never return a reference below 10
+    if seq < 10:
+        counter = await db.counters.find_one_and_update(
+            {"id": "booking_reference"},
+            {"$set": {"seq": 10}},
+            return_document=True
+        )
+        seq = 10
+    return seq
 
 # Authentication Endpoints
 
