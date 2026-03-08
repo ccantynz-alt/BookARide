@@ -101,6 +101,20 @@ def _build_where(query: Optional[Dict], params: list) -> str:
                     params.append(value)
                     clauses.append(f"_id = ${len(params)}")
 
+        elif key == "id":
+            # Route "id" queries to the id TEXT column (indexed) instead of JSONB scan
+            if isinstance(value, dict):
+                for op, op_val in value.items():
+                    if op == "$in":
+                        params.append([str(v) for v in op_val])
+                        clauses.append(f"id = ANY(${len(params)}::text[])")
+                    elif op == "$ne":
+                        params.append(str(op_val))
+                        clauses.append(f"(id IS NULL OR id != ${len(params)})")
+            elif value is not None:
+                params.append(str(value))
+                clauses.append(f"id = ${len(params)}")
+
         elif isinstance(value, dict):
             # Operator query
             for op, op_val in value.items():

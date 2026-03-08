@@ -4,7 +4,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import Response, RedirectResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
-from motor.motor_asyncio import AsyncIOMotorClient
+# motor import removed — using NeonDatabase (PostgreSQL via asyncpg)
 import os
 import logging
 from pathlib import Path
@@ -125,14 +125,16 @@ async def root():
 @app.get("/health")
 @app.get("/healthz")
 async def root_health_check():
-    """Root health check for Render/Kubernetes. Pings MongoDB so readiness = app + DB up."""
+    """Root health check for Render/Kubernetes. Pings database so readiness = app + DB up."""
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not initialized")
     try:
         await asyncio.wait_for(db.command("ping"), timeout=2.0)
-        return {"status": "healthy", "service": "bookaride-api", "mongo": "ok"}
+        return {"status": "healthy", "service": "bookaride-api", "database": "ok"}
     except asyncio.TimeoutError:
-        raise HTTPException(status_code=503, detail="MongoDB ping timeout")
+        raise HTTPException(status_code=503, detail="Database ping timeout")
     except Exception as e:
-        raise HTTPException(status_code=503, detail=f"MongoDB unreachable: {str(e)}")
+        raise HTTPException(status_code=503, detail=f"Database unreachable: {str(e)}")
 
 
 @app.get("/api/oauth-debug")
@@ -2680,35 +2682,23 @@ def send_customer_confirmation(booking: dict):
     elif preference == 'sms':
         logger.info(f"Customer prefers SMS only - skipping email for booking {get_booking_reference(booking)}")
     
-    # Update database with confirmation status (sync version)
-    if booking_id:
+    # Schedule async DB update for confirmation status
+    # (Cannot use asyncpg from a sync background thread — schedule on the main event loop)
+    if booking_id and db is not None:
         try:
-            from pymongo import MongoClient
-            sync_client = MongoClient(os.environ.get('MONGO_URL', 'mongodb://localhost:27017'))
-            sync_db = sync_client[os.environ.get('DB_NAME', 'test_database')]
-            
-            nz_tz = pytz.timezone('Pacific/Auckland')
-            now = datetime.now(nz_tz).isoformat()
-            
-            sync_db.bookings.update_one(
-                {"id": booking_id},
-                {"$set": {
-                    'confirmation_sent': results['email'] or results['sms'],
-                    'confirmation_sent_at': now,
-                    'email_confirmation_sent': results['email'],
-                    'sms_confirmation_sent': results['sms'],
-                    'notifications_sent': True
-                }}
+            loop = asyncio.get_event_loop()
+            asyncio.run_coroutine_threadsafe(
+                update_confirmation_status(booking_id, results),
+                loop
             )
-            sync_client.close()
-            logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Confirmation status updated for booking {booking_id}")
+            logger.info(f"Scheduled confirmation status update for booking {booking_id}")
         except Exception as e:
-            logger.error(f"Error updating confirmation status: {e}")
+            logger.error(f"Error scheduling confirmation status update: {e}")
     
     return results
 
 async def update_confirmation_status(booking_id: str, results: dict):
-    """Update booking with confirmation status - ASYNC VERSION (deprecated, use sync in send_customer_confirmation)"""
+    """Update booking with confirmation status via Neon DB (async)."""
     try:
         nz_tz = pytz.timezone('Pacific/Auckland')
         now = datetime.now(nz_tz).isoformat()
@@ -4031,25 +4021,22 @@ Price: ${booking.get('totalPrice', 0):.2f}
             )
             logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Urgent SMS sent to admin {admin_phone} for booking: #{booking_ref} - SID: {message.sid}")
             
-            # Store booking ID in database for SMS reply matching (using sync client)
-            try:
-                from pymongo import MongoClient
-                sync_client = MongoClient(os.environ.get('MONGO_URL', 'mongodb://localhost:27017'))
-                sync_db = sync_client[os.environ.get('DB_NAME', 'test_database')]
-                sync_db.pending_approvals.update_one(
-                    {"admin_phone": admin_phone},
-                    {"$set": {
-                        "booking_id": booking.get('id'),
-                        "booking_ref": booking_ref,
-                        "customer_name": booking.get('name'),
-                        "created_at": datetime.now(timezone.utc).isoformat()
-                    }},
-                    upsert=True
-                )
-                sync_client.close()
-                logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Stored pending approval for booking #{booking_ref}")
-            except Exception as db_error:
-                logger.error(f"Failed to store pending approval: {db_error}")
+            # Store booking ID in database for SMS reply matching (using Neon DB)
+            if db is not None:
+                try:
+                    await db.pending_approvals.update_one(
+                        {"admin_phone": admin_phone},
+                        {"$set": {
+                            "booking_id": booking.get(‘id’),
+                            "booking_ref": booking_ref,
+                            "customer_name": booking.get(‘name’),
+                            "created_at": datetime.now(timezone.utc).isoformat()
+                        }},
+                        upsert=True
+                    )
+                    logger.info(f"Stored pending approval for booking #{booking_ref}")
+                except Exception as db_error:
+                    logger.error(f"Failed to store pending approval: {db_error}")
             
             sms_sent = True
         else:
@@ -5594,6 +5581,20 @@ async def google_calendar_callback(code: str, http_request: Request):
 class PaymentCheckoutRequest(BaseModel):
     booking_id: str
     origin_url: str
+
+@api_router.get("/payment/stripe-health")
+async def stripe_health():
+    """Diagnostic endpoint to check Stripe configuration"""
+    stripe_key = os.environ.get('STRIPE_API_KEY') or os.environ.get('STRIPE_SECRET_KEY')
+    if not stripe_key:
+        return {"status": "error", "message": "No STRIPE_API_KEY or STRIPE_SECRET_KEY configured"}
+    try:
+        import stripe as stripe_mod
+        stripe_mod.api_key = stripe_key
+        acct = stripe_mod.Account.retrieve()
+        return {"status": "ok", "key_prefix": stripe_key[:12] + "...", "account_id": acct.get("id", "unknown")}
+    except Exception as e:
+        return {"status": "error", "message": str(e), "key_prefix": stripe_key[:12] + "..."}
 
 @api_router.post("/payment/create-checkout", response_model=CheckoutSessionResponse)
 async def create_payment_checkout(request: PaymentCheckoutRequest, http_request: Request):
@@ -12681,4 +12682,5 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_db_client():
     scheduler.shutdown()
-    client.close()
+    if db is not None:
+        await db.close()
