@@ -23,6 +23,7 @@ import ConfirmationStatusPanel from '../components/admin/ConfirmationStatusPanel
 import ReturnsOverviewPanel from '../components/admin/ReturnsOverviewPanel';
 import { API } from '../config/api';
 import Cockpit from '../admin/Cockpit';
+import AddressAutocomplete from '../components/AddressAutocomplete';
 
 // Helper function to format date to DD/MM/YYYY
 const formatDate = (dateString) => {
@@ -4246,10 +4247,11 @@ onViewBooking={(booking) => {
               <div className="space-y-4">
                 <div>
                   <Label>Pickup Address 1 *</Label>
-                  <Input
+                  <AddressAutocomplete
                     value={newBooking.pickupAddress}
-                    onChange={(e) => setNewBooking(prev => ({ ...prev, pickupAddress: e.target.value }))}
-                    placeholder="Enter full address..."
+                    onChange={(val) => setNewBooking(prev => ({ ...prev, pickupAddress: val }))}
+                    onSelect={(val) => setNewBooking(prev => ({ ...prev, pickupAddress: val }))}
+                    placeholder="Start typing an address..."
                     className="mt-1"
                   />
                 </div>
@@ -4259,10 +4261,11 @@ onViewBooking={(booking) => {
                   <div key={index} className="relative">
                     <Label>Pickup Address {index + 2}</Label>
                     <div className="flex gap-2 mt-1">
-                      <Input
+                      <AddressAutocomplete
                         value={pickup}
-                        onChange={(e) => handlePickupAddressChange(index, e.target.value)}
-                        placeholder="Enter full address..."
+                        onChange={(val) => handlePickupAddressChange(index, val)}
+                        onSelect={(val) => handlePickupAddressChange(index, val)}
+                        placeholder="Start typing an address..."
                         className="flex-1"
                       />
                       <Button
@@ -4301,10 +4304,11 @@ onViewBooking={(booking) => {
 
                 <div>
                   <Label>Drop-off Address *</Label>
-                  <Input
+                  <AddressAutocomplete
                     value={newBooking.dropoffAddress}
-                    onChange={(e) => setNewBooking(prev => ({ ...prev, dropoffAddress: e.target.value }))}
-                    placeholder="Enter full address..."
+                    onChange={(val) => setNewBooking(prev => ({ ...prev, dropoffAddress: val }))}
+                    onSelect={(val) => setNewBooking(prev => ({ ...prev, dropoffAddress: val }))}
+                    placeholder="Start typing an address..."
                     className="mt-1"
                   />
                 </div>
@@ -4326,7 +4330,7 @@ onViewBooking={(booking) => {
                           }
                         }}
                         placeholder="Select date"
-                        minDate={new Date()}
+                        minDate={new Date('2020-01-01')}
                         maxDate={new Date('2030-12-31')}
                         showMonthDropdown
                         showYearDropdown
@@ -4737,10 +4741,11 @@ onViewBooking={(booking) => {
                 <div className="space-y-4">
                   <div>
                     <Label>Pickup Address 1 *</Label>
-                    <Input
+                    <AddressAutocomplete
                       value={editingBooking.pickupAddress}
-                      onChange={(e) => setEditingBooking(prev => ({ ...prev, pickupAddress: e.target.value }))}
-                      placeholder="Enter full address..."
+                      onChange={(val) => setEditingBooking(prev => ({ ...prev, pickupAddress: val }))}
+                      onSelect={(val) => setEditingBooking(prev => ({ ...prev, pickupAddress: val }))}
+                      placeholder="Start typing an address..."
                       className="mt-1"
                     />
                   </div>
@@ -4750,10 +4755,11 @@ onViewBooking={(booking) => {
                     <div key={index} className="relative">
                       <Label>Pickup Address {index + 2}</Label>
                       <div className="flex gap-2 mt-1">
-                        <Input
+                        <AddressAutocomplete
                           value={pickup}
-                          onChange={(e) => handleEditPickupAddressChange(index, e.target.value)}
-                          placeholder="Enter full address..."
+                          onChange={(val) => handleEditPickupAddressChange(index, val)}
+                          onSelect={(val) => handleEditPickupAddressChange(index, val)}
+                          placeholder="Start typing an address..."
                           className="flex-1"
                         />
                         <Button
@@ -4783,10 +4789,11 @@ onViewBooking={(booking) => {
 
                   <div>
                     <Label>Drop-off Address *</Label>
-                    <Input
+                    <AddressAutocomplete
                       value={editingBooking.dropoffAddress}
-                      onChange={(e) => setEditingBooking(prev => ({ ...prev, dropoffAddress: e.target.value }))}
-                      placeholder="Enter full address..."
+                      onChange={(val) => setEditingBooking(prev => ({ ...prev, dropoffAddress: val }))}
+                      onSelect={(val) => setEditingBooking(prev => ({ ...prev, dropoffAddress: val }))}
+                      placeholder="Start typing an address..."
                       className="mt-1"
                     />
                   </div>
