@@ -42,11 +42,9 @@ except ImportError:
 
 
 def _send_email_with_fallbacks(to_email, subject, html_content, from_email=None, from_name="BookaRide", cc=None, text_content=None, reply_to=None):
-    """Send email trying available providers: email_sender module -> Google SMTP.
-    Returns True if any provider succeeds."""
+    """Send email via Mailgun (email_sender module). Returns True on success."""
     sender = from_email or get_noreply_email()
 
-    # 1) Try email_sender module (may not exist)
     if send_email_unified:
         try:
             if send_email_unified(to_email, subject, html_content, from_email=sender, from_name=from_name):
@@ -54,39 +52,12 @@ def _send_email_with_fallbacks(to_email, subject, html_content, from_email=None,
         except Exception as e:
             logging.getLogger(__name__).warning(f"email_sender module failed: {e}")
 
-    # 2) Try SMTP (Google Workspace / Gmail)
-    smtp_user = os.environ.get('SMTP_USER')
-    smtp_pass = os.environ.get('SMTP_PASS')
-    if smtp_user and smtp_pass:
-        try:
-            message = MIMEMultipart('alternative')
-            message['Subject'] = subject
-            message['From'] = f"{from_name} <{sender}>" if from_name else sender
-            message['To'] = to_email
-            if cc:
-                message['Cc'] = cc
-            if reply_to:
-                message['Reply-To'] = reply_to
-            if text_content:
-                message.attach(MIMEText(text_content, 'plain'))
-            message.attach(MIMEText(html_content, 'html'))
-            smtp_host = os.environ.get('SMTP_HOST', 'smtp.gmail.com')
-            smtp_port = int(os.environ.get('SMTP_PORT', '587'))
-            with smtplib.SMTP(smtp_host, smtp_port) as server:
-                server.starttls()
-                server.login(smtp_user, smtp_pass)
-                server.send_message(message)
-            logging.getLogger(__name__).info(f"Email sent via SMTP to {to_email}")
-            return True
-        except Exception as e:
-            logging.getLogger(__name__).warning(f"SMTP send failed: {e}")
-
-    logging.getLogger(__name__).error(f"ALL email providers failed for {to_email}. Configure SMTP_USER+SMTP_PASS (Google App Password).")
+    logging.getLogger(__name__).error(f"Email send failed for {to_email}. Check MAILGUN_API_KEY and MAILGUN_DOMAIN.")
     return False
 
 
 def _send_email_compat(to_email, subject, html_content, from_name="BookaRide", text_content=None, cc=None, reply_to=None):
-    """Compatibility wrapper - replaces direct Mailgun API calls with Google SMTP."""
+    """Compatibility wrapper - delegates to Mailgun via _send_email_with_fallbacks."""
     return _send_email_with_fallbacks(to_email, subject, html_content, from_name=from_name, text_content=text_content, cc=cc, reply_to=reply_to)
 
 # Global lock to prevent concurrent reminder sending
