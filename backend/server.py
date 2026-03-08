@@ -134,6 +134,29 @@ async def root_health_check():
         raise HTTPException(status_code=503, detail=f"MongoDB unreachable: {str(e)}")
 
 
+@app.get("/api/oauth-debug")
+async def oauth_debug():
+    """Check Google OAuth configuration (no secrets exposed)."""
+    client_id = os.environ.get('GOOGLE_CLIENT_ID', '')
+    client_secret = os.environ.get('GOOGLE_CLIENT_SECRET', '')
+    backend_url = os.environ.get('BACKEND_URL') or os.environ.get('RENDER_EXTERNAL_URL') or os.environ.get('PUBLIC_DOMAIN', 'https://bookaride.co.nz')
+    redirect_uri = f"{backend_url.rstrip('/')}/api/admin/google-auth/callback"
+    jwt_secret_set = os.environ.get('JWT_SECRET_KEY', '') != ''
+    admin_count = await db.admin_users.count_documents({})
+    admin_emails = [doc.get("email") for doc in await db.admin_users.find({}, {"email": 1, "_id": 0}).to_list(50) if doc.get("email")]
+    return {
+        "google_client_id_set": bool(client_id),
+        "google_client_id_preview": client_id[:20] + "..." if len(client_id) > 20 else "(not set)",
+        "google_client_secret_set": bool(client_secret),
+        "backend_url": backend_url,
+        "redirect_uri": redirect_uri,
+        "public_domain": os.environ.get('PUBLIC_DOMAIN', '(not set, defaulting to https://bookaride.co.nz)'),
+        "jwt_secret_key_set": jwt_secret_set,
+        "admin_users_count": admin_count,
+        "admin_emails": admin_emails,
+        "hint": "Ensure redirect_uri EXACTLY matches what is in Google Cloud Console > Credentials > Authorized redirect URIs"
+    }
+
 @app.get("/email-status")
 @app.get("/api/email-status")
 async def root_email_status():
@@ -711,6 +734,7 @@ async def admin_google_auth_callback(request: Request, code: Optional[str] = Non
         return RedirectResponse(url=f"{callback_url}?error=config&message=Server%20OAuth%20not%20configured.")
     saved_state = request.cookies.get("admin_oauth_state")
     if not saved_state or saved_state != state or not state.startswith(ADMIN_GOOGLE_OAUTH_STATE):
+        logger.error(f"OAuth state mismatch: cookie_present={bool(saved_state)}, state_param={state[:30] if state else 'None'}, cookie_value={saved_state[:30] if saved_state else 'None'}")
         return RedirectResponse(
             url=f"{callback_url}?error=invalid_state&message=Invalid%20or%20expired%20sign-in.%20Please%20try%20again."
         )
