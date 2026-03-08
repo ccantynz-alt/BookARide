@@ -20,6 +20,8 @@ import { CustomDatePicker, CustomTimePicker } from '../components/DateTimePicker
 import AddressAutocomplete from '../components/AddressAutocomplete';
 import BookingAddOns, { addOns } from '../components/BookingAddOns';
 import TrustBadges from '../components/TrustBadges';
+import PriceComparison from '../components/PriceComparison';
+import SocialProofCounter from '../components/SocialProofCounter';
 import { API } from '../config/api';
 
 export const BookNow = () => {
