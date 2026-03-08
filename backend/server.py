@@ -44,6 +44,11 @@ except ImportError:
     send_email_unified = None
     get_noreply_email = lambda: os.environ.get("NOREPLY_EMAIL") or os.environ.get("SENDER_EMAIL", "noreply@bookaride.co.nz")
 
+try:
+    import facebook_integration as fb
+except ImportError:
+    fb = None
+
 # Global lock to prevent concurrent reminder sending
 reminder_lock = asyncio.Lock()
 
@@ -3407,6 +3412,250 @@ async def get_email_logs(current_admin: dict = Depends(get_current_admin), limit
     except Exception as e:
         logger.error(f"Error fetching email logs: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================
+# FACEBOOK BUSINESS PAGE INTEGRATION
+# ============================================
+
+class FacebookPostRequest(BaseModel):
+    message: str
+    link: Optional[str] = None
+    scheduled_time: Optional[int] = None  # Unix timestamp for scheduling
+
+@api_router.get("/facebook/status")
+async def facebook_status(current_admin: dict = Depends(get_current_admin)):
+    """Check if Facebook is connected and return page info."""
+    if not fb or not fb._fb_configured():
+        return {"connected": False, "configured": False}
+    config = await db.facebook_config.find_one({"_id": "page_config"})
+    if not config or not config.get("page_token"):
+        return {"connected": False, "configured": True}
+    return {
+        "connected": True,
+        "configured": True,
+        "page_name": config.get("page_name", ""),
+        "page_id": config.get("page_id", ""),
+        "page_picture": config.get("page_picture", ""),
+        "page_category": config.get("page_category", ""),
+        "connected_at": config.get("connected_at", ""),
+        "auto_reply_enabled": config.get("auto_reply_enabled", True),
+    }
+
+@api_router.get("/facebook/oauth-url")
+async def facebook_oauth_url(current_admin: dict = Depends(get_current_admin)):
+    """Get the Facebook OAuth URL to start the connection flow."""
+    if not fb or not fb._fb_configured():
+        raise HTTPException(status_code=400, detail="Facebook App ID and Secret are not configured. Set FACEBOOK_APP_ID and FACEBOOK_APP_SECRET environment variables.")
+    base_url = os.environ.get("BASE_URL", "https://bookaride.co.nz")
+    redirect_uri = f"{base_url}/api/facebook/callback"
+    return {"url": fb.get_oauth_url(redirect_uri)}
+
+@api_router.get("/facebook/callback")
+async def facebook_oauth_callback(code: str = None, error: str = None):
+    """Handle the OAuth callback from Facebook."""
+    from starlette.responses import RedirectResponse
+    if error or not code:
+        logger.error(f"Facebook OAuth error: {error}")
+        return RedirectResponse(url="/admin/bookings?fb_error=auth_denied")
+    try:
+        base_url = os.environ.get("BASE_URL", "https://bookaride.co.nz")
+        redirect_uri = f"{base_url}/api/facebook/callback"
+        token_data = fb.exchange_code_for_token(code, redirect_uri)
+        pages = fb.get_user_pages(token_data["access_token"])
+        if not pages:
+            return RedirectResponse(url="/admin/bookings?fb_error=no_pages")
+        # Auto-select the first page (most common case)
+        page = pages[0]
+        await db.facebook_config.update_one(
+            {"_id": "page_config"},
+            {"$set": {
+                "page_id": page["id"],
+                "page_name": page["name"],
+                "page_token": page["access_token"],
+                "page_category": page.get("category", ""),
+                "page_picture": page.get("picture_url", ""),
+                "user_token": token_data["access_token"],
+                "connected_at": datetime.now(timezone.utc).isoformat(),
+                "auto_reply_enabled": True,
+            }},
+            upsert=True,
+        )
+        logger.info(f"Facebook page connected: {page['name']} ({page['id']})")
+        return RedirectResponse(url="/admin/bookings?fb_connected=true&activeTab=facebook")
+    except Exception as e:
+        logger.error(f"Facebook OAuth callback error: {e}")
+        return RedirectResponse(url="/admin/bookings?fb_error=token_exchange")
+
+@api_router.post("/facebook/disconnect")
+async def facebook_disconnect(current_admin: dict = Depends(get_current_admin)):
+    """Disconnect the Facebook page."""
+    await db.facebook_config.delete_one({"_id": "page_config"})
+    logger.info("Facebook page disconnected")
+    return {"message": "Facebook page disconnected"}
+
+@api_router.post("/facebook/toggle-auto-reply")
+async def facebook_toggle_auto_reply(current_admin: dict = Depends(get_current_admin)):
+    """Toggle Messenger auto-reply on/off."""
+    config = await db.facebook_config.find_one({"_id": "page_config"})
+    if not config:
+        raise HTTPException(status_code=400, detail="Facebook not connected")
+    new_val = not config.get("auto_reply_enabled", True)
+    await db.facebook_config.update_one({"_id": "page_config"}, {"$set": {"auto_reply_enabled": new_val}})
+    return {"auto_reply_enabled": new_val}
+
+@api_router.post("/facebook/posts")
+async def facebook_create_post(req: FacebookPostRequest, current_admin: dict = Depends(get_current_admin)):
+    """Create or schedule a post on the connected Facebook page."""
+    config = await db.facebook_config.find_one({"_id": "page_config"})
+    if not config or not config.get("page_token"):
+        raise HTTPException(status_code=400, detail="Facebook page not connected")
+    try:
+        result = fb.create_page_post(
+            config["page_id"], config["page_token"],
+            req.message, req.link, req.scheduled_time,
+        )
+        # Log the post
+        await db.facebook_posts.insert_one({
+            "id": str(uuid.uuid4()),
+            "fb_post_id": result.get("id", ""),
+            "message": req.message,
+            "link": req.link,
+            "scheduled_time": req.scheduled_time,
+            "created_by": current_admin.get("username", ""),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        })
+        action = "scheduled" if req.scheduled_time else "published"
+        return {"message": f"Post {action} successfully", "post_id": result.get("id")}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create post: {str(e)}")
+
+@api_router.get("/facebook/posts")
+async def facebook_get_posts(current_admin: dict = Depends(get_current_admin), limit: int = 25):
+    """Get recent posts from the connected Facebook page."""
+    config = await db.facebook_config.find_one({"_id": "page_config"})
+    if not config or not config.get("page_token"):
+        raise HTTPException(status_code=400, detail="Facebook page not connected")
+    try:
+        posts = fb.get_page_posts(config["page_id"], config["page_token"], limit)
+        return {"posts": posts}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch posts: {str(e)}")
+
+@api_router.delete("/facebook/posts/{post_id}")
+async def facebook_delete_post(post_id: str, current_admin: dict = Depends(get_current_admin)):
+    """Delete a post from the connected Facebook page."""
+    config = await db.facebook_config.find_one({"_id": "page_config"})
+    if not config or not config.get("page_token"):
+        raise HTTPException(status_code=400, detail="Facebook page not connected")
+    success = fb.delete_page_post(post_id, config["page_token"])
+    if success:
+        return {"message": "Post deleted"}
+    raise HTTPException(status_code=500, detail="Failed to delete post")
+
+@api_router.get("/facebook/insights")
+async def facebook_get_insights(current_admin: dict = Depends(get_current_admin)):
+    """Get page insights/analytics."""
+    config = await db.facebook_config.find_one({"_id": "page_config"})
+    if not config or not config.get("page_token"):
+        raise HTTPException(status_code=400, detail="Facebook page not connected")
+    try:
+        insights = fb.get_page_insights(config["page_id"], config["page_token"])
+        return {"insights": insights}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch insights: {str(e)}")
+
+@api_router.get("/facebook/messages")
+async def facebook_get_messages(current_admin: dict = Depends(get_current_admin), limit: int = 30):
+    """Get recent Messenger conversation logs."""
+    logs = await db.facebook_messages.find(
+        {}, {"_id": 0}
+    ).sort("received_at", -1).limit(limit).to_list(limit)
+    return {"messages": logs, "count": len(logs)}
+
+# Messenger Webhook (public — no admin auth, verified by Meta)
+@api_router.get("/facebook/webhook")
+async def facebook_webhook_verify(request: Request):
+    """Meta webhook verification (GET challenge)."""
+    params = request.query_params
+    mode = params.get("hub.mode")
+    token = params.get("hub.verify_token")
+    challenge = params.get("hub.challenge")
+    verify_token = os.environ.get("FACEBOOK_VERIFY_TOKEN", "bookaride_fb_verify")
+    if mode == "subscribe" and token == verify_token:
+        logger.info("Facebook webhook verified")
+        from starlette.responses import PlainTextResponse
+        return PlainTextResponse(content=challenge)
+    raise HTTPException(status_code=403, detail="Verification failed")
+
+@api_router.post("/facebook/webhook")
+async def facebook_webhook_receive(request: Request):
+    """Receive Messenger messages and auto-reply."""
+    try:
+        body = await request.json()
+    except Exception:
+        return {"status": "ok"}
+
+    if body.get("object") != "page":
+        return {"status": "ok"}
+
+    config = await db.facebook_config.find_one({"_id": "page_config"})
+    if not config or not config.get("page_token"):
+        logger.warning("Facebook webhook received but no page connected")
+        return {"status": "ok"}
+
+    page_token = config["page_token"]
+    auto_reply = config.get("auto_reply_enabled", True)
+
+    for entry in body.get("entry", []):
+        for event in entry.get("messaging", []):
+            sender_id = event.get("sender", {}).get("id", "")
+            message = event.get("message", {})
+            text = message.get("text", "")
+
+            if not text or sender_id == config.get("page_id"):
+                continue  # Skip non-text or messages from ourselves
+
+            # Get sender name from profile
+            sender_name = "there"
+            try:
+                profile = fb._graph(sender_id, params={
+                    "access_token": page_token,
+                    "fields": "first_name",
+                })
+                sender_name = profile.get("first_name", "there")
+            except Exception:
+                pass
+
+            # Log the message
+            await db.facebook_messages.insert_one({
+                "id": str(uuid.uuid4()),
+                "sender_id": sender_id,
+                "sender_name": sender_name,
+                "message": text,
+                "direction": "incoming",
+                "auto_replied": auto_reply,
+                "received_at": datetime.now(timezone.utc).isoformat(),
+            })
+
+            # Auto-reply if enabled
+            if auto_reply and fb:
+                reply_text = fb.build_auto_reply(text, sender_name)
+                success = fb.send_messenger_reply(sender_id, reply_text, page_token)
+
+                if success:
+                    await db.facebook_messages.insert_one({
+                        "id": str(uuid.uuid4()),
+                        "sender_id": sender_id,
+                        "sender_name": sender_name,
+                        "message": reply_text,
+                        "direction": "outgoing",
+                        "auto_replied": True,
+                        "received_at": datetime.now(timezone.utc).isoformat(),
+                    })
+                    logger.info(f"Messenger auto-reply sent to {sender_name} ({sender_id})")
+
+    return {"status": "ok"}
 
 
 # ============================================
