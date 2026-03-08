@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Search, Filter, Mail, DollarSign, CheckCircle, XCircle, Clock, Eye, Edit2, Users, BookOpen, Car, Settings, Trash2, MapPin, Calendar, RefreshCw, Send, Bell, Facebook, Globe, Square, CheckSquare, FileText, Smartphone, RotateCcw, AlertTriangle, AlertCircle, Home, ExternalLink, Navigation, Upload, Archive, Activity, Download, Shield } from 'lucide-react';
+import { LogOut, Search, Filter, Mail, DollarSign, CheckCircle, XCircle, Clock, Eye, Edit2, Users, BookOpen, Car, Settings, Trash2, MapPin, Calendar, RefreshCw, Send, Bell, Facebook, Globe, Square, CheckSquare, FileText, Smartphone, RotateCcw, AlertTriangle, AlertCircle, Home, Bus, ExternalLink, Navigation, Upload, Archive, Activity, Download, Shield } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent } from '../components/ui/card';
@@ -16,16 +16,9 @@ import { CustomersTab } from '../components/admin/CustomersTab';
 import { DriverApplicationsTab } from '../components/admin/DriverApplicationsTab';
 import { LandingPagesTab } from '../components/admin/LandingPagesTab';
 import { AdminBreadcrumb } from '../components/admin/AdminBreadcrumb';
-import TodaysOperationsPanel from '../components/admin/TodaysOperationsPanel';
-import ProfessionalStatsBar from '../components/admin/ProfessionalStatsBar';
-import UrgentNotificationsCenter from '../components/admin/UrgentNotificationsCenter';
-import ConfirmationStatusPanel from '../components/admin/ConfirmationStatusPanel';
 import ReturnsOverviewPanel from '../components/admin/ReturnsOverviewPanel';
 import { API } from '../config/api';
 import Cockpit from '../admin/Cockpit';
-import AddressAutocomplete from '../components/AddressAutocomplete';
-import CreateBookingModal from '../components/admin/CreateBookingModal';
-import EditBookingModal from '../components/admin/EditBookingModal';
 
 // Helper function to format date to DD/MM/YYYY
 const formatDate = (dateString) => {
@@ -525,6 +518,10 @@ export const AdminDashboard = () => {
   const [loadingOrphans, setLoadingOrphans] = useState(false);
   const [recoverSessionId, setRecoverSessionId] = useState('');
   const [recovering, setRecovering] = useState(false);
+  // Shuttle state
+  const [shuttleDate, setShuttleDate] = useState(new Date().toISOString().split('T')[0]);
+  const [shuttleData, setShuttleData] = useState({});
+  const [loadingShuttle, setLoadingShuttle] = useState(false);
   const [loadingDeleted, setLoadingDeleted] = useState(false);
   const [restoringAll, setRestoringAll] = useState(false);
   const [downloadingBackup, setDownloadingBackup] = useState(false);
@@ -552,14 +549,56 @@ export const AdminDashboard = () => {
   const [showDriverAssignPreview, setShowDriverAssignPreview] = useState(false);
   const [pendingAssignment, setPendingAssignment] = useState(null); // {tripType, driverPayout, driver}
   const [showCreateBookingModal, setShowCreateBookingModal] = useState(false);
+  const [newBooking, setNewBooking] = useState({
+    name: '',
+    email: '',
+    ccEmail: '',  // CC email for confirmation
+    phone: '',
+    serviceType: 'airport-shuttle',
+    pickupAddress: '',
+    pickupAddresses: [],  // Multiple pickups support
+    dropoffAddress: '',
+    date: '',
+    time: '',
+    passengers: '1',
+    paymentMethod: 'stripe',  // Default to Stripe payment link (mandatory online payment)
+    notes: '',
+    flightArrivalNumber: '',
+    flightArrivalTime: '',
+    flightDepartureNumber: '',
+    flightDepartureTime: '',
+    // Return trip fields
+    bookReturn: false,
+    returnDate: '',
+    returnTime: '',
+    returnDepartureFlightNumber: '',
+    returnDepartureTime: '',
+    returnArrivalFlightNumber: '',
+    returnArrivalTime: ''
+  });
+  const [bookingPricing, setBookingPricing] = useState({
+    distance: 0,
+    basePrice: 0,
+    airportFee: 0,
+    passengerFee: 0,
+    totalPrice: 0
+  });
+  const [calculatingPrice, setCalculatingPrice] = useState(false);
+  const [manualPriceOverride, setManualPriceOverride] = useState('');
   const [selectedPaymentStatus, setSelectedPaymentStatus] = useState('');
   const [showEditBookingModal, setShowEditBookingModal] = useState(false);
   // Bulk delete state
   const [selectedBookings, setSelectedBookings] = useState(new Set());
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
-  const [editingBooking, setEditingBooking] = useState(null);  // passed to EditBookingModal as initial data
+  const [editingBooking, setEditingBooking] = useState(null);
   const [calendarLoading, setCalendarLoading] = useState(false);
   
+  // Customer autocomplete state
+  const [customerSearchQuery, setCustomerSearchQuery] = useState('');
+  const [customerSearchResults, setCustomerSearchResults] = useState([]);
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+  const [searchingCustomers, setSearchingCustomers] = useState(false);
+  const customerSearchRef = useRef(null);
 
   // useMemo guarantees stable render-time ordering that minifiers cannot reorder,
   // fixing the "Cannot read properties of undefined (reading 'add')" crash that
@@ -578,6 +617,24 @@ export const AdminDashboard = () => {
   // Xero invoice date state (for backdating)
   const [xeroInvoiceDate, setXeroInvoiceDate] = useState(null);
   
+  // Address autocomplete state for admin forms (create + edit)
+  const [adminPickupSuggestions, setAdminPickupSuggestions] = useState([]);
+  const [adminDropoffSuggestions, setAdminDropoffSuggestions] = useState([]);
+  const [showAdminPickupSuggestions, setShowAdminPickupSuggestions] = useState(false);
+  const [showAdminDropoffSuggestions, setShowAdminDropoffSuggestions] = useState(false);
+  // Edit modal address autocomplete
+  const [editPickupSuggestions, setEditPickupSuggestions] = useState([]);
+  const [editDropoffSuggestions, setEditDropoffSuggestions] = useState([]);
+  const [showEditPickupSuggestions, setShowEditPickupSuggestions] = useState(false);
+  const [showEditDropoffSuggestions, setShowEditDropoffSuggestions] = useState(false);
+
+  // Date/Time picker states for admin form
+  const [adminPickupDate, setAdminPickupDate] = useState(null);
+  const [adminPickupTime, setAdminPickupTime] = useState(null);
+  const [adminReturnDate, setAdminReturnDate] = useState(null);
+  const [adminReturnTime, setAdminReturnTime] = useState(null);
+  const [adminFlightArrivalTime, setAdminFlightArrivalTime] = useState(null);
+  const [adminFlightDepartureTime, setAdminFlightDepartureTime] = useState(null);
 
   // Pagination state (must be before useEffects that depend on dateFrom/dateTo)
   const [currentPage, setCurrentPage] = useState(1);
@@ -649,14 +706,13 @@ export const AdminDashboard = () => {
       
       const newBookings = Array.isArray(response.data) ? response.data : [];
       
-      // Cache bookings in localStorage for offline access
+      // Cache a small subset for offline fallback (keeps localStorage fast)
       try {
-        const cached = JSON.parse(localStorage.getItem('cachedBookings') || '[]');
-        const updatedCache = append ? [...(Array.isArray(cached) ? cached : []), ...newBookings] : newBookings;
-        localStorage.setItem('cachedBookings', JSON.stringify(updatedCache.slice(0, 500)));
+        const toCache = (append ? newBookings : newBookings.slice(0, 50));
+        localStorage.setItem('cachedBookings', JSON.stringify(toCache));
         localStorage.setItem('cachedBookingsTime', new Date().toISOString());
       } catch (e) {
-        console.warn('Could not cache bookings:', e);
+        // localStorage full or unavailable - not critical
       }
       
       // Defer heavy state update to next tick to avoid "[Violation] 'load' handler took Xms"
@@ -861,6 +917,99 @@ export const AdminDashboard = () => {
     }
   };
 
+  // Fetch shuttle data for admin
+  const fetchShuttleData = async (date = shuttleDate) => {
+    setLoadingShuttle(true);
+    try {
+      const response = await axios.get(`${API}/shuttle/departures?date=${date}`, getAuthHeaders());
+      setShuttleData(response.data || {});
+    } catch (error) {
+      console.error('Error fetching shuttle data:', error);
+      // Don't show error for 401 (might not have shuttle feature)
+    } finally {
+      setLoadingShuttle(false);
+    }
+  };
+
+  // Get optimized shuttle route (opens maps URL from backend – Geoapify/OSM)
+  const getShuttleRoute = async (date, time) => {
+    try {
+      const response = await axios.get(`${API}/shuttle/route/${date}/${time}`, getAuthHeaders());
+      const url = response.data.mapsUrl || response.data.googleMapsUrl;
+      if (url) {
+        window.open(url, '_blank');
+        toast.success('Route opened in maps');
+      }
+      return response.data;
+    } catch (error) {
+      console.error('Error getting shuttle route:', error);
+      toast.error('Failed to get route');
+    }
+  };
+
+  // Capture all shuttle payments for a departure
+  const captureShuttlePayments = async (date, time) => {
+    try {
+      const response = await axios.post(`${API}/shuttle/capture-all/${date}/${time}`, {}, getAuthHeaders());
+      toast.success(`Captured payments for ${response.data.totalPassengers} passengers at $${response.data.finalPricePerPerson}/person`);
+      fetchShuttleData(date);
+    } catch (error) {
+      console.error('Error capturing shuttle payments:', error);
+      toast.error('Failed to capture payments');
+    }
+  };
+
+  // Start shuttle run - calculates ETAs and schedules "arriving soon" SMS for all customers
+  const startShuttleRun = async (date, time, driverId = null, driverName = null) => {
+    try {
+      toast.loading('Starting shuttle and scheduling notifications...');
+      const response = await axios.post(`${API}/shuttle/start/${date}/${time}`, {
+        driverId,
+        driverName
+      }, getAuthHeaders());
+      toast.dismiss();
+      
+      if (response.data.success) {
+        toast.success(`Shuttle started! ${response.data.scheduledNotifications} "Arriving Soon" SMS scheduled automatically.`);
+        fetchShuttleData(date);
+      }
+    } catch (error) {
+      toast.dismiss();
+      console.error('Error starting shuttle:', error);
+      toast.error(error.response?.data?.detail || 'Failed to start shuttle');
+    }
+  };
+
+  // Assign driver to shuttle - automatically starts the shuttle and schedules SMS
+  const assignShuttleDriver = async (date, time, driverId) => {
+    if (!driverId) return;
+    
+    const driver = drivers.find(d => d.id === driverId);
+    if (!driver) return;
+    
+    try {
+      toast.loading(`Assigning ${driver.name} and scheduling notifications...`);
+      
+      // Call the assign endpoint which handles everything
+      const response = await axios.post(`${API}/shuttle/assign-driver/${date}/${time}`, {
+        driverId: driverId,
+        driverName: driver.name,
+        driverPhone: driver.phone
+      }, getAuthHeaders());
+      
+      toast.dismiss();
+      
+      if (response.data.success) {
+        toast.success(`${driver.name} assigned! Route sent to driver, ${response.data.scheduledNotifications} customer SMS scheduled.`);
+        fetchShuttleData(date);
+      }
+    } catch (error) {
+      toast.dismiss();
+      console.error('Error assigning driver:', error);
+      toast.error(error.response?.data?.detail || 'Failed to assign driver');
+    }
+  };
+
   const checkXeroStatus = async () => {
     try {
       const response = await axios.get(`${API}/xero/status`, getAuthHeaders());
@@ -971,6 +1120,55 @@ export const AdminDashboard = () => {
   const [restoringFromServerBackup, setRestoringFromServerBackup] = useState(false);
   const [backupRestoreResult, setBackupRestoreResult] = useState(null);
   const backupFileInputRef = useRef(null);
+
+  // Auto daily backup state
+  const [autoBackups, setAutoBackups] = useState([]);
+  const [loadingAutoBackups, setLoadingAutoBackups] = useState(false);
+  const [triggeringBackup, setTriggeringBackup] = useState(false);
+  const [restoringAutoBackup, setRestoringAutoBackup] = useState(null);
+
+  const fetchAutoBackups = async () => {
+    setLoadingAutoBackups(true);
+    try {
+      const res = await axios.get(`${API}/admin/backups`, getAuthHeaders());
+      setAutoBackups(res.data.backups || []);
+    } catch (e) {
+      console.error('Failed to load auto-backups', e);
+    } finally {
+      setLoadingAutoBackups(false);
+    }
+  };
+
+  const handleTriggerBackup = async () => {
+    setTriggeringBackup(true);
+    try {
+      const res = await axios.post(`${API}/admin/backups/trigger`, {}, getAuthHeaders());
+      toast.success(`Backup saved: ${res.data.activeCount} active + ${res.data.deletedCount} deleted bookings`);
+      fetchAutoBackups();
+    } catch (e) {
+      toast.error('Backup failed');
+    } finally {
+      setTriggeringBackup(false);
+    }
+  };
+
+  const handleRestoreAutoBackup = async (label) => {
+    if (!window.confirm(`Restore missing bookings from the ${label} backup?\n\nThis is safe — it only adds back bookings that are no longer in your active list.`)) return;
+    setRestoringAutoBackup(label);
+    try {
+      const res = await axios.post(`${API}/admin/backups/${label}/restore`, {}, getAuthHeaders());
+      if (res.data.restored > 0) {
+        toast.success(`Restored ${res.data.restored} missing booking(s) from ${label}`);
+        fetchBookingsRef.current?.();
+      } else {
+        toast.info(`No missing bookings found in ${label} backup — all bookings already present`);
+      }
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Restore failed');
+    } finally {
+      setRestoringAutoBackup(null);
+    }
+  };
 
   const handleRestoreFromBackupFile = async (e) => {
     const file = e.target.files[0];
@@ -1433,6 +1631,54 @@ export const AdminDashboard = () => {
     }
   };
   
+  // Address autocomplete for admin forms (Geoapify) with debounce + stale-request guard
+  // Each setter gets its own request counter to prevent cross-field cancellation
+  const adminAddrDebounceRef = useRef({});
+  const adminAddrRequestIdRef = useRef({});
+  const fetchAdminAddressSuggestions = (query, setter, showSetter) => {
+    // Use setter reference as unique key per field
+    const key = [setAdminPickupSuggestions, setEditPickupSuggestions].includes(setter) ? 'pickup' : 'dropoff';
+    if (adminAddrDebounceRef.current[key]) clearTimeout(adminAddrDebounceRef.current[key]);
+
+    if (query.length < 3) { setter([]); showSetter(false); return; }
+
+    adminAddrDebounceRef.current[key] = setTimeout(async () => {
+      if (!adminAddrRequestIdRef.current[key]) adminAddrRequestIdRef.current[key] = 0;
+      const requestId = ++adminAddrRequestIdRef.current[key];
+      try {
+        const res = await axios.get(`${API}/places/autocomplete`, { params: { input: query } });
+        if (requestId !== adminAddrRequestIdRef.current[key]) return;
+        const predictions = res.data?.predictions || [];
+        setter(predictions);
+        showSetter(predictions.length > 0);
+      } catch (err) {
+        if (requestId !== adminAddrRequestIdRef.current[key]) return;
+        console.error('Admin address autocomplete error:', err);
+        setter([]); showSetter(false);
+      }
+    }, 300);
+  };
+
+  const handleRemovePickup = (index) => {
+    setNewBooking(prev => ({
+      ...prev,
+      pickupAddresses: prev.pickupAddresses.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handlePickupAddressChange = (index, value) => {
+    setNewBooking(prev => ({
+      ...prev,
+      pickupAddresses: prev.pickupAddresses.map((addr, i) => i === index ? value : addr)
+    }));
+  };
+
+  const handleAddPickup = () => {
+    setNewBooking(prev => ({
+      ...prev,
+      pickupAddresses: [...prev.pickupAddresses, '']
+    }));
+  };
 
   const exportToCSV = () => {
     try {
@@ -1554,12 +1800,82 @@ export const AdminDashboard = () => {
   const openEditBookingModal = (booking) => {
     setEditingBooking({
       ...booking,
-      pickupAddresses: booking.pickupAddresses || []
+      pickupAddresses: booking.pickupAddresses || [],
+      // Normalize flight field names: customer bookings use arrivalFlightNumber/departureFlightNumber,
+      // admin bookings use flightArrivalNumber/flightDepartureNumber — merge both so the edit form works
+      flightArrivalNumber: booking.flightArrivalNumber || booking.arrivalFlightNumber || '',
+      flightArrivalTime: booking.flightArrivalTime || booking.arrivalTime || '',
+      flightDepartureNumber: booking.flightDepartureNumber || booking.departureFlightNumber || '',
+      flightDepartureTime: booking.flightDepartureTime || booking.departureTime || '',
     });
     setShowEditBookingModal(true);
   };
 
   // Handle edit booking save
+  const handleSaveEditedBooking = async () => {
+    if (!editingBooking) return;
+
+    try {
+      const flightNum = editingBooking.flightNumber || editingBooking.flightArrivalNumber || editingBooking.flightDepartureNumber || '';
+      await axios.patch(`${API}/bookings/${editingBooking.id}`, {
+        name: editingBooking.name,
+        email: editingBooking.email,
+        phone: editingBooking.phone,
+        pickupAddress: editingBooking.pickupAddress,
+        pickupAddresses: editingBooking.pickupAddresses?.filter(addr => addr.trim()) || [],
+        dropoffAddress: editingBooking.dropoffAddress,
+        date: editingBooking.date,
+        time: editingBooking.time,
+        passengers: editingBooking.passengers,
+        notes: editingBooking.notes,
+        // Single flight number synced to all field name variants
+        flightNumber: flightNum,
+        flightArrivalNumber: flightNum,
+        flightDepartureNumber: flightNum,
+        arrivalFlightNumber: flightNum,
+        departureFlightNumber: flightNum,
+        // Return trip - inferred from filled return date + time
+        bookReturn: !!(editingBooking.returnDate && editingBooking.returnTime),
+        returnDate: editingBooking.returnDate || '',
+        returnTime: editingBooking.returnTime || '',
+        returnFlightNumber: editingBooking.returnFlightNumber || editingBooking.returnDepartureFlightNumber || '',
+        returnDepartureFlightNumber: editingBooking.returnDepartureFlightNumber || editingBooking.returnFlightNumber || ''
+      }, getAuthHeaders());
+
+      toast.success('Booking updated successfully!');
+      setShowEditBookingModal(false);
+      setEditingBooking(null);
+      fetchBookingsRef.current?.();
+    } catch (error) {
+      console.error('Error updating booking:', error);
+      toast.error(error.response?.data?.detail || 'Failed to update booking');
+    }
+  };
+
+  // Handle adding pickup to edit form
+  const handleAddEditPickup = () => {
+    setEditingBooking(prev => ({
+      ...prev,
+      pickupAddresses: [...(prev.pickupAddresses || []), '']
+    }));
+  };
+
+  // Handle removing pickup from edit form
+  const handleRemoveEditPickup = (index) => {
+    setEditingBooking(prev => ({
+      ...prev,
+      pickupAddresses: prev.pickupAddresses.filter((_, i) => i !== index)
+    }));
+  };
+
+  // Handle edit pickup address change
+  const handleEditPickupAddressChange = (index, value) => {
+    setEditingBooking(prev => ({
+      ...prev,
+      pickupAddresses: prev.pickupAddresses.map((addr, i) => i === index ? value : addr)
+    }));
+  };
+
   // Manual calendar sync
   const handleManualCalendarSync = async (bookingId) => {
     setCalendarLoading(true);
@@ -1742,6 +2058,222 @@ export const AdminDashboard = () => {
     }
   };
 
+  const calculateBookingPrice = async () => {
+    if (!newBooking.pickupAddress || !newBooking.dropoffAddress) {
+      toast.error('Please enter pickup and drop-off addresses');
+      return;
+    }
+
+    const pickupCount = 1 + newBooking.pickupAddresses.filter(addr => addr.trim()).length;
+    if (pickupCount > 1) {
+      toast.info(`Calculating route for ${pickupCount} pickup locations...`);
+    }
+
+    setCalculatingPrice(true);
+    try {
+      const hasReturn = !!(newBooking.returnDate && newBooking.returnTime);
+      const response = await axios.post(`${API}/calculate-price`, {
+        serviceType: newBooking.serviceType,
+        pickupAddress: newBooking.pickupAddress,
+        pickupAddresses: newBooking.pickupAddresses.filter(addr => addr.trim()),
+        dropoffAddress: newBooking.dropoffAddress,
+        passengers: parseInt(newBooking.passengers),
+        vipAirportPickup: false,
+        oversizedLuggage: false,
+        bookReturn: hasReturn
+      });
+
+      setBookingPricing(response.data);
+      toast.success(`Price calculated: $${response.data.totalPrice.toFixed(2)} for ${response.data.distance}km route`);
+    } catch (error) {
+      console.error('Error calculating price:', error);
+      toast.error('Failed to calculate price');
+    } finally {
+      setCalculatingPrice(false);
+    }
+  };
+
+  // Customer search for autocomplete
+  const searchCustomers = async (query) => {
+    if (!query || query.length < 2) {
+      setCustomerSearchResults([]);
+      setShowCustomerDropdown(false);
+      return;
+    }
+    
+    setSearchingCustomers(true);
+    try {
+      const response = await axios.get(`${API}/customers/search?q=${encodeURIComponent(query)}`, getAuthHeaders());
+      setCustomerSearchResults(response.data.customers || []);
+      setShowCustomerDropdown(response.data.customers?.length > 0);
+    } catch (error) {
+      console.error('Error searching customers:', error);
+      setCustomerSearchResults([]);
+    } finally {
+      setSearchingCustomers(false);
+    }
+  };
+
+  // Debounced customer search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (customerSearchQuery) {
+        searchCustomers(customerSearchQuery);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [customerSearchQuery]);
+
+  // Select customer from autocomplete
+  const selectCustomer = (customer) => {
+    setNewBooking(prev => ({
+      ...prev,
+      name: customer.name || '',
+      email: customer.email || '',
+      phone: customer.phone || '',
+      pickupAddress: customer.pickupAddress || prev.pickupAddress,
+      dropoffAddress: customer.dropoffAddress || prev.dropoffAddress
+    }));
+    setCustomerSearchQuery('');
+    setShowCustomerDropdown(false);
+    toast.success(`Loaded ${customer.name}'s details (${customer.totalBookings} previous bookings)`);
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (customerSearchRef.current && !customerSearchRef.current.contains(event.target)) {
+        setShowCustomerDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleCreateManualBooking = async () => {
+    // Validation
+    if (!newBooking.name || !newBooking.email || !newBooking.phone) {
+      toast.error('Please fill in customer details');
+      return;
+    }
+
+    if (!newBooking.pickupAddress || !newBooking.dropoffAddress) {
+      toast.error('Please enter pickup and drop-off addresses');
+      return;
+    }
+
+    if (!newBooking.date || !newBooking.time) {
+      toast.error('Please select date and time');
+      return;
+    }
+
+    // Infer return trip from filled return date + time
+    const hasReturnTrip = !!(newBooking.returnDate && newBooking.returnTime);
+    const isAirportShuttle = (newBooking.serviceType || '').toLowerCase().includes('airport') || (newBooking.serviceType || '').toLowerCase().includes('shuttle');
+    if (hasReturnTrip && isAirportShuttle && !(newBooking.returnDepartureFlightNumber || '').trim()) {
+      toast.error('Return flight number is required for airport shuttle return trips');
+      return;
+    }
+
+    // Check if either calculated price or manual override is provided
+    const hasCalculatedPrice = bookingPricing.totalPrice > 0;
+    const hasManualPrice = manualPriceOverride && parseFloat(manualPriceOverride) > 0;
+    
+    if (!hasCalculatedPrice && !hasManualPrice) {
+      toast.error('Please calculate the price or enter a manual price override');
+      return;
+    }
+
+    try {
+      // Calculate final price (double if return trip)
+      let finalPrice = hasManualPrice ? parseFloat(manualPriceOverride) : bookingPricing.totalPrice;
+      if (hasReturnTrip && !hasManualPrice) {
+        finalPrice = finalPrice * 2; // Double for return trip
+      }
+      
+      const priceOverride = hasManualPrice ? parseFloat(manualPriceOverride) : (hasReturnTrip ? finalPrice : null);
+      
+      await axios.post(`${API}/bookings/manual`, {
+        name: newBooking.name,
+        email: newBooking.email,
+        ccEmail: newBooking.ccEmail,  // CC email for confirmation
+        phone: newBooking.phone,
+        serviceType: newBooking.serviceType,
+        pickupAddress: newBooking.pickupAddress,
+        pickupAddresses: newBooking.pickupAddresses.filter(addr => addr.trim()),  // Filter empty addresses
+        dropoffAddress: newBooking.dropoffAddress,
+        date: newBooking.date,
+        time: newBooking.time,
+        passengers: newBooking.passengers,
+        pricing: hasReturnTrip ? { ...bookingPricing, totalPrice: finalPrice } : bookingPricing,
+        paymentMethod: newBooking.paymentMethod,
+        notes: newBooking.notes,
+        priceOverride: priceOverride,
+        // Flight details
+        flightArrivalNumber: newBooking.flightArrivalNumber,
+        flightArrivalTime: newBooking.flightArrivalTime,
+        flightDepartureNumber: newBooking.flightDepartureNumber,
+        flightDepartureTime: newBooking.flightDepartureTime,
+        // Return trip details
+        bookReturn: hasReturnTrip,
+        returnDate: newBooking.returnDate,
+        returnTime: newBooking.returnTime,
+        returnDepartureFlightNumber: newBooking.returnDepartureFlightNumber,
+        returnDepartureTime: newBooking.returnDepartureTime,
+        returnArrivalFlightNumber: newBooking.returnArrivalFlightNumber,
+        returnArrivalTime: newBooking.returnArrivalTime
+      }, getAuthHeaders());
+
+      toast.success('Booking created successfully! Customer will receive email & SMS confirmation.');
+      setShowCreateBookingModal(false);
+      // Reset form
+      setNewBooking({
+        name: '',
+        email: '',
+        ccEmail: '',
+        phone: '',
+        serviceType: 'airport-shuttle',
+        pickupAddress: '',
+        pickupAddresses: [],
+        dropoffAddress: '',
+        date: '',
+        time: '',
+        passengers: '1',
+        paymentMethod: 'stripe',  // Default to Stripe payment link
+        notes: '',
+        flightArrivalNumber: '',
+        flightArrivalTime: '',
+        flightDepartureNumber: '',
+        flightDepartureTime: '',
+        bookReturn: false,
+        returnDate: '',
+        returnTime: '',
+        returnDepartureFlightNumber: '',
+        returnDepartureTime: '',
+        returnArrivalFlightNumber: '',
+        returnArrivalTime: ''
+      });
+      setAdminReturnDate(null);
+      setAdminReturnTime(null);
+      setBookingPricing({
+        distance: 0,
+        basePrice: 0,
+        airportFee: 0,
+        passengerFee: 0,
+        totalPrice: 0
+      });
+      setManualPriceOverride('');
+      fetchBookingsRef.current?.(); // Refresh bookings list
+    } catch (error) {
+      console.error('Error creating booking:', error);
+      const detail = error.response?.data?.detail;
+      const msg = Array.isArray(detail)
+        ? detail.map((e) => e.msg || e.loc?.join('.')).filter(Boolean).slice(0, 2).join('. ')
+        : (typeof detail === 'string' ? detail : null) || 'Failed to create booking';
+      toast.error(msg);
+    }
+  };
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'confirmed': return 'text-green-600 bg-green-100';
@@ -1836,7 +2368,8 @@ export const AdminDashboard = () => {
         {/* Tabs Navigation */}
         <Tabs defaultValue="bookings" value={activeTab} onValueChange={(val) => {
           setActiveTab(val);
-          if (val === 'deleted') fetchDeletedBookings();
+          if (val === 'deleted') { fetchDeletedBookings(); fetchAutoBackups(); }
+          if (val === 'shuttle') fetchShuttleData();
           if (val === 'archive') fetchArchivedBookings(1, '');
         }} className="w-full">
           <TabsList className="flex flex-wrap w-full gap-1 mb-4 md:mb-8 bg-transparent">
@@ -1844,6 +2377,10 @@ export const AdminDashboard = () => {
               <BookOpen className="w-3 h-3 md:w-4 md:h-4" />
               <span className="hidden sm:inline">Bookings</span>
               <span className="sm:hidden">Book</span>
+            </TabsTrigger>
+            <TabsTrigger value="shuttle" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 text-yellow-600">
+              <Bus className="w-3 h-3 md:w-4 md:h-4" />
+              <span>Shuttle</span>
             </TabsTrigger>
             <TabsTrigger value="deleted" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 text-red-600">
               <Trash2 className="w-3 h-3 md:w-4 md:h-4" />
@@ -1857,19 +2394,11 @@ export const AdminDashboard = () => {
               <span className="md:hidden">Arc</span>
               {archivedCount > 0 && <span className="text-[10px]">({archivedCount})</span>}
             </TabsTrigger>
-            <TabsTrigger value="customers" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 hidden lg:flex">
+            <TabsTrigger value="customers" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4">
               <Users className="w-3 h-3 md:w-4 md:h-4" />
               <span>Customers</span>
             </TabsTrigger>
-            <TabsTrigger value="applications" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 hidden xl:flex">
-              <FileText className="w-3 h-3 md:w-4 md:h-4" />
-              <span>Apps</span>
-            </TabsTrigger>
-            <TabsTrigger value="marketing" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 hidden xl:flex">
-              <Globe className="w-3 h-3 md:w-4 md:h-4" />
-              <span>Marketing</span>
-            </TabsTrigger>
-            <TabsTrigger value="import" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 hidden xl:flex text-purple-600">
+            <TabsTrigger value="import" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 text-purple-600">
               <FileText className="w-3 h-3 md:w-4 md:h-4" />
               <span>Import</span>
             </TabsTrigger>
@@ -1915,42 +2444,31 @@ export const AdminDashboard = () => {
           </Card>
         )}
 
-        {/* PROFESSIONAL STATS BAR - Clean white theme */}
-        <ProfessionalStatsBar bookings={bookings} drivers={drivers} />
-        
-        {/* URGENT NOTIFICATIONS CENTER - Action required items */}
-        <UrgentNotificationsCenter 
-          bookings={bookings} 
+        {/* ALERT: Bookings needing approval */}
+        {stats.pendingApproval > 0 && (
+          <Card className="border-orange-400 bg-orange-50 shadow-md">
+            <CardContent className="p-4 flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="w-8 h-8 text-orange-600 shrink-0 animate-pulse" />
+                <div>
+                  <p className="font-bold text-orange-900">{stats.pendingApproval} booking{stats.pendingApproval !== 1 ? 's' : ''} need{stats.pendingApproval === 1 ? 's' : ''} your approval!</p>
+                  <p className="text-sm text-orange-800 mt-0.5">These are last-minute bookings (within 24 hours). They won't be confirmed until you approve them.</p>
+                </div>
+              </div>
+              <Button
+                onClick={() => setStatusFilter('pending_approval')}
+                className="bg-orange-600 hover:bg-orange-700 text-white font-semibold shrink-0"
+              >
+                View &amp; Approve
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* RETURNS OVERVIEW - Shows bookings with return trips attached */}
+        <ReturnsOverviewPanel
+          bookings={bookings}
           drivers={drivers}
-          onAssignDriver={(booking) => {
-            setSelectedBooking(booking);
-            setShowDetailsModal(true);
-          }}
-          onViewBooking={(booking) => {
-            setSelectedBooking(booking);
-            setShowDetailsModal(true);
-          }}
-        />
-        
-        {/* Two Column Layout for Confirmations and Returns */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* CONFIRMATION STATUS PANEL - Track email/SMS confirmations */}
-          <ConfirmationStatusPanel bookings={bookings} />
-          
-          {/* RETURNS OVERVIEW PANEL - All upcoming returns */}
-          <ReturnsOverviewPanel 
-            bookings={bookings}
-            drivers={drivers}
-onViewBooking={(booking) => {
-            setSelectedBooking(booking);
-            setShowDetailsModal(true);
-          }}
-          />
-        </div>
-        
-        {/* TODAY'S OPERATIONS - Unified view of all pickups */}
-        <TodaysOperationsPanel 
-          bookings={bookings} 
           onViewBooking={(booking) => {
             setSelectedBooking(booking);
             setShowDetailsModal(true);
@@ -2290,7 +2808,7 @@ onViewBooking={(booking) => {
                       const hasReturn = booking.returnDate && booking.returnTime;
                       const isUnassigned = !booking.driver_id && !booking.driver_name && !booking.assignedDriver;
                       const isUrgentUnassigned = isToday(booking.date) && isUnassigned;
-                      const flightNum = booking.flightNumber || booking.flight_number || '';
+                      const flightNum = booking.flightNumber || booking.flight_number || booking.flightArrivalNumber || booking.arrivalFlightNumber || booking.flightDepartureNumber || booking.departureFlightNumber || '';
                       
                       return (
                       <tr key={booking.id} className={`border-b hover:bg-gray-50 transition-colors
@@ -2616,6 +3134,158 @@ onViewBooking={(booking) => {
         </Card>
         </TabsContent>
 
+          {/* Shuttle Service Tab */}
+          <TabsContent value="shuttle" className="space-y-6">
+            <Card className="border-yellow-200 bg-yellow-50">
+              <CardContent className="p-4 md:p-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                  <div className="flex items-center gap-3">
+
+                    <Bus className="w-8 h-8 text-yellow-600" />
+                    <div>
+                      <h3 className="text-xl font-bold text-gray-800">Shared Shuttle Service</h3>
+                      <p className="text-sm text-gray-600">Auckland CBD → Airport (Every 2 Hours)</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Input 
+                      type="date" 
+                      value={shuttleDate} 
+                      onChange={(e) => {
+                        setShuttleDate(e.target.value);
+                        fetchShuttleData(e.target.value);
+                      }}
+                      className="w-40"
+                    />
+                    <Button 
+                      onClick={() => fetchShuttleData(shuttleDate)}
+                      variant="outline"
+                      disabled={loadingShuttle}
+                    >
+                      <RefreshCw className={`w-4 h-4 mr-2 ${loadingShuttle ? 'animate-spin' : ''}`} />
+                      Refresh
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Departure Times Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {shuttleData.departures && Object.entries(shuttleData.departures).map(([time, data]) => (
+                    <div 
+                      key={time} 
+                      className={`p-4 rounded-lg border-2 ${
+                        data.totalPassengers > 0 
+                          ? 'bg-white border-yellow-500 shadow-md' 
+                          : 'bg-gray-50 border-gray-200'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <p className="text-lg font-bold text-gray-800">
+                            {time.replace(':00', ':00').replace(/(\d{2}):(\d{2})/, (m, h, min) => {
+                              const hour = parseInt(h);
+                              const ampm = hour >= 12 ? 'PM' : 'AM';
+                              const hour12 = hour % 12 || 12;
+                              return `${hour12}:${min} ${ampm}`;
+                            })}
+                          </p>
+                          <p className="text-sm text-gray-500">{shuttleDate}</p>
+                        </div>
+                        <div className={`px-2 py-1 rounded text-xs font-medium ${
+                          data.totalPassengers >= 6 ? 'bg-green-100 text-green-800' :
+                          data.totalPassengers >= 3 ? 'bg-yellow-100 text-yellow-800' :
+                          data.totalPassengers > 0 ? 'bg-blue-100 text-blue-800' :
+                          'bg-gray-100 text-gray-500'
+                        }`}>
+                          {data.totalPassengers || 0} pax
+                        </div>
+                      </div>
+
+                      {data.bookings && data.bookings.length > 0 ? (
+                        <>
+                          <div className="space-y-2 mb-3 max-h-40 overflow-y-auto">
+                            {data.bookings.map((booking, idx) => (
+                              <div key={idx} className="text-xs bg-gray-100 rounded p-2">
+                                <div className="font-medium">{booking.name} ({booking.passengers})</div>
+                                <div className="text-gray-500 truncate">{booking.pickupAddress}</div>
+                                <div className="text-gray-400">{booking.phone}</div>
+                                {booking.arrivingSoonSent && (
+                                  <div className="text-green-600 text-xs mt-1">✓ Notified</div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                          <div className="flex justify-between items-center text-sm mb-3">
+                            <span className="text-gray-600">Est. Revenue:</span>
+                            <span className="font-bold text-green-600">${data.totalRevenue || 0}</span>
+                          </div>
+                          
+                          {/* Driver Assignment - triggers auto SMS when assigned */}
+                          <div className="mb-3">
+                            <label className="text-xs text-gray-600 mb-1 block">Assign Driver:</label>
+                            <select
+                              className="w-full text-sm border border-gray-300 rounded px-2 py-2 bg-white"
+                              value={data.assignedDriverId || ''}
+                              onChange={(e) => assignShuttleDriver(shuttleDate, time, e.target.value)}
+                            >
+                              <option value="">Select driver...</option>
+                              {drivers.map(driver => (
+                                <option key={driver.id} value={driver.id}>{driver.name}</option>
+                              ))}
+                            </select>
+                            {data.assignedDriverName && (
+                              <div className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                                <CheckCircle className="w-3 h-3" />
+                                {data.assignedDriverName} assigned - SMS scheduled!
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex gap-2">
+                            <Button 
+                              size="sm" 
+                              className="flex-1 bg-blue-600 hover:bg-blue-700"
+                              onClick={() => getShuttleRoute(shuttleDate, time)}
+                            >
+                              <Navigation className="w-3 h-3 mr-1" />
+                              Route
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              className="flex-1 bg-green-600 hover:bg-green-700"
+                              onClick={() => captureShuttlePayments(shuttleDate, time)}
+                            >
+                              <DollarSign className="w-3 h-3 mr-1" />
+                              Charge All
+                            </Button>
+                          </div>
+                        </>
+                      ) : (
+                        <p className="text-sm text-gray-400 italic">No bookings yet</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Pricing Info */}
+                <div className="mt-6 p-4 bg-white rounded-lg border">
+                  <h4 className="font-semibold text-gray-700 mb-2">Dynamic Pricing Tiers</h4>
+                  <div className="flex flex-wrap gap-2 text-xs">
+                    <span className="px-2 py-1 bg-gray-100 rounded">1-2 pax: $100/ea</span>
+                    <span className="px-2 py-1 bg-gray-100 rounded">3 pax: $70/ea</span>
+                    <span className="px-2 py-1 bg-gray-100 rounded">4 pax: $55/ea</span>
+                    <span className="px-2 py-1 bg-gray-100 rounded">5 pax: $45/ea</span>
+                    <span className="px-2 py-1 bg-gray-100 rounded">6 pax: $40/ea</span>
+                    <span className="px-2 py-1 bg-gray-100 rounded">7+ pax: $35-25/ea</span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    💳 Cards are authorized at booking, charged when shuttle arrives at airport
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* Customers Tab */}
           <TabsContent value="customers">
             <CustomersTab />
@@ -2728,6 +3398,50 @@ onViewBooking={(booking) => {
                   </div>
                 )}
                 
+                {/* AUTO DAILY BACKUPS PANEL */}
+                <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <h4 className="font-semibold text-blue-900 text-sm">Automatic Daily Backups</h4>
+                      <p className="text-xs text-blue-700 mt-0.5">Snapshots saved every night at 1 AM — 7 days rolling. Click Restore to recover any missing bookings.</p>
+                    </div>
+                    <Button
+                      onClick={handleTriggerBackup}
+                      disabled={triggeringBackup}
+                      size="sm"
+                      variant="outline"
+                      className="border-blue-400 text-blue-700 hover:bg-blue-100 text-xs"
+                    >
+                      {triggeringBackup ? <RefreshCw className="w-3 h-3 mr-1 animate-spin" /> : <Archive className="w-3 h-3 mr-1" />}
+                      Backup now
+                    </Button>
+                  </div>
+                  {loadingAutoBackups ? (
+                    <p className="text-xs text-blue-600">Loading backups...</p>
+                  ) : autoBackups.length === 0 ? (
+                    <p className="text-xs text-blue-600">No automatic backups yet. Click "Backup now" to create the first one.</p>
+                  ) : (
+                    <div className="space-y-1">
+                      {autoBackups.map(b => (
+                        <div key={b.label} className="flex items-center justify-between bg-white rounded px-3 py-2 border border-blue-100 text-xs">
+                          <div>
+                            <span className="font-medium text-gray-800">{b.label}</span>
+                            <span className="text-gray-500 ml-2">{b.activeCount} active · {b.deletedCount} deleted</span>
+                          </div>
+                          <Button
+                            onClick={() => handleRestoreAutoBackup(b.label)}
+                            disabled={restoringAutoBackup === b.label}
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700 text-white text-xs py-1 h-7"
+                          >
+                            {restoringAutoBackup === b.label ? <RefreshCw className="w-3 h-3 animate-spin" /> : 'Restore missing'}
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 {loadingDeleted ? (
                   <div className="text-center py-8">
                     <RefreshCw className="w-8 h-8 animate-spin mx-auto text-gray-400" />
@@ -3197,7 +3911,7 @@ onViewBooking={(booking) => {
               </div>
 
               {/* Outbound Flight Info */}
-              {(selectedBooking.flightArrivalNumber || selectedBooking.flightDepartureNumber || selectedBooking.flightNumber) && (
+              {(selectedBooking.flightArrivalNumber || selectedBooking.arrivalFlightNumber || selectedBooking.flightDepartureNumber || selectedBooking.departureFlightNumber || selectedBooking.flightNumber) && (
                 <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                   <h3 className="font-semibold text-gray-900 mb-1 flex items-center gap-2">
                     ✈️ Outbound flight numbers
@@ -3205,24 +3919,24 @@ onViewBooking={(booking) => {
                   <p className="text-xs text-gray-500 mb-3">Pickup leg — arrival/departure at airport</p>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     {/* Show flightNumber from WordPress imports */}
-                    {selectedBooking.flightNumber && !selectedBooking.flightArrivalNumber && !selectedBooking.flightDepartureNumber && (
+                    {selectedBooking.flightNumber && !selectedBooking.flightArrivalNumber && !selectedBooking.arrivalFlightNumber && !selectedBooking.flightDepartureNumber && !selectedBooking.departureFlightNumber && (
                       <div>
                         <span className="text-gray-600">Flight:</span>
                         <p className="font-medium">{selectedBooking.flightNumber}</p>
                       </div>
                     )}
-                    {selectedBooking.flightArrivalNumber && (
+                    {(selectedBooking.flightArrivalNumber || selectedBooking.arrivalFlightNumber) && (
                       <div>
                         <span className="text-gray-600">Arrival Flight:</span>
-                        <p className="font-medium">{selectedBooking.flightArrivalNumber}</p>
-                        {selectedBooking.flightArrivalTime && <p className="text-xs text-gray-500">Arrival: {selectedBooking.flightArrivalTime}</p>}
+                        <p className="font-medium">{selectedBooking.flightArrivalNumber || selectedBooking.arrivalFlightNumber}</p>
+                        {(selectedBooking.flightArrivalTime || selectedBooking.arrivalTime) && <p className="text-xs text-gray-500">Arrival: {selectedBooking.flightArrivalTime || selectedBooking.arrivalTime}</p>}
                       </div>
                     )}
-                    {selectedBooking.flightDepartureNumber && (
+                    {(selectedBooking.flightDepartureNumber || selectedBooking.departureFlightNumber) && (
                       <div>
                         <span className="text-gray-600">Departure Flight:</span>
-                        <p className="font-medium">{selectedBooking.flightDepartureNumber}</p>
-                        {selectedBooking.flightDepartureTime && <p className="text-xs text-gray-500">Departure: {selectedBooking.flightDepartureTime}</p>}
+                        <p className="font-medium">{selectedBooking.flightDepartureNumber || selectedBooking.departureFlightNumber}</p>
+                        {(selectedBooking.flightDepartureTime || selectedBooking.departureTime) && <p className="text-xs text-gray-500">Departure: {selectedBooking.flightDepartureTime || selectedBooking.departureTime}</p>}
                       </div>
                     )}
                   </div>
@@ -3747,30 +4461,963 @@ onViewBooking={(booking) => {
         </DialogContent>
       </Dialog>
 
-
       {/* Create Booking Modal */}
-      <CreateBookingModal
-        open={showCreateBookingModal}
-        onClose={() => setShowCreateBookingModal(false)}
-        onSuccess={() => fetchBookingsRef.current?.()}
-        getAuthHeaders={getAuthHeaders}
-      />
+      <Dialog open={showCreateBookingModal} onOpenChange={setShowCreateBookingModal}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create Manual Booking</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6 pt-4">
+            {/* Customer Search & Information */}
+            <div>
+              <h3 className="font-semibold text-gray-900 mb-3">Customer Information</h3>
+              
+              {/* Customer Search Autocomplete */}
+              <div className="mb-4 relative" ref={customerSearchRef}>
+                <Label className="text-amber-600 font-medium">🔍 Search Existing Customer</Label>
+                <div className="relative mt-1">
+                  <Input
+                    value={customerSearchQuery}
+                    onChange={(e) => {
+                      setCustomerSearchQuery(e.target.value);
+                      if (!e.target.value) {
+                        setShowCustomerDropdown(false);
+                      }
+                    }}
+                    placeholder="Type customer name, email, or phone to search..."
+                    className="pr-10"
+                  />
+                  {searchingCustomers && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      <div className="w-4 h-4 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Customer Search Results Dropdown */}
+                {showCustomerDropdown && customerSearchResults.length > 0 && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                    {customerSearchResults.map((customer, idx) => (
+                      <div
+                        key={idx}
+                        className="px-4 py-3 hover:bg-amber-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                        onClick={() => selectCustomer(customer)}
+                      >
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="font-medium text-gray-900">{customer.name}</p>
+                            <p className="text-sm text-gray-500">{customer.email}</p>
+                            <p className="text-sm text-gray-500">{customer.phone}</p>
+                          </div>
+                          <div className="text-right">
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                              {customer.totalBookings} bookings
+                            </span>
+                            {customer.lastBookingDate && (
+                              <p className="text-xs text-gray-400 mt-1">Last: {customer.lastBookingDate}</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <p className="text-xs text-gray-500 mt-1">Start typing to find existing customers</p>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Name *</Label>
+                  <Input
+                    value={newBooking.name}
+                    onChange={(e) => setNewBooking(prev => ({...prev, name: e.target.value}))}
+                    placeholder="Customer name"
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label>Email *</Label>
+                  <Input
+                    type="email"
+                    value={newBooking.email}
+                    onChange={(e) => setNewBooking(prev => ({...prev, email: e.target.value}))}
+                    placeholder="customer@example.com"
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label>CC Email (optional)</Label>
+                  <Input
+                    type="email"
+                    value={newBooking.ccEmail}
+                    onChange={(e) => setNewBooking(prev => ({...prev, ccEmail: e.target.value}))}
+                    placeholder="copy@example.com"
+                    className="mt-1"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Send copy of confirmation to this email</p>
+                </div>
+                <div>
+                  <Label>Phone *</Label>
+                  <Input
+                    value={newBooking.phone}
+                    onChange={(e) => setNewBooking(prev => ({...prev, phone: e.target.value}))}
+                    placeholder="+64 21 XXX XXXX"
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label>Service Type *</Label>
+                  <Select 
+                    value={newBooking.serviceType} 
+                    onValueChange={(value) => setNewBooking(prev => ({...prev, serviceType: value}))}
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="airport-shuttle">Airport Shuttle</SelectItem>
+                      <SelectItem value="private-transfer">Private Shuttle Transfer</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Payment Method *</Label>
+                  <Select 
+                    value={newBooking.paymentMethod} 
+                    onValueChange={(value) => setNewBooking(prev => ({...prev, paymentMethod: value}))}
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="stripe">💳 Stripe - Send Payment Link</SelectItem>
+                      <SelectItem value="paypal">🅿️ PayPal - Send Payment Link</SelectItem>
+                      <SelectItem value="xero">📄 Xero - Send Invoice</SelectItem>
+                      <SelectItem value="pay-on-pickup">💵 Pay on Pickup (Cash)</SelectItem>
+                      <SelectItem value="card">✅ Card (Already Paid)</SelectItem>
+                      <SelectItem value="bank-transfer">🏦 Bank Transfer</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {(newBooking.paymentMethod === 'stripe' || newBooking.paymentMethod === 'paypal') && (
+                    <p className="text-xs text-gold mt-1">
+                      A payment link will be sent to the customer's email after booking is created.
+                    </p>
+                  )}
+                  {newBooking.paymentMethod === 'xero' && (
+                    <p className="text-xs text-purple-600 mt-1">
+                      📄 An invoice will be created in Xero and emailed to the customer automatically.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Trip Information */}
+            <div>
+              <h3 className="font-semibold text-gray-900 mb-3">Trip Information</h3>
+              <div className="space-y-4">
+                <div className="relative">
+                  <Label>Pickup Address 1 *</Label>
+                  <Input
+                    value={newBooking.pickupAddress}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setNewBooking(prev => ({ ...prev, pickupAddress: val }));
+                      fetchAdminAddressSuggestions(val, setAdminPickupSuggestions, setShowAdminPickupSuggestions);
+                    }}
+                    onBlur={() => setTimeout(() => setShowAdminPickupSuggestions(false), 200)}
+                    placeholder="Start typing address..."
+                    autoComplete="off"
+                    className="mt-1"
+                  />
+                  {showAdminPickupSuggestions && adminPickupSuggestions.length > 0 && (
+                    <ul className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+                      {adminPickupSuggestions.map((s, i) => (
+                        <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm border-b last:border-b-0"
+                          onPointerDown={(e) => {
+                            e.preventDefault();
+                            setNewBooking(prev => ({ ...prev, pickupAddress: s.description }));
+                            setShowAdminPickupSuggestions(false);
+                          }}>
+                          {s.description}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                {/* Additional Pickup Addresses */}
+                {newBooking.pickupAddresses.map((pickup, index) => (
+                  <div key={index} className="relative">
+                    <Label>Pickup Address {index + 2}</Label>
+                    <div className="flex gap-2 mt-1">
+                      <Input
+                        value={pickup}
+                        onChange={(e) => handlePickupAddressChange(index, e.target.value)}
+                        placeholder="Enter full address..."
+                        className="flex-1"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => handleRemovePickup(index)}
+                        className="text-red-600 hover:bg-red-50"
+                      >
+                        ✕
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+
+                {/* Add Pickup Button - Elegant Design */}
+                <div>
+                  <button
+                    type="button"
+                    onClick={handleAddPickup}
+                    className="group w-full flex items-center justify-center gap-3 px-6 py-4 bg-gradient-to-r from-gold/10 to-gold/5 hover:from-gold/20 hover:to-gold/10 border-2 border-dashed border-gold/40 hover:border-gold/60 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-[1.02] hover:shadow-md"
+                  >
+                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gold/20 group-hover:bg-gold/30 transition-colors">
+                      <MapPin className="w-4 h-4 text-gold" />
+                    </div>
+                    <span className="text-sm font-semibold text-gray-700 group-hover:text-gray-900">
+                      Add Another Pickup Location
+                    </span>
+                    <div className="flex items-center justify-center w-6 h-6 rounded-full bg-gold text-white text-xs font-bold group-hover:scale-110 transition-transform">
+                      +
+                    </div>
+                  </button>
+                  <p className="text-xs text-gray-500 mt-2 text-center">
+                    Add multiple pickup locations for shared rides or multi-stop trips
+                  </p>
+                </div>
+
+                <div className="relative">
+                  <Label>Drop-off Address *</Label>
+                  <Input
+                    value={newBooking.dropoffAddress}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setNewBooking(prev => ({ ...prev, dropoffAddress: val }));
+                      fetchAdminAddressSuggestions(val, setAdminDropoffSuggestions, setShowAdminDropoffSuggestions);
+                    }}
+                    onBlur={() => setTimeout(() => setShowAdminDropoffSuggestions(false), 200)}
+                    placeholder="Start typing address..."
+                    autoComplete="off"
+                    className="mt-1"
+                  />
+                  {showAdminDropoffSuggestions && adminDropoffSuggestions.length > 0 && (
+                    <ul className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+                      {adminDropoffSuggestions.map((s, i) => (
+                        <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm border-b last:border-b-0"
+                          onPointerDown={(e) => {
+                            e.preventDefault();
+                            setNewBooking(prev => ({ ...prev, dropoffAddress: s.description }));
+                            setShowAdminDropoffSuggestions(false);
+                          }}>
+                          {s.description}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <Label>Date * (can backdate for invoicing)</Label>
+                    <div className="mt-1">
+                      <CustomDatePicker
+                        selected={adminPickupDate}
+                        onChange={(date) => {
+                          setAdminPickupDate(date);
+                          if (date) {
+                            // Use local date to avoid timezone issues
+                            const year = date.getFullYear();
+                            const month = String(date.getMonth() + 1).padStart(2, '0');
+                            const day = String(date.getDate()).padStart(2, '0');
+                            const formattedDate = `${year}-${month}-${day}`;
+                            setNewBooking(prev => ({...prev, date: formattedDate}));
+                          }
+                        }}
+                        placeholder="Select date"
+                        minDate={new Date()}
+                        maxDate={new Date('2030-12-31')}
+                        showMonthDropdown
+                        showYearDropdown
+                        dropdownMode="select"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Time *</Label>
+                    <div className="mt-1">
+                      <CustomTimePicker
+                        selected={adminPickupTime}
+                        onChange={(time) => {
+                          setAdminPickupTime(time);
+                          if (time) {
+                            const hours = time.getHours().toString().padStart(2, '0');
+                            const minutes = time.getMinutes().toString().padStart(2, '0');
+                            setNewBooking(prev => ({...prev, time: `${hours}:${minutes}`}));
+                          }
+                        }}
+                        placeholder="Select time"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Passengers *</Label>
+                    <Select 
+                      value={newBooking.passengers} 
+                      onValueChange={(value) => setNewBooking(prev => ({...prev, passengers: value}))}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(num => (
+                          <SelectItem key={num} value={num.toString()}>{num}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Flight Details Section */}
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                  <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    ✈️ Flight Details (Optional)
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label>Flight Arrival Number</Label>
+                      <Input
+                        value={newBooking.flightArrivalNumber}
+                        onChange={(e) => setNewBooking(prev => ({...prev, flightArrivalNumber: e.target.value}))}
+                        placeholder="e.g., NZ123"
+                        className="mt-1 bg-white"
+                      />
+                    </div>
+                    <div>
+                      <Label>Flight Arrival Time</Label>
+                      <div className="mt-1">
+                        <CustomTimePicker
+                          selected={adminFlightArrivalTime}
+                          onChange={(time) => {
+                            setAdminFlightArrivalTime(time);
+                            if (time) {
+                              const hours = time.getHours().toString().padStart(2, '0');
+                              const minutes = time.getMinutes().toString().padStart(2, '0');
+                              setNewBooking(prev => ({...prev, flightArrivalTime: `${hours}:${minutes}`}));
+                            }
+                          }}
+                          placeholder="Select arrival time"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <Label>Flight Departure Number</Label>
+                      <Input
+                        value={newBooking.flightDepartureNumber}
+                        onChange={(e) => setNewBooking(prev => ({...prev, flightDepartureNumber: e.target.value}))}
+                        placeholder="e.g., NZ456"
+                        className="mt-1 bg-white"
+                      />
+                    </div>
+                    <div>
+                      <Label>Flight Departure Time</Label>
+                      <div className="mt-1">
+                        <CustomTimePicker
+                          selected={adminFlightDepartureTime}
+                          onChange={(time) => {
+                            setAdminFlightDepartureTime(time);
+                            if (time) {
+                              const hours = time.getHours().toString().padStart(2, '0');
+                              const minutes = time.getMinutes().toString().padStart(2, '0');
+                              setNewBooking(prev => ({...prev, flightDepartureTime: `${hours}:${minutes}`}));
+                            }
+                          }}
+                          placeholder="Select departure time"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-600 mt-2">
+                    Add flight details for airport pickups/drop-offs to better track and coordinate transfers
+                  </p>
+                </div>
+
+                {/* Return Journey - Always visible, optional (no checkbox) */}
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                  <h4 className="font-semibold text-gray-900 mb-2">Return Journey <span className="text-sm font-normal text-gray-500">(Optional – leave blank for one-way)</span></h4>
+
+                  <div className="space-y-4 mt-4">
+                      <p className="text-sm text-gray-600">
+                        Return trip: Drop-off → Pickup (reverse of outbound journey)
+                      </p>
+                      
+                      {/* Return Date and Time */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label>Return Date *</Label>
+                          <div className="mt-1">
+                            <CustomDatePicker
+                              selected={adminReturnDate}
+                              onChange={(date) => {
+                                setAdminReturnDate(date);
+                                if (date) {
+                                  // Use local date to avoid timezone issues
+                                  const year = date.getFullYear();
+                                  const month = String(date.getMonth() + 1).padStart(2, '0');
+                                  const day = String(date.getDate()).padStart(2, '0');
+                                  const formattedDate = `${year}-${month}-${day}`;
+                                  setNewBooking(prev => ({...prev, returnDate: formattedDate}));
+                                }
+                              }}
+                              placeholder="Select return date"
+                              minDate={new Date('2020-01-01')}
+                              maxDate={new Date('2030-12-31')}
+                              showMonthDropdown
+                              showYearDropdown
+                              dropdownMode="select"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <Label>Return Time *</Label>
+                          <div className="mt-1">
+                            <CustomTimePicker
+                              selected={adminReturnTime}
+                              onChange={(time) => {
+                                setAdminReturnTime(time);
+                                if (time) {
+                                  const hours = time.getHours().toString().padStart(2, '0');
+                                  const minutes = time.getMinutes().toString().padStart(2, '0');
+                                  setNewBooking(prev => ({...prev, returnTime: `${hours}:${minutes}`}));
+                                }
+                              }}
+                              placeholder="Select return time"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      {/* Return Flight Information */}
+                      <div className="mt-4 pt-4 border-t border-gray-200">
+                        <Label className="text-sm font-medium text-gray-700 mb-2 block">Return Flight Information (required if booking return)</Label>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <Label className="text-xs">Return Flight Number</Label>
+                            <Input
+                              value={newBooking.returnDepartureFlightNumber || ''}
+                              onChange={(e) => setNewBooking(prev => ({...prev, returnDepartureFlightNumber: e.target.value}))}
+                              placeholder="e.g. NZ456"
+                              className="mt-1"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Return Arrival Flight (optional)</Label>
+                            <Input
+                              value={newBooking.returnArrivalFlightNumber || ''}
+                              onChange={(e) => setNewBooking(prev => ({...prev, returnArrivalFlightNumber: e.target.value}))}
+                              placeholder="e.g. NZ789"
+                              className="mt-1"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                </div>
+
+                <div>
+                  <Label>Special Notes</Label>
+                  <Textarea
+                    value={newBooking.notes}
+                    onChange={(e) => setNewBooking(prev => ({...prev, notes: e.target.value}))}
+                    placeholder="Any special requests or notes..."
+                    rows={3}
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Pricing */}
+            <div>
+              <h3 className="font-semibold text-gray-900 mb-3">Pricing</h3>
+              <div className="bg-gray-50 p-4 rounded-lg">
+                {bookingPricing.totalPrice > 0 ? (
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span>Distance:</span>
+                      <span className="font-medium">{bookingPricing.distance} km</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Base Price:</span>
+                      <span className="font-medium">${bookingPricing.basePrice.toFixed(2)}</span>
+                    </div>
+                    {bookingPricing.airportFee > 0 && (
+                      <div className="flex justify-between">
+                        <span>Airport Fee:</span>
+                        <span className="font-medium">${bookingPricing.airportFee.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {bookingPricing.passengerFee > 0 && (
+                      <div className="flex justify-between">
+                        <span>Passenger Fee:</span>
+                        <span className="font-medium">${bookingPricing.passengerFee.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {(newBooking.returnDate && newBooking.returnTime) && (
+                      <div className="flex justify-between text-green-700">
+                        <span>🔄 Return Trip:</span>
+                        <span className="font-medium">x2</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between pt-2 border-t font-semibold text-base">
+                      <span>Total:</span>
+                      <span className="text-gold">
+                        ${((newBooking.returnDate && newBooking.returnTime) ? bookingPricing.totalPrice * 2 : bookingPricing.totalPrice).toFixed(2)}
+                      </span>
+                    </div>
+                    {(newBooking.returnDate && newBooking.returnTime) && (
+                      <p className="text-xs text-green-600 text-center mt-1">
+                        Includes return trip (outbound + return)
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-600 text-center">
+                    Click &quot;Calculate Price&quot; to get pricing details
+                  </p>
+                )}
+                <Button 
+                  onClick={calculateBookingPrice}
+                  disabled={calculatingPrice || !newBooking.pickupAddress || !newBooking.dropoffAddress}
+                  className="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  {calculatingPrice ? 'Calculating...' : 'Calculate Price'}
+                </Button>
+              </div>
+
+              {/* Price Override Section */}
+              <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <Label className="text-sm font-semibold text-gray-900 mb-2 block">
+                  💰 Manual Price Override (Optional)
+                </Label>
+                <p className="text-xs text-gray-600 mb-3">
+                  Enter a custom price to override the calculated amount. Leave empty to use calculated price.
+                </p>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={manualPriceOverride}
+                      onChange={(e) => setManualPriceOverride(e.target.value)}
+                      placeholder="0.00"
+                      className="pl-7"
+                    />
+                  </div>
+                  {manualPriceOverride && (
+                    <Button
+                      variant="outline"
+                      onClick={() => setManualPriceOverride('')}
+                      className="text-red-600 hover:bg-red-50"
+                    >
+                      Clear
+                    </Button>
+                  )}
+                </div>
+                {manualPriceOverride && parseFloat(manualPriceOverride) > 0 && (
+                  <div className="mt-3 p-2 bg-green-50 border border-green-200 rounded text-sm">
+                    <strong>Final Price:</strong> <span className="text-green-700 font-bold">${parseFloat(manualPriceOverride).toFixed(2)} NZD</span>
+                    <span className="text-xs text-gray-600 block mt-1">
+                      {bookingPricing.totalPrice > 0 && (
+                        `Original: $${bookingPricing.totalPrice.toFixed(2)}`
+                      )}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-2 pt-4 border-t">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowCreateBookingModal(false);
+                  setNewBooking({
+                    name: '',
+                    email: '',
+                    phone: '',
+                    serviceType: 'airport-shuttle',
+                    pickupAddress: '',
+                    dropoffAddress: '',
+                    date: '',
+                    time: '',
+                    passengers: '1',
+                    paymentMethod: 'stripe',  // Default to Stripe payment link
+                    notes: ''
+                  });
+                  setBookingPricing({
+                    distance: 0,
+                    basePrice: 0,
+                    airportFee: 0,
+                    passengerFee: 0,
+                    totalPrice: 0
+                  });
+                  setManualPriceOverride('');
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleCreateManualBooking}
+                className="bg-gold hover:bg-gold/90 text-black font-semibold"
+                disabled={bookingPricing.totalPrice === 0 && (!manualPriceOverride || parseFloat(manualPriceOverride) <= 0)}
+              >
+                Create Booking & Send Confirmations
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Booking Modal */}
-      <EditBookingModal
-        open={showEditBookingModal}
-        onClose={() => { setShowEditBookingModal(false); setEditingBooking(null); }}
-        booking={editingBooking}
-        onSuccess={() => fetchBookingsRef.current?.()}
-        onPreviewConfirmation={handlePreviewConfirmation}
-        onResendConfirmation={handleResendConfirmation}
-        onResendPaymentLink={handleResendPaymentLink}
-        onManualCalendarSync={handleManualCalendarSync}
-        getAuthHeaders={getAuthHeaders}
-        previewLoading={previewLoading}
-        calendarLoading={calendarLoading}
-      />
+      <Dialog open={showEditBookingModal} onOpenChange={setShowEditBookingModal}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Booking #{editingBooking?.referenceNumber || editingBooking?.id?.slice(0, 8)}</DialogTitle>
+          </DialogHeader>
+          {editingBooking && (
+            <div className="space-y-6 pt-4">
+              {/* Customer Information */}
+              <div>
+                <h3 className="font-semibold text-gray-900 mb-3">Customer Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label>Name *</Label>
+                    <Input
+                      value={editingBooking.name}
+                      onChange={(e) => setEditingBooking(prev => ({...prev, name: e.target.value}))}
+                      placeholder="Customer name"
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label>Email *</Label>
+                    <Input
+                      type="email"
+                      value={editingBooking.email}
+                      onChange={(e) => setEditingBooking(prev => ({...prev, email: e.target.value}))}
+                      placeholder="customer@example.com"
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label>Phone *</Label>
+                    <Input
+                      value={editingBooking.phone}
+                      onChange={(e) => setEditingBooking(prev => ({...prev, phone: e.target.value}))}
+                      placeholder="+64 21 XXX XXXX"
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label>Passengers</Label>
+                    <Select 
+                      value={editingBooking.passengers?.toString()} 
+                      onValueChange={(value) => setEditingBooking(prev => ({...prev, passengers: value}))}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(num => (
+                          <SelectItem key={num} value={num.toString()}>{num}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
 
+              {/* Trip Information */}
+              <div>
+                <h3 className="font-semibold text-gray-900 mb-3">Trip Information</h3>
+                <div className="space-y-4">
+                  <div className="relative">
+                    <Label>Pickup Address 1 *</Label>
+                    <Input
+                      value={editingBooking.pickupAddress}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setEditingBooking(prev => ({ ...prev, pickupAddress: val }));
+                        fetchAdminAddressSuggestions(val, setEditPickupSuggestions, setShowEditPickupSuggestions);
+                      }}
+                      onBlur={() => setTimeout(() => setShowEditPickupSuggestions(false), 200)}
+                      placeholder="Start typing address..."
+                      autoComplete="off"
+                      className="mt-1"
+                    />
+                    {showEditPickupSuggestions && editPickupSuggestions.length > 0 && (
+                      <ul className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+                        {editPickupSuggestions.map((s, i) => (
+                          <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm border-b last:border-b-0"
+                            onPointerDown={(e) => {
+                              e.preventDefault();
+                              setEditingBooking(prev => ({ ...prev, pickupAddress: s.description }));
+                              setShowEditPickupSuggestions(false);
+                            }}>
+                            {s.description}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+
+                  {/* Additional Pickup Addresses */}
+                  {editingBooking.pickupAddresses?.map((pickup, index) => (
+                    <div key={index} className="relative">
+                      <Label>Pickup Address {index + 2}</Label>
+                      <div className="flex gap-2 mt-1">
+                        <Input
+                          value={pickup}
+                          onChange={(e) => handleEditPickupAddressChange(index, e.target.value)}
+                          placeholder="Enter full address..."
+                          className="flex-1"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => handleRemoveEditPickup(index)}
+                          className="text-red-600 hover:bg-red-50"
+                        >
+                          ✕
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Add Pickup Button */}
+                  <div>
+                    <button
+                      type="button"
+                      onClick={handleAddEditPickup}
+                      className="group w-full flex items-center justify-center gap-3 px-6 py-4 bg-gradient-to-r from-gold/10 to-gold/5 hover:from-gold/20 hover:to-gold/10 border-2 border-dashed border-gold/40 hover:border-gold/60 rounded-lg transition-all duration-300"
+                    >
+                      <MapPin className="w-4 h-4 text-gold" />
+                      <span className="text-sm font-semibold text-gray-700">Add Another Pickup Location</span>
+                      <span className="w-6 h-6 rounded-full bg-gold text-white text-xs font-bold flex items-center justify-center">+</span>
+                    </button>
+                  </div>
+
+                  <div className="relative">
+                    <Label>Drop-off Address *</Label>
+                    <Input
+                      value={editingBooking.dropoffAddress}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setEditingBooking(prev => ({ ...prev, dropoffAddress: val }));
+                        fetchAdminAddressSuggestions(val, setEditDropoffSuggestions, setShowEditDropoffSuggestions);
+                      }}
+                      onBlur={() => setTimeout(() => setShowEditDropoffSuggestions(false), 200)}
+                      placeholder="Start typing address..."
+                      autoComplete="off"
+                      className="mt-1"
+                    />
+                    {showEditDropoffSuggestions && editDropoffSuggestions.length > 0 && (
+                      <ul className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+                        {editDropoffSuggestions.map((s, i) => (
+                          <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm border-b last:border-b-0"
+                            onPointerDown={(e) => {
+                              e.preventDefault();
+                              setEditingBooking(prev => ({ ...prev, dropoffAddress: s.description }));
+                              setShowEditDropoffSuggestions(false);
+                            }}>
+                            {s.description}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label>Date *</Label>
+                      <Input
+                        type="date"
+                        value={editingBooking.date}
+                        onChange={(e) => setEditingBooking(prev => ({...prev, date: e.target.value}))}
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label>Time *</Label>
+                      <Input
+                        type="time"
+                        value={editingBooking.time}
+                        onChange={(e) => setEditingBooking(prev => ({...prev, time: e.target.value}))}
+                        className="mt-1"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Flight Number */}
+                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                    <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                      Flight Number
+                    </h4>
+                    <div>
+                      <Label>Flight Number</Label>
+                      <Input
+                        value={editingBooking.flightNumber || editingBooking.flightArrivalNumber || editingBooking.flightDepartureNumber || editingBooking.arrivalFlightNumber || editingBooking.departureFlightNumber || ''}
+                        onChange={(e) => setEditingBooking(prev => ({
+                          ...prev,
+                          flightNumber: e.target.value,
+                          flightArrivalNumber: e.target.value,
+                          flightDepartureNumber: e.target.value,
+                          arrivalFlightNumber: e.target.value,
+                          departureFlightNumber: e.target.value
+                        }))}
+                        placeholder="e.g., NZ123"
+                        className="mt-1 bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Return Journey - Always visible, optional */}
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <h4 className="font-semibold text-gray-900 mb-2">Return Journey <span className="text-sm font-normal text-gray-500">(Optional)</span></h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                        <div>
+                          <Label>Return Date *</Label>
+                          <Input
+                            type="date"
+                            value={editingBooking.returnDate || ''}
+                            onChange={(e) => setEditingBooking(prev => ({...prev, returnDate: e.target.value}))}
+                            min={editingBooking.date || new Date().toISOString().split('T')[0]}
+                            className="mt-1 bg-white"
+                          />
+                        </div>
+                        <div>
+                          <Label>Return Time *</Label>
+                          <Input
+                            type="time"
+                            value={editingBooking.returnTime || ''}
+                            onChange={(e) => setEditingBooking(prev => ({...prev, returnTime: e.target.value}))}
+                            className="mt-1 bg-white"
+                          />
+                        </div>
+                        <div>
+                          <Label>Return Flight Number</Label>
+                          <Input
+                            value={editingBooking.returnFlightNumber || editingBooking.returnDepartureFlightNumber || ''}
+                            onChange={(e) => setEditingBooking(prev => ({...prev, returnFlightNumber: e.target.value, returnDepartureFlightNumber: e.target.value}))}
+                            placeholder="e.g. NZ456"
+                            className="mt-1 bg-white"
+                          />
+                        </div>
+                        <div className="md:col-span-2">
+                          <p className="text-xs text-gray-600 italic">
+                            Return route: {editingBooking.dropoffAddress?.split(',')[0]} → {editingBooking.pickupAddress?.split(',')[0]}
+                          </p>
+                        </div>
+                      </div>
+                  </div>
+
+                  <div>
+                    <Label>Special Notes</Label>
+                    <Textarea
+                      value={editingBooking.notes || ''}
+                      onChange={(e) => setEditingBooking(prev => ({...prev, notes: e.target.value}))}
+                      placeholder="Any special requests or notes..."
+                      rows={3}
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Current Pricing Info */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h3 className="font-semibold text-gray-900 mb-2">Current Pricing</h3>
+                <div className="flex justify-between items-center">
+                  <span>Total Price:</span>
+                  <span className="text-xl font-bold text-gold">${editingBooking.pricing?.totalPrice?.toFixed(2) || '0.00'}</span>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">To change pricing, use the View Details modal and override the price.</p>
+              </div>
+
+              {/* Quick Actions */}
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <h3 className="font-semibold text-gray-900 mb-3">Quick Actions</h3>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handlePreviewConfirmation(editingBooking.id)}
+                    className="bg-white"
+                    disabled={previewLoading}
+                  >
+                    <Eye className="w-4 h-4 mr-2" />
+                    {previewLoading ? 'Loading...' : 'Preview Confirmation'}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleResendConfirmation(editingBooking.id)}
+                    className="bg-white"
+                  >
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Resend Confirmation
+                  </Button>
+                  {editingBooking.payment_status !== 'paid' && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleResendPaymentLink(editingBooking.id, 'stripe')}
+                      className="bg-white text-green-600 border-green-200 hover:bg-green-50"
+                    >
+                      💳 Send Payment Link
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleManualCalendarSync(editingBooking.id)}
+                    className="bg-white"
+                    disabled={calendarLoading}
+                  >
+                    <Calendar className="w-4 h-4 mr-2" />
+                    Sync to Calendar
+                  </Button>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-2 pt-4 border-t">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowEditBookingModal(false);
+                    setEditingBooking(null);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSaveEditedBooking}
+                  className="bg-gold hover:bg-gold/90 text-black font-semibold"
+                >
+                  Save Changes
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Preview Confirmation Modal */}
       <Dialog open={showPreviewModal} onOpenChange={setShowPreviewModal}>
@@ -3837,11 +5484,11 @@ onViewBooking={(booking) => {
                 <strong>⚠️ No notifications will be sent</strong>
               </p>
               <p className="text-sm text-yellow-700 mt-1">
-                The selected bookings will be permanently deleted without sending any SMS or email notifications to customers.
+                The selected bookings will be moved to the Deleted tab without sending any SMS or email notifications to customers.
               </p>
             </div>
             <p className="text-gray-600 text-sm">
-              This action cannot be undone. Are you sure you want to delete these test/spam bookings?
+              You can restore these bookings later from the Deleted tab if needed.
             </p>
           </div>
           <div className="flex justify-end gap-3">
