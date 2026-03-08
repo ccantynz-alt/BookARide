@@ -3182,7 +3182,7 @@ export const AdminDashboard = () => {
                       <div className="flex justify-between items-start mb-3">
                         <div>
                           <p className="text-lg font-bold text-gray-800">
-                            {time.replace(':00', ':00').replace(/(\d{2}):(\d{2})/, (m, h, min) => {
+                            {time.replace(/(\d{2}):(\d{2})/, (m, h, min) => {
                               const hour = parseInt(h);
                               const ampm = hour >= 12 ? 'PM' : 'AM';
                               const hour12 = hour % 12 || 12;
