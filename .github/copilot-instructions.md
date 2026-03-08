@@ -2,32 +2,32 @@
 
 ## Project Overview
 BookARide NZ is a full-stack airport shuttle / private transfer booking platform.
-- **Backend**: FastAPI (Python 3.11), single monolithic file at `backend/server.py` (~13,000 lines)
+- **Backend**: FastAPI (Python 3.11+), monolithic `backend/server.py` (~14,000 lines)
 - **Frontend**: React 18 (CRA + CRACO), located in `frontend/`
-- **Database**: MongoDB
+- **Database**: Neon PostgreSQL (NOT MongoDB — fully migrated)
+- **Email**: Mailgun only (NOT SendGrid, NOT SMTP)
+
+## CRITICAL: Technology Decisions (DO NOT CHANGE)
+
+- **Database**: Neon PostgreSQL via `DATABASE_URL` env var. The compatibility layer in `backend/database.py` (NeonDatabase) translates MongoDB-style API calls to PostgreSQL JSONB queries. NEVER add Motor, pymongo, or MongoDB references.
+- **Email**: Mailgun via `MAILGUN_API_KEY` + `MAILGUN_DOMAIN`. NEVER add SendGrid or SMTP.
+- **Helmet**: Use `react-helmet-async` (official package). NEVER use `@vuer-ai/react-helmet-async`.
 
 ## Services
 
 | Service | Command | Port | Notes |
 |---------|---------|------|-------|
-| **MongoDB** | `mongod --dbpath /data/db --fork --logpath /tmp/mongod.log` | 27017 | Must start before backend |
-| **Backend** | `cd /workspace/backend && python3 start.py` | 10000 (env `PORT`) | FastAPI/Uvicorn; reads `backend/.env` |
-| **Frontend** | `cd /workspace/frontend && npm start` | 3000 | CRA via CRACO; reads `frontend/.env` |
-
-## Startup Order
-1. Start MongoDB: `mongod --dbpath /data/db --fork --logpath /tmp/mongod.log`
-2. Start the backend: `cd /workspace/backend && PORT=10000 python3 start.py`
-   - On first run it seeds a default admin user (username: `admin`); change the password immediately after the first login
-3. Start the frontend: `cd /workspace/frontend && BROWSER=none npm start`
-   - Requires `REACT_APP_BACKEND_URL=http://localhost:10000` in `frontend/.env`
+| **Backend** | `cd backend && python3 start.py` | 10000 (env `PORT`) | FastAPI/Uvicorn; reads `backend/.env` |
+| **Frontend** | `cd frontend && npm start` | 3000 | CRA via CRACO |
 
 ## Environment Variables
 
 ### Backend (`backend/.env`)
 ```
-MONGO_URL=mongodb://localhost:27017
-DB_NAME=bookaride
+DATABASE_URL=postgresql://user:pass@host.neon.tech/bookaride?sslmode=require
 JWT_SECRET_KEY=<any-string>
+MAILGUN_API_KEY=<key>
+MAILGUN_DOMAIN=mg.bookaride.co.nz
 PORT=10000
 ```
 
@@ -36,13 +36,11 @@ PORT=10000
 REACT_APP_BACKEND_URL=http://localhost:10000
 ```
 
-External API keys (Stripe, Google Maps, Mailgun, Twilio) are optional for local dev but required for full payment/notification/autocomplete functionality.
+External API keys (Stripe, Google Maps, Twilio, Geoapify) are optional for local dev.
 
-## Important Caveats
-- `emergentintegrations.payments.stripe.checkout` is a **local** package at `backend/emergentintegrations/`, not a PyPI package.
-- Python pip installs to `~/.local/bin`; ensure `PATH` includes this directory for `uvicorn` and `fastapi` CLI commands.
-- Node version must be **20.20.0** (per `.nvmrc`). Use `nvm use` after sourcing `~/.nvm/nvm.sh`.
-- The frontend uses ESLint 9.x in devDependencies but CRA's internal ESLint 8.x handles linting during builds. There is no standalone `lint` script; linting runs as part of `npm run build`.
-- No automated test suite exists (`npm test` exits with "no tests found"). Use `--passWithNoTests` to avoid a non-zero exit.
-- MongoDB connection has a 2-second timeout (`serverSelectionTimeoutMS=2000`). The backend starts without MongoDB, but all DB operations will fail at runtime.
-- The backend is a single ~13,000-line `server.py` file. Hot reload via Uvicorn works but may be slow on large edits.
+## Important Notes
+- `backend/database.py` is the Neon PostgreSQL compatibility layer — mimics Motor's async API
+- `backend/schema.sql` defines all PostgreSQL tables (JSONB storage pattern)
+- No automated test suite exists (`npm test` exits with "no tests found")
+- The backend is a single ~14,000-line `server.py` file
+- Python dependencies: `backend/requirements.txt` (NO motor/pymongo)
