@@ -30,7 +30,7 @@ def is_email_configured() -> bool:
     return False
 
 
-def _send_via_mailgun(to: str, subject: str, html: str, from_email: str, from_name: str) -> bool:
+def _send_via_mailgun(to: str, subject: str, html: str, from_email: str, from_name: str, reply_to: str = None) -> bool:
     import requests as req
     api_key = os.environ.get("MAILGUN_API_KEY")
     domain = os.environ.get("MAILGUN_DOMAIN")
@@ -38,10 +38,13 @@ def _send_via_mailgun(to: str, subject: str, html: str, from_email: str, from_na
         return False
     from_addr = f"{from_name} <{from_email}>" if from_name else from_email
     try:
+        data = {"from": from_addr, "to": [to], "subject": subject, "html": html}
+        if reply_to:
+            data["h:Reply-To"] = reply_to
         resp = req.post(
             f"https://api.mailgun.net/v3/{domain}/messages",
             auth=("api", api_key),
-            data={"from": from_addr, "to": [to], "subject": subject, "html": html},
+            data=data,
             timeout=10,
         )
         if resp.status_code in (200, 202):
@@ -54,7 +57,7 @@ def _send_via_mailgun(to: str, subject: str, html: str, from_email: str, from_na
         return False
 
 
-def _send_via_sendgrid(to: str, subject: str, html: str, from_email: str, from_name: str) -> bool:
+def _send_via_sendgrid(to: str, subject: str, html: str, from_email: str, from_name: str, reply_to: str = None) -> bool:
     import requests as req
     api_key = os.environ.get("SENDGRID_API_KEY")
     if not api_key:
@@ -65,6 +68,8 @@ def _send_via_sendgrid(to: str, subject: str, html: str, from_email: str, from_n
         "subject": subject,
         "content": [{"type": "text/html", "value": html}],
     }
+    if reply_to:
+        payload["reply_to"] = {"email": reply_to}
     try:
         resp = req.post(
             "https://api.sendgrid.com/v3/mail/send",
@@ -82,7 +87,7 @@ def _send_via_sendgrid(to: str, subject: str, html: str, from_email: str, from_n
         return False
 
 
-def _send_via_smtp(to: str, subject: str, html: str, from_email: str, from_name: str) -> bool:
+def _send_via_smtp(to: str, subject: str, html: str, from_email: str, from_name: str, reply_to: str = None) -> bool:
     smtp_user = os.environ.get("SMTP_USER")
     smtp_pass = os.environ.get("SMTP_PASS")
     if not smtp_user or not smtp_pass:
@@ -93,6 +98,8 @@ def _send_via_smtp(to: str, subject: str, html: str, from_email: str, from_name:
     msg["Subject"] = subject
     msg["From"] = f"{from_name} <{from_email}>" if from_name else from_email
     msg["To"] = to
+    if reply_to:
+        msg["Reply-To"] = reply_to
     msg.attach(MIMEText(html, "html", "utf-8"))
     try:
         with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as server:
@@ -113,6 +120,7 @@ def send_email(
     html: str,
     from_email: str = None,
     from_name: str = "BookARide NZ",
+    reply_to: str = None,
 ) -> bool:
     """
     Send an email using the first available provider:
@@ -130,23 +138,23 @@ def send_email(
 
     # Respect explicit provider preference
     if provider == "mailgun":
-        return _send_via_mailgun(to, subject, html, from_email, from_name)
+        return _send_via_mailgun(to, subject, html, from_email, from_name, reply_to)
     if provider == "sendgrid":
-        return _send_via_sendgrid(to, subject, html, from_email, from_name)
+        return _send_via_sendgrid(to, subject, html, from_email, from_name, reply_to)
     if provider == "smtp":
-        return _send_via_smtp(to, subject, html, from_email, from_name)
+        return _send_via_smtp(to, subject, html, from_email, from_name, reply_to)
 
     # Auto-detect: try in priority order
     if os.environ.get("MAILGUN_API_KEY") and os.environ.get("MAILGUN_DOMAIN"):
-        if _send_via_mailgun(to, subject, html, from_email, from_name):
+        if _send_via_mailgun(to, subject, html, from_email, from_name, reply_to):
             return True
 
     if os.environ.get("SENDGRID_API_KEY"):
-        if _send_via_sendgrid(to, subject, html, from_email, from_name):
+        if _send_via_sendgrid(to, subject, html, from_email, from_name, reply_to):
             return True
 
     if os.environ.get("SMTP_USER") and os.environ.get("SMTP_PASS"):
-        if _send_via_smtp(to, subject, html, from_email, from_name):
+        if _send_via_smtp(to, subject, html, from_email, from_name, reply_to):
             return True
 
     logger.error(
