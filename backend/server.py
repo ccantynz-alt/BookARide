@@ -5595,6 +5595,20 @@ class PaymentCheckoutRequest(BaseModel):
     booking_id: str
     origin_url: str
 
+@api_router.get("/payment/stripe-health")
+async def stripe_health():
+    """Diagnostic endpoint to check Stripe configuration"""
+    stripe_key = os.environ.get('STRIPE_API_KEY') or os.environ.get('STRIPE_SECRET_KEY')
+    if not stripe_key:
+        return {"status": "error", "message": "No STRIPE_API_KEY or STRIPE_SECRET_KEY configured"}
+    try:
+        import stripe as stripe_mod
+        stripe_mod.api_key = stripe_key
+        acct = stripe_mod.Account.retrieve()
+        return {"status": "ok", "key_prefix": stripe_key[:12] + "...", "account_id": acct.get("id", "unknown")}
+    except Exception as e:
+        return {"status": "error", "message": str(e), "key_prefix": stripe_key[:12] + "..."}
+
 @api_router.post("/payment/create-checkout", response_model=CheckoutSessionResponse)
 async def create_payment_checkout(request: PaymentCheckoutRequest, http_request: Request):
     try:

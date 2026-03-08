@@ -395,6 +395,7 @@ export const BookNow = () => {
           toast.success(`Booking #${ref} created! We'll contact you with payment details.`);
         } else {
           toast.success(`Booking #${ref} created! Payment redirect failed – we'll contact you with payment details.`);
+          if (detail) console.error('Stripe checkout detail:', detail);
         }
       }
     } catch (error) {
