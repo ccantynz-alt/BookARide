@@ -80,24 +80,13 @@ ROOT_DIR = Path(__file__).parent
 sys.path.insert(0, str(ROOT_DIR))
 load_dotenv(ROOT_DIR / '.env')
 
-# Database connection
-# NeonDatabase (PostgreSQL) is the primary database.
-# Falls back to None if DATABASE_URL is not set (db initialized async in startup event).
-db = None
-
-async def _init_db():
-    """Connect to Neon PostgreSQL and set the global db handle."""
-    global db
-    database_url = os.environ.get('DATABASE_URL')
-    if not database_url:
-        logging.warning("DATABASE_URL not set — database unavailable")
-        return
-    try:
-        db = await NeonDatabase.connect(database_url)
-        logging.info("Connected to Neon PostgreSQL")
-    except Exception as e:
-        logging.error(f"Failed to connect to database: {e}")
-        db = None
+# MongoDB connection
+mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
+db_name = os.environ.get('DB_NAME', 'bookaride')
+if 'MONGO_URL' not in os.environ or 'DB_NAME' not in os.environ:
+    logging.warning("MONGO_URL or DB_NAME missing; using fallback values for startup.")
+client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=2000, connectTimeoutMS=2000)
+db = client[db_name]
 
 # Authentication configuration
 SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'your-secret-key-change-in-production-' + str(uuid.uuid4()))

@@ -652,7 +652,7 @@ export const AdminDashboard = () => {
   }, [dateFrom, dateTo]);
 
   // When list is empty (no active bookings in DB at all), fetch active/deleted counts so we can show "0 active, 47 deleted"
-  // NOTE: use bookings.length (raw fetch result), NOT filteredBookings.length — filters can hide bookings that exist
+  // NOTE: use bookings.length (raw fetch result), NOT filteredBookings.length -- filters can hide bookings that exist
   useEffect(() => {
     if (loading || bookings.length > 0) {
       setRetentionCounts(null);
@@ -929,7 +929,7 @@ export const AdminDashboard = () => {
     }
   };
 
-  // Get optimized shuttle route (opens maps URL from backend – Geoapify/OSM)
+  // Get optimized shuttle route (opens maps URL from backend - Geoapify/OSM)
   const getShuttleRoute = async (date, time) => {
     try {
       const response = await axios.get(`${API}/shuttle/route/${date}/${time}`, getAuthHeaders());
@@ -2337,7 +2337,7 @@ export const AdminDashboard = () => {
               <div className="flex items-center gap-3">
                 <AlertTriangle className="w-8 h-8 text-red-600 shrink-0" />
                 <div>
-                  <p className="font-bold text-red-900">You have {deletedCountForBanner} booking{deletedCountForBanner !== 1 ? 's' : ''} in Deleted — they are not in this list.</p>
+                  <p className="font-bold text-red-900">You have {deletedCountForBanner} booking{deletedCountForBanner !== 1 ? 's' : ''} in Deleted -- they are not in this list.</p>
                   <p className="text-sm text-red-800 mt-0.5">Restore them now to reinstate your full bookings list.</p>
                 </div>
               </div>
@@ -2497,7 +2497,7 @@ onViewBooking={(booking) => {
                   className="border rounded px-2 py-2 text-sm w-[130px]"
                   title="From date"
                 />
-                <span className="text-gray-400 text-sm">–</span>
+                <span className="text-gray-400 text-sm">-</span>
                 <input
                   type="date"
                   value={dateTo}
@@ -2553,7 +2553,7 @@ onViewBooking={(booking) => {
           </CardContent>
         </Card>
 
-        {/* Recover missing bookings (e.g. #74 – payment in Stripe but booking never appeared) */}
+        {/* Recover missing bookings (e.g. #74 - payment in Stripe but booking never appeared) */}
         <Card className="mb-6 border-amber-200 bg-amber-50/50">
           <CardContent className="p-4">
             <div className="flex flex-wrap items-center gap-3">
@@ -2571,7 +2571,7 @@ onViewBooking={(booking) => {
                 <p className="text-sm font-medium text-amber-900">Paid payments with no booking in list:</p>
                 {orphanPayments.map((o) => (
                   <div key={o.booking_id} className="flex flex-wrap items-center gap-2 py-2 px-3 bg-white rounded border border-amber-200">
-                    <span className="text-sm">{o.customer_name || 'Unknown'} – {o.customer_email || 'No email'} – ${Number(o.amount || 0).toFixed(2)}</span>
+                    <span className="text-sm">{o.customer_name || 'Unknown'} - {o.customer_email || 'No email'} - ${Number(o.amount || 0).toFixed(2)}</span>
                     <Button size="sm" onClick={() => recoverBookingFromPayment(null, o.booking_id)} disabled={recovering} className="bg-amber-600 hover:bg-amber-700">
                       Recover into list
                     </Button>
@@ -2600,7 +2600,7 @@ onViewBooking={(booking) => {
             {!loading && loadAllBookings && bookings.length > 0 && (
               <div className="bg-emerald-50 border-b border-emerald-200 px-4 py-2 text-sm text-emerald-800 flex items-center gap-2">
                 <span className="font-medium">Full list loaded.</span>
-                <span>Every active booking is shown – none hidden by pagination.</span>
+                <span>Every active booking is shown - none hidden by pagination.</span>
               </div>
             )}
             {loading ? (
@@ -2613,8 +2613,8 @@ onViewBooking={(booking) => {
                 <div className="text-center py-8">
                   <p className="text-gray-600 font-medium">
                     {bookings.length > 0
-                      ? `No bookings match your current filter (${bookings.length} booking${bookings.length !== 1 ? ‘s’ : ‘’} exist — clear filters to see them)`
-                      : ‘No bookings found’}
+                      ? `No bookings match your current filter (${bookings.length} booking${bookings.length !== 1 ? 's' : ''} exist -- clear filters to see them)`
+                      : 'No bookings found'}
                   </p>
                 </div>
                 {/* Only show recovery guidance when the database is genuinely empty */}
@@ -2624,20 +2624,20 @@ onViewBooking={(booking) => {
                       {retentionCounts && (
                         <p className="text-sm font-semibold text-amber-900">
                           Database: {retentionCounts.active} active, {retentionCounts.deleted} in Deleted.
-                          {retentionCounts.deleted > 0 && ‘ Restore them from the Deleted tab.’}
+                          {retentionCounts.deleted > 0 && ' Restore them from the Deleted tab.'}
                         </p>
                       )}
                       <p className="font-medium text-amber-900">Get your bookings back:</p>
                       <ul className="list-disc list-inside text-sm text-amber-800 space-y-1">
                         <li>If bookings disappeared after an update, they may be in the <strong>Deleted</strong> tab. Open Deleted and click <strong>Restore all</strong> to reinstate them.</li>
                         <li>Click <strong>Restore from server backup</strong> in the Deleted tab to recover from the backup file on the server.</li>
-                        <li>Use <strong>Deleted → Download backup (JSON)</strong> to see exactly what’s stored (active + deleted).</li>
+                        <li>Use <strong>Deleted → Download backup (JSON)</strong> to see exactly what's stored (active + deleted).</li>
                       </ul>
                       <div className="flex flex-wrap gap-2 pt-2">
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => setActiveTab(‘deleted’)}
+                          onClick={() => setActiveTab('deleted')}
                           className="border-amber-500 text-amber-800 hover:bg-amber-100"
                         >
                           Open Deleted tab
@@ -2656,12 +2656,12 @@ onViewBooking={(booking) => {
                   </Card>
                 )}
                 {/* When filters are hiding bookings, show a quick-clear option */}
-                {bookings.length > 0 && (dateFrom || dateTo || searchTerm || statusFilter !== ‘all’) && (
+                {bookings.length > 0 && (dateFrom || dateTo || searchTerm || statusFilter !== 'all') && (
                   <div className="flex flex-wrap gap-2 justify-center">
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => { setDateFrom(‘’); setDateTo(‘’); setSearchTerm(‘’); setStatusFilter(‘all’); fetchBookingsRef.current?.(1, false); }}
+                      onClick={() => { setDateFrom(''); setDateTo(''); setSearchTerm(''); setStatusFilter('all'); fetchBookingsRef.current?.(1, false); }}
                       className="border-amber-500 text-amber-800 hover:bg-amber-100"
                     >
                       Clear all filters & show all bookings
@@ -2821,7 +2821,7 @@ onViewBooking={(booking) => {
                               )}
                             </div>
                           ) : (
-                            <span className="text-gray-300 text-xs">—</span>
+                            <span className="text-gray-300 text-xs">--</span>
                           )}
                         </td>
                         {/* RETURN COLUMN - return date and time (also in Ref/Date column so never hidden) */}
@@ -2833,7 +2833,7 @@ onViewBooking={(booking) => {
                               <span className="text-sm font-bold text-purple-800">{booking.returnTime}</span>
                             </div>
                           ) : (
-                            <span className="text-gray-300 text-xs">—</span>
+                            <span className="text-gray-300 text-xs">--</span>
                           )}
                         </td>
                         {/* PRICE & PAYMENT COLUMN */}
@@ -3053,7 +3053,7 @@ onViewBooking={(booking) => {
               {/* Pagination Info - always visible */}
               <div className="text-center text-sm text-gray-500 pb-2">
                 {loadAllBookings
-                  ? `Showing all ${filteredBookings.length} bookings (full list – none hidden)`
+                  ? `Showing all ${filteredBookings.length} bookings (full list - none hidden)`
                   : `Showing ${filteredBookings.length} of ${totalBookings || bookings.length} bookings`}
                 {archiveSearchResults.length > 0 && ` + ${archiveSearchResults.length} from archive`}
               </div>
@@ -3311,7 +3311,7 @@ onViewBooking={(booking) => {
                   </div>
                 </div>
                 <p className="text-sm text-red-700 mb-4">
-                  Bookings are always retained—we never permanently remove them without your action. Deleted items stay here for recovery; use <strong>Restore all</strong> to reinstate. If bookings disappeared after an update, they may be here. To restore from a backup JSON file, click <strong>Restore from backup file</strong>.
+                  Bookings are always retained--we never permanently remove them without your action. Deleted items stay here for recovery; use <strong>Restore all</strong> to reinstate. If bookings disappeared after an update, they may be here. To restore from a backup JSON file, click <strong>Restore from backup file</strong>.
                 </p>
                 {backupRestoreResult && (
                   <div className={`mb-4 p-3 rounded-lg text-sm ${backupRestoreResult.error ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-800'}`}>
@@ -3767,7 +3767,7 @@ onViewBooking={(booking) => {
                             <div>
                               <span className="text-gray-500 text-xs block">Return departure flight:</span>
                               <p className="font-medium text-blue-700">
-                                {selectedBooking.returnDepartureFlightNumber || selectedBooking.returnFlightNumber || '—'}
+                                {selectedBooking.returnDepartureFlightNumber || selectedBooking.returnFlightNumber || '--'}
                               </p>
                               {(selectedBooking.returnDepartureTime || '').trim() && (
                                 <p className="text-xs text-gray-500">Dep: {selectedBooking.returnDepartureTime}</p>
@@ -3776,7 +3776,7 @@ onViewBooking={(booking) => {
                             <div>
                               <span className="text-gray-500 text-xs block">Return arrival flight:</span>
                               <p className="font-medium text-blue-700">
-                                {selectedBooking.returnArrivalFlightNumber || '—'}
+                                {selectedBooking.returnArrivalFlightNumber || '--'}
                               </p>
                               {(selectedBooking.returnArrivalTime || '').trim() && (
                                 <p className="text-xs text-gray-500">Arr: {selectedBooking.returnArrivalTime}</p>
@@ -3785,7 +3785,7 @@ onViewBooking={(booking) => {
                           </div>
                           {!selectedBooking.returnDepartureFlightNumber && !selectedBooking.returnFlightNumber && !selectedBooking.returnArrivalFlightNumber && (
                             <div className="mt-2 p-2 bg-red-100 rounded text-xs text-red-700 font-medium">
-                              ⚠️ No return flight number provided — follow up required
+                              ⚠️ No return flight number provided -- follow up required
                             </div>
                           )}
                         </div>
@@ -3801,7 +3801,7 @@ onViewBooking={(booking) => {
                   <h3 className="font-semibold text-gray-900 mb-1 flex items-center gap-2">
                     ✈️ Outbound flight numbers
                   </h3>
-                  <p className="text-xs text-gray-500 mb-3">Pickup leg — arrival/departure at airport</p>
+                  <p className="text-xs text-gray-500 mb-3">Pickup leg -- arrival/departure at airport</p>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     {/* Show flightNumber from WordPress imports */}
                     {selectedBooking.flightNumber && !selectedBooking.flightArrivalNumber && !selectedBooking.flightDepartureNumber && (
@@ -4692,7 +4692,7 @@ onViewBooking={(booking) => {
 
                 {/* Return Journey - Always visible, optional (no checkbox) */}
                 <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                  <h4 className="font-semibold text-gray-900 mb-2">Return Journey <span className="text-sm font-normal text-gray-500">(Optional – leave blank for one-way)</span></h4>
+                  <h4 className="font-semibold text-gray-900 mb-2">Return Journey <span className="text-sm font-normal text-gray-500">(Optional - leave blank for one-way)</span></h4>
 
                   <div className="space-y-4 mt-4">
                       <p className="text-sm text-gray-600">
