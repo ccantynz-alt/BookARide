@@ -287,10 +287,17 @@ export const BookNow = () => {
     if (!formData.date || !formData.time) { toast.error('Please select pickup date and time'); return; }
     if (!formData.name || !formData.email || !formData.phone) { toast.error('Please fill in all contact information'); return; }
 
-    // Validate return flight number for airport shuttle return bookings
+    // Validate return trip fields
     const hasReturnTrip = !!(formData.returnDate && formData.returnTime);
     const isAirportShuttle = formData.serviceType?.toLowerCase().includes('airport') ||
                             formData.serviceType?.toLowerCase().includes('shuttle');
+
+    // Catch case where customer enters return flight number but forgets date/time
+    if (formData.returnFlightNumber && formData.returnFlightNumber.trim() && !hasReturnTrip) {
+      toast.error('You entered a return flight number but no return date and time. Please add return date and time, or clear the flight number for a one-way trip.');
+      return;
+    }
+
     if (isAirportShuttle && hasReturnTrip) {
       if (!formData.returnFlightNumber || !formData.returnFlightNumber.trim()) {
         toast.error('Flight number is mandatory for return trips. Bookings without flight numbers may face cancellation.');

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Check, Loader2 } from 'lucide-react';
+import { Check, Loader2, MapPin, Calendar, Clock, Plane, Users } from 'lucide-react';
 import { Card, CardContent } from '../components/ui/card';
 import axios from 'axios';
 import { API } from '../config/api';
@@ -149,6 +149,78 @@ export const PaymentSuccess = () => {
                           <span className="text-gray-600">Status:</span>
                           <span className="font-semibold text-green-600">Confirmed</span>
                         </div>
+
+                        {/* Trip Details */}
+                        {paymentDetails.pickupAddress && (
+                          <>
+                            <hr className="my-3 border-gray-200" />
+                            <h3 className="font-semibold text-gray-800 mb-2">Trip Details</h3>
+                            {paymentDetails.pickupDate && (
+                              <div className="flex justify-between">
+                                <span className="text-gray-600 flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> Date:</span>
+                                <span className="font-medium text-gray-900">{paymentDetails.pickupDate}</span>
+                              </div>
+                            )}
+                            {paymentDetails.pickupTime && (
+                              <div className="flex justify-between">
+                                <span className="text-gray-600 flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> Time:</span>
+                                <span className="font-medium text-gray-900">{paymentDetails.pickupTime}</span>
+                              </div>
+                            )}
+                            <div className="flex justify-between">
+                              <span className="text-gray-600 flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> From:</span>
+                              <span className="font-medium text-gray-900 text-right max-w-[60%]">{paymentDetails.pickupAddress}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600 flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> To:</span>
+                              <span className="font-medium text-gray-900 text-right max-w-[60%]">{paymentDetails.dropoffAddress}</span>
+                            </div>
+                            {paymentDetails.flightNumber && (
+                              <div className="flex justify-between">
+                                <span className="text-gray-600 flex items-center gap-1"><Plane className="w-3.5 h-3.5" /> Flight:</span>
+                                <span className="font-medium text-gray-900">{paymentDetails.flightNumber}</span>
+                              </div>
+                            )}
+                            {paymentDetails.passengers && (
+                              <div className="flex justify-between">
+                                <span className="text-gray-600 flex items-center gap-1"><Users className="w-3.5 h-3.5" /> Passengers:</span>
+                                <span className="font-medium text-gray-900">{paymentDetails.passengers}</span>
+                              </div>
+                            )}
+                          </>
+                        )}
+
+                        {/* Return Trip Details */}
+                        {paymentDetails.bookReturn && paymentDetails.returnDate && (
+                          <>
+                            <hr className="my-3 border-gray-200" />
+                            <h3 className="font-semibold text-gray-800 mb-2">Return Trip</h3>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600 flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> Return Date:</span>
+                              <span className="font-medium text-gray-900">{paymentDetails.returnDate}</span>
+                            </div>
+                            {paymentDetails.returnTime && (
+                              <div className="flex justify-between">
+                                <span className="text-gray-600 flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> Return Time:</span>
+                                <span className="font-medium text-gray-900">{paymentDetails.returnTime}</span>
+                              </div>
+                            )}
+                            <div className="flex justify-between">
+                              <span className="text-gray-600 flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> From:</span>
+                              <span className="font-medium text-gray-900 text-right max-w-[60%]">{paymentDetails.dropoffAddress}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600 flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> To:</span>
+                              <span className="font-medium text-gray-900 text-right max-w-[60%]">{paymentDetails.pickupAddress}</span>
+                            </div>
+                            {paymentDetails.returnFlightNumber && (
+                              <div className="flex justify-between">
+                                <span className="text-gray-600 flex items-center gap-1"><Plane className="w-3.5 h-3.5" /> Return Flight:</span>
+                                <span className="font-medium text-gray-900">{paymentDetails.returnFlightNumber}</span>
+                              </div>
+                            )}
+                          </>
+                        )}
                       </div>
                       <p className="text-sm text-gray-500 mt-4 text-center">
                         Please save this reference number for your records.
