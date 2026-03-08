@@ -4,7 +4,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import Response, RedirectResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
-# motor import removed — using NeonDatabase (PostgreSQL via asyncpg)
+from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 from pathlib import Path
@@ -33,7 +33,6 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 import vobject
 import asyncio
-from motor.motor_asyncio import AsyncIOMotorClient
 
 try:
     from email_sender import send_email as send_email_unified, get_noreply_email
@@ -41,10 +40,54 @@ except ImportError:
     send_email_unified = None
     get_noreply_email = lambda: os.environ.get("NOREPLY_EMAIL") or os.environ.get("SENDER_EMAIL", "noreply@bookaride.co.nz")
 
-try:
-    import facebook_integration as fb
-except ImportError:
-    fb = None
+
+def _send_email_with_fallbacks(to_email, subject, html_content, from_email=None, from_name="BookaRide", cc=None, text_content=None, reply_to=None):
+    """Send email trying available providers: email_sender module -> Google SMTP.
+    Returns True if any provider succeeds."""
+    sender = from_email or get_noreply_email()
+
+    # 1) Try email_sender module (may not exist)
+    if send_email_unified:
+        try:
+            if send_email_unified(to_email, subject, html_content, from_email=sender, from_name=from_name):
+                return True
+        except Exception as e:
+            logging.getLogger(__name__).warning(f"email_sender module failed: {e}")
+
+    # 2) Try SMTP (Google Workspace / Gmail)
+    smtp_user = os.environ.get('SMTP_USER')
+    smtp_pass = os.environ.get('SMTP_PASS')
+    if smtp_user and smtp_pass:
+        try:
+            message = MIMEMultipart('alternative')
+            message['Subject'] = subject
+            message['From'] = f"{from_name} <{sender}>" if from_name else sender
+            message['To'] = to_email
+            if cc:
+                message['Cc'] = cc
+            if reply_to:
+                message['Reply-To'] = reply_to
+            if text_content:
+                message.attach(MIMEText(text_content, 'plain'))
+            message.attach(MIMEText(html_content, 'html'))
+            smtp_host = os.environ.get('SMTP_HOST', 'smtp.gmail.com')
+            smtp_port = int(os.environ.get('SMTP_PORT', '587'))
+            with smtplib.SMTP(smtp_host, smtp_port) as server:
+                server.starttls()
+                server.login(smtp_user, smtp_pass)
+                server.send_message(message)
+            logging.getLogger(__name__).info(f"Email sent via SMTP to {to_email}")
+            return True
+        except Exception as e:
+            logging.getLogger(__name__).warning(f"SMTP send failed: {e}")
+
+    logging.getLogger(__name__).error(f"ALL email providers failed for {to_email}. Configure SMTP_USER+SMTP_PASS (Google App Password).")
+    return False
+
+
+def _send_email_compat(to_email, subject, html_content, from_name="BookaRide", text_content=None, cc=None, reply_to=None):
+    """Compatibility wrapper - replaces direct Mailgun API calls with Google SMTP."""
+    return _send_email_with_fallbacks(to_email, subject, html_content, from_name=from_name, text_content=text_content, cc=cc, reply_to=reply_to)
 
 # Global lock to prevent concurrent reminder sending
 reminder_lock = asyncio.Lock()
@@ -83,24 +126,13 @@ ROOT_DIR = Path(__file__).parent
 sys.path.insert(0, str(ROOT_DIR))
 load_dotenv(ROOT_DIR / '.env')
 
-# Database connection
-# NeonDatabase (PostgreSQL) is the primary database.
-# Falls back to None if DATABASE_URL is not set (db initialized async in startup event).
-db = None
-
-async def _init_db():
-    """Connect to Neon PostgreSQL and set the global db handle."""
-    global db
-    database_url = os.environ.get('DATABASE_URL')
-    if not database_url:
-        logging.warning("DATABASE_URL not set — database unavailable")
-        return
-    try:
-        db = await NeonDatabase.connect(database_url)
-        logging.info("Connected to Neon PostgreSQL")
-    except Exception as e:
-        logging.error(f"Failed to connect to database: {e}")
-        db = None
+# MongoDB connection
+mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
+db_name = os.environ.get('DB_NAME', 'bookaride')
+if 'MONGO_URL' not in os.environ or 'DB_NAME' not in os.environ:
+    logging.warning("MONGO_URL or DB_NAME missing; using fallback values for startup.")
+client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=2000, connectTimeoutMS=2000)
+db = client[db_name]
 
 # Authentication configuration
 SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'your-secret-key-change-in-production-' + str(uuid.uuid4()))
@@ -127,47 +159,25 @@ async def root():
 @app.get("/health")
 @app.get("/healthz")
 async def root_health_check():
-    """Root health check for Render/Kubernetes. Pings database so readiness = app + DB up."""
-    if db is None:
-        raise HTTPException(status_code=503, detail="Database not initialized")
+    """Root health check for Render/Kubernetes. Pings MongoDB so readiness = app + DB up."""
     try:
         await asyncio.wait_for(db.command("ping"), timeout=2.0)
-        return {"status": "healthy", "service": "bookaride-api", "database": "ok"}
+        return {"status": "healthy", "service": "bookaride-api", "mongo": "ok"}
     except asyncio.TimeoutError:
-        raise HTTPException(status_code=503, detail="Database ping timeout")
+        raise HTTPException(status_code=503, detail="MongoDB ping timeout")
     except Exception as e:
-        raise HTTPException(status_code=503, detail=f"Database unreachable: {str(e)}")
+        raise HTTPException(status_code=503, detail=f"MongoDB unreachable: {str(e)}")
 
-
-@app.get("/api/oauth-debug")
-async def oauth_debug():
-    """Check Google OAuth configuration (no secrets exposed)."""
-    client_id = os.environ.get('GOOGLE_CLIENT_ID', '')
-    client_secret = os.environ.get('GOOGLE_CLIENT_SECRET', '')
-    backend_url = os.environ.get('BACKEND_URL') or os.environ.get('RENDER_EXTERNAL_URL') or os.environ.get('PUBLIC_DOMAIN', 'https://bookaride.co.nz')
-    redirect_uri = f"{backend_url.rstrip('/')}/api/admin/google-auth/callback"
-    jwt_secret_set = os.environ.get('JWT_SECRET_KEY', '') != ''
-    admin_count = await db.admin_users.count_documents({})
-    admin_emails = [doc.get("email") for doc in await db.admin_users.find({}, {"email": 1, "_id": 0}).to_list(50) if doc.get("email")]
-    return {
-        "google_client_id_set": bool(client_id),
-        "google_client_id_preview": client_id[:20] + "..." if len(client_id) > 20 else "(not set)",
-        "google_client_secret_set": bool(client_secret),
-        "backend_url": backend_url,
-        "redirect_uri": redirect_uri,
-        "public_domain": os.environ.get('PUBLIC_DOMAIN', '(not set, defaulting to https://bookaride.co.nz)'),
-        "jwt_secret_key_set": jwt_secret_set,
-        "admin_users_count": admin_count,
-        "admin_emails": admin_emails,
-        "hint": "Ensure redirect_uri EXACTLY matches what is in Google Cloud Console > Credentials > Authorized redirect URIs"
-    }
 
 @app.get("/email-status")
 @app.get("/api/email-status")
 async def root_email_status():
     """Email config check – same as /api/email-status. No auth."""
+    smtp_configured = bool(os.environ.get("SMTP_USER") and os.environ.get("SMTP_PASS"))
     try:
-        from email_sender import is_email_configured, get_noreply_email
+        from email_sender import is_email_configured, get_noreply_email as _get_noreply
+        noreply = _get_noreply()
+        email_configured = is_email_configured()
     except ImportError:
         return {
             "email_provider": "mailgun",
@@ -432,7 +442,7 @@ def validate_booking_date(self):
     if hasattr(self, '_skip_date_validation') or getattr(self, 'id', None):    
         return self
     
-    if self.date:  #  NOW PROPERLY INSIDE THE FUNCTION
+    if self.date:  # ÃƒÆ'Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ'Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ'Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ NOW PROPERLY INSIDE THE FUNCTION
         try:
             nz_tz = pytz.timezone('Pacific/Auckland')
             today = datetime.now(nz_tz).strftime('%Y-%m-%d')
@@ -735,7 +745,6 @@ async def admin_google_auth_callback(request: Request, code: Optional[str] = Non
         return RedirectResponse(url=f"{callback_url}?error=config&message=Server%20OAuth%20not%20configured.")
     saved_state = request.cookies.get("admin_oauth_state")
     if not saved_state or saved_state != state or not state.startswith(ADMIN_GOOGLE_OAUTH_STATE):
-        logger.error(f"OAuth state mismatch: cookie_present={bool(saved_state)}, state_param={state[:30] if state else 'None'}, cookie_value={saved_state[:30] if saved_state else 'None'}")
         return RedirectResponse(
             url=f"{callback_url}?error=invalid_state&message=Invalid%20or%20expired%20sign-in.%20Please%20try%20again."
         )
@@ -975,7 +984,7 @@ async def request_password_reset(reset_request: PasswordResetRequest):
             </html>
             """
             
-            if send_email_unified and send_email_unified(email, "Password Reset Request - Book A Ride NZ Admin", email_html):
+            if _send_email_with_fallbacks(email, "Password Reset Request - Book A Ride NZ Admin", email_html):
                 logger.info(f"Password reset email sent to: {email}")
             else:
                 logger.warning("Password reset email NOT sent - configure MAILGUN_API_KEY and MAILGUN_DOMAIN")
@@ -1083,8 +1092,97 @@ async def root():
 
 @api_router.get("/health")
 async def health_check():
-    """Health check endpoint for Kubernetes"""
-    return {"status": "healthy", "service": "bookaride-api"}
+    """Health check endpoint — also reports which integrations are configured."""
+    google_maps = bool(os.environ.get('GOOGLE_MAPS_API_KEY', ''))
+    smtp_ok = bool(os.environ.get('SMTP_USER') and os.environ.get('SMTP_PASS'))
+    stripe_key = bool(os.environ.get('STRIPE_SECRET_KEY') or os.environ.get('STRIPE_API_KEY'))
+    stripe_webhook = bool(os.environ.get('STRIPE_WEBHOOK_SECRET', ''))
+    google_cal = bool(os.environ.get('GOOGLE_SERVICE_ACCOUNT_JSON', ''))
+    return {
+        "status": "healthy",
+        "service": "bookaride-api",
+        "integrations": {
+            "google_maps": "ok" if google_maps else "MISSING - set GOOGLE_MAPS_API_KEY (autocomplete + distance)",
+            "stripe_payments": "ok" if stripe_key else "MISSING - set STRIPE_SECRET_KEY",
+            "stripe_webhook": "ok" if stripe_webhook else "MISSING - set STRIPE_WEBHOOK_SECRET (payments won't auto-confirm)",
+            "email_smtp": "ok" if smtp_ok else "MISSING - set SMTP_USER + SMTP_PASS (Google SMTP for notifications)",
+            "google_calendar": "ok" if google_cal else "MISSING - set GOOGLE_SERVICE_ACCOUNT_JSON",
+        }
+    }
+
+
+# Diagnostic endpoint to test Google Places API key
+@api_router.get("/places/test")
+async def places_api_test():
+    """Test Google Places API key with a known address query.
+
+    Returns detailed diagnostic info to help troubleshoot autocomplete issues.
+    """
+    google_key = os.environ.get('GOOGLE_MAPS_API_KEY', '').strip()
+    result = {
+        "key_configured": bool(google_key),
+        "key_prefix": google_key[:8] + "..." if len(google_key) > 8 else "(too short or empty)",
+        "legacy_api": {"status": "not_tested"},
+        "new_api": {"status": "not_tested"},
+    }
+    if not google_key:
+        result["recommendation"] = "Set GOOGLE_MAPS_API_KEY environment variable"
+        return result
+
+    # Test legacy Places API
+    try:
+        url = "https://maps.googleapis.com/maps/api/place/autocomplete/json"
+        params = {"input": "Auckland Airport", "key": google_key, "components": "country:nz"}
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            r = await client.get(url, params=params)
+        data = r.json()
+        result["legacy_api"] = {
+            "status": data.get("status", "UNKNOWN"),
+            "error_message": data.get("error_message", ""),
+            "prediction_count": len(data.get("predictions", [])),
+        }
+    except Exception as e:
+        result["legacy_api"] = {"status": "EXCEPTION", "error": str(e)}
+
+    # Test new Places API
+    try:
+        new_url = "https://places.googleapis.com/v1/places:autocomplete"
+        headers = {"Content-Type": "application/json", "X-Goog-Api-Key": google_key}
+        body = {"input": "Auckland Airport", "includedRegionCodes": ["nz"]}
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            r = await client.post(new_url, json=body, headers=headers)
+        if r.status_code == 200:
+            data = r.json()
+            result["new_api"] = {
+                "status": "OK",
+                "suggestion_count": len(data.get("suggestions", [])),
+            }
+        else:
+            result["new_api"] = {
+                "status": f"HTTP_{r.status_code}",
+                "error": r.text[:300],
+            }
+    except Exception as e:
+        result["new_api"] = {"status": "EXCEPTION", "error": str(e)}
+
+    # Recommendation
+    legacy_ok = result["legacy_api"].get("status") == "OK"
+    new_ok = result["new_api"].get("status") == "OK"
+    if legacy_ok or new_ok:
+        result["recommendation"] = "API key is working! Autocomplete should function."
+    elif result["legacy_api"].get("status") == "REQUEST_DENIED":
+        result["recommendation"] = (
+            "API key is DENIED. In Google Cloud Console, enable: "
+            "'Places API' and/or 'Places API (New)'. "
+            "Also ensure billing is active and the key has no IP restrictions blocking your server."
+        )
+    else:
+        result["recommendation"] = (
+            f"Legacy API: {result['legacy_api'].get('status')}. "
+            f"New API: {result['new_api'].get('status')}. "
+            "Check Google Cloud Console for API enablement and billing."
+        )
+    return result
 
 
 # Google Reviews Endpoint - Fetches reviews from Google Places API
@@ -1224,42 +1322,6 @@ def get_fallback_reviews():
         'isFallback': True
     }
 
-
-# Google Places Autocomplete proxy – keeps the API key server-side
-@api_router.get("/places/autocomplete")
-async def places_autocomplete(input: str = "", types: str = "address", region: str = "nz"):
-    """
-    Proxy Google Places Autocomplete so the API key stays on the server.
-    Returns { predictions: [ { description, place_id }, ... ] }
-    """
-    if not input or len(input) < 3:
-        return {"predictions": []}
-
-    google_api_key = os.environ.get("GOOGLE_MAPS_API_KEY", "")
-    if not google_api_key:
-        logger.warning("GOOGLE_MAPS_API_KEY not set – cannot autocomplete")
-        return {"predictions": []}
-
-    url = "https://maps.googleapis.com/maps/api/place/autocomplete/json"
-    params = {
-        "input": input,
-        "types": types,
-        "components": f"country:{region}",
-        "key": google_api_key,
-    }
-    try:
-        resp = requests.get(url, params=params, timeout=5)
-        data = resp.json()
-        predictions = [
-            {"description": p["description"], "place_id": p["place_id"]}
-            for p in data.get("predictions", [])
-        ]
-        return {"predictions": predictions}
-    except Exception as e:
-        logger.error(f"Places autocomplete error: {e}")
-        return {"predictions": []}
-
-
 @api_router.post("/status", response_model=StatusCheck)
 async def create_status_check(input: StatusCheckCreate):
     status_dict = input.model_dump()
@@ -1288,7 +1350,7 @@ def _geocode_google(address: str, api_key: str) -> tuple:
     """Geocode address via Google Maps Geocoding API. Returns (lat, lon) or (None, None)."""
     try:
         url = "https://maps.googleapis.com/maps/api/geocode/json"
-        params = {"address": address, "key": api_key, "region": "nz"}
+        params = {"address": address, "key": api_key, "region": "nz", "components": "country:NZ"}
         r = requests.get(url, params=params, timeout=10)
         data = r.json()
         results = data.get("results", [])
@@ -1303,12 +1365,12 @@ def _geocode_google(address: str, api_key: str) -> tuple:
     return (None, None)
 
 
-# Canonical addresses for reliable routing (avoids mis-geocoding variants like "Shared Path")
+# Canonical addresses for reliable routing
 _CANONICAL_AIRPORT = "Auckland Airport, Ray Emery Drive, Mangere, Auckland 2022, New Zealand"
 _CANONICAL_AIRPORT_LOWER = "auckland airport"
 
 def _normalize_address_for_routing(address: str) -> str:
-    """Use canonical airport address when user selects airport variants (avoids mis-geocoding)."""
+    """Use canonical airport address when user selects airport variants."""
     if not address or not address.strip():
         return address
     lower = address.lower()
@@ -1322,25 +1384,28 @@ def _get_distance_google(pickup_address: str, dropoff_address: str, waypoint_add
     try:
         pickup_norm = _normalize_address_for_routing(pickup_address)
         dropoff_norm = _normalize_address_for_routing(dropoff_address)
-        mid_stops = [_normalize_address_for_routing(a) for a in (waypoint_addresses or []) if a and a.strip()]
+        extra = [_normalize_address_for_routing(a) for a in (waypoint_addresses or []) if a and a.strip()]
 
-        if mid_stops:
-            # Use Directions API for multi-stop routes (waypoints)
+        if extra:
+            # Use Directions API for waypoint support
             url = "https://maps.googleapis.com/maps/api/directions/json"
             params = {
                 "origin": pickup_norm,
                 "destination": dropoff_norm,
-                "waypoints": "|".join(mid_stops),
+                "waypoints": "|".join(extra),
                 "key": api_key,
                 "region": "nz",
             }
             r = requests.get(url, params=params, timeout=15)
             data = r.json()
             if data.get("status") == "OK" and data.get("routes"):
-                total_m = sum(leg["distance"]["value"] for leg in data["routes"][0]["legs"])
+                total_m = sum(
+                    leg.get("distance", {}).get("value", 0)
+                    for leg in data["routes"][0].get("legs", [])
+                )
                 return round(total_m / 1000, 2)
         else:
-            # Simple origin->destination: use Distance Matrix (cheaper)
+            # Simple origin->destination: use Distance Matrix
             url = "https://maps.googleapis.com/maps/api/distancematrix/json"
             params = {
                 "origins": pickup_norm,
@@ -1350,41 +1415,162 @@ def _get_distance_google(pickup_address: str, dropoff_address: str, waypoint_add
             }
             r = requests.get(url, params=params, timeout=15)
             data = r.json()
-            if data.get("status") == "OK" and data.get("rows"):
-                element = data["rows"][0]["elements"][0]
-                if element.get("status") == "OK":
-                    dist_m = element["distance"]["value"]
-                    return round(dist_m / 1000, 2)
+            if data.get("status") == "OK":
+                rows = data.get("rows", [])
+                if rows:
+                    elements = rows[0].get("elements", [])
+                    if elements and elements[0].get("status") == "OK":
+                        dist_m = elements[0].get("distance", {}).get("value", 0)
+                        return round(dist_m / 1000, 2)
     except Exception as e:
-        logger.warning(f"Google Maps routing error: {e}")
+        logger.warning(f"Google Maps distance error: {e}")
     return None
 
 
-def _build_maps_route_url(origin: str, destination: str, waypoint_addresses: list, _api_key: str = "") -> str:
-    """Build Google Maps directions URL."""
+def _build_maps_route_url(origin: str, destination: str, waypoint_addresses: list, api_key: str = "") -> str:
+    """Build a Google Maps directions URL."""
     if not origin or not destination:
         return "https://www.google.com/maps"
     base = "https://www.google.com/maps/dir/"
     parts = [requests.utils.quote(origin)]
-    for addr in (waypoint_addresses or []):
-        if addr and addr.strip():
-            parts.append(requests.utils.quote(addr.strip()))
+    for wp in (waypoint_addresses or []):
+        if wp and wp.strip():
+            parts.append(requests.utils.quote(wp.strip()))
     parts.append(requests.utils.quote(destination))
     return base + "/".join(parts)
 
 
-# Default distance when Google Maps API fails or key is not set (was 25km - caused massive undercharging for 60-70km trips)
-# Use 75km to cover common long routes (Orewa, Hibiscus Coast, Warkworth) - better to slightly overcharge than lose money
+# Default distance when Google Maps fails or key is not set
 DEFAULT_FALLBACK_DISTANCE_KM = 75.0
-# Long-distance fallback when addresses indicate Tauranga/BOP/Hamilton/Whangarei (prevents ~$200 charge for 200km+ trip)
+# Long-distance fallback for Tauranga/BOP/Hamilton/Whangarei routes
 LONG_DISTANCE_FALLBACK_KM = 200.0
+
+# Address Autocomplete Endpoint (Google Places API)
+# Common NZ addresses as fallback when Google API is unavailable
+_NZ_FALLBACK_ADDRESSES = [
+    {"description": "Auckland Airport (AKL), Ray Emery Drive, Mangere, Auckland 2022, New Zealand", "place_id": "fallback_akl"},
+    {"description": "Auckland CBD, Auckland, New Zealand", "place_id": "fallback_akl_cbd"},
+    {"description": "Hamilton Airport, Airport Road, Hamilton, New Zealand", "place_id": "fallback_hml"},
+    {"description": "Hamilton CBD, Hamilton, New Zealand", "place_id": "fallback_hml_cbd"},
+    {"description": "Whangarei, New Zealand", "place_id": "fallback_wre"},
+    {"description": "Tauranga, New Zealand", "place_id": "fallback_trg"},
+    {"description": "Orewa, Auckland, New Zealand", "place_id": "fallback_orewa"},
+    {"description": "Whangaparaoa, Auckland, New Zealand", "place_id": "fallback_whangaparaoa"},
+    {"description": "Silverdale, Auckland, New Zealand", "place_id": "fallback_silverdale"},
+    {"description": "Red Beach, Auckland, New Zealand", "place_id": "fallback_redbeach"},
+    {"description": "Stanmore Bay, Auckland, New Zealand", "place_id": "fallback_stanmorebay"},
+    {"description": "Gulf Harbour, Auckland, New Zealand", "place_id": "fallback_gulfharbour"},
+    {"description": "Manly, Auckland, New Zealand", "place_id": "fallback_manly"},
+    {"description": "Hibiscus Coast, Auckland, New Zealand", "place_id": "fallback_hibiscus"},
+    {"description": "Mount Maunganui, Tauranga, New Zealand", "place_id": "fallback_mtmaunganui"},
+    {"description": "Papamoa, Tauranga, New Zealand", "place_id": "fallback_papamoa"},
+    {"description": "Cambridge, Waikato, New Zealand", "place_id": "fallback_cambridge"},
+]
+
+
+@api_router.get("/places/autocomplete")
+async def places_autocomplete(input: str = "", types: str = "", region: str = "nz"):
+    """Return address suggestions using Google Places Autocomplete API.
+
+    No types filter by default so results include addresses AND
+    establishments (airports, hotels, etc.).
+    """
+    if len(input) < 3:
+        return {"predictions": []}
+    google_key = os.environ.get('GOOGLE_MAPS_API_KEY', '').strip()
+    if not google_key:
+        logger.warning("GOOGLE_MAPS_API_KEY not set - using fallback address list")
+        query_lower = input.lower()
+        matches = [a for a in _NZ_FALLBACK_ADDRESSES if query_lower in a["description"].lower()]
+        return {"predictions": matches[:5]}
+
+    # --- Try Google Places API (Legacy) first ---
+    try:
+        url = "https://maps.googleapis.com/maps/api/place/autocomplete/json"
+        params = {
+            "input": input,
+            "key": google_key,
+            "components": "country:nz",
+            # Bias towards NZ (Auckland region) for better local results
+            "location": "-36.8485,174.7633",
+            "radius": "500000",
+        }
+        # Only add types if explicitly provided and non-empty
+        if types:
+            params["types"] = types
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            r = await client.get(url, params=params)
+        data = r.json()
+        status = data.get("status", "UNKNOWN")
+        if status == "OK":
+            predictions = [
+                {"description": p.get("description", ""), "place_id": p.get("place_id", "")}
+                for p in data.get("predictions", [])
+                if p.get("description")
+            ]
+            if predictions:
+                return {"predictions": predictions}
+            # OK status but empty results - fall through to fallback
+            logger.info(f"Google Places returned OK but 0 predictions for: {input}")
+        elif status == "ZERO_RESULTS":
+            logger.info(f"Google Places returned ZERO_RESULTS for: {input}")
+        else:
+            error_msg = data.get('error_message', 'no details')
+            logger.error(f"Google Places autocomplete FAILED - status: {status}, error: {error_msg}, input: {input}")
+    except Exception as e:
+        logger.error(f"Google Places autocomplete exception: {e}")
+
+    # --- Try Google Places API (New) as fallback ---
+    try:
+        new_url = "https://places.googleapis.com/v1/places:autocomplete"
+        headers = {
+            "Content-Type": "application/json",
+            "X-Goog-Api-Key": google_key,
+        }
+        body = {
+            "input": input,
+            "includedRegionCodes": ["nz"],
+            "locationBias": {
+                "circle": {
+                    "center": {"latitude": -36.8485, "longitude": 174.7633},
+                    "radius": 500000.0,
+                }
+            },
+        }
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            r = await client.post(new_url, json=body, headers=headers)
+        if r.status_code == 200:
+            data = r.json()
+            suggestions = data.get("suggestions", [])
+            predictions = []
+            for s in suggestions:
+                pred = s.get("placePrediction", {})
+                text = pred.get("text", {}).get("text", "")
+                place_id = pred.get("placeId", "")
+                if text:
+                    predictions.append({"description": text, "place_id": place_id})
+            if predictions:
+                logger.info(f"Google Places (New) API returned {len(predictions)} results for: {input}")
+                return {"predictions": predictions}
+        else:
+            logger.warning(f"Google Places (New) API returned status {r.status_code}: {r.text[:200]}")
+    except Exception as e:
+        logger.warning(f"Google Places (New) API exception: {e}")
+
+    # --- Final fallback: match against known NZ addresses ---
+    query_lower = input.lower()
+    matches = [a for a in _NZ_FALLBACK_ADDRESSES if query_lower in a["description"].lower()]
+    if matches:
+        logger.info(f"Using fallback addresses for: {input} ({len(matches)} matches)")
+    return {"predictions": matches[:5]}
+
 
 # Price Calculation Endpoint
 @api_router.post("/calculate-price", response_model=PricingBreakdown)
 async def calculate_price(request: PriceCalculationRequest):
     try:
         # Google Maps for distance; fallback estimate if not set or API fails
-        google_maps_key = os.environ.get('GOOGLE_MAPS_API_KEY', '')
+        google_key = os.environ.get('GOOGLE_MAPS_API_KEY', '')
         distance_km = None
         # Normalize addresses early so we can use long-distance fallback when API fails
         def _norm(s):
@@ -1395,23 +1581,22 @@ async def calculate_price(request: PriceCalculationRequest):
         _is_long_distance_route = any(kw in _pickup_lower or kw in _dropoff_lower for kw in _long_distance_keywords)
         _fallback_km = LONG_DISTANCE_FALLBACK_KM if _is_long_distance_route else DEFAULT_FALLBACK_DISTANCE_KM
 
-        if google_maps_key:
+        if google_key:
             # Route: pickup -> additional pickups -> dropoff
             waypoint_addrs = [a for a in (request.pickupAddresses or []) if a and a.strip()]
             distance_km = _get_distance_google(
                 request.pickupAddress,
                 request.dropoffAddress,
                 waypoint_addrs,
-                google_maps_key
+                google_key
             )
             if distance_km is not None:
                 logger.info(f"Google Maps route distance: {distance_km}km")
 
         if distance_km is None:
-            # Google Maps API failed or key not set - use fallback
             pickup_count = 1 + len([addr for addr in (request.pickupAddresses or []) if addr])
             distance_km = _fallback_km * pickup_count
-            logger.warning(f"GOOGLE_MAPS_API_KEY not set or geocoding failed. Using default distance estimate: {distance_km}km for {pickup_count} stops - SET GOOGLE_MAPS_API_KEY FOR ACCURATE PRICING")
+            logger.warning(f"GOOGLE_MAPS_API_KEY not set or distance lookup failed. Using fallback estimate: {distance_km}km for {pickup_count} stops")
         # Calculate pricing with tiered rates - FLAT RATE per bracket
         # The rate is determined by which distance bracket the trip falls into
         # Then that rate is applied to the ENTIRE distance
@@ -1436,7 +1621,7 @@ async def calculate_price(request: PriceCalculationRequest):
         is_from_hibiscus_coast = any(keyword in pickup_lower for keyword in hibiscus_coast_keywords)
         is_to_hibiscus_coast = any(keyword in dropoff_lower for keyword in hibiscus_coast_keywords)
         
-        # Minimum distance for Hibiscus Coast <-> Auckland Airport (API may return shorter than actual)
+        # Minimum distance for Hibiscus Coast <-> Auckland Airport (Geoapify returns shorter than Google)
         # Old system: 73.3 km for Gulf Harbour -> Airport = ~$186. Use 73 km minimum for this route.
         airport_keywords = ['airport', 'auckland airport', 'international airport', 'domestic airport', 'akl', 'ray emery', 'mangere']
         is_to_airport = any(kw in dropoff_lower for kw in airport_keywords)
@@ -1464,7 +1649,7 @@ async def calculate_price(request: PriceCalculationRequest):
             logger.info(f"Zone distance: Hamilton area <-> Airport applying minimum 125 km (API returned {distance_km} km)")
             distance_km = 125.0
         
-        # Minimum distance for Auckland Airport <-> Whangarei
+        # Minimum distance for Auckland Airport <-> Whangarei (Geoapify often fails, falls back to default)
         # Old system: 181.7 km = ~$646 for 2 passengers
         whangarei_keywords = ['whangarei', 'onerahi', 'kensington', 'tikipunga', 'regent', 'whangarei heads']
         is_to_whangarei = any(kw in dropoff_lower for kw in whangarei_keywords)
@@ -1523,7 +1708,7 @@ async def calculate_price(request: PriceCalculationRequest):
         else:
             rate_per_km = 3.50   # $3.50 per km for 100km+
         
-        # Calculate base price: distance  rate for that bracket
+        # Calculate base price: distance ÃƒÆ'Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ'Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â rate for that bracket
         base_price = distance_km * rate_per_km
         
         # VIP Airport Pickup fee: Optional $15 extra service
@@ -1664,11 +1849,17 @@ async def create_booking(booking: BookingCreate, background_tasks: BackgroundTas
         booking_obj = Booking(**booking.dict())
         booking_dict = booking_obj.dict()
         
-        # Ensure return flight number is preserved (check both field names)
-        if booking.returnDepartureFlightNumber:
-            booking_dict['returnDepartureFlightNumber'] = booking.returnDepartureFlightNumber
-            booking_dict['returnFlightNumber'] = booking.returnDepartureFlightNumber  # Also set the alias
-            logger.info(f"Set returnDepartureFlightNumber: {booking.returnDepartureFlightNumber}")
+        # Normalize flight number fields - sync all aliases so lookups always work
+        outbound_flight = booking.flightNumber or booking.departureFlightNumber or booking.arrivalFlightNumber or ''
+        if outbound_flight:
+            booking_dict['flightNumber'] = outbound_flight
+            booking_dict['departureFlightNumber'] = outbound_flight
+            booking_dict['arrivalFlightNumber'] = outbound_flight
+
+        return_flight = booking.returnDepartureFlightNumber or booking.returnFlightNumber or ''
+        if return_flight:
+            booking_dict['returnDepartureFlightNumber'] = return_flight
+            booking_dict['returnFlightNumber'] = return_flight
         
         # Get sequential reference number (store as string so admin search by "74" finds booking #74)
         ref_number = await get_next_reference_number()
@@ -1911,12 +2102,33 @@ async def get_bookings(
             if search.strip().isdigit():
                 query['$or'].append({'referenceNumber': int(search.strip())})
         
-        # Date range filter
-        if date_from:
-            query['date'] = query.get('date', {})
-            query['date']['$gte'] = date_from
-        if date_to:
-            query.setdefault('date', {})['$lte'] = date_to
+        # Date range filter - include bookings where EITHER the outbound date OR
+        # the return date falls within the range, so return trips don't disappear
+        # after the outbound leg is done.
+        if date_from or date_to:
+            date_conditions = []
+            # Match on outbound date
+            outbound_cond = {}
+            if date_from:
+                outbound_cond['$gte'] = date_from
+            if date_to:
+                outbound_cond['$lte'] = date_to
+            if outbound_cond:
+                date_conditions.append({'date': outbound_cond})
+            # Also match on return date (so return bookings stay visible)
+            return_cond = {}
+            if date_from:
+                return_cond['$gte'] = date_from
+            if date_to:
+                return_cond['$lte'] = date_to
+            if return_cond:
+                date_conditions.append({'returnDate': return_cond})
+            if date_conditions:
+                if '$or' in query:
+                    # Wrap existing $or with $and to combine
+                    query = {'$and': [{'$or': query['$or']}, {'$or': date_conditions}]}
+                else:
+                    query['$or'] = date_conditions
         
         # Calculate skip for pagination (only when not return_all)
         skip = (page - 1) * limit if not return_all else 0
@@ -1972,10 +2184,19 @@ async def get_bookings(
         all_bookings = list(all_bookings) + list(shuttle_raw)
         total = len(all_bookings)
         
-        # Custom sort: prioritize today, then tomorrow, then upcoming dates, then past dates
+        # Custom sort: use the "effective date" — for return bookings where the
+        # outbound is past but the return is still upcoming, sort by return date
+        # so they stay visible near the top instead of sinking to the bottom.
         def sort_key(b):
-            date = b.get('date', '9999-99-99')
+            outbound_date = b.get('date', '9999-99-99')
+            return_date = b.get('returnDate', '')
             time = b.get('time', '00:00')
+            # Use the latest relevant date: if there's a future return date, use it
+            if return_date and return_date >= today_str and outbound_date < today_str:
+                date = return_date
+                time = b.get('returnTime', '00:00')
+            else:
+                date = outbound_date
             if date == today_str:
                 return (0, time)  # Today first
             elif date > today_str:
@@ -2111,14 +2332,6 @@ async def send_booking_email(email_data: dict, current_admin: dict = Depends(get
         if not recipient_email or not subject or not message:
             raise HTTPException(status_code=400, detail="Missing required email fields")
         
-        # Send via Mailgun
-        mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
-        mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
-        sender_email = os.environ.get('SENDER_EMAIL', 'noreply@mg.bookaride.co.nz')
-        
-        if not mailgun_api_key or not mailgun_domain:
-            raise HTTPException(status_code=500, detail="Mailgun not configured")
-        
         # Create HTML email content
         html_content = f"""
         <html>
@@ -2137,39 +2350,22 @@ async def send_booking_email(email_data: dict, current_admin: dict = Depends(get
         </html>
         """
         
-        # Build email data
-        email_payload = {
-            "from": f"BookaRide Admin <{sender_email}>",
-            "to": recipient_email,
-            "subject": subject,
-            "html": html_content,
-            "text": message
-        }
-        
-        # Add CC if provided
-        if cc_emails and cc_emails.strip():
-            email_payload["cc"] = cc_emails.strip()
-        
-        # Send email via Mailgun API
-        response = requests.post(
-            f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
-            auth=("api", mailgun_api_key),
-            data=email_payload
-        )
-        
-        if response.status_code == 200:
+
+        cc = cc_emails.strip() if cc_emails and cc_emails.strip() else None
+        ok = _send_email_with_fallbacks(recipient_email, subject, html_content, from_name="BookaRide Admin", cc=cc, text_content=message)
+
+        if ok:
             cc_info = f" (CC: {cc_emails})" if cc_emails else ""
             logger.info(f"Admin email sent to {recipient_email}{cc_info} - Subject: {subject}")
             return {"message": "Email sent successfully"}
         else:
-            logger.error(f"Mailgun error: {response.status_code} - {response.text}")
-            raise HTTPException(status_code=500, detail=f"Failed to send email: {response.text}")
+            raise HTTPException(status_code=500, detail="Failed to send email. Please try again later.")
         
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error sending email: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error sending email: {str(e)}")
+        raise HTTPException(status_code=500, detail="Error sending email. Please try again later.")
 
 
 @api_router.post("/bookings/{booking_id}/send-to-admin")
@@ -2183,7 +2379,7 @@ async def send_booking_to_admin(booking_id: str, current_admin: dict = Depends(g
 
         # Get admin email from environment or use default
         admin_email = os.environ.get('ADMIN_EMAIL', 'admin@bookaride.co.nz')
-
+        
         # Format booking details
         total_price = booking.get('totalPrice', 0)
         pricing = booking.get('pricing', {})
@@ -2253,6 +2449,9 @@ async def send_booking_to_admin(booking_id: str, current_admin: dict = Depends(g
             </body>
         </html>
         """
+        
+        email_subject = f"Booking Details - {booking.get('name', 'Customer')} - {booking.get('id', '')[:8].upper()}"
+        ok = _send_email_with_fallbacks(admin_email, email_subject, html_content, from_name="BookaRide System")
 
         subject = f"Booking Details - {booking.get('name', 'Customer')} - {booking.get('id', '')[:8].upper()}"
         from_email = get_noreply_email()
@@ -2274,7 +2473,7 @@ async def send_booking_to_admin(booking_id: str, current_admin: dict = Depends(g
         raise
     except Exception as e:
         logger.error(f"Error sending booking to admin: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error sending booking to admin: {str(e)}")
+        raise HTTPException(status_code=500, detail="Error sending booking to admin. Please try again later.")
 
 
 # ============================================
@@ -2622,23 +2821,35 @@ def send_customer_confirmation(booking: dict):
     elif preference == 'sms':
         logger.info(f"Customer prefers SMS only - skipping email for booking {get_booking_reference(booking)}")
     
-    # Schedule async DB update for confirmation status
-    # (Cannot use asyncpg from a sync background thread — schedule on the main event loop)
-    if booking_id and db is not None:
+    # Update database with confirmation status (sync version)
+    if booking_id:
         try:
-            loop = asyncio.get_event_loop()
-            asyncio.run_coroutine_threadsafe(
-                update_confirmation_status(booking_id, results),
-                loop
+            from pymongo import MongoClient
+            sync_client = MongoClient(os.environ.get('MONGO_URL', 'mongodb://localhost:27017'))
+            sync_db = sync_client[os.environ.get('DB_NAME', 'test_database')]
+            
+            nz_tz = pytz.timezone('Pacific/Auckland')
+            now = datetime.now(nz_tz).isoformat()
+            
+            sync_db.bookings.update_one(
+                {"id": booking_id},
+                {"$set": {
+                    'confirmation_sent': results['email'] or results['sms'],
+                    'confirmation_sent_at': now,
+                    'email_confirmation_sent': results['email'],
+                    'sms_confirmation_sent': results['sms'],
+                    'notifications_sent': True
+                }}
             )
-            logger.info(f"Scheduled confirmation status update for booking {booking_id}")
+            sync_client.close()
+            logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Confirmation status updated for booking {booking_id}")
         except Exception as e:
-            logger.error(f"Error scheduling confirmation status update: {e}")
+            logger.error(f"Error updating confirmation status: {e}")
     
     return results
 
 async def update_confirmation_status(booking_id: str, results: dict):
-    """Update booking with confirmation status via Neon DB (async)."""
+    """Update booking with confirmation status - ASYNC VERSION (deprecated, use sync in send_customer_confirmation)"""
     try:
         nz_tz = pytz.timezone('Pacific/Auckland')
         now = datetime.now(nz_tz).isoformat()
@@ -2669,13 +2880,7 @@ def send_reminder_email(booking: dict):
             logger.warning(f" Skipping reminder email for CANCELLED booking: {booking.get('name')} (Ref: {booking.get('referenceNumber')})")
             return False
         
-        mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
-        mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
         sender_email = get_noreply_email()
-        
-        if not mailgun_api_key or not mailgun_domain:
-            logger.warning("Mailgun credentials not configured for reminder")
-            return False
         
         booking_ref = get_booking_reference(booking)
         formatted_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
@@ -2817,23 +3022,13 @@ def send_reminder_email(booking: dict):
         </html>
         '''
         
-        response = requests.post(
-            f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
-            auth=("api", mailgun_api_key),
-            data={
-                "from": f"BookaRide <{sender_email}>",
-                "to": recipient_email,
-                "subject": f"Your Ride Tomorrow - {formatted_date} at {formatted_time} - Ref: {booking_ref}",
-                "html": html_content
-            }
-        )
-        
-        if response.status_code == 200:
+        reminder_subject = f"Your Ride Tomorrow - {formatted_date} at {formatted_time} - Ref: {booking_ref}"
+        ok = _send_email_with_fallbacks(recipient_email, reminder_subject, html_content, from_email=sender_email)
+        if ok:
             logger.info(f"Reminder email sent to {recipient_email}")
-            return True
         else:
-            logger.error(f"Reminder email failed: {response.status_code} - {response.text}")
-            return False
+            logger.error(f"Reminder email failed for {recipient_email}")
+        return ok
             
     except Exception as e:
         logger.error(f"Error sending reminder email: {str(e)}")
@@ -3274,13 +3469,7 @@ async def handle_incoming_email(request: Request):
             "Best regards,\nBookaRide Team"
         )
         
-        # Send the response via Mailgun
-        mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
-        mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
-        
-        if not mailgun_api_key or not mailgun_domain:
-            logger.error("Mailgun not configured for auto-reply")
-            return {"status": "error", "reason": "email service not configured"}
+        # Send auto-reply email
         
         # Prepare the reply
         reply_subject = f"Re: {subject}" if not subject.startswith('Re:') else subject
@@ -3306,22 +3495,12 @@ async def handle_incoming_email(request: Request):
         </div>
         """
         
-        # Send via Mailgun
-        response = requests.post(
-            f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
-            auth=("api", mailgun_api_key),
-            data={
-                "from": f"BookaRide NZ <bookings@{mailgun_domain}>",
-                "to": reply_to_email,
-                "subject": reply_subject,
-                "text": ai_response,
-                "html": html_response,
-                "h:Reply-To": "info@bookaride.co.nz"
-            }
-        )
-        
-        if response.status_code == 200:
-            logger.info(f" AI auto-reply sent to {reply_to_email}")
+        # Send via Google SMTP
+        # Send via Google SMTP
+        ok = _send_email_with_fallbacks(reply_to_email, reply_subject, html_response, from_name="BookaRide NZ", text_content=ai_response, reply_to="info@bookaride.co.nz")
+
+        if ok:
+            logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ AI auto-reply sent to {reply_to_email}")
             
             # Store the email interaction for admin review
             await db.email_logs.insert_one({
@@ -3338,11 +3517,11 @@ async def handle_incoming_email(request: Request):
             return {"status": "success", "message": "AI response sent"}
         else:
             logger.error(f"Failed to send auto-reply: {response.text}")
-            return {"status": "error", "reason": response.text}
+            return {"status": "error", "reason": "Failed to send auto-reply. Please try again later."}
         
     except Exception as e:
         logger.error(f"Email auto-responder error: {str(e)}")
-        return {"status": "error", "reason": str(e)}
+        return {"status": "error", "reason": "Email auto-responder error. Please try again later."}
 
 
 @api_router.get("/admin/email-logs")
@@ -3676,11 +3855,6 @@ async def send_abandoned_booking_emails():
             }
         }, {"_id": 0}).to_list(50)
         
-        mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
-        mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
-        
-        if not mailgun_api_key or not mailgun_domain:
-            return
         
         for booking in abandoned:
             try:
@@ -3726,18 +3900,9 @@ async def send_abandoned_booking_emails():
                 </div>
                 """
                 
-                response = requests.post(
-                    f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
-                    auth=("api", mailgun_api_key),
-                    data={
-                        "from": f"BookaRide NZ <bookings@{mailgun_domain}>",
-                        "to": email,
-                        "subject": subject,
-                        "html": html_content
-                    }
-                )
-                
-                if response.status_code == 200:
+                ok = _send_email_with_fallbacks(email, subject, html_content, from_name="BookaRide NZ")
+
+                if ok:
                     await db.abandoned_bookings.update_one(
                         {"email": email, "recovered": False},
                         {"$set": {"email_sent": True, "email_sent_at": datetime.now(timezone.utc).isoformat()}}
@@ -3980,50 +4145,11 @@ async def send_booking_notification_to_admin(booking: dict):
         html_content = generate_confirmation_email_html(booking, for_admin=True)
         
         subject = f"New Booking - {booking.get('name', 'Customer')} - {formatted_date} - Ref: {booking_ref}"
-        reply_to = os.environ.get("ADMIN_EMAIL", "info@bookaride.co.nz").split(',')[0].strip()
         email_sent = False
-        if send_email_unified:
-            for admin_email in admin_emails:
-                try:
-                    if send_email_unified(
-                        admin_email,
-                        subject,
-                        html_content,
-                        from_email=get_noreply_email(),
-                        from_name="BookaRide System",
-                        reply_to=reply_to,
-                    ):
-                        logger.info(f"Auto-notification sent to {admin_email} for booking: {booking_ref}")
-                        email_sent = True
-                    else:
-                        logger.error(f"Failed to send admin notification to {admin_email}")
-                except Exception as e:
-                    logger.error(f"Error sending to {admin_email}: {e}")
-        else:
-            mailgun_api_key = os.environ.get("MAILGUN_API_KEY")
-            mailgun_domain = os.environ.get("MAILGUN_DOMAIN")
-            sender_email = get_noreply_email()
-            if mailgun_api_key and mailgun_domain:
-                for admin_email in admin_emails:
-                    try:
-                        response = requests.post(
-                            f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
-                            auth=("api", mailgun_api_key),
-                            data={
-                                "from": f"BookaRide System <{sender_email}>",
-                                "to": admin_email,
-                                "subject": subject,
-                                "html": html_content,
-                            },
-                            timeout=15,
-                        )
-                        if response.status_code == 200:
-                            logger.info(f"Auto-notification sent to {admin_email} for booking: {booking_ref}")
-                            email_sent = True
-                        else:
-                            logger.error(f"Failed to send to {admin_email}: {response.status_code} - {response.text}")
-                    except Exception as e:
-                        logger.error(f"Error sending to {admin_email}: {e}")
+        for admin_email in admin_emails:
+            if _send_email_with_fallbacks(admin_email, subject, html_content, from_name="BookaRide System"):
+                logger.info(f"Admin notification sent to {admin_email} for booking: {booking_ref}")
+                email_sent = True
             else:
                 logger.error("No email provider configured (Mailgun) - admin notifications not sent")
             
@@ -4066,10 +4192,6 @@ async def send_urgent_approval_notification(booking: dict):
     """Send urgent notification for bookings requiring manual approval (within 24 hours)"""
     try:
         admin_emails = _get_booking_notification_emails()
-        mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
-        mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
-        sender_email = os.environ.get('SENDER_EMAIL', 'noreply@mg.bookaride.co.nz')
-        
         # Format booking details
         total_price = booking.get('totalPrice', 0)
         formatted_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
@@ -4156,10 +4278,8 @@ async def send_urgent_approval_notification(booking: dict):
         
         if response.status_code == 200:
             logger.info(f"Urgent approval notification sent to {recipient} for booking: {booking_ref}")
-            email_sent = True
         else:
-            logger.error(f"Failed to send urgent approval notification: {response.status_code} - {response.text}")
-            email_sent = False
+            logger.error(f"Failed to send urgent approval notification to {recipient} for booking: {booking_ref}")
             
     except Exception as e:
         logger.error(f"Error sending urgent approval notification: {str(e)}")
@@ -4205,22 +4325,25 @@ Price: ${booking.get('totalPrice', 0):.2f}
             )
             logger.info(f" Urgent SMS sent to admin {admin_phone} for booking: #{booking_ref} - SID: {message.sid}")
             
-            # Store booking ID in database for SMS reply matching (using Neon DB)
-            if db is not None:
-                try:
-                    await db.pending_approvals.update_one(
-                        {"admin_phone": admin_phone},
-                        {"$set": {
-                            "booking_id": booking.get('id'),
-                            "booking_ref": booking_ref,
-                            "customer_name": booking.get('name'),
-                            "created_at": datetime.now(timezone.utc).isoformat()
-                        }},
-                        upsert=True
-                    )
-                    logger.info(f"Stored pending approval for booking #{booking_ref}")
-                except Exception as db_error:
-                    logger.error(f"Failed to store pending approval: {db_error}")
+            # Store booking ID in database for SMS reply matching (using sync client)
+            try:
+                from pymongo import MongoClient
+                sync_client = MongoClient(os.environ.get('MONGO_URL', 'mongodb://localhost:27017'))
+                sync_db = sync_client[os.environ.get('DB_NAME', 'test_database')]
+                sync_db.pending_approvals.update_one(
+                    {"admin_phone": admin_phone},
+                    {"$set": {
+                        "booking_id": booking.get('id'),
+                        "booking_ref": booking_ref,
+                        "customer_name": booking.get('name'),
+                        "created_at": datetime.now(timezone.utc).isoformat()
+                    }},
+                    upsert=True
+                )
+                sync_client.close()
+                logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Stored pending approval for booking #{booking_ref}")
+            except Exception as db_error:
+                logger.error(f"Failed to store pending approval: {db_error}")
             
             sms_sent = True
         else:
@@ -4302,11 +4425,7 @@ async def send_driver_notification(booking: dict, driver: dict, trip_type: str =
         logger.info(f" Driver Payout: ${driver_payout:.2f} for {trip_type} trip")
         
         # Send Email to Driver
-        mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
-        mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
-        sender_email = os.environ.get('SENDER_EMAIL', 'noreply@bookaride.co.nz')
-        
-        if mailgun_api_key and mailgun_domain:
+        if True:
             # Build pickup addresses list
             pickup_addresses = [booking.get('pickupAddress', 'N/A')]
             additional_pickups = booking.get('pickupAddresses', [])
@@ -4447,23 +4566,12 @@ BookaRide NZ
 bookaride.co.nz | +64 21 743 321
 """
             
-            response = requests.post(
-                f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
-                auth=("api", mailgun_api_key),
-                data={
-                    "from": f"BookaRide <{sender_email}>",
-                    "to": driver.get('email'),
-                    "subject": f"New Booking Assignment - Ref: {booking_ref} - {formatted_date}",
-                    "text": text_content,
-                    "html": html_content
-                }
-            )
-            
-            if response.status_code == 200:
-                logger.info(f" Driver notification email sent to {driver.get('email')}")
-                logger.info(f" Mailgun response: {response.text}")
+            driver_email_subject = f"New Booking Assignment - Ref: {booking_ref} - {formatted_date}"
+            ok = _send_email_with_fallbacks(driver.get('email'), driver_email_subject, html_content, text_content=text_content)
+            if ok:
+                logger.info(f"Driver notification email sent to {driver.get('email')}")
             else:
-                logger.error(f" Failed to send driver email: {response.status_code} - {response.text}")
+                logger.error(f"Failed to send driver email to {driver.get('email')}")
         
         # Send SMS to Driver (separate try block so email failures don't block SMS)
         try:
@@ -4986,7 +5094,14 @@ async def admin_send_test_email(body: dict = Body(default={}), current_admin: di
     ok, err = do_send_test_email(to)
     if ok:
         return {"success": True, "message": f"Test email sent to {to}. Check inbox and spam."}
-    raise HTTPException(status_code=500, detail=err or "Email failed (no details).")
+
+    # Build diagnostic info
+    diag = {
+        "smtp_user_set": bool(os.environ.get("SMTP_USER")),
+        "smtp_pass_set": bool(os.environ.get("SMTP_PASS")),
+        "email_sender_available": send_email_unified is not None,
+    }
+    raise HTTPException(status_code=500, detail=f"All email providers failed. Config: {diag}")
 
 
 @api_router.post("/bookings/{booking_id}/resend-payment-link")
@@ -5759,20 +5874,6 @@ class PaymentCheckoutRequest(BaseModel):
     booking_id: str
     origin_url: str
 
-@api_router.get("/payment/stripe-health")
-async def stripe_health():
-    """Diagnostic endpoint to check Stripe configuration"""
-    stripe_key = os.environ.get('STRIPE_API_KEY') or os.environ.get('STRIPE_SECRET_KEY')
-    if not stripe_key:
-        return {"status": "error", "message": "No STRIPE_API_KEY or STRIPE_SECRET_KEY configured"}
-    try:
-        import stripe as stripe_mod
-        stripe_mod.api_key = stripe_key
-        acct = stripe_mod.Account.retrieve()
-        return {"status": "ok", "key_prefix": stripe_key[:12] + "...", "account_id": acct.get("id", "unknown")}
-    except Exception as e:
-        return {"status": "error", "message": str(e), "key_prefix": stripe_key[:12] + "..."}
-
 @api_router.post("/payment/create-checkout", response_model=CheckoutSessionResponse)
 async def create_payment_checkout(request: PaymentCheckoutRequest, http_request: Request):
     try:
@@ -5848,30 +5949,18 @@ async def create_payment_checkout(request: PaymentCheckoutRequest, http_request:
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error creating payment checkout: {str(e)}", exc_info=True)
-
-        # Fallback: try to send payment link via email so customer can still pay
-        try:
-            booking = await db.bookings.find_one({"id": request.booking_id}, {"_id": 0})
-            if booking:
-                payment_link = await generate_stripe_payment_link(booking)
-                if payment_link:
-                    await send_payment_link_email(booking, payment_link, 'stripe')
-                    logger.info(f"Sent fallback payment link email for booking {request.booking_id}")
-        except Exception as fallback_err:
-            logger.error(f"Fallback payment link also failed: {str(fallback_err)}")
-
+        logger.error(f"Error creating payment checkout: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error creating checkout session: {str(e)}")
 
 
 @api_router.get("/payment/status/{session_id}")
 async def get_payment_status(session_id: str):
     try:
-        # Get Stripe API key
-        stripe_api_key = os.environ.get('STRIPE_API_KEY')
+        # Get Stripe API key (support both env var names)
+        stripe_api_key = os.environ.get('STRIPE_API_KEY') or os.environ.get('STRIPE_SECRET_KEY')
         if not stripe_api_key:
             raise HTTPException(status_code=500, detail="Stripe API key not configured")
-        
+
         # Check if we've already processed this payment
         existing_transaction = await db.payment_transactions.find_one(
             {"session_id": session_id, "payment_status": "paid"}, 
@@ -5915,28 +6004,29 @@ async def get_payment_status(session_id: str):
         reference_number = None
         
         # If payment is successful, update booking status and send confirmations
-        if checkout_status.payment_status == "paid" and result.modified_count > 0:
+        if checkout_status.payment_status == "paid":
             booking_id = checkout_status.metadata.get('booking_id')
             if booking_id:
-                await db.bookings.update_one(
-                    {"id": booking_id},
-                    {"$set": {"payment_status": "paid", "status": "confirmed"}}
-                )
-                logger.info(f"Booking {booking_id} confirmed after successful payment")
-                
-                # Get booking details for notifications
+                # Always ensure booking is confirmed when payment is paid
+                # (handles retries where transaction was already updated but booking update failed)
                 booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
                 if booking:
                     reference_number = booking.get('referenceNumber')
-                    
-                    # Send confirmations based on customer's notification preference
-                    send_customer_confirmation(booking)
-                    
-                    # Send admin notification
-                    await send_booking_notification_to_admin(booking)
-                    
-                    # Create Google Calendar event
-                    await create_calendar_event(booking)
+                    needs_confirmation = booking.get('payment_status') != 'paid'
+
+                    await db.bookings.update_one(
+                        {"id": booking_id},
+                        {"$set": {"payment_status": "paid", "status": "confirmed"}}
+                    )
+                    logger.info(f"Booking {booking_id} confirmed after successful payment")
+
+                    # Only send notifications on first confirmation to avoid duplicates
+                    if needs_confirmation:
+                        send_customer_confirmation(booking)
+                        await send_booking_notification_to_admin(booking)
+                        await create_calendar_event(booking)
+                else:
+                    logger.error(f"Payment succeeded but booking {booking_id} not found in database - potential orphan payment")
         
         # Return response with reference number
         return {
@@ -6054,8 +6144,8 @@ async def recover_booking_from_payment(body: RecoverBookingFromPayment, current_
 @api_router.post("/webhook/stripe")
 async def stripe_webhook(request: Request):
     try:
-        # Get Stripe API key
-        stripe_api_key = os.environ.get('STRIPE_API_KEY')
+        # Get Stripe API key (support both env var names)
+        stripe_api_key = os.environ.get('STRIPE_API_KEY') or os.environ.get('STRIPE_SECRET_KEY')
         if not stripe_api_key:
             raise HTTPException(status_code=500, detail="Stripe API key not configured")
         
@@ -6121,38 +6211,28 @@ async def stripe_webhook(request: Request):
                         if shuttle_booking:
                             # Send email confirmation for shuttle
                             try:
-                                mailgun_key = os.environ.get('MAILGUN_API_KEY')
-                                mailgun_domain = os.environ.get('MAILGUN_DOMAIN', 'mg.bookaride.co.nz')
-                                if mailgun_key:
-                                    requests.post(
-                                        f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
-                                        auth=("api", mailgun_key),
-                                        data={
-                                            "from": f"Book A Ride NZ <bookings@{mailgun_domain}>",
-                                            "to": shuttle_booking['email'],
-                                            "subject": f" Shuttle Booking Confirmed - {shuttle_booking['date']} {shuttle_booking['departureTime']}",
-                                            "html": f"""
-                                            <h2>Your Shuttle Seat is Reserved!</h2>
-                                            <p>Hi {shuttle_booking['name']},</p>
-                                            <p>Great news! Your seat on the shared shuttle is confirmed.</p>
-                                            <h3>Booking Details:</h3>
-                                            <ul>
-                                                <li><strong>Date:</strong> {shuttle_booking['date']}</li>
-                                                <li><strong>Departure Time:</strong> {shuttle_booking['departureTime']}</li>
-                                                <li><strong>Pickup:</strong> {shuttle_booking['pickupAddress']}</li>
-                                                <li><strong>Destination:</strong> Auckland International Airport</li>
-                                                <li><strong>Passengers:</strong> {shuttle_booking['passengers']}</li>
-                                            </ul>
-                                            <h3>Payment Info:</h3>
-                                            <p> A hold of <strong>${shuttle_booking.get('totalEstimated', 100)}</strong> has been placed on your card.</p>
-                                            <p> You will only be charged the <strong>final price</strong> when the shuttle arrives at the airport.</p>
-                                            <p> The more passengers on your shuttle, the cheaper everyone pays!</p>
-                                            <p>We'll be in touch closer to your departure date with pickup details.</p>
-                                            <p>Thank you for choosing Book A Ride!</p>
-                                            """
-                                        }
-                                    )
-                                    logger.info(f"Shuttle confirmation email sent to {shuttle_booking['email']}")
+                                shuttle_subject = f"Shuttle Booking Confirmed - {shuttle_booking['date']} {shuttle_booking['departureTime']}"
+                                shuttle_html = f"""
+                                <h2>Your Shuttle Seat is Reserved!</h2>
+                                <p>Hi {shuttle_booking['name']},</p>
+                                <p>Great news! Your seat on the shared shuttle is confirmed.</p>
+                                <h3>Booking Details:</h3>
+                                <ul>
+                                    <li><strong>Date:</strong> {shuttle_booking['date']}</li>
+                                    <li><strong>Departure Time:</strong> {shuttle_booking['departureTime']}</li>
+                                    <li><strong>Pickup:</strong> {shuttle_booking['pickupAddress']}</li>
+                                    <li><strong>Destination:</strong> Auckland International Airport</li>
+                                    <li><strong>Passengers:</strong> {shuttle_booking['passengers']}</li>
+                                </ul>
+                                <h3>Payment Info:</h3>
+                                <p>A hold of <strong>${shuttle_booking.get('totalEstimated', 100)}</strong> has been placed on your card.</p>
+                                <p>You will only be charged the <strong>final price</strong> when the shuttle arrives at the airport.</p>
+                                <p>The more passengers on your shuttle, the cheaper everyone pays!</p>
+                                <p>We'll be in touch closer to your departure date with pickup details.</p>
+                                <p>Thank you for choosing Book A Ride!</p>
+                                """
+                                _send_email_with_fallbacks(shuttle_booking['email'], shuttle_subject, shuttle_html, from_name='Book A Ride NZ')
+                                logger.info(f"Shuttle confirmation email sent to {shuttle_booking['email']}")
                             except Exception as email_error:
                                 logger.error(f"Failed to send shuttle confirmation email: {email_error}")
                     else:
@@ -6421,37 +6501,24 @@ async def twilio_sms_webhook(request: Request):
                     # Notify admin of driver acknowledgment
                     try:
                         admin_email = os.environ.get('ADMIN_EMAIL', 'bookings@bookaride.co.nz')
-                        mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
-                        mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
-                        sender_email = os.environ.get('SENDER_EMAIL', 'noreply@mg.bookaride.co.nz')
-                        
-                        if mailgun_api_key and mailgun_domain:
-                            html_content = f"""
-                            <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px;">
-                                <div style="background: #22c55e; color: white; padding: 15px; border-radius: 8px 8px 0 0; text-align: center;">
-                                    <h2 style="margin: 0;"> Driver Acknowledged Job</h2>
-                                </div>
-                                <div style="background: #f0fdf4; padding: 20px; border: 1px solid #86efac; border-top: none; border-radius: 0 0 8px 8px;">
-                                    <p><strong>Driver:</strong> {driver_name}</p>
-                                    <p><strong>Booking:</strong> #{booking_ref}</p>
-                                    <p><strong>Trip Type:</strong> {trip_type}</p>
-                                    <p><strong>Customer:</strong> {booking.get('name')}</p>
-                                    <p><strong>Date:</strong> {format_date_ddmmyyyy(booking.get('date'))} at {booking.get('time')}</p>
-                                    <p style="color: #16a34a; font-weight: bold;">Driver has confirmed receipt of this job assignment.</p>
-                                </div>
+                        html_content = f"""
+                        <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px;">
+                            <div style="background: #22c55e; color: white; padding: 15px; border-radius: 8px 8px 0 0; text-align: center;">
+                                <h2 style="margin: 0;">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Driver Acknowledged Job</h2>
                             </div>
-                            """
-                            
-                            requests.post(
-                                f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
-                                auth=("api", mailgun_api_key),
-                                data={
-                                    "from": f"BookaRide System <{sender_email}>",
-                                    "to": admin_email,
-                                    "subject": f" Driver {driver_name} Acknowledged Job #{booking_ref}",
-                                    "html": html_content
-                                }
-                            )
+                            <div style="background: #f0fdf4; padding: 20px; border: 1px solid #86efac; border-top: none; border-radius: 0 0 8px 8px;">
+                                <p><strong>Driver:</strong> {driver_name}</p>
+                                <p><strong>Booking:</strong> #{booking_ref}</p>
+                                <p><strong>Trip Type:</strong> {trip_type}</p>
+                                <p><strong>Customer:</strong> {booking.get('name')}</p>
+                                <p><strong>Date:</strong> {format_date_ddmmyyyy(booking.get('date'))} at {booking.get('time')}</p>
+                                <p style="color: #16a34a; font-weight: bold;">Driver has confirmed receipt of this job assignment.</p>
+                            </div>
+                        </div>
+                        """
+                        
+                        ack_subject = f"Driver {driver_name} Acknowledged Job #{booking_ref}"
+                        _send_email_with_fallbacks(admin_email, ack_subject, html_content, from_name="BookaRide System")
                     except Exception as email_error:
                         logger.error(f"Failed to notify admin of acknowledgment: {str(email_error)}")
                     
@@ -6923,7 +6990,7 @@ async def send_tracking_link_to_driver(booking_id: str, current_admin: dict = De
             customer_name = booking.get('name', 'Customer')
             pickup = booking.get('pickupAddress', 'N/A')
             
-            sms_body = f""" SHARE YOUR LOCATION
+            sms_body = f"""ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â SHARE YOUR LOCATION
             
 Job: {booking_ref}
 Customer: {customer_name}
@@ -6943,7 +7010,7 @@ Customer will be auto-notified when you start.
                 to=formatted_phone
             )
             
-            logger.info(f" Tracking link sent to driver {driver.get('name')} at {formatted_phone}")
+            logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â± Tracking link sent to driver {driver.get('name')} at {formatted_phone}")
             
             # Update booking with tracking info
             collection = db.shuttle_bookings if booking_type == "shuttle" else db.bookings
@@ -6972,6 +7039,1104 @@ Customer will be auto-notified when you start.
         logger.error(f"Error sending tracking link to driver: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
+
+# ==================== SHARED SHUTTLE SERVICE ====================
+
+# Shuttle pricing tiers - $200 minimum per run
+SHUTTLE_PRICING = {
+    1: 100, 2: 100,  # $100 each = $100-200 total
+    3: 70,           # $70 each = $210 total
+    4: 55,           # $55 each = $220 total
+    5: 45,           # $45 each = $225 total
+    6: 40,           # $40 each = $240 total
+    7: 35,           # $35 each = $245 total
+    8: 32,           # $32 each = $256 total
+    9: 30,           # $30 each = $270 total
+    10: 28,          # $28 each = $280 total
+    11: 25,          # $25 each = $275+ total
+}
+
+# Departure times (6am - 10pm, every 2 hours)
+SHUTTLE_TIMES = ['06:00', '08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00']
+
+def get_shuttle_price(total_passengers: int) -> int:
+    """Get price per person based on total passengers"""
+    if total_passengers >= 11:
+        return 25
+    return SHUTTLE_PRICING.get(total_passengers, 100)
+
+
+class ShuttleBookingCreate(BaseModel):
+    date: str
+    departureTime: str
+    pickupAddress: str
+    passengers: int
+    name: str
+    email: str
+    phone: str
+    notes: Optional[str] = ""
+    flightNumber: Optional[str] = ""
+    estimatedPrice: Optional[int] = 100
+    needsApproval: Optional[bool] = False
+
+
+@api_router.get("/shuttle/availability")
+async def get_shuttle_availability(date: str, time: str = None):
+    """Get shuttle availability and current bookings for a date"""
+    try:
+        # Get all shuttle bookings for this date
+        query = {"date": date, "bookingType": "shuttle", "status": {"$nin": ["cancelled", "deleted"]}}
+        bookings = await db.shuttle_bookings.find(query, {"_id": 0}).to_list(100)
+        
+        # Build availability by departure time
+        departures = {}
+        for dep_time in SHUTTLE_TIMES:
+            time_bookings = [b for b in bookings if b.get("departureTime") == dep_time]
+            total_passengers = sum(b.get("passengers", 0) for b in time_bookings)
+            departures[dep_time] = {
+                "passengers": total_passengers,
+                "bookings": len(time_bookings),
+                "available": total_passengers < 11,
+                "pricePerPerson": get_shuttle_price(total_passengers + 1) if total_passengers < 11 else None
+            }
+        
+        # If specific time requested, return details for that
+        current_passengers = 0
+        if time and time in departures:
+            current_passengers = departures[time]["passengers"]
+        
+        return {
+            "date": date,
+            "departures": departures,
+            "currentPassengers": current_passengers
+        }
+    except Exception as e:
+        logger.error(f"Error getting shuttle availability: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/shuttle/book")
+async def create_shuttle_booking(booking: ShuttleBookingCreate):
+    """Create a new shuttle booking with card authorization (not charge)"""
+    try:
+        # Validate departure time
+        if booking.departureTime not in SHUTTLE_TIMES:
+            raise HTTPException(status_code=400, detail="Invalid departure time")
+        
+        # Check availability
+        existing = await db.shuttle_bookings.find({
+            "date": booking.date,
+            "departureTime": booking.departureTime,
+            "status": {"$nin": ["cancelled", "deleted"]}
+        }, {"_id": 0}).to_list(100)
+        
+        current_passengers = sum(b.get("passengers", 0) for b in existing)
+        if current_passengers + booking.passengers > 11:
+            raise HTTPException(status_code=400, detail="Not enough seats available for this departure")
+        
+        # Calculate price based on total passengers after this booking
+        total_after = current_passengers + booking.passengers
+        price_per_person = get_shuttle_price(total_after)
+        total_price = price_per_person * booking.passengers
+        
+        # Create booking record
+        booking_id = str(uuid.uuid4())
+        shuttle_booking = {
+            "id": booking_id,
+            "bookingType": "shuttle",
+            "date": booking.date,
+            "departureTime": booking.departureTime,
+            "pickupAddress": booking.pickupAddress,
+            "dropoffAddress": "Auckland International Airport",
+            "passengers": booking.passengers,
+            "name": booking.name,
+            "email": booking.email,
+            "phone": booking.phone,
+            "notes": booking.notes,
+            "flightNumber": booking.flightNumber,
+            "estimatedPrice": price_per_person,
+            "finalPrice": None,  # Set when charged at airport
+            "totalEstimated": total_price,
+            "status": "pending_approval" if booking.needsApproval else "authorized",
+            "paymentStatus": "pending_authorization",
+            "stripePaymentIntentId": None,
+            "createdAt": datetime.now(timezone.utc).isoformat(),
+            "chargedAt": None,
+            "needsApproval": booking.needsApproval
+        }
+        
+        # Create Stripe Payment Intent with manual capture (authorize but don't charge)
+        stripe_api_key = os.environ.get('STRIPE_API_KEY')
+        if stripe_api_key:
+            import stripe
+            stripe.api_key = stripe_api_key
+            
+            # Create a Checkout Session for card authorization
+            # Apple Pay and Google Pay work through 'card' + Payment Request API
+            public_domain = os.environ.get('PUBLIC_DOMAIN', 'https://bookaride.co.nz')
+            
+            checkout_session = stripe.checkout.Session.create(
+                payment_method_types=['card', 'link'],  # card enables Apple Pay/Google Pay
+                mode='payment',
+                payment_intent_data={
+                    'capture_method': 'manual',  # Authorize but don't charge
+                    'metadata': {
+                        'booking_id': booking_id,
+                        'booking_type': 'shuttle',
+                        'passengers': str(booking.passengers),
+                        'date': booking.date,
+                        'time': booking.departureTime
+                    }
+                },
+                line_items=[{
+                    'price_data': {
+                        'currency': 'nzd',
+                        'product_data': {
+                            'name': f'Shared Shuttle - {booking.date} {booking.departureTime}',
+                            'description': f'{booking.passengers} passenger(s) - CBD to Auckland Airport. Card authorized, charged on arrival.',
+                        },
+                        'unit_amount': int(total_price * 100),  # Amount in cents
+                    },
+                    'quantity': 1,
+                }],
+                customer_email=booking.email,
+                success_url=f"{public_domain}/payment-success?type=shuttle&booking_id={booking_id}",
+                cancel_url=f"{public_domain}/shared-shuttle?cancelled=true",
+                metadata={
+                    'booking_id': booking_id,
+                    'booking_type': 'shuttle'
+                }
+            )
+            
+            shuttle_booking["stripeCheckoutSessionId"] = checkout_session.id
+            
+            # Save booking
+            await db.shuttle_bookings.insert_one(shuttle_booking)
+            
+            logger.info(f"Shuttle booking created: {booking_id} for {booking.date} {booking.departureTime}")
+            
+            return {
+                "success": True,
+                "bookingId": booking_id,
+                "checkoutUrl": checkout_session.url,
+                "estimatedPrice": price_per_person,
+                "totalEstimated": total_price
+            }
+        else:
+            # No Stripe - just save the booking
+            await db.shuttle_bookings.insert_one(shuttle_booking)
+            return {
+                "success": True,
+                "bookingId": booking_id,
+                "message": "Booking created - payment will be collected on arrival"
+            }
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error creating shuttle booking: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/shuttle/capture/{booking_id}")
+async def capture_shuttle_payment(booking_id: str, current_admin: dict = Depends(get_current_admin)):
+    """Capture (charge) the authorized payment when shuttle reaches airport"""
+    try:
+        booking = await db.shuttle_bookings.find_one({"id": booking_id}, {"_id": 0})
+        if not booking:
+            raise HTTPException(status_code=404, detail="Booking not found")
+        
+        if booking.get("paymentStatus") == "captured":
+            raise HTTPException(status_code=400, detail="Payment already captured")
+        
+        # Get current total passengers for this departure to calculate final price
+        all_bookings = await db.shuttle_bookings.find({
+            "date": booking["date"],
+            "departureTime": booking["departureTime"],
+            "status": {"$nin": ["cancelled", "deleted"]}
+        }, {"_id": 0}).to_list(100)
+        
+        total_passengers = sum(b.get("passengers", 0) for b in all_bookings)
+        final_price_per_person = get_shuttle_price(total_passengers)
+        final_total = final_price_per_person * booking["passengers"]
+        
+        # Capture the Stripe payment
+        stripe_api_key = os.environ.get('STRIPE_API_KEY')
+        if stripe_api_key and booking.get("stripePaymentIntentId"):
+            import stripe
+            stripe.api_key = stripe_api_key
+            
+            # Get the payment intent
+            payment_intent = stripe.PaymentIntent.retrieve(booking["stripePaymentIntentId"])
+            
+            # Capture with the final amount (may be different from authorized amount)
+            captured = stripe.PaymentIntent.capture(
+                booking["stripePaymentIntentId"],
+                amount_to_capture=int(final_total * 100)  # In cents
+            )
+            
+            # Update booking
+            await db.shuttle_bookings.update_one(
+                {"id": booking_id},
+                {"$set": {
+                    "paymentStatus": "captured",
+                    "finalPrice": final_price_per_person,
+                    "totalCharged": final_total,
+                    "chargedAt": datetime.now(timezone.utc).isoformat(),
+                    "status": "completed"
+                }}
+            )
+            
+            logger.info(f"Shuttle payment captured: {booking_id} - ${final_total}")
+            
+            return {
+                "success": True,
+                "finalPricePerPerson": final_price_per_person,
+                "totalCharged": final_total,
+                "totalPassengers": total_passengers
+            }
+        else:
+            # Manual capture (no Stripe)
+            await db.shuttle_bookings.update_one(
+                {"id": booking_id},
+                {"$set": {
+                    "paymentStatus": "manual",
+                    "finalPrice": final_price_per_person,
+                    "totalCharged": final_total,
+                    "chargedAt": datetime.now(timezone.utc).isoformat(),
+                    "status": "completed"
+                }}
+            )
+            return {
+                "success": True,
+                "finalPricePerPerson": final_price_per_person,
+                "totalCharged": final_total,
+                "message": "Marked as manually captured"
+            }
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error capturing shuttle payment: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/shuttle/departures")
+async def get_shuttle_departures(date: str, current_admin: dict = Depends(get_current_admin)):
+    """Get all shuttle departures for a date (admin view)"""
+    try:
+        bookings = await db.shuttle_bookings.find({
+            "date": date,
+            "status": {"$nin": ["deleted"]}
+        }, {"_id": 0}).to_list(100)
+        
+        # Group by departure time
+        departures = {}
+        for dep_time in SHUTTLE_TIMES:
+            time_bookings = [b for b in bookings if b.get("departureTime") == dep_time]
+            total_passengers = sum(b.get("passengers", 0) for b in time_bookings)
+            
+            departures[dep_time] = {
+                "time": dep_time,
+                "bookings": time_bookings,
+                "totalPassengers": total_passengers,
+                "pricePerPerson": get_shuttle_price(total_passengers) if total_passengers > 0 else 100,
+                "totalRevenue": sum(b.get("totalEstimated", 0) for b in time_bookings),
+                "canRun": total_passengers >= 1
+            }
+        
+        # Get assigned driver info from shuttle_runs collection
+        shuttle_runs = await db.shuttle_runs.find({"date": date}, {"_id": 0}).to_list(100)
+        for run in shuttle_runs:
+            dep_time = run.get("departureTime")
+            if dep_time in departures:
+                departures[dep_time]["assignedDriverId"] = run.get("driverId")
+                departures[dep_time]["assignedDriverName"] = run.get("driverName")
+                departures[dep_time]["shuttleStatus"] = run.get("status")
+        
+        return {
+            "date": date,
+            "departures": departures
+        }
+    except Exception as e:
+        logger.error(f"Error getting shuttle departures: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/shuttle/capture-all/{date}/{time}")
+async def capture_all_shuttle_payments(date: str, time: str, current_admin: dict = Depends(get_current_admin)):
+    """Capture all payments for a shuttle departure (when arriving at airport)"""
+    try:
+        bookings = await db.shuttle_bookings.find({
+            "date": date,
+            "departureTime": time,
+            "status": {"$nin": ["cancelled", "deleted"]},
+            "paymentStatus": {"$ne": "captured"}
+        }, {"_id": 0}).to_list(100)
+        
+        total_passengers = sum(b.get("passengers", 0) for b in bookings)
+        final_price = get_shuttle_price(total_passengers)
+        
+        results = []
+        for booking in bookings:
+            try:
+                # Capture each booking
+                result = await capture_shuttle_payment(booking["id"], current_admin)
+                results.append({"id": booking["id"], "success": True, **result})
+            except Exception as e:
+                results.append({"id": booking["id"], "success": False, "error": str(e)})
+        
+        return {
+            "date": date,
+            "time": time,
+            "totalPassengers": total_passengers,
+            "finalPricePerPerson": final_price,
+            "results": results
+        }
+    except Exception as e:
+        logger.error(f"Error capturing all shuttle payments: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/shuttle/route/{date}/{time}")
+async def get_optimized_shuttle_route(date: str, time: str, current_admin: dict = Depends(get_current_admin)):
+    """Get optimized pickup route for a shuttle departure with Google Maps link"""
+    try:
+        bookings = await db.shuttle_bookings.find({
+            "date": date,
+            "departureTime": time,
+            "status": {"$nin": ["cancelled", "deleted"]}
+        }, {"_id": 0}).to_list(100)
+        
+        if not bookings:
+            raise HTTPException(status_code=404, detail="No bookings for this departure")
+        
+        # Get all pickup addresses
+        pickup_addresses = [b["pickupAddress"] for b in bookings if b.get("pickupAddress")]
+        
+        if not pickup_addresses:
+            raise HTTPException(status_code=400, detail="No pickup addresses found")
+        
+        destination = "Auckland International Airport, New Zealand"
+        route_info = {"note": "Route order as listed; open in maps for directions"}
+        waypoint_list = pickup_addresses[1:] if len(pickup_addresses) > 1 else []
+        maps_url = _build_maps_route_url(pickup_addresses[0], destination, waypoint_list)
+        
+        # Build pickup list with passenger details
+        pickup_list = []
+        for booking in bookings:
+            pickup_list.append({
+                "address": booking["pickupAddress"],
+                "name": booking["name"],
+                "phone": booking["phone"],
+                "passengers": booking["passengers"],
+                "notes": booking.get("notes", ""),
+                "flightNumber": booking.get("flightNumber", "")
+            })
+        
+        return {
+            "date": date,
+            "departureTime": time,
+            "totalPassengers": sum(b["passengers"] for b in bookings),
+            "totalBookings": len(bookings),
+            "optimizedPickups": pickup_addresses,
+            "pickupDetails": pickup_list,
+            "routeInfo": route_info,
+            "mapsUrl": maps_url,
+            "googleMapsUrl": maps_url,
+            "destination": destination
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting shuttle route: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/shuttle/send-route/{date}/{time}")
+async def send_shuttle_route_to_driver(
+    date: str, 
+    time: str, 
+    driver_phone: str = None,
+    current_admin: dict = Depends(get_current_admin)
+):
+    """Send the optimized route to driver's phone via SMS"""
+    try:
+        # Get the route
+        route_data = await get_optimized_shuttle_route(date, time, current_admin)
+        
+        # Build SMS message
+        pickup_summary = "\n".join([
+            f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ {p['name']} ({p['passengers']}pax) - {p['address'][:30]}..."
+            for p in route_data["pickupDetails"][:5]
+        ])
+        
+        message = f"""ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â SHUTTLE {date} {time}
+{route_data['totalPassengers']} passengers, {route_data['totalBookings']} pickups
+
+{pickup_summary}
+
+ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ROUTE: {route_data['googleMapsUrl']}"""
+        
+        # Send SMS if phone provided
+        if driver_phone:
+            twilio_sid = os.environ.get('TWILIO_ACCOUNT_SID')
+            twilio_token = os.environ.get('TWILIO_AUTH_TOKEN')
+            twilio_phone = os.environ.get('TWILIO_PHONE_NUMBER')
+            
+            if twilio_sid and twilio_token and twilio_phone:
+                twilio_client = Client(twilio_sid, twilio_token)
+                formatted_phone = format_nz_phone(driver_phone)
+                
+                twilio_client.messages.create(
+                    body=message,
+                    from_=twilio_phone,
+                    to=formatted_phone
+                )
+                
+                logger.info(f"Shuttle route sent to driver: {formatted_phone}")
+                return {"success": True, "message": "Route sent to driver", "googleMapsUrl": route_data['googleMapsUrl']}
+        
+        return {
+            "success": True,
+            "message": message,
+            "googleMapsUrl": route_data['googleMapsUrl']
+        }
+        
+    except Exception as e:
+        logger.error(f"Error sending shuttle route: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== DRIVER GPS TRACKING FOR SHUTTLE ====================
+
+# Craig Canty's driver ID (testing phase only)
+ALLOWED_SHUTTLE_DRIVER_ID = "5a78ccb4-a2cb-4bcb-80a7-eb6a4364cee8"
+
+class DriverLocationUpdate(BaseModel):
+    driverId: str
+    latitude: float
+    longitude: float
+    date: str
+    departureTime: str
+    notifiedPickups: Optional[List[str]] = []
+
+
+@api_router.get("/shuttle/driver/departures")
+async def get_driver_shuttle_departures(date: str, current_driver: dict = Depends(get_current_driver)):
+    """Get shuttle departures for a driver (same as admin but accessible to driver)"""
+    try:
+        # Only allow Craig Canty during testing
+        if current_driver.get("id") != ALLOWED_SHUTTLE_DRIVER_ID:
+            raise HTTPException(status_code=403, detail="Shuttle tracking not enabled for this driver")
+        
+        bookings = await db.shuttle_bookings.find({
+            "date": date,
+            "status": {"$nin": ["deleted", "cancelled"]}
+        }, {"_id": 0}).to_list(100)
+        
+        # Group by departure time
+        departures = {}
+        for dep_time in SHUTTLE_TIMES:
+            time_bookings = [b for b in bookings if b.get("departureTime") == dep_time]
+            total_passengers = sum(b.get("passengers", 0) for b in time_bookings)
+            
+            departures[dep_time] = {
+                "time": dep_time,
+                "bookings": time_bookings,
+                "totalPassengers": total_passengers
+            }
+        
+        return {"date": date, "departures": departures}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting driver shuttles: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/shuttle/driver/location")
+async def update_driver_location(location: DriverLocationUpdate, current_driver: dict = Depends(get_current_driver)):
+    """
+    Update driver's GPS location and calculate ETAs to pickups.
+    Auto-sends SMS to customers when driver is ~5 minutes away.
+    """
+    try:
+        # Only allow Craig Canty during testing
+        if current_driver.get("id") != ALLOWED_SHUTTLE_DRIVER_ID:
+            raise HTTPException(status_code=403, detail="Shuttle tracking not enabled for this driver")
+        
+        # Get bookings for this departure
+        bookings = await db.shuttle_bookings.find({
+            "date": location.date,
+            "departureTime": location.departureTime,
+            "status": {"$nin": ["deleted", "cancelled"]}
+        }, {"_id": 0}).to_list(100)
+        
+        if not bookings:
+            return {"etas": {}, "newlyNotified": []}
+        
+        # Use Google Maps Distance Matrix API to calculate ETAs
+        google_api_key = os.environ.get('GOOGLE_MAPS_API_KEY', '')
+        etas = {}
+        newly_notified = []
+        
+        driver_location = f"{location.latitude},{location.longitude}"
+        
+        # Get all pickup addresses
+        destinations = [b["pickupAddress"] for b in bookings]
+        
+        if google_api_key and destinations:
+            try:
+                # Call Distance Matrix API
+                url = "https://maps.googleapis.com/maps/api/distancematrix/json"
+                params = {
+                    'origins': driver_location,
+                    'destinations': '|'.join(destinations),
+                    'mode': 'driving',
+                    'key': google_api_key
+                }
+                
+                response = requests.get(url, params=params)
+                data = response.json()
+                
+                if data['status'] == 'OK' and data['rows']:
+                    elements = data['rows'][0]['elements']
+                    
+                    for idx, (booking, element) in enumerate(zip(bookings, elements)):
+                        if element['status'] == 'OK':
+                            duration_seconds = element['duration']['value']
+                            duration_minutes = round(duration_seconds / 60)
+                            
+                            etas[booking['id']] = {
+                                'minutes': duration_minutes,
+                                'text': element['duration']['text'],
+                                'distance': element['distance']['text']
+                            }
+                            
+                            # Check if we should send "arriving soon" SMS (5 mins or less)
+                            if duration_minutes <= 5 and booking['id'] not in location.notifiedPickups:
+                                # Send SMS to customer
+                                send_arriving_soon_sms(booking, duration_minutes, current_driver.get("name", "Your driver"))
+                                newly_notified.append(booking['id'])
+                                
+                                # Mark as notified in database
+                                await db.shuttle_bookings.update_one(
+                                    {"id": booking['id']},
+                                    {"$set": {"arrivingSoonSent": True, "arrivingSoonSentAt": datetime.now(timezone.utc).isoformat()}}
+                                )
+                                logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â± Arriving soon SMS sent to {booking['name']} at {booking['phone']}")
+                        else:
+                            etas[booking['id']] = {'minutes': None, 'error': element['status']}
+                            
+            except Exception as api_error:
+                logger.error(f"Google Maps API error: {str(api_error)}")
+        
+        # Store driver's last known location
+        await db.driver_locations.update_one(
+            {"driverId": location.driverId, "date": location.date, "departureTime": location.departureTime},
+            {"$set": {
+                "latitude": location.latitude,
+                "longitude": location.longitude,
+                "updatedAt": datetime.now(timezone.utc).isoformat()
+            }},
+            upsert=True
+        )
+        
+        return {
+            "etas": etas,
+            "newlyNotified": newly_notified,
+            "trackingActive": True
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating driver location: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+def send_arriving_soon_sms(booking: dict, eta_minutes: int, driver_name: str):
+    """Send 'arriving soon' SMS to customer"""
+    try:
+        twilio_sid = os.environ.get('TWILIO_ACCOUNT_SID')
+        twilio_token = os.environ.get('TWILIO_AUTH_TOKEN')
+        twilio_phone = os.environ.get('TWILIO_PHONE_NUMBER')
+        
+        if not all([twilio_sid, twilio_token, twilio_phone]):
+            logger.warning("Twilio not configured - skipping arriving soon SMS")
+            return False
+        
+        customer_phone = booking.get('phone', '')
+        if not customer_phone:
+            return False
+        
+        # Format phone number
+        formatted_phone = format_nz_phone(customer_phone)
+        
+        # Build message
+        message = f"""ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â Your Book A Ride shuttle is arriving in ~{eta_minutes} minutes!
+
+Please be ready at:
+ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â {booking.get('pickupAddress', 'your pickup location')}
+
+Driver: {driver_name}
+Passengers: {booking.get('passengers', 1)}
+
+See you soon! ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡"""
+        
+        # Send SMS
+        twilio_client = Client(twilio_sid, twilio_token)
+        twilio_client.messages.create(
+            body=message,
+            from_=twilio_phone,
+            to=formatted_phone
+        )
+        
+        logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Arriving soon SMS sent to {booking.get('name')} at {formatted_phone}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error sending arriving soon SMS: {str(e)}")
+        return False
+
+
+@api_router.post("/shuttle/start/{date}/{time}")
+async def start_shuttle_run(date: str, time: str, current_admin: dict = Depends(get_current_admin)):
+    """
+    Start a shuttle run - calculates optimized route and schedules 
+    'arriving soon' SMS for each customer 5 minutes before their pickup.
+    
+    No driver GPS needed - uses estimated journey times from Google Maps.
+    """
+    try:
+        # Get all bookings for this departure
+        bookings = await db.shuttle_bookings.find({
+            "date": date,
+            "departureTime": time,
+            "status": {"$nin": ["deleted", "cancelled"]}
+        }, {"_id": 0}).to_list(100)
+        
+        if not bookings:
+            raise HTTPException(status_code=404, detail="No bookings for this departure")
+        
+        # Get pickup addresses in order
+        pickup_addresses = [b["pickupAddress"] for b in bookings]
+        destination = "Auckland International Airport, New Zealand"
+        
+        google_api_key = os.environ.get('GOOGLE_MAPS_API_KEY', '')
+        
+        schedule = []
+        cumulative_time = 0  # Minutes from start
+        
+        # Parse departure time
+        dep_hour, dep_min = map(int, time.split(':'))
+        from datetime import datetime, timedelta, timezone
+        
+        # Get NZ timezone
+        import pytz
+        nz_tz = pytz.timezone('Pacific/Auckland')
+        
+        # Build the departure datetime
+        year, month, day = map(int, date.split('-'))
+        departure_dt = nz_tz.localize(datetime(year, month, day, dep_hour, dep_min, 0))
+        
+        # Calculate ETAs using Google Maps Directions API with optimized route
+        if google_api_key and len(pickup_addresses) > 0:
+            # Get optimized route
+            url = "https://maps.googleapis.com/maps/api/directions/json"
+            
+            origin = pickup_addresses[0]
+            waypoints = "|".join(pickup_addresses[1:]) if len(pickup_addresses) > 1 else ""
+            
+            params = {
+                'origin': origin,
+                'destination': destination,
+                'waypoints': f"optimize:true|{waypoints}" if waypoints else "",
+                'key': google_api_key,
+                'departure_time': 'now'
+            }
+            
+            response = requests.get(url, params=params)
+            data = response.json()
+            
+            if data['status'] == 'OK' and data['routes']:
+                route = data['routes'][0]
+                legs = route['legs']
+                optimized_order = route.get('waypoint_order', list(range(len(pickup_addresses) - 1)))
+                
+                # Reorder bookings based on optimized route
+                if len(pickup_addresses) > 1:
+                    first_booking = bookings[0]
+                    reordered_bookings = [first_booking]
+                    for idx in optimized_order:
+                        reordered_bookings.append(bookings[idx + 1])
+                    bookings = reordered_bookings
+                
+                # Calculate notification times for each pickup
+                cumulative_minutes = 0
+                
+                for idx, booking in enumerate(bookings):
+                    # Time to reach this pickup from previous point
+                    if idx < len(legs):
+                        leg_duration = legs[idx]['duration']['value'] // 60  # Convert to minutes
+                    else:
+                        leg_duration = 0
+                    
+                    cumulative_minutes += leg_duration
+                    
+                    # Notify 5 minutes before arrival
+                    notify_minutes_before = max(0, cumulative_minutes - 5)
+                    notify_dt = departure_dt + timedelta(minutes=notify_minutes_before)
+                    
+                    # Schedule the notification
+                    schedule.append({
+                        'bookingId': booking['id'],
+                        'name': booking['name'],
+                        'phone': booking['phone'],
+                        'address': booking['pickupAddress'],
+                        'etaMinutes': cumulative_minutes,
+                        'notifyAt': notify_dt.strftime('%H:%M'),
+                        'notifyTimestamp': notify_dt.isoformat()
+                    })
+                    
+                    # Store schedule in database
+                    await db.shuttle_bookings.update_one(
+                        {"id": booking['id']},
+                        {"$set": {
+                            "scheduledNotifyAt": notify_dt.isoformat(),
+                            "etaFromStart": cumulative_minutes,
+                            "shuttleStarted": True,
+                            "shuttleStartedAt": datetime.now(timezone.utc).isoformat()
+                        }}
+                    )
+        else:
+            # Fallback: estimate 5 minutes between each pickup
+            for idx, booking in enumerate(bookings):
+                cumulative_minutes = idx * 5
+                notify_minutes = max(0, cumulative_minutes - 5) if idx > 0 else 0
+                notify_dt = departure_dt + timedelta(minutes=notify_minutes)
+                
+                schedule.append({
+                    'bookingId': booking['id'],
+                    'name': booking['name'],
+                    'etaMinutes': cumulative_minutes,
+                    'notifyAt': notify_dt.strftime('%H:%M')
+                })
+        
+        # Schedule the SMS notifications using APScheduler
+        from apscheduler.triggers.date import DateTrigger
+        
+        scheduled_count = 0
+        for item in schedule:
+            try:
+                notify_dt = datetime.fromisoformat(item.get('notifyTimestamp', ''))
+                
+                # Only schedule if notification time is in the future
+                now = datetime.now(nz_tz)
+                if notify_dt > now:
+                    # Get booking for SMS
+                    booking = await db.shuttle_bookings.find_one({"id": item['bookingId']}, {"_id": 0})
+                    if booking and not booking.get('arrivingSoonSent'):
+                        # Add job to scheduler
+                        scheduler.add_job(
+                            send_scheduled_arriving_sms,
+                            trigger=DateTrigger(run_date=notify_dt),
+                            args=[item['bookingId']],
+                            id=f"shuttle_sms_{item['bookingId']}",
+                            replace_existing=True
+                        )
+                        scheduled_count += 1
+                        logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Scheduled SMS for {item['name']} at {notify_dt.strftime('%H:%M')}")
+                else:
+                    # If notification time has passed, send immediately (they're first pickup)
+                    booking = await db.shuttle_bookings.find_one({"id": item['bookingId']}, {"_id": 0})
+                    if booking and not booking.get('arrivingSoonSent'):
+                        send_arriving_soon_sms(booking, 5, "Your driver")
+                        await db.shuttle_bookings.update_one(
+                            {"id": item['bookingId']},
+                            {"$set": {"arrivingSoonSent": True, "arrivingSoonSentAt": datetime.now(timezone.utc).isoformat()}}
+                        )
+                        scheduled_count += 1
+                        
+            except Exception as sched_error:
+                logger.error(f"Error scheduling SMS for {item.get('name')}: {sched_error}")
+        
+        # Mark shuttle as started in database
+        await db.shuttle_runs.update_one(
+            {"date": date, "departureTime": time},
+            {"$set": {
+                "date": date,
+                "departureTime": time,
+                "startedAt": datetime.now(timezone.utc).isoformat(),
+                "schedule": schedule,
+                "status": "in_progress"
+            }},
+            upsert=True
+        )
+        
+        logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â Shuttle started: {date} {time} - {scheduled_count} notifications scheduled")
+        
+        return {
+            "success": True,
+            "message": f"Shuttle started! {scheduled_count} 'Arriving Soon' SMS scheduled.",
+            "scheduledNotifications": scheduled_count,
+            "schedule": schedule
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error starting shuttle: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+async def send_scheduled_arriving_sms(booking_id: str):
+    """Called by scheduler to send arriving soon SMS"""
+    try:
+        booking = await db.shuttle_bookings.find_one({"id": booking_id}, {"_id": 0})
+        if not booking:
+            return
+        
+        if booking.get('arrivingSoonSent'):
+            logger.info(f"SMS already sent for {booking.get('name')} - skipping")
+            return
+        
+        # Get the driver name from the shuttle run
+        shuttle_run = await db.shuttle_runs.find_one({
+            "date": booking.get("date"),
+            "departureTime": booking.get("departureTime")
+        }, {"_id": 0})
+        driver_name = shuttle_run.get("driverName", "Your driver") if shuttle_run else "Your driver"
+        
+        # Send the SMS
+        success = send_arriving_soon_sms(booking, 5, driver_name)
+        
+        if success:
+            # Mark as sent
+            await db.shuttle_bookings.update_one(
+                {"id": booking_id},
+                {"$set": {"arrivingSoonSent": True, "arrivingSoonSentAt": datetime.now(timezone.utc).isoformat()}}
+            )
+            logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â± Scheduled SMS sent to {booking.get('name')}")
+    except Exception as e:
+        logger.error(f"Error sending scheduled SMS: {str(e)}")
+
+
+class AssignDriverRequest(BaseModel):
+    driverId: str
+    driverName: str
+    driverPhone: Optional[str] = None
+
+
+@api_router.post("/shuttle/assign-driver/{date}/{time}")
+async def assign_shuttle_driver(
+    date: str, 
+    time: str, 
+    request: AssignDriverRequest,
+    current_admin: dict = Depends(get_current_admin)
+):
+    """
+    Assign a driver to a shuttle departure.
+    This automatically:
+    1. Sends the optimized route to the driver's phone
+    2. Schedules 'arriving soon' SMS for all customers 5 mins before pickup
+    
+    One action - everything automated!
+    """
+    try:
+        # Get all bookings for this departure
+        bookings = await db.shuttle_bookings.find({
+            "date": date,
+            "departureTime": time,
+            "status": {"$nin": ["deleted", "cancelled"]}
+        }, {"_id": 0}).to_list(100)
+        
+        if not bookings:
+            raise HTTPException(status_code=404, detail="No bookings for this departure")
+        
+        # Get driver info
+        driver = await db.drivers.find_one({"id": request.driverId}, {"_id": 0})
+        driver_phone = request.driverPhone or (driver.get("phone") if driver else None)
+        driver_name = request.driverName
+        
+        # ===== STEP 1: Calculate optimized route and send to driver =====
+        pickup_addresses = [b["pickupAddress"] for b in bookings]
+        destination = "Auckland International Airport, New Zealand"
+        google_api_key = os.environ.get('GOOGLE_MAPS_API_KEY', '')
+        
+        # Build Google Maps URL with optimized waypoints
+        if len(pickup_addresses) > 1:
+            waypoints_encoded = "|".join(pickup_addresses[1:])
+            maps_url = f"https://www.google.com/maps/dir/?api=1&origin={requests.utils.quote(pickup_addresses[0])}&destination={requests.utils.quote(destination)}&waypoints={requests.utils.quote(waypoints_encoded)}&travelmode=driving"
+        else:
+            maps_url = f"https://www.google.com/maps/dir/?api=1&origin={requests.utils.quote(pickup_addresses[0])}&destination={requests.utils.quote(destination)}&travelmode=driving"
+        
+        # Send route to driver via SMS
+        if driver_phone:
+            twilio_sid = os.environ.get('TWILIO_ACCOUNT_SID')
+            twilio_token = os.environ.get('TWILIO_AUTH_TOKEN')
+            twilio_phone = os.environ.get('TWILIO_PHONE_NUMBER')
+            
+            if twilio_sid and twilio_token and twilio_phone:
+                pickup_summary = "\n".join([
+                    f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ {b['name']} ({b['passengers']}pax)"
+                    for b in bookings[:5]
+                ])
+                
+                route_message = f"""ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â SHUTTLE ASSIGNED - {date} {time}
+
+{len(bookings)} pickups, {sum(b['passengers'] for b in bookings)} passengers
+
+{pickup_summary}
+
+ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â OPEN ROUTE IN MAPS:
+{maps_url}
+
+Customers will be auto-notified 5 mins before their pickup. Drive safe! ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡"""
+                
+                try:
+                    twilio_client = Client(twilio_sid, twilio_token)
+                    formatted_driver_phone = format_nz_phone(driver_phone)
+                    twilio_client.messages.create(
+                        body=route_message,
+                        from_=twilio_phone,
+                        to=formatted_driver_phone
+                    )
+                    logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â± Route sent to driver {driver_name} at {formatted_driver_phone}")
+                except Exception as sms_error:
+                    logger.error(f"Error sending route to driver: {sms_error}")
+        
+        # ===== STEP 2: Schedule customer notifications =====
+        schedule = []
+        scheduled_count = 0
+        
+        # Parse departure time
+        dep_hour, dep_min = map(int, time.split(':'))
+        import pytz
+        nz_tz = pytz.timezone('Pacific/Auckland')
+        year, month, day = map(int, date.split('-'))
+        departure_dt = nz_tz.localize(datetime(year, month, day, dep_hour, dep_min, 0))
+        
+        # Calculate ETAs using Google Maps
+        if google_api_key and len(pickup_addresses) > 0:
+            url = "https://maps.googleapis.com/maps/api/directions/json"
+            origin = pickup_addresses[0]
+            waypoints = "|".join(pickup_addresses[1:]) if len(pickup_addresses) > 1 else ""
+            
+            params = {
+                'origin': origin,
+                'destination': destination,
+                'waypoints': f"optimize:true|{waypoints}" if waypoints else "",
+                'key': google_api_key,
+                'departure_time': 'now'
+            }
+            
+            response = requests.get(url, params=params)
+            data = response.json()
+            
+            if data['status'] == 'OK' and data['routes']:
+                route = data['routes'][0]
+                legs = route['legs']
+                optimized_order = route.get('waypoint_order', list(range(len(pickup_addresses) - 1)))
+                
+                # Reorder bookings based on optimized route
+                if len(pickup_addresses) > 1:
+                    first_booking = bookings[0]
+                    reordered_bookings = [first_booking]
+                    for idx in optimized_order:
+                        reordered_bookings.append(bookings[idx + 1])
+                    bookings = reordered_bookings
+                
+                # Calculate and schedule notifications
+                cumulative_minutes = 0
+                from apscheduler.triggers.date import DateTrigger
+                
+                for idx, booking in enumerate(bookings):
+                    if idx < len(legs):
+                        leg_duration = legs[idx]['duration']['value'] // 60
+                    else:
+                        leg_duration = 0
+                    
+                    cumulative_minutes += leg_duration
+                    notify_minutes_before = max(0, cumulative_minutes - 5)
+                    notify_dt = departure_dt + timedelta(minutes=notify_minutes_before)
+                    
+                    schedule.append({
+                        'bookingId': booking['id'],
+                        'name': booking['name'],
+                        'etaMinutes': cumulative_minutes,
+                        'notifyAt': notify_dt.strftime('%H:%M')
+                    })
+                    
+                    # Update booking with schedule info
+                    await db.shuttle_bookings.update_one(
+                        {"id": booking['id']},
+                        {"$set": {
+                            "scheduledNotifyAt": notify_dt.isoformat(),
+                            "etaFromStart": cumulative_minutes,
+                            "assignedDriver": driver_name,
+                            "assignedDriverId": request.driverId
+                        }}
+                    )
+                    
+                    # Schedule the SMS
+                    now = datetime.now(nz_tz)
+                    if notify_dt > now:
+                        if not booking.get('arrivingSoonSent'):
+                            scheduler.add_job(
+                                send_scheduled_arriving_sms,
+                                trigger=DateTrigger(run_date=notify_dt),
+                                args=[booking['id']],
+                                id=f"shuttle_sms_{booking['id']}",
+                                replace_existing=True
+                            )
+                            scheduled_count += 1
+                            logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Scheduled SMS for {booking['name']} at {notify_dt.strftime('%H:%M')}")
+                    else:
+                        # First pickup - send immediately
+                        if not booking.get('arrivingSoonSent'):
+                            send_arriving_soon_sms(booking, 5, driver_name)
+                            await db.shuttle_bookings.update_one(
+                                {"id": booking['id']},
+                                {"$set": {"arrivingSoonSent": True}}
+                            )
+                            scheduled_count += 1
+        
+        # ===== STEP 3: Save shuttle run info =====
+        await db.shuttle_runs.update_one(
+            {"date": date, "departureTime": time},
+            {"$set": {
+                "date": date,
+                "departureTime": time,
+                "driverId": request.driverId,
+                "driverName": driver_name,
+                "driverPhone": driver_phone,
+                "assignedAt": datetime.now(timezone.utc).isoformat(),
+                "schedule": schedule,
+                "status": "assigned",
+                "mapsUrl": maps_url
+            }},
+            upsert=True
+        )
+        
+        logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â Driver {driver_name} assigned to shuttle {date} {time} - {scheduled_count} SMS scheduled")
+        
+        return {
+            "success": True,
+            "message": f"Driver assigned! Route sent to {driver_name}, {scheduled_count} customer notifications scheduled.",
+            "scheduledNotifications": scheduled_count,
+            "driverName": driver_name,
+            "mapsUrl": maps_url,
+            "schedule": schedule
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error assigning driver: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ==================== ENHANCED ADMIN FEATURES ====================
@@ -8076,12 +9241,11 @@ async def send_payment_link_email(booking: dict, payment_link: str, payment_type
         if send_email_unified and send_email_unified(
             customer_email,
             f"Payment Link - Booking {booking_ref} - ${total_price:.2f} NZD",
-            html_content,
-            from_email=get_noreply_email()
+            html_content
         ):
             logger.info(f"Payment link email sent to {customer_email}")
         else:
-            logger.warning("Email not configured - payment link not sent (see GOOGLE_WORKSPACE_EMAIL_SETUP.md)")
+            logger.warning("Email not configured - payment link not sent. Set SMTP_USER/SMTP_PASS env vars.")
             
     except Exception as e:
         logger.error(f"Error sending payment link email: {str(e)}")
@@ -8499,46 +9663,32 @@ async def submit_driver_application(application: DriverApplication):
         await db.driver_applications.insert_one(app_data)
         
         # Send notification email to admin
-        mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
-        mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
-        admin_email = os.environ.get('ADMIN_EMAIL', 'bookings@bookaride.co.nz')
+        html_content = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <div style="background-color: #D4AF37; color: #1a1a1a; padding: 20px; text-align: center;">
+                    <h1 style="margin: 0;">New Driver Application</h1>
+                </div>
+                <div style="padding: 20px; background-color: #f5f5f5;">
+                    <h2>ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â Driver Application Received</h2>
+                    <div style="background-color: white; padding: 20px; border-radius: 8px; border-left: 4px solid #D4AF37;">
+                        <p><strong>Name:</strong> {application.name}</p>
+                        <p><strong>Phone:</strong> {application.phone}</p>
+                        <p><strong>Email:</strong> {application.email}</p>
+                        <p><strong>Suburb:</strong> {application.suburb}</p>
+                        <hr style="border: 0; border-top: 1px solid #e0e0e0;">
+                        <p><strong>Vehicle:</strong> {application.vehicleType} ({application.vehicleYear})</p>
+                        <p><strong>Experience:</strong> {application.experience or 'Not specified'}</p>
+                        <p><strong>Availability:</strong> {application.availability or 'Not specified'}</p>
+                        <p><strong>Message:</strong> {application.message or 'None'}</p>
+                    </div>
+                    <p style="margin-top: 20px;">Review this application in your <a href="https://bookaride.co.nz/admin/dashboard" style="color: #D4AF37;">Admin Dashboard</a>.</p>
+                </div>
+            </body>
+        </html>
+        """
         
-        if mailgun_api_key and mailgun_domain:
-            html_content = f"""
-            <html>
-                <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                    <div style="background-color: #D4AF37; color: #1a1a1a; padding: 20px; text-align: center;">
-                        <h1 style="margin: 0;">New Driver Application</h1>
-                    </div>
-                    <div style="padding: 20px; background-color: #f5f5f5;">
-                        <h2> Driver Application Received</h2>
-                        <div style="background-color: white; padding: 20px; border-radius: 8px; border-left: 4px solid #D4AF37;">
-                            <p><strong>Name:</strong> {application.name}</p>
-                            <p><strong>Phone:</strong> {application.phone}</p>
-                            <p><strong>Email:</strong> {application.email}</p>
-                            <p><strong>Suburb:</strong> {application.suburb}</p>
-                            <hr style="border: 0; border-top: 1px solid #e0e0e0;">
-                            <p><strong>Vehicle:</strong> {application.vehicleType} ({application.vehicleYear})</p>
-                            <p><strong>Experience:</strong> {application.experience or 'Not specified'}</p>
-                            <p><strong>Availability:</strong> {application.availability or 'Not specified'}</p>
-                            <p><strong>Message:</strong> {application.message or 'None'}</p>
-                        </div>
-                        <p style="margin-top: 20px;">Review this application in your <a href="https://bookaride.co.nz/admin/dashboard" style="color: #D4AF37;">Admin Dashboard</a>.</p>
-                    </div>
-                </body>
-            </html>
-            """
-            
-            requests.post(
-                f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
-                auth=("api", mailgun_api_key),
-                data={
-                    "from": f"BookaRide <noreply@{mailgun_domain}>",
-                    "to": admin_email,
-                    "subject": f"New Driver Application - {application.name}",
-                    "html": html_content
-                }
-            )
+        _send_email_with_fallbacks(admin_email, f"New Driver Application - {application.name}", html_content)
         
         logger.info(f"Driver application received from {application.name} ({application.email})")
         return {"success": True, "message": "Application submitted successfully"}
@@ -9112,14 +10262,9 @@ async def send_cancellation_notifications(booking: dict):
             logger.error(f"Failed to send cancellation SMS: {str(e)}")
 
 async def send_cancellation_email(booking: dict, to_email: str, customer_name: str):
-    """Send cancellation email via Mailgun (from noreply address)"""
-    mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
-    mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
+    """Send cancellation email via Google SMTP"""
     sender_email = get_noreply_email()
     
-    if not mailgun_api_key or not mailgun_domain:
-        logger.warning("Mailgun credentials not configured for cancellation email")
-        return
     
     # Format date and get references
     formatted_date = format_date_ddmmyyyy(booking.get('date', 'N/A'))
@@ -9187,21 +10332,11 @@ async def send_cancellation_email(booking: dict, to_email: str, customer_name: s
     </html>
     """
     
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
-            auth=("api", mailgun_api_key),
-            data={
-                "from": f"Book A Ride NZ <{sender_email}>",
-                "to": to_email,
-                "subject": f"Booking Cancelled - Ref: {booking_ref} - Book A Ride NZ",
-                "html": html_content
-            }
-        )
-        
-        if response.status_code != 200:
-            logger.error(f"Mailgun cancellation email failed: {response.text}")
-            raise Exception(f"Failed to send email: {response.status_code}")
+    cancel_subject = f"Booking Cancelled - Ref: {booking_ref} - Book A Ride NZ"
+    ok = _send_email_with_fallbacks(to_email, cancel_subject, html_content, from_email=sender_email, from_name="Book A Ride NZ")
+    if not ok:
+        logger.error(f"Cancellation email failed for {to_email}")
+        raise Exception("Failed to send cancellation email")
 
 def send_cancellation_sms(booking: dict, to_phone: str, customer_name: str):
     """Send cancellation SMS via Twilio"""
@@ -10272,6 +11407,10 @@ if cors_origins_env == '*':
         "https://dazzling-leakey.preview.emergentagent.com",
         "http://localhost:3000"
     ]
+    # Also allow any Vercel preview/production deployments
+    cors_origins_vercel_env = os.environ.get('VERCEL_ORIGINS', '')
+    if cors_origins_vercel_env:
+        cors_origins.extend([o.strip() for o in cors_origins_vercel_env.split(',') if o.strip()])
 else:
     cors_origins = cors_origins_env.split(',')
 
@@ -10279,6 +11418,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
     allow_origins=cors_origins,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -11582,39 +12722,46 @@ async def auto_archive_completed_bookings():
         
         logger.info(f" [Auto-Archive] Found {len(completed_bookings)} completed bookings to check")
         
+        # Grace period: keep completed bookings visible for 3 days after trip ends
+        grace_cutoff = (now_nz - timedelta(days=3)).strftime('%Y-%m-%d')
+
         for booking in completed_bookings:
             try:
                 booking_date = booking.get('date', '')
                 is_return = booking.get('bookReturn', False)
                 return_date = booking.get('returnDate', '')
-                
+
                 # Determine the "trip end date"
                 # For return bookings, use return date; otherwise use booking date
                 trip_end_date = return_date if is_return and return_date else booking_date
-                
+
                 # Skip if no valid date
                 if not trip_end_date:
                     skipped_count += 1
                     continue
-                
-                # Check if trip has passed (trip end date is before today)
-                if trip_end_date < today_str:
+
+                # Only archive if trip ended more than 3 days ago (grace period)
+                if trip_end_date < grace_cutoff:
                     # Archive this booking
                     booking['archivedAt'] = datetime.now(timezone.utc).isoformat()
                     booking['archivedBy'] = 'auto-archive'
                     booking['archiveReason'] = 'auto' if not is_return else 'auto-return'
                     booking['retentionExpiry'] = (datetime.now(timezone.utc) + timedelta(days=365*7)).isoformat()
-                    
-                    # Insert into archive
-                    await db.bookings_archive.insert_one(booking)
-                    
-                    # Remove from active bookings
+
+                    # Insert into archive FIRST and verify before deleting
+                    archive_result = await db.bookings_archive.insert_one(booking)
+                    if not archive_result.acknowledged or not archive_result.inserted_id:
+                        logger.error(f"Failed to archive booking {booking.get('id')} - skipping delete to prevent data loss")
+                        skipped_count += 1
+                        continue
+
+                    # Only remove from active bookings after confirmed archive
                     await db.bookings.delete_one({"id": booking.get('id')})
-                    
+
                     archived_count += 1
-                    
+
                     if archived_count <= 5:  # Only log first 5 for brevity
-                        logger.info(f" Auto-archived: Ref #{booking.get('referenceNumber')} - {booking.get('name')} (trip ended: {trip_end_date})")
+                        logger.info(f"Auto-archived: Ref #{booking.get('referenceNumber')} - {booking.get('name')} (trip ended: {trip_end_date})")
                 else:
                     skipped_count += 1
                     
@@ -11637,6 +12784,113 @@ async def trigger_auto_archive(current_admin: dict = Depends(get_current_admin))
         return result
     except Exception as e:
         logger.error(f"Error running auto-archive: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== AUTO DAILY BACKUP ====================
+
+async def auto_backup_bookings():
+    """
+    Create an automatic daily snapshot of all bookings (active + deleted) stored in MongoDB.
+    Keeps the last 7 daily backups so you can always roll back up to a week.
+    Runs daily at 1 AM NZ time via the scheduler.
+    """
+    try:
+        nz_tz = pytz.timezone('Pacific/Auckland')
+        now_nz = datetime.now(nz_tz)
+        label = now_nz.strftime('%Y-%m-%d')
+
+        logger.info(f"[AutoBackup] Starting daily backup for {label}")
+
+        active = await db.bookings.find({}, {"_id": 0}).to_list(10000)
+        deleted = await db.deleted_bookings.find({}, {"_id": 0}).sort("deletedAt", -1).to_list(10000)
+
+        doc = {
+            "label": label,
+            "createdAt": datetime.now(timezone.utc).isoformat(),
+            "activeCount": len(active),
+            "deletedCount": len(deleted),
+            "active": active,
+            "deleted": deleted,
+        }
+
+        # Upsert by label (one backup per calendar day)
+        await db.booking_backups.update_one(
+            {"label": label},
+            {"$set": doc},
+            upsert=True
+        )
+
+        # Prune: keep only the 7 most recent backups
+        all_backups = await db.booking_backups.find({}, {"_id": 1, "label": 1}).sort("label", -1).to_list(100)
+        if len(all_backups) > 7:
+            old_ids = [b["_id"] for b in all_backups[7:]]
+            await db.booking_backups.delete_many({"_id": {"$in": old_ids}})
+            logger.info(f"[AutoBackup] Pruned {len(old_ids)} old backup(s)")
+
+        logger.info(f"[AutoBackup] Done - {len(active)} active, {len(deleted)} deleted bookings saved")
+        return {"label": label, "activeCount": len(active), "deletedCount": len(deleted)}
+
+    except Exception as e:
+        logger.error(f"[AutoBackup] Error: {str(e)}")
+        return {"error": str(e)}
+
+
+@api_router.get("/admin/backups")
+async def list_backups(current_admin: dict = Depends(get_current_admin)):
+    """List all automatic daily backups (most recent first)."""
+    try:
+        backups = await db.booking_backups.find(
+            {}, {"_id": 0, "label": 1, "createdAt": 1, "activeCount": 1, "deletedCount": 1}
+        ).sort("label", -1).to_list(10)
+        return {"backups": backups}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/admin/backups/{label}/restore")
+async def restore_from_auto_backup(label: str, current_admin: dict = Depends(get_current_admin)):
+    """
+    Restore bookings from a specific daily auto-backup.
+    Only restores bookings whose IDs are NOT already in the active collection,
+    so it is safe to run without duplicating existing bookings.
+    """
+    try:
+        backup = await db.booking_backups.find_one({"label": label}, {"_id": 0})
+        if not backup:
+            raise HTTPException(status_code=404, detail=f"No backup found for {label}")
+
+        active_snapshot = backup.get("active", [])
+        existing_ids = set(
+            b["id"] for b in await db.bookings.find({}, {"_id": 0, "id": 1}).to_list(10000)
+            if "id" in b
+        )
+
+        to_restore = [b for b in active_snapshot if b.get("id") not in existing_ids]
+
+        if to_restore:
+            await db.bookings.insert_many(to_restore)
+
+        logger.info(f"[AutoBackup] Restored {len(to_restore)} missing bookings from backup {label}")
+        return {
+            "restored": len(to_restore),
+            "skipped": len(active_snapshot) - len(to_restore),
+            "label": label,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[AutoBackup] Restore error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/admin/backups/trigger")
+async def trigger_backup(current_admin: dict = Depends(get_current_admin)):
+    """Manually trigger an immediate backup (useful after a large change)."""
+    try:
+        result = await auto_backup_bookings()
+        return result
+    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -12132,13 +13386,11 @@ async def send_arrival_pickup_emails():
         logger.info(f" [Arrival Emails] Found {len(bookings)} airport arrivals for {tomorrow}")
         
         # Get email settings
-        mailgun_api_key = os.environ.get('MAILGUN_API_KEY', '')
-        mailgun_domain = os.environ.get('MAILGUN_DOMAIN', '')
-        public_domain = os.environ.get('PUBLIC_DOMAIN', 'https://bookaride.co.nz')
+        smtp_configured = bool(os.environ.get("SMTP_USER") and os.environ.get("SMTP_PASS"))
         
-        if not mailgun_api_key or not mailgun_domain:
-            logger.warning(" [Arrival Emails] Mailgun not configured")
-            return {"sent": 0, "error": "Mailgun not configured"}
+        if not smtp_configured and send_email_unified is None:
+            logger.warning("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã¢â‚¬Â¹ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â [Arrival Emails] Email not configured")
+            return {"sent": 0, "error": "Email not configured"}
         
         sent_count = 0
         
@@ -12177,18 +13429,11 @@ async def send_arrival_pickup_emails():
                 )
                 
                 # Send email
-                response = requests.post(
-                    f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
-                    auth=("api", mailgun_api_key),
-                    data={
-                        "from": f"BookaRide NZ <noreply@{mailgun_domain}>",
-                        "to": email,
-                        "subject": f" Your Airport Pickup Tomorrow - Where to Meet Your Driver",
-                        "html": email_html
-                    }
-                )
+                # Send email
+                arrival_subject = "Your Airport Pickup Tomorrow - Where to Meet Your Driver"
+                ok = _send_email_with_fallbacks(email, arrival_subject, email_html, from_name="BookaRide NZ")
                 
-                if response.status_code == 200:
+                if ok:
                     # Mark as sent
                     await db.bookings.update_one(
                         {"id": booking.get('id')},
@@ -12200,7 +13445,7 @@ async def send_arrival_pickup_emails():
                     sent_count += 1
                     logger.info(f" Arrival email sent to {email} for booking {booking.get('id')}")
                 else:
-                    logger.error(f" Failed to send arrival email to {email}: {response.text}")
+                    logger.error(f"Failed to send arrival email to {email}")
                     
             except Exception as e:
                 logger.error(f" Error sending arrival email: {str(e)}")
@@ -12428,36 +13673,22 @@ async def run_daily_error_check():
         # Send email report
         try:
             admin_email = os.environ.get('ADMIN_EMAIL', 'info@bookaride.co.nz')
-            mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
-            mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
-            sender_email = os.environ.get('SENDER_EMAIL', 'noreply@mg.bookaride.co.nz')
+            subject = f"{'ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¨ ISSUES FOUND' if issues else 'ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ All Clear'} - BookaRide Daily Check {report_time}"
             
-            if mailgun_api_key and mailgun_domain:
-                subject = f"{' ISSUES FOUND' if issues else ' All Clear'} - BookaRide Daily Check {report_time}"
-                
-                html_report = f"""
-                <html>
-                <body style="font-family: 'Courier New', monospace; background: #1a1a1a; color: #00ff00; padding: 20px;">
-                    <pre style="white-space: pre-wrap; font-size: 12px;">{report}</pre>
-                </body>
-                </html>
-                """
-                
-                response = requests.post(
-                    f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
-                    auth=("api", mailgun_api_key),
-                    data={
-                        "from": f"BookaRide System <{sender_email}>",
-                        "to": admin_email,
-                        "subject": subject,
-                        "html": html_report
-                    }
-                )
-                
-                if response.status_code == 200:
-                    logger.info(f" [Daily Error Check] Email report sent to {admin_email}")
-                else:
-                    logger.error(f" [Daily Error Check] Failed to send email: {response.text}")
+            html_report = f"""
+            <html>
+            <body style="font-family: 'Courier New', monospace; background: #1a1a1a; color: #00ff00; padding: 20px;">
+                <pre style="white-space: pre-wrap; font-size: 12px;">{report}</pre>
+            </body>
+            </html>
+            """
+            
+            ok = _send_email_with_fallbacks(admin_email, subject, html_report, from_name="BookaRide System")
+
+            if ok:
+                logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â [Daily Error Check] Email report sent to {admin_email}")
+            else:
+                logger.error(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â [Daily Error Check] Failed to send email")
         except Exception as email_err:
             logger.error(f" [Daily Error Check] Email error: {str(email_err)}")
         
@@ -12680,65 +13911,57 @@ def create_arrival_email_html(customer_name: str, booking_date: str, pickup_time
 @app.on_event("startup")
 async def startup_event():
     """Start the scheduler when the app starts and ensure default admin exists"""
-    # Initialize database connection
-    await _init_db()
-
-    if db is not None:
-        # Ensure default admin exists with correct email for Google OAuth
-        try:
-            default_admin = await db.admin_users.find_one({"username": "admin"})
-        except Exception as e:
-            print("WARN: admin seed skipped (db unavailable):", repr(e))
-            default_admin = {"_skip": True}
-        if not default_admin:
-            hashed_pw = "$2b$12$C6UzMDM.H6dfI/f/IKcEeO8m8Y4YkQkQ1h6s4H6c3Z8Y5G7c8Y4r2"
-            await db.admin_users.insert_one({
-                "id": str(uuid.uuid4()),
-                "username": "admin",
-                "email": "info@bookaride.co.nz",
-                "hashed_password": hashed_pw,
-                "created_at": datetime.now(timezone.utc).isoformat(),
-                "is_active": True
-            })
-            logger.info(" Default admin user created")
-        elif default_admin.get("_skip"):
-            pass  # db was unavailable, skip update too
-        else:
-            # Update password and email to ensure they're correct
-            hashed_pw = "$2b$12$C6UzMDM.H6dfI/f/IKcEeO8m8Y4YkQkQ1h6s4H6c3Z8Y5G7c8Y4r2"
-            await db.admin_users.update_one(
-                {"username": "admin"},
-                {"$set": {
-                    "hashed_password": hashed_pw,
-                    "email": "info@bookaride.co.nz"
-                }}
-            )
-            logger.info(" Admin password reset and email updated to info@bookaride.co.nz")
-
-        # Create database indexes for faster queries
-        try:
-            await db.bookings.create_index("date")
-            await db.bookings.create_index("status")
-            await db.bookings.create_index("name")
-            await db.bookings.create_index("email")
-            await db.bookings.create_index("referenceNumber")
-            await db.bookings.create_index("original_booking_id")
-            await db.bookings.create_index([("date", -1), ("status", 1)])
-            logger.info(" Database indexes created for faster queries")
-        except Exception as e:
-            logger.warning(f"Index creation note: {str(e)}")
-
-        # Create index for archive collection
-        try:
-            await db.bookings_archive.create_index("archivedAt")
-            await db.bookings_archive.create_index("name")
-            await db.bookings_archive.create_index("email")
-            await db.bookings_archive.create_index("referenceNumber")
-            logger.info(" Archive indexes created")
-        except Exception as e:
-            logger.warning(f"Archive index creation note: {str(e)}")
+    # Ensure default admin exists with correct email for Google OAuth
+    try:
+        default_admin = await db.admin_users.find_one({"username": "admin"})
+    except Exception as e:
+        print("WARN: admin seed skipped (db unavailable):", repr(e))
+        default_admin = {"_skip": True}
+    if not default_admin:
+        hashed_pw = "$2b$12$C6UzMDM.H6dfI/f/IKcEeO8m8Y4YkQkQ1h6s4H6c3Z8Y5G7c8Y4r2"
+        await db.admin_users.insert_one({
+            "id": str(uuid.uuid4()),
+            "username": "admin",
+            "email": "info@bookaride.co.nz",
+            "hashed_password": hashed_pw,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "is_active": True
+        })
+        logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Default admin user created")
     else:
-        logging.warning("Database unavailable — skipping admin seed and index creation")
+        # Update password and email to ensure they're correct
+        hashed_pw = "$2b$12$C6UzMDM.H6dfI/f/IKcEeO8m8Y4YkQkQ1h6s4H6c3Z8Y5G7c8Y4r2"
+        await db.admin_users.update_one(
+            {"username": "admin"},
+            {"$set": {
+                "hashed_password": hashed_pw,
+                "email": "info@bookaride.co.nz"
+            }}
+        )
+        logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Admin password reset and email updated to info@bookaride.co.nz")
+    
+    # Create database indexes for faster queries
+    try:
+        await db.bookings.create_index("date")
+        await db.bookings.create_index("status")
+        await db.bookings.create_index("name")
+        await db.bookings.create_index("email")
+        await db.bookings.create_index("referenceNumber")
+        await db.bookings.create_index("original_booking_id")
+        await db.bookings.create_index([("date", -1), ("status", 1)])
+        logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Database indexes created for faster queries")
+    except Exception as e:
+        logger.warning(f"Index creation note: {str(e)}")
+    
+    # Create index for archive collection
+    try:
+        await db.bookings_archive.create_index("archivedAt")
+        await db.bookings_archive.create_index("name")
+        await db.bookings_archive.create_index("email")
+        await db.bookings_archive.create_index("referenceNumber")
+        logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Archive indexes created")
+    except Exception as e:
+        logger.warning(f"Archive index creation note: {str(e)}")
     
     # ============================================
     # RELIABLE REMINDER SYSTEM - 3 LAYERS
@@ -12830,6 +14053,16 @@ async def startup_event():
         replace_existing=True,
         misfire_grace_time=3600 * 4  # Allow 4 hour grace period
     )
+
+    # AUTO DAILY BACKUP - Runs at 1 AM NZ time, keeps 7 rolling daily snapshots in MongoDB
+    scheduler.add_job(
+        auto_backup_bookings,
+        CronTrigger(hour=1, minute=0, timezone=nz_tz),
+        id='auto_daily_backup',
+        name='Auto daily booking backup (7-day rolling)',
+        replace_existing=True,
+        misfire_grace_time=3600 * 4
+    )
     
     # Startup sync DISABLED - was overwriting local changes
     # scheduler.add_job(
@@ -12859,5 +14092,4 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_db_client():
     scheduler.shutdown()
-    if db is not None:
-        await db.close()
+    client.close()

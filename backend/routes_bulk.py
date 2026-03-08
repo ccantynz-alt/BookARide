@@ -4,8 +4,10 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from models import BulkEmailRequest
 from typing import List
 import os
-import requests
 import logging
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 bulk_router = APIRouter(prefix="/bulk", tags=["Bulk Operations"])
 logger = logging.getLogger(__name__)
@@ -27,45 +29,62 @@ async def bulk_status_update(booking_ids: List[str], new_status: str):
 
 @bulk_router.delete("/delete")
 async def bulk_delete(booking_ids: List[str]):
-    """Delete multiple bookings"""
+    """Soft-delete multiple bookings (moves to deleted_bookings for recovery)"""
     try:
-        result = await db.bookings.delete_many({"id": {"$in": booking_ids}})
+        from datetime import datetime
+        # Fetch all bookings first so we can preserve them
+        bookings = await db.bookings.find(
+            {"id": {"$in": booking_ids}},
+            {"_id": 0}
+        ).to_list(None)
+
+        if not bookings:
+            return {"message": "No bookings found to delete", "deleted_count": 0}
+
+        # Soft-delete: move each booking to deleted_bookings collection
+        for booking in bookings:
+            booking['deletedAt'] = datetime.utcnow().isoformat()
+            booking['deletedBy'] = 'bulk_delete'
+            await db.deleted_bookings.insert_one(booking)
+
+        # Now remove from active bookings
+        found_ids = [b['id'] for b in bookings]
+        result = await db.bookings.delete_many({"id": {"$in": found_ids}})
+        logger.info(f"Bulk soft-deleted {result.deleted_count} bookings (recoverable from deleted_bookings)")
         return {
-            "message": "Bookings deleted successfully",
+            "message": "Bookings deleted successfully (recoverable from Deleted tab)",
             "deleted_count": result.deleted_count
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-def send_email_via_mailgun(email: str, subject: str, message: str):
-    """Send email using Mailgun"""
+def send_email_via_smtp(email: str, subject: str, message: str):
+    """Send email using Google SMTP"""
     try:
-        mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
-        mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
-        sender_email = os.environ.get('SENDER_EMAIL', 'noreply@bookaride.co.nz')
-        
-        if not mailgun_api_key or not mailgun_domain:
-            logger.error("Mailgun not configured")
+        smtp_user = os.environ.get('SMTP_USER')
+        smtp_pass = os.environ.get('SMTP_PASS')
+        sender_email = os.environ.get('NOREPLY_EMAIL') or os.environ.get('SENDER_EMAIL', 'noreply@bookaride.co.nz')
+
+        if not smtp_user or not smtp_pass:
+            logger.error("Google SMTP not configured. Set SMTP_USER and SMTP_PASS.")
             return False
-        
-        response = requests.post(
-            f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
-            auth=("api", mailgun_api_key),
-            data={
-                "from": f"BookaRide <{sender_email}>",
-                "to": email,
-                "subject": subject,
-                "text": message
-            }
-        )
-        
-        if response.status_code == 200:
-            logger.info(f"Email sent to {email}")
-            return True
-        else:
-            logger.error(f"Mailgun error: {response.status_code} - {response.text}")
-            return False
-            
+
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = subject
+        msg['From'] = f"BookaRide <{sender_email}>"
+        msg['To'] = email
+        msg.attach(MIMEText(message, 'html'))
+
+        smtp_host = os.environ.get('SMTP_HOST', 'smtp.gmail.com')
+        smtp_port = int(os.environ.get('SMTP_PORT', '587'))
+        with smtplib.SMTP(smtp_host, smtp_port) as server:
+            server.starttls()
+            server.login(smtp_user, smtp_pass)
+            server.send_message(msg)
+
+        logger.info(f"Email sent to {email} via Google SMTP")
+        return True
+
     except Exception as e:
         logger.error(f"Error sending email: {str(e)}")
         return False
@@ -90,7 +109,7 @@ async def bulk_email(request: BulkEmailRequest, background_tasks: BackgroundTask
                 personalized_message = personalized_message.replace('{{booking_id}}', booking.get('id', ''))
                 
                 # Add to background tasks
-                background_tasks.add_task(send_email_via_mailgun, email, request.subject, personalized_message)
+                background_tasks.add_task(send_email_via_smtp, email, request.subject, personalized_message)
                 sent_count += 1
         
         return {

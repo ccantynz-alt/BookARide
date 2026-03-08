@@ -1,6 +1,5 @@
 // Site Configuration
 // This file controls branding for different domains
-
 const configs = {
   'bookaride.co.nz': {
     siteName: 'Book A Ride NZ',
