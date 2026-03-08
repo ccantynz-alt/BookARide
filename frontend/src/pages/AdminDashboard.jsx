@@ -500,7 +500,11 @@ export const AdminDashboard = () => {
   let filterBookings = () => {};
   const fetchBookingsRef = useRef(null);
   const filterBookingsRef = useRef(null);
-  const [activeTab, setActiveTab] = useState('bookings');
+  const [activeTab, setActiveTab] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('fb_connected') === 'true' || params.get('activeTab') === 'facebook') return 'facebook';
+    return 'bookings';
+  });
   const [bookings, setBookings] = useState([]);
   const [filteredBookings, setFilteredBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -2406,6 +2410,11 @@ export const AdminDashboard = () => {
               <Activity className="w-3 h-3 md:w-4 md:h-4" />
               <span>Cockpit</span>
             </TabsTrigger>
+            <TabsTrigger value="facebook" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 text-blue-600">
+              <Facebook className="w-3 h-3 md:w-4 md:h-4" />
+              <span className="hidden md:inline">Facebook</span>
+              <span className="md:hidden">FB</span>
+            </TabsTrigger>
           </TabsList>
 
 
@@ -3714,6 +3723,9 @@ export const AdminDashboard = () => {
           {/* Cockpit Tab */}
           <TabsContent value="cockpit" className="space-y-6">
             <Cockpit />
+          </TabsContent>
+          <TabsContent value="facebook" className="space-y-6">
+            <FacebookTab getAuthHeaders={getAuthHeaders} handleLogout={handleLogout} />
           </TabsContent>
         </Tabs>
       </div>
