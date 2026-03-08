@@ -14,21 +14,13 @@ services:
         value: 10000
       - key: PYTHON_VERSION
         value: 3.11.9
-      - key: DATABASE_URL
+      - key: MONGO_URL
         sync: false
-      - key: JWT_SECRET_KEY
+      - key: JWT_SECRET
         generateValue: true
       - key: STRIPE_SECRET_KEY
         sync: false
       - key: MAILGUN_API_KEY
-        sync: false
-      - key: BACKEND_URL
-        value: https://api.bookaride.co.nz
-      - key: PUBLIC_DOMAIN
-        value: https://bookaride.co.nz
-      - key: GOOGLE_CLIENT_ID
-        sync: false
-      - key: GOOGLE_CLIENT_SECRET
         sync: false
 
   # Frontend (React)
@@ -36,9 +28,9 @@ services:
     name: bookaride-frontend
     env: static
     rootDir: frontend
-    buildCommand: npm install --legacy-peer-deps && npm run build
+    buildCommand: npm install && npm run build
     publishPath: build
     autoDeploy: true
     envVars:
       - key: REACT_APP_BACKEND_URL
-        value: https://api.bookaride.co.nz
+        value: https://bookaride-backend.onrender.com

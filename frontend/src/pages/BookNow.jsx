@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { MapPin, Calendar, Users, DollarSign, Clock, Mail, Phone, User, Wrench } from 'lucide-react';
 import siteConfig from '../config/siteConfig';
@@ -12,27 +13,16 @@ import { toast } from 'sonner';
 import axios from 'axios';
 import SEO from '../components/SEO';
 import LoadingSpinner from '../components/LoadingSpinner';
-import CurrencyConverter from '../components/CurrencyConverter';
-import TripCostSplitter from '../components/TripCostSplitter';
-import WeatherWidget from '../components/WeatherWidget';
-import LiveJourneyVisualizer from '../components/LiveJourneyVisualizer';
 import { CustomDatePicker, CustomTimePicker } from '../components/DateTimePicker';
 import AddressAutocomplete from '../components/AddressAutocomplete';
-
-const DROPOFF_QUICK_ADDRESSES = [
-  { label: 'Auckland Airport', address: 'Auckland Airport, Ray Emery Drive, Mangere, Auckland 2022, New Zealand' },
-  { label: 'Auckland Domestic', address: 'Auckland Airport, Ray Emery Drive, Mangere, Auckland 2022, New Zealand' },
-  { label: 'Hamilton Airport', address: 'Hamilton Airport, 20 Airport Road, Hamilton 3281, New Zealand' },
-  { label: 'Whangarei Airport', address: 'Whangarei Airport, Handforth Street, Whangarei 0110, New Zealand' },
-];
-import PriceComparison from '../components/PriceComparison';
 import BookingAddOns, { addOns } from '../components/BookingAddOns';
 import TrustBadges from '../components/TrustBadges';
-import GoogleReviewsWidget from '../components/GoogleReviewsWidget';
-import SocialProofCounter from '../components/SocialProofCounter';
+import PriceComparison from '../components/PriceComparison';
 import { API } from '../config/api';
 
 export const BookNow = () => {
+  const { i18n } = useTranslation();
+
   const [formData, setFormData] = useState({
     serviceType: '',
     pickupAddress: '',
@@ -136,18 +126,6 @@ export const BookNow = () => {
   const [promoApplied, setPromoApplied] = useState(null);
   const [promoError, setPromoError] = useState('');
   const [applyingPromo, setApplyingPromo] = useState(false);
-  const [hasPromoFromPopup, setHasPromoFromPopup] = useState(false);
-
-  // Check for saved promo code from exit popup on mount
-  useEffect(() => {
-    const savedPromo = localStorage.getItem('promoCode');
-    if (savedPromo) {
-      setPromoCode(savedPromo);
-      setHasPromoFromPopup(true);
-      // Clear it so it doesn't persist forever
-      localStorage.removeItem('promoCode');
-    }
-  }, []);
 
   const [selectedAddOns, setSelectedAddOns] = useState([]);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
@@ -203,11 +181,14 @@ export const BookNow = () => {
         calculating: false
       });
       
-      // Auto-apply or re-apply promo code after price recalculation
-      if (promoCode.trim()) {
+      // Auto-apply promo code if one was entered before price calculation
+      if (promoCode.trim() && !promoApplied) {
         setTimeout(() => {
           handleApplyPromoWithSubtotal(promoCode.trim(), data.subtotal);
         }, 100);
+      } else {
+        // Reset promo if price changes and there's no pending code
+        setPromoApplied(null);
       }
     } catch (error) {
       console.error('Error calculating price:', error);
@@ -300,7 +281,12 @@ export const BookNow = () => {
     }));
   };
 
-  // --- Address autocomplete (handled by <AddressAutocomplete> component) ---
+  const handlePickupAddressChange = (index, value) => {
+    setFormData(prev => ({
+      ...prev,
+      pickupAddresses: prev.pickupAddresses.map((addr, i) => i === index ? value : addr)
+    }));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -358,7 +344,7 @@ export const BookNow = () => {
         bookReturn: hasReturnTrip,
         pricing: pricing,
         status: 'pending',
-        language: 'en',
+        language: i18n.language, // Capture selected language
         createdAt: new Date()
       };
 
@@ -397,6 +383,7 @@ export const BookNow = () => {
           }
         }
       } catch (paymentError) {
+        console.error('Payment checkout error:', paymentError.response?.data || paymentError.message);
         setIsProcessingPayment(false);
         const detail = paymentError.response?.data?.detail;
         const ref = booking?.referenceNumber || booking?.id?.slice(0, 8);
@@ -404,6 +391,7 @@ export const BookNow = () => {
           toast.success(`Booking #${ref} created! We'll contact you with payment details.`);
         } else {
           toast.success(`Booking #${ref} created! Payment redirect failed – we'll contact you with payment details.`);
+          if (detail) console.error('Stripe checkout detail:', detail);
         }
       }
     } catch (error) {
@@ -550,24 +538,13 @@ export const BookNow = () => {
                             <span>Pickup Location {index + 2}</span>
                           </Label>
                           <div className="flex gap-2">
-                            <div className="flex-1">
-                              <AddressAutocomplete
-                                value={pickup}
-                                onChange={(val) => {
-                                  setFormData(prev => ({
-                                    ...prev,
-                                    pickupAddresses: prev.pickupAddresses.map((a, i) => i === index ? val : a)
-                                  }));
-                                }}
-                                onSelect={(val) => {
-                                  setFormData(prev => ({
-                                    ...prev,
-                                    pickupAddresses: prev.pickupAddresses.map((a, i) => i === index ? val : a)
-                                  }));
-                                }}
-                                placeholder="Start typing an address..."
-                              />
-                            </div>
+                            <AddressAutocomplete
+                              value={pickup}
+                              onChange={(val) => handlePickupAddressChange(index, val)}
+                              onSelect={(val) => handlePickupAddressChange(index, val)}
+                              placeholder="Start typing an address..."
+                              className="flex-1"
+                            />
                             <Button
                               type="button"
                               onClick={() => handleRemovePickup(index)}
@@ -612,7 +589,7 @@ export const BookNow = () => {
                           value={formData.dropoffAddress}
                           onChange={(val) => setFormData(prev => ({ ...prev, dropoffAddress: val }))}
                           onSelect={(val) => setFormData(prev => ({ ...prev, dropoffAddress: val }))}
-                          placeholder="Enter full address or pick below..."
+                          placeholder="Start typing an address..."
                           required
                         />
                       </div>
@@ -1104,25 +1081,6 @@ export const BookNow = () => {
                             />
                           </div>
                           
-                          {/* Currency Converter */}
-                          <div className="mt-6">
-                            <CurrencyConverter nzdPrice={finalTotal} />
-                          </div>
-
-                          {/* Trip Cost Splitter - for group bookings */}
-                          {formData.passengers > 1 && (
-                            <div className="mt-4">
-                              <TripCostSplitter 
-                                totalPrice={finalTotal} 
-                                passengers={parseInt(formData.passengers) || 2} 
-                              />
-                            </div>
-                          )}
-
-                          {/* Weather at Destination */}
-                          <div className="mt-4">
-                            <WeatherWidget location={formData.dropoffAddress || 'Auckland'} />
-                          </div>
 
                           {/* Route summary */}
                           {formData.pickupAddress && formData.dropoffAddress && (
@@ -1136,10 +1094,6 @@ export const BookNow = () => {
                             </div>
                           )}
 
-                          {/* Social Proof */}
-                          <div className="mt-6">
-                            <SocialProofCounter variant="urgency" />
-                          </div>
                         </div>
                       ) : (
                         <div className="text-center py-8">

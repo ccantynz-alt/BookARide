@@ -92,9 +92,28 @@ def _build_where(query: Optional[Dict], params: list) -> str:
                         # _id != value — skip, not meaningful in our schema
                         pass
             elif value is not None:
-                # Exact match on _id (our BIGSERIAL _id)
-                params.append(value)
-                clauses.append(f"_id = ${len(params)}")
+                if isinstance(value, str):
+                    # String _id (e.g. counters) maps to the "id" TEXT column
+                    params.append(value)
+                    clauses.append(f"id = ${len(params)}")
+                else:
+                    # Numeric _id maps to the BIGSERIAL _id column
+                    params.append(value)
+                    clauses.append(f"_id = ${len(params)}")
+
+        elif key == "id":
+            # Route "id" queries to the id TEXT column (indexed) instead of JSONB scan
+            if isinstance(value, dict):
+                for op, op_val in value.items():
+                    if op == "$in":
+                        params.append([str(v) for v in op_val])
+                        clauses.append(f"id = ANY(${len(params)}::text[])")
+                    elif op == "$ne":
+                        params.append(str(op_val))
+                        clauses.append(f"(id IS NULL OR id != ${len(params)})")
+            elif value is not None:
+                params.append(str(value))
+                clauses.append(f"id = ${len(params)}")
 
         elif isinstance(value, dict):
             # Operator query
@@ -611,8 +630,8 @@ class Collection:
             for k, v in query.items():
                 if not k.startswith("$") and not isinstance(v, dict):
                     doc[k] = v
-            doc_id = doc.get("id") or doc.get("_id")
-            doc.pop("_id", None)
+            mongo_id = doc.pop("_id", None)
+            doc_id = doc.get("id") or (mongo_id if isinstance(mongo_id, str) else None)
             data_json = _dumps(doc)
             row = await self._pool.fetchrow(
                 f"INSERT INTO {self._table} (id, data) VALUES ($1, $2::jsonb) RETURNING _id",
@@ -723,8 +742,8 @@ class Collection:
             for k, v in query.items():
                 if not k.startswith("$") and not isinstance(v, dict):
                     doc[k] = v
-            doc.pop("_id", None)
-            doc_id = doc.get("id") or doc.get("_id")
+            mongo_id = doc.pop("_id", None)
+            doc_id = doc.get("id") or (mongo_id if isinstance(mongo_id, str) else None)
             data_json = _dumps(doc)
             await self._pool.execute(
                 f"INSERT INTO {self._table} (id, data) VALUES ($1, $2::jsonb)",
@@ -845,11 +864,19 @@ class NeonDatabase:
     @classmethod
     async def connect(cls, database_url: str, **kwargs) -> "NeonDatabase":
         """Create a connection pool and return a NeonDatabase instance."""
+        # asyncpg does not support channel_binding — strip it from the URL
+        from urllib.parse import urlparse, urlencode, parse_qs, urlunparse
+        parsed = urlparse(database_url)
+        qs = parse_qs(parsed.query, keep_blank_values=True)
+        qs.pop("channel_binding", None)
+        clean_url = urlunparse(parsed._replace(query=urlencode(qs, doseq=True)))
+
         pool = await asyncpg.create_pool(
-            database_url,
+            clean_url,
             min_size=kwargs.get("min_size", 5),
             max_size=kwargs.get("max_size", 20),
             command_timeout=kwargs.get("command_timeout", 30),
+            ssl="require",
         )
         logger.info("Connected to Neon PostgreSQL")
         return cls(pool)

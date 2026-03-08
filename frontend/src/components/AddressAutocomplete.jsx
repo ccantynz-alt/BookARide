@@ -40,6 +40,8 @@ const AddressAutocomplete = ({
   const inputRef = useRef(null);
   const dropdownRef = useRef(null);
   const debounceRef = useRef(null);
+  // Incremented on every selection to discard in-flight responses that arrive after.
+  const fetchGenRef = useRef(0);
 
   const fetchSuggestions = useCallback(
     (text) => {
@@ -49,11 +51,14 @@ const AddressAutocomplete = ({
         setOpen(false);
         return;
       }
+      const gen = ++fetchGenRef.current;
       debounceRef.current = setTimeout(async () => {
         try {
           const resp = await axios.get(`${API}/places/autocomplete`, {
             params: { input: text, types: 'address', region },
           });
+          // Ignore if a selection happened while the request was in-flight
+          if (gen !== fetchGenRef.current) return;
           const preds = resp.data.predictions || [];
           setSuggestions(preds);
           setOpen(preds.length > 0);
@@ -74,7 +79,7 @@ const AddressAutocomplete = ({
       top: rect.bottom + 4,
       left: rect.left,
       width: rect.width,
-      zIndex: 9999,
+      zIndex: 99999,
     });
   }, []);
 
@@ -90,6 +95,8 @@ const AddressAutocomplete = ({
   }, [open, updatePosition]);
 
   const handleSelect = (description) => {
+    clearTimeout(debounceRef.current);  // cancel pending debounce
+    fetchGenRef.current++;              // invalidate any in-flight request
     setOpen(false);
     setSuggestions([]);
     if (onSelect) onSelect(description);
@@ -105,8 +112,9 @@ const AddressAutocomplete = ({
         setOpen(false);
       }
     };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    // Use capture phase so this runs reliably regardless of stopPropagation in bubbling
+    document.addEventListener('pointerdown', handler, true);
+    return () => document.removeEventListener('pointerdown', handler, true);
   }, []);
 
   const dropdown =
@@ -115,14 +123,26 @@ const AddressAutocomplete = ({
           <div
             ref={dropdownRef}
             style={dropdownStyle}
+            data-autocomplete-dropdown=""
             className="bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto"
-            onMouseDown={(e) => e.preventDefault()} // prevent input blur
           >
             {suggestions.map((s, i) => (
               <button
                 key={i}
                 type="button"
-                onClick={() => handleSelect(s.description)}
+                onPointerDown={(e) => {
+                  e.preventDefault();  // keep focus on input
+                  e.stopPropagation(); // prevent Radix Dialog from intercepting
+                  handleSelect(s.description);
+                }}
+                onMouseDown={(e) => {
+                  // Fallback for environments where pointerdown doesn't fire (e.g. jsdom tests).
+                  // In real browsers pointerdown fires first and handleSelect closes the dropdown
+                  // before mousedown fires, so this is effectively a no-op in production.
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (open) handleSelect(s.description);
+                }}
                 className="w-full px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-100 last:border-0"
               >
                 <MapPin className="w-3 h-3 inline mr-2 text-gray-400" />
