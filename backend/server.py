@@ -5192,8 +5192,15 @@ def _get_booking_email_data(booking: dict) -> dict:
     return_departure_time = (booking.get('returnDepartureTime') or '').strip()
     return_arrival_time = (booking.get('returnArrivalTime') or '').strip()
     notes = (booking.get('notes') or booking.get('specialRequests') or '').strip()
-    pm = booking.get('paymentMethod') or ''
-    payment_method = (pm if pm else ('Stripe' if booking.get('payment_status') == 'paid' else 'Pending'))
+    pm = (booking.get('paymentMethod') or '').lower()
+    payment_method_labels = {
+        'stripe': 'Credit/Debit Card',
+        'paypal': 'PayPal',
+        'cash': 'Cash',
+        'pay-on-pickup': 'Pay on Pickup',
+        'xero': 'Invoice',
+    }
+    payment_method = payment_method_labels.get(pm, pm.title() if pm else ('Credit/Debit Card' if booking.get('payment_status') == 'paid' else 'Pending'))
     return {
         'total_price': total_price,
         'distance': distance,
@@ -6037,6 +6044,8 @@ async def get_payment_status(session_id: str):
 
                     # Only send notifications on first confirmation to avoid duplicates
                     if needs_confirmation:
+                        # Re-fetch booking so email reflects payment_status=paid
+                        booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
                         send_customer_confirmation(booking)
                         await send_booking_notification_to_admin(booking)
                         await create_calendar_event(booking)
