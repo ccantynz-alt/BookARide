@@ -36,7 +36,8 @@ PORT=10000
 REACT_APP_BACKEND_URL=http://localhost:10000
 ```
 
-External API keys (Stripe, Google Maps, Twilio, Geoapify) are optional for local dev.
+External API keys (Stripe, Google Maps, Twilio) are optional for local dev.
+**NEVER** add Geoapify or `GEOAPIFY_API_KEY` — we use Google Maps exclusively.
 
 ## Important Notes
 - `backend/database.py` is the Neon PostgreSQL compatibility layer — mimics Motor's async API

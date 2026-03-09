@@ -47,6 +47,16 @@ We use Mailgun. Not SendGrid. Not SMTP. Not Gmail. Not "a fallback".
 - **NEVER** re-add FacebookTab or Facebook API routes
 - **NEVER** add `FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET` references
 
+### 6. Maps & Distance: Google Maps API ONLY (No Geoapify)
+
+We use Google Maps for distance calculation, directions, and autocomplete. Geoapify has been removed.
+
+- Distance: `_get_distance_google()` in `backend/server.py` (Distance Matrix + Directions API)
+- Config: `GOOGLE_MAPS_API_KEY` env var
+- **NEVER** add Geoapify API calls, `GEOAPIFY_API_KEY`, or `geoapify.com` references
+- **NEVER** add Geoapify as a "fallback" for Google Maps
+- **NEVER** use Geoapify for address autocomplete or distance calculation
+
 ---
 
 ## PRE-CHANGE CHECKLIST
@@ -55,10 +65,11 @@ Before making ANY change, verify:
 
 1. Does my change introduce MongoDB, Motor, or pymongo? **STOP.**
 2. Does my change introduce SendGrid, SMTP, or smtplib? **STOP.**
-3. Does my change add a new import? **Verify the component/module exists first.**
-4. Does my change remove or modify an existing import? **Verify nothing else uses it.**
-5. Am I adding a new JSX component usage? **Add the import statement too.**
-6. Does my build pass with `cd frontend && npm run build`? **Test before committing.**
+3. Does my change introduce Geoapify or `GEOAPIFY_API_KEY`? **STOP.**
+4. Does my change add a new import? **Verify the component/module exists first.**
+5. Does my change remove or modify an existing import? **Verify nothing else uses it.**
+6. Am I adding a new JSX component usage? **Add the import statement too.**
+7. Does my build pass with `cd frontend && npm run build`? **Test before committing.**
 
 ---
 
@@ -72,7 +83,7 @@ Before making ANY change, verify:
 | Email      | Mailgun API                       | `backend/email_sender.py` |
 | Payments   | Stripe                            | `backend/stripe_checkout/` |
 | SMS        | Twilio                            | via env vars       |
-| Maps       | Google Maps API + Geoapify        | via env vars       |
+| Maps       | Google Maps API                   | via env vars       |
 
 ## Hosting
 
@@ -98,7 +109,6 @@ Optional (but needed for full functionality):
 - `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET`
 - `TWILIO_ACCOUNT_SID` + `TWILIO_AUTH_TOKEN` + `TWILIO_PHONE_NUMBER`
 - `GOOGLE_MAPS_API_KEY`
-- `GEOAPIFY_API_KEY`
 - `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` (OAuth)
 - `GOOGLE_SERVICE_ACCOUNT_JSON` (Calendar)
 
