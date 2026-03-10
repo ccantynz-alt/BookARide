@@ -47,6 +47,20 @@ We use Mailgun. Not SendGrid. Not SMTP. Not Gmail. Not "a fallback".
 - **NEVER** re-add FacebookTab or Facebook API routes
 - **NEVER** add `FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET` references
 
+### 6. Booking Form: LOCKED Structure
+
+The booking form structure is FINAL. Do not restructure, split, or duplicate sections.
+
+- **Customer form**: `frontend/src/pages/BookNow.jsx`
+- **Admin create**: `frontend/src/components/admin/CreateBookingModal.jsx`
+- **Admin edit**: `frontend/src/components/admin/EditBookingModal.jsx`
+- The form has ONE unified "Flight Details" section containing both departure flight info and return journey (date, time, return flight number)
+- The return fields (`returnDate`, `returnTime`, `returnFlightNumber`) are linked to the admin Return Trip Departure Monitor (`UrgentReturnsPanel.jsx`) and return alert notifications
+- **NEVER** split flight details and return journey into separate sections
+- **NEVER** add a second/duplicate flight details section
+- **NEVER** remove or rename the return journey fields (`returnDate`, `returnTime`, `returnFlightNumber`) — they power return notifications
+- **NEVER** change the booking form layout without explicit permission
+
 ---
 
 ## PRE-CHANGE CHECKLIST
@@ -122,3 +136,4 @@ cd backend && python3 start.py
 | 2026-03    | Email sending crash potential        | SMTP fallback used MIMEMultipart/smtplib without importing them |
 | Repeated   | Database connection failures         | Agents kept adding MongoDB references   |
 | Repeated   | Email failures                       | Agents kept adding SendGrid/SMTP code   |
+| 2026-03    | Duplicate flight sections in form    | Two separate flight detail sections confused customers |
