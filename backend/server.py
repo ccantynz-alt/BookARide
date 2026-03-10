@@ -5266,39 +5266,51 @@ def generate_confirmation_email_html(booking: dict, for_admin: bool = False) -> 
         return_time = d['return_time']
         return_flight = d['return_flight']
         return_arrival_flight = d['return_arrival']
-        
+
         formatted_return_date = format_date_ddmmyyyy(return_date) if return_date else 'TBC'
         formatted_return_time = format_time_ampm(return_time) if return_time else 'TBC'
-        
-        return_section_html = f'''
-                        <!-- Return Trip -->
+
+        return_flight_rows = ""
+        if return_flight:
+            return_flight_rows += f'''
                         <tr>
-                            <td colspan="2" style="padding: 20px 0 10px 0;">
-                                <div style="background: #1a1a2e; color: #D4AF37; padding: 8px 15px; font-weight: 600; font-size: 14px; letter-spacing: 1px;">
-                                    RETURN JOURNEY
+                            <td style="padding: 10px 20px; color: #555; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Flight Number</td>
+                            <td style="padding: 10px 20px; color: #111; font-size: 14px; font-weight: 600; border-bottom: 1px solid #f0f0f0;">{return_flight}</td>
+                        </tr>'''
+        if return_arrival_flight and return_arrival_flight != return_flight:
+            return_flight_rows += f'''
+                        <tr>
+                            <td style="padding: 10px 20px; color: #555; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Arrival Flight</td>
+                            <td style="padding: 10px 20px; color: #111; font-size: 14px; font-weight: 600; border-bottom: 1px solid #f0f0f0;">{return_arrival_flight}</td>
+                        </tr>'''
+
+        return_section_html = f'''
+                        <tr>
+                            <td colspan="2" style="padding: 24px 0 8px 0;">
+                                <div style="background: #fef9c3; color: #713f12; padding: 10px 20px; font-weight: 700; font-size: 13px; letter-spacing: 1px; text-transform: uppercase; border-left: 4px solid #eab308;">
+                                    Return Journey
                                 </div>
                             </td>
                         </tr>
                         <tr>
-                            <td style="padding: 12px 20px; color: #666; font-size: 13px; width: 140px; border-bottom: 1px solid #f0f0f0;">Return Date</td>
-                            <td style="padding: 12px 20px; color: #1a1a1a; font-size: 14px; font-weight: 500; border-bottom: 1px solid #f0f0f0;">{formatted_return_date}</td>
+                            <td style="padding: 10px 20px; color: #555; font-size: 13px; width: 140px; border-bottom: 1px solid #f0f0f0;">Date</td>
+                            <td style="padding: 10px 20px; color: #111; font-size: 14px; font-weight: 500; border-bottom: 1px solid #f0f0f0;">{formatted_return_date}</td>
                         </tr>
                         <tr>
-                            <td style="padding: 12px 20px; color: #666; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Pickup Time</td>
-                            <td style="padding: 12px 20px; color: #1a1a1a; font-size: 14px; font-weight: 600; border-bottom: 1px solid #f0f0f0;">{formatted_return_time}</td>
+                            <td style="padding: 10px 20px; color: #555; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Pickup Time</td>
+                            <td style="padding: 10px 20px; color: #111; font-size: 14px; font-weight: 600; border-bottom: 1px solid #f0f0f0;">{formatted_return_time}</td>
                         </tr>
                         <tr>
-                            <td style="padding: 12px 20px; color: #666; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Pickup</td>
-                            <td style="padding: 12px 20px; color: #1a1a1a; font-size: 14px; border-bottom: 1px solid #f0f0f0;">{dropoff_address}</td>
+                            <td style="padding: 10px 20px; color: #555; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Pickup</td>
+                            <td style="padding: 10px 20px; color: #111; font-size: 14px; border-bottom: 1px solid #f0f0f0;">{dropoff_address}</td>
                         </tr>
                         <tr>
-                            <td style="padding: 12px 20px; color: #666; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Drop-off</td>
-                            <td style="padding: 12px 20px; color: #1a1a1a; font-size: 14px; border-bottom: 1px solid #f0f0f0;">{primary_pickup}</td>
+                            <td style="padding: 10px 20px; color: #555; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Drop-off</td>
+                            <td style="padding: 10px 20px; color: #111; font-size: 14px; border-bottom: 1px solid #f0f0f0;">{primary_pickup}</td>
                         </tr>
-                        {'<tr><td style="padding: 12px 20px; color: #666; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Return Flight</td><td style="padding: 12px 20px; color: #1a1a1a; font-size: 14px; font-weight: 600; border-bottom: 1px solid #f0f0f0;">' + return_flight + '</td></tr>' if return_flight else ''}
-                        {'<tr><td style="padding: 12px 20px; color: #666; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Return Arrival Flight</td><td style="padding: 12px 20px; color: #1a1a1a; font-size: 14px; font-weight: 600; border-bottom: 1px solid #f0f0f0;">' + return_arrival_flight + '</td></tr>' if return_arrival_flight and return_arrival_flight != return_flight else ''}
+                        {return_flight_rows}
         '''
-    
+
     # Build additional stops for outbound
     additional_stops_html = ""
     if pickup_addresses:
@@ -5306,33 +5318,33 @@ def generate_confirmation_email_html(booking: dict, for_admin: bool = False) -> 
             if addr and addr.strip():
                 additional_stops_html += f'''
                         <tr>
-                            <td style="padding: 12px 20px; color: #666; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Stop {i+2}</td>
-                            <td style="padding: 12px 20px; color: #1a1a1a; font-size: 14px; border-bottom: 1px solid #f0f0f0;">{addr}</td>
+                            <td style="padding: 10px 20px; color: #555; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Stop {i+2}</td>
+                            <td style="padding: 10px 20px; color: #111; font-size: 14px; border-bottom: 1px solid #f0f0f0;">{addr}</td>
                         </tr>
                 '''
-    
+
     # Notes section
     notes_html = ""
     if notes:
         notes_html = f'''
                         <tr>
-                            <td colspan="2" style="padding: 20px 0 10px 0;">
-                                <div style="background: #fef9e7; border-left: 4px solid #D4AF37; padding: 15px 20px;">
-                                    <p style="margin: 0 0 5px 0; color: #92400e; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Special Instructions / Notes</p>
-                                    <p style="margin: 0; color: #1a1a1a; font-size: 14px; line-height: 1.5;">{notes}</p>
+                            <td colspan="2" style="padding: 20px 20px 10px 20px;">
+                                <div style="background: #fffbeb; border-left: 4px solid #eab308; padding: 14px 18px; border-radius: 0 6px 6px 0;">
+                                    <p style="margin: 0 0 4px 0; color: #92400e; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Special Instructions</p>
+                                    <p style="margin: 0; color: #333; font-size: 14px; line-height: 1.5;">{notes}</p>
                                 </div>
                             </td>
                         </tr>
         '''
-    
+
     # Flight info section
     flight_info_html = ""
     if departure_flight or arrival_flight:
         flight_info_html = '''
                         <tr>
-                            <td colspan="2" style="padding: 20px 0 10px 0;">
-                                <div style="background: #1a1a2e; color: #D4AF37; padding: 8px 15px; font-weight: 600; font-size: 14px; letter-spacing: 1px;">
-                                    FLIGHT DETAILS
+                            <td colspan="2" style="padding: 24px 0 8px 0;">
+                                <div style="background: #fef9c3; color: #713f12; padding: 10px 20px; font-weight: 700; font-size: 13px; letter-spacing: 1px; text-transform: uppercase; border-left: 4px solid #eab308;">
+                                    Flight Details
                                 </div>
                             </td>
                         </tr>
@@ -5340,25 +5352,25 @@ def generate_confirmation_email_html(booking: dict, for_admin: bool = False) -> 
         if departure_flight:
             flight_info_html += f'''
                         <tr>
-                            <td style="padding: 12px 20px; color: #666; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Departure Flight</td>
-                            <td style="padding: 12px 20px; color: #1a1a1a; font-size: 14px; font-weight: 600; border-bottom: 1px solid #f0f0f0;">{departure_flight}{' at ' + format_time_ampm(departure_time) if departure_time else ''}</td>
+                            <td style="padding: 10px 20px; color: #555; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Departure Flight</td>
+                            <td style="padding: 10px 20px; color: #111; font-size: 14px; font-weight: 600; border-bottom: 1px solid #f0f0f0;">{departure_flight}{' at ' + format_time_ampm(departure_time) if departure_time else ''}</td>
                         </tr>
             '''
         if arrival_flight:
             flight_info_html += f'''
                         <tr>
-                            <td style="padding: 12px 20px; color: #666; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Arrival Flight</td>
-                            <td style="padding: 12px 20px; color: #1a1a1a; font-size: 14px; font-weight: 600; border-bottom: 1px solid #f0f0f0;">{arrival_flight}{' at ' + format_time_ampm(arrival_time_flight) if arrival_time_flight else ''}</td>
+                            <td style="padding: 10px 20px; color: #555; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Arrival Flight</td>
+                            <td style="padding: 10px 20px; color: #111; font-size: 14px; font-weight: 600; border-bottom: 1px solid #f0f0f0;">{arrival_flight}{' at ' + format_time_ampm(arrival_time_flight) if arrival_time_flight else ''}</td>
                         </tr>
             '''
-    
+
     admin_banner = '''
-                <div style="background: #1a365d; color: #D4AF37; padding: 12px 20px; text-align: center; border-bottom: 2px solid #D4AF37;">
-                    <p style="margin: 0; font-size: 13px; font-weight: 600;">ADMIN COPY - New Booking</p>
-                    <p style="margin: 4px 0 0 0; font-size: 11px; color: #94a3b8;">Assign driver in <a href="https://bookaride.co.nz/admin/login" style="color: #D4AF37;">Admin Dashboard</a></p>
+                <div style="background: #fef9c3; color: #713f12; padding: 12px 20px; text-align: center; border-bottom: 2px solid #eab308;">
+                    <p style="margin: 0; font-size: 13px; font-weight: 700;">ADMIN COPY - New Booking</p>
+                    <p style="margin: 4px 0 0 0; font-size: 11px; color: #92400e;">Assign driver in <a href="https://bookaride.co.nz/admin/login" style="color: #b45309; font-weight: 600;">Admin Dashboard</a></p>
                 </div>
     ''' if for_admin else ''
-    
+
     html_content = f'''
     <!DOCTYPE html>
     <html>
@@ -5367,137 +5379,137 @@ def generate_confirmation_email_html(booking: dict, for_admin: bool = False) -> 
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
         </head>
         <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 0; background-color: #f5f5f5; line-height: 1.6;">
-            <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+            <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; box-shadow: 0 4px 16px rgba(0,0,0,0.08); border-radius: 8px; overflow: hidden;">
                 {admin_banner}
                 <!-- Header -->
-                <div style="background: #1a1a2e; padding: 30px 20px; text-align: center;">
-                    <h1 style="margin: 0; color: #D4AF37; font-size: 24px; font-weight: 600; letter-spacing: 2px;">BOOK A RIDE</h1>
-                    <p style="margin: 5px 0 0 0; color: #888; font-size: 11px; letter-spacing: 2px; text-transform: uppercase;">Premium Airport Transfers</p>
+                <div style="background: #ffffff; padding: 32px 20px 20px 20px; text-align: center; border-bottom: 3px solid #eab308;">
+                    <h1 style="margin: 0; color: #111; font-size: 26px; font-weight: 700; letter-spacing: 1px;">BOOK A RIDE</h1>
+                    <p style="margin: 6px 0 0 0; color: #999; font-size: 11px; letter-spacing: 2px; text-transform: uppercase;">Premium Airport Transfers</p>
                 </div>
-                
+
                 <!-- Confirmation Banner -->
-                <div style="background: #D4AF37; padding: 20px; text-align: center;">
-                    <p style="margin: 0; color: #1a1a2e; font-size: 13px; text-transform: uppercase; letter-spacing: 1px;">Booking Confirmed</p>
-                    <p style="margin: 5px 0 0 0; color: #1a1a2e; font-size: 28px; font-weight: 700;">#{booking_ref}</p>
+                <div style="background: #eab308; padding: 18px 20px; text-align: center;">
+                    <p style="margin: 0; color: #ffffff; font-size: 12px; text-transform: uppercase; letter-spacing: 2px; font-weight: 600;">Booking Confirmed</p>
+                    <p style="margin: 6px 0 0 0; color: #ffffff; font-size: 30px; font-weight: 800; letter-spacing: 1px;">#{booking_ref}</p>
                 </div>
-                
+
+                <!-- Greeting -->
+                <div style="padding: 24px 24px 0 24px;">
+                    <p style="margin: 0; color: #333; font-size: 15px;">Hi <strong>{booking.get('name', 'there')}</strong>, thank you for your booking. Here are your trip details:</p>
+                </div>
+
                 <!-- Main Content -->
-                <div style="padding: 0;">
+                <div style="padding: 10px 4px 0 4px;">
                     <table style="width: 100%; border-collapse: collapse;">
-                        
+
                         <!-- Outbound Journey Header -->
                         <tr>
-                            <td colspan="2" style="padding: 20px 0 10px 0;">
-                                <div style="background: #1a1a2e; color: #D4AF37; padding: 8px 15px; font-weight: 600; font-size: 14px; letter-spacing: 1px;">
-                                    {'OUTBOUND JOURNEY' if has_return else 'JOURNEY DETAILS'}
+                            <td colspan="2" style="padding: 16px 0 8px 0;">
+                                <div style="background: #fef9c3; color: #713f12; padding: 10px 20px; font-weight: 700; font-size: 13px; letter-spacing: 1px; text-transform: uppercase; border-left: 4px solid #eab308;">
+                                    {'Departure Journey' if has_return else 'Journey Details'}
                                 </div>
                             </td>
                         </tr>
-                        
-                        <!-- Customer Name -->
+
                         <tr>
-                            <td style="padding: 12px 20px; color: #666; font-size: 13px; width: 140px; border-bottom: 1px solid #f0f0f0;">Passenger</td>
-                            <td style="padding: 12px 20px; color: #1a1a1a; font-size: 14px; font-weight: 600; border-bottom: 1px solid #f0f0f0;">{booking.get('name', 'N/A')}</td>
+                            <td style="padding: 10px 20px; color: #555; font-size: 13px; width: 140px; border-bottom: 1px solid #f0f0f0;">Passenger</td>
+                            <td style="padding: 10px 20px; color: #111; font-size: 14px; font-weight: 600; border-bottom: 1px solid #f0f0f0;">{booking.get('name', 'N/A')}</td>
                         </tr>
-                        
-                        <!-- Service Type -->
+
                         <tr>
-                            <td style="padding: 12px 20px; color: #666; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Service</td>
-                            <td style="padding: 12px 20px; color: #1a1a1a; font-size: 14px; border-bottom: 1px solid #f0f0f0;">{service_display}</td>
+                            <td style="padding: 10px 20px; color: #555; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Service</td>
+                            <td style="padding: 10px 20px; color: #111; font-size: 14px; border-bottom: 1px solid #f0f0f0;">{service_display}</td>
                         </tr>
-                        
-                        <!-- Date -->
+
                         <tr>
-                            <td style="padding: 12px 20px; color: #666; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Date</td>
-                            <td style="padding: 12px 20px; color: #1a1a1a; font-size: 14px; font-weight: 500; border-bottom: 1px solid #f0f0f0;">{formatted_date}</td>
+                            <td style="padding: 10px 20px; color: #555; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Date</td>
+                            <td style="padding: 10px 20px; color: #111; font-size: 14px; font-weight: 500; border-bottom: 1px solid #f0f0f0;">{formatted_date}</td>
                         </tr>
-                        
-                        <!-- Time -->
+
                         <tr>
-                            <td style="padding: 12px 20px; color: #666; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Pickup Time</td>
-                            <td style="padding: 12px 20px; color: #1a1a1a; font-size: 14px; font-weight: 600; border-bottom: 1px solid #f0f0f0;">{formatted_time}</td>
+                            <td style="padding: 10px 20px; color: #555; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Pickup Time</td>
+                            <td style="padding: 10px 20px; color: #111; font-size: 14px; font-weight: 700; border-bottom: 1px solid #f0f0f0;">{formatted_time}</td>
                         </tr>
-                        
-                        <!-- Passengers -->
+
                         <tr>
-                            <td style="padding: 12px 20px; color: #666; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Passengers</td>
-                            <td style="padding: 12px 20px; color: #1a1a1a; font-size: 14px; border-bottom: 1px solid #f0f0f0;">{passengers}</td>
+                            <td style="padding: 10px 20px; color: #555; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Passengers</td>
+                            <td style="padding: 10px 20px; color: #111; font-size: 14px; border-bottom: 1px solid #f0f0f0;">{passengers}</td>
                         </tr>
-                        
-                        <!-- Pickup Address -->
+
                         <tr>
-                            <td style="padding: 12px 20px; color: #666; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Pickup</td>
-                            <td style="padding: 12px 20px; color: #1a1a1a; font-size: 14px; border-bottom: 1px solid #f0f0f0;">{primary_pickup}</td>
+                            <td style="padding: 10px 20px; color: #555; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Pickup</td>
+                            <td style="padding: 10px 20px; color: #111; font-size: 14px; border-bottom: 1px solid #f0f0f0;">{primary_pickup}</td>
                         </tr>
-                        
+
                         {additional_stops_html}
-                        
-                        <!-- Drop-off Address -->
+
                         <tr>
-                            <td style="padding: 12px 20px; color: #666; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Drop-off</td>
-                            <td style="padding: 12px 20px; color: #1a1a1a; font-size: 14px; border-bottom: 1px solid #f0f0f0;">{dropoff_address}</td>
+                            <td style="padding: 10px 20px; color: #555; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Drop-off</td>
+                            <td style="padding: 10px 20px; color: #111; font-size: 14px; border-bottom: 1px solid #f0f0f0;">{dropoff_address}</td>
                         </tr>
-                        
+
                         {flight_info_html}
-                        
+
                         {return_section_html}
-                        
+
                         {notes_html}
-                        
+
                         <!-- Price Section -->
                         <tr>
-                            <td colspan="2" style="padding: 25px 20px; background: #faf9f6;">
-                                <table style="width: 100%; border-collapse: collapse;">
-                                    {f'<tr><td style="color: #666; font-size: 13px;">Distance</td><td style="text-align: right; color: #1a1a1a; font-size: 14px;">{distance} km</td></tr>' if distance else ''}
-                                    <tr>
-                                        <td style="color: #666; font-size: 14px;">Total Fare</td>
-                                        <td style="text-align: right; color: #1a1a1a; font-size: 24px; font-weight: 700;">${total_price:.2f} <span style="font-size: 12px; color: #666;">NZD</span></td>
-                                    </tr>
-                                    <tr>
-                                        <td style="color: #666; font-size: 13px; padding-top: 8px;">Payment</td>
-                                        <td style="text-align: right; padding-top: 8px; font-size: 14px;">{payment_method}</td>
-                                    </tr>
-                                    <tr>
-                                        <td style="color: #666; font-size: 13px; padding-top: 8px;">Payment Status</td>
-                                        <td style="text-align: right; padding-top: 8px;">
-                                            <span style="background: {'#22c55e' if payment_status == 'PAID' else '#f59e0b'}; color: white; padding: 4px 12px; border-radius: 4px; font-size: 11px; font-weight: 600;">{payment_status}</span>
-                                        </td>
-                                    </tr>
-                                </table>
-                            </td>
-                        </tr>
-                        
-                        <!-- Contact Details -->
-                        <tr>
-                            <td colspan="2" style="padding: 20px;">
-                                <div style="background: #f8f8f8; border-radius: 6px; padding: 15px;">
-                                    <p style="margin: 0 0 10px 0; color: #666; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Contact Details on File</p>
-                                    <p style="margin: 0 0 3px 0; color: #1a1a1a; font-size: 14px;">{booking.get('email', 'N/A')}</p>
-                                    <p style="margin: 0; color: #1a1a1a; font-size: 14px;">{booking.get('phone', 'N/A')}</p>
+                            <td colspan="2" style="padding: 24px 20px;">
+                                <div style="background: #ffffff; border: 2px solid #f0f0f0; border-radius: 8px; padding: 20px;">
+                                    <table style="width: 100%; border-collapse: collapse;">
+                                        {f'<tr><td style="color: #888; font-size: 13px; padding-bottom: 6px;">Distance</td><td style="text-align: right; color: #333; font-size: 14px; padding-bottom: 6px;">{distance} km</td></tr>' if distance else ''}
+                                        <tr>
+                                            <td style="color: #555; font-size: 14px; padding-top: 6px; border-top: 1px solid #f0f0f0;">Total Fare</td>
+                                            <td style="text-align: right; color: #111; font-size: 26px; font-weight: 800; padding-top: 6px; border-top: 1px solid #f0f0f0;">${total_price:.2f} <span style="font-size: 12px; color: #999; font-weight: 400;">NZD</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td style="color: #888; font-size: 13px; padding-top: 10px;">Payment Method</td>
+                                            <td style="text-align: right; padding-top: 10px; font-size: 13px; color: #555;">{payment_method}</td>
+                                        </tr>
+                                        <tr>
+                                            <td style="color: #888; font-size: 13px; padding-top: 6px;">Status</td>
+                                            <td style="text-align: right; padding-top: 6px;">
+                                                <span style="background: {'#22c55e' if payment_status == 'PAID' else '#eab308'}; color: white; padding: 3px 14px; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: 0.5px;">{payment_status}</span>
+                                            </td>
+                                        </tr>
+                                    </table>
                                 </div>
                             </td>
                         </tr>
-                        
+
+                        <!-- Contact Details -->
+                        <tr>
+                            <td colspan="2" style="padding: 0 20px 20px 20px;">
+                                <div style="background: #fafafa; border-radius: 8px; padding: 16px 18px; border: 1px solid #f0f0f0;">
+                                    <p style="margin: 0 0 8px 0; color: #999; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Your Contact Details</p>
+                                    <p style="margin: 0 0 2px 0; color: #333; font-size: 14px;">{booking.get('email', 'N/A')}</p>
+                                    <p style="margin: 0; color: #333; font-size: 14px;">{booking.get('phone', 'N/A')}</p>
+                                </div>
+                            </td>
+                        </tr>
+
                     </table>
                 </div>
-                
+
                 <!-- Footer -->
-                <div style="background: #1a1a2e; padding: 25px 20px; text-align: center;">
-                    <p style="margin: 0 0 15px 0; color: #D4AF37; font-size: 14px;">Questions? Contact us anytime</p>
-                    <p style="margin: 0 0 5px 0;">
-                        <a href="tel:+6421743321" style="color: #fff; text-decoration: none; font-size: 16px; font-weight: 600;">021 743 321</a>
+                <div style="background: #fafafa; padding: 28px 20px; text-align: center; border-top: 1px solid #eee;">
+                    <p style="margin: 0 0 12px 0; color: #888; font-size: 13px;">Questions about your booking? Contact us anytime</p>
+                    <p style="margin: 0 0 4px 0;">
+                        <a href="tel:+6421743321" style="color: #111; text-decoration: none; font-size: 18px; font-weight: 700;">021 743 321</a>
                     </p>
-                    <p style="margin: 0 0 15px 0;">
-                        <a href="mailto:{sender_email}" style="color: #888; text-decoration: none; font-size: 13px;">{sender_email}</a>
+                    <p style="margin: 0 0 16px 0;">
+                        <a href="mailto:{sender_email}" style="color: #eab308; text-decoration: none; font-size: 13px; font-weight: 500;">{sender_email}</a>
                     </p>
-                    <div style="border-top: 1px solid #333; padding-top: 15px; margin-top: 15px;">
-                        <p style="margin: 0; color: #666; font-size: 11px;">Thank you for choosing Book A Ride</p>
-                        <p style="margin: 5px 0 0 0;">
-                            <a href="https://bookaride.co.nz" style="color: #D4AF37; text-decoration: none; font-size: 12px;">bookaride.co.nz</a>
+                    <div style="border-top: 1px solid #e5e5e5; padding-top: 16px; margin-top: 8px;">
+                        <p style="margin: 0; color: #bbb; font-size: 11px;">Thank you for choosing Book A Ride</p>
+                        <p style="margin: 4px 0 0 0;">
+                            <a href="https://bookaride.co.nz" style="color: #eab308; text-decoration: none; font-size: 12px; font-weight: 600;">bookaride.co.nz</a>
                         </p>
                     </div>
                 </div>
-                
+
             </div>
         </body>
     </html>

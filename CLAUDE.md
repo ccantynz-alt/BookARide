@@ -103,12 +103,16 @@ Before making ANY change, verify:
 
 ## Environment Variables (Render)
 
-Required:
+**All credentials are configured in Render's Environment tab — NOT in a `.env` file in the repo.**
+The absence of a `.env` file does NOT mean credentials are missing. Do NOT assume services are unconfigured.
+See `backend/.env.example` for the full list of variables (template only — no real secrets).
+
+Required (all set in Render):
 - `DATABASE_URL` — Neon PostgreSQL connection string
 - `JWT_SECRET_KEY`
 - `MAILGUN_API_KEY` + `MAILGUN_DOMAIN`
 
-Optional (but needed for full functionality):
+Optional (but needed for full functionality, all set in Render):
 - `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET`
 - `TWILIO_ACCOUNT_SID` + `TWILIO_AUTH_TOKEN` + `TWILIO_PHONE_NUMBER`
 - `GOOGLE_MAPS_API_KEY`
