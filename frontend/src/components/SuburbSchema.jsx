@@ -34,7 +34,7 @@ const SuburbSchema = ({ suburb }) => {
       "price": suburb.price,
       "priceCurrency": "NZD",
       "availability": "https://schema.org/InStock",
-      "priceValidUntil": "2025-12-31"
+      "priceValidUntil": "2026-12-31"
     }
   };
 
