@@ -5875,6 +5875,7 @@ async def create_payment_checkout(request: PaymentCheckoutRequest, http_request:
             customer_email=booking.get('email') or None,
             metadata={
                 "booking_id": request.booking_id,
+                "booking_type": "regular",
                 "customer_email": booking.get('email', ''),
                 "customer_name": booking.get('name', '')
             }
