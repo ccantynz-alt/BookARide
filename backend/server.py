@@ -140,12 +140,16 @@ async def root_health_check():
 @app.get("/email-status")
 @app.get("/api/email-status")
 async def root_email_status():
-    """Email config check – same as /api/email-status. No auth."""
-    smtp_configured = bool(os.environ.get("SMTP_USER") and os.environ.get("SMTP_PASS"))
+    """Email config check – Mailgun only. No auth."""
     try:
         from email_sender import is_email_configured, get_noreply_email as _get_noreply
-        noreply = _get_noreply()
-        email_configured = is_email_configured()
+        return {
+            "email_provider": "mailgun",
+            "mailgun_configured": bool(os.environ.get("MAILGUN_API_KEY") and os.environ.get("MAILGUN_DOMAIN")),
+            "noreply_email": _get_noreply(),
+            "email_configured": is_email_configured(),
+            "hint": "Set MAILGUN_API_KEY, MAILGUN_DOMAIN, and NOREPLY_EMAIL in Render env vars.",
+        }
     except ImportError:
         return {
             "email_provider": "mailgun",
@@ -153,13 +157,6 @@ async def root_email_status():
             "noreply_email": os.environ.get("NOREPLY_EMAIL") or os.environ.get("SENDER_EMAIL") or "(not set)",
             "hint": "Set MAILGUN_API_KEY, MAILGUN_DOMAIN, and NOREPLY_EMAIL in Render env vars.",
         }
-    return {
-        "email_provider": "mailgun",
-        "mailgun_configured": bool(os.environ.get("MAILGUN_API_KEY") and os.environ.get("MAILGUN_DOMAIN")),
-        "noreply_email": get_noreply_email(),
-        "email_configured": is_email_configured(),
-        "hint": "Set MAILGUN_API_KEY, MAILGUN_DOMAIN, and NOREPLY_EMAIL in Render env vars.",
-    }
 
 # Google auth start - app-level routes (try multiple paths for compatibility)
 @app.get("/api/admin/google-auth/start")
@@ -403,24 +400,6 @@ class BookingCreate(BaseModel):
     #             # If date parsing fails, let it through (will fail elsewhere)
     #             pass
     #     return self
-
-@model_validator(mode='after')
-def validate_booking_date(self):       
-    # Skip validation for data retrieval operations    
-    if hasattr(self, '_skip_date_validation') or getattr(self, 'id', None):    
-        return self
-    
-    if self.date:  # ÃƒÆ'Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ'Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ'Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ NOW PROPERLY INSIDE THE FUNCTION
-        try:
-            nz_tz = pytz.timezone('Pacific/Auckland')
-            today = datetime.now(nz_tz).strftime('%Y-%m-%d')
-            if self.date < today:
-                raise ValueError(f'Booking date ({self.date}) cannot be in the past. Today is {today}.')
-        except Exception as e:
-            if 'cannot be in the past' in str(e):
-                raise
-            pass
-    return self
 
 class Booking(BookingCreate):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -1111,7 +1090,7 @@ async def root():
 async def health_check():
     """Health check endpoint — also reports which integrations are configured."""
     google_maps = bool(os.environ.get('GOOGLE_MAPS_API_KEY', ''))
-    smtp_ok = bool(os.environ.get('SMTP_USER') and os.environ.get('SMTP_PASS'))
+    mailgun_ok = bool(os.environ.get('MAILGUN_API_KEY') and os.environ.get('MAILGUN_DOMAIN'))
     stripe_key = bool(os.environ.get('STRIPE_SECRET_KEY') or os.environ.get('STRIPE_API_KEY'))
     stripe_webhook = bool(os.environ.get('STRIPE_WEBHOOK_SECRET', ''))
     google_cal = bool(os.environ.get('GOOGLE_SERVICE_ACCOUNT_JSON', ''))
@@ -1122,7 +1101,7 @@ async def health_check():
             "google_maps": "ok" if google_maps else "MISSING - set GOOGLE_MAPS_API_KEY (autocomplete + distance)",
             "stripe_payments": "ok" if stripe_key else "MISSING - set STRIPE_SECRET_KEY",
             "stripe_webhook": "ok" if stripe_webhook else "MISSING - set STRIPE_WEBHOOK_SECRET (payments won't auto-confirm)",
-            "email_smtp": "ok" if smtp_ok else "MISSING - set SMTP_USER + SMTP_PASS (Google SMTP for notifications)",
+            "email_mailgun": "ok" if mailgun_ok else "MISSING - set MAILGUN_API_KEY + MAILGUN_DOMAIN",
             "google_calendar": "ok" if google_cal else "MISSING - set GOOGLE_SERVICE_ACCOUNT_JSON",
         }
     }
@@ -2160,47 +2139,9 @@ async def get_bookings(
         
         # Fetch ALL matching bookings from main collection
         all_bookings = await db.bookings.find(query, {"_id": 0}).to_list(None)
-        
-        # Also fetch shuttle bookings so admin never misses any (they were in a separate collection)
-        shuttle_raw = []
-        try:
-            shuttle_query = {}
-            if date_from:
-                shuttle_query['date'] = shuttle_query.get('date', {})
-                shuttle_query['date']['$gte'] = date_from
-            if date_to:
-                shuttle_query.setdefault('date', {})['$lte'] = date_to
-            if status and status != 'all':
-                shuttle_query['status'] = status
-            if search:
-                shuttle_query['$or'] = [
-                    {'name': {'$regex': search, '$options': 'i'}},
-                    {'email': {'$regex': search, '$options': 'i'}},
-                    {'phone': {'$regex': search, '$options': 'i'}},
-                    {'id': {'$regex': search, '$options': 'i'}}
-                ]
-            shuttle_raw = await db.shuttle_bookings.find(shuttle_query, {"_id": 0}).to_list(None)
-        except Exception as shuttle_err:
-            logger.warning(f"Shuttle bookings fetch skipped: {shuttle_err}")
-        # Normalize shuttle docs to same shape as Booking so one list works
-        for s in shuttle_raw:
-            s['time'] = s.get('departureTime', '00:00')
-            s['referenceNumber'] = s.get('referenceNumber') or ('S-' + (s.get('id') or '')[:8])
-            s['pricing'] = s.get('pricing') or {'totalPrice': s.get('totalEstimated') or s.get('finalPrice') or 0}
-            s['serviceType'] = 'airport-shuttle'
-            s['passengers'] = str(s.get('passengers', 1))
-            s['bookingType'] = 'shuttle'
-            s.setdefault('pickupAddresses', [])
-            s.setdefault('dropoffAddress', 'Auckland International Airport')
-            s.setdefault('pickupAddress', s.get('pickupAddress') or '')
-            s.setdefault('notes', '')
-            s.setdefault('bookReturn', False)
-            s.setdefault('returnDate', '')
-            s.setdefault('returnTime', '')
-            s.setdefault('payment_status', s.get('paymentStatus') or 'unpaid')
-        all_bookings = list(all_bookings) + list(shuttle_raw)
+
         total = len(all_bookings)
-        
+
         # Custom sort: use the "effective date" — for return bookings where the
         # outbound is past but the return is still upcoming, sort by return date
         # so they stay visible near the top instead of sinking to the bottom.
@@ -2232,19 +2173,36 @@ async def get_bookings(
             bookings = all_bookings[skip:skip + limit]
             logger.info(f"Fetched {len(bookings)} bookings (page {page}, total {total})")
         
-        # Validate and return; allow shuttle docs that may have minimal fields
+        # Return all bookings — never silently drop a booking due to Pydantic validation.
+        # Every booking the customer paid for must appear in admin, even if fields are incomplete.
         out = []
         for b in bookings:
             try:
-                # Ensure required Booking fields exist for shuttle
-                b.setdefault('pickupAddress', b.get('pickupAddress') or '')
+                out.append(Booking(**b))
+            except Exception as e:
+                # If validation fails, return the raw dict as a Booking with safe defaults
+                # so admin can still see and fix it — NEVER hide a paid booking
+                logger.warning(f"Booking validation issue (still showing): id={b.get('id')} ref={b.get('referenceNumber')} err={e}")
+                b.setdefault('id', b.get('id', str(uuid.uuid4())))
+                b.setdefault('serviceType', b.get('serviceType', 'unknown'))
+                b.setdefault('pickupAddress', b.get('pickupAddress', ''))
+                b.setdefault('dropoffAddress', b.get('dropoffAddress', ''))
+                b.setdefault('date', b.get('date', ''))
+                b.setdefault('time', b.get('time', ''))
+                b.setdefault('passengers', str(b.get('passengers', '1')))
+                b.setdefault('name', b.get('name', 'Unknown'))
+                b.setdefault('email', b.get('email', ''))
+                b.setdefault('phone', b.get('phone', ''))
+                b.setdefault('pricing', b.get('pricing', {'totalPrice': 0}))
+                b.setdefault('status', b.get('status', 'pending'))
                 b.setdefault('notes', '')
                 b.setdefault('bookReturn', False)
                 b.setdefault('returnDate', '')
                 b.setdefault('returnTime', '')
-                out.append(Booking(**b))
-            except Exception as e:
-                logger.warning(f"Skip booking (validation): id={b.get('id')} ref={b.get('referenceNumber')} err={e}")
+                try:
+                    out.append(Booking.model_construct(**b))
+                except Exception:
+                    logger.error(f"Could not construct booking at all: id={b.get('id')}")
         return out
     except Exception as e:
         logger.error(f"Error fetching bookings: {str(e)}")
@@ -2253,20 +2211,15 @@ async def get_bookings(
 
 @api_router.get("/bookings/count")
 async def get_bookings_count(current_admin: dict = Depends(get_current_admin)):
-    """Get total booking counts for dashboard stats (includes shuttle bookings)"""
+    """Get total booking counts for dashboard stats"""
     try:
-        main_total = await db.bookings.count_documents({})
-        shuttle_total = await db.shuttle_bookings.count_documents({"status": {"$nin": ["cancelled", "deleted"]}})
-        total = main_total + shuttle_total
+        total = await db.bookings.count_documents({})
 
         pending = await db.bookings.count_documents({"status": "pending"})
         confirmed = await db.bookings.count_documents({"status": "confirmed"})
         completed = await db.bookings.count_documents({"status": "completed"})
         cancelled = await db.bookings.count_documents({"status": "cancelled"})
         pending_approval = await db.bookings.count_documents({"status": "pending_approval"})
-        # Include shuttle in pending_approval / authorized
-        shuttle_pending = await db.shuttle_bookings.count_documents({"status": {"$in": ["pending_approval", "authorized"]}})
-        pending_approval = pending_approval + shuttle_pending
 
         return {
             "total": total,
@@ -5094,11 +5047,11 @@ async def admin_send_test_email(body: dict = Body(default={}), current_admin: di
 
     # Build diagnostic info
     diag = {
-        "smtp_user_set": bool(os.environ.get("SMTP_USER")),
-        "smtp_pass_set": bool(os.environ.get("SMTP_PASS")),
+        "mailgun_api_key_set": bool(os.environ.get("MAILGUN_API_KEY")),
+        "mailgun_domain_set": bool(os.environ.get("MAILGUN_DOMAIN")),
         "email_sender_available": send_email_unified is not None,
     }
-    raise HTTPException(status_code=500, detail=f"All email providers failed. Config: {diag}")
+    raise HTTPException(status_code=500, detail=f"Mailgun email failed. Config: {diag}")
 
 
 @api_router.post("/bookings/{booking_id}/resend-payment-link")
@@ -9279,7 +9232,7 @@ async def send_payment_link_email(booking: dict, payment_link: str, payment_type
         ):
             logger.info(f"Payment link email sent to {customer_email}")
         else:
-            logger.warning("Email not configured - payment link not sent. Set SMTP_USER/SMTP_PASS env vars.")
+            logger.warning("Email not configured - payment link not sent. Set MAILGUN_API_KEY + MAILGUN_DOMAIN env vars.")
             
     except Exception as e:
         logger.error(f"Error sending payment link email: {str(e)}")
@@ -13686,10 +13639,10 @@ async def send_arrival_pickup_emails():
         
         logger.info(f" [Arrival Emails] Found {len(bookings)} airport arrivals for {tomorrow}")
         
-        # Get email settings
-        smtp_configured = bool(os.environ.get("SMTP_USER") and os.environ.get("SMTP_PASS"))
-        
-        if not smtp_configured and send_email_unified is None:
+        # Check email is configured (Mailgun only)
+        mailgun_configured = bool(os.environ.get("MAILGUN_API_KEY") and os.environ.get("MAILGUN_DOMAIN"))
+
+        if not mailgun_configured and send_email_unified is None:
             logger.warning("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã¢â‚¬Â¹ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â [Arrival Emails] Email not configured")
             return {"sent": 0, "error": "Email not configured"}
         

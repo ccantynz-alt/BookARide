@@ -61,6 +61,35 @@ The booking form structure is FINAL. Do not restructure, split, or duplicate sec
 - **NEVER** remove or rename the return journey fields (`returnDate`, `returnTime`, `returnFlightNumber`) — they power return notifications
 - **NEVER** change the booking form layout without explicit permission
 
+### 7. No Shuttle Bookings in Admin Panel
+
+Shuttle bookings (`db.shuttle_bookings`) are NOT displayed in the admin booking list.
+
+- The admin panel `GET /api/bookings` returns **ONLY** from `db.bookings` collection
+- **NEVER** merge shuttle_bookings into the admin booking list
+- **NEVER** add shuttle booking fetch/normalization code to `GET /api/bookings`
+- **NEVER** include shuttle counts in booking count endpoints
+- The `SharedShuttle.jsx` page and shuttle endpoints can still exist for public use, but shuttle data does NOT appear in admin booking management
+
+### 8. Admin Panel: Do NOT Add Features Without Permission
+
+The admin dashboard is production-critical. Do not add tabs, panels, modals, or features to it without explicit permission from the user.
+
+- **NEVER** add new tabs to the admin dashboard without asking first
+- **NEVER** restructure the booking list view or change how bookings are displayed
+- **NEVER** add third-party integrations to the admin panel without permission
+- **NEVER** hide or filter bookings in a way that makes paid bookings invisible
+- Every booking in `db.bookings` MUST appear in the admin panel — no silent dropping
+
+### 9. Booking Validation: NEVER Silently Drop Bookings
+
+When fetching bookings for the admin panel, Pydantic validation failures must NOT cause bookings to be hidden.
+
+- If a booking fails `Booking(**b)` validation, use `Booking.model_construct(**b)` as fallback
+- **NEVER** use a try/except that silently skips bookings the admin needs to see
+- A booking with payment_status="paid" must ALWAYS be visible regardless of validation errors
+- Log warnings for validation issues but always show the booking
+
 ---
 
 ## PRE-CHANGE CHECKLIST
@@ -73,6 +102,9 @@ Before making ANY change, verify:
 4. Does my change remove or modify an existing import? **Verify nothing else uses it.**
 5. Am I adding a new JSX component usage? **Add the import statement too.**
 6. Does my build pass with `cd frontend && npm run build`? **Test before committing.**
+7. Does my change add shuttle bookings to the admin panel? **STOP.**
+8. Does my change hide any bookings from the admin panel? **STOP.**
+9. Am I adding a new feature to the admin dashboard? **ASK THE USER FIRST.**
 
 ---
 
@@ -118,7 +150,7 @@ Optional (but needed for full functionality, all set in Render):
 - `GOOGLE_MAPS_API_KEY`
 - `GEOAPIFY_API_KEY`
 - `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` (OAuth)
-- `GOOGLE_SERVICE_ACCOUNT_JSON` (Calendar)
+- `GOOGLE_SERVICE_ACCOUNT_JSON` (Calendar + Search Console)
 
 ## Build & Test
 
@@ -132,6 +164,31 @@ cd backend && python3 start.py
 
 ---
 
+## Booking System Architecture
+
+### Booking Flow (Customer → Admin)
+
+1. Customer submits booking via `BookNow.jsx` → `POST /api/bookings` → creates booking in `db.bookings`
+2. If within 24 hours: status = `pending_approval` (requires admin manual approval)
+3. If Stripe payment: `POST /api/payment/create-checkout` → Stripe → webhook updates booking to `paid`/`confirmed`
+4. Admin sees ALL bookings at `GET /api/bookings` (fetches from `db.bookings` ONLY)
+
+### Orphan Payment Recovery
+
+If a customer pays via Stripe but the booking is missing from admin:
+- `GET /api/bookings/orphan-payments` — lists paid Stripe transactions with no matching booking
+- `POST /api/bookings/recover-from-payment` — creates a booking from the payment data
+- The admin dashboard has a "Check Orphan Payments" button for this
+
+### Known Booking System Issues (Fixed 2026-03-11)
+
+- Pydantic `Booking(**b)` validation was silently dropping bookings with missing/invalid fields
+- Shuttle bookings were being merged into admin panel causing confusion
+- SMTP code existed in `routes_bulk.py` violating Mailgun-only rule
+- Orphaned `validate_booking_date` function at module level (not inside any class)
+
+---
+
 ## History of Production Breaks (why these rules exist)
 
 | Date       | What broke                          | Root cause                              |
@@ -141,3 +198,6 @@ cd backend && python3 start.py
 | Repeated   | Database connection failures         | Agents kept adding MongoDB references   |
 | Repeated   | Email failures                       | Agents kept adding SendGrid/SMTP code   |
 | 2026-03    | Duplicate flight sections in form    | Two separate flight detail sections confused customers |
+| 2026-03-11 | Paid booking invisible in admin      | Pydantic validation silently dropped bookings with missing fields |
+| 2026-03-11 | Admin panel cluttered/confusing      | Shuttle bookings merged into booking list without permission |
+| 2026-03-11 | Bulk email broken                    | SMTP code in routes_bulk.py instead of Mailgun |
