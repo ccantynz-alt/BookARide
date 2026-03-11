@@ -60,6 +60,18 @@ export const aucklandSuburbs = [
   { slug: 'murrays-bay', name: 'Murrays Bay', region: 'North Shore', distance: 36, duration: '43 mins', keywords: ['murrays bay beach', 'beach haven'] },
   { slug: 'torbay', name: 'Torbay', region: 'North Shore', distance: 38, duration: '45 mins', keywords: ['torbay beach', 'long bay'] },
   { slug: 'long-bay', name: 'Long Bay', region: 'North Shore', distance: 40, duration: '48 mins', keywords: ['long bay beach', 'long bay regional park'] },
+
+  // Expansion suburbs (high-demand areas)
+  { slug: 'pukekohe', name: 'Pukekohe', region: 'South Auckland', distance: 45, duration: '45 mins', keywords: ['pukekohe park', 'franklin', 'pukekohe town'] },
+  { slug: 'drury', name: 'Drury', region: 'South Auckland', distance: 30, duration: '30 mins', keywords: ['drury crossing', 'drury south', 'drury interchange'] },
+  { slug: 'flat-bush', name: 'Flat Bush', region: 'South Auckland', distance: 20, duration: '22 mins', keywords: ['flat bush', 'ormiston', 'barry curtis park'] },
+  { slug: 'te-atatu', name: 'Te Atatu', region: 'West Auckland', distance: 26, duration: '30 mins', keywords: ['te atatu peninsula', 'te atatu south', 'harbourview'] },
+  { slug: 'massey', name: 'Massey', region: 'West Auckland', distance: 30, duration: '35 mins', keywords: ['massey', 'westgate', 'royal heights'] },
+  { slug: 'papakura', name: 'Papakura', region: 'South Auckland', distance: 25, duration: '28 mins', keywords: ['papakura town', 'takanini', 'opaheke'] },
+  { slug: 'onehunga', name: 'Onehunga', region: 'Central Auckland', distance: 14, duration: '16 mins', keywords: ['onehunga mall', 'onehunga bay', 'dress smart'] },
+  { slug: 'mount-roskill', name: 'Mount Roskill', region: 'Central Auckland', distance: 18, duration: '20 mins', keywords: ['mt roskill', 'dominion road', 'three kings'] },
+  { slug: 'royal-oak', name: 'Royal Oak', region: 'Central Auckland', distance: 15, duration: '17 mins', keywords: ['royal oak roundabout', 'one tree hill', 'cornwall park'] },
+  { slug: 'beachlands', name: 'Beachlands', region: 'Eastern Auckland', distance: 28, duration: '32 mins', keywords: ['beachlands', 'pine harbour', 'maraetai'] },
 ];
 
 // Auckland Hotels for hotel-specific SEO pages

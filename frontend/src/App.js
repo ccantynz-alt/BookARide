@@ -299,6 +299,17 @@ function App() {
     { path: "murrays-bay-to-auckland-airport", element: <SuburbTransferPage /> },
     { path: "torbay-to-auckland-airport", element: <SuburbTransferPage /> },
     { path: "long-bay-to-auckland-airport", element: <SuburbTransferPage /> },
+    // Expansion Suburbs
+    { path: "pukekohe-to-auckland-airport", element: <SuburbTransferPage /> },
+    { path: "drury-to-auckland-airport", element: <SuburbTransferPage /> },
+    { path: "flat-bush-to-auckland-airport", element: <SuburbTransferPage /> },
+    { path: "te-atatu-to-auckland-airport", element: <SuburbTransferPage /> },
+    { path: "massey-to-auckland-airport", element: <SuburbTransferPage /> },
+    { path: "papakura-to-auckland-airport", element: <SuburbTransferPage /> },
+    { path: "onehunga-to-auckland-airport", element: <SuburbTransferPage /> },
+    { path: "mount-roskill-to-auckland-airport", element: <SuburbTransferPage /> },
+    { path: "royal-oak-to-auckland-airport", element: <SuburbTransferPage /> },
+    { path: "beachlands-to-auckland-airport", element: <SuburbTransferPage /> },
     // Standard Pages
     { path: "services", element: <Services /> },
     { path: "about", element: <About /> },

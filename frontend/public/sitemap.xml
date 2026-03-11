@@ -139,7 +139,28 @@
   <url><loc>https://bookaride.co.nz/suburbs/mt-eden</loc><lastmod>2026-01-04</lastmod><changefreq>weekly</changefreq><priority>0.85</priority></url>
   <url><loc>https://bookaride.co.nz/suburbs/ponsonby</loc><lastmod>2026-01-04</lastmod><changefreq>weekly</changefreq><priority>0.85</priority></url>
   <url><loc>https://bookaride.co.nz/suburbs/remuera</loc><lastmod>2026-01-04</lastmod><changefreq>weekly</changefreq><priority>0.85</priority></url>
-  
+  <url><loc>https://bookaride.co.nz/suburbs/pukekohe</loc><lastmod>2026-03-10</lastmod><changefreq>weekly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://bookaride.co.nz/suburbs/drury</loc><lastmod>2026-03-10</lastmod><changefreq>weekly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://bookaride.co.nz/suburbs/flat-bush</loc><lastmod>2026-03-10</lastmod><changefreq>weekly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://bookaride.co.nz/suburbs/te-atatu</loc><lastmod>2026-03-10</lastmod><changefreq>weekly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://bookaride.co.nz/suburbs/massey</loc><lastmod>2026-03-10</lastmod><changefreq>weekly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://bookaride.co.nz/suburbs/papakura</loc><lastmod>2026-03-10</lastmod><changefreq>weekly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://bookaride.co.nz/suburbs/onehunga</loc><lastmod>2026-03-10</lastmod><changefreq>weekly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://bookaride.co.nz/suburbs/mount-roskill</loc><lastmod>2026-03-10</lastmod><changefreq>weekly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://bookaride.co.nz/suburbs/royal-oak</loc><lastmod>2026-03-10</lastmod><changefreq>weekly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://bookaride.co.nz/suburbs/beachlands</loc><lastmod>2026-03-10</lastmod><changefreq>weekly</changefreq><priority>0.85</priority></url>
+  <!-- Transfer pages for new suburbs -->
+  <url><loc>https://bookaride.co.nz/pukekohe-to-auckland-airport</loc><lastmod>2026-03-10</lastmod><changefreq>weekly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://bookaride.co.nz/drury-to-auckland-airport</loc><lastmod>2026-03-10</lastmod><changefreq>weekly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://bookaride.co.nz/flat-bush-to-auckland-airport</loc><lastmod>2026-03-10</lastmod><changefreq>weekly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://bookaride.co.nz/te-atatu-to-auckland-airport</loc><lastmod>2026-03-10</lastmod><changefreq>weekly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://bookaride.co.nz/massey-to-auckland-airport</loc><lastmod>2026-03-10</lastmod><changefreq>weekly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://bookaride.co.nz/papakura-to-auckland-airport</loc><lastmod>2026-03-10</lastmod><changefreq>weekly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://bookaride.co.nz/onehunga-to-auckland-airport</loc><lastmod>2026-03-10</lastmod><changefreq>weekly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://bookaride.co.nz/mount-roskill-to-auckland-airport</loc><lastmod>2026-03-10</lastmod><changefreq>weekly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://bookaride.co.nz/royal-oak-to-auckland-airport</loc><lastmod>2026-03-10</lastmod><changefreq>weekly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://bookaride.co.nz/beachlands-to-auckland-airport</loc><lastmod>2026-03-10</lastmod><changefreq>weekly</changefreq><priority>0.85</priority></url>
+
   <!-- ==================== HOTELS ==================== -->
   <url><loc>https://bookaride.co.nz/hotels</loc><lastmod>2026-01-04</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
   <url><loc>https://bookaride.co.nz/hotels/skycity-grand-hotel</loc><lastmod>2026-01-04</lastmod><changefreq>weekly</changefreq><priority>0.85</priority></url>
