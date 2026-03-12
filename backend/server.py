@@ -1400,6 +1400,8 @@ def _get_distance_google(pickup_address: str, dropoff_address: str, waypoint_add
                     for leg in data["routes"][0].get("legs", [])
                 )
                 return round(total_m / 1000, 2)
+            else:
+                logger.warning(f"Google Directions API failed - status: {data.get('status')}, error: {data.get('error_message', 'none')}, origin: {pickup_norm}, destination: {dropoff_norm}")
         else:
             # Simple origin->destination: use Distance Matrix
             url = "https://maps.googleapis.com/maps/api/distancematrix/json"
@@ -1418,6 +1420,13 @@ def _get_distance_google(pickup_address: str, dropoff_address: str, waypoint_add
                     if elements and elements[0].get("status") == "OK":
                         dist_m = elements[0].get("distance", {}).get("value", 0)
                         return round(dist_m / 1000, 2)
+                    else:
+                        elem_status = elements[0].get("status") if elements else "NO_ELEMENTS"
+                        logger.warning(f"Google Distance Matrix element failed - element status: {elem_status}, origin: {pickup_norm}, destination: {dropoff_norm}")
+                else:
+                    logger.warning(f"Google Distance Matrix returned OK but no rows - origin: {pickup_norm}, destination: {dropoff_norm}")
+            else:
+                logger.warning(f"Google Distance Matrix API failed - status: {data.get('status')}, error: {data.get('error_message', 'none')}, origin: {pickup_norm}, destination: {dropoff_norm}")
     except Exception as e:
         logger.warning(f"Google Maps distance error: {e}")
     return None
@@ -1574,8 +1583,20 @@ async def calculate_price(request: PriceCalculationRequest):
         _pickup_lower = _norm(request.pickupAddress)
         _dropoff_lower = _norm(request.dropoffAddress)
         _long_distance_keywords = ['tauranga', 'mount maunganui', 'papamoa', 'otumoetai', 'bay of plenty', 'hamilton', 'whangarei', 'cambridge', 'te awamutu']
+        _hibiscus_coast_keywords = ['orewa', 'whangaparaoa', 'silverdale', 'red beach', 'stanmore bay', 'army bay', 'gulf harbour', 'manly', 'hibiscus coast', 'millwater', 'milldale', 'hatfields beach', 'waiwera']
+        _airport_keywords = ['airport', 'auckland airport', 'akl', 'ray emery', 'mangere']
         _is_long_distance_route = any(kw in _pickup_lower or kw in _dropoff_lower for kw in _long_distance_keywords)
-        _fallback_km = LONG_DISTANCE_FALLBACK_KM if _is_long_distance_route else DEFAULT_FALLBACK_DISTANCE_KM
+        _is_hibiscus_to_airport = (
+            any(kw in _pickup_lower for kw in _hibiscus_coast_keywords) and any(kw in _dropoff_lower for kw in _airport_keywords)
+        ) or (
+            any(kw in _dropoff_lower for kw in _hibiscus_coast_keywords) and any(kw in _pickup_lower for kw in _airport_keywords)
+        )
+        if _is_long_distance_route:
+            _fallback_km = LONG_DISTANCE_FALLBACK_KM
+        elif _is_hibiscus_to_airport:
+            _fallback_km = 55.0  # Hibiscus Coast <-> Airport is ~50-60km; 55km fallback avoids overcharging
+        else:
+            _fallback_km = DEFAULT_FALLBACK_DISTANCE_KM
 
         if google_key:
             # Route: pickup -> additional pickups -> dropoff
