@@ -47,48 +47,15 @@ We use Mailgun. Not SendGrid. Not SMTP. Not Gmail. Not "a fallback".
 - **NEVER** re-add FacebookTab or Facebook API routes
 - **NEVER** add `FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET` references
 
-### 6. Booking Form: LOCKED Structure
+### 6. Maps & Distance: Google Maps API ONLY (No Geoapify)
 
-The booking form structure is FINAL. Do not restructure, split, or duplicate sections.
+We use Google Maps for distance calculation, directions, and autocomplete. Geoapify has been removed.
 
-- **Customer form**: `frontend/src/pages/BookNow.jsx`
-- **Admin create**: `frontend/src/components/admin/CreateBookingModal.jsx`
-- **Admin edit**: `frontend/src/components/admin/EditBookingModal.jsx`
-- The form has ONE unified "Flight Details" section containing both departure flight info and return journey (date, time, return flight number)
-- The return fields (`returnDate`, `returnTime`, `returnFlightNumber`) are linked to the admin Return Trip Departure Monitor (`UrgentReturnsPanel.jsx`) and return alert notifications
-- **NEVER** split flight details and return journey into separate sections
-- **NEVER** add a second/duplicate flight details section
-- **NEVER** remove or rename the return journey fields (`returnDate`, `returnTime`, `returnFlightNumber`) — they power return notifications
-- **NEVER** change the booking form layout without explicit permission
-
-### 7. No Shuttle Bookings in Admin Panel
-
-Shuttle bookings (`db.shuttle_bookings`) are NOT displayed in the admin booking list.
-
-- The admin panel `GET /api/bookings` returns **ONLY** from `db.bookings` collection
-- **NEVER** merge shuttle_bookings into the admin booking list
-- **NEVER** add shuttle booking fetch/normalization code to `GET /api/bookings`
-- **NEVER** include shuttle counts in booking count endpoints
-- The `SharedShuttle.jsx` page and shuttle endpoints can still exist for public use, but shuttle data does NOT appear in admin booking management
-
-### 8. Admin Panel: Do NOT Add Features Without Permission
-
-The admin dashboard is production-critical. Do not add tabs, panels, modals, or features to it without explicit permission from the user.
-
-- **NEVER** add new tabs to the admin dashboard without asking first
-- **NEVER** restructure the booking list view or change how bookings are displayed
-- **NEVER** add third-party integrations to the admin panel without permission
-- **NEVER** hide or filter bookings in a way that makes paid bookings invisible
-- Every booking in `db.bookings` MUST appear in the admin panel — no silent dropping
-
-### 9. Booking Validation: NEVER Silently Drop Bookings
-
-When fetching bookings for the admin panel, Pydantic validation failures must NOT cause bookings to be hidden.
-
-- If a booking fails `Booking(**b)` validation, use `Booking.model_construct(**b)` as fallback
-- **NEVER** use a try/except that silently skips bookings the admin needs to see
-- A booking with payment_status="paid" must ALWAYS be visible regardless of validation errors
-- Log warnings for validation issues but always show the booking
+- Distance: `_get_distance_google()` in `backend/server.py` (Distance Matrix + Directions API)
+- Config: `GOOGLE_MAPS_API_KEY` env var
+- **NEVER** add Geoapify API calls, `GEOAPIFY_API_KEY`, or `geoapify.com` references
+- **NEVER** add Geoapify as a "fallback" for Google Maps
+- **NEVER** use Geoapify for address autocomplete or distance calculation
 
 ---
 
@@ -98,13 +65,11 @@ Before making ANY change, verify:
 
 1. Does my change introduce MongoDB, Motor, or pymongo? **STOP.**
 2. Does my change introduce SendGrid, SMTP, or smtplib? **STOP.**
-3. Does my change add a new import? **Verify the component/module exists first.**
-4. Does my change remove or modify an existing import? **Verify nothing else uses it.**
-5. Am I adding a new JSX component usage? **Add the import statement too.**
-6. Does my build pass with `cd frontend && npm run build`? **Test before committing.**
-7. Does my change add shuttle bookings to the admin panel? **STOP.**
-8. Does my change hide any bookings from the admin panel? **STOP.**
-9. Am I adding a new feature to the admin dashboard? **ASK THE USER FIRST.**
+3. Does my change introduce Geoapify or `GEOAPIFY_API_KEY`? **STOP.**
+4. Does my change add a new import? **Verify the component/module exists first.**
+5. Does my change remove or modify an existing import? **Verify nothing else uses it.**
+6. Am I adding a new JSX component usage? **Add the import statement too.**
+7. Does my build pass with `cd frontend && npm run build`? **Test before committing.**
 
 ---
 
@@ -118,7 +83,7 @@ Before making ANY change, verify:
 | Email      | Mailgun API                       | `backend/email_sender.py` |
 | Payments   | Stripe                            | `backend/stripe_checkout/` |
 | SMS        | Twilio                            | via env vars       |
-| Maps       | Google Maps API + Geoapify        | via env vars       |
+| Maps       | Google Maps API                   | via env vars       |
 
 ## Hosting
 
@@ -148,7 +113,6 @@ Optional (but needed for full functionality, all set in Render):
 - `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET`
 - `TWILIO_ACCOUNT_SID` + `TWILIO_AUTH_TOKEN` + `TWILIO_PHONE_NUMBER`
 - `GOOGLE_MAPS_API_KEY`
-- `GEOAPIFY_API_KEY`
 - `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` (OAuth)
 - `GOOGLE_SERVICE_ACCOUNT_JSON` (Calendar + Search Console)
 

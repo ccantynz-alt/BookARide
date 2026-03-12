@@ -47,7 +47,7 @@ def _send_email_with_fallbacks(to_email, subject, html_content, from_email=None,
 
     if send_email_unified:
         try:
-            if send_email_unified(to_email, subject, html_content, from_email=sender, from_name=from_name):
+            if send_email_unified(to_email, subject, html_content, from_email=sender, from_name=from_name, reply_to=reply_to, cc=cc):
                 return True
         except Exception as e:
             logging.getLogger(__name__).warning(f"email_sender module failed: {e}")
@@ -1617,16 +1617,11 @@ async def calculate_price(request: PriceCalculationRequest):
         is_from_hibiscus_coast = any(keyword in pickup_lower for keyword in hibiscus_coast_keywords)
         is_to_hibiscus_coast = any(keyword in dropoff_lower for keyword in hibiscus_coast_keywords)
         
-        # Minimum distance for Hibiscus Coast <-> Auckland Airport (Geoapify returns shorter than Google)
-        # Old system: 73.3 km for Gulf Harbour -> Airport = ~$186. Use 73 km minimum for this route.
+        # Hibiscus Coast <-> Airport: trust Google Maps distance (no zone minimum)
         airport_keywords = ['airport', 'auckland airport', 'international airport', 'domestic airport', 'akl', 'ray emery', 'mangere']
         is_to_airport = any(kw in dropoff_lower for kw in airport_keywords)
         is_from_airport = any(kw in pickup_lower for kw in airport_keywords)
-        hibiscus_to_airport = (is_from_hibiscus_coast and is_to_airport) or (is_to_hibiscus_coast and is_from_airport)
-        if hibiscus_to_airport and distance_km < 73.0:
-            logger.info(f"Zone distance: Hibiscus Coast <-> Airport applying minimum 73 km (API returned {distance_km} km)")
-            distance_km = 73.0
-        
+
         # Minimum distance for North Auckland (Warkworth, Matakana, Leigh) <-> Airport (~60-70km)
         north_auckland_keywords = ['warkworth', 'snells beach', 'matakana', 'leigh', 'wellsford', 'puhoi', 'alberton']
         is_from_north_auckland = any(kw in pickup_lower for kw in north_auckland_keywords)
@@ -1645,7 +1640,7 @@ async def calculate_price(request: PriceCalculationRequest):
             logger.info(f"Zone distance: Hamilton area <-> Airport applying minimum 125 km (API returned {distance_km} km)")
             distance_km = 125.0
         
-        # Minimum distance for Auckland Airport <-> Whangarei (Geoapify often fails, falls back to default)
+        # Minimum distance for Auckland Airport <-> Whangarei
         # Old system: 181.7 km = ~$646 for 2 passengers
         whangarei_keywords = ['whangarei', 'onerahi', 'kensington', 'tikipunga', 'regent', 'whangarei heads']
         is_to_whangarei = any(kw in dropoff_lower for kw in whangarei_keywords)
@@ -2121,8 +2116,16 @@ async def get_bookings(
                 date_conditions.append({'returnDate': return_cond})
             if date_conditions:
                 if '$or' in query:
-                    # Wrap existing $or with $and to combine
-                    query = {'$and': [{'$or': query['$or']}, {'$or': date_conditions}]}
+                    # Combine search $or with date $or using $and, but PRESERVE
+                    # any other top-level filters (e.g. status) that were set earlier.
+                    other_filters = {k: v for k, v in query.items() if k != '$or'}
+                    query = {
+                        '$and': [
+                            {'$or': query['$or']},
+                            {'$or': date_conditions},
+                        ]
+                    }
+                    query.update(other_filters)
                 else:
                     query['$or'] = date_conditions
         
@@ -2173,36 +2176,73 @@ async def get_bookings(
             bookings = all_bookings[skip:skip + limit]
             logger.info(f"Fetched {len(bookings)} bookings (page {page}, total {total})")
         
-        # Return all bookings — never silently drop a booking due to Pydantic validation.
-        # Every booking the customer paid for must appear in admin, even if fields are incomplete.
+        # Build response — NEVER silently drop bookings.  Use model_construct
+        # to skip validators (they protect creation, not retrieval).  Fill in
+        # required-field defaults so the admin dashboard always shows every
+        # booking, even ones created via manual/bulk endpoints that may lack
+        # some fields.
+        _REQUIRED_DEFAULTS = {
+            'serviceType': 'unknown',
+            'pickupAddress': '',
+            'pickupAddresses': [],
+            'dropoffAddress': '',
+            'date': '',
+            'time': '',
+            'passengers': '1',
+            'name': 'Unknown',
+            'email': '',
+            'phone': '',
+            'pricing': {},
+            'notes': '',
+            'bookReturn': False,
+            'returnDate': '',
+            'returnTime': '',
+            'status': 'pending',
+            'payment_status': 'unpaid',
+        }
         out = []
         for b in bookings:
             try:
-                out.append(Booking(**b))
+                # Ensure every required field has a value
+                for field, default in _REQUIRED_DEFAULTS.items():
+                    b.setdefault(field, default)
+                # Coerce passengers to string (manual inserts may store int)
+                if isinstance(b.get('passengers'), (int, float)):
+                    b['passengers'] = str(int(b['passengers']))
+                # Coerce referenceNumber to string
+                if b.get('referenceNumber') is not None:
+                    b['referenceNumber'] = str(b['referenceNumber'])
+                # Ensure id exists
+                b.setdefault('id', str(uuid.uuid4()))
+                # Use model_construct to SKIP validators — never drop a booking
+                out.append(Booking.model_construct(**b))
             except Exception as e:
-                # If validation fails, return the raw dict as a Booking with safe defaults
-                # so admin can still see and fix it — NEVER hide a paid booking
-                logger.warning(f"Booking validation issue (still showing): id={b.get('id')} ref={b.get('referenceNumber')} err={e}")
-                b.setdefault('id', b.get('id', str(uuid.uuid4())))
-                b.setdefault('serviceType', b.get('serviceType', 'unknown'))
-                b.setdefault('pickupAddress', b.get('pickupAddress', ''))
-                b.setdefault('dropoffAddress', b.get('dropoffAddress', ''))
-                b.setdefault('date', b.get('date', ''))
-                b.setdefault('time', b.get('time', ''))
-                b.setdefault('passengers', str(b.get('passengers', '1')))
-                b.setdefault('name', b.get('name', 'Unknown'))
-                b.setdefault('email', b.get('email', ''))
-                b.setdefault('phone', b.get('phone', ''))
-                b.setdefault('pricing', b.get('pricing', {'totalPrice': 0}))
-                b.setdefault('status', b.get('status', 'pending'))
-                b.setdefault('notes', '')
-                b.setdefault('bookReturn', False)
-                b.setdefault('returnDate', '')
-                b.setdefault('returnTime', '')
+                # Last resort: return raw dict wrapped loosely — still never drop
+                logger.error(f"Booking construct failed (STILL RETURNING IT): id={b.get('id')} ref={b.get('referenceNumber')} err={e}")
                 try:
                     out.append(Booking.model_construct(**b))
                 except Exception:
-                    logger.error(f"Could not construct booking at all: id={b.get('id')}")
+                    # Absolute last resort — force it through
+                    out.append(Booking.model_construct(
+                        id=b.get('id', str(uuid.uuid4())),
+                        serviceType=b.get('serviceType', 'unknown'),
+                        pickupAddress=b.get('pickupAddress', ''),
+                        dropoffAddress=b.get('dropoffAddress', ''),
+                        date=b.get('date', ''),
+                        time=b.get('time', ''),
+                        passengers=str(b.get('passengers', '1')),
+                        name=b.get('name', 'Unknown'),
+                        email=b.get('email', ''),
+                        phone=b.get('phone', ''),
+                        pricing=b.get('pricing', {}),
+                        notes=b.get('notes', ''),
+                        bookReturn=b.get('bookReturn', False),
+                        returnDate=b.get('returnDate', ''),
+                        returnTime=b.get('returnTime', ''),
+                        status=b.get('status', 'pending'),
+                        payment_status=b.get('payment_status', 'unpaid'),
+                        referenceNumber=str(b.get('referenceNumber', '')),
+                    ))
         return out
     except Exception as e:
         logger.error(f"Error fetching bookings: {str(e)}")
@@ -2421,7 +2461,9 @@ async def send_booking_to_admin(booking_id: str, current_admin: dict = Depends(g
         """
         
         email_subject = f"Booking Details - {booking.get('name', 'Customer')} - {booking.get('id', '')[:8].upper()}"
-        ok = _send_email_with_fallbacks(admin_email, email_subject, html_content, from_name="BookaRide System")
+        info_cc = "info@bookaride.co.nz"
+        cc = info_cc if admin_email.lower() != info_cc else None
+        ok = _send_email_with_fallbacks(admin_email, email_subject, html_content, from_name="BookaRide System", cc=cc)
 
         subject = f"Booking Details - {booking.get('name', 'Customer')} - {booking.get('id', '')[:8].upper()}"
         from_email = get_noreply_email()
@@ -4100,9 +4142,11 @@ async def send_booking_notification_to_admin(booking: dict):
         
         subject = f"New Booking - {booking.get('name', 'Customer')} - {formatted_date} - Ref: {booking_ref}"
         email_sent = False
+        info_cc = "info@bookaride.co.nz"
         for admin_email in admin_emails:
-            if _send_email_with_fallbacks(admin_email, subject, html_content, from_name="BookaRide System"):
-                logger.info(f"Admin notification sent to {admin_email} for booking: {booking_ref}")
+            cc = info_cc if admin_email.lower() != info_cc else None
+            if _send_email_with_fallbacks(admin_email, subject, html_content, from_name="BookaRide System", cc=cc):
+                logger.info(f"Admin notification sent to {admin_email} (CC: {cc}) for booking: {booking_ref}")
                 email_sent = True
             else:
                 logger.error("No email provider configured (Mailgun) - admin notifications not sent")
@@ -4209,11 +4253,13 @@ async def send_urgent_approval_notification(booking: dict):
         
         subject = f"URGENT APPROVAL - {booking.get('name', 'Customer')} - {formatted_date} {booking.get('time', '')} - Ref: {booking_ref}"
         recipient = admin_emails[0] if admin_emails else "bookings@bookaride.co.nz"
+        info_cc = "info@bookaride.co.nz"
+        urgent_cc = info_cc if recipient.lower() != info_cc else None
         email_sent = False
-        
+
         # Send via Mailgun
         if send_email_unified:
-            if send_email_unified(recipient, subject, html_content, from_email=sender_email or get_noreply_email(), from_name="BookaRide URGENT"):
+            if send_email_unified(recipient, subject, html_content, from_email=sender_email or get_noreply_email(), from_name="BookaRide URGENT", cc=urgent_cc):
                 logger.info(f"Urgent approval notification sent to {recipient} for booking: {booking_ref}")
                 email_sent = True
         
@@ -4225,6 +4271,7 @@ async def send_urgent_approval_notification(booking: dict):
             data={
                 "from": f"BookaRide URGENT <{sender_email}>",
                 "to": recipient,
+                "cc": urgent_cc or "",
                 "subject": f" URGENT APPROVAL - {booking.get('name', 'Customer')} - {formatted_date} {booking.get('time', '')} - Ref: {booking_ref}",
                 "html": html_content
             }
@@ -5150,8 +5197,15 @@ def _get_booking_email_data(booking: dict) -> dict:
     return_departure_time = (booking.get('returnDepartureTime') or '').strip()
     return_arrival_time = (booking.get('returnArrivalTime') or '').strip()
     notes = (booking.get('notes') or booking.get('specialRequests') or '').strip()
-    pm = booking.get('paymentMethod') or ''
-    payment_method = (pm if pm else ('Stripe' if booking.get('payment_status') == 'paid' else 'Pending'))
+    pm = (booking.get('paymentMethod') or '').lower()
+    payment_method_labels = {
+        'stripe': 'Credit/Debit Card',
+        'paypal': 'PayPal',
+        'cash': 'Cash',
+        'pay-on-pickup': 'Pay on Pickup',
+        'xero': 'Invoice',
+    }
+    payment_method = payment_method_labels.get(pm, pm.title() if pm else ('Credit/Debit Card' if booking.get('payment_status') == 'paid' else 'Pending'))
     return {
         'total_price': total_price,
         'distance': distance,
@@ -6008,6 +6062,8 @@ async def get_payment_status(session_id: str):
 
                     # Only send notifications on first confirmation to avoid duplicates
                     if needs_confirmation:
+                        # Re-fetch booking so email reflects payment_status=paid
+                        booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
                         send_customer_confirmation(booking)
                         await send_booking_notification_to_admin(booking)
                         await create_calendar_event(booking)

@@ -934,7 +934,7 @@ export const AdminDashboard = () => {
     }
   };
 
-  // Get optimized shuttle route (opens maps URL from backend – Geoapify/OSM)
+  // Get optimized shuttle route (opens maps URL from backend)
   const getShuttleRoute = async (date, time) => {
     try {
       const response = await axios.get(`${API}/shuttle/route/${date}/${time}`, getAuthHeaders());
@@ -1634,7 +1634,7 @@ export const AdminDashboard = () => {
     }
   };
   
-  // Address autocomplete for admin forms (Geoapify) with debounce + stale-request guard
+  // Address autocomplete for admin forms with debounce + stale-request guard
   // Each setter gets its own request counter to prevent cross-field cancellation
   const adminAddrDebounceRef = useRef({});
   const adminAddrRequestIdRef = useRef({});
