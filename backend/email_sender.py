@@ -28,6 +28,7 @@ def send_email(
     from_email: str = None,
     from_name: str = "BookARide NZ",
     reply_to: str = None,
+    cc: str = None,
 ) -> bool:
     """
     Send an email via Mailgun.
@@ -54,6 +55,8 @@ def send_email(
     from_addr = f"{from_name} <{from_email}>" if from_name else from_email
     try:
         data = {"from": from_addr, "to": [to], "subject": subject, "html": html}
+        if cc:
+            data["cc"] = [cc] if isinstance(cc, str) else cc
         if reply_to:
             data["h:Reply-To"] = reply_to
         resp = req.post(

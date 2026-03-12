@@ -47,7 +47,7 @@ def _send_email_with_fallbacks(to_email, subject, html_content, from_email=None,
 
     if send_email_unified:
         try:
-            if send_email_unified(to_email, subject, html_content, from_email=sender, from_name=from_name):
+            if send_email_unified(to_email, subject, html_content, from_email=sender, from_name=from_name, reply_to=reply_to, cc=cc):
                 return True
         except Exception as e:
             logging.getLogger(__name__).warning(f"email_sender module failed: {e}")
@@ -2463,7 +2463,9 @@ async def send_booking_to_admin(booking_id: str, current_admin: dict = Depends(g
         """
         
         email_subject = f"Booking Details - {booking.get('name', 'Customer')} - {booking.get('id', '')[:8].upper()}"
-        ok = _send_email_with_fallbacks(admin_email, email_subject, html_content, from_name="BookaRide System")
+        info_cc = "info@bookaride.co.nz"
+        cc = info_cc if admin_email.lower() != info_cc else None
+        ok = _send_email_with_fallbacks(admin_email, email_subject, html_content, from_name="BookaRide System", cc=cc)
 
         subject = f"Booking Details - {booking.get('name', 'Customer')} - {booking.get('id', '')[:8].upper()}"
         from_email = get_noreply_email()
@@ -4142,9 +4144,11 @@ async def send_booking_notification_to_admin(booking: dict):
         
         subject = f"New Booking - {booking.get('name', 'Customer')} - {formatted_date} - Ref: {booking_ref}"
         email_sent = False
+        info_cc = "info@bookaride.co.nz"
         for admin_email in admin_emails:
-            if _send_email_with_fallbacks(admin_email, subject, html_content, from_name="BookaRide System"):
-                logger.info(f"Admin notification sent to {admin_email} for booking: {booking_ref}")
+            cc = info_cc if admin_email.lower() != info_cc else None
+            if _send_email_with_fallbacks(admin_email, subject, html_content, from_name="BookaRide System", cc=cc):
+                logger.info(f"Admin notification sent to {admin_email} (CC: {cc}) for booking: {booking_ref}")
                 email_sent = True
             else:
                 logger.error("No email provider configured (Mailgun) - admin notifications not sent")
@@ -4251,11 +4255,13 @@ async def send_urgent_approval_notification(booking: dict):
         
         subject = f"URGENT APPROVAL - {booking.get('name', 'Customer')} - {formatted_date} {booking.get('time', '')} - Ref: {booking_ref}"
         recipient = admin_emails[0] if admin_emails else "bookings@bookaride.co.nz"
+        info_cc = "info@bookaride.co.nz"
+        urgent_cc = info_cc if recipient.lower() != info_cc else None
         email_sent = False
-        
+
         # Send via Mailgun
         if send_email_unified:
-            if send_email_unified(recipient, subject, html_content, from_email=sender_email or get_noreply_email(), from_name="BookaRide URGENT"):
+            if send_email_unified(recipient, subject, html_content, from_email=sender_email or get_noreply_email(), from_name="BookaRide URGENT", cc=urgent_cc):
                 logger.info(f"Urgent approval notification sent to {recipient} for booking: {booking_ref}")
                 email_sent = True
         
@@ -4267,6 +4273,7 @@ async def send_urgent_approval_notification(booking: dict):
             data={
                 "from": f"BookaRide URGENT <{sender_email}>",
                 "to": recipient,
+                "cc": urgent_cc or "",
                 "subject": f" URGENT APPROVAL - {booking.get('name', 'Customer')} - {formatted_date} {booking.get('time', '')} - Ref: {booking_ref}",
                 "html": html_content
             }
