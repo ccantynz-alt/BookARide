@@ -404,24 +404,6 @@ class BookingCreate(BaseModel):
     #             pass
     #     return self
 
-@model_validator(mode='after')
-def validate_booking_date(self):       
-    # Skip validation for data retrieval operations    
-    if hasattr(self, '_skip_date_validation') or getattr(self, 'id', None):    
-        return self
-    
-    if self.date:  # ÃƒÆ'Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ'Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ'Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ NOW PROPERLY INSIDE THE FUNCTION
-        try:
-            nz_tz = pytz.timezone('Pacific/Auckland')
-            today = datetime.now(nz_tz).strftime('%Y-%m-%d')
-            if self.date < today:
-                raise ValueError(f'Booking date ({self.date}) cannot be in the past. Today is {today}.')
-        except Exception as e:
-            if 'cannot be in the past' in str(e):
-                raise
-            pass
-    return self
-
 class Booking(BookingCreate):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     referenceNumber: Optional[str] = None  # Sequential reference number (can be int stored as string or custom string like TEST-999)
@@ -2227,19 +2209,73 @@ async def get_bookings(
             bookings = all_bookings[skip:skip + limit]
             logger.info(f"Fetched {len(bookings)} bookings (page {page}, total {total})")
         
-        # Validate and return; allow shuttle docs that may have minimal fields
+        # Build response — NEVER silently drop bookings.  Use model_construct
+        # to skip validators (they protect creation, not retrieval).  Fill in
+        # required-field defaults so the admin dashboard always shows every
+        # booking, even ones created via manual/bulk endpoints that may lack
+        # some fields.
+        _REQUIRED_DEFAULTS = {
+            'serviceType': 'unknown',
+            'pickupAddress': '',
+            'pickupAddresses': [],
+            'dropoffAddress': '',
+            'date': '',
+            'time': '',
+            'passengers': '1',
+            'name': 'Unknown',
+            'email': '',
+            'phone': '',
+            'pricing': {},
+            'notes': '',
+            'bookReturn': False,
+            'returnDate': '',
+            'returnTime': '',
+            'status': 'pending',
+            'payment_status': 'unpaid',
+        }
         out = []
         for b in bookings:
             try:
-                # Ensure required Booking fields exist for shuttle
-                b.setdefault('pickupAddress', b.get('pickupAddress') or '')
-                b.setdefault('notes', '')
-                b.setdefault('bookReturn', False)
-                b.setdefault('returnDate', '')
-                b.setdefault('returnTime', '')
-                out.append(Booking(**b))
+                # Ensure every required field has a value
+                for field, default in _REQUIRED_DEFAULTS.items():
+                    b.setdefault(field, default)
+                # Coerce passengers to string (manual inserts may store int)
+                if isinstance(b.get('passengers'), (int, float)):
+                    b['passengers'] = str(int(b['passengers']))
+                # Coerce referenceNumber to string
+                if b.get('referenceNumber') is not None:
+                    b['referenceNumber'] = str(b['referenceNumber'])
+                # Ensure id exists
+                b.setdefault('id', str(uuid.uuid4()))
+                # Use model_construct to SKIP validators — never drop a booking
+                out.append(Booking.model_construct(**b))
             except Exception as e:
-                logger.warning(f"Skip booking (validation): id={b.get('id')} ref={b.get('referenceNumber')} err={e}")
+                # Last resort: return raw dict wrapped loosely — still never drop
+                logger.error(f"Booking construct failed (STILL RETURNING IT): id={b.get('id')} ref={b.get('referenceNumber')} err={e}")
+                try:
+                    out.append(Booking.model_construct(**b))
+                except Exception:
+                    # Absolute last resort — force it through
+                    out.append(Booking.model_construct(
+                        id=b.get('id', str(uuid.uuid4())),
+                        serviceType=b.get('serviceType', 'unknown'),
+                        pickupAddress=b.get('pickupAddress', ''),
+                        dropoffAddress=b.get('dropoffAddress', ''),
+                        date=b.get('date', ''),
+                        time=b.get('time', ''),
+                        passengers=str(b.get('passengers', '1')),
+                        name=b.get('name', 'Unknown'),
+                        email=b.get('email', ''),
+                        phone=b.get('phone', ''),
+                        pricing=b.get('pricing', {}),
+                        notes=b.get('notes', ''),
+                        bookReturn=b.get('bookReturn', False),
+                        returnDate=b.get('returnDate', ''),
+                        returnTime=b.get('returnTime', ''),
+                        status=b.get('status', 'pending'),
+                        payment_status=b.get('payment_status', 'unpaid'),
+                        referenceNumber=str(b.get('referenceNumber', '')),
+                    ))
         return out
     except Exception as e:
         logger.error(f"Error fetching bookings: {str(e)}")
