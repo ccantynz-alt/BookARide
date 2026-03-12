@@ -2119,8 +2119,16 @@ async def get_bookings(
                 date_conditions.append({'returnDate': return_cond})
             if date_conditions:
                 if '$or' in query:
-                    # Wrap existing $or with $and to combine
-                    query = {'$and': [{'$or': query['$or']}, {'$or': date_conditions}]}
+                    # Combine search $or with date $or using $and, but PRESERVE
+                    # any other top-level filters (e.g. status) that were set earlier.
+                    other_filters = {k: v for k, v in query.items() if k != '$or'}
+                    query = {
+                        '$and': [
+                            {'$or': query['$or']},
+                            {'$or': date_conditions},
+                        ]
+                    }
+                    query.update(other_filters)
                 else:
                     query['$or'] = date_conditions
         
