@@ -638,29 +638,6 @@ export const BookNow = () => {
                         </div>
                       </div>
 
-                      {/* Flight Number - Single field */}
-                      <div className="bg-gray-50 p-6 rounded-lg mb-6">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Flight Information</h3>
-                        <p className="text-sm text-gray-600 mb-2">Enter your flight number so our driver knows which flight to meet.</p>
-                        <p className="text-xs text-amber-700 bg-amber-50 p-2 rounded mb-4">
-                          <strong>Important:</strong> Flight numbers are required for airport pickups so our driver can meet you on time.
-                        </p>
-                        <div className="space-y-2">
-                          <Label htmlFor="flightNumber" className="flex items-center space-x-2">
-                            <Plane className="w-4 h-4 text-gold" />
-                            <span>Flight Number</span>
-                          </Label>
-                          <Input
-                            id="flightNumber"
-                            name="flightNumber"
-                            value={formData.flightNumber}
-                            onChange={handleChange}
-                            placeholder="e.g., NZ123"
-                            className="transition-all duration-200 focus:ring-2 focus:ring-gold"
-                          />
-                        </div>
-                      </div>
-
                       {/* Passengers */}
                       <div className="space-y-2 mb-6">
                         <Label htmlFor="passengers" className="flex items-center space-x-2">
@@ -722,70 +699,94 @@ export const BookNow = () => {
                         </div>
                       </div>
 
-                      {/* Return Journey - Simplified */}
+                      {/* Flight Details & Return Journey */}
                       <div className="bg-gray-50 p-6 rounded-lg mb-6 border border-gray-200">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Return Journey <span className="text-sm font-normal text-gray-500">(Optional - leave blank for one-way)</span></h3>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Flight Details</h3>
+                        <p className="text-xs text-amber-700 bg-amber-50 p-2 rounded mb-4">
+                          <strong>Important:</strong> Flight numbers are required for airport pickups so our driver can meet you on time.
+                        </p>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
-                          <div className="space-y-2">
-                            <Label className="flex items-center space-x-2">
-                              <Calendar className="w-4 h-4 text-gold" />
-                              <span>Return Date</span>
-                            </Label>
-                            <CustomDatePicker
-                              selected={returnDatePicker}
-                              onChange={(date) => {
-                                setReturnDatePicker(date);
-                                if (date) {
-                                  const year = date.getFullYear();
-                                  const month = String(date.getMonth() + 1).padStart(2, '0');
-                                  const day = String(date.getDate()).padStart(2, '0');
-                                  setFormData(prev => ({ ...prev, returnDate: `${year}-${month}-${day}` }));
-                                }
-                              }}
-                              placeholder="Select return date"
-                              minDate={pickupDate || new Date()}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label className="flex items-center space-x-2">
-                              <Clock className="w-4 h-4 text-gold" />
-                              <span>Return Time</span>
-                            </Label>
-                            <CustomTimePicker
-                              selected={returnTimePicker}
-                              onChange={(time) => {
-                                setReturnTimePicker(time);
-                                if (time) {
-                                  const hours = time.getHours().toString().padStart(2, '0');
-                                  const minutes = time.getMinutes().toString().padStart(2, '0');
-                                  setFormData(prev => ({ ...prev, returnTime: `${hours}:${minutes}` }));
-                                }
-                              }}
-                              placeholder="Select return time"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Single return flight number */}
-                        <div className="space-y-2">
-                          <Label htmlFor="returnFlightNumber" className="flex items-center space-x-2">
+                        {/* Departure Flight Number */}
+                        <div className="space-y-2 mb-6">
+                          <Label htmlFor="flightNumber" className="flex items-center space-x-2">
                             <Plane className="w-4 h-4 text-gold" />
-                            <span>Return Flight Number <span className="text-sm font-normal text-gray-500">(Required if booking return)</span></span>
+                            <span>Departure Flight Number</span>
                           </Label>
                           <Input
-                            id="returnFlightNumber"
-                            name="returnFlightNumber"
-                            value={formData.returnFlightNumber}
+                            id="flightNumber"
+                            name="flightNumber"
+                            value={formData.flightNumber}
                             onChange={handleChange}
-                            placeholder="e.g., NZ456"
+                            placeholder="e.g., NZ123"
                             className="transition-all duration-200 focus:ring-2 focus:ring-gold"
                           />
                         </div>
 
-                        <p className="text-xs text-gray-600 mt-4">
-                          Return trip will be from <strong>{formData.dropoffAddress || 'drop-off location'}</strong> back to <strong>{formData.pickupAddress || 'pickup location'}</strong>
-                        </p>
+                        {/* Return Journey */}
+                        <div className="border-t border-gray-200 pt-4">
+                          <h4 className="text-md font-semibold text-gray-800 mb-1">Return Journey <span className="text-sm font-normal text-gray-500">(Optional - leave blank for one-way)</span></h4>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4 mt-3">
+                            <div className="space-y-2">
+                              <Label className="flex items-center space-x-2">
+                                <Calendar className="w-4 h-4 text-gold" />
+                                <span>Return Date</span>
+                              </Label>
+                              <CustomDatePicker
+                                selected={returnDatePicker}
+                                onChange={(date) => {
+                                  setReturnDatePicker(date);
+                                  if (date) {
+                                    const year = date.getFullYear();
+                                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                                    const day = String(date.getDate()).padStart(2, '0');
+                                    setFormData(prev => ({ ...prev, returnDate: `${year}-${month}-${day}` }));
+                                  }
+                                }}
+                                placeholder="Select return date"
+                                minDate={pickupDate || new Date()}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="flex items-center space-x-2">
+                                <Clock className="w-4 h-4 text-gold" />
+                                <span>Return Time</span>
+                              </Label>
+                              <CustomTimePicker
+                                selected={returnTimePicker}
+                                onChange={(time) => {
+                                  setReturnTimePicker(time);
+                                  if (time) {
+                                    const hours = time.getHours().toString().padStart(2, '0');
+                                    const minutes = time.getMinutes().toString().padStart(2, '0');
+                                    setFormData(prev => ({ ...prev, returnTime: `${hours}:${minutes}` }));
+                                  }
+                                }}
+                                placeholder="Select return time"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Return flight number */}
+                          <div className="space-y-2">
+                            <Label htmlFor="returnFlightNumber" className="flex items-center space-x-2">
+                              <Plane className="w-4 h-4 text-gold" />
+                              <span>Return Flight Number <span className="text-sm font-normal text-gray-500">(Required if booking return)</span></span>
+                            </Label>
+                            <Input
+                              id="returnFlightNumber"
+                              name="returnFlightNumber"
+                              value={formData.returnFlightNumber}
+                              onChange={handleChange}
+                              placeholder="e.g., NZ456"
+                              className="transition-all duration-200 focus:ring-2 focus:ring-gold"
+                            />
+                          </div>
+
+                          <p className="text-xs text-gray-600 mt-4">
+                            Return trip will be from <strong>{formData.dropoffAddress || 'drop-off location'}</strong> back to <strong>{formData.pickupAddress || 'pickup location'}</strong>
+                          </p>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>

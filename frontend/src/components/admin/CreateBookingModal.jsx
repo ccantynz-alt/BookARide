@@ -549,11 +549,14 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
                 </div>
               </div>
 
-              {/* Flight Details Section */}
+              {/* Flight Details & Return Journey - Single Section */}
               <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                 <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
                   Flight Details (Optional)
                 </h4>
+                <p className="text-xs text-gray-600 mb-3">
+                  Add flight details for airport pickups/drop-offs to better track and coordinate transfers
+                </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label>Flight Arrival Number</Label>
@@ -608,16 +611,11 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
                     </div>
                   </div>
                 </div>
-                <p className="text-xs text-gray-600 mt-2">
-                  Add flight details for airport pickups/drop-offs to better track and coordinate transfers
-                </p>
-              </div>
 
-              {/* Return Journey */}
-              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                <h4 className="font-semibold text-gray-900 mb-2">Return Journey <span className="text-sm font-normal text-gray-500">(Optional – leave blank for one-way)</span></h4>
-                <div className="space-y-4 mt-4">
-                  <p className="text-sm text-gray-600">
+                {/* Return Journey sub-section */}
+                <div className="mt-4 pt-4 border-t border-blue-200">
+                  <h4 className="font-semibold text-gray-900 mb-2">Return Journey <span className="text-sm font-normal text-gray-500">(Optional – leave blank for one-way)</span></h4>
+                  <p className="text-sm text-gray-600 mb-3">
                     Return trip: Drop-off → Pickup (reverse of outbound journey)
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -662,7 +660,7 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
                       </div>
                     </div>
                   </div>
-                  <div className="mt-4 pt-4 border-t border-gray-200">
+                  <div className="mt-4 pt-4 border-t border-blue-100">
                     <Label className="text-sm font-medium text-gray-700 mb-2 block">Return Flight Information (required if booking return)</Label>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>

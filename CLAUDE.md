@@ -100,17 +100,21 @@ Before making ANY change, verify:
 
 ## Environment Variables (Render)
 
-Required:
+**All credentials are configured in Render's Environment tab — NOT in a `.env` file in the repo.**
+The absence of a `.env` file does NOT mean credentials are missing. Do NOT assume services are unconfigured.
+See `backend/.env.example` for the full list of variables (template only — no real secrets).
+
+Required (all set in Render):
 - `DATABASE_URL` — Neon PostgreSQL connection string
 - `JWT_SECRET_KEY`
 - `MAILGUN_API_KEY` + `MAILGUN_DOMAIN`
 
-Optional (but needed for full functionality):
+Optional (but needed for full functionality, all set in Render):
 - `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET`
 - `TWILIO_ACCOUNT_SID` + `TWILIO_AUTH_TOKEN` + `TWILIO_PHONE_NUMBER`
 - `GOOGLE_MAPS_API_KEY`
 - `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` (OAuth)
-- `GOOGLE_SERVICE_ACCOUNT_JSON` (Calendar)
+- `GOOGLE_SERVICE_ACCOUNT_JSON` (Calendar + Search Console)
 
 ## Build & Test
 
@@ -124,6 +128,31 @@ cd backend && python3 start.py
 
 ---
 
+## Booking System Architecture
+
+### Booking Flow (Customer → Admin)
+
+1. Customer submits booking via `BookNow.jsx` → `POST /api/bookings` → creates booking in `db.bookings`
+2. If within 24 hours: status = `pending_approval` (requires admin manual approval)
+3. If Stripe payment: `POST /api/payment/create-checkout` → Stripe → webhook updates booking to `paid`/`confirmed`
+4. Admin sees ALL bookings at `GET /api/bookings` (fetches from `db.bookings` ONLY)
+
+### Orphan Payment Recovery
+
+If a customer pays via Stripe but the booking is missing from admin:
+- `GET /api/bookings/orphan-payments` — lists paid Stripe transactions with no matching booking
+- `POST /api/bookings/recover-from-payment` — creates a booking from the payment data
+- The admin dashboard has a "Check Orphan Payments" button for this
+
+### Known Booking System Issues (Fixed 2026-03-11)
+
+- Pydantic `Booking(**b)` validation was silently dropping bookings with missing/invalid fields
+- Shuttle bookings were being merged into admin panel causing confusion
+- SMTP code existed in `routes_bulk.py` violating Mailgun-only rule
+- Orphaned `validate_booking_date` function at module level (not inside any class)
+
+---
+
 ## History of Production Breaks (why these rules exist)
 
 | Date       | What broke                          | Root cause                              |
@@ -132,3 +161,7 @@ cd backend && python3 start.py
 | 2026-03    | Email sending crash potential        | SMTP fallback used MIMEMultipart/smtplib without importing them |
 | Repeated   | Database connection failures         | Agents kept adding MongoDB references   |
 | Repeated   | Email failures                       | Agents kept adding SendGrid/SMTP code   |
+| 2026-03    | Duplicate flight sections in form    | Two separate flight detail sections confused customers |
+| 2026-03-11 | Paid booking invisible in admin      | Pydantic validation silently dropped bookings with missing fields |
+| 2026-03-11 | Admin panel cluttered/confusing      | Shuttle bookings merged into booking list without permission |
+| 2026-03-11 | Bulk email broken                    | SMTP code in routes_bulk.py instead of Mailgun |

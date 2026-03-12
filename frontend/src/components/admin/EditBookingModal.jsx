@@ -218,7 +218,7 @@ const EditBookingModal = memo(({ open, onClose, booking, onSuccess, onPreviewCon
                 </div>
               </div>
 
-              {/* Flight Details */}
+              {/* Flight Details & Return Journey - Single Section */}
               <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                 <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
                   Flight Details (Optional)
@@ -261,44 +261,44 @@ const EditBookingModal = memo(({ open, onClose, booking, onSuccess, onPreviewCon
                     />
                   </div>
                 </div>
-              </div>
 
-              {/* Return Journey */}
-              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                <h4 className="font-semibold text-gray-900 mb-2">Return Journey <span className="text-sm font-normal text-gray-500">(Optional)</span></h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
-                  <div>
-                    <Label>Return Date *</Label>
-                    <Input
-                      type="date"
-                      value={editingBooking.returnDate || ''}
-                      onChange={(e) => setEditingBooking(prev => ({...prev, returnDate: e.target.value}))}
-                      min={editingBooking.date || new Date().toISOString().split('T')[0]}
-                      className="mt-1 bg-white"
-                    />
-                  </div>
-                  <div>
-                    <Label>Return Time *</Label>
-                    <Input
-                      type="time"
-                      value={editingBooking.returnTime || ''}
-                      onChange={(e) => setEditingBooking(prev => ({...prev, returnTime: e.target.value}))}
-                      className="mt-1 bg-white"
-                    />
-                  </div>
-                  <div>
-                    <Label>Return Flight Number</Label>
-                    <Input
-                      value={editingBooking.returnFlightNumber || editingBooking.returnDepartureFlightNumber || ''}
-                      onChange={(e) => setEditingBooking(prev => ({...prev, returnFlightNumber: e.target.value, returnDepartureFlightNumber: e.target.value}))}
-                      placeholder="e.g. NZ456"
-                      className="mt-1 bg-white"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <p className="text-xs text-gray-600 italic">
-                      Return route: {editingBooking.dropoffAddress?.split(',')[0]} → {editingBooking.pickupAddress?.split(',')[0]}
-                    </p>
+                {/* Return Journey sub-section */}
+                <div className="mt-4 pt-4 border-t border-blue-200">
+                  <h4 className="font-semibold text-gray-900 mb-2">Return Journey <span className="text-sm font-normal text-gray-500">(Optional)</span></h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                    <div>
+                      <Label>Return Date *</Label>
+                      <Input
+                        type="date"
+                        value={editingBooking.returnDate || ''}
+                        onChange={(e) => setEditingBooking(prev => ({...prev, returnDate: e.target.value}))}
+                        min={editingBooking.date || new Date().toISOString().split('T')[0]}
+                        className="mt-1 bg-white"
+                      />
+                    </div>
+                    <div>
+                      <Label>Return Time *</Label>
+                      <Input
+                        type="time"
+                        value={editingBooking.returnTime || ''}
+                        onChange={(e) => setEditingBooking(prev => ({...prev, returnTime: e.target.value}))}
+                        className="mt-1 bg-white"
+                      />
+                    </div>
+                    <div>
+                      <Label>Return Flight Number</Label>
+                      <Input
+                        value={editingBooking.returnFlightNumber || editingBooking.returnDepartureFlightNumber || ''}
+                        onChange={(e) => setEditingBooking(prev => ({...prev, returnFlightNumber: e.target.value, returnDepartureFlightNumber: e.target.value}))}
+                        placeholder="e.g. NZ456"
+                        className="mt-1 bg-white"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <p className="text-xs text-gray-600 italic">
+                        Return route: {editingBooking.dropoffAddress?.split(',')[0]} → {editingBooking.pickupAddress?.split(',')[0]}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
