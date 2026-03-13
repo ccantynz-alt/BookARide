@@ -768,6 +768,37 @@ export const AdminDashboard = () => {
   };
   fetchBookingsRef.current = fetchBookings;
 
+  // ── Optimistic helpers: update UI instantly without full reload ──
+  const updateBookingLocally = (bookingId, updates) => {
+    setBookings(prev => prev.map(b => b && b.id === bookingId ? { ...b, ...updates } : b));
+  };
+
+  const removeBookingLocally = (bookingId) => {
+    setBookings(prev => prev.filter(b => b && b.id !== bookingId));
+  };
+
+  // Silent background refresh — syncs with server without showing spinner
+  const silentRefresh = async () => {
+    try {
+      const params = {
+        page: loadAllBookings ? 1 : 1,
+        limit: loadAllBookings ? 0 : bookingsPerPage
+      };
+      if (dateFrom) params.date_from = dateFrom;
+      if (dateTo) params.date_to = dateTo;
+      const response = await axios.get(`${API}/bookings`, { ...getAuthHeaders(), params });
+      const fresh = Array.isArray(response.data) ? response.data : [];
+      setBookings(fresh);
+      try {
+        localStorage.setItem('cachedBookings', JSON.stringify(fresh.slice(0, 50)));
+        localStorage.setItem('cachedBookingsTime', new Date().toISOString());
+      } catch (e) { /* localStorage full — not critical */ }
+    } catch (error) {
+      // Silent refresh failed — not critical, optimistic state is still valid
+      console.error('Silent refresh failed:', error);
+    }
+  };
+
   const fetchBookingCounts = async () => {
     try {
       const response = await axios.get(`${API}/bookings/count`, getAuthHeaders());
@@ -827,7 +858,7 @@ export const AdminDashboard = () => {
       toast.success(response.data?.message || 'Booking recovered and added to the list.');
       setRecoverSessionId('');
       setOrphanPayments(prev => prev.filter(o => o.booking_id !== (response.data?.booking_id || bookingId)));
-      fetchBookingsRef.current?.();
+      silentRefresh();
     } catch (error) {
       const detail = error.response?.data?.detail;
       toast.error(typeof detail === 'string' ? detail : 'Recover failed');
@@ -870,7 +901,7 @@ export const AdminDashboard = () => {
     try {
       const response = await axios.post(`${API}/bookings/archive/${bookingId}`, {}, getAuthHeaders());
       toast.success(`Booking #${response.data.referenceNumber} archived successfully`);
-      fetchBookingsRef.current?.();
+      removeBookingLocally(bookingId);
       fetchArchivedCount();
     } catch (error) {
       console.error('Error archiving booking:', error);
@@ -884,7 +915,7 @@ export const AdminDashboard = () => {
       const response = await axios.post(`${API}/bookings/unarchive/${bookingId}`, {}, getAuthHeaders());
       toast.success(`Booking #${response.data.referenceNumber} restored to active bookings`);
       fetchArchivedBookings(archivePage, archiveSearchTerm);
-      fetchBookingsRef.current?.();
+      silentRefresh();
     } catch (error) {
       console.error('Error unarchiving booking:', error);
       toast.error(error.response?.data?.detail || 'Failed to restore booking');
@@ -908,7 +939,7 @@ export const AdminDashboard = () => {
         toast.success(`Auto-archive complete! Archived ${archived} completed bookings.`);
         fetchArchivedBookings(1, '');
         fetchArchivedCount();
-        fetchBookingsRef.current?.(); // Refresh active bookings list
+        silentRefresh(); // Refresh active bookings list
       } else {
         toast.info('No bookings to archive. All completed trips are either already archived or still have pending return dates.');
       }
@@ -1051,7 +1082,7 @@ export const AdminDashboard = () => {
     try {
       const response = await axios.post(`${API}/xero/create-invoice/${bookingId}`, {}, getAuthHeaders());
       toast.success(response.data.message);
-      fetchBookingsRef.current?.();
+      silentRefresh();
     } catch (error) {
       console.error('Error creating Xero invoice:', error);
       toast.error(error.response?.data?.detail || 'Failed to create invoice');
@@ -1062,7 +1093,7 @@ export const AdminDashboard = () => {
     try {
       const response = await axios.post(`${API}/xero/record-payment/${bookingId}`, {}, getAuthHeaders());
       toast.success(response.data.message);
-      fetchBookingsRef.current?.();
+      silentRefresh();
     } catch (error) {
       console.error('Error recording payment:', error);
       toast.error(error.response?.data?.detail || 'Failed to record payment');
@@ -1074,7 +1105,7 @@ export const AdminDashboard = () => {
       await axios.post(`${API}/bookings/restore/${bookingId}`, {}, getAuthHeaders());
       toast.success('Booking restored successfully!');
       fetchDeletedBookings();
-      fetchBookingsRef.current?.();
+      silentRefresh();
     } catch (error) {
       console.error('Error restoring booking:', error);
       toast.error('Failed to restore booking');
@@ -1109,7 +1140,7 @@ export const AdminDashboard = () => {
       toast.success(count ? `Restored ${count} booking(s). Your list is reinstated.` : res.data?.message || 'Done');
       setDeletedCountForBanner(0);
       fetchDeletedBookings();
-      fetchBookingsRef.current?.();
+      silentRefresh();
     } catch (error) {
       console.error('Error restoring all bookings:', error);
       toast.error(error.response?.data?.detail || 'Failed to restore all bookings');
@@ -1162,7 +1193,7 @@ export const AdminDashboard = () => {
       const res = await axios.post(`${API}/admin/backups/${label}/restore`, {}, getAuthHeaders());
       if (res.data.restored > 0) {
         toast.success(`Restored ${res.data.restored} missing booking(s) from ${label}`);
-        fetchBookingsRef.current?.();
+        silentRefresh();
       } else {
         toast.info(`No missing bookings found in ${label} backup — all bookings already present`);
       }
@@ -1203,7 +1234,7 @@ export const AdminDashboard = () => {
       setBackupRestoreResult(res.data);
       const { imported_count, skipped_count, error_count } = res.data;
       toast.success(`Restored ${imported_count} booking(s) from backup. Skipped ${skipped_count} duplicates.${error_count ? ` ${error_count} errors.` : ''}`);
-      fetchBookingsRef.current?.();
+      silentRefresh();
     } catch (error) {
       const msg = error.response?.data?.detail || error.message || 'Restore failed';
       toast.error(msg);
@@ -1223,7 +1254,7 @@ export const AdminDashboard = () => {
       setBackupRestoreResult(res.data);
       const { imported_count, skipped_count, source_file } = res.data;
       toast.success(`Restored ${imported_count} booking(s) from ${source_file || 'server backup'}. Skipped ${skipped_count} duplicates.`);
-      fetchBookingsRef.current?.();
+      silentRefresh();
     } catch (error) {
       const msg = error.response?.data?.detail || error.message || 'Restore failed';
       toast.error(msg);
@@ -1349,7 +1380,24 @@ export const AdminDashboard = () => {
       setDriverPayoutOverride('');
       setShowDriverAssignPreview(false);
       setPendingAssignment(null);
-      fetchBookingsRef.current?.();
+      // Optimistic: update driver info in local booking
+      const confirmAssignedDriver = drivers.find(d => d.id === selectedDriver);
+      if (tripType === 'return') {
+        updateBookingLocally(selectedBooking.id, {
+          return_driver_id: selectedDriver,
+          return_driver_name: confirmAssignedDriver?.name || '',
+          return_driver_phone: confirmAssignedDriver?.phone || '',
+          return_driver_email: confirmAssignedDriver?.email || '',
+        });
+      } else {
+        updateBookingLocally(selectedBooking.id, {
+          driver_id: selectedDriver,
+          driver_name: confirmAssignedDriver?.name || '',
+          driver_phone: confirmAssignedDriver?.phone || '',
+          driver_email: confirmAssignedDriver?.email || '',
+        });
+      }
+      silentRefresh();
     } catch (error) {
       console.error('Error assigning driver:', error);
       toast.error('Failed to assign driver');
@@ -1398,7 +1446,24 @@ export const AdminDashboard = () => {
       toast.success(response.data?.message || 'Driver assigned successfully!');
       setSelectedDriver('');
       setDriverPayoutOverride('');
-      fetchBookingsRef.current?.();
+      // Optimistic: update driver info in local booking
+      const assignedDriverObj = drivers.find(d => d.id === selectedDriver);
+      if (tripType === 'return') {
+        updateBookingLocally(selectedBooking.id, {
+          return_driver_id: selectedDriver,
+          return_driver_name: assignedDriverObj?.name || '',
+          return_driver_phone: assignedDriverObj?.phone || '',
+          return_driver_email: assignedDriverObj?.email || '',
+        });
+      } else {
+        updateBookingLocally(selectedBooking.id, {
+          driver_id: selectedDriver,
+          driver_name: assignedDriverObj?.name || '',
+          driver_phone: assignedDriverObj?.phone || '',
+          driver_email: assignedDriverObj?.email || '',
+        });
+      }
+      silentRefresh();
     } catch (error) {
       console.error('Error assigning driver:', error);
       toast.error('Failed to assign driver');
@@ -1444,7 +1509,19 @@ export const AdminDashboard = () => {
       }
       
       toast.success(response.data?.message || 'Driver unassigned successfully!');
-      fetchBookingsRef.current?.();
+      // Optimistic: clear driver info in local booking
+      if (tripType === 'return') {
+        updateBookingLocally(selectedBooking.id, {
+          return_driver_id: null, return_driver_name: null,
+          return_driver_phone: null, return_driver_email: null,
+        });
+      } else {
+        updateBookingLocally(selectedBooking.id, {
+          driver_id: null, driver_name: null,
+          driver_phone: null, driver_email: null, driverConfirmed: false,
+        });
+      }
+      silentRefresh();
     } catch (error) {
       console.error('Error unassigning driver:', error);
       toast.error(error.response?.data?.detail || 'Failed to unassign driver');
@@ -1545,7 +1622,8 @@ export const AdminDashboard = () => {
     try {
       await axios.patch(`${API}/bookings/${bookingId}`, { status: newStatus }, getAuthHeaders());
       toast.success('Status updated successfully');
-      fetchBookingsRef.current?.();
+      updateBookingLocally(bookingId, { status: newStatus });
+      silentRefresh();
     } catch (error) {
       if (error.response?.status === 401) {
         toast.error('Session expired. Please login again.');
@@ -1574,7 +1652,7 @@ export const AdminDashboard = () => {
       } else {
         toast.success('Booking silently deleted - No notification sent');
       }
-      fetchBookingsRef.current?.();
+      removeBookingLocally(bookingId);
     } catch (error) {
       if (error.response?.status === 401) {
         toast.error('Session expired. Please login again.');
@@ -1616,7 +1694,7 @@ export const AdminDashboard = () => {
     }
     
     setSelectedBookings(new Set());
-    fetchBookingsRef.current?.();
+    silentRefresh();
   };
 
   const handleSendToAdmin = async (bookingId) => {
@@ -1748,7 +1826,10 @@ export const AdminDashboard = () => {
       }, getAuthHeaders());
       toast.success('Price updated successfully');
       setShowDetailsModal(false);
-      fetchBookingsRef.current?.();
+      updateBookingLocally(selectedBooking.id, {
+        pricing: { ...selectedBooking.pricing, totalPrice: newPrice, overridden: true }
+      });
+      silentRefresh();
     } catch (error) {
       console.error('Error updating price:', error);
       toast.error('Failed to update price');
@@ -1768,8 +1849,9 @@ export const AdminDashboard = () => {
 
       if (response.data.success) {
         toast.success('Payment status updated successfully');
-        fetchBookingsRef.current?.();
+        updateBookingLocally(selectedBooking.id, { payment_status: selectedPaymentStatus });
         setShowDetailsModal(false);
+        silentRefresh();
       }
     } catch (error) {
       console.error('Error updating payment status:', error);
@@ -1847,8 +1929,27 @@ export const AdminDashboard = () => {
 
       toast.success('Booking updated successfully!');
       setShowEditBookingModal(false);
+      // Optimistic update: patch the booking in local state instantly (reuses flightNum from above)
+      updateBookingLocally(editingBooking.id, {
+        name: editingBooking.name,
+        email: editingBooking.email,
+        phone: editingBooking.phone,
+        pickupAddress: editingBooking.pickupAddress,
+        pickupAddresses: editingBooking.pickupAddresses?.filter(addr => addr.trim()) || [],
+        dropoffAddress: editingBooking.dropoffAddress,
+        date: editingBooking.date,
+        time: editingBooking.time,
+        passengers: editingBooking.passengers,
+        notes: editingBooking.notes,
+        flightNumber: flightNum,
+        flightArrivalNumber: flightNum,
+        flightDepartureNumber: flightNum,
+        returnDate: editingBooking.returnDate || '',
+        returnTime: editingBooking.returnTime || '',
+        returnFlightNumber: editingBooking.returnFlightNumber || editingBooking.returnDepartureFlightNumber || '',
+      });
       setEditingBooking(null);
-      fetchBookingsRef.current?.();
+      silentRefresh(); // sync with server in background
     } catch (error) {
       console.error('Error updating booking:', error);
       toast.error(error.response?.data?.detail || 'Failed to update booking');
@@ -1885,7 +1986,7 @@ export const AdminDashboard = () => {
     try {
       const response = await axios.post(`${API}/bookings/${bookingId}/sync-calendar`, {}, getAuthHeaders());
       toast.success(response.data.message || 'Booking synced to Google Calendar!');
-      fetchBookingsRef.current?.();
+      silentRefresh();
     } catch (error) {
       console.error('Error syncing to calendar:', error);
       toast.error(error.response?.data?.detail || 'Failed to sync to calendar');
@@ -1930,8 +2031,7 @@ export const AdminDashboard = () => {
       const response = await axios.post(`${API}/tracking/send-driver-link/${bookingId}`, {}, getAuthHeaders());
       toast.dismiss();
       toast.success(response.data.message || 'Tracking link sent to driver!');
-      // Refresh bookings to show tracking info
-      fetchBookingsRef.current?.();
+      silentRefresh();
     } catch (error) {
       toast.dismiss();
       console.error('Error sending tracking link:', error);
@@ -2266,7 +2366,7 @@ export const AdminDashboard = () => {
         totalPrice: 0
       });
       setManualPriceOverride('');
-      fetchBookingsRef.current?.(); // Refresh bookings list
+      silentRefresh(); // Refresh bookings list
     } catch (error) {
       console.error('Error creating booking:', error);
       const detail = error.response?.data?.detail;
@@ -3704,9 +3804,9 @@ export const AdminDashboard = () => {
                   Import historical bookings from your WordPress Chauffeur Booking System. This preserves original booking IDs for cross-reference and won't send notifications for imported bookings.
                 </p>
                 
-                <ImportBookingsSection 
+                <ImportBookingsSection
                   onSuccess={() => {
-                    fetchBookingsRef.current?.();
+                    silentRefresh();
                     toast.success('Bookings imported successfully!');
                   }}
                 />
