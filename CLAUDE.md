@@ -57,6 +57,72 @@ We use Google Maps for distance calculation, directions, and autocomplete. Geoap
 - **NEVER** add Geoapify as a "fallback" for Google Maps
 - **NEVER** use Geoapify for address autocomplete or distance calculation
 
+### 7. Pricing Rules — DO NOT CHANGE WITHOUT OWNER APPROVAL
+
+These are the AUTHORITATIVE per-km rates. They match the WordPress pricing plugin (screenshot verified 2026-03-13).
+Any agent that changes these rates without explicit owner instruction is breaking production pricing.
+
+**Tiered Per-Kilometer Rates** (bracket-based — entire distance charged at ONE rate):
+
+| From (km) | To (km) | Rate per km (NZD) |
+|-----------|---------|-------------------|
+| 0.1       | 15.0    | $12.00            |
+| 15.0      | 15.8    | $8.00             |
+| 15.8      | 16.0    | $6.00             |
+| 16.0      | 25.5    | $5.50             |
+| 25.5      | 35.0    | $5.00             |
+| 35.0      | 50.0    | $4.00             |
+| 50.0      | 60.0    | $2.60             |
+| 60.0      | 75.0    | $2.47             |
+| 75.0      | 100.0   | $2.70             |
+| 100.0     | 300.0   | $3.50             |
+
+**Code location**: `backend/server.py` lines 1681-1700 (and duplicated in concert pricing lines 1733-1746)
+
+**Add-on fees**:
+- VIP Airport Pickup: $15.00
+- Oversized Luggage: $25.00
+- Extra Passengers: $5.00 per additional (1st included)
+
+**Minimums**:
+- Standard minimum: $150.00 per one-way leg
+- Matakana Country Park concert: $550.00 flat return (from Hibiscus Coast)
+
+**Stripe processing fee**: Passed to customer — `(subtotal × 2.9%) + $0.30 NZD`
+
+- **NEVER** change these rates without explicit owner approval
+- **NEVER** "simplify" or "optimize" the tier structure
+- **NEVER** remove the Stripe fee pass-through to customer
+
+### 8. Shuttle Service — REMOVED (2026-03-13)
+
+The shared shuttle service has been completely removed from both frontend and backend.
+
+- **Backend**: All shuttle endpoints (`/shuttle/*`), models (`ShuttleBookingCreate`), constants (`SHUTTLE_PRICING`, `SHUTTLE_TIMES`) removed from `server.py`
+- **Database**: `shuttle_bookings` and `shuttle_runs` tables dropped from `schema.sql`
+- **Frontend**: Shuttle tab, state, handlers all removed from `AdminDashboard.jsx`; `FacebookTab.jsx` component deleted
+- **Booking list**: `GET /api/bookings` now excludes `serviceType: 'shared-shuttle'` from results
+- **Service types**: Changed from `airport-shuttle` to `airport-transfer`
+- **NEVER** re-add shuttle service endpoints, models, or UI tabs
+- **NEVER** re-add `FacebookTab.jsx` or Facebook integration
+- **NEVER** add `Bus` icon import back to AdminDashboard
+
+### 9. Booking System Architecture Rules (2026-03-13)
+
+These rules exist because the admin dashboard was 68,000+ lines with severe performance issues.
+
+**Backend rules**:
+- `GET /api/bookings` must ALWAYS exclude shuttle bookings (`serviceType != 'shared-shuttle'`)
+- Booking count endpoint uses single query with in-memory counting (not 6 separate DB calls)
+- Orphan payment check uses batch `$in` query (not N+1 per-payment lookups)
+- Soft-delete has rollback: if `delete_one` fails after `insert_one` to `deleted_bookings`, the insert is rolled back
+- **NEVER** load all bookings with `.to_list(None)` without a filter — always exclude shuttle/irrelevant data
+
+**Frontend rules**:
+- Action buttons must have `e.stopPropagation()`, `min-w-[36px]`, and `cursor-pointer` for reliable clicking
+- **NEVER** re-add the shuttle tab or `Bus` icon to the tabs navigation
+- Service type options are: `airport-transfer` and `private-transfer` (NOT `airport-shuttle`)
+
 ---
 
 ## PRE-CHANGE CHECKLIST
@@ -165,3 +231,6 @@ If a customer pays via Stripe but the booking is missing from admin:
 | 2026-03-11 | Paid booking invisible in admin      | Pydantic validation silently dropped bookings with missing fields |
 | 2026-03-11 | Admin panel cluttered/confusing      | Shuttle bookings merged into booking list without permission |
 | 2026-03-11 | Bulk email broken                    | SMTP code in routes_bulk.py instead of Mailgun |
+| 2026-03-13 | Shuttle polluting admin bookings      | Shuttle bookings mixed into main list; 68K line monolith |
+| 2026-03-13 | Buttons unresponsive in admin         | Missing click targets, no stopPropagation on action buttons |
+| 2026-03-13 | Orewa booking overcharged ($185)      | Google Maps API failed, 75km fallback used instead of 57.6km actual |
