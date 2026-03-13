@@ -22,28 +22,10 @@ CREATE INDEX IF NOT EXISTS idx_bookings_date ON bookings ((data->>'date'));
 CREATE INDEX IF NOT EXISTS idx_bookings_payment ON bookings ((data->>'payment_status'));
 CREATE INDEX IF NOT EXISTS idx_bookings_ref ON bookings ((data->>'referenceNumber'));
 CREATE INDEX IF NOT EXISTS idx_bookings_data ON bookings USING GIN (data);
+CREATE INDEX IF NOT EXISTS idx_bookings_status_date ON bookings ((data->>'status'), (data->>'date'));
 
-CREATE TABLE IF NOT EXISTS shuttle_bookings (
-    _id         BIGSERIAL PRIMARY KEY,
-    id          TEXT UNIQUE NOT NULL,
-    data        JSONB NOT NULL DEFAULT '{}',
-    created_at  TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_shuttle_bookings_id ON shuttle_bookings (id);
-CREATE INDEX IF NOT EXISTS idx_shuttle_bookings_status ON shuttle_bookings ((data->>'status'));
-CREATE INDEX IF NOT EXISTS idx_shuttle_bookings_date ON shuttle_bookings ((data->>'date'));
-CREATE INDEX IF NOT EXISTS idx_shuttle_bookings_data ON shuttle_bookings USING GIN (data);
-
-CREATE TABLE IF NOT EXISTS shuttle_runs (
-    _id         BIGSERIAL PRIMARY KEY,
-    id          TEXT UNIQUE NOT NULL,
-    data        JSONB NOT NULL DEFAULT '{}',
-    created_at  TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_shuttle_runs_id ON shuttle_runs (id);
-CREATE INDEX IF NOT EXISTS idx_shuttle_runs_date ON shuttle_runs ((data->>'date'));
+-- shuttle_bookings and shuttle_runs tables REMOVED (2026-03-13)
+-- Shuttle service discontinued. Do NOT re-add.
 
 CREATE TABLE IF NOT EXISTS bookings_archive (
     _id         BIGSERIAL PRIMARY KEY,
