@@ -18,7 +18,7 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
     email: '',
     ccEmail: '',
     phone: '',
-    serviceType: 'private-transfer',
+    serviceType: 'airport-transfer',
     pickupAddress: '',
     pickupAddresses: [],
     dropoffAddress: '',
@@ -69,7 +69,7 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
     if (!open) {
       setNewBooking({
         name: '', email: '', ccEmail: '', phone: '',
-        serviceType: 'private-transfer', pickupAddress: '', pickupAddresses: [],
+        serviceType: 'airport-transfer', pickupAddress: '', pickupAddresses: [],
         dropoffAddress: '', date: '', time: '', passengers: '1',
         paymentMethod: 'stripe', notes: '',
         flightArrivalNumber: '', flightArrivalTime: '',
@@ -212,9 +212,9 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
     }
 
     const hasReturnTrip = !!(newBooking.returnDate && newBooking.returnTime);
-    const isAirportShuttle = (newBooking.serviceType || '').toLowerCase().includes('airport') || (newBooking.serviceType || '').toLowerCase().includes('shuttle');
-    if (hasReturnTrip && isAirportShuttle && !(newBooking.returnDepartureFlightNumber || '').trim()) {
-      toast.error('Return flight number is required for airport shuttle return trips');
+    const isAirportTransfer = (newBooking.serviceType || '').toLowerCase().includes('airport');
+    if (hasReturnTrip && isAirportTransfer && !(newBooking.returnDepartureFlightNumber || '').trim()) {
+      toast.error('Return flight number is required for airport transfer return trips');
       return;
     }
 
@@ -385,6 +385,7 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="airport-transfer">Airport Transfer</SelectItem>
                     <SelectItem value="private-transfer">Private Transfer</SelectItem>
                   </SelectContent>
                 </Select>
