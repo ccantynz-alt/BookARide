@@ -10,6 +10,7 @@ import About from './pages/About';
 import Contact from './pages/Contact';
 import BookNow from './pages/BookNow';
 import PaymentSuccess from './pages/PaymentSuccess';
+import PayNow from './pages/PayNow';
 import HobbitonTransfers from './pages/HobbitonTransfers';
 import CruiseTransfers from './pages/CruiseTransfers';
 import SuburbPage from './pages/SuburbPageSEO';
@@ -325,6 +326,7 @@ function App() {
     { path: "hotels", element: <HotelsDirectory /> },
     { path: "hotels/:slug", element: <HotelPage /> },
     { path: "payment-success", element: <PaymentSuccess /> },
+    { path: "pay/:bookingId", element: <PayNow /> },
     // Payment Pages
     { path: "afterpay", element: <AfterpayPage /> },
     { path: "referral", element: <ReferralProgram /> },
