@@ -519,6 +519,7 @@ export const AdminDashboard = () => {
   const [runningAutoArchive, setRunningAutoArchive] = useState(false);
   const [orphanPayments, setOrphanPayments] = useState([]);
   const [loadingOrphans, setLoadingOrphans] = useState(false);
+  const [syncingPayments, setSyncingPayments] = useState(false);
   const [recoverSessionId, setRecoverSessionId] = useState('');
   const [recovering, setRecovering] = useState(false);
   // Shuttle state
@@ -831,6 +832,27 @@ export const AdminDashboard = () => {
       toast.error('Failed to load deleted bookings');
     } finally {
       setLoadingDeleted(false);
+    }
+  };
+
+  const syncPendingPayments = async () => {
+    setSyncingPayments(true);
+    try {
+      const response = await axios.post(`${API}/bookings/sync-pending-payments`, {}, getAuthHeaders());
+      const data = response.data;
+      if (data.count > 0) {
+        toast.success(`Synced ${data.count} booking(s) — they were paid in Stripe but stuck as pending. Now confirmed.`);
+        silentRefresh();
+      } else if (data.checked > 0) {
+        toast.info(`Checked ${data.checked} pending booking(s) — none have been paid in Stripe yet.`);
+      } else {
+        toast.info('No pending bookings with payment links to check.');
+      }
+    } catch (error) {
+      console.error('Error syncing payments:', error);
+      toast.error(error.response?.data?.detail || 'Failed to sync payment statuses');
+    } finally {
+      setSyncingPayments(false);
     }
   };
 
@@ -2723,6 +2745,22 @@ export const AdminDashboard = () => {
             <div className="flex flex-wrap items-center gap-2 text-sm text-green-800">
               <Shield className="w-4 h-4 shrink-0 text-green-600" />
               <span><strong>Bookings are always retained.</strong> Deletions only move items to the Deleted tab where you can Restore all. Download a full backup (Deleted tab → Download backup) anytime.</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Sync pending payments — check Stripe for bookings stuck as "pending" */}
+        <Card className="mb-6 border-blue-200 bg-blue-50/50">
+          <CardContent className="p-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <AlertTriangle className="w-5 h-5 text-blue-600 shrink-0" />
+              <div>
+                <p className="font-medium text-blue-900">Booking shows "pending" but customer says they paid?</p>
+                <p className="text-sm text-blue-800">Checks Stripe for all pending bookings and updates any that have actually been paid.</p>
+              </div>
+              <Button variant="outline" size="sm" onClick={syncPendingPayments} disabled={syncingPayments} className="border-blue-500 text-blue-800 hover:bg-blue-100">
+                {syncingPayments ? 'Checking Stripe...' : 'Sync Pending Payments'}
+              </Button>
             </div>
           </CardContent>
         </Card>

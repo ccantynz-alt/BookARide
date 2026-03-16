@@ -6020,6 +6020,23 @@ async def create_payment_checkout_link(request: PaymentCheckoutLinkRequest, http
 
         session = await stripe_checkout.create_checkout_session(checkout_request)
 
+        # Create payment transaction record (so webhook + orphan recovery can find it)
+        payment_transaction = {
+            "id": str(uuid.uuid4()),
+            "booking_id": request.booking_id,
+            "session_id": session.session_id,
+            "amount": amount,
+            "currency": "nzd",
+            "payment_status": "pending",
+            "status": "initiated",
+            "customer_email": booking.get('email', ''),
+            "customer_name": booking.get('name', ''),
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc)
+        }
+        await db.payment_transactions.insert_one(payment_transaction)
+        logger.info(f"Payment transaction created for checkout link: {payment_transaction['id']} for booking: {request.booking_id}")
+
         # Update booking with fresh payment session
         await db.bookings.update_one(
             {"id": request.booking_id},
@@ -6150,6 +6167,70 @@ async def get_payment_status(session_id: str):
     except Exception as e:
         logger.error(f"Error getting payment status: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error checking payment status: {str(e)}")
+
+
+@api_router.post("/bookings/sync-pending-payments")
+async def sync_pending_payments(current_admin: dict = Depends(get_current_admin)):
+    """Check Stripe for the actual payment status of bookings stuck in 'pending'.
+    Useful when webhook didn't fire or customer closed the tab before polling completed."""
+    try:
+        stripe_api_key = os.environ.get('STRIPE_API_KEY') or os.environ.get('STRIPE_SECRET_KEY')
+        if not stripe_api_key:
+            raise HTTPException(status_code=500, detail="Stripe API key not configured")
+
+        stripe_checkout = StripeCheckout(api_key=stripe_api_key, webhook_url="")
+
+        # Find bookings with payment_status=pending that have a Stripe session
+        pending_bookings = await db.bookings.find(
+            {"payment_status": "pending", "payment_session_id": {"$ne": None}},
+            {"_id": 0}
+        ).to_list(100)
+
+        synced = []
+        for booking in pending_bookings:
+            session_id = booking.get('payment_session_id')
+            if not session_id:
+                continue
+            try:
+                checkout_status = await stripe_checkout.get_checkout_status(session_id)
+                if checkout_status.payment_status == "paid":
+                    await db.bookings.update_one(
+                        {"id": booking['id']},
+                        {"$set": {"payment_status": "paid", "status": "confirmed"}}
+                    )
+                    # Also update payment_transactions if it exists
+                    await db.payment_transactions.update_one(
+                        {"session_id": session_id},
+                        {"$set": {"payment_status": "paid", "updated_at": datetime.now(timezone.utc)}}
+                    )
+                    synced.append({
+                        "booking_id": booking['id'],
+                        "referenceNumber": booking.get('referenceNumber'),
+                        "customer": booking.get('name'),
+                        "amount": booking.get('totalPrice'),
+                    })
+                    logger.info(f"Synced payment for booking #{booking.get('referenceNumber')} — was pending, now paid")
+
+                    # Send confirmations that were missed
+                    updated_booking = await db.bookings.find_one({"id": booking['id']}, {"_id": 0})
+                    if updated_booking:
+                        send_customer_confirmation(updated_booking)
+                        await send_booking_notification_to_admin(updated_booking)
+                        await create_calendar_event(updated_booking)
+            except Exception as e:
+                logger.warning(f"Could not check Stripe for session {session_id}: {e}")
+
+        return {
+            "synced": synced,
+            "count": len(synced),
+            "checked": len(pending_bookings),
+            "message": f"Synced {len(synced)} of {len(pending_bookings)} pending bookings"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error syncing pending payments: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @api_router.get("/bookings/orphan-payments")
