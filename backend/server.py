@@ -6327,7 +6327,15 @@ async def recover_booking_from_payment(body: RecoverBookingFromPayment, current_
             "recoveredFromPaymentAt": now_iso,
             "recoveredBy": current_admin.get("username", "admin"),
         }
-        await db.bookings.insert_one(recovered)
+        recovery_result = await db.bookings.insert_one(recovered)
+        if not recovery_result.acknowledged:
+            logger.error(f"CRITICAL: Failed to insert recovered booking {bid}")
+            raise HTTPException(status_code=500, detail="Failed to create recovered booking")
+        # Verify the booking exists
+        verify = await db.bookings.find_one({"id": bid})
+        if not verify:
+            logger.error(f"CRITICAL: Recovered booking {bid} verification failed after insert")
+            raise HTTPException(status_code=500, detail="Booking recovery verification failed")
         logger.info(f"Recovered booking {bid} (ref #{ref_str}) from payment for {t.get('customer_email')}")
         return {"message": "Booking recovered and added to admin list", "booking_id": bid, "referenceNumber": ref_str}
     except HTTPException:
@@ -9267,9 +9275,18 @@ async def delete_booking(booking_id: str, send_notification: bool = True, force:
         booking['deletedAt'] = datetime.now(timezone.utc).isoformat()
         booking['deletedBy'] = current_admin.get('username', 'admin')
         booking['notificationSent'] = send_notification
-        await db.deleted_bookings.insert_one(booking)
-        
-        # Remove from active bookings
+        backup_result = await db.deleted_bookings.insert_one(booking)
+        if not backup_result.acknowledged:
+            logger.error(f"CRITICAL: Failed to backup booking {booking_id} to deleted_bookings - aborting delete")
+            raise HTTPException(status_code=500, detail="Failed to backup booking before deletion - booking preserved")
+
+        # Verify the backup exists before deleting
+        backup_check = await db.deleted_bookings.find_one({"id": booking_id})
+        if not backup_check:
+            logger.error(f"CRITICAL: Backup verification failed for booking {booking_id} - aborting delete")
+            raise HTTPException(status_code=500, detail="Backup verification failed - booking preserved")
+
+        # Remove from active bookings (safe - backup confirmed)
         result = await db.bookings.delete_one({"id": booking_id})
         if result.deleted_count == 0:
             # Rollback the soft delete if original wasn't found
@@ -9443,17 +9460,27 @@ async def bulk_delete(booking_ids: List[str], send_notifications: bool = False, 
                 except Exception as e:
                     logger.error(f"Error sending cancellation for booking {booking.get('id')}: {str(e)}")
         
-        # SOFT DELETE: Move all to deleted_bookings collection
-        deleted_count = 0
+        # SOFT DELETE: Move all to deleted_bookings collection with verification
+        backed_up_ids = []
         for booking in bookings:
             booking['deletedAt'] = datetime.now(timezone.utc).isoformat()
             booking['deletedBy'] = current_admin.get('username', 'admin')
             booking['notificationSent'] = send_notifications
-            await db.deleted_bookings.insert_one(booking)
-            deleted_count += 1
-        
-        # Remove from active bookings
-        result = await db.bookings.delete_many({"id": {"$in": booking_ids}})
+            backup_result = await db.deleted_bookings.insert_one(booking)
+            if backup_result.acknowledged:
+                # Verify the backup actually exists
+                verify = await db.deleted_bookings.find_one({"id": booking.get('id')})
+                if verify:
+                    backed_up_ids.append(booking.get('id'))
+                else:
+                    logger.error(f"CRITICAL: Backup verification failed for booking {booking.get('id')} during bulk delete")
+            else:
+                logger.error(f"CRITICAL: Failed to backup booking {booking.get('id')} during bulk delete")
+
+        # Only delete bookings that were successfully backed up
+        if not backed_up_ids:
+            raise HTTPException(status_code=500, detail="Failed to backup any bookings - all preserved")
+        result = await db.bookings.delete_many({"id": {"$in": backed_up_ids}})
         
         logger.info(f"Bulk soft-deleted {deleted_count} bookings by {current_admin.get('username', 'admin')}")
         return {"message": "Bookings deleted", "count": result.deleted_count, "notifications_sent": send_notifications}
@@ -9526,15 +9553,23 @@ async def restore_booking(booking_id: str, current_admin: dict = Depends(get_cur
         deleted_booking['restoredAt'] = datetime.now(timezone.utc).isoformat()
         deleted_booking['restoredBy'] = current_admin.get('username', 'admin')
         
-        # Insert back into active bookings
-        await db.bookings.insert_one(deleted_booking)
-        
-        # Remove from deleted_bookings
+        # Insert back into active bookings and verify
+        restore_result = await db.bookings.insert_one(deleted_booking)
+        if not restore_result.acknowledged:
+            logger.error(f"CRITICAL: Failed to restore booking {booking_id} to active - booking stays in deleted_bookings")
+            raise HTTPException(status_code=500, detail="Failed to restore booking - booking preserved in deleted list")
+
+        restore_check = await db.bookings.find_one({"id": booking_id})
+        if not restore_check:
+            logger.error(f"CRITICAL: Restore verification failed for booking {booking_id}")
+            raise HTTPException(status_code=500, detail="Restore verification failed - booking preserved in deleted list")
+
+        # Safe to remove from deleted_bookings (restore confirmed)
         await db.deleted_bookings.delete_one({"id": booking_id})
-        
+
         # Remove _id before returning (MongoDB adds it during insert)
         deleted_booking.pop('_id', None)
-        
+
         logger.info(f"Booking {booking_id} restored by {current_admin.get('username', 'admin')}")
         return {"message": "Booking restored successfully", "booking_id": booking_id}
     except HTTPException:
@@ -9569,6 +9604,7 @@ async def restore_all_deleted_bookings(current_admin: dict = Depends(get_current
         except Exception as snap_err:
             logger.warning(f"Snapshot before restore_all failed (non-fatal): {snap_err}")
         restored = 0
+        failed = 0
         for booking in deleted_list:
             booking_id = booking.get("id")
             if not booking_id:
@@ -9578,7 +9614,17 @@ async def restore_all_deleted_bookings(current_admin: dict = Depends(get_current
             booking.pop('notificationSent', None)
             booking['restoredAt'] = datetime.now(timezone.utc).isoformat()
             booking['restoredBy'] = current_admin.get('username', 'admin')
-            await db.bookings.insert_one(booking)
+            restore_result = await db.bookings.insert_one(booking)
+            if not restore_result.acknowledged:
+                logger.error(f"CRITICAL: Failed to restore booking {booking_id} - keeping in deleted_bookings")
+                failed += 1
+                continue
+            # Verify restore before deleting from deleted_bookings
+            verify = await db.bookings.find_one({"id": booking_id})
+            if not verify:
+                logger.error(f"CRITICAL: Restore verification failed for booking {booking_id} - keeping in deleted_bookings")
+                failed += 1
+                continue
             await db.deleted_bookings.delete_one({"id": booking_id})
             restored += 1
         logger.info(f"Restored all {restored} deleted bookings by {current_admin.get('username', 'admin')}")
@@ -9624,12 +9670,20 @@ async def archive_booking(booking_id: str, current_admin: dict = Depends(get_cur
         # Set retention expiry (7 years from archive date)
         booking['retentionExpiry'] = (datetime.now(timezone.utc) + timedelta(days=365*7)).isoformat()
         
-        # Insert into archive collection
-        await db.bookings_archive.insert_one(booking)
-        
-        # Remove from active bookings
+        # Insert into archive collection and verify before deleting
+        archive_result = await db.bookings_archive.insert_one(booking)
+        if not archive_result.acknowledged:
+            logger.error(f"CRITICAL: Failed to archive booking {booking_id} - aborting, booking preserved")
+            raise HTTPException(status_code=500, detail="Failed to archive booking - booking preserved")
+
+        archive_check = await db.bookings_archive.find_one({"id": booking_id})
+        if not archive_check:
+            logger.error(f"CRITICAL: Archive verification failed for booking {booking_id} - aborting")
+            raise HTTPException(status_code=500, detail="Archive verification failed - booking preserved")
+
+        # Safe to delete from active (archive confirmed)
         await db.bookings.delete_one({"id": booking_id})
-        
+
         logger.info(f"Booking {booking_id} (Ref #{booking.get('referenceNumber', 'N/A')}) archived by {current_admin.get('username', 'admin')}")
         return {"message": "Booking archived successfully", "booking_id": booking_id, "referenceNumber": booking.get('referenceNumber')}
     except HTTPException:
@@ -9656,8 +9710,18 @@ async def archive_bookings_bulk(
                     booking['archivedBy'] = current_admin.get('username', 'admin')
                     booking['archiveReason'] = 'bulk'
                     booking['retentionExpiry'] = (datetime.now(timezone.utc) + timedelta(days=365*7)).isoformat()
-                    
-                    await db.bookings_archive.insert_one(booking)
+
+                    archive_result = await db.bookings_archive.insert_one(booking)
+                    if not archive_result.acknowledged:
+                        logger.error(f"CRITICAL: Failed to archive booking {booking_id} - skipping, booking preserved")
+                        failed.append(booking_id)
+                        continue
+                    # Verify archive before deleting
+                    archive_check = await db.bookings_archive.find_one({"id": booking_id})
+                    if not archive_check:
+                        logger.error(f"CRITICAL: Archive verification failed for booking {booking_id} - skipping")
+                        failed.append(booking_id)
+                        continue
                     await db.bookings.delete_one({"id": booking_id})
                     archived_count += 1
                 else:
@@ -9757,12 +9821,20 @@ async def unarchive_booking(booking_id: str, current_admin: dict = Depends(get_c
         archived_booking['unarchivedAt'] = datetime.now(timezone.utc).isoformat()
         archived_booking['unarchivedBy'] = current_admin.get('username', 'admin')
         
-        # Insert back into active bookings
-        await db.bookings.insert_one(archived_booking)
-        
-        # Remove from archive
+        # Insert back into active bookings and verify
+        restore_result = await db.bookings.insert_one(archived_booking)
+        if not restore_result.acknowledged:
+            logger.error(f"CRITICAL: Failed to unarchive booking {booking_id} - keeping in archive")
+            raise HTTPException(status_code=500, detail="Failed to restore booking - booking preserved in archive")
+
+        restore_check = await db.bookings.find_one({"id": booking_id})
+        if not restore_check:
+            logger.error(f"CRITICAL: Unarchive verification failed for booking {booking_id}")
+            raise HTTPException(status_code=500, detail="Restore verification failed - booking preserved in archive")
+
+        # Safe to remove from archive (restore confirmed)
         await db.bookings_archive.delete_one({"id": booking_id})
-        
+
         logger.info(f"Booking {booking_id} (Ref #{archived_booking.get('referenceNumber', 'N/A')}) unarchived by {current_admin.get('username', 'admin')}")
         return {"message": "Booking restored from archive", "booking_id": booking_id, "referenceNumber": archived_booking.get('referenceNumber')}
     except HTTPException:

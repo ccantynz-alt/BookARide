@@ -177,20 +177,63 @@ If a customer pays via Stripe but the booking is missing from admin:
 - Stripe webhook did not verify `matched_count` after updating booking — payment could succeed but booking status not update
 - iCloud contact sync was not triggered after Stripe payment webhook — only on initial booking creation
 - Shared shuttle service tab/code removed from admin dashboard (was cluttering the admin panel)
+- ALL delete/archive/restore operations now verify backup insert + find_one before deleting source record
+- Bulk delete only removes bookings that were successfully backed up (per-record verification)
+- Orphan payment recovery now verifies the recovered booking was actually created
 
-### Booking System Monitoring Rules
+### ZERO BOOKING LOSS RULES — MANDATORY
 
-When modifying the booking system, ALWAYS verify:
+**A booking must NEVER be lost. These rules are absolute and non-negotiable.**
 
-1. **Stripe webhook handler** (`POST /api/webhook/stripe`): Must update booking status AND verify `matched_count > 0`
-2. **Payment status endpoint** (`GET /api/payment/status/{session_id}`): Must sync booking to paid/confirmed
-3. **After any payment confirmation**: Must trigger all 4 actions:
-   - `send_customer_confirmation(booking)` — email/SMS to customer
-   - `send_booking_notification_to_admin(booking)` — admin notification
-   - `create_calendar_event(booking)` — Google Calendar sync
-   - `add_contact_to_icloud(booking)` — iCloud contact sync (no duplicates)
-4. **Database writes**: Always check `result.matched_count` for critical updates
-5. **Booking creation** (`POST /api/bookings`): Must verify insert with `find_one` after insert
+#### Rule 1: NEVER delete without verified backup
+
+Before deleting a booking from ANY collection, the backup/destination insert MUST be:
+1. Verified with `result.acknowledged == True`
+2. Double-checked with `find_one()` to confirm the record exists in the destination
+3. Only THEN can the source record be deleted
+
+This applies to ALL move operations:
+- `delete_booking()` → must verify `deleted_bookings.insert_one()` before `bookings.delete_one()`
+- `archive_booking()` → must verify `bookings_archive.insert_one()` before `bookings.delete_one()`
+- `restore_booking()` → must verify `bookings.insert_one()` before `deleted_bookings.delete_one()`
+- `unarchive_booking()` → must verify `bookings.insert_one()` before `bookings_archive.delete_one()`
+- Bulk versions of all the above follow the same pattern per-record
+
+**If the backup/verify fails, ABORT the delete and raise an error. The booking stays where it is.**
+
+#### Rule 2: NEVER silently drop bookings on read
+
+- `GET /api/bookings` uses `model_construct()` (not `Booking(**b)`) to skip validators
+- Three-tier fallback ensures every record is returned even if fields are missing/invalid
+- **NEVER** switch back to `Booking(**b)` for reading — it silently drops records with missing fields
+
+#### Rule 3: VERIFY all critical inserts
+
+After inserting a booking (creation, recovery, import), verify with `find_one()`:
+- `POST /api/bookings` — already has double-check
+- `POST /api/bookings/recover-from-payment` — verified after insert
+- Import/CSV endpoints — must verify each insert
+
+#### Rule 4: After payment confirmation, trigger ALL 4 actions
+
+Every payment confirmation path (webhook, polling, manual) must call:
+1. `send_customer_confirmation(booking)` — email/SMS
+2. `send_booking_notification_to_admin(booking)` — admin alert
+3. `create_calendar_event(booking)` — Google Calendar
+4. `add_contact_to_icloud(booking)` — iCloud contacts (deduped)
+
+#### Rule 5: Log CRITICAL on any booking write failure
+
+Any failed booking database operation must log with `logger.error(f"CRITICAL: ...")` so it can be monitored. Never swallow booking errors silently.
+
+#### Rule 6: Booking collections are sacred
+
+There are 3 booking collections. A booking must ALWAYS exist in exactly one of them:
+- `db.bookings` — active bookings (shown in admin dashboard)
+- `db.deleted_bookings` — soft-deleted bookings (recoverable)
+- `db.bookings_archive` — archived completed bookings (7-year retention)
+
+**NEVER** delete a booking from all three. **NEVER** have a code path where a booking exists in zero collections.
 
 ---
 
@@ -210,3 +253,4 @@ When modifying the booking system, ALWAYS verify:
 | 2026-03-18 | Paid bookings potentially not confirmed | Webhook didn't verify update success after payment |
 | 2026-03-18 | Contacts not synced after payment    | iCloud sync only ran on booking creation, not after Stripe payment |
 | 2026-03-18 | Admin panel cluttered                | Shared shuttle service tab removed (service discontinued) |
+| 2026-03-18 | Bookings could vanish on delete/archive | Delete/archive/restore didn't verify backup insert before deleting source |
