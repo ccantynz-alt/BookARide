@@ -20,6 +20,8 @@ import ReturnsOverviewPanel from '../components/admin/ReturnsOverviewPanel';
 import CreateBookingModal from '../components/admin/CreateBookingModal';
 import { API } from '../config/api';
 import Cockpit from '../admin/Cockpit';
+import CreateBookingModal from '../components/admin/CreateBookingModal';
+import EditBookingModal from '../components/admin/EditBookingModal';
 
 // Helper function to format date to DD/MM/YYYY
 const formatDate = (dateString) => {
@@ -520,6 +522,7 @@ export const AdminDashboard = () => {
   const [runningAutoArchive, setRunningAutoArchive] = useState(false);
   const [orphanPayments, setOrphanPayments] = useState([]);
   const [loadingOrphans, setLoadingOrphans] = useState(false);
+  const [syncingPayments, setSyncingPayments] = useState(false);
   const [recoverSessionId, setRecoverSessionId] = useState('');
   const [recovering, setRecovering] = useState(false);
   const [loadingDeleted, setLoadingDeleted] = useState(false);
@@ -715,6 +718,37 @@ export const AdminDashboard = () => {
   };
   fetchBookingsRef.current = fetchBookings;
 
+  // ── Optimistic helpers: update UI instantly without full reload ──
+  const updateBookingLocally = (bookingId, updates) => {
+    setBookings(prev => prev.map(b => b && b.id === bookingId ? { ...b, ...updates } : b));
+  };
+
+  const removeBookingLocally = (bookingId) => {
+    setBookings(prev => prev.filter(b => b && b.id !== bookingId));
+  };
+
+  // Silent background refresh — syncs with server without showing spinner
+  const silentRefresh = async () => {
+    try {
+      const params = {
+        page: loadAllBookings ? 1 : 1,
+        limit: loadAllBookings ? 0 : bookingsPerPage
+      };
+      if (dateFrom) params.date_from = dateFrom;
+      if (dateTo) params.date_to = dateTo;
+      const response = await axios.get(`${API}/bookings`, { ...getAuthHeaders(), params });
+      const fresh = Array.isArray(response.data) ? response.data : [];
+      setBookings(fresh);
+      try {
+        localStorage.setItem('cachedBookings', JSON.stringify(fresh.slice(0, 50)));
+        localStorage.setItem('cachedBookingsTime', new Date().toISOString());
+      } catch (e) { /* localStorage full — not critical */ }
+    } catch (error) {
+      // Silent refresh failed — not critical, optimistic state is still valid
+      console.error('Silent refresh failed:', error);
+    }
+  };
+
   const fetchBookingCounts = async () => {
     try {
       const response = await axios.get(`${API}/bookings/count`, getAuthHeaders());
@@ -750,6 +784,27 @@ export const AdminDashboard = () => {
     }
   };
 
+  const syncPendingPayments = async () => {
+    setSyncingPayments(true);
+    try {
+      const response = await axios.post(`${API}/bookings/sync-pending-payments`, {}, getAuthHeaders());
+      const data = response.data;
+      if (data.count > 0) {
+        toast.success(`Synced ${data.count} booking(s) — they were paid in Stripe but stuck as pending. Now confirmed.`);
+        silentRefresh();
+      } else if (data.checked > 0) {
+        toast.info(`Checked ${data.checked} pending booking(s) — none have been paid in Stripe yet.`);
+      } else {
+        toast.info('No pending bookings with payment links to check.');
+      }
+    } catch (error) {
+      console.error('Error syncing payments:', error);
+      toast.error(error.response?.data?.detail || 'Failed to sync payment statuses');
+    } finally {
+      setSyncingPayments(false);
+    }
+  };
+
   const fetchOrphanPayments = async () => {
     setLoadingOrphans(true);
     try {
@@ -774,7 +829,7 @@ export const AdminDashboard = () => {
       toast.success(response.data?.message || 'Booking recovered and added to the list.');
       setRecoverSessionId('');
       setOrphanPayments(prev => prev.filter(o => o.booking_id !== (response.data?.booking_id || bookingId)));
-      fetchBookingsRef.current?.();
+      silentRefresh();
     } catch (error) {
       const detail = error.response?.data?.detail;
       toast.error(typeof detail === 'string' ? detail : 'Recover failed');
@@ -817,7 +872,7 @@ export const AdminDashboard = () => {
     try {
       const response = await axios.post(`${API}/bookings/archive/${bookingId}`, {}, getAuthHeaders());
       toast.success(`Booking #${response.data.referenceNumber} archived successfully`);
-      fetchBookingsRef.current?.();
+      removeBookingLocally(bookingId);
       fetchArchivedCount();
     } catch (error) {
       console.error('Error archiving booking:', error);
@@ -831,7 +886,7 @@ export const AdminDashboard = () => {
       const response = await axios.post(`${API}/bookings/unarchive/${bookingId}`, {}, getAuthHeaders());
       toast.success(`Booking #${response.data.referenceNumber} restored to active bookings`);
       fetchArchivedBookings(archivePage, archiveSearchTerm);
-      fetchBookingsRef.current?.();
+      silentRefresh();
     } catch (error) {
       console.error('Error unarchiving booking:', error);
       toast.error(error.response?.data?.detail || 'Failed to restore booking');
@@ -855,7 +910,7 @@ export const AdminDashboard = () => {
         toast.success(`Auto-archive complete! Archived ${archived} completed bookings.`);
         fetchArchivedBookings(1, '');
         fetchArchivedCount();
-        fetchBookingsRef.current?.(); // Refresh active bookings list
+        silentRefresh(); // Refresh active bookings list
       } else {
         toast.info('No bookings to archive. All completed trips are either already archived or still have pending return dates.');
       }
@@ -905,7 +960,7 @@ export const AdminDashboard = () => {
     try {
       const response = await axios.post(`${API}/xero/create-invoice/${bookingId}`, {}, getAuthHeaders());
       toast.success(response.data.message);
-      fetchBookingsRef.current?.();
+      silentRefresh();
     } catch (error) {
       console.error('Error creating Xero invoice:', error);
       toast.error(error.response?.data?.detail || 'Failed to create invoice');
@@ -916,7 +971,7 @@ export const AdminDashboard = () => {
     try {
       const response = await axios.post(`${API}/xero/record-payment/${bookingId}`, {}, getAuthHeaders());
       toast.success(response.data.message);
-      fetchBookingsRef.current?.();
+      silentRefresh();
     } catch (error) {
       console.error('Error recording payment:', error);
       toast.error(error.response?.data?.detail || 'Failed to record payment');
@@ -928,7 +983,7 @@ export const AdminDashboard = () => {
       await axios.post(`${API}/bookings/restore/${bookingId}`, {}, getAuthHeaders());
       toast.success('Booking restored successfully!');
       fetchDeletedBookings();
-      fetchBookingsRef.current?.();
+      silentRefresh();
     } catch (error) {
       console.error('Error restoring booking:', error);
       toast.error('Failed to restore booking');
@@ -963,7 +1018,7 @@ export const AdminDashboard = () => {
       toast.success(count ? `Restored ${count} booking(s). Your list is reinstated.` : res.data?.message || 'Done');
       setDeletedCountForBanner(0);
       fetchDeletedBookings();
-      fetchBookingsRef.current?.();
+      silentRefresh();
     } catch (error) {
       console.error('Error restoring all bookings:', error);
       toast.error(error.response?.data?.detail || 'Failed to restore all bookings');
@@ -1016,7 +1071,7 @@ export const AdminDashboard = () => {
       const res = await axios.post(`${API}/admin/backups/${label}/restore`, {}, getAuthHeaders());
       if (res.data.restored > 0) {
         toast.success(`Restored ${res.data.restored} missing booking(s) from ${label}`);
-        fetchBookingsRef.current?.();
+        silentRefresh();
       } else {
         toast.info(`No missing bookings found in ${label} backup — all bookings already present`);
       }
@@ -1057,7 +1112,7 @@ export const AdminDashboard = () => {
       setBackupRestoreResult(res.data);
       const { imported_count, skipped_count, error_count } = res.data;
       toast.success(`Restored ${imported_count} booking(s) from backup. Skipped ${skipped_count} duplicates.${error_count ? ` ${error_count} errors.` : ''}`);
-      fetchBookingsRef.current?.();
+      silentRefresh();
     } catch (error) {
       const msg = error.response?.data?.detail || error.message || 'Restore failed';
       toast.error(msg);
@@ -1077,7 +1132,7 @@ export const AdminDashboard = () => {
       setBackupRestoreResult(res.data);
       const { imported_count, skipped_count, source_file } = res.data;
       toast.success(`Restored ${imported_count} booking(s) from ${source_file || 'server backup'}. Skipped ${skipped_count} duplicates.`);
-      fetchBookingsRef.current?.();
+      silentRefresh();
     } catch (error) {
       const msg = error.response?.data?.detail || error.message || 'Restore failed';
       toast.error(msg);
@@ -1203,7 +1258,24 @@ export const AdminDashboard = () => {
       setDriverPayoutOverride('');
       setShowDriverAssignPreview(false);
       setPendingAssignment(null);
-      fetchBookingsRef.current?.();
+      // Optimistic: update driver info in local booking
+      const confirmAssignedDriver = drivers.find(d => d.id === selectedDriver);
+      if (tripType === 'return') {
+        updateBookingLocally(selectedBooking.id, {
+          return_driver_id: selectedDriver,
+          return_driver_name: confirmAssignedDriver?.name || '',
+          return_driver_phone: confirmAssignedDriver?.phone || '',
+          return_driver_email: confirmAssignedDriver?.email || '',
+        });
+      } else {
+        updateBookingLocally(selectedBooking.id, {
+          driver_id: selectedDriver,
+          driver_name: confirmAssignedDriver?.name || '',
+          driver_phone: confirmAssignedDriver?.phone || '',
+          driver_email: confirmAssignedDriver?.email || '',
+        });
+      }
+      silentRefresh();
     } catch (error) {
       console.error('Error assigning driver:', error);
       toast.error('Failed to assign driver');
@@ -1252,7 +1324,24 @@ export const AdminDashboard = () => {
       toast.success(response.data?.message || 'Driver assigned successfully!');
       setSelectedDriver('');
       setDriverPayoutOverride('');
-      fetchBookingsRef.current?.();
+      // Optimistic: update driver info in local booking
+      const assignedDriverObj = drivers.find(d => d.id === selectedDriver);
+      if (tripType === 'return') {
+        updateBookingLocally(selectedBooking.id, {
+          return_driver_id: selectedDriver,
+          return_driver_name: assignedDriverObj?.name || '',
+          return_driver_phone: assignedDriverObj?.phone || '',
+          return_driver_email: assignedDriverObj?.email || '',
+        });
+      } else {
+        updateBookingLocally(selectedBooking.id, {
+          driver_id: selectedDriver,
+          driver_name: assignedDriverObj?.name || '',
+          driver_phone: assignedDriverObj?.phone || '',
+          driver_email: assignedDriverObj?.email || '',
+        });
+      }
+      silentRefresh();
     } catch (error) {
       console.error('Error assigning driver:', error);
       toast.error('Failed to assign driver');
@@ -1298,7 +1387,19 @@ export const AdminDashboard = () => {
       }
       
       toast.success(response.data?.message || 'Driver unassigned successfully!');
-      fetchBookingsRef.current?.();
+      // Optimistic: clear driver info in local booking
+      if (tripType === 'return') {
+        updateBookingLocally(selectedBooking.id, {
+          return_driver_id: null, return_driver_name: null,
+          return_driver_phone: null, return_driver_email: null,
+        });
+      } else {
+        updateBookingLocally(selectedBooking.id, {
+          driver_id: null, driver_name: null,
+          driver_phone: null, driver_email: null, driverConfirmed: false,
+        });
+      }
+      silentRefresh();
     } catch (error) {
       console.error('Error unassigning driver:', error);
       toast.error(error.response?.data?.detail || 'Failed to unassign driver');
@@ -1399,7 +1500,8 @@ export const AdminDashboard = () => {
     try {
       await axios.patch(`${API}/bookings/${bookingId}`, { status: newStatus }, getAuthHeaders());
       toast.success('Status updated successfully');
-      fetchBookingsRef.current?.();
+      updateBookingLocally(bookingId, { status: newStatus });
+      silentRefresh();
     } catch (error) {
       if (error.response?.status === 401) {
         toast.error('Session expired. Please login again.');
@@ -1428,7 +1530,7 @@ export const AdminDashboard = () => {
       } else {
         toast.success('Booking silently deleted - No notification sent');
       }
-      fetchBookingsRef.current?.();
+      removeBookingLocally(bookingId);
     } catch (error) {
       if (error.response?.status === 401) {
         toast.error('Session expired. Please login again.');
@@ -1470,7 +1572,7 @@ export const AdminDashboard = () => {
     }
     
     setSelectedBookings(new Set());
-    fetchBookingsRef.current?.();
+    silentRefresh();
   };
 
   const handleSendToAdmin = async (bookingId) => {
@@ -1581,7 +1683,10 @@ export const AdminDashboard = () => {
       }, getAuthHeaders());
       toast.success('Price updated successfully');
       setShowDetailsModal(false);
-      fetchBookingsRef.current?.();
+      updateBookingLocally(selectedBooking.id, {
+        pricing: { ...selectedBooking.pricing, totalPrice: newPrice, overridden: true }
+      });
+      silentRefresh();
     } catch (error) {
       console.error('Error updating price:', error);
       toast.error('Failed to update price');
@@ -1601,8 +1706,9 @@ export const AdminDashboard = () => {
 
       if (response.data.success) {
         toast.success('Payment status updated successfully');
-        fetchBookingsRef.current?.();
+        updateBookingLocally(selectedBooking.id, { payment_status: selectedPaymentStatus });
         setShowDetailsModal(false);
+        silentRefresh();
       }
     } catch (error) {
       console.error('Error updating payment status:', error);
@@ -1647,70 +1753,6 @@ export const AdminDashboard = () => {
     setShowEditBookingModal(true);
   };
 
-  // Handle edit booking save
-  const handleSaveEditedBooking = async () => {
-    if (!editingBooking) return;
-
-    try {
-      const flightNum = editingBooking.flightNumber || editingBooking.flightArrivalNumber || editingBooking.flightDepartureNumber || '';
-      await axios.patch(`${API}/bookings/${editingBooking.id}`, {
-        name: editingBooking.name,
-        email: editingBooking.email,
-        phone: editingBooking.phone,
-        pickupAddress: editingBooking.pickupAddress,
-        pickupAddresses: editingBooking.pickupAddresses?.filter(addr => addr.trim()) || [],
-        dropoffAddress: editingBooking.dropoffAddress,
-        date: editingBooking.date,
-        time: editingBooking.time,
-        passengers: editingBooking.passengers,
-        notes: editingBooking.notes,
-        // Single flight number synced to all field name variants
-        flightNumber: flightNum,
-        flightArrivalNumber: flightNum,
-        flightDepartureNumber: flightNum,
-        arrivalFlightNumber: flightNum,
-        departureFlightNumber: flightNum,
-        // Return trip - inferred from filled return date + time
-        bookReturn: !!(editingBooking.returnDate && editingBooking.returnTime),
-        returnDate: editingBooking.returnDate || '',
-        returnTime: editingBooking.returnTime || '',
-        returnFlightNumber: editingBooking.returnFlightNumber || editingBooking.returnDepartureFlightNumber || '',
-        returnDepartureFlightNumber: editingBooking.returnDepartureFlightNumber || editingBooking.returnFlightNumber || ''
-      }, getAuthHeaders());
-
-      toast.success('Booking updated successfully!');
-      setShowEditBookingModal(false);
-      setEditingBooking(null);
-      fetchBookingsRef.current?.();
-    } catch (error) {
-      console.error('Error updating booking:', error);
-      toast.error(error.response?.data?.detail || 'Failed to update booking');
-    }
-  };
-
-  // Handle adding pickup to edit form
-  const handleAddEditPickup = () => {
-    setEditingBooking(prev => ({
-      ...prev,
-      pickupAddresses: [...(prev.pickupAddresses || []), '']
-    }));
-  };
-
-  // Handle removing pickup from edit form
-  const handleRemoveEditPickup = (index) => {
-    setEditingBooking(prev => ({
-      ...prev,
-      pickupAddresses: prev.pickupAddresses.filter((_, i) => i !== index)
-    }));
-  };
-
-  // Handle edit pickup address change
-  const handleEditPickupAddressChange = (index, value) => {
-    setEditingBooking(prev => ({
-      ...prev,
-      pickupAddresses: prev.pickupAddresses.map((addr, i) => i === index ? value : addr)
-    }));
-  };
 
   // Manual calendar sync
   const handleManualCalendarSync = async (bookingId) => {
@@ -1718,7 +1760,7 @@ export const AdminDashboard = () => {
     try {
       const response = await axios.post(`${API}/bookings/${bookingId}/sync-calendar`, {}, getAuthHeaders());
       toast.success(response.data.message || 'Booking synced to Google Calendar!');
-      fetchBookingsRef.current?.();
+      silentRefresh();
     } catch (error) {
       console.error('Error syncing to calendar:', error);
       toast.error(error.response?.data?.detail || 'Failed to sync to calendar');
@@ -1763,8 +1805,7 @@ export const AdminDashboard = () => {
       const response = await axios.post(`${API}/tracking/send-driver-link/${bookingId}`, {}, getAuthHeaders());
       toast.dismiss();
       toast.success(response.data.message || 'Tracking link sent to driver!');
-      // Refresh bookings to show tracking info
-      fetchBookingsRef.current?.();
+      silentRefresh();
     } catch (error) {
       toast.dismiss();
       console.error('Error sending tracking link:', error);
@@ -2237,6 +2278,22 @@ export const AdminDashboard = () => {
             <div className="flex flex-wrap items-center gap-2 text-sm text-green-800">
               <Shield className="w-4 h-4 shrink-0 text-green-600" />
               <span><strong>Bookings are always retained.</strong> Deletions only move items to the Deleted tab where you can Restore all. Download a full backup (Deleted tab → Download backup) anytime.</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Sync pending payments — check Stripe for bookings stuck as "pending" */}
+        <Card className="mb-6 border-blue-200 bg-blue-50/50">
+          <CardContent className="p-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <AlertTriangle className="w-5 h-5 text-blue-600 shrink-0" />
+              <div>
+                <p className="font-medium text-blue-900">Booking shows "pending" but customer says they paid?</p>
+                <p className="text-sm text-blue-800">Checks Stripe for all pending bookings and updates any that have actually been paid.</p>
+              </div>
+              <Button variant="outline" size="sm" onClick={syncPendingPayments} disabled={syncingPayments} className="border-blue-500 text-blue-800 hover:bg-blue-100">
+                {syncingPayments ? 'Checking Stripe...' : 'Sync Pending Payments'}
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -3168,9 +3225,9 @@ export const AdminDashboard = () => {
                   Import historical bookings from your WordPress Chauffeur Booking System. This preserves original booking IDs for cross-reference and won't send notifications for imported bookings.
                 </p>
                 
-                <ImportBookingsSection 
+                <ImportBookingsSection
                   onSuccess={() => {
-                    fetchBookingsRef.current?.();
+                    silentRefresh();
                     toast.success('Bookings imported successfully!');
                   }}
                 />
@@ -3937,339 +3994,19 @@ export const AdminDashboard = () => {
       />
 
       {/* Edit Booking Modal */}
-      <Dialog open={showEditBookingModal} onOpenChange={setShowEditBookingModal}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Edit Booking #{editingBooking?.referenceNumber || editingBooking?.id?.slice(0, 8)}</DialogTitle>
-          </DialogHeader>
-          {editingBooking && (
-            <div className="space-y-6 pt-4">
-              {/* Customer Information */}
-              <div>
-                <h3 className="font-semibold text-gray-900 mb-3">Customer Information</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label>Name *</Label>
-                    <Input
-                      value={editingBooking.name}
-                      onChange={(e) => setEditingBooking(prev => ({...prev, name: e.target.value}))}
-                      placeholder="Customer name"
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label>Email *</Label>
-                    <Input
-                      type="email"
-                      value={editingBooking.email}
-                      onChange={(e) => setEditingBooking(prev => ({...prev, email: e.target.value}))}
-                      placeholder="customer@example.com"
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label>Phone *</Label>
-                    <Input
-                      value={editingBooking.phone}
-                      onChange={(e) => setEditingBooking(prev => ({...prev, phone: e.target.value}))}
-                      placeholder="+64 21 XXX XXXX"
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label>Passengers</Label>
-                    <Select 
-                      value={editingBooking.passengers?.toString()} 
-                      onValueChange={(value) => setEditingBooking(prev => ({...prev, passengers: value}))}
-                    >
-                      <SelectTrigger className="mt-1">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(num => (
-                          <SelectItem key={num} value={num.toString()}>{num}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Trip Information */}
-              <div>
-                <h3 className="font-semibold text-gray-900 mb-3">Trip Information</h3>
-                <div className="space-y-4">
-                  <div className="relative">
-                    <Label>Pickup Address 1 *</Label>
-                    <Input
-                      value={editingBooking.pickupAddress}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setEditingBooking(prev => ({ ...prev, pickupAddress: val }));
-                        fetchAdminAddressSuggestions(val, setEditPickupSuggestions, setShowEditPickupSuggestions);
-                      }}
-                      onBlur={() => setTimeout(() => setShowEditPickupSuggestions(false), 200)}
-                      placeholder="Start typing address..."
-                      autoComplete="off"
-                      className="mt-1"
-                    />
-                    {showEditPickupSuggestions && editPickupSuggestions.length > 0 && (
-                      <ul className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
-                        {editPickupSuggestions.map((s, i) => (
-                          <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm border-b last:border-b-0"
-                            onPointerDown={(e) => {
-                              e.preventDefault();
-                              setEditingBooking(prev => ({ ...prev, pickupAddress: s.description }));
-                              setShowEditPickupSuggestions(false);
-                            }}>
-                            {s.description}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-
-                  {/* Additional Pickup Addresses */}
-                  {editingBooking.pickupAddresses?.map((pickup, index) => (
-                    <div key={index} className="relative">
-                      <Label>Pickup Address {index + 2}</Label>
-                      <div className="flex gap-2 mt-1">
-                        <Input
-                          value={pickup}
-                          onChange={(e) => handleEditPickupAddressChange(index, e.target.value)}
-                          placeholder="Enter full address..."
-                          className="flex-1"
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => handleRemoveEditPickup(index)}
-                          className="text-red-600 hover:bg-red-50"
-                        >
-                          ✕
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-
-                  {/* Add Pickup Button */}
-                  <div>
-                    <button
-                      type="button"
-                      onClick={handleAddEditPickup}
-                      className="group w-full flex items-center justify-center gap-3 px-6 py-4 bg-gradient-to-r from-gold/10 to-gold/5 hover:from-gold/20 hover:to-gold/10 border-2 border-dashed border-gold/40 hover:border-gold/60 rounded-lg transition-all duration-300"
-                    >
-                      <MapPin className="w-4 h-4 text-gold" />
-                      <span className="text-sm font-semibold text-gray-700">Add Another Pickup Location</span>
-                      <span className="w-6 h-6 rounded-full bg-gold text-white text-xs font-bold flex items-center justify-center">+</span>
-                    </button>
-                  </div>
-
-                  <div className="relative">
-                    <Label>Drop-off Address *</Label>
-                    <Input
-                      value={editingBooking.dropoffAddress}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setEditingBooking(prev => ({ ...prev, dropoffAddress: val }));
-                        fetchAdminAddressSuggestions(val, setEditDropoffSuggestions, setShowEditDropoffSuggestions);
-                      }}
-                      onBlur={() => setTimeout(() => setShowEditDropoffSuggestions(false), 200)}
-                      placeholder="Start typing address..."
-                      autoComplete="off"
-                      className="mt-1"
-                    />
-                    {showEditDropoffSuggestions && editDropoffSuggestions.length > 0 && (
-                      <ul className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
-                        {editDropoffSuggestions.map((s, i) => (
-                          <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm border-b last:border-b-0"
-                            onPointerDown={(e) => {
-                              e.preventDefault();
-                              setEditingBooking(prev => ({ ...prev, dropoffAddress: s.description }));
-                              setShowEditDropoffSuggestions(false);
-                            }}>
-                            {s.description}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label>Date *</Label>
-                      <Input
-                        type="date"
-                        value={editingBooking.date}
-                        onChange={(e) => setEditingBooking(prev => ({...prev, date: e.target.value}))}
-                        className="mt-1"
-                      />
-                    </div>
-                    <div>
-                      <Label>Time *</Label>
-                      <Input
-                        type="time"
-                        value={editingBooking.time}
-                        onChange={(e) => setEditingBooking(prev => ({...prev, time: e.target.value}))}
-                        className="mt-1"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Flight Number */}
-                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                    <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                      Flight Number
-                    </h4>
-                    <div>
-                      <Label>Flight Number</Label>
-                      <Input
-                        value={editingBooking.flightNumber || editingBooking.flightArrivalNumber || editingBooking.flightDepartureNumber || editingBooking.arrivalFlightNumber || editingBooking.departureFlightNumber || ''}
-                        onChange={(e) => setEditingBooking(prev => ({
-                          ...prev,
-                          flightNumber: e.target.value,
-                          flightArrivalNumber: e.target.value,
-                          flightDepartureNumber: e.target.value,
-                          arrivalFlightNumber: e.target.value,
-                          departureFlightNumber: e.target.value
-                        }))}
-                        placeholder="e.g., NZ123"
-                        className="mt-1 bg-white"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Return Journey - Always visible, optional */}
-                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                    <h4 className="font-semibold text-gray-900 mb-2">Return Journey <span className="text-sm font-normal text-gray-500">(Optional)</span></h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
-                        <div>
-                          <Label>Return Date *</Label>
-                          <Input
-                            type="date"
-                            value={editingBooking.returnDate || ''}
-                            onChange={(e) => setEditingBooking(prev => ({...prev, returnDate: e.target.value}))}
-                            min={editingBooking.date || new Date().toISOString().split('T')[0]}
-                            className="mt-1 bg-white"
-                          />
-                        </div>
-                        <div>
-                          <Label>Return Time *</Label>
-                          <Input
-                            type="time"
-                            value={editingBooking.returnTime || ''}
-                            onChange={(e) => setEditingBooking(prev => ({...prev, returnTime: e.target.value}))}
-                            className="mt-1 bg-white"
-                          />
-                        </div>
-                        <div>
-                          <Label>Return Flight Number</Label>
-                          <Input
-                            value={editingBooking.returnFlightNumber || editingBooking.returnDepartureFlightNumber || ''}
-                            onChange={(e) => setEditingBooking(prev => ({...prev, returnFlightNumber: e.target.value, returnDepartureFlightNumber: e.target.value}))}
-                            placeholder="e.g. NZ456"
-                            className="mt-1 bg-white"
-                          />
-                        </div>
-                        <div className="md:col-span-2">
-                          <p className="text-xs text-gray-600 italic">
-                            Return route: {editingBooking.dropoffAddress?.split(',')[0]} → {editingBooking.pickupAddress?.split(',')[0]}
-                          </p>
-                        </div>
-                      </div>
-                  </div>
-
-                  <div>
-                    <Label>Special Notes</Label>
-                    <Textarea
-                      value={editingBooking.notes || ''}
-                      onChange={(e) => setEditingBooking(prev => ({...prev, notes: e.target.value}))}
-                      placeholder="Any special requests or notes..."
-                      rows={3}
-                      className="mt-1"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Current Pricing Info */}
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h3 className="font-semibold text-gray-900 mb-2">Current Pricing</h3>
-                <div className="flex justify-between items-center">
-                  <span>Total Price:</span>
-                  <span className="text-xl font-bold text-gold">${editingBooking.pricing?.totalPrice?.toFixed(2) || '0.00'}</span>
-                </div>
-                <p className="text-xs text-gray-500 mt-2">To change pricing, use the View Details modal and override the price.</p>
-              </div>
-
-              {/* Quick Actions */}
-              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                <h3 className="font-semibold text-gray-900 mb-3">Quick Actions</h3>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handlePreviewConfirmation(editingBooking.id)}
-                    className="bg-white"
-                    disabled={previewLoading}
-                  >
-                    <Eye className="w-4 h-4 mr-2" />
-                    {previewLoading ? 'Loading...' : 'Preview Confirmation'}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleResendConfirmation(editingBooking.id)}
-                    className="bg-white"
-                  >
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                    Resend Confirmation
-                  </Button>
-                  {editingBooking.payment_status !== 'paid' && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleResendPaymentLink(editingBooking.id, 'stripe')}
-                      className="bg-white text-green-600 border-green-200 hover:bg-green-50"
-                    >
-                      💳 Send Payment Link
-                    </Button>
-                  )}
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleManualCalendarSync(editingBooking.id)}
-                    className="bg-white"
-                    disabled={calendarLoading}
-                  >
-                    <Calendar className="w-4 h-4 mr-2" />
-                    Sync to Calendar
-                  </Button>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex justify-end gap-2 pt-4 border-t">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setShowEditBookingModal(false);
-                    setEditingBooking(null);
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleSaveEditedBooking}
-                  className="bg-gold hover:bg-gold/90 text-black font-semibold"
-                >
-                  Save Changes
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <EditBookingModal
+        open={showEditBookingModal}
+        onClose={() => { setShowEditBookingModal(false); setEditingBooking(null); }}
+        booking={editingBooking}
+        onSuccess={silentRefresh}
+        onPreviewConfirmation={handlePreviewConfirmation}
+        onResendConfirmation={handleResendConfirmation}
+        onResendPaymentLink={handleResendPaymentLink}
+        onManualCalendarSync={handleManualCalendarSync}
+        getAuthHeaders={getAuthHeaders}
+        previewLoading={previewLoading}
+        calendarLoading={calendarLoading}
+      />
 
       {/* Preview Confirmation Modal */}
       <Dialog open={showPreviewModal} onOpenChange={setShowPreviewModal}>

@@ -47,6 +47,26 @@ We use Mailgun. Not SendGrid. Not SMTP. Not Gmail. Not "a fallback".
 - **NEVER** re-add FacebookTab or Facebook API routes
 - **NEVER** add `FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET` references
 
+### 7. No Shared Shuttle Service
+
+The shared shuttle service has been completely removed from the admin system and codebase.
+
+- **NEVER** re-add the shuttle tab to AdminDashboard
+- **NEVER** re-add `SharedShuttle.jsx` or `ShuttleDriverPortal.jsx`
+- **NEVER** re-add shuttle API endpoints (`/api/shuttle/*`)
+- Backend shuttle endpoints and pricing code have been removed from `server.py`
+- Note: "airport-shuttle" as a `serviceType` for regular bookings is STILL VALID — that's the core private transfer service, not the shared shuttle
+
+### 8. Customer Confirmation Design — LOCKED
+
+The customer confirmation email design is FINAL and must not change:
+
+- Payment method "stripe" displays as "Credit/Debit Card" (never show "Stripe" to customers)
+- Payment status shows as green "PAID" badge when payment_status == 'paid'
+- PaymentSuccess.jsx shows "Payment Successful!" with booking details — no Stripe branding
+- **NEVER** show "Stripe" text in customer-facing emails or pages
+- **NEVER** change the confirmation email layout/design without explicit permission
+
 ### 6. Maps & Distance: Google Maps API ONLY (No Geoapify)
 
 We use Google Maps for distance calculation, directions, and autocomplete. Geoapify has been removed.
@@ -216,6 +236,70 @@ If a customer pays via Stripe but the booking is missing from admin:
 - Shuttle bookings were being merged into admin panel causing confusion
 - SMTP code existed in `routes_bulk.py` violating Mailgun-only rule
 - Orphaned `validate_booking_date` function at module level (not inside any class)
+
+### Known Booking System Issues (Fixed 2026-03-18)
+
+- `insert_many()` was missing from `database.py` — backup restore would crash with AttributeError
+- Stripe webhook did not verify `matched_count` after updating booking — payment could succeed but booking status not update
+- iCloud contact sync was not triggered after Stripe payment webhook — only on initial booking creation
+- Shared shuttle service tab/code removed from admin dashboard (was cluttering the admin panel)
+- ALL delete/archive/restore operations now verify backup insert + find_one before deleting source record
+- Bulk delete only removes bookings that were successfully backed up (per-record verification)
+- Orphan payment recovery now verifies the recovered booking was actually created
+
+### ZERO BOOKING LOSS RULES — MANDATORY
+
+**A booking must NEVER be lost. These rules are absolute and non-negotiable.**
+
+#### Rule 1: NEVER delete without verified backup
+
+Before deleting a booking from ANY collection, the backup/destination insert MUST be:
+1. Verified with `result.acknowledged == True`
+2. Double-checked with `find_one()` to confirm the record exists in the destination
+3. Only THEN can the source record be deleted
+
+This applies to ALL move operations:
+- `delete_booking()` → must verify `deleted_bookings.insert_one()` before `bookings.delete_one()`
+- `archive_booking()` → must verify `bookings_archive.insert_one()` before `bookings.delete_one()`
+- `restore_booking()` → must verify `bookings.insert_one()` before `deleted_bookings.delete_one()`
+- `unarchive_booking()` → must verify `bookings.insert_one()` before `bookings_archive.delete_one()`
+- Bulk versions of all the above follow the same pattern per-record
+
+**If the backup/verify fails, ABORT the delete and raise an error. The booking stays where it is.**
+
+#### Rule 2: NEVER silently drop bookings on read
+
+- `GET /api/bookings` uses `model_construct()` (not `Booking(**b)`) to skip validators
+- Three-tier fallback ensures every record is returned even if fields are missing/invalid
+- **NEVER** switch back to `Booking(**b)` for reading — it silently drops records with missing fields
+
+#### Rule 3: VERIFY all critical inserts
+
+After inserting a booking (creation, recovery, import), verify with `find_one()`:
+- `POST /api/bookings` — already has double-check
+- `POST /api/bookings/recover-from-payment` — verified after insert
+- Import/CSV endpoints — must verify each insert
+
+#### Rule 4: After payment confirmation, trigger ALL 4 actions
+
+Every payment confirmation path (webhook, polling, manual) must call:
+1. `send_customer_confirmation(booking)` — email/SMS
+2. `send_booking_notification_to_admin(booking)` — admin alert
+3. `create_calendar_event(booking)` — Google Calendar
+4. `add_contact_to_icloud(booking)` — iCloud contacts (deduped)
+
+#### Rule 5: Log CRITICAL on any booking write failure
+
+Any failed booking database operation must log with `logger.error(f"CRITICAL: ...")` so it can be monitored. Never swallow booking errors silently.
+
+#### Rule 6: Booking collections are sacred
+
+There are 3 booking collections. A booking must ALWAYS exist in exactly one of them:
+- `db.bookings` — active bookings (shown in admin dashboard)
+- `db.deleted_bookings` — soft-deleted bookings (recoverable)
+- `db.bookings_archive` — archived completed bookings (7-year retention)
+
+**NEVER** delete a booking from all three. **NEVER** have a code path where a booking exists in zero collections.
 
 ---
 

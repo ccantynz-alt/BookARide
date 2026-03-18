@@ -64,16 +64,17 @@ def _send_email_compat(to_email, subject, html_content, from_name="BookaRide", t
 reminder_lock = asyncio.Lock()
 
 # === Background Task Helpers ===
-def run_async_task(coro_func, arg, task_description="background task"):
-    """Run an async function in a new event loop for background tasks"""
+async def run_async_task(coro_func, arg, task_description="background task"):
+    """Run an async background task in the main event loop.
+
+    IMPORTANT: This must be async (not sync with new_event_loop) because async
+    functions like create_calendar_event use the asyncpg database pool, which is
+    bound to the main event loop. Creating a new event loop would cause
+    'attached to a different loop' errors on any database operation.
+    """
     try:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            loop.run_until_complete(coro_func(arg))
-            logger.info(f" Background task completed: {task_description}")
-        finally:
-            loop.close()
+        await coro_func(arg)
+        logger.info(f" Background task completed: {task_description}")
     except Exception as e:
         logger.error(f" Background task failed ({task_description}): {str(e)}")
 
@@ -5989,6 +5990,88 @@ async def create_payment_checkout(request: PaymentCheckoutRequest, http_request:
         raise HTTPException(status_code=500, detail=f"Error creating checkout session: {str(e)}")
 
 
+class PaymentCheckoutLinkRequest(BaseModel):
+    booking_id: str
+    origin_url: str
+
+@api_router.post("/payment/create-checkout-link")
+async def create_payment_checkout_link(request: PaymentCheckoutLinkRequest, http_request: Request):
+    """Public endpoint for email payment links — creates a fresh Stripe checkout session.
+    No auth required so customers can pay directly from their email."""
+    try:
+        booking = await db.bookings.find_one({"id": request.booking_id}, {"_id": 0})
+        if not booking:
+            raise HTTPException(status_code=404, detail="Booking not found")
+
+        # Block if already paid
+        if booking.get('payment_status') == 'paid':
+            raise HTTPException(status_code=400, detail="This booking has already been paid")
+
+        stripe_api_key = os.environ.get('STRIPE_API_KEY') or os.environ.get('STRIPE_SECRET_KEY')
+        if not stripe_api_key:
+            raise HTTPException(status_code=500, detail="Stripe API key not configured")
+
+        host_url = str(http_request.base_url).rstrip('/')
+        webhook_url = f"{host_url}/api/webhook/stripe"
+        stripe_checkout = StripeCheckout(api_key=stripe_api_key, webhook_url=webhook_url)
+
+        success_url = f"{request.origin_url}/payment-success?session_id={{CHECKOUT_SESSION_ID}}"
+        cancel_url = f"{request.origin_url}/book-now"
+
+        amount = float(booking.get('totalPrice', 0))
+        if amount <= 0:
+            raise HTTPException(status_code=400, detail="Invalid booking amount")
+
+        amount_cents = int(round(amount * 100))
+
+        checkout_request = CheckoutSessionRequest(
+            amount_total=amount_cents,
+            currency="nzd",
+            success_url=success_url,
+            cancel_url=cancel_url,
+            customer_email=booking.get('email') or None,
+            metadata={
+                "booking_id": request.booking_id,
+                "booking_type": "regular",
+                "customer_email": booking.get('email', ''),
+                "customer_name": booking.get('name', '')
+            }
+        )
+
+        session = await stripe_checkout.create_checkout_session(checkout_request)
+
+        # Create payment transaction record (so webhook + orphan recovery can find it)
+        payment_transaction = {
+            "id": str(uuid.uuid4()),
+            "booking_id": request.booking_id,
+            "session_id": session.session_id,
+            "amount": amount,
+            "currency": "nzd",
+            "payment_status": "pending",
+            "status": "initiated",
+            "customer_email": booking.get('email', ''),
+            "customer_name": booking.get('name', ''),
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc)
+        }
+        await db.payment_transactions.insert_one(payment_transaction)
+        logger.info(f"Payment transaction created for checkout link: {payment_transaction['id']} for booking: {request.booking_id}")
+
+        # Update booking with fresh payment session
+        await db.bookings.update_one(
+            {"id": request.booking_id},
+            {"$set": {"payment_session_id": session.session_id, "payment_status": "pending"}}
+        )
+
+        return session
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error creating checkout link: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error creating checkout session: {str(e)}")
+
+
 def _extract_booking_summary(booking: dict) -> dict:
     """Extract key booking details for the confirmation page."""
     if not booking:
@@ -6086,6 +6169,11 @@ async def get_payment_status(session_id: str):
                         send_customer_confirmation(booking)
                         await send_booking_notification_to_admin(booking)
                         await create_calendar_event(booking)
+                        # Sync contact to iCloud
+                        try:
+                            add_contact_to_icloud(booking)
+                        except Exception as e:
+                            logger.error(f"iCloud contact sync failed for booking {booking_id}: {e}")
                 else:
                     logger.error(f"Payment succeeded but booking {booking_id} not found in database - potential orphan payment")
         
@@ -6104,6 +6192,70 @@ async def get_payment_status(session_id: str):
     except Exception as e:
         logger.error(f"Error getting payment status: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error checking payment status: {str(e)}")
+
+
+@api_router.post("/bookings/sync-pending-payments")
+async def sync_pending_payments(current_admin: dict = Depends(get_current_admin)):
+    """Check Stripe for the actual payment status of bookings stuck in 'pending'.
+    Useful when webhook didn't fire or customer closed the tab before polling completed."""
+    try:
+        stripe_api_key = os.environ.get('STRIPE_API_KEY') or os.environ.get('STRIPE_SECRET_KEY')
+        if not stripe_api_key:
+            raise HTTPException(status_code=500, detail="Stripe API key not configured")
+
+        stripe_checkout = StripeCheckout(api_key=stripe_api_key, webhook_url="")
+
+        # Find bookings with payment_status=pending that have a Stripe session
+        pending_bookings = await db.bookings.find(
+            {"payment_status": "pending", "payment_session_id": {"$ne": None}},
+            {"_id": 0}
+        ).to_list(100)
+
+        synced = []
+        for booking in pending_bookings:
+            session_id = booking.get('payment_session_id')
+            if not session_id:
+                continue
+            try:
+                checkout_status = await stripe_checkout.get_checkout_status(session_id)
+                if checkout_status.payment_status == "paid":
+                    await db.bookings.update_one(
+                        {"id": booking['id']},
+                        {"$set": {"payment_status": "paid", "status": "confirmed"}}
+                    )
+                    # Also update payment_transactions if it exists
+                    await db.payment_transactions.update_one(
+                        {"session_id": session_id},
+                        {"$set": {"payment_status": "paid", "updated_at": datetime.now(timezone.utc)}}
+                    )
+                    synced.append({
+                        "booking_id": booking['id'],
+                        "referenceNumber": booking.get('referenceNumber'),
+                        "customer": booking.get('name'),
+                        "amount": booking.get('totalPrice'),
+                    })
+                    logger.info(f"Synced payment for booking #{booking.get('referenceNumber')} — was pending, now paid")
+
+                    # Send confirmations that were missed
+                    updated_booking = await db.bookings.find_one({"id": booking['id']}, {"_id": 0})
+                    if updated_booking:
+                        send_customer_confirmation(updated_booking)
+                        await send_booking_notification_to_admin(updated_booking)
+                        await create_calendar_event(updated_booking)
+            except Exception as e:
+                logger.warning(f"Could not check Stripe for session {session_id}: {e}")
+
+        return {
+            "synced": synced,
+            "count": len(synced),
+            "checked": len(pending_bookings),
+            "message": f"Synced {len(synced)} of {len(pending_bookings)} pending bookings"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error syncing pending payments: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @api_router.get("/bookings/orphan-payments")
@@ -6203,7 +6355,15 @@ async def recover_booking_from_payment(body: RecoverBookingFromPayment, current_
             "recoveredFromPaymentAt": now_iso,
             "recoveredBy": current_admin.get("username", "admin"),
         }
-        await db.bookings.insert_one(recovered)
+        recovery_result = await db.bookings.insert_one(recovered)
+        if not recovery_result.acknowledged:
+            logger.error(f"CRITICAL: Failed to insert recovered booking {bid}")
+            raise HTTPException(status_code=500, detail="Failed to create recovered booking")
+        # Verify the booking exists
+        verify = await db.bookings.find_one({"id": bid})
+        if not verify:
+            logger.error(f"CRITICAL: Recovered booking {bid} verification failed after insert")
+            raise HTTPException(status_code=500, detail="Booking recovery verification failed")
         logger.info(f"Recovered booking {bid} (ref #{ref_str}) from payment for {t.get('customer_email')}")
         return {"message": "Booking recovered and added to admin list", "booking_id": bid, "referenceNumber": ref_str}
     except HTTPException:
@@ -6253,79 +6413,34 @@ async def stripe_webhook(request: Request):
             # If payment successful, update booking and send confirmations
             if webhook_response.payment_status == "paid":
                 booking_id = webhook_response.metadata.get('booking_id')
-                booking_type = webhook_response.metadata.get('booking_type', 'regular')
-                
+
                 if booking_id:
-                    # Handle shuttle bookings differently
-                    if booking_type == 'shuttle':
-                        # For shuttle: update to authorized (not charged yet)
-                        # Also save the payment_intent_id for later capture
-                        import stripe
-                        stripe.api_key = stripe_api_key
-                        
-                        # Get the session to retrieve payment_intent
-                        session = stripe.checkout.Session.retrieve(webhook_response.session_id)
-                        payment_intent_id = session.payment_intent
-                        
-                        await db.shuttle_bookings.update_one(
-                            {"id": booking_id},
-                            {"$set": {
-                                "paymentStatus": "authorized",
-                                "status": "authorized",
-                                "stripePaymentIntentId": payment_intent_id,
-                                "stripeCheckoutSessionId": webhook_response.session_id
-                            }}
-                        )
-                        logger.info(f"Shuttle booking {booking_id} authorized - PaymentIntent: {payment_intent_id}")
-                        
-                        # Send confirmation to customer
-                        shuttle_booking = await db.shuttle_bookings.find_one({"id": booking_id}, {"_id": 0})
-                        if shuttle_booking:
-                            # Send email confirmation for shuttle
-                            try:
-                                shuttle_subject = f"Shuttle Booking Confirmed - {shuttle_booking['date']} {shuttle_booking['departureTime']}"
-                                shuttle_html = f"""
-                                <h2>Your Shuttle Seat is Reserved!</h2>
-                                <p>Hi {shuttle_booking['name']},</p>
-                                <p>Great news! Your seat on the shared shuttle is confirmed.</p>
-                                <h3>Booking Details:</h3>
-                                <ul>
-                                    <li><strong>Date:</strong> {shuttle_booking['date']}</li>
-                                    <li><strong>Departure Time:</strong> {shuttle_booking['departureTime']}</li>
-                                    <li><strong>Pickup:</strong> {shuttle_booking['pickupAddress']}</li>
-                                    <li><strong>Destination:</strong> Auckland International Airport</li>
-                                    <li><strong>Passengers:</strong> {shuttle_booking['passengers']}</li>
-                                </ul>
-                                <h3>Payment Info:</h3>
-                                <p>A hold of <strong>${shuttle_booking.get('totalEstimated', 100)}</strong> has been placed on your card.</p>
-                                <p>You will only be charged the <strong>final price</strong> when the shuttle arrives at the airport.</p>
-                                <p>The more passengers on your shuttle, the cheaper everyone pays!</p>
-                                <p>We'll be in touch closer to your departure date with pickup details.</p>
-                                <p>Thank you for choosing Book A Ride!</p>
-                                """
-                                _send_email_with_fallbacks(shuttle_booking['email'], shuttle_subject, shuttle_html, from_name='Book A Ride NZ')
-                                logger.info(f"Shuttle confirmation email sent to {shuttle_booking['email']}")
-                            except Exception as email_error:
-                                logger.error(f"Failed to send shuttle confirmation email: {email_error}")
+                    update_result = await db.bookings.update_one(
+                        {"id": booking_id},
+                        {"$set": {"payment_status": "paid", "status": "confirmed"}}
+                    )
+                    if update_result.matched_count == 0:
+                        logger.error(f"CRITICAL: Webhook payment confirmed but booking {booking_id} not found for update - potential data loss")
                     else:
-                        # Regular booking - charge immediately
-                        await db.bookings.update_one(
-                            {"id": booking_id},
-                            {"$set": {"payment_status": "paid", "status": "confirmed"}}
-                        )
                         logger.info(f"Booking {booking_id} confirmed via webhook")
-                        
-                        # Get booking details for notifications
-                        booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
-                        if booking:
-                            # Send confirmations based on customer's notification preference
-                            send_customer_confirmation(booking)
-                            
-                            # Send admin notification
-                            await send_booking_notification_to_admin(booking)
-                            
-                            # Create Google Calendar event
-                            await create_calendar_event(booking)
+
+                    # Get booking details for notifications
+                    booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+                    if booking:
+                        # Send confirmations based on customer's notification preference
+                        send_customer_confirmation(booking)
+
+                        # Send admin notification
+                        await send_booking_notification_to_admin(booking)
+
+                        # Create Google Calendar event
+                        await create_calendar_event(booking)
+
+                        # Sync contact to iCloud
+                        try:
+                            add_contact_to_icloud(booking)
+                        except Exception as e:
+                            logger.error(f"iCloud contact sync failed for booking {booking_id}: {e}")
         
         return {"status": "success", "event_type": webhook_response.event_type}
     
@@ -7778,50 +7893,33 @@ async def export_csv():
 
 # Payment Link Helper Functions
 async def generate_stripe_payment_link(booking: dict) -> str:
-    """Generate a Stripe payment link for a booking"""
+    """Generate a stable payment link that points to the frontend /pay/:bookingId page.
+
+    Instead of returning a raw Stripe checkout session URL (which expires after 24h),
+    this returns a link to our own domain that creates a fresh session on the fly.
+    This prevents the 'website cannot be trusted' / expired link errors customers see.
+    """
     try:
-        stripe_api_key = os.environ.get('STRIPE_API_KEY') or os.environ.get('STRIPE_SECRET_KEY')
-        if not stripe_api_key:
-            logger.error("Stripe API key not configured (set STRIPE_API_KEY or STRIPE_SECRET_KEY)")
+        booking_id = booking.get('id', '')
+        if not booking_id:
+            logger.error("Cannot generate payment link: booking has no ID")
             return None
-        
-        public_url = os.environ.get('PUBLIC_URL') or os.environ.get('PUBLIC_DOMAIN', 'https://www.bookaride.co.nz').rstrip('/')
-        webhook_url = f"{public_url}/api/webhook/stripe"
-        stripe_checkout = StripeCheckout(api_key=stripe_api_key, webhook_url=webhook_url)
-        
-        success_url = f"{public_url}/payment-success?session_id={{CHECKOUT_SESSION_ID}}"
-        cancel_url = f"{public_url}/book-now"
-        
-        # Get price from multiple possible locations (admin may update pricing.totalPrice)
+
+        # Verify amount is valid before generating link
         amount = 0
         if booking.get('pricing') and booking.get('pricing', {}).get('totalPrice'):
             amount = float(booking.get('pricing', {}).get('totalPrice', 0))
         elif booking.get('totalPrice'):
             amount = float(booking.get('totalPrice', 0))
-        
+
         if amount <= 0:
             logger.error(f"Invalid amount for payment link: {amount}")
             return None
-        
-        # Stripe expects amount in cents (smallest currency unit)
-        amount_cents = int(round(amount * 100))
-        logger.info(f"Generating Stripe payment link for ${amount:.2f} (booking #{booking.get('referenceNumber')})")
-        
-        checkout_request = CheckoutSessionRequest(
-            amount_total=amount_cents,
-            currency="nzd",
-            success_url=success_url,
-            cancel_url=cancel_url,
-            customer_email=booking.get('email') or None,
-            metadata={
-                "booking_id": booking.get('id', ''),
-                "customer_email": booking.get('email', ''),
-                "customer_name": booking.get('name', '')
-            }
-        )
-        
-        session = await stripe_checkout.create_checkout_session(checkout_request)
-        return session.url
+
+        public_url = os.environ.get('PUBLIC_URL') or os.environ.get('PUBLIC_DOMAIN', 'https://www.bookaride.co.nz').rstrip('/')
+        payment_link = f"{public_url}/pay/{booking_id}"
+        logger.info(f"Generated stable payment link for ${amount:.2f} (booking #{booking.get('referenceNumber')}): {payment_link}")
+        return payment_link
     except Exception as e:
         logger.error(f"Error generating Stripe payment link: {str(e)}")
         return None
@@ -8150,7 +8248,7 @@ async def send_payment_link_email(booking: dict, payment_link: str, payment_type
     try:
         customer_email = booking.get('email', '')
         customer_name = booking.get('name', '')
-        booking_ref = booking.get('booking_ref', booking.get('id', '')[:6])
+        booking_ref = booking.get('referenceNumber', booking.get('id', '')[:6])
         total_price = booking.get('totalPrice', 0)
         
         payment_type_display = "Stripe" if payment_type == "stripe" else "PayPal"
@@ -8166,50 +8264,61 @@ async def send_payment_link_email(booking: dict, payment_link: str, payment_type
             <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
                 <!-- Header -->
                 <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 30px; text-align: center;">
-                    <h1 style="color: #D4AF37; margin: 0; font-size: 28px;">Payment Required</h1>
-                    <p style="color: #ffffff; margin: 10px 0 0 0;">Booking Reference: {booking_ref}</p>
+                    <h1 style="color: #D4AF37; margin: 0; font-size: 28px;">Book A Ride NZ</h1>
+                    <p style="color: #ffffff; margin: 10px 0 0 0; font-size: 14px;">www.bookaride.co.nz</p>
+                    <p style="color: #cccccc; margin: 8px 0 0 0; font-size: 13px;">Booking Reference: {booking_ref}</p>
                 </div>
-                
+
                 <!-- Content -->
                 <div style="padding: 30px;">
                     <p style="font-size: 16px; color: #333;">Dear {customer_name},</p>
-                    
+
                     <p style="font-size: 16px; color: #333;">
-                        Thank you for your booking with Book A Ride NZ. Please complete your payment using the link below.
+                        Thank you for your booking with Book A Ride NZ. Please complete your payment using the secure link below.
                     </p>
-                    
+
                     <!-- Payment Amount Box -->
                     <div style="background: #f9f9f9; border: 2px solid #D4AF37; border-radius: 10px; padding: 20px; text-align: center; margin: 25px 0;">
                         <p style="margin: 0; color: #666; font-size: 14px;">Amount Due</p>
                         <p style="margin: 10px 0; color: #1a1a2e; font-size: 36px; font-weight: bold;">${total_price:.2f} NZD</p>
                         <p style="margin: 0; color: #666; font-size: 12px;">via {payment_type_display}</p>
                     </div>
-                    
+
                     <!-- Payment Button -->
                     <div style="text-align: center; margin: 30px 0;">
-                        <a href="{payment_link}" 
-                           style="display: inline-block; background: #D4AF37; color: #1a1a2e; padding: 15px 40px; 
+                        <a href="{payment_link}"
+                           style="display: inline-block; background: #D4AF37; color: #1a1a2e; padding: 15px 40px;
                                   border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 18px;">
-                            Pay Now with {payment_type_display}
+                            Pay Now Securely
                         </a>
                     </div>
-                    
-                    <p style="font-size: 14px; color: #666; text-align: center;">
+
+                    <p style="font-size: 13px; color: #888; text-align: center;">
+                        This link goes to <strong>bookaride.co.nz</strong> and then to Stripe's secure checkout.
+                    </p>
+
+                    <p style="font-size: 14px; color: #666; text-align: center; margin-top: 15px;">
                         Or copy this link: <br>
                         <a href="{payment_link}" style="color: #D4AF37; word-break: break-all;">{payment_link}</a>
                     </p>
-                    
+
                     <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-                    
+
                     <p style="font-size: 14px; color: #666;">
-                        If you have any questions, please contact us at bookings@bookaride.co.nz
+                        If you have any questions, please contact us at
+                        <a href="mailto:bookings@bookaride.co.nz" style="color: #D4AF37;">bookings@bookaride.co.nz</a>
+                    </p>
+
+                    <p style="font-size: 12px; color: #999; margin-top: 15px;">
+                        Your payment is processed securely by Stripe. Book A Ride NZ never stores your card details.
                     </p>
                 </div>
-                
+
                 <!-- Footer -->
                 <div style="background: #1a1a2e; padding: 20px; text-align: center;">
                     <p style="color: #888; font-size: 12px; margin: 0;">
-                        Book A Ride NZ | Premium Airport Transfers
+                        Book A Ride NZ | Premium Airport Transfers<br>
+                        <span style="color: #666;">www.bookaride.co.nz</span>
                     </p>
                 </div>
             </div>
@@ -8284,7 +8393,7 @@ def add_contact_to_icloud(booking: dict):
             email_field.type_param = 'INTERNET'
         
         # Add note with booking details
-        booking_ref = booking.get('booking_ref', booking.get('id', '')[:6])
+        booking_ref = booking.get('referenceNumber', booking.get('id', '')[:6])
         pickup = booking.get('pickupAddress', '')
         dropoff = booking.get('dropoffAddress', '')
         date = booking.get('date', '')
@@ -9381,17 +9490,27 @@ async def bulk_delete(booking_ids: List[str], send_notifications: bool = False, 
                 except Exception as e:
                     logger.error(f"Error sending cancellation for booking {booking.get('id')}: {str(e)}")
         
-        # SOFT DELETE: Move all to deleted_bookings collection
-        deleted_count = 0
+        # SOFT DELETE: Move all to deleted_bookings collection with verification
+        backed_up_ids = []
         for booking in bookings:
             booking['deletedAt'] = datetime.now(timezone.utc).isoformat()
             booking['deletedBy'] = current_admin.get('username', 'admin')
             booking['notificationSent'] = send_notifications
-            await db.deleted_bookings.insert_one(booking)
-            deleted_count += 1
-        
-        # Remove from active bookings
-        result = await db.bookings.delete_many({"id": {"$in": booking_ids}})
+            backup_result = await db.deleted_bookings.insert_one(booking)
+            if backup_result.acknowledged:
+                # Verify the backup actually exists
+                verify = await db.deleted_bookings.find_one({"id": booking.get('id')})
+                if verify:
+                    backed_up_ids.append(booking.get('id'))
+                else:
+                    logger.error(f"CRITICAL: Backup verification failed for booking {booking.get('id')} during bulk delete")
+            else:
+                logger.error(f"CRITICAL: Failed to backup booking {booking.get('id')} during bulk delete")
+
+        # Only delete bookings that were successfully backed up
+        if not backed_up_ids:
+            raise HTTPException(status_code=500, detail="Failed to backup any bookings - all preserved")
+        result = await db.bookings.delete_many({"id": {"$in": backed_up_ids}})
         
         logger.info(f"Bulk soft-deleted {deleted_count} bookings by {current_admin.get('username', 'admin')}")
         return {"message": "Bookings deleted", "count": result.deleted_count, "notifications_sent": send_notifications}
@@ -9464,15 +9583,23 @@ async def restore_booking(booking_id: str, current_admin: dict = Depends(get_cur
         deleted_booking['restoredAt'] = datetime.now(timezone.utc).isoformat()
         deleted_booking['restoredBy'] = current_admin.get('username', 'admin')
         
-        # Insert back into active bookings
-        await db.bookings.insert_one(deleted_booking)
-        
-        # Remove from deleted_bookings
+        # Insert back into active bookings and verify
+        restore_result = await db.bookings.insert_one(deleted_booking)
+        if not restore_result.acknowledged:
+            logger.error(f"CRITICAL: Failed to restore booking {booking_id} to active - booking stays in deleted_bookings")
+            raise HTTPException(status_code=500, detail="Failed to restore booking - booking preserved in deleted list")
+
+        restore_check = await db.bookings.find_one({"id": booking_id})
+        if not restore_check:
+            logger.error(f"CRITICAL: Restore verification failed for booking {booking_id}")
+            raise HTTPException(status_code=500, detail="Restore verification failed - booking preserved in deleted list")
+
+        # Safe to remove from deleted_bookings (restore confirmed)
         await db.deleted_bookings.delete_one({"id": booking_id})
-        
+
         # Remove _id before returning (MongoDB adds it during insert)
         deleted_booking.pop('_id', None)
-        
+
         logger.info(f"Booking {booking_id} restored by {current_admin.get('username', 'admin')}")
         return {"message": "Booking restored successfully", "booking_id": booking_id}
     except HTTPException:
@@ -9507,6 +9634,7 @@ async def restore_all_deleted_bookings(current_admin: dict = Depends(get_current
         except Exception as snap_err:
             logger.warning(f"Snapshot before restore_all failed (non-fatal): {snap_err}")
         restored = 0
+        failed = 0
         for booking in deleted_list:
             booking_id = booking.get("id")
             if not booking_id:
@@ -9516,7 +9644,17 @@ async def restore_all_deleted_bookings(current_admin: dict = Depends(get_current
             booking.pop('notificationSent', None)
             booking['restoredAt'] = datetime.now(timezone.utc).isoformat()
             booking['restoredBy'] = current_admin.get('username', 'admin')
-            await db.bookings.insert_one(booking)
+            restore_result = await db.bookings.insert_one(booking)
+            if not restore_result.acknowledged:
+                logger.error(f"CRITICAL: Failed to restore booking {booking_id} - keeping in deleted_bookings")
+                failed += 1
+                continue
+            # Verify restore before deleting from deleted_bookings
+            verify = await db.bookings.find_one({"id": booking_id})
+            if not verify:
+                logger.error(f"CRITICAL: Restore verification failed for booking {booking_id} - keeping in deleted_bookings")
+                failed += 1
+                continue
             await db.deleted_bookings.delete_one({"id": booking_id})
             restored += 1
         logger.info(f"Restored all {restored} deleted bookings by {current_admin.get('username', 'admin')}")
@@ -9562,12 +9700,20 @@ async def archive_booking(booking_id: str, current_admin: dict = Depends(get_cur
         # Set retention expiry (7 years from archive date)
         booking['retentionExpiry'] = (datetime.now(timezone.utc) + timedelta(days=365*7)).isoformat()
         
-        # Insert into archive collection
-        await db.bookings_archive.insert_one(booking)
-        
-        # Remove from active bookings
+        # Insert into archive collection and verify before deleting
+        archive_result = await db.bookings_archive.insert_one(booking)
+        if not archive_result.acknowledged:
+            logger.error(f"CRITICAL: Failed to archive booking {booking_id} - aborting, booking preserved")
+            raise HTTPException(status_code=500, detail="Failed to archive booking - booking preserved")
+
+        archive_check = await db.bookings_archive.find_one({"id": booking_id})
+        if not archive_check:
+            logger.error(f"CRITICAL: Archive verification failed for booking {booking_id} - aborting")
+            raise HTTPException(status_code=500, detail="Archive verification failed - booking preserved")
+
+        # Safe to delete from active (archive confirmed)
         await db.bookings.delete_one({"id": booking_id})
-        
+
         logger.info(f"Booking {booking_id} (Ref #{booking.get('referenceNumber', 'N/A')}) archived by {current_admin.get('username', 'admin')}")
         return {"message": "Booking archived successfully", "booking_id": booking_id, "referenceNumber": booking.get('referenceNumber')}
     except HTTPException:
@@ -9594,8 +9740,18 @@ async def archive_bookings_bulk(
                     booking['archivedBy'] = current_admin.get('username', 'admin')
                     booking['archiveReason'] = 'bulk'
                     booking['retentionExpiry'] = (datetime.now(timezone.utc) + timedelta(days=365*7)).isoformat()
-                    
-                    await db.bookings_archive.insert_one(booking)
+
+                    archive_result = await db.bookings_archive.insert_one(booking)
+                    if not archive_result.acknowledged:
+                        logger.error(f"CRITICAL: Failed to archive booking {booking_id} - skipping, booking preserved")
+                        failed.append(booking_id)
+                        continue
+                    # Verify archive before deleting
+                    archive_check = await db.bookings_archive.find_one({"id": booking_id})
+                    if not archive_check:
+                        logger.error(f"CRITICAL: Archive verification failed for booking {booking_id} - skipping")
+                        failed.append(booking_id)
+                        continue
                     await db.bookings.delete_one({"id": booking_id})
                     archived_count += 1
                 else:
@@ -9695,12 +9851,20 @@ async def unarchive_booking(booking_id: str, current_admin: dict = Depends(get_c
         archived_booking['unarchivedAt'] = datetime.now(timezone.utc).isoformat()
         archived_booking['unarchivedBy'] = current_admin.get('username', 'admin')
         
-        # Insert back into active bookings
-        await db.bookings.insert_one(archived_booking)
-        
-        # Remove from archive
+        # Insert back into active bookings and verify
+        restore_result = await db.bookings.insert_one(archived_booking)
+        if not restore_result.acknowledged:
+            logger.error(f"CRITICAL: Failed to unarchive booking {booking_id} - keeping in archive")
+            raise HTTPException(status_code=500, detail="Failed to restore booking - booking preserved in archive")
+
+        restore_check = await db.bookings.find_one({"id": booking_id})
+        if not restore_check:
+            logger.error(f"CRITICAL: Unarchive verification failed for booking {booking_id}")
+            raise HTTPException(status_code=500, detail="Restore verification failed - booking preserved in archive")
+
+        # Safe to remove from archive (restore confirmed)
         await db.bookings_archive.delete_one({"id": booking_id})
-        
+
         logger.info(f"Booking {booking_id} (Ref #{archived_booking.get('referenceNumber', 'N/A')}) unarchived by {current_admin.get('username', 'admin')}")
         return {"message": "Booking restored from archive", "booking_id": booking_id, "referenceNumber": archived_booking.get('referenceNumber')}
     except HTTPException:
