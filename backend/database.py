@@ -584,6 +584,20 @@ class Collection:
             )
             return InsertOneResult(inserted_id=row["_id"], acknowledged=True)
 
+    async def insert_many(self, documents: list) -> object:
+        """Insert multiple documents. Returns an object with inserted_ids list."""
+        await self._ensure_table()
+        inserted_ids = []
+        for doc in documents:
+            result = await self.insert_one(doc)
+            inserted_ids.append(result.inserted_id)
+
+        class InsertManyResult:
+            def __init__(self, ids):
+                self.inserted_ids = ids
+                self.acknowledged = True
+        return InsertManyResult(inserted_ids)
+
     async def update_one(self, query: Dict, update: Dict, upsert: bool = False) -> UpdateResult:
         await self._ensure_table()
         params = []

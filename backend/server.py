@@ -6150,6 +6150,11 @@ async def get_payment_status(session_id: str):
                         send_customer_confirmation(booking)
                         await send_booking_notification_to_admin(booking)
                         await create_calendar_event(booking)
+                        # Sync contact to iCloud
+                        try:
+                            add_contact_to_icloud(booking)
+                        except Exception as e:
+                            logger.error(f"iCloud contact sync failed for booking {booking_id}: {e}")
                 else:
                     logger.error(f"Payment succeeded but booking {booking_id} not found in database - potential orphan payment")
         
@@ -6322,7 +6327,15 @@ async def recover_booking_from_payment(body: RecoverBookingFromPayment, current_
             "recoveredFromPaymentAt": now_iso,
             "recoveredBy": current_admin.get("username", "admin"),
         }
-        await db.bookings.insert_one(recovered)
+        recovery_result = await db.bookings.insert_one(recovered)
+        if not recovery_result.acknowledged:
+            logger.error(f"CRITICAL: Failed to insert recovered booking {bid}")
+            raise HTTPException(status_code=500, detail="Failed to create recovered booking")
+        # Verify the booking exists
+        verify = await db.bookings.find_one({"id": bid})
+        if not verify:
+            logger.error(f"CRITICAL: Recovered booking {bid} verification failed after insert")
+            raise HTTPException(status_code=500, detail="Booking recovery verification failed")
         logger.info(f"Recovered booking {bid} (ref #{ref_str}) from payment for {t.get('customer_email')}")
         return {"message": "Booking recovered and added to admin list", "booking_id": bid, "referenceNumber": ref_str}
     except HTTPException:
@@ -6372,79 +6385,34 @@ async def stripe_webhook(request: Request):
             # If payment successful, update booking and send confirmations
             if webhook_response.payment_status == "paid":
                 booking_id = webhook_response.metadata.get('booking_id')
-                booking_type = webhook_response.metadata.get('booking_type', 'regular')
-                
+
                 if booking_id:
-                    # Handle shuttle bookings differently
-                    if booking_type == 'shuttle':
-                        # For shuttle: update to authorized (not charged yet)
-                        # Also save the payment_intent_id for later capture
-                        import stripe
-                        stripe.api_key = stripe_api_key
-                        
-                        # Get the session to retrieve payment_intent
-                        session = stripe.checkout.Session.retrieve(webhook_response.session_id)
-                        payment_intent_id = session.payment_intent
-                        
-                        await db.shuttle_bookings.update_one(
-                            {"id": booking_id},
-                            {"$set": {
-                                "paymentStatus": "authorized",
-                                "status": "authorized",
-                                "stripePaymentIntentId": payment_intent_id,
-                                "stripeCheckoutSessionId": webhook_response.session_id
-                            }}
-                        )
-                        logger.info(f"Shuttle booking {booking_id} authorized - PaymentIntent: {payment_intent_id}")
-                        
-                        # Send confirmation to customer
-                        shuttle_booking = await db.shuttle_bookings.find_one({"id": booking_id}, {"_id": 0})
-                        if shuttle_booking:
-                            # Send email confirmation for shuttle
-                            try:
-                                shuttle_subject = f"Shuttle Booking Confirmed - {shuttle_booking['date']} {shuttle_booking['departureTime']}"
-                                shuttle_html = f"""
-                                <h2>Your Shuttle Seat is Reserved!</h2>
-                                <p>Hi {shuttle_booking['name']},</p>
-                                <p>Great news! Your seat on the shared shuttle is confirmed.</p>
-                                <h3>Booking Details:</h3>
-                                <ul>
-                                    <li><strong>Date:</strong> {shuttle_booking['date']}</li>
-                                    <li><strong>Departure Time:</strong> {shuttle_booking['departureTime']}</li>
-                                    <li><strong>Pickup:</strong> {shuttle_booking['pickupAddress']}</li>
-                                    <li><strong>Destination:</strong> Auckland International Airport</li>
-                                    <li><strong>Passengers:</strong> {shuttle_booking['passengers']}</li>
-                                </ul>
-                                <h3>Payment Info:</h3>
-                                <p>A hold of <strong>${shuttle_booking.get('totalEstimated', 100)}</strong> has been placed on your card.</p>
-                                <p>You will only be charged the <strong>final price</strong> when the shuttle arrives at the airport.</p>
-                                <p>The more passengers on your shuttle, the cheaper everyone pays!</p>
-                                <p>We'll be in touch closer to your departure date with pickup details.</p>
-                                <p>Thank you for choosing Book A Ride!</p>
-                                """
-                                _send_email_with_fallbacks(shuttle_booking['email'], shuttle_subject, shuttle_html, from_name='Book A Ride NZ')
-                                logger.info(f"Shuttle confirmation email sent to {shuttle_booking['email']}")
-                            except Exception as email_error:
-                                logger.error(f"Failed to send shuttle confirmation email: {email_error}")
+                    update_result = await db.bookings.update_one(
+                        {"id": booking_id},
+                        {"$set": {"payment_status": "paid", "status": "confirmed"}}
+                    )
+                    if update_result.matched_count == 0:
+                        logger.error(f"CRITICAL: Webhook payment confirmed but booking {booking_id} not found for update - potential data loss")
                     else:
-                        # Regular booking - charge immediately
-                        await db.bookings.update_one(
-                            {"id": booking_id},
-                            {"$set": {"payment_status": "paid", "status": "confirmed"}}
-                        )
                         logger.info(f"Booking {booking_id} confirmed via webhook")
-                        
-                        # Get booking details for notifications
-                        booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
-                        if booking:
-                            # Send confirmations based on customer's notification preference
-                            send_customer_confirmation(booking)
-                            
-                            # Send admin notification
-                            await send_booking_notification_to_admin(booking)
-                            
-                            # Create Google Calendar event
-                            await create_calendar_event(booking)
+
+                    # Get booking details for notifications
+                    booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+                    if booking:
+                        # Send confirmations based on customer's notification preference
+                        send_customer_confirmation(booking)
+
+                        # Send admin notification
+                        await send_booking_notification_to_admin(booking)
+
+                        # Create Google Calendar event
+                        await create_calendar_event(booking)
+
+                        # Sync contact to iCloud
+                        try:
+                            add_contact_to_icloud(booking)
+                        except Exception as e:
+                            logger.error(f"iCloud contact sync failed for booking {booking_id}: {e}")
         
         return {"status": "success", "event_type": webhook_response.event_type}
     
@@ -7231,1103 +7199,7 @@ Customer will be auto-notified when you start.
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
-# ==================== SHARED SHUTTLE SERVICE ====================
 
-# Shuttle pricing tiers - $200 minimum per run
-SHUTTLE_PRICING = {
-    1: 100, 2: 100,  # $100 each = $100-200 total
-    3: 70,           # $70 each = $210 total
-    4: 55,           # $55 each = $220 total
-    5: 45,           # $45 each = $225 total
-    6: 40,           # $40 each = $240 total
-    7: 35,           # $35 each = $245 total
-    8: 32,           # $32 each = $256 total
-    9: 30,           # $30 each = $270 total
-    10: 28,          # $28 each = $280 total
-    11: 25,          # $25 each = $275+ total
-}
-
-# Departure times (6am - 10pm, every 2 hours)
-SHUTTLE_TIMES = ['06:00', '08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00']
-
-def get_shuttle_price(total_passengers: int) -> int:
-    """Get price per person based on total passengers"""
-    if total_passengers >= 11:
-        return 25
-    return SHUTTLE_PRICING.get(total_passengers, 100)
-
-
-class ShuttleBookingCreate(BaseModel):
-    date: str
-    departureTime: str
-    pickupAddress: str
-    passengers: int
-    name: str
-    email: str
-    phone: str
-    notes: Optional[str] = ""
-    flightNumber: Optional[str] = ""
-    estimatedPrice: Optional[int] = 100
-    needsApproval: Optional[bool] = False
-
-
-@api_router.get("/shuttle/availability")
-async def get_shuttle_availability(date: str, time: str = None):
-    """Get shuttle availability and current bookings for a date"""
-    try:
-        # Get all shuttle bookings for this date
-        query = {"date": date, "bookingType": "shuttle", "status": {"$nin": ["cancelled", "deleted"]}}
-        bookings = await db.shuttle_bookings.find(query, {"_id": 0}).to_list(100)
-        
-        # Build availability by departure time
-        departures = {}
-        for dep_time in SHUTTLE_TIMES:
-            time_bookings = [b for b in bookings if b.get("departureTime") == dep_time]
-            total_passengers = sum(b.get("passengers", 0) for b in time_bookings)
-            departures[dep_time] = {
-                "passengers": total_passengers,
-                "bookings": len(time_bookings),
-                "available": total_passengers < 11,
-                "pricePerPerson": get_shuttle_price(total_passengers + 1) if total_passengers < 11 else None
-            }
-        
-        # If specific time requested, return details for that
-        current_passengers = 0
-        if time and time in departures:
-            current_passengers = departures[time]["passengers"]
-        
-        return {
-            "date": date,
-            "departures": departures,
-            "currentPassengers": current_passengers
-        }
-    except Exception as e:
-        logger.error(f"Error getting shuttle availability: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@api_router.post("/shuttle/book")
-async def create_shuttle_booking(booking: ShuttleBookingCreate):
-    """Create a new shuttle booking with card authorization (not charge)"""
-    try:
-        # Validate departure time
-        if booking.departureTime not in SHUTTLE_TIMES:
-            raise HTTPException(status_code=400, detail="Invalid departure time")
-        
-        # Check availability
-        existing = await db.shuttle_bookings.find({
-            "date": booking.date,
-            "departureTime": booking.departureTime,
-            "status": {"$nin": ["cancelled", "deleted"]}
-        }, {"_id": 0}).to_list(100)
-        
-        current_passengers = sum(b.get("passengers", 0) for b in existing)
-        if current_passengers + booking.passengers > 11:
-            raise HTTPException(status_code=400, detail="Not enough seats available for this departure")
-        
-        # Calculate price based on total passengers after this booking
-        total_after = current_passengers + booking.passengers
-        price_per_person = get_shuttle_price(total_after)
-        total_price = price_per_person * booking.passengers
-        
-        # Create booking record
-        booking_id = str(uuid.uuid4())
-        shuttle_booking = {
-            "id": booking_id,
-            "bookingType": "shuttle",
-            "date": booking.date,
-            "departureTime": booking.departureTime,
-            "pickupAddress": booking.pickupAddress,
-            "dropoffAddress": "Auckland International Airport",
-            "passengers": booking.passengers,
-            "name": booking.name,
-            "email": booking.email,
-            "phone": booking.phone,
-            "notes": booking.notes,
-            "flightNumber": booking.flightNumber,
-            "estimatedPrice": price_per_person,
-            "finalPrice": None,  # Set when charged at airport
-            "totalEstimated": total_price,
-            "status": "pending_approval" if booking.needsApproval else "authorized",
-            "paymentStatus": "pending_authorization",
-            "stripePaymentIntentId": None,
-            "createdAt": datetime.now(timezone.utc).isoformat(),
-            "chargedAt": None,
-            "needsApproval": booking.needsApproval
-        }
-        
-        # Create Stripe Payment Intent with manual capture (authorize but don't charge)
-        stripe_api_key = os.environ.get('STRIPE_API_KEY')
-        if stripe_api_key:
-            import stripe
-            stripe.api_key = stripe_api_key
-            
-            # Create a Checkout Session for card authorization
-            # Apple Pay and Google Pay work through 'card' + Payment Request API
-            public_domain = os.environ.get('PUBLIC_DOMAIN', 'https://bookaride.co.nz')
-            
-            checkout_session = stripe.checkout.Session.create(
-                payment_method_types=['card', 'link'],  # card enables Apple Pay/Google Pay
-                mode='payment',
-                payment_intent_data={
-                    'capture_method': 'manual',  # Authorize but don't charge
-                    'metadata': {
-                        'booking_id': booking_id,
-                        'booking_type': 'shuttle',
-                        'passengers': str(booking.passengers),
-                        'date': booking.date,
-                        'time': booking.departureTime
-                    }
-                },
-                line_items=[{
-                    'price_data': {
-                        'currency': 'nzd',
-                        'product_data': {
-                            'name': f'Shared Shuttle - {booking.date} {booking.departureTime}',
-                            'description': f'{booking.passengers} passenger(s) - CBD to Auckland Airport. Card authorized, charged on arrival.',
-                        },
-                        'unit_amount': int(total_price * 100),  # Amount in cents
-                    },
-                    'quantity': 1,
-                }],
-                customer_email=booking.email,
-                success_url=f"{public_domain}/payment-success?type=shuttle&booking_id={booking_id}",
-                cancel_url=f"{public_domain}/shared-shuttle?cancelled=true",
-                metadata={
-                    'booking_id': booking_id,
-                    'booking_type': 'shuttle'
-                }
-            )
-            
-            shuttle_booking["stripeCheckoutSessionId"] = checkout_session.id
-            
-            # Save booking
-            await db.shuttle_bookings.insert_one(shuttle_booking)
-            
-            logger.info(f"Shuttle booking created: {booking_id} for {booking.date} {booking.departureTime}")
-            
-            return {
-                "success": True,
-                "bookingId": booking_id,
-                "checkoutUrl": checkout_session.url,
-                "estimatedPrice": price_per_person,
-                "totalEstimated": total_price
-            }
-        else:
-            # No Stripe - just save the booking
-            await db.shuttle_bookings.insert_one(shuttle_booking)
-            return {
-                "success": True,
-                "bookingId": booking_id,
-                "message": "Booking created - payment will be collected on arrival"
-            }
-            
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error creating shuttle booking: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@api_router.post("/shuttle/capture/{booking_id}")
-async def capture_shuttle_payment(booking_id: str, current_admin: dict = Depends(get_current_admin)):
-    """Capture (charge) the authorized payment when shuttle reaches airport"""
-    try:
-        booking = await db.shuttle_bookings.find_one({"id": booking_id}, {"_id": 0})
-        if not booking:
-            raise HTTPException(status_code=404, detail="Booking not found")
-        
-        if booking.get("paymentStatus") == "captured":
-            raise HTTPException(status_code=400, detail="Payment already captured")
-        
-        # Get current total passengers for this departure to calculate final price
-        all_bookings = await db.shuttle_bookings.find({
-            "date": booking["date"],
-            "departureTime": booking["departureTime"],
-            "status": {"$nin": ["cancelled", "deleted"]}
-        }, {"_id": 0}).to_list(100)
-        
-        total_passengers = sum(b.get("passengers", 0) for b in all_bookings)
-        final_price_per_person = get_shuttle_price(total_passengers)
-        final_total = final_price_per_person * booking["passengers"]
-        
-        # Capture the Stripe payment
-        stripe_api_key = os.environ.get('STRIPE_API_KEY')
-        if stripe_api_key and booking.get("stripePaymentIntentId"):
-            import stripe
-            stripe.api_key = stripe_api_key
-            
-            # Get the payment intent
-            payment_intent = stripe.PaymentIntent.retrieve(booking["stripePaymentIntentId"])
-            
-            # Capture with the final amount (may be different from authorized amount)
-            captured = stripe.PaymentIntent.capture(
-                booking["stripePaymentIntentId"],
-                amount_to_capture=int(final_total * 100)  # In cents
-            )
-            
-            # Update booking
-            await db.shuttle_bookings.update_one(
-                {"id": booking_id},
-                {"$set": {
-                    "paymentStatus": "captured",
-                    "finalPrice": final_price_per_person,
-                    "totalCharged": final_total,
-                    "chargedAt": datetime.now(timezone.utc).isoformat(),
-                    "status": "completed"
-                }}
-            )
-            
-            logger.info(f"Shuttle payment captured: {booking_id} - ${final_total}")
-            
-            return {
-                "success": True,
-                "finalPricePerPerson": final_price_per_person,
-                "totalCharged": final_total,
-                "totalPassengers": total_passengers
-            }
-        else:
-            # Manual capture (no Stripe)
-            await db.shuttle_bookings.update_one(
-                {"id": booking_id},
-                {"$set": {
-                    "paymentStatus": "manual",
-                    "finalPrice": final_price_per_person,
-                    "totalCharged": final_total,
-                    "chargedAt": datetime.now(timezone.utc).isoformat(),
-                    "status": "completed"
-                }}
-            )
-            return {
-                "success": True,
-                "finalPricePerPerson": final_price_per_person,
-                "totalCharged": final_total,
-                "message": "Marked as manually captured"
-            }
-            
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error capturing shuttle payment: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@api_router.get("/shuttle/departures")
-async def get_shuttle_departures(date: str, current_admin: dict = Depends(get_current_admin)):
-    """Get all shuttle departures for a date (admin view)"""
-    try:
-        bookings = await db.shuttle_bookings.find({
-            "date": date,
-            "status": {"$nin": ["deleted"]}
-        }, {"_id": 0}).to_list(100)
-        
-        # Group by departure time
-        departures = {}
-        for dep_time in SHUTTLE_TIMES:
-            time_bookings = [b for b in bookings if b.get("departureTime") == dep_time]
-            total_passengers = sum(b.get("passengers", 0) for b in time_bookings)
-            
-            departures[dep_time] = {
-                "time": dep_time,
-                "bookings": time_bookings,
-                "totalPassengers": total_passengers,
-                "pricePerPerson": get_shuttle_price(total_passengers) if total_passengers > 0 else 100,
-                "totalRevenue": sum(b.get("totalEstimated", 0) for b in time_bookings),
-                "canRun": total_passengers >= 1
-            }
-        
-        # Get assigned driver info from shuttle_runs collection
-        shuttle_runs = await db.shuttle_runs.find({"date": date}, {"_id": 0}).to_list(100)
-        for run in shuttle_runs:
-            dep_time = run.get("departureTime")
-            if dep_time in departures:
-                departures[dep_time]["assignedDriverId"] = run.get("driverId")
-                departures[dep_time]["assignedDriverName"] = run.get("driverName")
-                departures[dep_time]["shuttleStatus"] = run.get("status")
-        
-        return {
-            "date": date,
-            "departures": departures
-        }
-    except Exception as e:
-        logger.error(f"Error getting shuttle departures: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@api_router.post("/shuttle/capture-all/{date}/{time}")
-async def capture_all_shuttle_payments(date: str, time: str, current_admin: dict = Depends(get_current_admin)):
-    """Capture all payments for a shuttle departure (when arriving at airport)"""
-    try:
-        bookings = await db.shuttle_bookings.find({
-            "date": date,
-            "departureTime": time,
-            "status": {"$nin": ["cancelled", "deleted"]},
-            "paymentStatus": {"$ne": "captured"}
-        }, {"_id": 0}).to_list(100)
-        
-        total_passengers = sum(b.get("passengers", 0) for b in bookings)
-        final_price = get_shuttle_price(total_passengers)
-        
-        results = []
-        for booking in bookings:
-            try:
-                # Capture each booking
-                result = await capture_shuttle_payment(booking["id"], current_admin)
-                results.append({"id": booking["id"], "success": True, **result})
-            except Exception as e:
-                results.append({"id": booking["id"], "success": False, "error": str(e)})
-        
-        return {
-            "date": date,
-            "time": time,
-            "totalPassengers": total_passengers,
-            "finalPricePerPerson": final_price,
-            "results": results
-        }
-    except Exception as e:
-        logger.error(f"Error capturing all shuttle payments: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@api_router.get("/shuttle/route/{date}/{time}")
-async def get_optimized_shuttle_route(date: str, time: str, current_admin: dict = Depends(get_current_admin)):
-    """Get optimized pickup route for a shuttle departure with Google Maps link"""
-    try:
-        bookings = await db.shuttle_bookings.find({
-            "date": date,
-            "departureTime": time,
-            "status": {"$nin": ["cancelled", "deleted"]}
-        }, {"_id": 0}).to_list(100)
-        
-        if not bookings:
-            raise HTTPException(status_code=404, detail="No bookings for this departure")
-        
-        # Get all pickup addresses
-        pickup_addresses = [b["pickupAddress"] for b in bookings if b.get("pickupAddress")]
-        
-        if not pickup_addresses:
-            raise HTTPException(status_code=400, detail="No pickup addresses found")
-        
-        destination = "Auckland International Airport, New Zealand"
-        route_info = {"note": "Route order as listed; open in maps for directions"}
-        waypoint_list = pickup_addresses[1:] if len(pickup_addresses) > 1 else []
-        maps_url = _build_maps_route_url(pickup_addresses[0], destination, waypoint_list)
-        
-        # Build pickup list with passenger details
-        pickup_list = []
-        for booking in bookings:
-            pickup_list.append({
-                "address": booking["pickupAddress"],
-                "name": booking["name"],
-                "phone": booking["phone"],
-                "passengers": booking["passengers"],
-                "notes": booking.get("notes", ""),
-                "flightNumber": booking.get("flightNumber", "")
-            })
-        
-        return {
-            "date": date,
-            "departureTime": time,
-            "totalPassengers": sum(b["passengers"] for b in bookings),
-            "totalBookings": len(bookings),
-            "optimizedPickups": pickup_addresses,
-            "pickupDetails": pickup_list,
-            "routeInfo": route_info,
-            "mapsUrl": maps_url,
-            "googleMapsUrl": maps_url,
-            "destination": destination
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error getting shuttle route: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@api_router.post("/shuttle/send-route/{date}/{time}")
-async def send_shuttle_route_to_driver(
-    date: str, 
-    time: str, 
-    driver_phone: str = None,
-    current_admin: dict = Depends(get_current_admin)
-):
-    """Send the optimized route to driver's phone via SMS"""
-    try:
-        # Get the route
-        route_data = await get_optimized_shuttle_route(date, time, current_admin)
-        
-        # Build SMS message
-        pickup_summary = "\n".join([
-            f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ {p['name']} ({p['passengers']}pax) - {p['address'][:30]}..."
-            for p in route_data["pickupDetails"][:5]
-        ])
-        
-        message = f"""ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â SHUTTLE {date} {time}
-{route_data['totalPassengers']} passengers, {route_data['totalBookings']} pickups
-
-{pickup_summary}
-
-ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ROUTE: {route_data['googleMapsUrl']}"""
-        
-        # Send SMS if phone provided
-        if driver_phone:
-            twilio_sid = os.environ.get('TWILIO_ACCOUNT_SID')
-            twilio_token = os.environ.get('TWILIO_AUTH_TOKEN')
-            twilio_phone = os.environ.get('TWILIO_PHONE_NUMBER')
-            
-            if twilio_sid and twilio_token and twilio_phone:
-                twilio_client = Client(twilio_sid, twilio_token)
-                formatted_phone = format_nz_phone(driver_phone)
-                
-                twilio_client.messages.create(
-                    body=message,
-                    from_=twilio_phone,
-                    to=formatted_phone
-                )
-                
-                logger.info(f"Shuttle route sent to driver: {formatted_phone}")
-                return {"success": True, "message": "Route sent to driver", "googleMapsUrl": route_data['googleMapsUrl']}
-        
-        return {
-            "success": True,
-            "message": message,
-            "googleMapsUrl": route_data['googleMapsUrl']
-        }
-        
-    except Exception as e:
-        logger.error(f"Error sending shuttle route: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-# ==================== DRIVER GPS TRACKING FOR SHUTTLE ====================
-
-# Craig Canty's driver ID (testing phase only)
-ALLOWED_SHUTTLE_DRIVER_ID = "5a78ccb4-a2cb-4bcb-80a7-eb6a4364cee8"
-
-class DriverLocationUpdate(BaseModel):
-    driverId: str
-    latitude: float
-    longitude: float
-    date: str
-    departureTime: str
-    notifiedPickups: Optional[List[str]] = []
-
-
-@api_router.get("/shuttle/driver/departures")
-async def get_driver_shuttle_departures(date: str, current_driver: dict = Depends(get_current_driver)):
-    """Get shuttle departures for a driver (same as admin but accessible to driver)"""
-    try:
-        # Only allow Craig Canty during testing
-        if current_driver.get("id") != ALLOWED_SHUTTLE_DRIVER_ID:
-            raise HTTPException(status_code=403, detail="Shuttle tracking not enabled for this driver")
-        
-        bookings = await db.shuttle_bookings.find({
-            "date": date,
-            "status": {"$nin": ["deleted", "cancelled"]}
-        }, {"_id": 0}).to_list(100)
-        
-        # Group by departure time
-        departures = {}
-        for dep_time in SHUTTLE_TIMES:
-            time_bookings = [b for b in bookings if b.get("departureTime") == dep_time]
-            total_passengers = sum(b.get("passengers", 0) for b in time_bookings)
-            
-            departures[dep_time] = {
-                "time": dep_time,
-                "bookings": time_bookings,
-                "totalPassengers": total_passengers
-            }
-        
-        return {"date": date, "departures": departures}
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error getting driver shuttles: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@api_router.post("/shuttle/driver/location")
-async def update_driver_location(location: DriverLocationUpdate, current_driver: dict = Depends(get_current_driver)):
-    """
-    Update driver's GPS location and calculate ETAs to pickups.
-    Auto-sends SMS to customers when driver is ~5 minutes away.
-    """
-    try:
-        # Only allow Craig Canty during testing
-        if current_driver.get("id") != ALLOWED_SHUTTLE_DRIVER_ID:
-            raise HTTPException(status_code=403, detail="Shuttle tracking not enabled for this driver")
-        
-        # Get bookings for this departure
-        bookings = await db.shuttle_bookings.find({
-            "date": location.date,
-            "departureTime": location.departureTime,
-            "status": {"$nin": ["deleted", "cancelled"]}
-        }, {"_id": 0}).to_list(100)
-        
-        if not bookings:
-            return {"etas": {}, "newlyNotified": []}
-        
-        # Use Google Maps Distance Matrix API to calculate ETAs
-        google_api_key = os.environ.get('GOOGLE_MAPS_API_KEY', '')
-        etas = {}
-        newly_notified = []
-        
-        driver_location = f"{location.latitude},{location.longitude}"
-        
-        # Get all pickup addresses
-        destinations = [b["pickupAddress"] for b in bookings]
-        
-        if google_api_key and destinations:
-            try:
-                # Call Distance Matrix API
-                url = "https://maps.googleapis.com/maps/api/distancematrix/json"
-                params = {
-                    'origins': driver_location,
-                    'destinations': '|'.join(destinations),
-                    'mode': 'driving',
-                    'key': google_api_key
-                }
-                
-                response = requests.get(url, params=params)
-                data = response.json()
-                
-                if data['status'] == 'OK' and data['rows']:
-                    elements = data['rows'][0]['elements']
-                    
-                    for idx, (booking, element) in enumerate(zip(bookings, elements)):
-                        if element['status'] == 'OK':
-                            duration_seconds = element['duration']['value']
-                            duration_minutes = round(duration_seconds / 60)
-                            
-                            etas[booking['id']] = {
-                                'minutes': duration_minutes,
-                                'text': element['duration']['text'],
-                                'distance': element['distance']['text']
-                            }
-                            
-                            # Check if we should send "arriving soon" SMS (5 mins or less)
-                            if duration_minutes <= 5 and booking['id'] not in location.notifiedPickups:
-                                # Send SMS to customer
-                                send_arriving_soon_sms(booking, duration_minutes, current_driver.get("name", "Your driver"))
-                                newly_notified.append(booking['id'])
-                                
-                                # Mark as notified in database
-                                await db.shuttle_bookings.update_one(
-                                    {"id": booking['id']},
-                                    {"$set": {"arrivingSoonSent": True, "arrivingSoonSentAt": datetime.now(timezone.utc).isoformat()}}
-                                )
-                                logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â± Arriving soon SMS sent to {booking['name']} at {booking['phone']}")
-                        else:
-                            etas[booking['id']] = {'minutes': None, 'error': element['status']}
-                            
-            except Exception as api_error:
-                logger.error(f"Google Maps API error: {str(api_error)}")
-        
-        # Store driver's last known location
-        await db.driver_locations.update_one(
-            {"driverId": location.driverId, "date": location.date, "departureTime": location.departureTime},
-            {"$set": {
-                "latitude": location.latitude,
-                "longitude": location.longitude,
-                "updatedAt": datetime.now(timezone.utc).isoformat()
-            }},
-            upsert=True
-        )
-        
-        return {
-            "etas": etas,
-            "newlyNotified": newly_notified,
-            "trackingActive": True
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error updating driver location: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-def send_arriving_soon_sms(booking: dict, eta_minutes: int, driver_name: str):
-    """Send 'arriving soon' SMS to customer"""
-    try:
-        twilio_sid = os.environ.get('TWILIO_ACCOUNT_SID')
-        twilio_token = os.environ.get('TWILIO_AUTH_TOKEN')
-        twilio_phone = os.environ.get('TWILIO_PHONE_NUMBER')
-        
-        if not all([twilio_sid, twilio_token, twilio_phone]):
-            logger.warning("Twilio not configured - skipping arriving soon SMS")
-            return False
-        
-        customer_phone = booking.get('phone', '')
-        if not customer_phone:
-            return False
-        
-        # Format phone number
-        formatted_phone = format_nz_phone(customer_phone)
-        
-        # Build message
-        message = f"""ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â Your Book A Ride shuttle is arriving in ~{eta_minutes} minutes!
-
-Please be ready at:
-ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â {booking.get('pickupAddress', 'your pickup location')}
-
-Driver: {driver_name}
-Passengers: {booking.get('passengers', 1)}
-
-See you soon! ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡"""
-        
-        # Send SMS
-        twilio_client = Client(twilio_sid, twilio_token)
-        twilio_client.messages.create(
-            body=message,
-            from_=twilio_phone,
-            to=formatted_phone
-        )
-        
-        logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Arriving soon SMS sent to {booking.get('name')} at {formatted_phone}")
-        return True
-        
-    except Exception as e:
-        logger.error(f"Error sending arriving soon SMS: {str(e)}")
-        return False
-
-
-@api_router.post("/shuttle/start/{date}/{time}")
-async def start_shuttle_run(date: str, time: str, current_admin: dict = Depends(get_current_admin)):
-    """
-    Start a shuttle run - calculates optimized route and schedules 
-    'arriving soon' SMS for each customer 5 minutes before their pickup.
-    
-    No driver GPS needed - uses estimated journey times from Google Maps.
-    """
-    try:
-        # Get all bookings for this departure
-        bookings = await db.shuttle_bookings.find({
-            "date": date,
-            "departureTime": time,
-            "status": {"$nin": ["deleted", "cancelled"]}
-        }, {"_id": 0}).to_list(100)
-        
-        if not bookings:
-            raise HTTPException(status_code=404, detail="No bookings for this departure")
-        
-        # Get pickup addresses in order
-        pickup_addresses = [b["pickupAddress"] for b in bookings]
-        destination = "Auckland International Airport, New Zealand"
-        
-        google_api_key = os.environ.get('GOOGLE_MAPS_API_KEY', '')
-        
-        schedule = []
-        cumulative_time = 0  # Minutes from start
-        
-        # Parse departure time
-        dep_hour, dep_min = map(int, time.split(':'))
-        from datetime import datetime, timedelta, timezone
-        
-        # Get NZ timezone
-        import pytz
-        nz_tz = pytz.timezone('Pacific/Auckland')
-        
-        # Build the departure datetime
-        year, month, day = map(int, date.split('-'))
-        departure_dt = nz_tz.localize(datetime(year, month, day, dep_hour, dep_min, 0))
-        
-        # Calculate ETAs using Google Maps Directions API with optimized route
-        if google_api_key and len(pickup_addresses) > 0:
-            # Get optimized route
-            url = "https://maps.googleapis.com/maps/api/directions/json"
-            
-            origin = pickup_addresses[0]
-            waypoints = "|".join(pickup_addresses[1:]) if len(pickup_addresses) > 1 else ""
-            
-            params = {
-                'origin': origin,
-                'destination': destination,
-                'waypoints': f"optimize:true|{waypoints}" if waypoints else "",
-                'key': google_api_key,
-                'departure_time': 'now'
-            }
-            
-            response = requests.get(url, params=params)
-            data = response.json()
-            
-            if data['status'] == 'OK' and data['routes']:
-                route = data['routes'][0]
-                legs = route['legs']
-                optimized_order = route.get('waypoint_order', list(range(len(pickup_addresses) - 1)))
-                
-                # Reorder bookings based on optimized route
-                if len(pickup_addresses) > 1:
-                    first_booking = bookings[0]
-                    reordered_bookings = [first_booking]
-                    for idx in optimized_order:
-                        reordered_bookings.append(bookings[idx + 1])
-                    bookings = reordered_bookings
-                
-                # Calculate notification times for each pickup
-                cumulative_minutes = 0
-                
-                for idx, booking in enumerate(bookings):
-                    # Time to reach this pickup from previous point
-                    if idx < len(legs):
-                        leg_duration = legs[idx]['duration']['value'] // 60  # Convert to minutes
-                    else:
-                        leg_duration = 0
-                    
-                    cumulative_minutes += leg_duration
-                    
-                    # Notify 5 minutes before arrival
-                    notify_minutes_before = max(0, cumulative_minutes - 5)
-                    notify_dt = departure_dt + timedelta(minutes=notify_minutes_before)
-                    
-                    # Schedule the notification
-                    schedule.append({
-                        'bookingId': booking['id'],
-                        'name': booking['name'],
-                        'phone': booking['phone'],
-                        'address': booking['pickupAddress'],
-                        'etaMinutes': cumulative_minutes,
-                        'notifyAt': notify_dt.strftime('%H:%M'),
-                        'notifyTimestamp': notify_dt.isoformat()
-                    })
-                    
-                    # Store schedule in database
-                    await db.shuttle_bookings.update_one(
-                        {"id": booking['id']},
-                        {"$set": {
-                            "scheduledNotifyAt": notify_dt.isoformat(),
-                            "etaFromStart": cumulative_minutes,
-                            "shuttleStarted": True,
-                            "shuttleStartedAt": datetime.now(timezone.utc).isoformat()
-                        }}
-                    )
-        else:
-            # Fallback: estimate 5 minutes between each pickup
-            for idx, booking in enumerate(bookings):
-                cumulative_minutes = idx * 5
-                notify_minutes = max(0, cumulative_minutes - 5) if idx > 0 else 0
-                notify_dt = departure_dt + timedelta(minutes=notify_minutes)
-                
-                schedule.append({
-                    'bookingId': booking['id'],
-                    'name': booking['name'],
-                    'etaMinutes': cumulative_minutes,
-                    'notifyAt': notify_dt.strftime('%H:%M')
-                })
-        
-        # Schedule the SMS notifications using APScheduler
-        from apscheduler.triggers.date import DateTrigger
-        
-        scheduled_count = 0
-        for item in schedule:
-            try:
-                notify_dt = datetime.fromisoformat(item.get('notifyTimestamp', ''))
-                
-                # Only schedule if notification time is in the future
-                now = datetime.now(nz_tz)
-                if notify_dt > now:
-                    # Get booking for SMS
-                    booking = await db.shuttle_bookings.find_one({"id": item['bookingId']}, {"_id": 0})
-                    if booking and not booking.get('arrivingSoonSent'):
-                        # Add job to scheduler
-                        scheduler.add_job(
-                            send_scheduled_arriving_sms,
-                            trigger=DateTrigger(run_date=notify_dt),
-                            args=[item['bookingId']],
-                            id=f"shuttle_sms_{item['bookingId']}",
-                            replace_existing=True
-                        )
-                        scheduled_count += 1
-                        logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Scheduled SMS for {item['name']} at {notify_dt.strftime('%H:%M')}")
-                else:
-                    # If notification time has passed, send immediately (they're first pickup)
-                    booking = await db.shuttle_bookings.find_one({"id": item['bookingId']}, {"_id": 0})
-                    if booking and not booking.get('arrivingSoonSent'):
-                        send_arriving_soon_sms(booking, 5, "Your driver")
-                        await db.shuttle_bookings.update_one(
-                            {"id": item['bookingId']},
-                            {"$set": {"arrivingSoonSent": True, "arrivingSoonSentAt": datetime.now(timezone.utc).isoformat()}}
-                        )
-                        scheduled_count += 1
-                        
-            except Exception as sched_error:
-                logger.error(f"Error scheduling SMS for {item.get('name')}: {sched_error}")
-        
-        # Mark shuttle as started in database
-        await db.shuttle_runs.update_one(
-            {"date": date, "departureTime": time},
-            {"$set": {
-                "date": date,
-                "departureTime": time,
-                "startedAt": datetime.now(timezone.utc).isoformat(),
-                "schedule": schedule,
-                "status": "in_progress"
-            }},
-            upsert=True
-        )
-        
-        logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â Shuttle started: {date} {time} - {scheduled_count} notifications scheduled")
-        
-        return {
-            "success": True,
-            "message": f"Shuttle started! {scheduled_count} 'Arriving Soon' SMS scheduled.",
-            "scheduledNotifications": scheduled_count,
-            "schedule": schedule
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error starting shuttle: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-async def send_scheduled_arriving_sms(booking_id: str):
-    """Called by scheduler to send arriving soon SMS"""
-    try:
-        booking = await db.shuttle_bookings.find_one({"id": booking_id}, {"_id": 0})
-        if not booking:
-            return
-        
-        if booking.get('arrivingSoonSent'):
-            logger.info(f"SMS already sent for {booking.get('name')} - skipping")
-            return
-        
-        # Get the driver name from the shuttle run
-        shuttle_run = await db.shuttle_runs.find_one({
-            "date": booking.get("date"),
-            "departureTime": booking.get("departureTime")
-        }, {"_id": 0})
-        driver_name = shuttle_run.get("driverName", "Your driver") if shuttle_run else "Your driver"
-        
-        # Send the SMS
-        success = send_arriving_soon_sms(booking, 5, driver_name)
-        
-        if success:
-            # Mark as sent
-            await db.shuttle_bookings.update_one(
-                {"id": booking_id},
-                {"$set": {"arrivingSoonSent": True, "arrivingSoonSentAt": datetime.now(timezone.utc).isoformat()}}
-            )
-            logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â± Scheduled SMS sent to {booking.get('name')}")
-    except Exception as e:
-        logger.error(f"Error sending scheduled SMS: {str(e)}")
-
-
-class AssignDriverRequest(BaseModel):
-    driverId: str
-    driverName: str
-    driverPhone: Optional[str] = None
-
-
-@api_router.post("/shuttle/assign-driver/{date}/{time}")
-async def assign_shuttle_driver(
-    date: str, 
-    time: str, 
-    request: AssignDriverRequest,
-    current_admin: dict = Depends(get_current_admin)
-):
-    """
-    Assign a driver to a shuttle departure.
-    This automatically:
-    1. Sends the optimized route to the driver's phone
-    2. Schedules 'arriving soon' SMS for all customers 5 mins before pickup
-    
-    One action - everything automated!
-    """
-    try:
-        # Get all bookings for this departure
-        bookings = await db.shuttle_bookings.find({
-            "date": date,
-            "departureTime": time,
-            "status": {"$nin": ["deleted", "cancelled"]}
-        }, {"_id": 0}).to_list(100)
-        
-        if not bookings:
-            raise HTTPException(status_code=404, detail="No bookings for this departure")
-        
-        # Get driver info
-        driver = await db.drivers.find_one({"id": request.driverId}, {"_id": 0})
-        driver_phone = request.driverPhone or (driver.get("phone") if driver else None)
-        driver_name = request.driverName
-        
-        # ===== STEP 1: Calculate optimized route and send to driver =====
-        pickup_addresses = [b["pickupAddress"] for b in bookings]
-        destination = "Auckland International Airport, New Zealand"
-        google_api_key = os.environ.get('GOOGLE_MAPS_API_KEY', '')
-        
-        # Build Google Maps URL with optimized waypoints
-        if len(pickup_addresses) > 1:
-            waypoints_encoded = "|".join(pickup_addresses[1:])
-            maps_url = f"https://www.google.com/maps/dir/?api=1&origin={requests.utils.quote(pickup_addresses[0])}&destination={requests.utils.quote(destination)}&waypoints={requests.utils.quote(waypoints_encoded)}&travelmode=driving"
-        else:
-            maps_url = f"https://www.google.com/maps/dir/?api=1&origin={requests.utils.quote(pickup_addresses[0])}&destination={requests.utils.quote(destination)}&travelmode=driving"
-        
-        # Send route to driver via SMS
-        if driver_phone:
-            twilio_sid = os.environ.get('TWILIO_ACCOUNT_SID')
-            twilio_token = os.environ.get('TWILIO_AUTH_TOKEN')
-            twilio_phone = os.environ.get('TWILIO_PHONE_NUMBER')
-            
-            if twilio_sid and twilio_token and twilio_phone:
-                pickup_summary = "\n".join([
-                    f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ {b['name']} ({b['passengers']}pax)"
-                    for b in bookings[:5]
-                ])
-                
-                route_message = f"""ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â SHUTTLE ASSIGNED - {date} {time}
-
-{len(bookings)} pickups, {sum(b['passengers'] for b in bookings)} passengers
-
-{pickup_summary}
-
-ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â OPEN ROUTE IN MAPS:
-{maps_url}
-
-Customers will be auto-notified 5 mins before their pickup. Drive safe! ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡"""
-                
-                try:
-                    twilio_client = Client(twilio_sid, twilio_token)
-                    formatted_driver_phone = format_nz_phone(driver_phone)
-                    twilio_client.messages.create(
-                        body=route_message,
-                        from_=twilio_phone,
-                        to=formatted_driver_phone
-                    )
-                    logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â± Route sent to driver {driver_name} at {formatted_driver_phone}")
-                except Exception as sms_error:
-                    logger.error(f"Error sending route to driver: {sms_error}")
-        
-        # ===== STEP 2: Schedule customer notifications =====
-        schedule = []
-        scheduled_count = 0
-        
-        # Parse departure time
-        dep_hour, dep_min = map(int, time.split(':'))
-        import pytz
-        nz_tz = pytz.timezone('Pacific/Auckland')
-        year, month, day = map(int, date.split('-'))
-        departure_dt = nz_tz.localize(datetime(year, month, day, dep_hour, dep_min, 0))
-        
-        # Calculate ETAs using Google Maps
-        if google_api_key and len(pickup_addresses) > 0:
-            url = "https://maps.googleapis.com/maps/api/directions/json"
-            origin = pickup_addresses[0]
-            waypoints = "|".join(pickup_addresses[1:]) if len(pickup_addresses) > 1 else ""
-            
-            params = {
-                'origin': origin,
-                'destination': destination,
-                'waypoints': f"optimize:true|{waypoints}" if waypoints else "",
-                'key': google_api_key,
-                'departure_time': 'now'
-            }
-            
-            response = requests.get(url, params=params)
-            data = response.json()
-            
-            if data['status'] == 'OK' and data['routes']:
-                route = data['routes'][0]
-                legs = route['legs']
-                optimized_order = route.get('waypoint_order', list(range(len(pickup_addresses) - 1)))
-                
-                # Reorder bookings based on optimized route
-                if len(pickup_addresses) > 1:
-                    first_booking = bookings[0]
-                    reordered_bookings = [first_booking]
-                    for idx in optimized_order:
-                        reordered_bookings.append(bookings[idx + 1])
-                    bookings = reordered_bookings
-                
-                # Calculate and schedule notifications
-                cumulative_minutes = 0
-                from apscheduler.triggers.date import DateTrigger
-                
-                for idx, booking in enumerate(bookings):
-                    if idx < len(legs):
-                        leg_duration = legs[idx]['duration']['value'] // 60
-                    else:
-                        leg_duration = 0
-                    
-                    cumulative_minutes += leg_duration
-                    notify_minutes_before = max(0, cumulative_minutes - 5)
-                    notify_dt = departure_dt + timedelta(minutes=notify_minutes_before)
-                    
-                    schedule.append({
-                        'bookingId': booking['id'],
-                        'name': booking['name'],
-                        'etaMinutes': cumulative_minutes,
-                        'notifyAt': notify_dt.strftime('%H:%M')
-                    })
-                    
-                    # Update booking with schedule info
-                    await db.shuttle_bookings.update_one(
-                        {"id": booking['id']},
-                        {"$set": {
-                            "scheduledNotifyAt": notify_dt.isoformat(),
-                            "etaFromStart": cumulative_minutes,
-                            "assignedDriver": driver_name,
-                            "assignedDriverId": request.driverId
-                        }}
-                    )
-                    
-                    # Schedule the SMS
-                    now = datetime.now(nz_tz)
-                    if notify_dt > now:
-                        if not booking.get('arrivingSoonSent'):
-                            scheduler.add_job(
-                                send_scheduled_arriving_sms,
-                                trigger=DateTrigger(run_date=notify_dt),
-                                args=[booking['id']],
-                                id=f"shuttle_sms_{booking['id']}",
-                                replace_existing=True
-                            )
-                            scheduled_count += 1
-                            logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Scheduled SMS for {booking['name']} at {notify_dt.strftime('%H:%M')}")
-                    else:
-                        # First pickup - send immediately
-                        if not booking.get('arrivingSoonSent'):
-                            send_arriving_soon_sms(booking, 5, driver_name)
-                            await db.shuttle_bookings.update_one(
-                                {"id": booking['id']},
-                                {"$set": {"arrivingSoonSent": True}}
-                            )
-                            scheduled_count += 1
-        
-        # ===== STEP 3: Save shuttle run info =====
-        await db.shuttle_runs.update_one(
-            {"date": date, "departureTime": time},
-            {"$set": {
-                "date": date,
-                "departureTime": time,
-                "driverId": request.driverId,
-                "driverName": driver_name,
-                "driverPhone": driver_phone,
-                "assignedAt": datetime.now(timezone.utc).isoformat(),
-                "schedule": schedule,
-                "status": "assigned",
-                "mapsUrl": maps_url
-            }},
-            upsert=True
-        )
-        
-        logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â Driver {driver_name} assigned to shuttle {date} {time} - {scheduled_count} SMS scheduled")
-        
-        return {
-            "success": True,
-            "message": f"Driver assigned! Route sent to {driver_name}, {scheduled_count} customer notifications scheduled.",
-            "scheduledNotifications": scheduled_count,
-            "driverName": driver_name,
-            "mapsUrl": maps_url,
-            "schedule": schedule
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error assigning driver: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ==================== ENHANCED ADMIN FEATURES ====================
@@ -10403,9 +9275,18 @@ async def delete_booking(booking_id: str, send_notification: bool = True, force:
         booking['deletedAt'] = datetime.now(timezone.utc).isoformat()
         booking['deletedBy'] = current_admin.get('username', 'admin')
         booking['notificationSent'] = send_notification
-        await db.deleted_bookings.insert_one(booking)
-        
-        # Remove from active bookings
+        backup_result = await db.deleted_bookings.insert_one(booking)
+        if not backup_result.acknowledged:
+            logger.error(f"CRITICAL: Failed to backup booking {booking_id} to deleted_bookings - aborting delete")
+            raise HTTPException(status_code=500, detail="Failed to backup booking before deletion - booking preserved")
+
+        # Verify the backup exists before deleting
+        backup_check = await db.deleted_bookings.find_one({"id": booking_id})
+        if not backup_check:
+            logger.error(f"CRITICAL: Backup verification failed for booking {booking_id} - aborting delete")
+            raise HTTPException(status_code=500, detail="Backup verification failed - booking preserved")
+
+        # Remove from active bookings (safe - backup confirmed)
         result = await db.bookings.delete_one({"id": booking_id})
         if result.deleted_count == 0:
             # Rollback the soft delete if original wasn't found
@@ -10579,17 +9460,27 @@ async def bulk_delete(booking_ids: List[str], send_notifications: bool = False, 
                 except Exception as e:
                     logger.error(f"Error sending cancellation for booking {booking.get('id')}: {str(e)}")
         
-        # SOFT DELETE: Move all to deleted_bookings collection
-        deleted_count = 0
+        # SOFT DELETE: Move all to deleted_bookings collection with verification
+        backed_up_ids = []
         for booking in bookings:
             booking['deletedAt'] = datetime.now(timezone.utc).isoformat()
             booking['deletedBy'] = current_admin.get('username', 'admin')
             booking['notificationSent'] = send_notifications
-            await db.deleted_bookings.insert_one(booking)
-            deleted_count += 1
-        
-        # Remove from active bookings
-        result = await db.bookings.delete_many({"id": {"$in": booking_ids}})
+            backup_result = await db.deleted_bookings.insert_one(booking)
+            if backup_result.acknowledged:
+                # Verify the backup actually exists
+                verify = await db.deleted_bookings.find_one({"id": booking.get('id')})
+                if verify:
+                    backed_up_ids.append(booking.get('id'))
+                else:
+                    logger.error(f"CRITICAL: Backup verification failed for booking {booking.get('id')} during bulk delete")
+            else:
+                logger.error(f"CRITICAL: Failed to backup booking {booking.get('id')} during bulk delete")
+
+        # Only delete bookings that were successfully backed up
+        if not backed_up_ids:
+            raise HTTPException(status_code=500, detail="Failed to backup any bookings - all preserved")
+        result = await db.bookings.delete_many({"id": {"$in": backed_up_ids}})
         
         logger.info(f"Bulk soft-deleted {deleted_count} bookings by {current_admin.get('username', 'admin')}")
         return {"message": "Bookings deleted", "count": result.deleted_count, "notifications_sent": send_notifications}
@@ -10662,15 +9553,23 @@ async def restore_booking(booking_id: str, current_admin: dict = Depends(get_cur
         deleted_booking['restoredAt'] = datetime.now(timezone.utc).isoformat()
         deleted_booking['restoredBy'] = current_admin.get('username', 'admin')
         
-        # Insert back into active bookings
-        await db.bookings.insert_one(deleted_booking)
-        
-        # Remove from deleted_bookings
+        # Insert back into active bookings and verify
+        restore_result = await db.bookings.insert_one(deleted_booking)
+        if not restore_result.acknowledged:
+            logger.error(f"CRITICAL: Failed to restore booking {booking_id} to active - booking stays in deleted_bookings")
+            raise HTTPException(status_code=500, detail="Failed to restore booking - booking preserved in deleted list")
+
+        restore_check = await db.bookings.find_one({"id": booking_id})
+        if not restore_check:
+            logger.error(f"CRITICAL: Restore verification failed for booking {booking_id}")
+            raise HTTPException(status_code=500, detail="Restore verification failed - booking preserved in deleted list")
+
+        # Safe to remove from deleted_bookings (restore confirmed)
         await db.deleted_bookings.delete_one({"id": booking_id})
-        
+
         # Remove _id before returning (MongoDB adds it during insert)
         deleted_booking.pop('_id', None)
-        
+
         logger.info(f"Booking {booking_id} restored by {current_admin.get('username', 'admin')}")
         return {"message": "Booking restored successfully", "booking_id": booking_id}
     except HTTPException:
@@ -10705,6 +9604,7 @@ async def restore_all_deleted_bookings(current_admin: dict = Depends(get_current
         except Exception as snap_err:
             logger.warning(f"Snapshot before restore_all failed (non-fatal): {snap_err}")
         restored = 0
+        failed = 0
         for booking in deleted_list:
             booking_id = booking.get("id")
             if not booking_id:
@@ -10714,7 +9614,17 @@ async def restore_all_deleted_bookings(current_admin: dict = Depends(get_current
             booking.pop('notificationSent', None)
             booking['restoredAt'] = datetime.now(timezone.utc).isoformat()
             booking['restoredBy'] = current_admin.get('username', 'admin')
-            await db.bookings.insert_one(booking)
+            restore_result = await db.bookings.insert_one(booking)
+            if not restore_result.acknowledged:
+                logger.error(f"CRITICAL: Failed to restore booking {booking_id} - keeping in deleted_bookings")
+                failed += 1
+                continue
+            # Verify restore before deleting from deleted_bookings
+            verify = await db.bookings.find_one({"id": booking_id})
+            if not verify:
+                logger.error(f"CRITICAL: Restore verification failed for booking {booking_id} - keeping in deleted_bookings")
+                failed += 1
+                continue
             await db.deleted_bookings.delete_one({"id": booking_id})
             restored += 1
         logger.info(f"Restored all {restored} deleted bookings by {current_admin.get('username', 'admin')}")
@@ -10760,12 +9670,20 @@ async def archive_booking(booking_id: str, current_admin: dict = Depends(get_cur
         # Set retention expiry (7 years from archive date)
         booking['retentionExpiry'] = (datetime.now(timezone.utc) + timedelta(days=365*7)).isoformat()
         
-        # Insert into archive collection
-        await db.bookings_archive.insert_one(booking)
-        
-        # Remove from active bookings
+        # Insert into archive collection and verify before deleting
+        archive_result = await db.bookings_archive.insert_one(booking)
+        if not archive_result.acknowledged:
+            logger.error(f"CRITICAL: Failed to archive booking {booking_id} - aborting, booking preserved")
+            raise HTTPException(status_code=500, detail="Failed to archive booking - booking preserved")
+
+        archive_check = await db.bookings_archive.find_one({"id": booking_id})
+        if not archive_check:
+            logger.error(f"CRITICAL: Archive verification failed for booking {booking_id} - aborting")
+            raise HTTPException(status_code=500, detail="Archive verification failed - booking preserved")
+
+        # Safe to delete from active (archive confirmed)
         await db.bookings.delete_one({"id": booking_id})
-        
+
         logger.info(f"Booking {booking_id} (Ref #{booking.get('referenceNumber', 'N/A')}) archived by {current_admin.get('username', 'admin')}")
         return {"message": "Booking archived successfully", "booking_id": booking_id, "referenceNumber": booking.get('referenceNumber')}
     except HTTPException:
@@ -10792,8 +9710,18 @@ async def archive_bookings_bulk(
                     booking['archivedBy'] = current_admin.get('username', 'admin')
                     booking['archiveReason'] = 'bulk'
                     booking['retentionExpiry'] = (datetime.now(timezone.utc) + timedelta(days=365*7)).isoformat()
-                    
-                    await db.bookings_archive.insert_one(booking)
+
+                    archive_result = await db.bookings_archive.insert_one(booking)
+                    if not archive_result.acknowledged:
+                        logger.error(f"CRITICAL: Failed to archive booking {booking_id} - skipping, booking preserved")
+                        failed.append(booking_id)
+                        continue
+                    # Verify archive before deleting
+                    archive_check = await db.bookings_archive.find_one({"id": booking_id})
+                    if not archive_check:
+                        logger.error(f"CRITICAL: Archive verification failed for booking {booking_id} - skipping")
+                        failed.append(booking_id)
+                        continue
                     await db.bookings.delete_one({"id": booking_id})
                     archived_count += 1
                 else:
@@ -10893,12 +9821,20 @@ async def unarchive_booking(booking_id: str, current_admin: dict = Depends(get_c
         archived_booking['unarchivedAt'] = datetime.now(timezone.utc).isoformat()
         archived_booking['unarchivedBy'] = current_admin.get('username', 'admin')
         
-        # Insert back into active bookings
-        await db.bookings.insert_one(archived_booking)
-        
-        # Remove from archive
+        # Insert back into active bookings and verify
+        restore_result = await db.bookings.insert_one(archived_booking)
+        if not restore_result.acknowledged:
+            logger.error(f"CRITICAL: Failed to unarchive booking {booking_id} - keeping in archive")
+            raise HTTPException(status_code=500, detail="Failed to restore booking - booking preserved in archive")
+
+        restore_check = await db.bookings.find_one({"id": booking_id})
+        if not restore_check:
+            logger.error(f"CRITICAL: Unarchive verification failed for booking {booking_id}")
+            raise HTTPException(status_code=500, detail="Restore verification failed - booking preserved in archive")
+
+        # Safe to remove from archive (restore confirmed)
         await db.bookings_archive.delete_one({"id": booking_id})
-        
+
         logger.info(f"Booking {booking_id} (Ref #{archived_booking.get('referenceNumber', 'N/A')}) unarchived by {current_admin.get('username', 'admin')}")
         return {"message": "Booking restored from archive", "booking_id": booking_id, "referenceNumber": archived_booking.get('referenceNumber')}
     except HTTPException:
