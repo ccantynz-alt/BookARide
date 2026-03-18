@@ -47,6 +47,26 @@ We use Mailgun. Not SendGrid. Not SMTP. Not Gmail. Not "a fallback".
 - **NEVER** re-add FacebookTab or Facebook API routes
 - **NEVER** add `FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET` references
 
+### 7. No Shared Shuttle Service
+
+The shared shuttle service has been completely removed from the admin system and codebase.
+
+- **NEVER** re-add the shuttle tab to AdminDashboard
+- **NEVER** re-add `SharedShuttle.jsx` or `ShuttleDriverPortal.jsx`
+- **NEVER** re-add shuttle API endpoints (`/api/shuttle/*`)
+- Backend shuttle endpoints and pricing code have been removed from `server.py`
+- Note: "airport-shuttle" as a `serviceType` for regular bookings is STILL VALID — that's the core private transfer service, not the shared shuttle
+
+### 8. Customer Confirmation Design — LOCKED
+
+The customer confirmation email design is FINAL and must not change:
+
+- Payment method "stripe" displays as "Credit/Debit Card" (never show "Stripe" to customers)
+- Payment status shows as green "PAID" badge when payment_status == 'paid'
+- PaymentSuccess.jsx shows "Payment Successful!" with booking details — no Stripe branding
+- **NEVER** show "Stripe" text in customer-facing emails or pages
+- **NEVER** change the confirmation email layout/design without explicit permission
+
 ### 6. Maps & Distance: Google Maps API ONLY (No Geoapify)
 
 We use Google Maps for distance calculation, directions, and autocomplete. Geoapify has been removed.
@@ -151,6 +171,27 @@ If a customer pays via Stripe but the booking is missing from admin:
 - SMTP code existed in `routes_bulk.py` violating Mailgun-only rule
 - Orphaned `validate_booking_date` function at module level (not inside any class)
 
+### Known Booking System Issues (Fixed 2026-03-18)
+
+- `insert_many()` was missing from `database.py` — backup restore would crash with AttributeError
+- Stripe webhook did not verify `matched_count` after updating booking — payment could succeed but booking status not update
+- iCloud contact sync was not triggered after Stripe payment webhook — only on initial booking creation
+- Shared shuttle service tab/code removed from admin dashboard (was cluttering the admin panel)
+
+### Booking System Monitoring Rules
+
+When modifying the booking system, ALWAYS verify:
+
+1. **Stripe webhook handler** (`POST /api/webhook/stripe`): Must update booking status AND verify `matched_count > 0`
+2. **Payment status endpoint** (`GET /api/payment/status/{session_id}`): Must sync booking to paid/confirmed
+3. **After any payment confirmation**: Must trigger all 4 actions:
+   - `send_customer_confirmation(booking)` — email/SMS to customer
+   - `send_booking_notification_to_admin(booking)` — admin notification
+   - `create_calendar_event(booking)` — Google Calendar sync
+   - `add_contact_to_icloud(booking)` — iCloud contact sync (no duplicates)
+4. **Database writes**: Always check `result.matched_count` for critical updates
+5. **Booking creation** (`POST /api/bookings`): Must verify insert with `find_one` after insert
+
 ---
 
 ## History of Production Breaks (why these rules exist)
@@ -165,3 +206,7 @@ If a customer pays via Stripe but the booking is missing from admin:
 | 2026-03-11 | Paid booking invisible in admin      | Pydantic validation silently dropped bookings with missing fields |
 | 2026-03-11 | Admin panel cluttered/confusing      | Shuttle bookings merged into booking list without permission |
 | 2026-03-11 | Bulk email broken                    | SMTP code in routes_bulk.py instead of Mailgun |
+| 2026-03-18 | Backup restore crash                 | `insert_many()` missing from database.py compatibility layer |
+| 2026-03-18 | Paid bookings potentially not confirmed | Webhook didn't verify update success after payment |
+| 2026-03-18 | Contacts not synced after payment    | iCloud sync only ran on booking creation, not after Stripe payment |
+| 2026-03-18 | Admin panel cluttered                | Shared shuttle service tab removed (service discontinued) |
