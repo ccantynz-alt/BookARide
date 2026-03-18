@@ -5970,6 +5970,88 @@ async def create_payment_checkout(request: PaymentCheckoutRequest, http_request:
         raise HTTPException(status_code=500, detail=f"Error creating checkout session: {str(e)}")
 
 
+class PaymentCheckoutLinkRequest(BaseModel):
+    booking_id: str
+    origin_url: str
+
+@api_router.post("/payment/create-checkout-link")
+async def create_payment_checkout_link(request: PaymentCheckoutLinkRequest, http_request: Request):
+    """Public endpoint for email payment links — creates a fresh Stripe checkout session.
+    No auth required so customers can pay directly from their email."""
+    try:
+        booking = await db.bookings.find_one({"id": request.booking_id}, {"_id": 0})
+        if not booking:
+            raise HTTPException(status_code=404, detail="Booking not found")
+
+        # Block if already paid
+        if booking.get('payment_status') == 'paid':
+            raise HTTPException(status_code=400, detail="This booking has already been paid")
+
+        stripe_api_key = os.environ.get('STRIPE_API_KEY') or os.environ.get('STRIPE_SECRET_KEY')
+        if not stripe_api_key:
+            raise HTTPException(status_code=500, detail="Stripe API key not configured")
+
+        host_url = str(http_request.base_url).rstrip('/')
+        webhook_url = f"{host_url}/api/webhook/stripe"
+        stripe_checkout = StripeCheckout(api_key=stripe_api_key, webhook_url=webhook_url)
+
+        success_url = f"{request.origin_url}/payment-success?session_id={{CHECKOUT_SESSION_ID}}"
+        cancel_url = f"{request.origin_url}/book-now"
+
+        amount = float(booking.get('totalPrice', 0))
+        if amount <= 0:
+            raise HTTPException(status_code=400, detail="Invalid booking amount")
+
+        amount_cents = int(round(amount * 100))
+
+        checkout_request = CheckoutSessionRequest(
+            amount_total=amount_cents,
+            currency="nzd",
+            success_url=success_url,
+            cancel_url=cancel_url,
+            customer_email=booking.get('email') or None,
+            metadata={
+                "booking_id": request.booking_id,
+                "booking_type": "regular",
+                "customer_email": booking.get('email', ''),
+                "customer_name": booking.get('name', '')
+            }
+        )
+
+        session = await stripe_checkout.create_checkout_session(checkout_request)
+
+        # Create payment transaction record (so webhook + orphan recovery can find it)
+        payment_transaction = {
+            "id": str(uuid.uuid4()),
+            "booking_id": request.booking_id,
+            "session_id": session.session_id,
+            "amount": amount,
+            "currency": "nzd",
+            "payment_status": "pending",
+            "status": "initiated",
+            "customer_email": booking.get('email', ''),
+            "customer_name": booking.get('name', ''),
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc)
+        }
+        await db.payment_transactions.insert_one(payment_transaction)
+        logger.info(f"Payment transaction created for checkout link: {payment_transaction['id']} for booking: {request.booking_id}")
+
+        # Update booking with fresh payment session
+        await db.bookings.update_one(
+            {"id": request.booking_id},
+            {"$set": {"payment_session_id": session.session_id, "payment_status": "pending"}}
+        )
+
+        return session
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error creating checkout link: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error creating checkout session: {str(e)}")
+
+
 def _extract_booking_summary(booking: dict) -> dict:
     """Extract key booking details for the confirmation page."""
     if not booking:
@@ -6085,6 +6167,70 @@ async def get_payment_status(session_id: str):
     except Exception as e:
         logger.error(f"Error getting payment status: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error checking payment status: {str(e)}")
+
+
+@api_router.post("/bookings/sync-pending-payments")
+async def sync_pending_payments(current_admin: dict = Depends(get_current_admin)):
+    """Check Stripe for the actual payment status of bookings stuck in 'pending'.
+    Useful when webhook didn't fire or customer closed the tab before polling completed."""
+    try:
+        stripe_api_key = os.environ.get('STRIPE_API_KEY') or os.environ.get('STRIPE_SECRET_KEY')
+        if not stripe_api_key:
+            raise HTTPException(status_code=500, detail="Stripe API key not configured")
+
+        stripe_checkout = StripeCheckout(api_key=stripe_api_key, webhook_url="")
+
+        # Find bookings with payment_status=pending that have a Stripe session
+        pending_bookings = await db.bookings.find(
+            {"payment_status": "pending", "payment_session_id": {"$ne": None}},
+            {"_id": 0}
+        ).to_list(100)
+
+        synced = []
+        for booking in pending_bookings:
+            session_id = booking.get('payment_session_id')
+            if not session_id:
+                continue
+            try:
+                checkout_status = await stripe_checkout.get_checkout_status(session_id)
+                if checkout_status.payment_status == "paid":
+                    await db.bookings.update_one(
+                        {"id": booking['id']},
+                        {"$set": {"payment_status": "paid", "status": "confirmed"}}
+                    )
+                    # Also update payment_transactions if it exists
+                    await db.payment_transactions.update_one(
+                        {"session_id": session_id},
+                        {"$set": {"payment_status": "paid", "updated_at": datetime.now(timezone.utc)}}
+                    )
+                    synced.append({
+                        "booking_id": booking['id'],
+                        "referenceNumber": booking.get('referenceNumber'),
+                        "customer": booking.get('name'),
+                        "amount": booking.get('totalPrice'),
+                    })
+                    logger.info(f"Synced payment for booking #{booking.get('referenceNumber')} — was pending, now paid")
+
+                    # Send confirmations that were missed
+                    updated_booking = await db.bookings.find_one({"id": booking['id']}, {"_id": 0})
+                    if updated_booking:
+                        send_customer_confirmation(updated_booking)
+                        await send_booking_notification_to_admin(updated_booking)
+                        await create_calendar_event(updated_booking)
+            except Exception as e:
+                logger.warning(f"Could not check Stripe for session {session_id}: {e}")
+
+        return {
+            "synced": synced,
+            "count": len(synced),
+            "checked": len(pending_bookings),
+            "message": f"Synced {len(synced)} of {len(pending_bookings)} pending bookings"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error syncing pending payments: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @api_router.get("/bookings/orphan-payments")
@@ -8842,50 +8988,33 @@ async def export_csv():
 
 # Payment Link Helper Functions
 async def generate_stripe_payment_link(booking: dict) -> str:
-    """Generate a Stripe payment link for a booking"""
+    """Generate a stable payment link that points to the frontend /pay/:bookingId page.
+
+    Instead of returning a raw Stripe checkout session URL (which expires after 24h),
+    this returns a link to our own domain that creates a fresh session on the fly.
+    This prevents the 'website cannot be trusted' / expired link errors customers see.
+    """
     try:
-        stripe_api_key = os.environ.get('STRIPE_API_KEY') or os.environ.get('STRIPE_SECRET_KEY')
-        if not stripe_api_key:
-            logger.error("Stripe API key not configured (set STRIPE_API_KEY or STRIPE_SECRET_KEY)")
+        booking_id = booking.get('id', '')
+        if not booking_id:
+            logger.error("Cannot generate payment link: booking has no ID")
             return None
-        
-        public_url = os.environ.get('PUBLIC_URL') or os.environ.get('PUBLIC_DOMAIN', 'https://www.bookaride.co.nz').rstrip('/')
-        webhook_url = f"{public_url}/api/webhook/stripe"
-        stripe_checkout = StripeCheckout(api_key=stripe_api_key, webhook_url=webhook_url)
-        
-        success_url = f"{public_url}/payment-success?session_id={{CHECKOUT_SESSION_ID}}"
-        cancel_url = f"{public_url}/book-now"
-        
-        # Get price from multiple possible locations (admin may update pricing.totalPrice)
+
+        # Verify amount is valid before generating link
         amount = 0
         if booking.get('pricing') and booking.get('pricing', {}).get('totalPrice'):
             amount = float(booking.get('pricing', {}).get('totalPrice', 0))
         elif booking.get('totalPrice'):
             amount = float(booking.get('totalPrice', 0))
-        
+
         if amount <= 0:
             logger.error(f"Invalid amount for payment link: {amount}")
             return None
-        
-        # Stripe expects amount in cents (smallest currency unit)
-        amount_cents = int(round(amount * 100))
-        logger.info(f"Generating Stripe payment link for ${amount:.2f} (booking #{booking.get('referenceNumber')})")
-        
-        checkout_request = CheckoutSessionRequest(
-            amount_total=amount_cents,
-            currency="nzd",
-            success_url=success_url,
-            cancel_url=cancel_url,
-            customer_email=booking.get('email') or None,
-            metadata={
-                "booking_id": booking.get('id', ''),
-                "customer_email": booking.get('email', ''),
-                "customer_name": booking.get('name', '')
-            }
-        )
-        
-        session = await stripe_checkout.create_checkout_session(checkout_request)
-        return session.url
+
+        public_url = os.environ.get('PUBLIC_URL') or os.environ.get('PUBLIC_DOMAIN', 'https://www.bookaride.co.nz').rstrip('/')
+        payment_link = f"{public_url}/pay/{booking_id}"
+        logger.info(f"Generated stable payment link for ${amount:.2f} (booking #{booking.get('referenceNumber')}): {payment_link}")
+        return payment_link
     except Exception as e:
         logger.error(f"Error generating Stripe payment link: {str(e)}")
         return None
@@ -9230,50 +9359,61 @@ async def send_payment_link_email(booking: dict, payment_link: str, payment_type
             <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
                 <!-- Header -->
                 <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 30px; text-align: center;">
-                    <h1 style="color: #D4AF37; margin: 0; font-size: 28px;">Payment Required</h1>
-                    <p style="color: #ffffff; margin: 10px 0 0 0;">Booking Reference: {booking_ref}</p>
+                    <h1 style="color: #D4AF37; margin: 0; font-size: 28px;">Book A Ride NZ</h1>
+                    <p style="color: #ffffff; margin: 10px 0 0 0; font-size: 14px;">www.bookaride.co.nz</p>
+                    <p style="color: #cccccc; margin: 8px 0 0 0; font-size: 13px;">Booking Reference: {booking_ref}</p>
                 </div>
-                
+
                 <!-- Content -->
                 <div style="padding: 30px;">
                     <p style="font-size: 16px; color: #333;">Dear {customer_name},</p>
-                    
+
                     <p style="font-size: 16px; color: #333;">
-                        Thank you for your booking with Book A Ride NZ. Please complete your payment using the link below.
+                        Thank you for your booking with Book A Ride NZ. Please complete your payment using the secure link below.
                     </p>
-                    
+
                     <!-- Payment Amount Box -->
                     <div style="background: #f9f9f9; border: 2px solid #D4AF37; border-radius: 10px; padding: 20px; text-align: center; margin: 25px 0;">
                         <p style="margin: 0; color: #666; font-size: 14px;">Amount Due</p>
                         <p style="margin: 10px 0; color: #1a1a2e; font-size: 36px; font-weight: bold;">${total_price:.2f} NZD</p>
                         <p style="margin: 0; color: #666; font-size: 12px;">via {payment_type_display}</p>
                     </div>
-                    
+
                     <!-- Payment Button -->
                     <div style="text-align: center; margin: 30px 0;">
-                        <a href="{payment_link}" 
-                           style="display: inline-block; background: #D4AF37; color: #1a1a2e; padding: 15px 40px; 
+                        <a href="{payment_link}"
+                           style="display: inline-block; background: #D4AF37; color: #1a1a2e; padding: 15px 40px;
                                   border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 18px;">
-                            Pay Now with {payment_type_display}
+                            Pay Now Securely
                         </a>
                     </div>
-                    
-                    <p style="font-size: 14px; color: #666; text-align: center;">
+
+                    <p style="font-size: 13px; color: #888; text-align: center;">
+                        This link goes to <strong>bookaride.co.nz</strong> and then to Stripe's secure checkout.
+                    </p>
+
+                    <p style="font-size: 14px; color: #666; text-align: center; margin-top: 15px;">
                         Or copy this link: <br>
                         <a href="{payment_link}" style="color: #D4AF37; word-break: break-all;">{payment_link}</a>
                     </p>
-                    
+
                     <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-                    
+
                     <p style="font-size: 14px; color: #666;">
-                        If you have any questions, please contact us at bookings@bookaride.co.nz
+                        If you have any questions, please contact us at
+                        <a href="mailto:bookings@bookaride.co.nz" style="color: #D4AF37;">bookings@bookaride.co.nz</a>
+                    </p>
+
+                    <p style="font-size: 12px; color: #999; margin-top: 15px;">
+                        Your payment is processed securely by Stripe. Book A Ride NZ never stores your card details.
                     </p>
                 </div>
-                
+
                 <!-- Footer -->
                 <div style="background: #1a1a2e; padding: 20px; text-align: center;">
                     <p style="color: #888; font-size: 12px; margin: 0;">
-                        Book A Ride NZ | Premium Airport Transfers
+                        Book A Ride NZ | Premium Airport Transfers<br>
+                        <span style="color: #666;">www.bookaride.co.nz</span>
                     </p>
                 </div>
             </div>
