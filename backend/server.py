@@ -64,16 +64,17 @@ def _send_email_compat(to_email, subject, html_content, from_name="BookaRide", t
 reminder_lock = asyncio.Lock()
 
 # === Background Task Helpers ===
-def run_async_task(coro_func, arg, task_description="background task"):
-    """Run an async function in a new event loop for background tasks"""
+async def run_async_task(coro_func, arg, task_description="background task"):
+    """Run an async background task in the main event loop.
+
+    IMPORTANT: This must be async (not sync with new_event_loop) because async
+    functions like create_calendar_event use the asyncpg database pool, which is
+    bound to the main event loop. Creating a new event loop would cause
+    'attached to a different loop' errors on any database operation.
+    """
     try:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            loop.run_until_complete(coro_func(arg))
-            logger.info(f" Background task completed: {task_description}")
-        finally:
-            loop.close()
+        await coro_func(arg)
+        logger.info(f" Background task completed: {task_description}")
     except Exception as e:
         logger.error(f" Background task failed ({task_description}): {str(e)}")
 
@@ -9214,7 +9215,7 @@ async def send_payment_link_email(booking: dict, payment_link: str, payment_type
     try:
         customer_email = booking.get('email', '')
         customer_name = booking.get('name', '')
-        booking_ref = booking.get('booking_ref', booking.get('id', '')[:6])
+        booking_ref = booking.get('referenceNumber', booking.get('id', '')[:6])
         total_price = booking.get('totalPrice', 0)
         
         payment_type_display = "Stripe" if payment_type == "stripe" else "PayPal"
@@ -9348,7 +9349,7 @@ def add_contact_to_icloud(booking: dict):
             email_field.type_param = 'INTERNET'
         
         # Add note with booking details
-        booking_ref = booking.get('booking_ref', booking.get('id', '')[:6])
+        booking_ref = booking.get('referenceNumber', booking.get('id', '')[:6])
         pickup = booking.get('pickupAddress', '')
         dropoff = booking.get('dropoffAddress', '')
         date = booking.get('date', '')
