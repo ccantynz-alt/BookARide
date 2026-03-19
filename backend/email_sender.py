@@ -73,3 +73,28 @@ def send_email(
     except Exception as e:
         logger.error(f"Mailgun exception: {e}")
         return False
+
+
+def send_test_email(to: str):
+    """
+    Send a simple test email via Mailgun.
+    Returns (True, None) on success or (False, error_string) on failure.
+    """
+    if not is_email_configured():
+        return False, "Mailgun not configured. Set MAILGUN_API_KEY and MAILGUN_DOMAIN."
+
+    html = """
+    <html><body style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto;">
+        <div style="background: #D4AF37; color: white; padding: 20px; text-align: center; border-radius: 10px 10px 0 0;">
+            <h2 style="margin: 0;">BookARide NZ - Test Email</h2>
+        </div>
+        <div style="padding: 20px; border: 1px solid #e8e4d9; border-top: none; border-radius: 0 0 10px 10px;">
+            <p>This is a test email from your BookARide admin dashboard.</p>
+            <p>If you received this, your Mailgun email configuration is working correctly.</p>
+        </div>
+    </body></html>
+    """
+    ok = send_email(to, "BookARide Test Email", html, from_name="BookARide System")
+    if ok:
+        return True, None
+    return False, "Mailgun API call failed. Check MAILGUN_API_KEY and MAILGUN_DOMAIN."
