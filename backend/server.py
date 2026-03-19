@@ -10234,6 +10234,37 @@ async def get_driver_schedule(driver_id: str, date: Optional[str] = None):
         logger.error(f"Error getting driver schedule: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@api_router.delete("/bookings/bulk-delete")
+async def bulk_delete(booking_ids: List[str], send_notifications: bool = False, current_admin: dict = Depends(get_current_admin)):
+    """Soft-delete multiple bookings (moves to deleted_bookings collection)"""
+    try:
+        # Get all bookings first
+        bookings = await db.bookings.find({"id": {"$in": booking_ids}}, {"_id": 0}).to_list(1000)
+
+        if send_notifications:
+            for booking in bookings:
+                try:
+                    await send_cancellation_notifications(booking)
+                except Exception as e:
+                    logger.error(f"Error sending cancellation for booking {booking.get('id')}: {str(e)}")
+
+        # SOFT DELETE: Move all to deleted_bookings collection
+        deleted_count = 0
+        for booking in bookings:
+            booking['deletedAt'] = datetime.now(timezone.utc).isoformat()
+            booking['deletedBy'] = current_admin.get('username', 'admin')
+            booking['notificationSent'] = send_notifications
+            await db.deleted_bookings.insert_one(booking)
+            deleted_count += 1
+
+        # Remove from active bookings
+        result = await db.bookings.delete_many({"id": {"$in": booking_ids}})
+
+        logger.info(f"Bulk soft-deleted {deleted_count} bookings by {current_admin.get('username', 'admin')}")
+        return {"message": "Bookings deleted", "count": result.deleted_count, "notifications_sent": send_notifications}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @api_router.delete("/bookings/{booking_id}")
 async def delete_booking(booking_id: str, send_notification: bool = True, force: bool = False, current_admin: dict = Depends(get_current_admin)):
     """Soft-delete a single booking (moves to deleted_bookings collection). Paid bookings require force=true."""
@@ -10306,7 +10337,7 @@ async def send_cancellation_notifications(booking: dict):
             logger.error(f"Failed to send cancellation SMS: {str(e)}")
 
 async def send_cancellation_email(booking: dict, to_email: str, customer_name: str):
-    """Send cancellation email via Google SMTP"""
+    """Send cancellation email via Mailgun"""
     sender_email = get_noreply_email()
     
     
@@ -10423,37 +10454,6 @@ To rebook: bookaride.co.nz"""
     )
     
     logger.info(f" Cancellation SMS sent to {formatted_phone} - SID: {message.sid}")
-
-@api_router.delete("/bookings/bulk-delete")
-async def bulk_delete(booking_ids: List[str], send_notifications: bool = False, current_admin: dict = Depends(get_current_admin)):
-    """Soft-delete multiple bookings (moves to deleted_bookings collection)"""
-    try:
-        # Get all bookings first
-        bookings = await db.bookings.find({"id": {"$in": booking_ids}}, {"_id": 0}).to_list(1000)
-        
-        if send_notifications:
-            for booking in bookings:
-                try:
-                    await send_cancellation_notifications(booking)
-                except Exception as e:
-                    logger.error(f"Error sending cancellation for booking {booking.get('id')}: {str(e)}")
-        
-        # SOFT DELETE: Move all to deleted_bookings collection
-        deleted_count = 0
-        for booking in bookings:
-            booking['deletedAt'] = datetime.now(timezone.utc).isoformat()
-            booking['deletedBy'] = current_admin.get('username', 'admin')
-            booking['notificationSent'] = send_notifications
-            await db.deleted_bookings.insert_one(booking)
-            deleted_count += 1
-        
-        # Remove from active bookings
-        result = await db.bookings.delete_many({"id": {"$in": booking_ids}})
-        
-        logger.info(f"Bulk soft-deleted {deleted_count} bookings by {current_admin.get('username', 'admin')}")
-        return {"message": "Bookings deleted", "count": result.deleted_count, "notifications_sent": send_notifications}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ============================================

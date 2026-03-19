@@ -1660,7 +1660,30 @@ export const AdminDashboard = () => {
         return;
       }
       console.error('Error deleting booking:', error);
-      toast.error('Failed to cancel booking');
+      const detail = error.response?.data?.detail;
+      if (error.response?.status === 400 && detail && detail.includes('paid Stripe payment')) {
+        const forceCancel = window.confirm(
+          `This booking has a paid Stripe payment.\n\nDo you want to force-cancel it anyway?\n\n⚠️ You may need to process a refund separately in Stripe.`
+        );
+        if (forceCancel) {
+          try {
+            await axios.delete(`${API}/bookings/${bookingId}?send_notification=${sendNotification}&force=true`, getAuthHeaders());
+            if (sendNotification) {
+              toast.success('Paid booking force-cancelled - Customer notified');
+            } else {
+              toast.success('Paid booking force-deleted silently');
+            }
+            removeBookingLocally(bookingId);
+            return;
+          } catch (retryError) {
+            console.error('Error force-deleting booking:', retryError);
+            toast.error(retryError.response?.data?.detail || 'Failed to force-cancel booking');
+            return;
+          }
+        }
+        return;
+      }
+      toast.error(detail || 'Failed to cancel booking');
     }
   };
 
