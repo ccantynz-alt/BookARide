@@ -152,7 +152,7 @@ CREATE TABLE IF NOT EXISTS payment_transactions (
 
 CREATE INDEX IF NOT EXISTS idx_payment_tx_id ON payment_transactions (id);
 CREATE INDEX IF NOT EXISTS idx_payment_tx_booking ON payment_transactions ((data->>'booking_id'));
-CREATE INDEX IF NOT EXISTS idx_payment_tx_session ON payment_transactions ((data->>'stripe_session_id'));
+CREATE INDEX IF NOT EXISTS idx_payment_tx_session ON payment_transactions ((data->>'session_id'));
 CREATE INDEX IF NOT EXISTS idx_payment_tx_data ON payment_transactions USING GIN (data);
 
 CREATE TABLE IF NOT EXISTS afterpay_transactions (
