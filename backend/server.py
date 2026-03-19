@@ -8300,7 +8300,7 @@ async def create_manual_booking(booking: ManualBooking, background_tasks: Backgr
 
 # Update Payment Status
 @api_router.put("/bookings/{booking_id}/payment-status")
-async def update_payment_status(booking_id: str, paymentStatus: str = Body(..., embed=True)):
+async def update_payment_status(booking_id: str, paymentStatus: str = Body(..., embed=True), current_admin: dict = Depends(get_current_admin)):
     """Update payment status for a booking"""
     try:
         # Validate payment status
@@ -8326,14 +8326,19 @@ async def update_payment_status(booking_id: str, paymentStatus: str = Body(..., 
 
 # Bulk Operations
 @api_router.post("/bookings/bulk-status")
-async def bulk_status_update(booking_ids: List[str], new_status: str):
+async def bulk_status_update(booking_ids: List[str] = Body(...), new_status: str = Body(...), current_admin: dict = Depends(get_current_admin)):
     """Update status for multiple bookings"""
     try:
+        valid_statuses = ['pending', 'confirmed', 'completed', 'cancelled', 'pending_approval']
+        if new_status not in valid_statuses:
+            raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {valid_statuses}")
         result = await db.bookings.update_many(
             {"id": {"$in": booking_ids}},
             {"$set": {"status": new_status}}
         )
         return {"message": "Status updated", "count": result.modified_count}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
