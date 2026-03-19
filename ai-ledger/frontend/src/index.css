@@ -1,0 +1,159 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    @apply border-warmgray-200;
+  }
+
+  body {
+    @apply bg-warmgray-50 text-navy-900 font-sans;
+  }
+
+  /* Tabular (monospaced) numbers for financial data */
+  .font-tabular {
+    font-variant-numeric: tabular-nums lining-nums;
+  }
+
+  /* Default number styling for financial contexts */
+  [data-financial] {
+    font-variant-numeric: tabular-nums lining-nums;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  }
+}
+
+@layer components {
+  /* Financial table styles */
+  .table-financial {
+    @apply w-full text-financial-base;
+  }
+
+  .table-financial thead th {
+    @apply px-table-cell py-table-cell-sm text-left text-financial-sm font-semibold
+           text-warmgray-600 uppercase tracking-wider border-b-2 border-navy-200
+           bg-warmgray-50;
+  }
+
+  .table-financial tbody td {
+    @apply px-table-cell py-table-cell text-financial-base border-b border-warmgray-100;
+  }
+
+  .table-financial tbody tr:hover {
+    @apply bg-warmgray-50/50;
+  }
+
+  /* Right-align currency columns */
+  .table-financial .col-currency {
+    @apply text-right font-mono min-w-currency;
+  }
+
+  .table-financial .col-date {
+    @apply min-w-date whitespace-nowrap;
+  }
+
+  .table-financial .col-account-code {
+    @apply font-mono min-w-account-code;
+  }
+
+  /* Amount styling */
+  .amount-positive {
+    @apply text-success-700;
+  }
+
+  .amount-negative {
+    @apply text-error-600;
+  }
+
+  .amount-zero {
+    @apply text-warmgray-400;
+  }
+
+  /* Card component */
+  .card {
+    @apply bg-white rounded-card shadow-card border border-warmgray-100;
+  }
+
+  .card-hover {
+    @apply card transition-shadow duration-200 hover:shadow-card-hover;
+  }
+
+  /* Dashboard stat card */
+  .stat-card {
+    @apply card p-5;
+  }
+
+  .stat-card-label {
+    @apply text-financial-sm font-medium text-warmgray-500 uppercase tracking-wide;
+  }
+
+  .stat-card-value {
+    @apply text-2xl font-semibold text-navy-900 font-mono mt-1;
+    font-variant-numeric: tabular-nums lining-nums;
+  }
+
+  /* Ledger entry rows */
+  .ledger-row {
+    @apply flex items-center gap-3 px-4 py-3 border-b border-warmgray-100
+           hover:bg-warmgray-50/60 transition-colors duration-100;
+  }
+
+  .ledger-row-selected {
+    @apply ledger-row bg-teal-50/40 border-l-2 border-l-teal-500;
+  }
+
+  /* Status badges */
+  .badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5
+           text-financial-xs font-medium;
+  }
+
+  .badge-paid {
+    @apply badge bg-success-50 text-success-700 ring-1 ring-inset ring-success-600/20;
+  }
+
+  .badge-pending {
+    @apply badge bg-warning-50 text-warning-700 ring-1 ring-inset ring-warning-600/20;
+  }
+
+  .badge-overdue {
+    @apply badge bg-error-50 text-error-700 ring-1 ring-inset ring-error-600/20;
+  }
+
+  .badge-draft {
+    @apply badge bg-warmgray-100 text-warmgray-600 ring-1 ring-inset ring-warmgray-500/20;
+  }
+
+  .badge-reconciled {
+    @apply badge bg-teal-50 text-teal-700 ring-1 ring-inset ring-teal-600/20;
+  }
+}
+
+@layer utilities {
+  /* Hide scrollbar but keep scrolling */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Print-friendly styles */
+  @media print {
+    .no-print {
+      display: none !important;
+    }
+
+    .print-break-before {
+      page-break-before: always;
+    }
+
+    .print-break-after {
+      page-break-after: always;
+    }
+  }
+}
