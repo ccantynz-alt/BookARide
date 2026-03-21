@@ -134,6 +134,8 @@ export const BookNow = () => {
   const [showDropoffSuggestions, setShowDropoffSuggestions] = useState(false);
   const addressDebounceRef = useRef({});
   const addressRequestIdRef = useRef({ pickup: 0, dropoff: 0 });
+  const [extraPickupSuggestions, setExtraPickupSuggestions] = useState({});
+  const [showExtraPickupSuggestions, setShowExtraPickupSuggestions] = useState({});
 
   const fetchAddressSuggestions = (query, setter, showSetter) => {
     const key = setter === setPickupSuggestions ? 'pickup' : 'dropoff';
@@ -155,6 +157,33 @@ export const BookNow = () => {
         if (requestId !== addressRequestIdRef.current[key]) return;
         console.error('[BookARide] Address autocomplete failed:', err?.message || err, 'URL:', `${API}/places/autocomplete`);
         setter([]); showSetter(false);
+      }
+    }, 300);
+  };
+
+  const fetchExtraPickupSuggestions = (index, query) => {
+    const key = `extra_${index}`;
+    if (addressDebounceRef.current[key]) clearTimeout(addressDebounceRef.current[key]);
+
+    if (query.length < 3) {
+      setExtraPickupSuggestions(prev => ({ ...prev, [index]: [] }));
+      setShowExtraPickupSuggestions(prev => ({ ...prev, [index]: false }));
+      return;
+    }
+
+    if (!addressRequestIdRef.current[key]) addressRequestIdRef.current[key] = 0;
+    addressDebounceRef.current[key] = setTimeout(async () => {
+      const requestId = ++addressRequestIdRef.current[key];
+      try {
+        const res = await axios.get(`${API}/places/autocomplete`, { params: { input: query } });
+        if (requestId !== addressRequestIdRef.current[key]) return;
+        const predictions = res.data?.predictions || [];
+        setExtraPickupSuggestions(prev => ({ ...prev, [index]: predictions }));
+        setShowExtraPickupSuggestions(prev => ({ ...prev, [index]: predictions.length > 0 }));
+      } catch (err) {
+        if (requestId !== addressRequestIdRef.current[key]) return;
+        setExtraPickupSuggestions(prev => ({ ...prev, [index]: [] }));
+        setShowExtraPickupSuggestions(prev => ({ ...prev, [index]: false }));
       }
     }, 300);
   };
@@ -518,7 +547,7 @@ export const BookNow = () => {
 
                       {/* Additional Pickup Addresses */}
                       {formData.pickupAddresses.map((pickup, index) => (
-                        <div key={index} className="space-y-2 mb-6">
+                        <div key={index} className="space-y-2 mb-6 relative">
                           <Label className="flex items-center space-x-2">
                             <MapPin className="w-4 h-4 text-gold" />
                             <span>Pickup Location {index + 2}</span>
@@ -526,12 +555,31 @@ export const BookNow = () => {
                           <div className="flex gap-2">
                             <Input
                               value={pickup}
-                              onChange={(e) => handlePickupAddressChange(index, e.target.value)}
+                              onChange={(e) => {
+                                handlePickupAddressChange(index, e.target.value);
+                                fetchExtraPickupSuggestions(index, e.target.value);
+                              }}
+                              onBlur={() => setTimeout(() => setShowExtraPickupSuggestions(prev => ({ ...prev, [index]: false })), 200)}
                               placeholder="Additional pickup address..."
-                              className="flex-1"
+                              autoComplete="off"
+                              className="flex-1 transition-all duration-200 focus:ring-2 focus:ring-gold"
                             />
                             <Button type="button" variant="outline" size="sm" onClick={() => handleRemovePickup(index)} className="text-red-500 hover:text-red-700">Remove</Button>
                           </div>
+                          {showExtraPickupSuggestions[index] && extraPickupSuggestions[index]?.length > 0 && (
+                            <ul className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+                              {extraPickupSuggestions[index].map((s, i) => (
+                                <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm border-b last:border-b-0"
+                                  onPointerDown={(e) => {
+                                    e.preventDefault();
+                                    handlePickupAddressChange(index, s.description);
+                                    setShowExtraPickupSuggestions(prev => ({ ...prev, [index]: false }));
+                                  }}>
+                                  {s.description}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
                         </div>
                       ))}
 

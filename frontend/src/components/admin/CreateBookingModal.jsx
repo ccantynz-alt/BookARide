@@ -385,6 +385,7 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="airport-shuttle">Airport Shuttle</SelectItem>
                     <SelectItem value="private-transfer">Private Transfer</SelectItem>
                   </SelectContent>
                 </Select>
