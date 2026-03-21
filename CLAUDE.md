@@ -307,7 +307,9 @@ There are 3 booking collections. A booking must ALWAYS exist in exactly one of t
 
 ## QUALITY STANDARDS — STRICT, NON-NEGOTIABLE
 
-This is a real business serving real customers. Every feature must work. No fake functionality, no misleading promises.
+This is a real business serving real customers paying real money. **Every single feature must work perfectly from start to finish.** No broken promises, no placeholder functionality, no "good enough". This is an honest business — if something is shown to the customer, it must actually work. If it doesn't work, remove it until it does.
+
+**THE STANDARD: If a customer or admin interacts with ANY feature, it must work first try, every time.**
 
 ### 1. No Mock/Fake Functionality
 
@@ -363,6 +365,36 @@ No exceptions. If you add a new payment path, it must include all 4.
 - Fix unused imports, missing imports, and type errors immediately
 - Never commit code that doesn't compile
 
+### 9. Every UI Element Must Function
+
+- **Google Maps autocomplete MUST show dropdown suggestions** — use portal-based `AddressAutocomplete` component (not inline absolute-positioned dropdowns that get clipped)
+- **Customer search dropdown MUST work** — uses React Portal rendering to escape Dialog overflow constraints
+- **Every dropdown, select, modal, and form input MUST be interactive and functional**
+- **NEVER** use `position: absolute` for dropdowns inside scrollable containers — use React Portal (`ReactDOM.createPortal`) to render to `document.body`
+- **NEVER** use `onBlur` with `setTimeout` to close dropdowns — use `pointerdown` event listeners on `document` for reliable close-on-outside-click
+- All address inputs in BookNow.jsx MUST use the `AddressAutocomplete` component (portal-based, debounced, stale-request-safe)
+
+### 10. Service Type Consistency
+
+- Valid service types are: `airport-transfer` and `private-transfer`
+- **NEVER** use `airport-shuttle` as a service type — the shuttle service has been removed
+- This applies EVERYWHERE: frontend forms, backend endpoints, orphan recovery, CSV import, test data
+- Check ALL files when changing service type values — they must be consistent across the entire codebase
+
+### 11. Fix Bugs Immediately
+
+- If you find a bug while working on something else, **fix it immediately** — do not leave it for later
+- If a feature doesn't work end-to-end, it's not done — keep working until the full flow succeeds
+- Test the complete user journey: form loads → user types → autocomplete appears → user selects → price calculates → booking submits → payment works → confirmation sends
+- **NEVER** mark a task as complete if any part of the feature is broken
+
+### 12. No Dead Links or Broken Navigation
+
+- Every link must go somewhere real — no `href="#"` placeholders
+- Every navigation item must lead to a working page
+- Social media links must either point to real profiles or be removed entirely
+- Footer links, header links, and in-page links must ALL work
+
 ---
 
 ## History of Production Breaks (why these rules exist)
@@ -380,3 +412,9 @@ No exceptions. If you add a new payment path, it must include all 4.
 | 2026-03-13 | Shuttle polluting admin bookings      | Shuttle bookings mixed into main list; 68K line monolith |
 | 2026-03-13 | Buttons unresponsive in admin         | Missing click targets, no stopPropagation on action buttons |
 | 2026-03-13 | Orewa booking overcharged ($185)      | Google Maps API failed, 75km fallback used instead of 57.6km actual |
+| 2026-03-21 | Google autocomplete dropdown invisible | BookNow.jsx used absolute-positioned dropdowns clipped by parent overflow |
+| 2026-03-21 | Wrong service type across codebase    | `airport-shuttle` used in EditBookingModal, BookNow, orphan recovery, CSV import |
+| 2026-03-21 | Multi-pickup fallback overcharging    | Fallback distance multiplied by pickup count (55km × 3 = 165km) |
+| 2026-03-21 | CSV import wrong field names          | `paymentStatus` (camelCase) instead of `payment_status` (snake_case) |
+| 2026-03-21 | Footer social links broken            | href="#" placeholders — links went nowhere |
+| 2026-03-21 | Duplicate route unreachable page      | Two routes for same path, first match shadowed dedicated page |

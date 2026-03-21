@@ -129,7 +129,7 @@ const EditBookingModal = memo(({ open, onClose, booking, onSuccess, onPreviewCon
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="airport-shuttle">Airport Shuttle</SelectItem>
+                    <SelectItem value="airport-transfer">Airport Transfer</SelectItem>
                     <SelectItem value="private-transfer">Private Transfer</SelectItem>
                   </SelectContent>
                 </Select>

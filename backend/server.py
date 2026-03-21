@@ -1593,9 +1593,10 @@ async def calculate_price(request: PriceCalculationRequest):
                 logger.info(f"Google Maps route distance: {distance_km}km")
 
         if distance_km is None:
-            pickup_count = 1 + len([addr for addr in (request.pickupAddresses or []) if addr])
-            distance_km = _fallback_km * pickup_count
-            logger.warning(f"GOOGLE_MAPS_API_KEY not set or distance lookup failed. Using fallback estimate: {distance_km}km for {pickup_count} stops")
+            extra_pickups = len([addr for addr in (request.pickupAddresses or []) if addr])
+            # Add 5km per extra pickup stop (not multiply — multiplication wildly overcharges)
+            distance_km = _fallback_km + (extra_pickups * 5.0)
+            logger.warning(f"GOOGLE_MAPS_API_KEY not set or distance lookup failed. Using fallback estimate: {distance_km}km (base {_fallback_km}km + {extra_pickups} extra stops)")
         # Calculate pricing with tiered rates - FLAT RATE per bracket
         # The rate is determined by which distance bracket the trip falls into
         # Then that rate is applied to the ENTIRE distance
@@ -5272,8 +5273,8 @@ async def import_bookings(request: ImportBookingsRequest, current_admin: dict = 
                     "flightTime": booking_data.flight_time or "",
                     "notes": booking_data.notes or f"Imported from WordPress booking #{booking_data.booking_id}",
                     "status": booking_data.status,
-                    "paymentStatus": "paid",
-                    "paymentMethod": "imported",
+                    "payment_status": "paid",
+                    "payment_method": "imported",
                     "totalPrice": booking_data.total_price,
                     "pricing": {"totalPrice": booking_data.total_price},
                     "bookReturn": bool(formatted_return_date),
@@ -5995,7 +5996,7 @@ async def recover_booking_from_payment(body: RecoverBookingFromPayment, current_
             "name": t.get("customer_name") or "Recovered customer",
             "email": t.get("customer_email") or "",
             "phone": "",
-            "serviceType": "airport-shuttle",
+            "serviceType": "airport-transfer",
             "pickupAddress": "(Edit after recovery)",
             "pickupAddresses": [],
             "dropoffAddress": "Auckland Airport",
@@ -12212,7 +12213,7 @@ async def create_hotel_booking(request: HotelBookingRequest, hotel: dict = Depen
             "flightNumber": request.flightNumber,
             "specialRequests": f"Hotel: {hotel_info.get('name', '')} | Room: {request.roomNumber} | {request.specialRequests}",
             "status": "pending",
-            "serviceType": "airport-shuttle",
+            "serviceType": "airport-transfer",
             "source": f"hotel:{hotel['hotel_code']}",
             "created_at": datetime.now(timezone.utc).isoformat()
         }
@@ -12399,7 +12400,7 @@ async def create_airline_booking(request: AirlineBookingRequest, airline: dict =
             "passengers": request.passengers,
             "flightNumber": request.flight_number,
             "status": "confirmed",
-            "serviceType": "airport-shuttle",
+            "serviceType": "airport-transfer",
             "source": f"airline:{airline['code']}",
             "airline_pnr": request.pnr,
             "created_at": datetime.now(timezone.utc).isoformat()
