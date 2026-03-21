@@ -55,7 +55,7 @@ const AddressAutocomplete = ({
       debounceRef.current = setTimeout(async () => {
         try {
           const resp = await axios.get(`${API}/places/autocomplete`, {
-            params: { input: text, types: 'address', region },
+            params: { input: text, region },
           });
           // Ignore if a selection happened while the request was in-flight
           if (gen !== fetchGenRef.current) return;

@@ -66,7 +66,6 @@ import BlogIndex from './pages/blog/BlogIndex';
 import BlogPost from './pages/blog/BlogPost';
 import ComparisonPage from './pages/compare/ComparisonPage';
 import ComparisonDirectory from './pages/compare/ComparisonDirectory';
-import FacebookStrategy from './pages/FacebookStrategy';
 // SEO Battle Pages
 import HibiscusCoastShuttlePage from './pages/seo/HibiscusCoastShuttlePage';
 import BookarideVsHibiscusShuttles from './pages/seo/BookarideVsHibiscusShuttles';
@@ -210,7 +209,6 @@ function App() {
     { path: "auckland-airport-to-takapuna", element: <SEORoutePage /> },
     { path: "auckland-airport-to-devonport", element: <SEORoutePage /> },
     { path: "auckland-airport-to-matakana", element: <SEORoutePage /> },
-    { path: "auckland-airport-to-city", element: <SEORoutePage /> },
     { path: "auckland-cruise-terminal-transfer", element: <SEORoutePage /> },
     // NEW: Route Pages (Directory)
     { path: "routes", element: <RoutesDirectory /> },
@@ -358,7 +356,6 @@ function App() {
             <Route path="/admin/reset-password" element={<AdminResetPassword />} />
             <Route path="/admin/dashboard" element={<AdminErrorBoundary><AdminDashboard /></AdminErrorBoundary>} />
             <Route path="/admin/seo" element={<SEODashboard />} />
-            <Route path="/admin/facebook-strategy" element={<FacebookStrategy />} />
             
             {/* Language-prefixed routes (zh, ja, ko, es, fr) */}
             {languagePrefixes.map(lang => (

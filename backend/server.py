@@ -19,7 +19,6 @@ try:
     from twilio.rest import Client
 except Exception:
     Client = None
-import requests
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 from google.oauth2.credentials import Credentials
@@ -1343,24 +1342,6 @@ async def get_status_checks():
     
     return status_checks
 
-def _geocode_google(address: str, api_key: str) -> tuple:
-    """Geocode address via Google Maps Geocoding API. Returns (lat, lon) or (None, None)."""
-    try:
-        url = "https://maps.googleapis.com/maps/api/geocode/json"
-        params = {"address": address, "key": api_key, "region": "nz", "components": "country:NZ"}
-        r = requests.get(url, params=params, timeout=10)
-        data = r.json()
-        results = data.get("results", [])
-        if results:
-            location = results[0].get("geometry", {}).get("location", {})
-            lat = location.get("lat")
-            lng = location.get("lng")
-            if lat is not None and lng is not None:
-                return (lat, lng)
-    except Exception as e:
-        logger.warning(f"Google geocode error for '{address[:50]}...': {e}")
-    return (None, None)
-
 
 # Canonical addresses for reliable routing
 _CANONICAL_AIRPORT = "Auckland Airport, Ray Emery Drive, Mangere, Auckland 2022, New Zealand"
@@ -2485,21 +2466,12 @@ async def send_booking_to_admin(booking_id: str, current_admin: dict = Depends(g
         cc = info_cc if admin_email.lower() != info_cc else None
         ok = _send_email_with_fallbacks(admin_email, email_subject, html_content, from_name="BookaRide System", cc=cc)
 
-        subject = f"Booking Details - {booking.get('name', 'Customer')} - {booking.get('id', '')[:8].upper()}"
-        from_email = get_noreply_email()
-
-        # Send via Mailgun
-        if send_email_unified:
-            success = send_email_unified(admin_email, subject, html_content, from_email=from_email, from_name="BookaRide System")
-            if success:
-                logger.info(f"Booking details sent to admin: {admin_email} - Booking: {booking_id}")
-                return {"message": f"Booking details sent to {admin_email}"}
-            else:
-                logger.error(f"Failed to send booking to admin via unified sender")
-                raise HTTPException(status_code=500, detail="Failed to send email. Check email provider configuration.")
+        if ok:
+            logger.info(f"Booking details sent to admin: {admin_email} - Booking: {booking_id}")
+            return {"message": f"Booking details sent to {admin_email}"}
         else:
-            logger.error("No email sender configured")
-            raise HTTPException(status_code=500, detail="Email sending is not configured. Please set up MAILGUN_API_KEY and MAILGUN_DOMAIN.")
+            logger.error(f"Failed to send booking to admin via Mailgun")
+            raise HTTPException(status_code=500, detail="Failed to send email. Check MAILGUN_API_KEY and MAILGUN_DOMAIN configuration.")
 
     except HTTPException:
         raise
@@ -2708,63 +2680,6 @@ def send_booking_confirmation_email(booking: dict, include_payment_link: bool = 
     return False
 
 
-def send_via_mailgun(booking: dict):
-    """Try sending via Mailgun with beautiful email template"""
-    try:
-        mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
-        mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
-        sender_email = get_noreply_email()
-        
-        if not mailgun_api_key or not mailgun_domain:
-            logger.warning("Mailgun credentials not configured")
-            return False
-        
-        # Get booking reference for subject line
-        booking_ref = get_booking_reference(booking)
-        
-        # Get language preference for subject (default to English)
-        lang = booking.get('language', 'en')
-        if lang not in EMAIL_TRANSLATIONS:
-            lang = 'en'
-        t = EMAIL_TRANSLATIONS[lang]
-        
-        subject = f"{t['subject']} - Ref: {booking_ref}"
-        recipient_email = booking.get('email')
-        
-        # Use the beautiful email template
-        html_content = generate_confirmation_email_html(booking)
-        
-        # Build email data with CC support
-        email_data = {
-            "from": f"BookaRide <{sender_email}>",
-            "to": recipient_email,
-            "subject": subject,
-            "html": html_content
-        }
-        
-        # Add CC if provided
-        cc_email = booking.get('ccEmail', '')
-        if cc_email and cc_email.strip():
-            email_data["cc"] = cc_email.strip()
-        
-        # Send email via Mailgun API
-        response = requests.post(
-            f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
-            auth=("api", mailgun_api_key),
-            data=email_data
-        )
-        
-        if response.status_code == 200:
-            cc_info = f" (CC: {cc_email})" if cc_email else ""
-            logger.info(f"Confirmation email sent to {recipient_email}{cc_info} via Mailgun")
-            return True
-        else:
-            logger.error(f"Mailgun error: {response.status_code} - {response.text}")
-            return False
-        
-    except Exception as e:
-        logger.error(f"Mailgun error: {str(e)}")
-        return False
 
 
 def send_booking_confirmation_sms(booking: dict):
@@ -3555,248 +3470,6 @@ async def get_email_logs(current_admin: dict = Depends(get_current_admin), limit
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ============================================
-# FACEBOOK BUSINESS PAGE INTEGRATION
-# ============================================
-
-class FacebookPostRequest(BaseModel):
-    message: str
-    link: Optional[str] = None
-    scheduled_time: Optional[int] = None  # Unix timestamp for scheduling
-
-@api_router.get("/facebook/status")
-async def facebook_status(current_admin: dict = Depends(get_current_admin)):
-    """Check if Facebook is connected and return page info."""
-    if not fb or not fb._fb_configured():
-        return {"connected": False, "configured": False}
-    config = await db.facebook_config.find_one({"_id": "page_config"})
-    if not config or not config.get("page_token"):
-        return {"connected": False, "configured": True}
-    return {
-        "connected": True,
-        "configured": True,
-        "page_name": config.get("page_name", ""),
-        "page_id": config.get("page_id", ""),
-        "page_picture": config.get("page_picture", ""),
-        "page_category": config.get("page_category", ""),
-        "connected_at": config.get("connected_at", ""),
-        "auto_reply_enabled": config.get("auto_reply_enabled", True),
-    }
-
-@api_router.get("/facebook/oauth-url")
-async def facebook_oauth_url(current_admin: dict = Depends(get_current_admin)):
-    """Get the Facebook OAuth URL to start the connection flow."""
-    if not fb or not fb._fb_configured():
-        raise HTTPException(status_code=400, detail="Facebook App ID and Secret are not configured. Set FACEBOOK_APP_ID and FACEBOOK_APP_SECRET environment variables.")
-    base_url = os.environ.get("BASE_URL", "https://bookaride.co.nz")
-    redirect_uri = f"{base_url}/api/facebook/callback"
-    return {"url": fb.get_oauth_url(redirect_uri)}
-
-@api_router.get("/facebook/callback")
-async def facebook_oauth_callback(code: str = None, error: str = None):
-    """Handle the OAuth callback from Facebook."""
-    from starlette.responses import RedirectResponse
-    if error or not code:
-        logger.error(f"Facebook OAuth error: {error}")
-        return RedirectResponse(url="/admin/bookings?fb_error=auth_denied")
-    try:
-        base_url = os.environ.get("BASE_URL", "https://bookaride.co.nz")
-        redirect_uri = f"{base_url}/api/facebook/callback"
-        token_data = fb.exchange_code_for_token(code, redirect_uri)
-        pages = fb.get_user_pages(token_data["access_token"])
-        if not pages:
-            return RedirectResponse(url="/admin/bookings?fb_error=no_pages")
-        # Auto-select the first page (most common case)
-        page = pages[0]
-        await db.facebook_config.update_one(
-            {"_id": "page_config"},
-            {"$set": {
-                "page_id": page["id"],
-                "page_name": page["name"],
-                "page_token": page["access_token"],
-                "page_category": page.get("category", ""),
-                "page_picture": page.get("picture_url", ""),
-                "user_token": token_data["access_token"],
-                "connected_at": datetime.now(timezone.utc).isoformat(),
-                "auto_reply_enabled": True,
-            }},
-            upsert=True,
-        )
-        logger.info(f"Facebook page connected: {page['name']} ({page['id']})")
-        return RedirectResponse(url="/admin/bookings?fb_connected=true&activeTab=facebook")
-    except Exception as e:
-        logger.error(f"Facebook OAuth callback error: {e}")
-        return RedirectResponse(url="/admin/bookings?fb_error=token_exchange")
-
-@api_router.post("/facebook/disconnect")
-async def facebook_disconnect(current_admin: dict = Depends(get_current_admin)):
-    """Disconnect the Facebook page."""
-    await db.facebook_config.delete_one({"_id": "page_config"})
-    logger.info("Facebook page disconnected")
-    return {"message": "Facebook page disconnected"}
-
-@api_router.post("/facebook/toggle-auto-reply")
-async def facebook_toggle_auto_reply(current_admin: dict = Depends(get_current_admin)):
-    """Toggle Messenger auto-reply on/off."""
-    config = await db.facebook_config.find_one({"_id": "page_config"})
-    if not config:
-        raise HTTPException(status_code=400, detail="Facebook not connected")
-    new_val = not config.get("auto_reply_enabled", True)
-    await db.facebook_config.update_one({"_id": "page_config"}, {"$set": {"auto_reply_enabled": new_val}})
-    return {"auto_reply_enabled": new_val}
-
-@api_router.post("/facebook/posts")
-async def facebook_create_post(req: FacebookPostRequest, current_admin: dict = Depends(get_current_admin)):
-    """Create or schedule a post on the connected Facebook page."""
-    config = await db.facebook_config.find_one({"_id": "page_config"})
-    if not config or not config.get("page_token"):
-        raise HTTPException(status_code=400, detail="Facebook page not connected")
-    try:
-        result = fb.create_page_post(
-            config["page_id"], config["page_token"],
-            req.message, req.link, req.scheduled_time,
-        )
-        # Log the post
-        await db.facebook_posts.insert_one({
-            "id": str(uuid.uuid4()),
-            "fb_post_id": result.get("id", ""),
-            "message": req.message,
-            "link": req.link,
-            "scheduled_time": req.scheduled_time,
-            "created_by": current_admin.get("username", ""),
-            "created_at": datetime.now(timezone.utc).isoformat(),
-        })
-        action = "scheduled" if req.scheduled_time else "published"
-        return {"message": f"Post {action} successfully", "post_id": result.get("id")}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to create post: {str(e)}")
-
-@api_router.get("/facebook/posts")
-async def facebook_get_posts(current_admin: dict = Depends(get_current_admin), limit: int = 25):
-    """Get recent posts from the connected Facebook page."""
-    config = await db.facebook_config.find_one({"_id": "page_config"})
-    if not config or not config.get("page_token"):
-        raise HTTPException(status_code=400, detail="Facebook page not connected")
-    try:
-        posts = fb.get_page_posts(config["page_id"], config["page_token"], limit)
-        return {"posts": posts}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch posts: {str(e)}")
-
-@api_router.delete("/facebook/posts/{post_id}")
-async def facebook_delete_post(post_id: str, current_admin: dict = Depends(get_current_admin)):
-    """Delete a post from the connected Facebook page."""
-    config = await db.facebook_config.find_one({"_id": "page_config"})
-    if not config or not config.get("page_token"):
-        raise HTTPException(status_code=400, detail="Facebook page not connected")
-    success = fb.delete_page_post(post_id, config["page_token"])
-    if success:
-        return {"message": "Post deleted"}
-    raise HTTPException(status_code=500, detail="Failed to delete post")
-
-@api_router.get("/facebook/insights")
-async def facebook_get_insights(current_admin: dict = Depends(get_current_admin)):
-    """Get page insights/analytics."""
-    config = await db.facebook_config.find_one({"_id": "page_config"})
-    if not config or not config.get("page_token"):
-        raise HTTPException(status_code=400, detail="Facebook page not connected")
-    try:
-        insights = fb.get_page_insights(config["page_id"], config["page_token"])
-        return {"insights": insights}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch insights: {str(e)}")
-
-@api_router.get("/facebook/messages")
-async def facebook_get_messages(current_admin: dict = Depends(get_current_admin), limit: int = 30):
-    """Get recent Messenger conversation logs."""
-    logs = await db.facebook_messages.find(
-        {}, {"_id": 0}
-    ).sort("received_at", -1).limit(limit).to_list(limit)
-    return {"messages": logs, "count": len(logs)}
-
-# Messenger Webhook (public — no admin auth, verified by Meta)
-@api_router.get("/facebook/webhook")
-async def facebook_webhook_verify(request: Request):
-    """Meta webhook verification (GET challenge)."""
-    params = request.query_params
-    mode = params.get("hub.mode")
-    token = params.get("hub.verify_token")
-    challenge = params.get("hub.challenge")
-    verify_token = os.environ.get("FACEBOOK_VERIFY_TOKEN", "bookaride_fb_verify")
-    if mode == "subscribe" and token == verify_token:
-        logger.info("Facebook webhook verified")
-        from starlette.responses import PlainTextResponse
-        return PlainTextResponse(content=challenge)
-    raise HTTPException(status_code=403, detail="Verification failed")
-
-@api_router.post("/facebook/webhook")
-async def facebook_webhook_receive(request: Request):
-    """Receive Messenger messages and auto-reply."""
-    try:
-        body = await request.json()
-    except Exception:
-        return {"status": "ok"}
-
-    if body.get("object") != "page":
-        return {"status": "ok"}
-
-    config = await db.facebook_config.find_one({"_id": "page_config"})
-    if not config or not config.get("page_token"):
-        logger.warning("Facebook webhook received but no page connected")
-        return {"status": "ok"}
-
-    page_token = config["page_token"]
-    auto_reply = config.get("auto_reply_enabled", True)
-
-    for entry in body.get("entry", []):
-        for event in entry.get("messaging", []):
-            sender_id = event.get("sender", {}).get("id", "")
-            message = event.get("message", {})
-            text = message.get("text", "")
-
-            if not text or sender_id == config.get("page_id"):
-                continue  # Skip non-text or messages from ourselves
-
-            # Get sender name from profile
-            sender_name = "there"
-            try:
-                profile = fb._graph(sender_id, params={
-                    "access_token": page_token,
-                    "fields": "first_name",
-                })
-                sender_name = profile.get("first_name", "there")
-            except Exception:
-                pass
-
-            # Log the message
-            await db.facebook_messages.insert_one({
-                "id": str(uuid.uuid4()),
-                "sender_id": sender_id,
-                "sender_name": sender_name,
-                "message": text,
-                "direction": "incoming",
-                "auto_replied": auto_reply,
-                "received_at": datetime.now(timezone.utc).isoformat(),
-            })
-
-            # Auto-reply if enabled
-            if auto_reply and fb:
-                reply_text = fb.build_auto_reply(text, sender_name)
-                success = fb.send_messenger_reply(sender_id, reply_text, page_token)
-
-                if success:
-                    await db.facebook_messages.insert_one({
-                        "id": str(uuid.uuid4()),
-                        "sender_id": sender_id,
-                        "sender_name": sender_name,
-                        "message": reply_text,
-                        "direction": "outgoing",
-                        "auto_replied": True,
-                        "received_at": datetime.now(timezone.utc).isoformat(),
-                    })
-                    logger.info(f"Messenger auto-reply sent to {sender_name} ({sender_id})")
-
-    return {"status": "ok"}
 
 
 # ============================================
@@ -4278,30 +3951,12 @@ async def send_urgent_approval_notification(booking: dict):
         email_sent = False
 
         # Send via Mailgun
-        if send_email_unified:
-            if send_email_unified(recipient, subject, html_content, from_email=sender_email or get_noreply_email(), from_name="BookaRide URGENT", cc=urgent_cc):
-                logger.info(f"Urgent approval notification sent to {recipient} for booking: {booking_ref}")
-                email_sent = True
-        
-        # Fallback to Mailgun API
-        if not email_sent and mailgun_api_key and mailgun_domain:
-            response = requests.post(
-            f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
-            auth=("api", mailgun_api_key),
-            data={
-                "from": f"BookaRide URGENT <{sender_email}>",
-                "to": recipient,
-                "cc": urgent_cc or "",
-                "subject": f" URGENT APPROVAL - {booking.get('name', 'Customer')} - {formatted_date} {booking.get('time', '')} - Ref: {booking_ref}",
-                "html": html_content
-            }
-        )
-        
-        if response.status_code == 200:
+        email_sent = _send_email_with_fallbacks(recipient, subject, html_content, from_name="BookaRide URGENT", cc=urgent_cc)
+        if email_sent:
             logger.info(f"Urgent approval notification sent to {recipient} for booking: {booking_ref}")
         else:
             logger.error(f"Failed to send urgent approval notification to {recipient} for booking: {booking_ref}")
-            
+
     except Exception as e:
         logger.error(f"Error sending urgent approval notification: {str(e)}")
         email_sent = False
@@ -6236,12 +5891,16 @@ async def sync_pending_payments(current_admin: dict = Depends(get_current_admin)
                     })
                     logger.info(f"Synced payment for booking #{booking.get('referenceNumber')} — was pending, now paid")
 
-                    # Send confirmations that were missed
+                    # Send all 4 confirmations that were missed (Rule 4)
                     updated_booking = await db.bookings.find_one({"id": booking['id']}, {"_id": 0})
                     if updated_booking:
                         send_customer_confirmation(updated_booking)
                         await send_booking_notification_to_admin(updated_booking)
                         await create_calendar_event(updated_booking)
+                        try:
+                            add_contact_to_icloud(updated_booking)
+                        except Exception as e:
+                            logger.error(f"iCloud contact sync failed for synced booking {booking.get('id')}: {e}")
             except Exception as e:
                 logger.warning(f"Could not check Stripe for session {session_id}: {e}")
 
@@ -6415,32 +6074,34 @@ async def stripe_webhook(request: Request):
                 booking_id = webhook_response.metadata.get('booking_id')
 
                 if booking_id:
+                    # Check if already paid (idempotency - avoid duplicate confirmations)
+                    existing_booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+                    already_paid = existing_booking and existing_booking.get('payment_status') == 'paid'
+
                     update_result = await db.bookings.update_one(
                         {"id": booking_id},
                         {"$set": {"payment_status": "paid", "status": "confirmed"}}
                     )
                     if update_result.matched_count == 0:
                         logger.error(f"CRITICAL: Webhook payment confirmed but booking {booking_id} not found for update - potential data loss")
+                    elif update_result.modified_count == 0 and not already_paid:
+                        logger.error(f"CRITICAL: Webhook matched booking {booking_id} but failed to modify it - payment status may not be updated")
                     else:
                         logger.info(f"Booking {booking_id} confirmed via webhook")
 
-                    # Get booking details for notifications
-                    booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
-                    if booking:
-                        # Send confirmations based on customer's notification preference
-                        send_customer_confirmation(booking)
-
-                        # Send admin notification
-                        await send_booking_notification_to_admin(booking)
-
-                        # Create Google Calendar event
-                        await create_calendar_event(booking)
-
-                        # Sync contact to iCloud
-                        try:
-                            add_contact_to_icloud(booking)
-                        except Exception as e:
-                            logger.error(f"iCloud contact sync failed for booking {booking_id}: {e}")
+                    # Only send confirmations if this is the first time (idempotency)
+                    if not already_paid:
+                        booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+                        if booking:
+                            send_customer_confirmation(booking)
+                            await send_booking_notification_to_admin(booking)
+                            await create_calendar_event(booking)
+                            try:
+                                add_contact_to_icloud(booking)
+                            except Exception as e:
+                                logger.error(f"iCloud contact sync failed for booking {booking_id}: {e}")
+                    else:
+                        logger.info(f"Webhook duplicate for booking {booking_id} - already paid, skipping confirmations")
         
         return {"status": "success", "event_type": webhook_response.event_type}
     
@@ -6494,14 +6155,17 @@ async def twilio_sms_webhook(request: Request):
                     }}
                 )
                 
-                # Get booking and send confirmation to customer
+                # Get booking and trigger all 4 post-confirmation actions (Rule 4)
                 booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
                 if booking:
-                    # Send customer confirmation
                     send_customer_confirmation(booking)
-                    # Create calendar event
+                    await send_booking_notification_to_admin(booking)
                     await create_calendar_event(booking)
-                
+                    try:
+                        add_contact_to_icloud(booking)
+                    except Exception as e:
+                        logger.error(f"iCloud contact sync failed for SMS-approved booking {booking_id}: {e}")
+
                 # Clear the pending approval
                 await db.pending_approvals.delete_one({"admin_phone": admin_phone})
                 
@@ -8172,18 +7836,36 @@ async def capture_afterpay_payment(token: str, order_id: str = None):
             
             # Update booking status
             if status == "APPROVED":
-                await db.bookings.update_one(
-                    {"id": transaction['booking_id']},
+                booking_id = transaction['booking_id']
+                update_result = await db.bookings.update_one(
+                    {"id": booking_id},
                     {"$set": {
-                        "paymentStatus": "paid",
-                        "paymentMethod": "afterpay",
+                        "payment_status": "paid",
+                        "payment_method": "afterpay",
+                        "status": "confirmed",
                         "afterpayOrderId": afterpay_order_id,
                         "paidAt": datetime.now(timezone.utc).isoformat()
                     }}
                 )
-                
-                logger.info(f" Afterpay payment captured: order_id={afterpay_order_id}, booking={transaction['booking_id']}")
-        
+
+                if update_result.matched_count == 0:
+                    logger.error(f"CRITICAL: Afterpay payment captured but booking {booking_id} not found for update")
+                elif update_result.modified_count == 0:
+                    logger.error(f"CRITICAL: Afterpay payment captured but booking {booking_id} was not modified (may already be paid)")
+                else:
+                    logger.info(f"Afterpay payment captured: order_id={afterpay_order_id}, booking={booking_id}")
+
+                # Trigger all 4 post-payment actions (Rule 4)
+                booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+                if booking:
+                    send_customer_confirmation(booking)
+                    await send_booking_notification_to_admin(booking)
+                    await create_calendar_event(booking)
+                    try:
+                        add_contact_to_icloud(booking)
+                    except Exception as e:
+                        logger.error(f"iCloud contact sync failed for Afterpay booking {booking_id}: {e}")
+
         return {
             "order_id": afterpay_order_id,
             "status": status,
@@ -8294,7 +7976,7 @@ async def send_payment_link_email(booking: dict, payment_link: str, payment_type
                     </div>
 
                     <p style="font-size: 13px; color: #888; text-align: center;">
-                        This link goes to <strong>bookaride.co.nz</strong> and then to Stripe's secure checkout.
+                        This link goes to <strong>bookaride.co.nz</strong> for secure payment.
                     </p>
 
                     <p style="font-size: 14px; color: #666; text-align: center; margin-top: 15px;">
@@ -8310,7 +7992,7 @@ async def send_payment_link_email(booking: dict, payment_link: str, payment_type
                     </p>
 
                     <p style="font-size: 12px; color: #999; margin-top: 15px;">
-                        Your payment is processed securely by Stripe. Book A Ride NZ never stores your card details.
+                        Your payment is processed securely. Book A Ride NZ never stores your card details.
                     </p>
                 </div>
 
@@ -8606,8 +8288,16 @@ async def create_manual_booking(booking: ManualBooking, background_tasks: Backgr
             "createdAt": datetime.now(timezone.utc)
         }
         
-        await db.bookings.insert_one(new_booking)
-        logger.info(f"Manual booking created: #{ref_number} - Payment: {payment_status} - Skip notifications: {booking.skipNotifications}")
+        result = await db.bookings.insert_one(new_booking)
+        if not getattr(result, 'acknowledged', True):
+            logger.error(f"CRITICAL: Manual booking insert not acknowledged for #{ref_number}")
+            raise HTTPException(status_code=500, detail="Failed to save booking - insert not acknowledged")
+        # Verify the booking was actually created (Rule 3: VERIFY all critical inserts)
+        verify = await db.bookings.find_one({"id": new_booking["id"]})
+        if not verify:
+            logger.error(f"CRITICAL: Manual booking #{ref_number} inserted but not found on verify!")
+            raise HTTPException(status_code=500, detail="Failed to verify booking creation")
+        logger.info(f"Manual booking created and verified: #{ref_number} - Payment: {payment_status} - Skip notifications: {booking.skipNotifications}")
         
         # === BACKGROUND TASKS: Only run if NOT skipping notifications ===
         if not booking.skipNotifications:
@@ -8677,7 +8367,7 @@ async def create_manual_booking(booking: ManualBooking, background_tasks: Backgr
 
 # Update Payment Status
 @api_router.put("/bookings/{booking_id}/payment-status")
-async def update_payment_status(booking_id: str, paymentStatus: str = Body(..., embed=True)):
+async def update_payment_status(booking_id: str, paymentStatus: str = Body(..., embed=True), current_admin: dict = Depends(get_current_admin)):
     """Update payment status for a booking"""
     try:
         # Validate payment status
@@ -8703,14 +8393,19 @@ async def update_payment_status(booking_id: str, paymentStatus: str = Body(..., 
 
 # Bulk Operations
 @api_router.post("/bookings/bulk-status")
-async def bulk_status_update(booking_ids: List[str], new_status: str):
+async def bulk_status_update(booking_ids: List[str] = Body(...), new_status: str = Body(...), current_admin: dict = Depends(get_current_admin)):
     """Update status for multiple bookings"""
     try:
+        valid_statuses = ['pending', 'confirmed', 'completed', 'cancelled', 'pending_approval']
+        if new_status not in valid_statuses:
+            raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {valid_statuses}")
         result = await db.bookings.update_many(
             {"id": {"$in": booking_ids}},
             {"$set": {"status": new_status}}
         )
         return {"message": "Status updated", "count": result.modified_count}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -8727,6 +8422,66 @@ class DriverApplication(BaseModel):
     experience: Optional[str] = ""
     availability: Optional[str] = ""
     message: Optional[str] = ""
+
+class ContactForm(BaseModel):
+    name: str
+    email: str
+    phone: Optional[str] = ""
+    message: str
+
+@api_router.post("/contact")
+async def submit_contact_form(form: ContactForm):
+    """Receive a contact form submission and email it to admin via Mailgun"""
+    try:
+        admin_email = os.environ.get('ADMIN_EMAIL', 'bookings@bookaride.co.nz')
+        html_content = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <div style="background-color: #D4AF37; color: #1a1a1a; padding: 20px; text-align: center;">
+                    <h1 style="margin: 0;">New Contact Form Enquiry</h1>
+                </div>
+                <div style="padding: 20px; background-color: #f5f5f5;">
+                    <div style="background-color: white; padding: 20px; border-radius: 8px; border-left: 4px solid #D4AF37;">
+                        <p><strong>Name:</strong> {form.name}</p>
+                        <p><strong>Email:</strong> <a href="mailto:{form.email}">{form.email}</a></p>
+                        <p><strong>Phone:</strong> {form.phone or 'Not provided'}</p>
+                        <hr style="border: 0; border-top: 1px solid #e0e0e0;">
+                        <p><strong>Message:</strong></p>
+                        <p style="white-space: pre-wrap;">{form.message}</p>
+                    </div>
+                    <p style="margin-top: 20px; font-size: 12px; color: #888;">Reply directly to this email to respond to the customer.</p>
+                </div>
+            </body>
+        </html>
+        """
+
+        email_sent = _send_email_with_fallbacks(
+            admin_email,
+            f"Website Enquiry from {form.name}",
+            html_content,
+            reply_to=form.email
+        )
+
+        if not email_sent:
+            logger.error(f"CRITICAL: Contact form email failed to send for {form.email}")
+
+        # Store in database for record keeping
+        await db.contact_submissions.insert_one({
+            "id": str(uuid4()),
+            "name": form.name,
+            "email": form.email,
+            "phone": form.phone,
+            "message": form.message,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "email_sent": email_sent
+        })
+
+        logger.info(f"Contact form received from {form.name} ({form.email})")
+        return {"success": True, "message": "Your message has been sent. We'll get back to you shortly."}
+    except Exception as e:
+        logger.error(f"Error processing contact form: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to send your message. Please try again or email us directly.")
+
 
 @api_router.post("/driver-applications")
 async def submit_driver_application(application: DriverApplication):
@@ -8759,7 +8514,7 @@ async def submit_driver_application(application: DriverApplication):
                     <h1 style="margin: 0;">New Driver Application</h1>
                 </div>
                 <div style="padding: 20px; background-color: #f5f5f5;">
-                    <h2>ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â Driver Application Received</h2>
+                    <h2>New Driver Application Received</h2>
                     <div style="background-color: white; padding: 20px; border-radius: 8px; border-left: 4px solid #D4AF37;">
                         <p><strong>Name:</strong> {application.name}</p>
                         <p><strong>Phone:</strong> {application.phone}</p>
@@ -9279,6 +9034,55 @@ async def get_driver_schedule(driver_id: str, date: Optional[str] = None):
         logger.error(f"Error getting driver schedule: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@api_router.delete("/bookings/bulk-delete")
+async def bulk_delete(booking_ids: List[str], send_notifications: bool = False, current_admin: dict = Depends(get_current_admin)):
+    """Soft-delete multiple bookings (moves to deleted_bookings collection)"""
+    try:
+        # Get all bookings first
+        bookings = await db.bookings.find({"id": {"$in": booking_ids}}, {"_id": 0}).to_list(1000)
+
+        if send_notifications:
+            for booking in bookings:
+                try:
+                    await send_cancellation_notifications(booking)
+                except Exception as e:
+                    logger.error(f"Error sending cancellation for booking {booking.get('id')}: {str(e)}")
+
+        # SOFT DELETE: Move each to deleted_bookings with per-record verification (Rule 1)
+        deleted_count = 0
+        failed_ids = []
+        for booking in bookings:
+            bid = booking.get('id')
+            booking['deletedAt'] = datetime.now(timezone.utc).isoformat()
+            booking['deletedBy'] = current_admin.get('username', 'admin')
+            booking['notificationSent'] = send_notifications
+
+            # Insert backup
+            backup_result = await db.deleted_bookings.insert_one(booking)
+            if not backup_result.acknowledged:
+                logger.error(f"CRITICAL: Failed to backup booking {bid} during bulk delete - skipping")
+                failed_ids.append(bid)
+                continue
+
+            # Verify backup exists before deleting source
+            backup_check = await db.deleted_bookings.find_one({"id": bid})
+            if not backup_check:
+                logger.error(f"CRITICAL: Backup verification failed for booking {bid} during bulk delete - skipping")
+                failed_ids.append(bid)
+                continue
+
+            # Delete only this verified booking from active
+            await db.bookings.delete_one({"id": bid})
+            deleted_count += 1
+
+        if failed_ids:
+            logger.error(f"CRITICAL: Bulk delete failed for {len(failed_ids)} bookings: {failed_ids} - these bookings were preserved")
+
+        logger.info(f"Bulk soft-deleted {deleted_count} bookings by {current_admin.get('username', 'admin')}")
+        return {"message": "Bookings deleted", "count": deleted_count, "failed": len(failed_ids), "notifications_sent": send_notifications}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @api_router.delete("/bookings/{booking_id}")
 async def delete_booking(booking_id: str, send_notification: bool = True, force: bool = False, current_admin: dict = Depends(get_current_admin)):
     """Soft-delete a single booking (moves to deleted_bookings collection). Paid bookings require force=true."""
@@ -9358,7 +9162,7 @@ async def send_cancellation_notifications(booking: dict):
             logger.error(f"Failed to send cancellation SMS: {str(e)}")
 
 async def send_cancellation_email(booking: dict, to_email: str, customer_name: str):
-    """Send cancellation email via Google SMTP"""
+    """Send cancellation email via Mailgun"""
     sender_email = get_noreply_email()
     
     
@@ -9475,47 +9279,6 @@ To rebook: bookaride.co.nz"""
     )
     
     logger.info(f" Cancellation SMS sent to {formatted_phone} - SID: {message.sid}")
-
-@api_router.delete("/bookings/bulk-delete")
-async def bulk_delete(booking_ids: List[str], send_notifications: bool = False, current_admin: dict = Depends(get_current_admin)):
-    """Soft-delete multiple bookings (moves to deleted_bookings collection)"""
-    try:
-        # Get all bookings first
-        bookings = await db.bookings.find({"id": {"$in": booking_ids}}, {"_id": 0}).to_list(1000)
-        
-        if send_notifications:
-            for booking in bookings:
-                try:
-                    await send_cancellation_notifications(booking)
-                except Exception as e:
-                    logger.error(f"Error sending cancellation for booking {booking.get('id')}: {str(e)}")
-        
-        # SOFT DELETE: Move all to deleted_bookings collection with verification
-        backed_up_ids = []
-        for booking in bookings:
-            booking['deletedAt'] = datetime.now(timezone.utc).isoformat()
-            booking['deletedBy'] = current_admin.get('username', 'admin')
-            booking['notificationSent'] = send_notifications
-            backup_result = await db.deleted_bookings.insert_one(booking)
-            if backup_result.acknowledged:
-                # Verify the backup actually exists
-                verify = await db.deleted_bookings.find_one({"id": booking.get('id')})
-                if verify:
-                    backed_up_ids.append(booking.get('id'))
-                else:
-                    logger.error(f"CRITICAL: Backup verification failed for booking {booking.get('id')} during bulk delete")
-            else:
-                logger.error(f"CRITICAL: Failed to backup booking {booking.get('id')} during bulk delete")
-
-        # Only delete bookings that were successfully backed up
-        if not backed_up_ids:
-            raise HTTPException(status_code=500, detail="Failed to backup any bookings - all preserved")
-        result = await db.bookings.delete_many({"id": {"$in": backed_up_ids}})
-        
-        logger.info(f"Bulk soft-deleted {deleted_count} bookings by {current_admin.get('username', 'admin')}")
-        return {"message": "Bookings deleted", "count": result.deleted_count, "notifications_sent": send_notifications}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ============================================
