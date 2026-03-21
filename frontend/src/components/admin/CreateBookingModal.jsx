@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef, memo } from 'react';
+import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
+import ReactDOM from 'react-dom';
 import { MapPin } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -55,6 +56,9 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
   const [searchingCustomers, setSearchingCustomers] = useState(false);
   const customerSearchRef = useRef(null);
+  const customerInputRef = useRef(null);
+  const customerDropdownRef = useRef(null);
+  const [customerDropdownStyle, setCustomerDropdownStyle] = useState({});
 
   // Date/Time picker states
   const [adminPickupDate, setAdminPickupDate] = useState(null);
@@ -100,16 +104,42 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
     return () => clearTimeout(timer);
   }, [customerSearchQuery]);
 
-  // Close dropdown when clicking outside
+  // Close dropdown when clicking outside (check both input area and portal dropdown)
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (customerSearchRef.current && !customerSearchRef.current.contains(event.target)) {
+      const inInput = customerSearchRef.current && customerSearchRef.current.contains(event.target);
+      const inDropdown = customerDropdownRef.current && customerDropdownRef.current.contains(event.target);
+      if (!inInput && !inDropdown) {
         setShowCustomerDropdown(false);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('pointerdown', handleClickOutside, true);
+    return () => document.removeEventListener('pointerdown', handleClickOutside, true);
   }, []);
+
+  // Update dropdown position when it opens or window scrolls/resizes
+  const updateCustomerDropdownPosition = useCallback(() => {
+    if (!customerInputRef.current) return;
+    const rect = customerInputRef.current.getBoundingClientRect();
+    setCustomerDropdownStyle({
+      position: 'fixed',
+      top: rect.bottom + 4,
+      left: rect.left,
+      width: rect.width,
+      zIndex: 99999,
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!showCustomerDropdown) return;
+    updateCustomerDropdownPosition();
+    window.addEventListener('scroll', updateCustomerDropdownPosition, true);
+    window.addEventListener('resize', updateCustomerDropdownPosition);
+    return () => {
+      window.removeEventListener('scroll', updateCustomerDropdownPosition, true);
+      window.removeEventListener('resize', updateCustomerDropdownPosition);
+    };
+  }, [showCustomerDropdown, updateCustomerDropdownPosition]);
 
   const searchCustomers = async (query) => {
     if (!query || query.length < 2) {
@@ -286,10 +316,11 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
             <h3 className="font-semibold text-gray-900 mb-3">Customer Information</h3>
 
             {/* Customer Search Autocomplete */}
-            <div className="mb-4 relative" ref={customerSearchRef}>
+            <div className="mb-4" ref={customerSearchRef}>
               <Label className="text-amber-600 font-medium">Search Existing Customer</Label>
               <div className="relative mt-1">
                 <Input
+                  ref={customerInputRef}
                   value={customerSearchQuery}
                   onChange={(e) => {
                     setCustomerSearchQuery(e.target.value);
@@ -305,13 +336,26 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
                 )}
               </div>
 
-              {showCustomerDropdown && customerSearchResults.length > 0 && (
-                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+              {showCustomerDropdown && customerSearchResults.length > 0 && ReactDOM.createPortal(
+                <div
+                  ref={customerDropdownRef}
+                  style={customerDropdownStyle}
+                  data-autocomplete-dropdown=""
+                  className="bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto"
+                >
                   {customerSearchResults.map((customer, idx) => (
                     <div
                       key={idx}
                       className="px-4 py-3 hover:bg-amber-50 cursor-pointer border-b border-gray-100 last:border-b-0"
-                      onClick={() => selectCustomer(customer)}
+                      onPointerDown={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        selectCustomer(customer);
+                      }}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
                     >
                       <div className="flex justify-between items-start">
                         <div>
@@ -330,7 +374,8 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
                       </div>
                     </div>
                   ))}
-                </div>
+                </div>,
+                document.body
               )}
               <p className="text-xs text-gray-500 mt-1">Start typing to find existing customers</p>
             </div>
@@ -385,6 +430,7 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="airport-shuttle">Airport Shuttle</SelectItem>
                     <SelectItem value="private-transfer">Private Transfer</SelectItem>
                   </SelectContent>
                 </Select>
@@ -709,6 +755,12 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
                     <span>Distance:</span>
                     <span className="font-medium">{bookingPricing.distance} km</span>
                   </div>
+                  {bookingPricing.ratePerKm > 0 && (
+                    <div className="flex justify-between text-blue-700">
+                      <span>Rate per km:</span>
+                      <span className="font-medium">${bookingPricing.ratePerKm.toFixed(2)}/km</span>
+                    </div>
+                  )}
                   <div className="flex justify-between">
                     <span>Base Price:</span>
                     <span className="font-medium">${bookingPricing.basePrice.toFixed(2)}</span>

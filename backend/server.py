@@ -8229,8 +8229,16 @@ async def create_manual_booking(booking: ManualBooking, background_tasks: Backgr
             "createdAt": datetime.now(timezone.utc)
         }
         
-        await db.bookings.insert_one(new_booking)
-        logger.info(f"Manual booking created: #{ref_number} - Payment: {payment_status} - Skip notifications: {booking.skipNotifications}")
+        result = await db.bookings.insert_one(new_booking)
+        if not getattr(result, 'acknowledged', True):
+            logger.error(f"CRITICAL: Manual booking insert not acknowledged for #{ref_number}")
+            raise HTTPException(status_code=500, detail="Failed to save booking - insert not acknowledged")
+        # Verify the booking was actually created (Rule 3: VERIFY all critical inserts)
+        verify = await db.bookings.find_one({"id": new_booking["id"]})
+        if not verify:
+            logger.error(f"CRITICAL: Manual booking #{ref_number} inserted but not found on verify!")
+            raise HTTPException(status_code=500, detail="Failed to verify booking creation")
+        logger.info(f"Manual booking created and verified: #{ref_number} - Payment: {payment_status} - Skip notifications: {booking.skipNotifications}")
         
         # === BACKGROUND TASKS: Only run if NOT skipping notifications ===
         if not booking.skipNotifications:
