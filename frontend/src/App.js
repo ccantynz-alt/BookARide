@@ -209,7 +209,6 @@ function App() {
     { path: "auckland-airport-to-takapuna", element: <SEORoutePage /> },
     { path: "auckland-airport-to-devonport", element: <SEORoutePage /> },
     { path: "auckland-airport-to-matakana", element: <SEORoutePage /> },
-    { path: "auckland-airport-to-city", element: <SEORoutePage /> },
     { path: "auckland-cruise-terminal-transfer", element: <SEORoutePage /> },
     // NEW: Route Pages (Directory)
     { path: "routes", element: <RoutesDirectory /> },
