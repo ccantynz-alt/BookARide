@@ -153,6 +153,38 @@ Multiple pickup was removed from ALL forms — customer AND admin. Keep it simpl
 - If a customer needs multiple pickups, they can note it in the "Notes" field and admin handles it manually
 - The backend `pickupAddresses` field may still exist in old bookings but no new bookings should use it
 
+### 11. AI Email Support — Claude API via Mailgun (2026-03-21)
+
+`support@bookaride.co.nz` is an AI-powered booking support inbox using Claude (Haiku).
+
+**How it works:**
+1. Customer emails `support@bookaride.co.nz`
+2. Mailgun receives the email (MX record on root domain) and forwards to `POST /api/email/incoming` webhook
+3. Backend looks up the customer's booking history by email
+4. Claude generates a context-aware response with booking details, pricing guidance, and policies
+5. Reply is sent via Mailgun from `support@bookaride.co.nz`
+6. Admin gets a copy of both the customer's email and the AI response
+7. Interaction is logged in `email_logs` table for admin review
+
+**Configuration (all in Render env vars):**
+- `ANTHROPIC_API_KEY` — Claude API key (required for AI responses, falls back to static reply if missing)
+- `MAILGUN_API_KEY` + `MAILGUN_DOMAIN` — for sending replies
+- Mailgun inbound route: `support@bookaride.co.nz` → `https://<backend>/api/email/incoming`
+
+**DNS required (one-time setup):**
+- MX record on `bookaride.co.nz` → `mxa.mailgun.org` (priority 10) and `mxb.mailgun.org` (priority 10)
+- This enables Mailgun to receive emails at `@bookaride.co.nz`
+
+**Rules:**
+- Model: `claude-haiku-4-5-20251001` (fast, cheap, good enough for support)
+- Max 500 tokens per response — keep replies concise
+- Rate limit: 5 AI replies per sender per day
+- **NEVER** use GPT, OpenAI, or any other LLM provider — Claude only
+- **NEVER** expose booking details of other customers
+- **NEVER** make up prices — always direct to bookaride.co.nz/book-now for exact quotes
+- Falls back gracefully to static auto-reply if Claude API is down or unconfigured
+- Admin is always notified of incoming support emails
+
 ---
 
 ## PRE-CHANGE CHECKLIST
@@ -180,6 +212,7 @@ Before making ANY change, verify:
 | Payments   | Stripe                            | `backend/stripe_checkout/` |
 | SMS        | Twilio                            | via env vars       |
 | Maps       | Google Maps API                   | via env vars       |
+| AI Support | Claude API (Haiku)                | `backend/server.py` |
 
 ## Hosting
 
