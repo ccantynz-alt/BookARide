@@ -7838,6 +7838,11 @@ async def capture_afterpay_payment(token: str, order_id: str = None):
             # Update booking status
             if status == "APPROVED":
                 booking_id = transaction['booking_id']
+
+                # Idempotency check: don't re-send confirmations if already paid
+                existing_booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+                already_paid = existing_booking and existing_booking.get('payment_status') == 'paid'
+
                 update_result = await db.bookings.update_one(
                     {"id": booking_id},
                     {"$set": {
@@ -7852,13 +7857,13 @@ async def capture_afterpay_payment(token: str, order_id: str = None):
                 if update_result.matched_count == 0:
                     logger.error(f"CRITICAL: Afterpay payment captured but booking {booking_id} not found for update")
                 elif update_result.modified_count == 0:
-                    logger.error(f"CRITICAL: Afterpay payment captured but booking {booking_id} was not modified (may already be paid)")
+                    logger.info(f"Afterpay booking {booking_id} already up to date (idempotent)")
                 else:
                     logger.info(f"Afterpay payment captured: order_id={afterpay_order_id}, booking={booking_id}")
 
-                # Trigger all 4 post-payment actions (Rule 4)
+                # Trigger all 4 post-payment actions (Rule 4) — only if not already paid
                 booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
-                if booking:
+                if booking and not already_paid:
                     send_customer_confirmation(booking)
                     await send_booking_notification_to_admin(booking)
                     await create_calendar_event(booking)
@@ -7866,6 +7871,8 @@ async def capture_afterpay_payment(token: str, order_id: str = None):
                         add_contact_to_icloud(booking)
                     except Exception as e:
                         logger.error(f"iCloud contact sync failed for Afterpay booking {booking_id}: {e}")
+                elif already_paid:
+                    logger.info(f"Afterpay duplicate capture for booking {booking_id} — already paid, skipping confirmations")
 
         return {
             "order_id": afterpay_order_id,

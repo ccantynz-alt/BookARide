@@ -143,15 +143,15 @@ These rules exist because the admin dashboard was 68,000+ lines with severe perf
 - **NEVER** re-add the shuttle tab or `Bus` icon to the tabs navigation
 - Service type options are: `airport-transfer` and `private-transfer` (NOT `airport-shuttle`)
 
-### 10. Customer Booking Form — Simple, One Pickup Only (2026-03-21)
+### 10. One Pickup Address Only — EVERYWHERE (2026-03-21)
 
-The customer-facing booking form (`BookNow.jsx`) must be kept simple and stress-free.
+Multiple pickup was removed from ALL forms — customer AND admin. Keep it simple.
 
-- **ONE pickup address only** — no "Add another pickup" button, no multiple pickup stops
-- **NEVER** re-add `pickupAddresses` array, `handleAddPickup`, `handleRemovePickup`, or `handlePickupAddressChange` to `BookNow.jsx`
-- **NEVER** add multi-stop pickup UI to the customer form — the backend supports it but the customer form stays simple
-- Admin `CreateBookingModal` MAY keep multiple pickups (admin is a power user) but the customer form must not have it
+- **ONE pickup address only** — no "Add another pickup" button anywhere
+- **NEVER** re-add `pickupAddresses` array, `handleAddPickup`, `handleRemovePickup`, or `handlePickupAddressChange` to ANY form
+- **NEVER** add multi-stop pickup UI to BookNow.jsx, CreateBookingModal.jsx, or EditBookingModal.jsx
 - If a customer needs multiple pickups, they can note it in the "Notes" field and admin handles it manually
+- The backend `pickupAddresses` field may still exist in old bookings but no new bookings should use it
 
 ---
 

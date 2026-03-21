@@ -1,5 +1,5 @@
 import React, { useState, useEffect, memo } from 'react';
-import { MapPin, Eye, RefreshCw, Calendar } from 'lucide-react';
+import { Eye, RefreshCw, Calendar } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -21,26 +21,6 @@ const EditBookingModal = memo(({ open, onClose, booking, onSuccess, onPreviewCon
     }
   }, [booking, open]);
 
-  const handleAddEditPickup = () => {
-    setEditingBooking(prev => ({
-      ...prev,
-      pickupAddresses: [...(prev.pickupAddresses || []), '']
-    }));
-  };
-
-  const handleRemoveEditPickup = (index) => {
-    setEditingBooking(prev => ({
-      ...prev,
-      pickupAddresses: prev.pickupAddresses.filter((_, i) => i !== index)
-    }));
-  };
-
-  const handleEditPickupAddressChange = (index, value) => {
-    setEditingBooking(prev => ({
-      ...prev,
-      pickupAddresses: prev.pickupAddresses.map((addr, i) => i === index ? value : addr)
-    }));
-  };
 
   const handleSaveEditedBooking = async () => {
     if (!editingBooking) return;
@@ -52,7 +32,6 @@ const EditBookingModal = memo(({ open, onClose, booking, onSuccess, onPreviewCon
         phone: editingBooking.phone,
         serviceType: editingBooking.serviceType,
         pickupAddress: editingBooking.pickupAddress,
-        pickupAddresses: editingBooking.pickupAddresses?.filter(addr => addr.trim()) || [],
         dropoffAddress: editingBooking.dropoffAddress,
         date: editingBooking.date,
         time: editingBooking.time,
@@ -158,7 +137,7 @@ const EditBookingModal = memo(({ open, onClose, booking, onSuccess, onPreviewCon
             <h3 className="font-semibold text-gray-900 mb-3">Trip Information</h3>
             <div className="space-y-4">
               <div>
-                <Label>Pickup Address 1 *</Label>
+                <Label>Pickup Address *</Label>
                 <AddressAutocomplete
                   value={editingBooking.pickupAddress}
                   onChange={(val) => setEditingBooking(prev => ({ ...prev, pickupAddress: val }))}
@@ -166,41 +145,6 @@ const EditBookingModal = memo(({ open, onClose, booking, onSuccess, onPreviewCon
                   placeholder="Start typing an address..."
                   className="mt-1"
                 />
-              </div>
-
-              {editingBooking.pickupAddresses?.map((pickup, index) => (
-                <div key={index} className="relative">
-                  <Label>Pickup Address {index + 2}</Label>
-                  <div className="flex gap-2 mt-1">
-                    <AddressAutocomplete
-                      value={pickup}
-                      onChange={(val) => handleEditPickupAddressChange(index, val)}
-                      onSelect={(val) => handleEditPickupAddressChange(index, val)}
-                      placeholder="Start typing an address..."
-                      className="flex-1"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => handleRemoveEditPickup(index)}
-                      className="text-red-600 hover:bg-red-50"
-                    >
-                      ✕
-                    </Button>
-                  </div>
-                </div>
-              ))}
-
-              <div>
-                <button
-                  type="button"
-                  onClick={handleAddEditPickup}
-                  className="group w-full flex items-center justify-center gap-3 px-6 py-4 bg-gradient-to-r from-gold/10 to-gold/5 hover:from-gold/20 hover:to-gold/10 border-2 border-dashed border-gold/40 hover:border-gold/60 rounded-lg transition-all duration-300"
-                >
-                  <MapPin className="w-4 h-4 text-gold" />
-                  <span className="text-sm font-semibold text-gray-700">Add Another Pickup Location</span>
-                  <span className="w-6 h-6 rounded-full bg-gold text-white text-xs font-bold flex items-center justify-center">+</span>
-                </button>
               </div>
 
               <div>

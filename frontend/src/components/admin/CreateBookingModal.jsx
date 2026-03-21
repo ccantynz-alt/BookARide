@@ -21,7 +21,6 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
     phone: '',
     serviceType: 'airport-transfer',
     pickupAddress: '',
-    pickupAddresses: [],
     dropoffAddress: '',
     date: '',
     time: '',
@@ -73,7 +72,7 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
     if (!open) {
       setNewBooking({
         name: '', email: '', ccEmail: '', phone: '',
-        serviceType: 'airport-transfer', pickupAddress: '', pickupAddresses: [],
+        serviceType: 'airport-transfer', pickupAddress: '',
         dropoffAddress: '', date: '', time: '', passengers: '1',
         paymentMethod: 'stripe', notes: '',
         flightArrivalNumber: '', flightArrivalTime: '',
@@ -179,17 +178,12 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
       toast.error('Please enter pickup and drop-off addresses');
       return;
     }
-    const pickupCount = 1 + newBooking.pickupAddresses.filter(addr => addr.trim()).length;
-    if (pickupCount > 1) {
-      toast.info(`Calculating route for ${pickupCount} pickup locations...`);
-    }
     setCalculatingPrice(true);
     try {
       const hasReturn = !!(newBooking.returnDate && newBooking.returnTime);
       const response = await axios.post(`${API}/calculate-price`, {
         serviceType: newBooking.serviceType,
         pickupAddress: newBooking.pickupAddress,
-        pickupAddresses: newBooking.pickupAddresses.filter(addr => addr.trim()),
         dropoffAddress: newBooking.dropoffAddress,
         passengers: parseInt(newBooking.passengers),
         vipAirportPickup: false,
@@ -206,26 +200,6 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
     }
   };
 
-  const handleAddPickup = () => {
-    setNewBooking(prev => ({
-      ...prev,
-      pickupAddresses: [...prev.pickupAddresses, '']
-    }));
-  };
-
-  const handleRemovePickup = (index) => {
-    setNewBooking(prev => ({
-      ...prev,
-      pickupAddresses: prev.pickupAddresses.filter((_, i) => i !== index)
-    }));
-  };
-
-  const handlePickupAddressChange = (index, value) => {
-    setNewBooking(prev => ({
-      ...prev,
-      pickupAddresses: prev.pickupAddresses.map((addr, i) => i === index ? value : addr)
-    }));
-  };
 
   const handleCreateManualBooking = async () => {
     if (!newBooking.name || !newBooking.email || !newBooking.phone) {
@@ -269,7 +243,6 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
         phone: newBooking.phone,
         serviceType: newBooking.serviceType,
         pickupAddress: newBooking.pickupAddress,
-        pickupAddresses: newBooking.pickupAddresses.filter(addr => addr.trim()),
         dropoffAddress: newBooking.dropoffAddress,
         date: newBooking.date,
         time: newBooking.time,
@@ -472,7 +445,7 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
             <h3 className="font-semibold text-gray-900 mb-3">Trip Information</h3>
             <div className="space-y-4">
               <div>
-                <Label>Pickup Address 1 *</Label>
+                <Label>Pickup Address *</Label>
                 <AddressAutocomplete
                   value={newBooking.pickupAddress}
                   onChange={(val) => setNewBooking(prev => ({ ...prev, pickupAddress: val }))}
@@ -480,50 +453,6 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
                   placeholder="Start typing an address..."
                   className="mt-1"
                 />
-              </div>
-
-              {newBooking.pickupAddresses.map((pickup, index) => (
-                <div key={index} className="relative">
-                  <Label>Pickup Address {index + 2}</Label>
-                  <div className="flex gap-2 mt-1">
-                    <AddressAutocomplete
-                      value={pickup}
-                      onChange={(val) => handlePickupAddressChange(index, val)}
-                      onSelect={(val) => handlePickupAddressChange(index, val)}
-                      placeholder="Start typing an address..."
-                      className="flex-1"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => handleRemovePickup(index)}
-                      className="text-red-600 hover:bg-red-50"
-                    >
-                      ✕
-                    </Button>
-                  </div>
-                </div>
-              ))}
-
-              <div>
-                <button
-                  type="button"
-                  onClick={handleAddPickup}
-                  className="group w-full flex items-center justify-center gap-3 px-6 py-4 bg-gradient-to-r from-gold/10 to-gold/5 hover:from-gold/20 hover:to-gold/10 border-2 border-dashed border-gold/40 hover:border-gold/60 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-[1.02] hover:shadow-md"
-                >
-                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gold/20 group-hover:bg-gold/30 transition-colors">
-                    <MapPin className="w-4 h-4 text-gold" />
-                  </div>
-                  <span className="text-sm font-semibold text-gray-700 group-hover:text-gray-900">
-                    Add Another Pickup Location
-                  </span>
-                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-gold text-white text-xs font-bold group-hover:scale-110 transition-transform">
-                    +
-                  </div>
-                </button>
-                <p className="text-xs text-gray-500 mt-2 text-center">
-                  Add multiple pickup locations for shared rides or multi-stop trips
-                </p>
               </div>
 
               <div>
