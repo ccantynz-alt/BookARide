@@ -1382,6 +1382,8 @@ def _get_distance_google(pickup_address: str, dropoff_address: str, waypoint_add
                     for leg in data["routes"][0].get("legs", [])
                 )
                 return round(total_m / 1000, 2)
+            else:
+                logger.warning(f"Google Directions API failed - status: {data.get('status')}, error: {data.get('error_message', 'none')}, origin: {pickup_norm}, destination: {dropoff_norm}")
         else:
             # Simple origin->destination: use Distance Matrix
             url = "https://maps.googleapis.com/maps/api/distancematrix/json"
@@ -1400,6 +1402,13 @@ def _get_distance_google(pickup_address: str, dropoff_address: str, waypoint_add
                     if elements and elements[0].get("status") == "OK":
                         dist_m = elements[0].get("distance", {}).get("value", 0)
                         return round(dist_m / 1000, 2)
+                    else:
+                        elem_status = elements[0].get("status") if elements else "NO_ELEMENTS"
+                        logger.warning(f"Google Distance Matrix element failed - element status: {elem_status}, origin: {pickup_norm}, destination: {dropoff_norm}")
+                else:
+                    logger.warning(f"Google Distance Matrix returned OK but no rows - origin: {pickup_norm}, destination: {dropoff_norm}")
+            else:
+                logger.warning(f"Google Distance Matrix API failed - status: {data.get('status')}, error: {data.get('error_message', 'none')}, origin: {pickup_norm}, destination: {dropoff_norm}")
     except Exception as e:
         logger.warning(f"Google Maps distance error: {e}")
     return None
@@ -1556,8 +1565,20 @@ async def calculate_price(request: PriceCalculationRequest):
         _pickup_lower = _norm(request.pickupAddress)
         _dropoff_lower = _norm(request.dropoffAddress)
         _long_distance_keywords = ['tauranga', 'mount maunganui', 'papamoa', 'otumoetai', 'bay of plenty', 'hamilton', 'whangarei', 'cambridge', 'te awamutu']
+        _hibiscus_coast_keywords = ['orewa', 'whangaparaoa', 'silverdale', 'red beach', 'stanmore bay', 'army bay', 'gulf harbour', 'manly', 'hibiscus coast', 'millwater', 'milldale', 'hatfields beach', 'waiwera']
+        _airport_keywords = ['airport', 'auckland airport', 'akl', 'ray emery', 'mangere']
         _is_long_distance_route = any(kw in _pickup_lower or kw in _dropoff_lower for kw in _long_distance_keywords)
-        _fallback_km = LONG_DISTANCE_FALLBACK_KM if _is_long_distance_route else DEFAULT_FALLBACK_DISTANCE_KM
+        _is_hibiscus_to_airport = (
+            any(kw in _pickup_lower for kw in _hibiscus_coast_keywords) and any(kw in _dropoff_lower for kw in _airport_keywords)
+        ) or (
+            any(kw in _dropoff_lower for kw in _hibiscus_coast_keywords) and any(kw in _pickup_lower for kw in _airport_keywords)
+        )
+        if _is_long_distance_route:
+            _fallback_km = LONG_DISTANCE_FALLBACK_KM
+        elif _is_hibiscus_to_airport:
+            _fallback_km = 55.0  # Hibiscus Coast <-> Airport is ~50-60km; 55km fallback avoids overcharging
+        else:
+            _fallback_km = DEFAULT_FALLBACK_DISTANCE_KM
 
         if google_key:
             # Route: pickup -> additional pickups -> dropoff
@@ -2055,9 +2076,9 @@ async def get_bookings(
         else:
             limit = min(int(limit), 500) if limit else 50
 
-        # Build query
-        query = {}
-        
+        # Build query — exclude shuttle bookings (shuttle service removed 2026-03-13)
+        query = {'serviceType': {'$ne': 'shared-shuttle'}}
+
         # Status filter
         if status and status != 'all':
             query['status'] = status
@@ -2148,7 +2169,7 @@ async def get_bookings(
                 return (2, date, time)  # Past dates last
         
         all_bookings.sort(key=sort_key)
-        logger.info(f"Today: {today_str}, total bookings (main+shuttle): {len(all_bookings)}")
+        logger.info(f"Today: {today_str}, total bookings: {len(all_bookings)}")
         
         # Return full list when limit=0 (admin must see every booking); otherwise paginate
         if return_all:
@@ -2233,24 +2254,22 @@ async def get_bookings(
 
 @api_router.get("/bookings/count")
 async def get_bookings_count(current_admin: dict = Depends(get_current_admin)):
-    """Get total booking counts for dashboard stats"""
+    """Get total booking counts for dashboard stats — single query instead of 6."""
     try:
-        total = await db.bookings.count_documents({})
+        # Exclude shuttle bookings from counts
+        all_bookings = await db.bookings.find(
+            {'serviceType': {'$ne': 'shared-shuttle'}},
+            {"_id": 0, "status": 1}
+        ).to_list(None)
 
-        pending = await db.bookings.count_documents({"status": "pending"})
-        confirmed = await db.bookings.count_documents({"status": "confirmed"})
-        completed = await db.bookings.count_documents({"status": "completed"})
-        cancelled = await db.bookings.count_documents({"status": "cancelled"})
-        pending_approval = await db.bookings.count_documents({"status": "pending_approval"})
+        counts = {"total": 0, "pending": 0, "confirmed": 0, "completed": 0, "cancelled": 0, "pending_approval": 0}
+        for b in all_bookings:
+            counts["total"] += 1
+            s = b.get("status", "pending")
+            if s in counts:
+                counts[s] += 1
 
-        return {
-            "total": total,
-            "pending": pending,
-            "confirmed": confirmed,
-            "completed": completed,
-            "cancelled": cancelled,
-            "pending_approval": pending_approval
-        }
+        return counts
     except Exception as e:
         logger.error(f"Error fetching booking counts: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -5907,21 +5926,30 @@ async def list_orphan_payments(current_admin: dict = Depends(get_current_admin))
             {"payment_status": "paid"},
             {"_id": 0, "booking_id": 1, "session_id": 1, "amount": 1, "customer_email": 1, "customer_name": 1, "created_at": 1}
         ).to_list(500)
+
+        # Batch: collect all booking IDs, then check existence in ONE query (not N+1)
+        booking_ids = list(set(t.get("booking_id") for t in paid if t.get("booking_id")))
+        existing_bookings = set()
+        if booking_ids:
+            existing_docs = await db.bookings.find(
+                {"id": {"$in": booking_ids}},
+                {"_id": 0, "id": 1}
+            ).to_list(None)
+            existing_bookings = {d["id"] for d in existing_docs if d.get("id")}
+
         orphan = []
         for t in paid:
             bid = t.get("booking_id")
-            if not bid:
+            if not bid or bid in existing_bookings:
                 continue
-            exists = await db.bookings.find_one({"id": bid}, {"_id": 1})
-            if not exists:
-                orphan.append({
-                    "booking_id": bid,
-                    "session_id": t.get("session_id"),
-                    "amount": t.get("amount"),
-                    "customer_email": t.get("customer_email"),
-                    "customer_name": t.get("customer_name"),
-                    "created_at": t.get("created_at"),
-                })
+            orphan.append({
+                "booking_id": bid,
+                "session_id": t.get("session_id"),
+                "amount": t.get("amount"),
+                "customer_email": t.get("customer_email"),
+                "customer_name": t.get("customer_name"),
+                "created_at": t.get("created_at"),
+            })
         return {"orphan_payments": orphan, "count": len(orphan)}
     except Exception as e:
         logger.error(f"Error listing orphan payments: {str(e)}")
@@ -6863,6 +6891,10 @@ Customer will be auto-notified when you start.
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
+
+
+# ==================== SHUTTLE SERVICE REMOVED (2026-03-13) ====================
+# Shuttle service was removed per owner instruction. Do NOT re-add.
 
 
 
@@ -9079,23 +9111,21 @@ async def delete_booking(booking_id: str, send_notification: bool = True, force:
         booking['deletedAt'] = datetime.now(timezone.utc).isoformat()
         booking['deletedBy'] = current_admin.get('username', 'admin')
         booking['notificationSent'] = send_notification
-        backup_result = await db.deleted_bookings.insert_one(booking)
-        if not backup_result.acknowledged:
-            logger.error(f"CRITICAL: Failed to backup booking {booking_id} to deleted_bookings - aborting delete")
-            raise HTTPException(status_code=500, detail="Failed to backup booking before deletion - booking preserved")
+        await db.deleted_bookings.insert_one(booking)
 
-        # Verify the backup exists before deleting
-        backup_check = await db.deleted_bookings.find_one({"id": booking_id})
-        if not backup_check:
-            logger.error(f"CRITICAL: Backup verification failed for booking {booking_id} - aborting delete")
-            raise HTTPException(status_code=500, detail="Backup verification failed - booking preserved")
-
-        # Remove from active bookings (safe - backup confirmed)
-        result = await db.bookings.delete_one({"id": booking_id})
-        if result.deleted_count == 0:
-            # Rollback the soft delete if original wasn't found
+        # Remove from active bookings — rollback soft-delete insert on ANY failure
+        try:
+            result = await db.bookings.delete_one({"id": booking_id})
+            if result.deleted_count == 0:
+                await db.deleted_bookings.delete_one({"id": booking_id})
+                raise HTTPException(status_code=404, detail="Booking not found")
+        except HTTPException:
+            raise
+        except Exception as del_err:
+            # Rollback: remove from deleted_bookings since active wasn't removed
+            logger.error(f"Soft-delete rollback: delete_one failed for {booking_id}: {del_err}")
             await db.deleted_bookings.delete_one({"id": booking_id})
-            raise HTTPException(status_code=404, detail="Booking not found")
+            raise
         
         logger.info(f"Booking {booking_id} soft-deleted by {current_admin.get('username', 'admin')}, notifications sent: {send_notification}")
         return {"message": "Booking cancelled successfully", "notifications_sent": send_notification}

@@ -17,6 +17,7 @@ import { DriverApplicationsTab } from '../components/admin/DriverApplicationsTab
 import { LandingPagesTab } from '../components/admin/LandingPagesTab';
 import { AdminBreadcrumb } from '../components/admin/AdminBreadcrumb';
 import ReturnsOverviewPanel from '../components/admin/ReturnsOverviewPanel';
+import CreateBookingModal from '../components/admin/CreateBookingModal';
 import { API } from '../config/api';
 import Cockpit from '../admin/Cockpit';
 import CreateBookingModal from '../components/admin/CreateBookingModal';
@@ -524,7 +525,6 @@ export const AdminDashboard = () => {
   const [syncingPayments, setSyncingPayments] = useState(false);
   const [recoverSessionId, setRecoverSessionId] = useState('');
   const [recovering, setRecovering] = useState(false);
-  // Shuttle state removed - shared shuttle service discontinued
   const [loadingDeleted, setLoadingDeleted] = useState(false);
   const [restoringAll, setRestoringAll] = useState(false);
   const [downloadingBackup, setDownloadingBackup] = useState(false);
@@ -552,6 +552,7 @@ export const AdminDashboard = () => {
   const [showDriverAssignPreview, setShowDriverAssignPreview] = useState(false);
   const [pendingAssignment, setPendingAssignment] = useState(null); // {tripType, driverPayout, driver}
   const [showCreateBookingModal, setShowCreateBookingModal] = useState(false);
+
   const [selectedPaymentStatus, setSelectedPaymentStatus] = useState('');
   const [showEditBookingModal, setShowEditBookingModal] = useState(false);
   // Bulk delete state
@@ -560,6 +561,7 @@ export const AdminDashboard = () => {
   const [editingBooking, setEditingBooking] = useState(null);
   const [calendarLoading, setCalendarLoading] = useState(false);
   
+
 
   // useMemo guarantees stable render-time ordering that minifiers cannot reorder,
   // fixing the "Cannot read properties of undefined (reading 'add')" crash that
@@ -578,6 +580,14 @@ export const AdminDashboard = () => {
   // Xero invoice date state (for backdating)
   const [xeroInvoiceDate, setXeroInvoiceDate] = useState(null);
   
+
+  // Edit modal address autocomplete
+  const [editPickupSuggestions, setEditPickupSuggestions] = useState([]);
+  const [editDropoffSuggestions, setEditDropoffSuggestions] = useState([]);
+  const [showEditPickupSuggestions, setShowEditPickupSuggestions] = useState(false);
+  const [showEditDropoffSuggestions, setShowEditDropoffSuggestions] = useState(false);
+
+
 
   // Pagination state (must be before useEffects that depend on dateFrom/dateTo)
   const [currentPage, setCurrentPage] = useState(1);
@@ -911,7 +921,6 @@ export const AdminDashboard = () => {
       setRunningAutoArchive(false);
     }
   };
-
 
   const checkXeroStatus = async () => {
     try {
@@ -1604,6 +1613,33 @@ export const AdminDashboard = () => {
     }
   };
   
+  // Address autocomplete for admin forms with debounce + stale-request guard
+  // Each setter gets its own request counter to prevent cross-field cancellation
+  const adminAddrDebounceRef = useRef({});
+  const adminAddrRequestIdRef = useRef({});
+  const fetchAdminAddressSuggestions = (query, setter, showSetter) => {
+    // Use setter reference as unique key per field
+    const key = [setEditPickupSuggestions].includes(setter) ? 'pickup' : 'dropoff';
+    if (adminAddrDebounceRef.current[key]) clearTimeout(adminAddrDebounceRef.current[key]);
+
+    if (query.length < 3) { setter([]); showSetter(false); return; }
+
+    adminAddrDebounceRef.current[key] = setTimeout(async () => {
+      if (!adminAddrRequestIdRef.current[key]) adminAddrRequestIdRef.current[key] = 0;
+      const requestId = ++adminAddrRequestIdRef.current[key];
+      try {
+        const res = await axios.get(`${API}/places/autocomplete`, { params: { input: query } });
+        if (requestId !== adminAddrRequestIdRef.current[key]) return;
+        const predictions = res.data?.predictions || [];
+        setter(predictions);
+        showSetter(predictions.length > 0);
+      } catch (err) {
+        if (requestId !== adminAddrRequestIdRef.current[key]) return;
+        console.error('Admin address autocomplete error:', err);
+        setter([]); showSetter(false);
+      }
+    }, 300);
+  };
 
   const exportToCSV = () => {
     try {
@@ -2018,7 +2054,8 @@ export const AdminDashboard = () => {
         <Tabs defaultValue="bookings" value={activeTab} onValueChange={(val) => {
           setActiveTab(val);
           if (val === 'deleted') { fetchDeletedBookings(); fetchAutoBackups(); }
-if (val === 'archive') fetchArchivedBookings(1, '');
+
+          if (val === 'archive') fetchArchivedBookings(1, '');
         }} className="w-full">
           <TabsList className="flex flex-wrap w-full gap-1 mb-4 md:mb-8 bg-transparent">
             <TabsTrigger value="bookings" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4">
@@ -2626,47 +2663,48 @@ if (val === 'archive') fetchArchivedBookings(1, '');
                           </Select>
                         </td>
                         {/* ACTIONS COLUMN */}
-                        <td className="px-1 py-2">
-                          <div className="flex gap-1">
+                        <td className="px-1 py-2 relative z-10">
+                          <div className="flex flex-wrap gap-1 min-w-[180px]">
                             <button
-                              onClick={() => openDetailsModal(booking)}
-                              className="p-1.5 hover:bg-gray-100 rounded flex flex-col items-center"
+                              onClick={(e) => { e.stopPropagation(); openDetailsModal(booking); }}
+                              className="p-2 hover:bg-gray-100 rounded flex flex-col items-center cursor-pointer active:bg-gray-200 min-w-[36px]"
                               title="View booking details"
                             >
                               <Eye className="w-4 h-4 text-gray-600" />
                               <span className="text-[8px] text-gray-500">View</span>
                             </button>
                             <button
-                              onClick={() => openEditBookingModal(booking)}
-                              className="p-1.5 hover:bg-blue-100 rounded flex flex-col items-center"
+                              onClick={(e) => { e.stopPropagation(); openEditBookingModal(booking); }}
+                              className="p-2 hover:bg-blue-100 rounded flex flex-col items-center cursor-pointer active:bg-blue-200 min-w-[36px]"
                               title="Edit booking details"
                             >
                               <Edit2 className="w-4 h-4 text-blue-600" />
                               <span className="text-[8px] text-blue-500">Edit</span>
                             </button>
                             <button
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 setSelectedBooking(booking);
                                 setShowEmailModal(true);
                               }}
-                              className="p-1.5 hover:bg-green-100 rounded flex flex-col items-center"
+                              className="p-2 hover:bg-green-100 rounded flex flex-col items-center cursor-pointer active:bg-green-200 min-w-[36px]"
                               title="Send custom email (won't send SMS)"
                             >
                               <Mail className="w-4 h-4 text-green-600" />
                               <span className="text-[8px] text-green-500">Email</span>
                             </button>
                             <button
-                              onClick={() => handleResendConfirmation(booking.id)}
-                              className="p-1.5 hover:bg-amber-100 rounded flex flex-col items-center border border-amber-200"
-                              title="⚠️ Resend confirmation EMAIL + SMS to customer"
+                              onClick={(e) => { e.stopPropagation(); handleResendConfirmation(booking.id); }}
+                              className="p-2 hover:bg-amber-100 rounded flex flex-col items-center border border-amber-200 cursor-pointer active:bg-amber-200 min-w-[36px]"
+                              title="Resend confirmation EMAIL + SMS to customer"
                             >
                               <RefreshCw className="w-4 h-4 text-amber-600" />
                               <span className="text-[8px] text-amber-600 font-medium">Resend</span>
                             </button>
                             {booking.status === 'completed' && (
                               <button
-                                onClick={() => handleArchiveBooking(booking.id)}
-                                className="p-1.5 hover:bg-blue-100 rounded flex flex-col items-center border border-blue-200"
+                                onClick={(e) => { e.stopPropagation(); handleArchiveBooking(booking.id); }}
+                                className="p-2 hover:bg-blue-100 rounded flex flex-col items-center border border-blue-200 cursor-pointer active:bg-blue-200 min-w-[36px]"
                                 title="Archive this completed booking"
                               >
                                 <Archive className="w-4 h-4 text-blue-600" />
@@ -2674,16 +2712,16 @@ if (val === 'archive') fetchArchivedBookings(1, '');
                               </button>
                             )}
                             <button
-                              onClick={() => handleDeleteBooking(booking.id, booking.name, true)}
-                              className="p-1.5 hover:bg-red-100 rounded flex flex-col items-center"
+                              onClick={(e) => { e.stopPropagation(); handleDeleteBooking(booking.id, booking.name, true); }}
+                              className="p-2 hover:bg-red-100 rounded flex flex-col items-center cursor-pointer active:bg-red-200 min-w-[36px]"
                               title="Cancel & notify customer via email/SMS"
                             >
                               <Trash2 className="w-4 h-4 text-red-500" />
                               <span className="text-[8px] text-red-500">Cancel</span>
                             </button>
                             <button
-                              onClick={() => handleDeleteBooking(booking.id, booking.name, false)}
-                              className="p-1.5 hover:bg-gray-200 rounded flex flex-col items-center"
+                              onClick={(e) => { e.stopPropagation(); handleDeleteBooking(booking.id, booking.name, false); }}
+                              className="p-2 hover:bg-gray-200 rounded flex flex-col items-center cursor-pointer active:bg-gray-300 min-w-[36px]"
                               title="Silent delete - NO notification to customer (use for duplicates)"
                             >
                               <XCircle className="w-4 h-4 text-gray-500" />
@@ -2794,7 +2832,7 @@ if (val === 'archive') fetchArchivedBookings(1, '');
         </Card>
         </TabsContent>
 
-
+          {/* Shuttle Service Tab */}
           {/* Customers Tab */}
           <TabsContent value="customers">
             <CustomersTab />
@@ -3970,11 +4008,11 @@ if (val === 'archive') fetchArchivedBookings(1, '');
         </DialogContent>
       </Dialog>
 
-      {/* Create Booking Modal */}
+      {/* Create Booking Modal — extracted component for performance (keystrokes re-render only the form, not entire dashboard) */}
       <CreateBookingModal
         open={showCreateBookingModal}
         onClose={() => setShowCreateBookingModal(false)}
-        onSuccess={silentRefresh}
+        onSuccess={() => fetchBookingsRef.current?.()}
         getAuthHeaders={getAuthHeaders}
       />
 
