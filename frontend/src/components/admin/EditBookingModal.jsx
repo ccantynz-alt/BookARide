@@ -50,6 +50,7 @@ const EditBookingModal = memo(({ open, onClose, booking, onSuccess, onPreviewCon
         name: editingBooking.name,
         email: editingBooking.email,
         phone: editingBooking.phone,
+        serviceType: editingBooking.serviceType,
         pickupAddress: editingBooking.pickupAddress,
         pickupAddresses: editingBooking.pickupAddresses?.filter(addr => addr.trim()) || [],
         dropoffAddress: editingBooking.dropoffAddress,
@@ -63,7 +64,9 @@ const EditBookingModal = memo(({ open, onClose, booking, onSuccess, onPreviewCon
         flightDepartureTime: editingBooking.flightDepartureTime,
         bookReturn: !!(editingBooking.returnDate && editingBooking.returnTime),
         returnDate: editingBooking.returnDate,
-        returnTime: editingBooking.returnTime
+        returnTime: editingBooking.returnTime,
+        returnFlightNumber: editingBooking.returnFlightNumber || editingBooking.returnDepartureFlightNumber,
+        returnDepartureFlightNumber: editingBooking.returnDepartureFlightNumber || editingBooking.returnFlightNumber
       }, getAuthHeaders());
 
       toast.success('Booking updated successfully!');
@@ -115,6 +118,21 @@ const EditBookingModal = memo(({ open, onClose, booking, onSuccess, onPreviewCon
                   placeholder="+64 21 XXX XXXX"
                   className="mt-1"
                 />
+              </div>
+              <div>
+                <Label>Service Type</Label>
+                <Select
+                  value={editingBooking.serviceType || 'private-transfer'}
+                  onValueChange={(value) => setEditingBooking(prev => ({...prev, serviceType: value}))}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="airport-shuttle">Airport Shuttle</SelectItem>
+                    <SelectItem value="private-transfer">Private Transfer</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label>Passengers</Label>
