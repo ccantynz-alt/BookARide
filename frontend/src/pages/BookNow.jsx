@@ -31,7 +31,6 @@ export const BookNow = () => {
   const [formData, setFormData] = useState({
     serviceType: '',
     pickupAddress: '',
-    pickupAddresses: [],
     dropoffAddress: '',
     date: '',
     time: '',
@@ -142,7 +141,7 @@ export const BookNow = () => {
     if (formData.pickupAddress && formData.dropoffAddress && formData.serviceType) {
       calculatePrice();
     }
-  }, [formData.pickupAddress, formData.dropoffAddress, formData.pickupAddresses, formData.passengers, formData.serviceType, formData.returnDate, formData.returnTime, formData.vipAirportPickup, formData.oversizedLuggage]);
+  }, [formData.pickupAddress, formData.dropoffAddress, formData.passengers, formData.serviceType, formData.returnDate, formData.returnTime, formData.vipAirportPickup, formData.oversizedLuggage]);
 
   const calculatePrice = async () => {
     setPricing(prev => ({ ...prev, calculating: true }));
@@ -152,7 +151,6 @@ export const BookNow = () => {
       const response = await axios.post(`${API}/calculate-price`, {
         serviceType: formData.serviceType,
         pickupAddress: formData.pickupAddress,
-        pickupAddresses: formData.pickupAddresses.filter(addr => addr.trim()),
         dropoffAddress: formData.dropoffAddress,
         passengers: parseInt(formData.passengers),
         vipAirportPickup: formData.vipAirportPickup,
@@ -235,17 +233,6 @@ export const BookNow = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleAddPickup = () => {
-    setFormData(prev => ({ ...prev, pickupAddresses: [...prev.pickupAddresses, ''] }));
-  };
-
-  const handleRemovePickup = (index) => {
-    setFormData(prev => ({ ...prev, pickupAddresses: prev.pickupAddresses.filter((_, i) => i !== index) }));
-  };
-
-  const handlePickupAddressChange = (index, value) => {
-    setFormData(prev => ({ ...prev, pickupAddresses: prev.pickupAddresses.map((addr, i) => i === index ? value : addr) }));
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -453,7 +440,7 @@ export const BookNow = () => {
                       <div className="space-y-2 mb-6">
                         <Label htmlFor="pickupAddress" className="flex items-center space-x-2">
                           <MapPin className="w-4 h-4 text-gold" />
-                          <span>Pickup Location 1 *</span>
+                          <span>Pickup Location *</span>
                         </Label>
                         <AddressAutocomplete
                           id="pickupAddress"
@@ -466,30 +453,6 @@ export const BookNow = () => {
                       </div>
 
                       {/* Additional Pickup Addresses */}
-                      {formData.pickupAddresses.map((pickup, index) => (
-                        <div key={index} className="space-y-2 mb-6">
-                          <Label className="flex items-center space-x-2">
-                            <MapPin className="w-4 h-4 text-gold" />
-                            <span>Pickup Location {index + 2}</span>
-                          </Label>
-                          <div className="flex gap-2">
-                            <AddressAutocomplete
-                              value={pickup}
-                              onChange={(val) => handlePickupAddressChange(index, val)}
-                              onSelect={(val) => handlePickupAddressChange(index, val)}
-                              placeholder="Additional pickup address..."
-                              className="flex-1"
-                            />
-                            <Button type="button" variant="outline" size="sm" onClick={() => handleRemovePickup(index)} className="text-red-500 hover:text-red-700">Remove</Button>
-                          </div>
-                        </div>
-                      ))}
-
-                      {formData.pickupAddresses.length < 3 && (
-                        <Button type="button" variant="outline" onClick={handleAddPickup} className="mb-6 text-sm">
-                          + Add another pickup location
-                        </Button>
-                      )}
 
                       {/* Drop-off Address */}
                       <div className="space-y-2 mb-6">
@@ -894,9 +857,6 @@ export const BookNow = () => {
                             <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 space-y-2" data-testid="route-map-container">
                               <p className="text-sm font-medium text-gray-700">Your route</p>
                               <p className="text-sm text-gray-600">Pickup: {formData.pickupAddress}</p>
-                              {formData.pickupAddresses?.filter(Boolean).map((addr, i) => (
-                                <p key={i} className="text-sm text-gray-600">+ Stop: {addr}</p>
-                              ))}
                               <p className="text-sm text-gray-600">Drop-off: {formData.dropoffAddress}</p>
                             </div>
                           )}
