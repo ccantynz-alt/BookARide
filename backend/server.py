@@ -5872,12 +5872,16 @@ async def sync_pending_payments(current_admin: dict = Depends(get_current_admin)
                     })
                     logger.info(f"Synced payment for booking #{booking.get('referenceNumber')} — was pending, now paid")
 
-                    # Send confirmations that were missed
+                    # Send all 4 confirmations that were missed (Rule 4)
                     updated_booking = await db.bookings.find_one({"id": booking['id']}, {"_id": 0})
                     if updated_booking:
                         send_customer_confirmation(updated_booking)
                         await send_booking_notification_to_admin(updated_booking)
                         await create_calendar_event(updated_booking)
+                        try:
+                            add_contact_to_icloud(updated_booking)
+                        except Exception as e:
+                            logger.error(f"iCloud contact sync failed for synced booking {booking.get('id')}: {e}")
             except Exception as e:
                 logger.warning(f"Could not check Stripe for session {session_id}: {e}")
 
@@ -6042,32 +6046,34 @@ async def stripe_webhook(request: Request):
                 booking_id = webhook_response.metadata.get('booking_id')
 
                 if booking_id:
+                    # Check if already paid (idempotency - avoid duplicate confirmations)
+                    existing_booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+                    already_paid = existing_booking and existing_booking.get('payment_status') == 'paid'
+
                     update_result = await db.bookings.update_one(
                         {"id": booking_id},
                         {"$set": {"payment_status": "paid", "status": "confirmed"}}
                     )
                     if update_result.matched_count == 0:
                         logger.error(f"CRITICAL: Webhook payment confirmed but booking {booking_id} not found for update - potential data loss")
+                    elif update_result.modified_count == 0 and not already_paid:
+                        logger.error(f"CRITICAL: Webhook matched booking {booking_id} but failed to modify it - payment status may not be updated")
                     else:
                         logger.info(f"Booking {booking_id} confirmed via webhook")
 
-                    # Get booking details for notifications
-                    booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
-                    if booking:
-                        # Send confirmations based on customer's notification preference
-                        send_customer_confirmation(booking)
-
-                        # Send admin notification
-                        await send_booking_notification_to_admin(booking)
-
-                        # Create Google Calendar event
-                        await create_calendar_event(booking)
-
-                        # Sync contact to iCloud
-                        try:
-                            add_contact_to_icloud(booking)
-                        except Exception as e:
-                            logger.error(f"iCloud contact sync failed for booking {booking_id}: {e}")
+                    # Only send confirmations if this is the first time (idempotency)
+                    if not already_paid:
+                        booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+                        if booking:
+                            send_customer_confirmation(booking)
+                            await send_booking_notification_to_admin(booking)
+                            await create_calendar_event(booking)
+                            try:
+                                add_contact_to_icloud(booking)
+                            except Exception as e:
+                                logger.error(f"iCloud contact sync failed for booking {booking_id}: {e}")
+                    else:
+                        logger.info(f"Webhook duplicate for booking {booking_id} - already paid, skipping confirmations")
         
         return {"status": "success", "event_type": webhook_response.event_type}
     
@@ -6121,14 +6127,17 @@ async def twilio_sms_webhook(request: Request):
                     }}
                 )
                 
-                # Get booking and send confirmation to customer
+                # Get booking and trigger all 4 post-confirmation actions (Rule 4)
                 booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
                 if booking:
-                    # Send customer confirmation
                     send_customer_confirmation(booking)
-                    # Create calendar event
+                    await send_booking_notification_to_admin(booking)
                     await create_calendar_event(booking)
-                
+                    try:
+                        add_contact_to_icloud(booking)
+                    except Exception as e:
+                        logger.error(f"iCloud contact sync failed for SMS-approved booking {booking_id}: {e}")
+
                 # Clear the pending approval
                 await db.pending_approvals.delete_one({"admin_phone": admin_phone})
                 
@@ -7795,18 +7804,36 @@ async def capture_afterpay_payment(token: str, order_id: str = None):
             
             # Update booking status
             if status == "APPROVED":
-                await db.bookings.update_one(
-                    {"id": transaction['booking_id']},
+                booking_id = transaction['booking_id']
+                update_result = await db.bookings.update_one(
+                    {"id": booking_id},
                     {"$set": {
-                        "paymentStatus": "paid",
-                        "paymentMethod": "afterpay",
+                        "payment_status": "paid",
+                        "payment_method": "afterpay",
+                        "status": "confirmed",
                         "afterpayOrderId": afterpay_order_id,
                         "paidAt": datetime.now(timezone.utc).isoformat()
                     }}
                 )
-                
-                logger.info(f" Afterpay payment captured: order_id={afterpay_order_id}, booking={transaction['booking_id']}")
-        
+
+                if update_result.matched_count == 0:
+                    logger.error(f"CRITICAL: Afterpay payment captured but booking {booking_id} not found for update")
+                elif update_result.modified_count == 0:
+                    logger.error(f"CRITICAL: Afterpay payment captured but booking {booking_id} was not modified (may already be paid)")
+                else:
+                    logger.info(f"Afterpay payment captured: order_id={afterpay_order_id}, booking={booking_id}")
+
+                # Trigger all 4 post-payment actions (Rule 4)
+                booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+                if booking:
+                    send_customer_confirmation(booking)
+                    await send_booking_notification_to_admin(booking)
+                    await create_calendar_event(booking)
+                    try:
+                        add_contact_to_icloud(booking)
+                    except Exception as e:
+                        logger.error(f"iCloud contact sync failed for Afterpay booking {booking_id}: {e}")
+
         return {
             "order_id": afterpay_order_id,
             "status": status,
@@ -7917,7 +7944,7 @@ async def send_payment_link_email(booking: dict, payment_link: str, payment_type
                     </div>
 
                     <p style="font-size: 13px; color: #888; text-align: center;">
-                        This link goes to <strong>bookaride.co.nz</strong> and then to Stripe's secure checkout.
+                        This link goes to <strong>bookaride.co.nz</strong> for secure payment.
                     </p>
 
                     <p style="font-size: 14px; color: #666; text-align: center; margin-top: 15px;">
@@ -7933,7 +7960,7 @@ async def send_payment_link_email(booking: dict, payment_link: str, payment_type
                     </p>
 
                     <p style="font-size: 12px; color: #999; margin-top: 15px;">
-                        Your payment is processed securely by Stripe. Book A Ride NZ never stores your card details.
+                        Your payment is processed securely. Book A Ride NZ never stores your card details.
                     </p>
                 </div>
 
@@ -8364,6 +8391,66 @@ class DriverApplication(BaseModel):
     availability: Optional[str] = ""
     message: Optional[str] = ""
 
+class ContactForm(BaseModel):
+    name: str
+    email: str
+    phone: Optional[str] = ""
+    message: str
+
+@api_router.post("/contact")
+async def submit_contact_form(form: ContactForm):
+    """Receive a contact form submission and email it to admin via Mailgun"""
+    try:
+        admin_email = os.environ.get('ADMIN_EMAIL', 'bookings@bookaride.co.nz')
+        html_content = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <div style="background-color: #D4AF37; color: #1a1a1a; padding: 20px; text-align: center;">
+                    <h1 style="margin: 0;">New Contact Form Enquiry</h1>
+                </div>
+                <div style="padding: 20px; background-color: #f5f5f5;">
+                    <div style="background-color: white; padding: 20px; border-radius: 8px; border-left: 4px solid #D4AF37;">
+                        <p><strong>Name:</strong> {form.name}</p>
+                        <p><strong>Email:</strong> <a href="mailto:{form.email}">{form.email}</a></p>
+                        <p><strong>Phone:</strong> {form.phone or 'Not provided'}</p>
+                        <hr style="border: 0; border-top: 1px solid #e0e0e0;">
+                        <p><strong>Message:</strong></p>
+                        <p style="white-space: pre-wrap;">{form.message}</p>
+                    </div>
+                    <p style="margin-top: 20px; font-size: 12px; color: #888;">Reply directly to this email to respond to the customer.</p>
+                </div>
+            </body>
+        </html>
+        """
+
+        email_sent = _send_email_with_fallbacks(
+            admin_email,
+            f"Website Enquiry from {form.name}",
+            html_content,
+            reply_to=form.email
+        )
+
+        if not email_sent:
+            logger.error(f"CRITICAL: Contact form email failed to send for {form.email}")
+
+        # Store in database for record keeping
+        await db.contact_submissions.insert_one({
+            "id": str(uuid4()),
+            "name": form.name,
+            "email": form.email,
+            "phone": form.phone,
+            "message": form.message,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "email_sent": email_sent
+        })
+
+        logger.info(f"Contact form received from {form.name} ({form.email})")
+        return {"success": True, "message": "Your message has been sent. We'll get back to you shortly."}
+    except Exception as e:
+        logger.error(f"Error processing contact form: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to send your message. Please try again or email us directly.")
+
+
 @api_router.post("/driver-applications")
 async def submit_driver_application(application: DriverApplication):
     """Submit a new driver application"""
@@ -8395,7 +8482,7 @@ async def submit_driver_application(application: DriverApplication):
                     <h1 style="margin: 0;">New Driver Application</h1>
                 </div>
                 <div style="padding: 20px; background-color: #f5f5f5;">
-                    <h2>ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â Driver Application Received</h2>
+                    <h2>New Driver Application Received</h2>
                     <div style="background-color: white; padding: 20px; border-radius: 8px; border-left: 4px solid #D4AF37;">
                         <p><strong>Name:</strong> {application.name}</p>
                         <p><strong>Phone:</strong> {application.phone}</p>
@@ -8929,20 +9016,38 @@ async def bulk_delete(booking_ids: List[str], send_notifications: bool = False, 
                 except Exception as e:
                     logger.error(f"Error sending cancellation for booking {booking.get('id')}: {str(e)}")
 
-        # SOFT DELETE: Move all to deleted_bookings collection
+        # SOFT DELETE: Move each to deleted_bookings with per-record verification (Rule 1)
         deleted_count = 0
+        failed_ids = []
         for booking in bookings:
+            bid = booking.get('id')
             booking['deletedAt'] = datetime.now(timezone.utc).isoformat()
             booking['deletedBy'] = current_admin.get('username', 'admin')
             booking['notificationSent'] = send_notifications
-            await db.deleted_bookings.insert_one(booking)
+
+            # Insert backup
+            backup_result = await db.deleted_bookings.insert_one(booking)
+            if not backup_result.acknowledged:
+                logger.error(f"CRITICAL: Failed to backup booking {bid} during bulk delete - skipping")
+                failed_ids.append(bid)
+                continue
+
+            # Verify backup exists before deleting source
+            backup_check = await db.deleted_bookings.find_one({"id": bid})
+            if not backup_check:
+                logger.error(f"CRITICAL: Backup verification failed for booking {bid} during bulk delete - skipping")
+                failed_ids.append(bid)
+                continue
+
+            # Delete only this verified booking from active
+            await db.bookings.delete_one({"id": bid})
             deleted_count += 1
 
-        # Remove from active bookings
-        result = await db.bookings.delete_many({"id": {"$in": booking_ids}})
+        if failed_ids:
+            logger.error(f"CRITICAL: Bulk delete failed for {len(failed_ids)} bookings: {failed_ids} - these bookings were preserved")
 
         logger.info(f"Bulk soft-deleted {deleted_count} bookings by {current_admin.get('username', 'admin')}")
-        return {"message": "Bookings deleted", "count": result.deleted_count, "notifications_sent": send_notifications}
+        return {"message": "Bookings deleted", "count": deleted_count, "failed": len(failed_ids), "notifications_sent": send_notifications}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

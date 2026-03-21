@@ -237,6 +237,68 @@ There are 3 booking collections. A booking must ALWAYS exist in exactly one of t
 
 ---
 
+---
+
+## QUALITY STANDARDS — STRICT, NON-NEGOTIABLE
+
+This is a real business serving real customers. Every feature must work. No fake functionality, no misleading promises.
+
+### 1. No Mock/Fake Functionality
+
+- **NEVER** add console.log-only form submissions — every form MUST submit to a real backend endpoint
+- **NEVER** show success toasts for operations that didn't actually succeed
+- **NEVER** add placeholder handlers like "will be connected later" — connect it NOW or don't ship it
+- Every button, form, and link must do what it says. If it says "Send Message", it must send the message.
+
+### 2. No Misleading Claims
+
+- **NEVER** claim "24/7 Support" unless there is an actual 24/7 support system (chat, phone, ticketing)
+- "24/7 Service" (shuttle availability) is accurate and allowed — the service does run 24/7
+- **NEVER** add testimonials, review counts, or statistics that aren't real
+- **NEVER** show features as available when they aren't implemented
+
+### 3. Customer-Facing Text Standards
+
+- **NEVER** show technical terms to customers ("Stripe", "webhook", "API", database field names)
+- Payment method "stripe" displays as "Credit/Debit Card" — ALWAYS
+- Error messages must be helpful and human-readable, never stack traces or technical errors
+- All customer emails must be professional, properly formatted, and contain accurate information
+
+### 4. Every Payment Path Must Be Complete
+
+ALL payment confirmation paths (Stripe webhook, Afterpay capture, polling, manual sync, SMS approval) MUST trigger all 4 post-payment actions:
+1. `send_customer_confirmation(booking)`
+2. `send_booking_notification_to_admin(booking)`
+3. `create_calendar_event(booking)`
+4. `add_contact_to_icloud(booking)`
+
+No exceptions. If you add a new payment path, it must include all 4.
+
+### 5. Webhook Idempotency Required
+
+- Stripe webhooks can be retried — check if already processed before sending duplicate confirmations
+- Check `payment_status == 'paid'` before triggering post-payment actions on repeat webhooks
+
+### 6. Bulk Operations Must Be Safe
+
+- Bulk delete/archive/restore MUST verify each record individually (per-record backup + find_one verification)
+- **NEVER** use `delete_many()` after a batch `insert_one()` loop without per-record verification
+- If any single record fails backup, skip it and continue — never delete unverified records
+
+### 7. Field Name Consistency
+
+- Payment status field: always `payment_status` (snake_case), NEVER `paymentStatus` (camelCase)
+- Payment method field: always `payment_method` (snake_case) in database writes
+- Be consistent — check existing field names before adding new update operations
+
+### 8. Build Must Pass
+
+- `cd frontend && npm run build` must succeed with zero errors before committing
+- Fix unused imports, missing imports, and type errors immediately
+- Never commit code that doesn't compile
+
+---
+
 ## History of Production Breaks (why these rules exist)
 
 | Date       | What broke                          | Root cause                              |
@@ -254,3 +316,11 @@ There are 3 booking collections. A booking must ALWAYS exist in exactly one of t
 | 2026-03-18 | Contacts not synced after payment    | iCloud sync only ran on booking creation, not after Stripe payment |
 | 2026-03-18 | Admin panel cluttered                | Shared shuttle service tab removed (service discontinued) |
 | 2026-03-18 | Bookings could vanish on delete/archive | Delete/archive/restore didn't verify backup insert before deleting source |
+| 2026-03-21 | Contact form was fake                | console.log only — customers thought messages were sent but nothing was received |
+| 2026-03-21 | Afterpay payments appeared unpaid    | Used `paymentStatus` (camelCase) instead of `payment_status` (snake_case) |
+| 2026-03-21 | Afterpay customers got no confirmation | Post-payment actions (email/calendar/iCloud) never triggered after Afterpay capture |
+| 2026-03-21 | Bulk delete could lose bookings      | No per-record backup verification — batch insert then batch delete |
+| 2026-03-21 | Duplicate confirmation emails        | Stripe webhook lacked idempotency — retries sent duplicate emails |
+| 2026-03-21 | Payment link email showed "Stripe"   | Customer-facing email mentioned "Stripe's secure checkout" — violates branding rule |
+| 2026-03-21 | SMS approval missing actions         | Only triggered 2 of 4 post-payment actions (missing admin notification + iCloud sync) |
+| 2026-03-21 | Sync-pending missing iCloud          | Manual payment sync triggered 3 of 4 actions (missing iCloud contact sync) |
