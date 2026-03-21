@@ -755,6 +755,12 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
                     <span>Distance:</span>
                     <span className="font-medium">{bookingPricing.distance} km</span>
                   </div>
+                  {bookingPricing.ratePerKm > 0 && (
+                    <div className="flex justify-between text-blue-700">
+                      <span>Rate per km:</span>
+                      <span className="font-medium">${bookingPricing.ratePerKm.toFixed(2)}/km</span>
+                    </div>
+                  )}
                   <div className="flex justify-between">
                     <span>Base Price:</span>
                     <span className="font-medium">${bookingPricing.basePrice.toFixed(2)}</span>
