@@ -17,7 +17,6 @@ import { DriverApplicationsTab } from '../components/admin/DriverApplicationsTab
 import { LandingPagesTab } from '../components/admin/LandingPagesTab';
 import { AdminBreadcrumb } from '../components/admin/AdminBreadcrumb';
 import ReturnsOverviewPanel from '../components/admin/ReturnsOverviewPanel';
-import CreateBookingModal from '../components/admin/CreateBookingModal';
 import { API } from '../config/api';
 import Cockpit from '../admin/Cockpit';
 import CreateBookingModal from '../components/admin/CreateBookingModal';
