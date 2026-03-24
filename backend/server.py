@@ -40,8 +40,13 @@ except ImportError:
     get_noreply_email = lambda: os.environ.get("NOREPLY_EMAIL") or os.environ.get("SENDER_EMAIL", "noreply@bookaride.co.nz")
 
 
-def _send_email_with_fallbacks(to_email, subject, html_content, from_email=None, from_name="BookaRide", cc=None, text_content=None, reply_to=None):
-    """Send email via Mailgun (email_sender module). Returns True on success."""
+def _send_email_with_fallbacks(to_email, subject, html_content, from_email=None, from_name="BookaRide"):
+    """Send email trying all available providers: email_sender module -> Google SMTP -> Mailgun.
+    Returns True if any provider succeeds."""
+    if not to_email or not isinstance(to_email, str) or '@' not in to_email.strip():
+        logging.getLogger(__name__).error(f"Cannot send email: invalid recipient '{to_email}'. Subject: {subject}")
+        return False
+    to_email = to_email.strip()
     sender = from_email or get_noreply_email()
 
     if send_email_unified:
@@ -51,7 +56,52 @@ def _send_email_with_fallbacks(to_email, subject, html_content, from_email=None,
         except Exception as e:
             logging.getLogger(__name__).warning(f"email_sender module failed: {e}")
 
-    logging.getLogger(__name__).error(f"Email send failed for {to_email}. Check MAILGUN_API_KEY and MAILGUN_DOMAIN.")
+    # 2) Try SMTP (Google Workspace / Gmail)
+    smtp_user = os.environ.get('SMTP_USER')
+    smtp_pass = os.environ.get('SMTP_PASS')
+    if smtp_user and smtp_pass:
+        try:
+            message = MIMEMultipart('alternative')
+            message['Subject'] = subject
+            message['From'] = f"{from_name} <{sender}>" if from_name else sender
+            message['To'] = to_email
+            message.attach(MIMEText(html_content, 'html'))
+            smtp_host = os.environ.get('SMTP_HOST', 'smtp.gmail.com')
+            smtp_port = int(os.environ.get('SMTP_PORT', '587'))
+            with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as server:
+                server.starttls()
+                server.login(smtp_user, smtp_pass)
+                server.send_message(message)
+            logging.getLogger(__name__).info(f"Email sent via SMTP to {to_email}")
+            return True
+        except Exception as e:
+            logging.getLogger(__name__).warning(f"SMTP send failed: {e}")
+
+    # 3) Try Mailgun API
+    mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
+    mailgun_domain = os.environ.get('MAILGUN_DOMAIN', 'mg.bookaride.co.nz')
+    if mailgun_api_key:
+        try:
+            response = requests.post(
+                f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
+                auth=("api", mailgun_api_key),
+                data={
+                    "from": f"{from_name} <{sender}>",
+                    "to": to_email,
+                    "subject": subject,
+                    "html": html_content,
+                },
+                timeout=15,
+            )
+            if response.status_code == 200:
+                logging.getLogger(__name__).info(f"Email sent via Mailgun to {to_email}")
+                return True
+            else:
+                logging.getLogger(__name__).error(f"Mailgun failed: {response.status_code} - {response.text}")
+        except Exception as e:
+            logging.getLogger(__name__).warning(f"Mailgun send failed: {e}")
+
+    logging.getLogger(__name__).error(f"ALL email providers failed for {to_email}. Configure SMTP_USER+SMTP_PASS (Google) or MAILGUN_API_KEY.")
     return False
 
 
@@ -72,26 +122,31 @@ async def run_async_task(coro_func, arg, task_description="background task"):
     'attached to a different loop' errors on any database operation.
     """
     try:
-        await coro_func(arg)
-        logger.info(f" Background task completed: {task_description}")
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(coro_func(arg))
+            logger.info(f"[BG-OK] {task_description}")
+        finally:
+            loop.close()
     except Exception as e:
-        logger.error(f" Background task failed ({task_description}): {str(e)}")
+        logger.error(f"[BG-FAIL] {task_description}: {str(e)}", exc_info=True)
 
 def run_sync_task(sync_func, arg, task_description="background task"):
     """Run a synchronous function for background tasks"""
     try:
         sync_func(arg)
-        logger.info(f" Background task completed: {task_description}")
+        logger.info(f"[BG-OK] {task_description}")
     except Exception as e:
-        logger.error(f" Background task failed ({task_description}): {str(e)}")
+        logger.error(f"[BG-FAIL] {task_description}: {str(e)}", exc_info=True)
 
 def run_sync_task_with_args(sync_func, arg1, arg2, task_description="background task"):
     """Run a synchronous function with two arguments for background tasks"""
     try:
         sync_func(arg1, arg2)
-        logger.info(f" Background task completed: {task_description}")
+        logger.info(f"[BG-OK] {task_description}")
     except Exception as e:
-        logger.error(f" Background task failed ({task_description}): {str(e)}")
+        logger.error(f"[BG-FAIL] {task_description}: {str(e)}", exc_info=True)
 
 ROOT_DIR = Path(__file__).parent
 sys.path.insert(0, str(ROOT_DIR))
@@ -1357,58 +1412,51 @@ def _normalize_address_for_routing(address: str) -> str:
     return address.strip()
 
 
-def _get_distance_google(pickup_address: str, dropoff_address: str, waypoint_addresses: list, api_key: str) -> float | None:
-    """Get driving distance in km via Google Maps Distance Matrix / Directions API. Returns None on failure."""
+async def _get_distance_google(pickup_address: str, dropoff_address: str, waypoint_addresses: list, api_key: str) -> float | None:
+    """Get driving distance in km via Google Maps Distance Matrix / Directions API.
+    Uses httpx.AsyncClient so the event loop is never blocked. Returns None on failure."""
     try:
         pickup_norm = _normalize_address_for_routing(pickup_address)
         dropoff_norm = _normalize_address_for_routing(dropoff_address)
         extra = [_normalize_address_for_routing(a) for a in (waypoint_addresses or []) if a and a.strip()]
 
-        if extra:
-            # Use Directions API for waypoint support
-            url = "https://maps.googleapis.com/maps/api/directions/json"
-            params = {
-                "origin": pickup_norm,
-                "destination": dropoff_norm,
-                "waypoints": "|".join(extra),
-                "key": api_key,
-                "region": "nz",
-            }
-            r = requests.get(url, params=params, timeout=15)
-            data = r.json()
-            if data.get("status") == "OK" and data.get("routes"):
-                total_m = sum(
-                    leg.get("distance", {}).get("value", 0)
-                    for leg in data["routes"][0].get("legs", [])
-                )
-                return round(total_m / 1000, 2)
+        async with httpx.AsyncClient(timeout=10.0) as http:
+            if extra:
+                # Use Directions API for waypoint support
+                url = "https://maps.googleapis.com/maps/api/directions/json"
+                params = {
+                    "origin": pickup_norm,
+                    "destination": dropoff_norm,
+                    "waypoints": "|".join(extra),
+                    "key": api_key,
+                    "region": "nz",
+                }
+                r = await http.get(url, params=params)
+                data = r.json()
+                if data.get("status") == "OK" and data.get("routes"):
+                    total_m = sum(
+                        leg.get("distance", {}).get("value", 0)
+                        for leg in data["routes"][0].get("legs", [])
+                    )
+                    return round(total_m / 1000, 2)
             else:
-                logger.warning(f"Google Directions API failed - status: {data.get('status')}, error: {data.get('error_message', 'none')}, origin: {pickup_norm}, destination: {dropoff_norm}")
-        else:
-            # Simple origin->destination: use Distance Matrix
-            url = "https://maps.googleapis.com/maps/api/distancematrix/json"
-            params = {
-                "origins": pickup_norm,
-                "destinations": dropoff_norm,
-                "key": api_key,
-                "region": "nz",
-            }
-            r = requests.get(url, params=params, timeout=15)
-            data = r.json()
-            if data.get("status") == "OK":
-                rows = data.get("rows", [])
-                if rows:
-                    elements = rows[0].get("elements", [])
-                    if elements and elements[0].get("status") == "OK":
-                        dist_m = elements[0].get("distance", {}).get("value", 0)
-                        return round(dist_m / 1000, 2)
-                    else:
-                        elem_status = elements[0].get("status") if elements else "NO_ELEMENTS"
-                        logger.warning(f"Google Distance Matrix element failed - element status: {elem_status}, origin: {pickup_norm}, destination: {dropoff_norm}")
-                else:
-                    logger.warning(f"Google Distance Matrix returned OK but no rows - origin: {pickup_norm}, destination: {dropoff_norm}")
-            else:
-                logger.warning(f"Google Distance Matrix API failed - status: {data.get('status')}, error: {data.get('error_message', 'none')}, origin: {pickup_norm}, destination: {dropoff_norm}")
+                # Simple origin->destination: use Distance Matrix
+                url = "https://maps.googleapis.com/maps/api/distancematrix/json"
+                params = {
+                    "origins": pickup_norm,
+                    "destinations": dropoff_norm,
+                    "key": api_key,
+                    "region": "nz",
+                }
+                r = await http.get(url, params=params)
+                data = r.json()
+                if data.get("status") == "OK":
+                    rows = data.get("rows", [])
+                    if rows:
+                        elements = rows[0].get("elements", [])
+                        if elements and elements[0].get("status") == "OK":
+                            dist_m = elements[0].get("distance", {}).get("value", 0)
+                            return round(dist_m / 1000, 2)
     except Exception as e:
         logger.warning(f"Google Maps distance error: {e}")
     return None
@@ -1523,6 +1571,7 @@ _NZ_FALLBACK_ADDRESSES = [
 async def places_autocomplete(input: str = "", types: str = "", region: str = "nz"):
     """Return address suggestions using Google Places Autocomplete API.
 
+    Fallback chain: Google Legacy -> Google New -> hardcoded NZ addresses.
     No types filter by default so results include addresses AND
     establishments (airports, hotels, etc.).
     """
@@ -1533,7 +1582,11 @@ async def places_autocomplete(input: str = "", types: str = "", region: str = "n
         logger.warning("GOOGLE_MAPS_API_KEY not set - using fallback address list")
         query_lower = input.lower()
         matches = [a for a in _NZ_FALLBACK_ADDRESSES if query_lower in a["description"].lower()]
-        return {"predictions": matches[:5]}
+        if not matches:
+            words = [w for w in query_lower.split() if len(w) >= 3]
+            if words:
+                matches = [a for a in _NZ_FALLBACK_ADDRESSES if any(w in a["description"].lower() for w in words)]
+        return {"predictions": matches[:5], "source": "fallback", "reason": "GOOGLE_MAPS_API_KEY not set in environment"}
 
     # --- Try Google Places API (Legacy) first ---
     try:
@@ -1549,7 +1602,7 @@ async def places_autocomplete(input: str = "", types: str = "", region: str = "n
         # Only add types if explicitly provided and non-empty
         if types:
             params["types"] = types
-        async with httpx.AsyncClient(timeout=8.0) as client:
+        async with httpx.AsyncClient(timeout=3.0) as client:
             r = await client.get(url, params=params)
         data = r.json()
         status = data.get("status", "UNKNOWN")
@@ -1560,7 +1613,7 @@ async def places_autocomplete(input: str = "", types: str = "", region: str = "n
                 if p.get("description")
             ]
             if predictions:
-                return {"predictions": predictions}
+                return {"predictions": predictions, "source": "google"}
             # OK status but empty results - fall through to fallback
             logger.info(f"Google Places returned OK but 0 predictions for: {input}")
         elif status == "ZERO_RESULTS":
@@ -1588,7 +1641,7 @@ async def places_autocomplete(input: str = "", types: str = "", region: str = "n
                 }
             },
         }
-        async with httpx.AsyncClient(timeout=8.0) as client:
+        async with httpx.AsyncClient(timeout=3.0) as client:
             r = await client.post(new_url, json=body, headers=headers)
         if r.status_code == 200:
             data = r.json()
@@ -1602,7 +1655,7 @@ async def places_autocomplete(input: str = "", types: str = "", region: str = "n
                     predictions.append({"description": text, "place_id": place_id})
             if predictions:
                 logger.info(f"Google Places (New) API returned {len(predictions)} results for: {input}")
-                return {"predictions": predictions}
+                return {"predictions": predictions, "source": "google-new"}
         else:
             logger.warning(f"Google Places (New) API returned status {r.status_code}: {r.text[:200]}")
     except Exception as e:
@@ -1610,10 +1663,19 @@ async def places_autocomplete(input: str = "", types: str = "", region: str = "n
 
     # --- Final fallback: match against known NZ addresses ---
     query_lower = input.lower()
+    # First try exact substring match
     matches = [a for a in _NZ_FALLBACK_ADDRESSES if query_lower in a["description"].lower()]
+    # If no exact match, try matching individual words (e.g. "queen street" matches even if user typed "123 queen")
+    if not matches:
+        words = [w for w in query_lower.split() if len(w) >= 3]
+        if words:
+            matches = [
+                a for a in _NZ_FALLBACK_ADDRESSES
+                if any(w in a["description"].lower() for w in words)
+            ]
     if matches:
         logger.info(f"Using fallback addresses for: {input} ({len(matches)} matches)")
-    return {"predictions": matches[:5]}
+    return {"predictions": matches[:5], "source": "fallback", "reason": "Google API failed, using hardcoded NZ addresses"}
 
 
 @api_router.get("/admin/maps-status")
@@ -1703,7 +1765,7 @@ async def calculate_price(request: PriceCalculationRequest):
         if google_key:
             # Route: pickup -> additional pickups -> dropoff
             waypoint_addrs = [a for a in (request.pickupAddresses or []) if a and a.strip()]
-            distance_km = _get_distance_google(
+            distance_km = await _get_distance_google(
                 request.pickupAddress,
                 request.dropoffAddress,
                 waypoint_addrs,
@@ -1741,7 +1803,8 @@ async def calculate_price(request: PriceCalculationRequest):
         is_from_hibiscus_coast = any(keyword in pickup_lower for keyword in hibiscus_coast_keywords)
         is_to_hibiscus_coast = any(keyword in dropoff_lower for keyword in hibiscus_coast_keywords)
         
-        # Hibiscus Coast <-> Airport: trust Google Maps distance (no zone minimum)
+        # Minimum distance for Hibiscus Coast <-> Auckland Airport
+        # Old system: 73.3 km for Gulf Harbour -> Airport = ~$186. Use 73 km minimum for this route.
         airport_keywords = ['airport', 'auckland airport', 'international airport', 'domestic airport', 'akl', 'ray emery', 'mangere']
         is_to_airport = any(kw in dropoff_lower for kw in airport_keywords)
         is_from_airport = any(kw in pickup_lower for kw in airport_keywords)
@@ -2795,12 +2858,114 @@ def send_booking_confirmation_email(booking: dict, include_payment_link: bool = 
     html_content = generate_confirmation_email_html(booking)
     from_email = get_noreply_email()
 
-    # Send via Mailgun
-    if send_email_unified:
-        return send_email_unified(recipient_email, subject, html_content, from_email=from_email, from_name="BookaRide")
-    return False
+    return _send_email_with_fallbacks(recipient_email, subject, html_content, from_email=from_email, from_name="BookaRide")
 
 
+def send_via_mailgun(booking: dict):
+    """Try sending via Mailgun with beautiful email template"""
+    try:
+        mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
+        mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
+        sender_email = get_noreply_email()
+        
+        if not mailgun_api_key or not mailgun_domain:
+            logger.warning("Mailgun credentials not configured")
+            return False
+        
+        # Get booking reference for subject line
+        booking_ref = get_booking_reference(booking)
+        
+        # Get language preference for subject (default to English)
+        lang = booking.get('language', 'en')
+        if lang not in EMAIL_TRANSLATIONS:
+            lang = 'en'
+        t = EMAIL_TRANSLATIONS[lang]
+        
+        subject = f"{t['subject']} - Ref: {booking_ref}"
+        recipient_email = booking.get('email')
+        
+        # Use the beautiful email template
+        html_content = generate_confirmation_email_html(booking)
+        
+        # Build email data with CC support
+        email_data = {
+            "from": f"BookaRide <{sender_email}>",
+            "to": recipient_email,
+            "subject": subject,
+            "html": html_content
+        }
+        
+        # Add CC if provided
+        cc_email = booking.get('ccEmail', '')
+        if cc_email and cc_email.strip():
+            email_data["cc"] = cc_email.strip()
+        
+        # Send email via Mailgun API
+        response = requests.post(
+            f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
+            auth=("api", mailgun_api_key),
+            data=email_data,
+            timeout=15,
+        )
+
+        if response.status_code == 200:
+            cc_info = f" (CC: {cc_email})" if cc_email else ""
+            logger.info(f"Confirmation email sent to {recipient_email}{cc_info} via Mailgun")
+            return True
+        else:
+            logger.error(f"Mailgun error: {response.status_code} - {response.text}")
+            return False
+        
+    except Exception as e:
+        logger.error(f"Mailgun error: {str(e)}")
+        return False
+
+
+def send_via_smtp(booking: dict):
+    """Fallback: Send via Gmail SMTP"""
+    try:
+        smtp_user = os.environ.get('SMTP_USER')
+        smtp_pass = os.environ.get('SMTP_PASS')
+        sender_email = get_noreply_email()
+        
+        if not smtp_user or not smtp_pass:
+            logger.warning("SMTP credentials not configured")
+            return False
+        
+        # Create email content using the beautiful template
+        booking_ref = get_booking_reference(booking)
+        subject = f"Booking Confirmation - Ref: {booking_ref}"
+        recipient_email = booking.get('email')
+        
+        # Use the beautiful email template
+        html_content = generate_confirmation_email_html(booking)
+        
+        # Create message
+        message = MIMEMultipart('alternative')
+        message['Subject'] = subject
+        message['From'] = sender_email
+        message['To'] = recipient_email
+        
+        # Attach HTML
+        html_part = MIMEText(html_content, 'html')
+        message.attach(html_part)
+        
+        # Send via SMTP (Google Workspace / Gmail)
+        smtp_host = os.environ.get('SMTP_HOST', 'smtp.gmail.com')
+        smtp_port = int(os.environ.get('SMTP_PORT', '587'))
+        with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as server:
+            server.starttls()
+            server.login(smtp_user, smtp_pass)
+            server.send_message(message)
+
+        logger.info(f"Confirmation email sent to {recipient_email} via SMTP")
+        return True
+        
+    except Exception as e:
+        logger.error(f"SMTP error: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return False
 
 
 def send_booking_confirmation_sms(booking: dict):
@@ -2892,9 +3057,26 @@ def send_customer_confirmation(booking: dict):
     # Update database with confirmation status via async helper
     if booking_id:
         try:
-            import asyncio
-            loop = asyncio.get_event_loop()
-            loop.create_task(update_confirmation_status(booking_id, results))
+            from pymongo import MongoClient
+            sync_client = MongoClient(os.environ.get('MONGO_URL', 'mongodb://localhost:27017'),
+                                      serverSelectionTimeoutMS=5000, connectTimeoutMS=5000)
+            sync_db = sync_client[os.environ.get('DB_NAME', 'bookaride')]
+
+            nz_tz = pytz.timezone('Pacific/Auckland')
+            now = datetime.now(nz_tz).isoformat()
+
+            sync_db.bookings.update_one(
+                {"id": booking_id},
+                {"$set": {
+                    'confirmation_sent': results['email'] or results['sms'],
+                    'confirmation_sent_at': now,
+                    'email_confirmation_sent': results['email'],
+                    'sms_confirmation_sent': results['sms'],
+                    'notifications_sent': True
+                }}
+            )
+            sync_client.close()
+            logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Confirmation status updated for booking {booking_id}")
         except Exception as e:
             logger.error(f"Error scheduling confirmation status update: {e}")
     
@@ -5065,6 +5247,25 @@ async def get_email_status():
     }
 
 
+@api_router.get("/config-check")
+async def config_check():
+    """Quick diagnostic: which services are configured? No auth required.
+    Call this endpoint to verify Render env vars are set."""
+    google_key = os.environ.get('GOOGLE_MAPS_API_KEY', '').strip()
+    stripe_key = os.environ.get('STRIPE_API_KEY') or os.environ.get('STRIPE_SECRET_KEY')
+    smtp_ok = bool(os.environ.get("SMTP_USER") and os.environ.get("SMTP_PASS"))
+    mailgun_ok = bool(os.environ.get("MAILGUN_API_KEY"))
+    return {
+        "google_maps_api_key": f"{google_key[:8]}***" if google_key else "NOT SET",
+        "stripe_key": f"{stripe_key[:8]}***" if stripe_key else "NOT SET",
+        "email_smtp": smtp_ok,
+        "email_mailgun": mailgun_ok,
+        "email_any_provider": send_email_unified is not None or smtp_ok or mailgun_ok,
+        "twilio_sms": bool(os.environ.get("TWILIO_ACCOUNT_SID")),
+        "hint": "If any key shows NOT SET, add it in Render > Environment > Env Vars",
+    }
+
+
 @api_router.post("/admin/test-email")
 async def admin_send_test_email(body: dict = Body(default={}), current_admin: dict = Depends(get_current_admin)):
     """Send one test email and return success or the exact error. Use to fix 'not receiving confirmations'."""
@@ -7203,13 +7404,6 @@ Customer will be auto-notified when you start.
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
-
-
-# ==================== SHUTTLE SERVICE REMOVED (2026-03-13) ====================
-# Shuttle service was removed per owner instruction. Do NOT re-add.
-
-
-
 # ==================== ENHANCED ADMIN FEATURES ====================
 
 # Production Database Sync Endpoint
@@ -7220,7 +7414,7 @@ SYNC_SECRET_KEY = os.environ.get("SYNC_SECRET_KEY", "bookaride-sync-2024-secret"
 async def auto_sync_from_production():
     """Automatically sync data from production every 5 minutes"""
     try:
-        logger.info(" Auto-sync: Starting sync from production...")
+        logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¾ Auto-sync: Starting sync from production...")
         
         response = requests.get(
             f"{PRODUCTION_API_URL}/sync/export",
@@ -8249,7 +8443,7 @@ async def send_payment_link_email(booking: dict, payment_link: str, payment_type
     try:
         customer_email = booking.get('email', '')
         customer_name = booking.get('name', '')
-        booking_ref = booking.get('referenceNumber', booking.get('id', '')[:6])
+        booking_ref = booking.get('referenceNumber', booking.get('booking_ref', booking.get('id', '')[:6]))
         total_price = booking.get('totalPrice', 0)
         
         payment_type_display = "Stripe" if payment_type == "stripe" else "PayPal"
