@@ -1485,41 +1485,31 @@ LONG_DISTANCE_FALLBACK_KM = 200.0
 _NZ_FALLBACK_ADDRESSES = [
     # Airports
     {"description": "Auckland Airport (AKL), Ray Emery Drive, Mangere, Auckland 2022, New Zealand", "place_id": "fallback_akl"},
-    {"description": "Auckland Domestic Terminal, George Bolt Memorial Drive, Auckland Airport, New Zealand", "place_id": "fallback_akl_domestic"},
-    {"description": "Auckland International Terminal, Ray Emery Drive, Auckland Airport, New Zealand", "place_id": "fallback_akl_intl"},
+    {"description": "Auckland Domestic Terminal, George Bolt Memorial Drive, Mangere, Auckland, New Zealand", "place_id": "fallback_akl_domestic"},
     {"description": "Hamilton Airport, Airport Road, Hamilton, New Zealand", "place_id": "fallback_hml"},
-    {"description": "Tauranga Airport, Jean Batten Drive, Mount Maunganui, New Zealand", "place_id": "fallback_trg_airport"},
-    # Auckland suburbs
+    # Auckland CBD & Central
     {"description": "Auckland CBD, Auckland, New Zealand", "place_id": "fallback_akl_cbd"},
+    {"description": "Britomart Transport Centre, Queen Street, Auckland CBD, New Zealand", "place_id": "fallback_britomart"},
+    {"description": "SkyCity Auckland, Victoria Street, Auckland CBD, New Zealand", "place_id": "fallback_skycity"},
+    {"description": "Viaduct Harbour, Auckland, New Zealand", "place_id": "fallback_viaduct"},
     {"description": "Ponsonby, Auckland, New Zealand", "place_id": "fallback_ponsonby"},
     {"description": "Parnell, Auckland, New Zealand", "place_id": "fallback_parnell"},
     {"description": "Newmarket, Auckland, New Zealand", "place_id": "fallback_newmarket"},
-    {"description": "Remuera, Auckland, New Zealand", "place_id": "fallback_remuera"},
-    {"description": "Mt Eden, Auckland, New Zealand", "place_id": "fallback_mteden"},
+    {"description": "Mount Eden, Auckland, New Zealand", "place_id": "fallback_mteden"},
     {"description": "Grey Lynn, Auckland, New Zealand", "place_id": "fallback_greylynn"},
+    {"description": "Remuera, Auckland, New Zealand", "place_id": "fallback_remuera"},
     {"description": "Epsom, Auckland, New Zealand", "place_id": "fallback_epsom"},
-    {"description": "Mt Albert, Auckland, New Zealand", "place_id": "fallback_mtalbert"},
-    {"description": "Henderson, Auckland, New Zealand", "place_id": "fallback_henderson"},
-    {"description": "New Lynn, Auckland, New Zealand", "place_id": "fallback_newlynn"},
-    {"description": "Manukau, Auckland, New Zealand", "place_id": "fallback_manukau"},
-    {"description": "Botany, Auckland, New Zealand", "place_id": "fallback_botany"},
-    {"description": "Pakuranga, Auckland, New Zealand", "place_id": "fallback_pakuranga"},
-    {"description": "Howick, Auckland, New Zealand", "place_id": "fallback_howick"},
-    {"description": "Mangere, Auckland, New Zealand", "place_id": "fallback_mangere"},
-    {"description": "Otahuhu, Auckland, New Zealand", "place_id": "fallback_otahuhu"},
-    {"description": "Papatoetoe, Auckland, New Zealand", "place_id": "fallback_papatoetoe"},
+    {"description": "Mission Bay, Auckland, New Zealand", "place_id": "fallback_missionbay"},
+    # North Shore
     {"description": "Takapuna, Auckland, New Zealand", "place_id": "fallback_takapuna"},
     {"description": "Devonport, Auckland, New Zealand", "place_id": "fallback_devonport"},
-    {"description": "Birkenhead, Auckland, New Zealand", "place_id": "fallback_birkenhead"},
-    {"description": "Albany, Auckland, New Zealand", "place_id": "fallback_albany"},
+    {"description": "Milford, Auckland, New Zealand", "place_id": "fallback_milford"},
     {"description": "Browns Bay, Auckland, New Zealand", "place_id": "fallback_brownsbay"},
-    {"description": "Ellerslie, Auckland, New Zealand", "place_id": "fallback_ellerslie"},
-    {"description": "Mt Wellington, Auckland, New Zealand", "place_id": "fallback_mtwellington"},
-    {"description": "Onehunga, Auckland, New Zealand", "place_id": "fallback_onehunga"},
-    {"description": "Mission Bay, Auckland, New Zealand", "place_id": "fallback_missionbay"},
-    {"description": "St Heliers, Auckland, New Zealand", "place_id": "fallback_stheliers"},
-    {"description": "Avondale, Auckland, New Zealand", "place_id": "fallback_avondale"},
-    # Hibiscus Coast / North Shore
+    {"description": "Albany, Auckland, New Zealand", "place_id": "fallback_albany"},
+    {"description": "Glenfield, Auckland, New Zealand", "place_id": "fallback_glenfield"},
+    {"description": "Birkenhead, Auckland, New Zealand", "place_id": "fallback_birkenhead"},
+    {"description": "Northcote, Auckland, New Zealand", "place_id": "fallback_northcote"},
+    # Hibiscus Coast
     {"description": "Orewa, Auckland, New Zealand", "place_id": "fallback_orewa"},
     {"description": "Whangaparaoa, Auckland, New Zealand", "place_id": "fallback_whangaparaoa"},
     {"description": "Silverdale, Auckland, New Zealand", "place_id": "fallback_silverdale"},
@@ -1528,28 +1518,52 @@ _NZ_FALLBACK_ADDRESSES = [
     {"description": "Gulf Harbour, Auckland, New Zealand", "place_id": "fallback_gulfharbour"},
     {"description": "Manly, Auckland, New Zealand", "place_id": "fallback_manly"},
     {"description": "Hibiscus Coast, Auckland, New Zealand", "place_id": "fallback_hibiscus"},
-    {"description": "Millwater, Auckland, New Zealand", "place_id": "fallback_millwater"},
+    {"description": "Army Bay, Auckland, New Zealand", "place_id": "fallback_armybay"},
+    # West Auckland
+    {"description": "Henderson, Auckland, New Zealand", "place_id": "fallback_henderson"},
+    {"description": "New Lynn, Auckland, New Zealand", "place_id": "fallback_newlynn"},
+    {"description": "Titirangi, Auckland, New Zealand", "place_id": "fallback_titirangi"},
+    {"description": "Glen Eden, Auckland, New Zealand", "place_id": "fallback_gleneden"},
+    {"description": "Westgate, Auckland, New Zealand", "place_id": "fallback_westgate"},
+    {"description": "Kumeu, Auckland, New Zealand", "place_id": "fallback_kumeu"},
+    {"description": "Huapai, Auckland, New Zealand", "place_id": "fallback_huapai"},
     # South Auckland
+    {"description": "Mangere, Auckland, New Zealand", "place_id": "fallback_mangere"},
+    {"description": "Manukau, Auckland, New Zealand", "place_id": "fallback_manukau"},
     {"description": "Papakura, Auckland, New Zealand", "place_id": "fallback_papakura"},
+    {"description": "Botany Downs, Auckland, New Zealand", "place_id": "fallback_botany"},
+    {"description": "Howick, Auckland, New Zealand", "place_id": "fallback_howick"},
+    {"description": "Pakuranga, Auckland, New Zealand", "place_id": "fallback_pakuranga"},
+    {"description": "Flat Bush, Auckland, New Zealand", "place_id": "fallback_flatbush"},
     {"description": "Pukekohe, Auckland, New Zealand", "place_id": "fallback_pukekohe"},
-    {"description": "Drury, Auckland, New Zealand", "place_id": "fallback_drury"},
-    # Other cities
-    {"description": "Hamilton CBD, Hamilton, New Zealand", "place_id": "fallback_hml_cbd"},
+    # East Auckland
+    {"description": "St Heliers, Auckland, New Zealand", "place_id": "fallback_stheliers"},
+    {"description": "Kohimarama, Auckland, New Zealand", "place_id": "fallback_kohimarama"},
+    {"description": "Meadowbank, Auckland, New Zealand", "place_id": "fallback_meadowbank"},
+    {"description": "Half Moon Bay, Auckland, New Zealand", "place_id": "fallback_halfmoonbay"},
+    # Rodney
+    {"description": "Warkworth, Auckland, New Zealand", "place_id": "fallback_warkworth"},
+    {"description": "Matakana, Auckland, New Zealand", "place_id": "fallback_matakana"},
+    {"description": "Snells Beach, Auckland, New Zealand", "place_id": "fallback_snellsbeach"},
+    {"description": "Helensville, Auckland, New Zealand", "place_id": "fallback_helensville"},
+    # Hotels & Key Locations
+    {"description": "Cordis Auckland, Symonds Street, Grafton, Auckland, New Zealand", "place_id": "fallback_cordis"},
+    {"description": "Hilton Auckland, Princes Wharf, Auckland, New Zealand", "place_id": "fallback_hilton"},
+    {"description": "Pullman Auckland, Waterloo Quadrant, Auckland, New Zealand", "place_id": "fallback_pullman"},
+    {"description": "Grand Millennium Auckland, Victoria Street, Auckland, New Zealand", "place_id": "fallback_grandmill"},
+    {"description": "Cruise Ship Terminal, Princes Wharf, Auckland, New Zealand", "place_id": "fallback_cruise"},
+    {"description": "Spark Arena, Mahuhu Crescent, Auckland, New Zealand", "place_id": "fallback_sparkarena"},
+    {"description": "Eden Park, Reimers Avenue, Mount Eden, Auckland, New Zealand", "place_id": "fallback_edenpark"},
+    # Outside Auckland
     {"description": "Whangarei, New Zealand", "place_id": "fallback_wre"},
+    {"description": "Hamilton CBD, Hamilton, New Zealand", "place_id": "fallback_hml_cbd"},
     {"description": "Tauranga, New Zealand", "place_id": "fallback_trg"},
     {"description": "Mount Maunganui, Tauranga, New Zealand", "place_id": "fallback_mtmaunganui"},
     {"description": "Papamoa, Tauranga, New Zealand", "place_id": "fallback_papamoa"},
     {"description": "Cambridge, Waikato, New Zealand", "place_id": "fallback_cambridge"},
     {"description": "Rotorua, New Zealand", "place_id": "fallback_rotorua"},
-    {"description": "Matamata, Waikato, New Zealand", "place_id": "fallback_matamata"},
-    {"description": "Te Awamutu, Waikato, New Zealand", "place_id": "fallback_teawamutu"},
-    # Hotels & landmarks
-    {"description": "SkyCity Auckland, 72 Victoria Street West, Auckland CBD, New Zealand", "place_id": "fallback_skycity"},
-    {"description": "Hilton Auckland, 147 Quay Street, Auckland CBD, New Zealand", "place_id": "fallback_hilton"},
-    {"description": "Pullman Auckland Hotel, Corner of Waterloo Quadrant and Princes Street, Auckland, New Zealand", "place_id": "fallback_pullman"},
-    {"description": "Britomart Transport Centre, Auckland CBD, New Zealand", "place_id": "fallback_britomart"},
-    {"description": "Spark Arena, Mahuhu Crescent, Auckland CBD, New Zealand", "place_id": "fallback_sparkarena"},
-    {"description": "Cruise Ship Terminal, Princes Wharf, Auckland, New Zealand", "place_id": "fallback_cruise"},
+    {"description": "Thames, Coromandel, New Zealand", "place_id": "fallback_thames"},
+    {"description": "Waiheke Island, Auckland, New Zealand", "place_id": "fallback_waiheke"},
 ]
 
 
@@ -1664,6 +1678,62 @@ async def places_autocomplete(input: str = "", types: str = "", region: str = "n
     return {"predictions": matches[:5], "source": "fallback", "reason": "Google API failed, using hardcoded NZ addresses"}
 
 
+@api_router.get("/admin/maps-status")
+async def check_maps_status(current_admin: dict = Depends(get_current_admin)):
+    """Admin diagnostic: test if Google Maps API key is working."""
+    google_key = os.environ.get('GOOGLE_MAPS_API_KEY', '').strip()
+    if not google_key:
+        return {
+            "status": "error",
+            "configured": False,
+            "message": "GOOGLE_MAPS_API_KEY is not set in environment variables. "
+                       "Set it in Render → Environment tab. "
+                       "Address autocomplete is using fallback addresses only."
+        }
+
+    # Test with a known NZ address
+    try:
+        url = "https://maps.googleapis.com/maps/api/place/autocomplete/json"
+        params = {
+            "input": "Auckland Airport",
+            "key": google_key,
+            "components": "country:nz",
+        }
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            r = await client.get(url, params=params)
+        data = r.json()
+        api_status = data.get("status", "UNKNOWN")
+        if api_status == "OK":
+            count = len(data.get("predictions", []))
+            return {
+                "status": "ok",
+                "configured": True,
+                "api_status": api_status,
+                "test_results": count,
+                "message": f"Google Maps API is working. Test query returned {count} results.",
+                "key_prefix": google_key[:8] + "..."
+            }
+        else:
+            error_msg = data.get("error_message", "No details provided")
+            return {
+                "status": "error",
+                "configured": True,
+                "api_status": api_status,
+                "error_message": error_msg,
+                "message": f"Google Maps API key is set but returned status: {api_status}. "
+                           f"Error: {error_msg}. "
+                           "Check that Places API is enabled in Google Cloud Console and billing is active.",
+                "key_prefix": google_key[:8] + "..."
+            }
+    except Exception as e:
+        return {
+            "status": "error",
+            "configured": True,
+            "message": f"Google Maps API request failed: {str(e)}",
+            "key_prefix": google_key[:8] + "..."
+        }
+
+
 # Price Calculation Endpoint
 @api_router.post("/calculate-price", response_model=PricingBreakdown)
 async def calculate_price(request: PriceCalculationRequest):
@@ -1705,9 +1775,10 @@ async def calculate_price(request: PriceCalculationRequest):
                 logger.info(f"Google Maps route distance: {distance_km}km")
 
         if distance_km is None:
-            pickup_count = 1 + len([addr for addr in (request.pickupAddresses or []) if addr])
-            distance_km = _fallback_km * pickup_count
-            logger.warning(f"GOOGLE_MAPS_API_KEY not set or distance lookup failed. Using fallback estimate: {distance_km}km for {pickup_count} stops")
+            extra_pickups = len([addr for addr in (request.pickupAddresses or []) if addr])
+            # Add 5km per extra pickup stop (not multiply — multiplication wildly overcharges)
+            distance_km = _fallback_km + (extra_pickups * 5.0)
+            logger.warning(f"GOOGLE_MAPS_API_KEY not set or distance lookup failed. Using fallback estimate: {distance_km}km (base {_fallback_km}km + {extra_pickups} extra stops)")
         # Calculate pricing with tiered rates - FLAT RATE per bracket
         # The rate is determined by which distance bracket the trip falls into
         # Then that rate is applied to the ENTIRE distance
@@ -3580,6 +3651,115 @@ async def _get_mock_flight_data(fn: str):
 # AI EMAIL AUTO-RESPONDER
 # ============================================
 
+async def _generate_claude_support_response(
+    sender_name: str,
+    sender_email: str,
+    subject: str,
+    email_body: str,
+    booking_context: str,
+) -> str:
+    """
+    Generate an AI support response using Claude API.
+    Falls back to a static acknowledgment if the API key is missing or call fails.
+    """
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    if not api_key:
+        logger.warning("ANTHROPIC_API_KEY not set — using static auto-reply")
+        return (
+            f"Hi {sender_name},\n\n"
+            "Thank you for contacting BookaRide support. Our team has received your email "
+            "and will get back to you within 24 hours.\n\n"
+            "In the meantime, you can get instant pricing and book online at "
+            "bookaride.co.nz/book-now — just enter your pickup and drop-off addresses.\n\n"
+            "You can also call or text us on 021 743 321.\n\n"
+            "Kind regards,\n"
+            "BookaRide Support Team"
+        )
+
+    system_prompt = """You are the friendly, professional customer support assistant for BookaRide NZ — a premium airport transfer and private tour service based in Auckland, New Zealand.
+
+ABOUT BOOKARIDE:
+- Premium airport transfers to/from Auckland Airport (AKL)
+- Private tours and transfers anywhere in the Auckland region
+- Service areas: Auckland CBD, North Shore, Hibiscus Coast (Orewa, Whangaparaoa, Silverdale, Gulf Harbour), Rodney, and wider Auckland
+- Available 24/7 for airport transfers
+- Online booking with instant live pricing at bookaride.co.nz/book-now
+- Phone/text: 021 743 321
+
+PRICING (for reference — always direct customers to the online calculator for exact quotes):
+- Prices are calculated per-km with tiered rates
+- Minimum fare: $150 per one-way trip
+- Short trips (under 15km): ~$12/km
+- Medium trips (15-50km): ~$4-6/km
+- Long trips (50-100km): ~$2.50-2.70/km
+- Extra long (100km+): ~$3.50/km
+- VIP Airport Pickup add-on: $15
+- Oversized Luggage add-on: $25
+- Extra passengers: $5 each (1st passenger included)
+- Stripe processing fee (2.9% + $0.30) is added for card payments
+- Return trips are double the one-way price
+
+PAYMENT OPTIONS:
+- Credit/Debit Card (online, processed securely)
+- Afterpay (buy now, pay later)
+- Cash (pay the driver)
+- Invoice (for corporate clients)
+
+POLICIES:
+- Free cancellation up to 24 hours before pickup
+- Bookings within 24 hours require admin approval
+- Flight monitoring included for airport pickups — we track your flight
+- Meet & greet at the terminal for airport pickups
+- Child seats available on request (mention in booking notes)
+- Vehicles: luxury sedans and SUVs, all late model
+
+RESPONSE RULES:
+- Be warm, helpful, and professional — this is a premium service
+- Keep responses concise (under 200 words ideally)
+- If they have a booking, reference their booking details
+- For pricing questions, give rough estimates but ALWAYS direct them to bookaride.co.nz/book-now for an exact quote
+- For changes to existing bookings, help where possible but mention they can also call 021 743 321
+- NEVER make up booking details or prices you're unsure about
+- NEVER share other customers' information
+- Sign off as "BookaRide Support Team"
+- If the question is complex or you can't fully answer it, say the team will follow up within 24 hours"""
+
+    user_message = f"""Customer email received:
+
+From: {sender_name} <{sender_email}>
+Subject: {subject}
+
+Message:
+{email_body}
+{booking_context}
+
+Please write a helpful reply to this customer."""
+
+    try:
+        import anthropic
+        client = anthropic.Anthropic(api_key=api_key)
+        response = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=500,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_message}]
+        )
+        ai_text = response.content[0].text.strip()
+        logger.info(f"Claude support response generated ({len(ai_text)} chars)")
+        return ai_text
+    except Exception as e:
+        logger.error(f"Claude API error: {e}")
+        # Fallback to static reply
+        return (
+            f"Hi {sender_name},\n\n"
+            "Thank you for contacting BookaRide support. We've received your email "
+            "and our team will respond within 24 hours.\n\n"
+            "For instant pricing, visit bookaride.co.nz/book-now or call/text 021 743 321.\n\n"
+            "Kind regards,\n"
+            "BookaRide Support Team"
+        )
+
+
 @api_router.get("/email/incoming")
 async def verify_email_webhook():
     """GET endpoint for Mailgun webhook verification"""
@@ -3589,82 +3769,140 @@ async def verify_email_webhook():
 async def handle_incoming_email(request: Request):
     """
     Webhook endpoint for Mailgun incoming emails.
-    Automatically generates AI response and sends it back.
+    Uses Claude AI to generate context-aware booking support responses.
+    Looks up the sender’s booking history for personalised answers.
     """
     try:
         # Parse the incoming email from Mailgun webhook
         form_data = await request.form()
-        
-        sender = form_data.get('sender', '')
-        from_email = form_data.get('from', sender)
-        subject = form_data.get('subject', 'No Subject')
-        body_plain = form_data.get('body-plain', '')
-        body_html = form_data.get('body-html', '')
-        recipient = form_data.get('recipient', '')
-        
+
+        sender = form_data.get(‘sender’, ‘’)
+        from_email = form_data.get(‘from’, sender)
+        subject = form_data.get(‘subject’, ‘No Subject’)
+        body_plain = form_data.get(‘body-plain’, ‘’)
+        body_html = form_data.get(‘body-html’, ‘’)
+        recipient = form_data.get(‘recipient’, ‘’)
+
         # Extract email address from "Name <email>" format
         import re
-        email_match = re.search(r'[\w\.-]+@[\w\.-]+', from_email)
+        email_match = re.search(r’[\w\.-]+@[\w\.-]+’, from_email)
         reply_to_email = email_match.group(0) if email_match else from_email
-        
+
         # Extract sender name
-        name_match = re.match(r'^([^<]+)', from_email)
-        sender_name = name_match.group(1).strip() if name_match else "there"
-        
-        logger.info(f" Incoming email from: {reply_to_email}, Subject: {subject}")
-        
-        # Don't reply to our own emails or no-reply addresses
-        if 'bookaride' in reply_to_email.lower() or 'noreply' in reply_to_email.lower() or 'no-reply' in reply_to_email.lower():
+        name_match = re.match(r’^([^<]+)’, from_email)
+        sender_name = name_match.group(1).strip() if name_match else ""
+
+        logger.info(f"Incoming support email from: {reply_to_email}, Subject: {subject}")
+
+        # Don’t reply to our own emails, no-reply addresses, or mailer-daemon
+        skip_patterns = [‘bookaride’, ‘noreply’, ‘no-reply’, ‘mailer-daemon’, ‘postmaster’]
+        if any(p in reply_to_email.lower() for p in skip_patterns):
             logger.info("Skipping auto-reply to system/no-reply email")
             return {"status": "skipped", "reason": "system email"}
-        
+
         # Use the plain text body, or extract from HTML if not available
         email_content = body_plain or body_html
         if not email_content:
             logger.warning("Empty email body received")
             return {"status": "skipped", "reason": "empty body"}
-        
-        # AI email reply disabled (Emergent no longer used). Use a short auto-ack.
-        ai_response = (
-            f"Hi there,\n\n"
-            "Thank you for your email. Our team will respond within 24 hours.\n\n"
-            "For instant pricing and to book, visit bookaride.co.nz/book-now and enter your pickup and dropoff addresses.\n\n"
-            "Best regards,\nBookaRide Team"
+
+        # Rate limit: max 5 AI replies per sender per day
+        today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0).isoformat()
+        recent_replies = await db.email_logs.find(
+            {"from": reply_to_email, "created_at": {"$gte": today_start}},
+            {"_id": 1}
+        ).to_list(10)
+        if len(recent_replies) >= 5:
+            logger.warning(f"Rate limit hit: {reply_to_email} has {len(recent_replies)} replies today")
+            return {"status": "skipped", "reason": "rate limited"}
+
+        # Look up customer’s booking history for context
+        booking_context = ""
+        try:
+            customer_bookings = await db.bookings.find(
+                {"$or": [
+                    {"email": {"$regex": reply_to_email, "$options": "i"}},
+                    {"phone": {"$regex": reply_to_email, "$options": "i"}}
+                ]},
+                {"_id": 0}
+            ).sort("createdAt", -1).limit(5).to_list(5)
+
+            if customer_bookings:
+                booking_context = f"\n\nThis customer has {len(customer_bookings)} recent booking(s):\n"
+                for b in customer_bookings:
+                    ref = b.get(‘referenceNumber’, ‘N/A’)
+                    date = b.get(‘date’, ‘N/A’)
+                    time = b.get(‘time’, ‘N/A’)
+                    pickup = b.get(‘pickupAddress’, ‘N/A’)
+                    dropoff = b.get(‘dropoffAddress’, ‘N/A’)
+                    status = b.get(‘status’, ‘N/A’)
+                    payment = b.get(‘payment_status’, b.get(‘paymentStatus’, ‘N/A’))
+                    total = b.get(‘totalPrice’, b.get(‘pricing’, {}).get(‘totalPrice’, ‘N/A’))
+                    passengers = b.get(‘passengers’, ‘N/A’)
+                    flight = b.get(‘flightNumber’, b.get(‘flightArrivalNumber’, ‘’))
+                    return_date = b.get(‘returnDate’, ‘’)
+                    return_time = b.get(‘returnTime’, ‘’)
+                    booking_context += (
+                        f"  - Ref #{ref}: {date} at {time}, {pickup} → {dropoff}, "
+                        f"{passengers} pax, status={status}, payment={payment}, total=${total}"
+                    )
+                    if flight:
+                        booking_context += f", flight={flight}"
+                    if return_date:
+                        booking_context += f", return={return_date} {return_time}"
+                    booking_context += "\n"
+            else:
+                booking_context = "\n\nNo bookings found for this email address."
+        except Exception as e:
+            logger.error(f"Error looking up customer bookings: {e}")
+            booking_context = "\n\nCould not look up booking history."
+
+        # Generate AI response using Claude
+        ai_response = await _generate_claude_support_response(
+            sender_name=sender_name or "there",
+            sender_email=reply_to_email,
+            subject=subject,
+            email_body=email_content[:3000],
+            booking_context=booking_context
         )
-        
-        # Send auto-reply email
-        
+
         # Prepare the reply
-        reply_subject = f"Re: {subject}" if not subject.startswith('Re:') else subject
-        
+        reply_subject = f"Re: {subject}" if not subject.startswith(‘Re:’) else subject
+
         # Create HTML version
         html_response = f"""
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <div style="background: linear-gradient(135deg, #1a1a1a, #2d2d2d); padding: 20px; text-align: center;">
                 <h1 style="color: #D4AF37; margin: 0;">BookaRide NZ</h1>
-                <p style="color: #888; margin: 5px 0 0 0;">Airport Transfers & Tours</p>
+                <p style="color: #888; margin: 5px 0 0 0;">Airport Transfers & Private Tours</p>
             </div>
-            <div style="padding: 30px; background: #fff;">
-                {ai_response.replace(chr(10), '<br>')}
+            <div style="padding: 30px; background: #fff; line-height: 1.6; color: #333;">
+                {ai_response.replace(chr(10), ‘<br>’)}
             </div>
             <div style="background: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; color: #666;">
                 <p><strong>Book Online:</strong> <a href="https://bookaride.co.nz/book-now" style="color: #D4AF37;">bookaride.co.nz/book-now</a></p>
-                <p>Get instant pricing - just enter your pickup and dropoff!</p>
+                <p>Get instant pricing — just enter your pickup and drop-off!</p>
                 <hr style="border: none; border-top: 1px solid #ddd; margin: 15px 0;">
                 <p style="font-size: 10px; color: #999;">
-                    This is an automated response. For complex inquiries, our team will follow up within 24 hours.
+                    This response was generated by our AI booking assistant.
+                    For anything complex, our team will follow up within 24 hours.
+                    Reply to this email or call/text <strong>021 743 321</strong>.
                 </p>
             </div>
         </div>
         """
-        
-        # Send via Google SMTP
-        # Send via Google SMTP
-        ok = _send_email_with_fallbacks(reply_to_email, reply_subject, html_response, from_name="BookaRide NZ", text_content=ai_response, reply_to="info@bookaride.co.nz")
+
+        ok = _send_email_with_fallbacks(
+            reply_to_email, reply_subject, html_response,
+            from_name="BookaRide Support",
+            from_email="support@bookaride.co.nz",
+            text_content=ai_response,
+            reply_to="support@bookaride.co.nz"
+        )
 
         if ok:
-            logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ AI auto-reply sent to {reply_to_email}")
-            
+            logger.info(f"AI support reply sent to {reply_to_email}")
+
             # Store the email interaction for admin review
             await db.email_logs.insert_one({
                 "id": str(uuid.uuid4()),
@@ -3673,18 +3911,42 @@ async def handle_incoming_email(request: Request):
                 "subject": subject,
                 "original_message": email_content[:5000],
                 "ai_response": ai_response,
+                "booking_context": booking_context[:2000],
                 "status": "sent",
                 "created_at": datetime.now(timezone.utc).isoformat()
             })
-            
-            return {"status": "success", "message": "AI response sent"}
+
+            # Notify admin of new support email
+            admin_email = os.environ.get("ADMIN_EMAIL", "bookings@bookaride.co.nz")
+            _send_email_with_fallbacks(
+                admin_email,
+                f"[Support Email] {subject} — from {reply_to_email}",
+                f"""<div style="font-family: Arial; max-width: 600px;">
+                    <h3 style="color: #D4AF37;">New Support Email</h3>
+                    <p><strong>From:</strong> {sender_name} &lt;{reply_to_email}&gt;</p>
+                    <p><strong>Subject:</strong> {subject}</p>
+                    <hr>
+                    <p><strong>Customer wrote:</strong></p>
+                    <div style="background: #f9f9f9; padding: 15px; border-left: 3px solid #D4AF37; margin: 10px 0;">
+                        {email_content[:2000].replace(chr(10), ‘<br>’)}
+                    </div>
+                    <p><strong>AI replied:</strong></p>
+                    <div style="background: #f0f7ff; padding: 15px; border-left: 3px solid #2196F3; margin: 10px 0;">
+                        {ai_response.replace(chr(10), ‘<br>’)}
+                    </div>
+                    <p style="font-size: 12px; color: #999;">Review in admin: Email Logs tab</p>
+                </div>""",
+                from_name="BookaRide Support Bot"
+            )
+
+            return {"status": "success", "message": "AI support response sent"}
         else:
-            logger.error(f"Failed to send auto-reply: {response.text}")
-            return {"status": "error", "reason": "Failed to send auto-reply. Please try again later."}
-        
+            logger.error(f"Failed to send support reply to {reply_to_email}")
+            return {"status": "error", "reason": "Failed to send reply"}
+
     except Exception as e:
         logger.error(f"Email auto-responder error: {str(e)}")
-        return {"status": "error", "reason": "Email auto-responder error. Please try again later."}
+        return {"status": "error", "reason": "Email auto-responder error"}
 
 
 @api_router.get("/admin/email-logs")
@@ -5523,8 +5785,8 @@ async def import_bookings(request: ImportBookingsRequest, current_admin: dict = 
                     "flightTime": booking_data.flight_time or "",
                     "notes": booking_data.notes or f"Imported from WordPress booking #{booking_data.booking_id}",
                     "status": booking_data.status,
-                    "paymentStatus": "paid",
-                    "paymentMethod": "imported",
+                    "payment_status": "paid",
+                    "payment_method": "imported",
                     "totalPrice": booking_data.total_price,
                     "pricing": {"totalPrice": booking_data.total_price},
                     "bookReturn": bool(formatted_return_date),
@@ -6246,7 +6508,7 @@ async def recover_booking_from_payment(body: RecoverBookingFromPayment, current_
             "name": t.get("customer_name") or "Recovered customer",
             "email": t.get("customer_email") or "",
             "phone": "",
-            "serviceType": "airport-shuttle",
+            "serviceType": "airport-transfer",
             "pickupAddress": "(Edit after recovery)",
             "pickupAddresses": [],
             "dropoffAddress": "Auckland Airport",
@@ -8081,6 +8343,11 @@ async def capture_afterpay_payment(token: str, order_id: str = None):
             # Update booking status
             if status == "APPROVED":
                 booking_id = transaction['booking_id']
+
+                # Idempotency check: don't re-send confirmations if already paid
+                existing_booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+                already_paid = existing_booking and existing_booking.get('payment_status') == 'paid'
+
                 update_result = await db.bookings.update_one(
                     {"id": booking_id},
                     {"$set": {
@@ -8095,13 +8362,13 @@ async def capture_afterpay_payment(token: str, order_id: str = None):
                 if update_result.matched_count == 0:
                     logger.error(f"CRITICAL: Afterpay payment captured but booking {booking_id} not found for update")
                 elif update_result.modified_count == 0:
-                    logger.error(f"CRITICAL: Afterpay payment captured but booking {booking_id} was not modified (may already be paid)")
+                    logger.info(f"Afterpay booking {booking_id} already up to date (idempotent)")
                 else:
                     logger.info(f"Afterpay payment captured: order_id={afterpay_order_id}, booking={booking_id}")
 
-                # Trigger all 4 post-payment actions (Rule 4)
+                # Trigger all 4 post-payment actions (Rule 4) — only if not already paid
                 booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
-                if booking:
+                if booking and not already_paid:
                     send_customer_confirmation(booking)
                     await send_booking_notification_to_admin(booking)
                     await create_calendar_event(booking)
@@ -8109,6 +8376,8 @@ async def capture_afterpay_payment(token: str, order_id: str = None):
                         add_contact_to_icloud(booking)
                     except Exception as e:
                         logger.error(f"iCloud contact sync failed for Afterpay booking {booking_id}: {e}")
+                elif already_paid:
+                    logger.info(f"Afterpay duplicate capture for booking {booking_id} — already paid, skipping confirmations")
 
         return {
             "order_id": afterpay_order_id,
@@ -12456,7 +12725,7 @@ async def create_hotel_booking(request: HotelBookingRequest, hotel: dict = Depen
             "flightNumber": request.flightNumber,
             "specialRequests": f"Hotel: {hotel_info.get('name', '')} | Room: {request.roomNumber} | {request.specialRequests}",
             "status": "pending",
-            "serviceType": "airport-shuttle",
+            "serviceType": "airport-transfer",
             "source": f"hotel:{hotel['hotel_code']}",
             "created_at": datetime.now(timezone.utc).isoformat()
         }
@@ -12643,7 +12912,7 @@ async def create_airline_booking(request: AirlineBookingRequest, airline: dict =
             "passengers": request.passengers,
             "flightNumber": request.flight_number,
             "status": "confirmed",
-            "serviceType": "airport-shuttle",
+            "serviceType": "airport-transfer",
             "source": f"airline:{airline['code']}",
             "airline_pnr": request.pnr,
             "created_at": datetime.now(timezone.utc).isoformat()

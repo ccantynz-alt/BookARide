@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { MapPin, Calendar, Users, DollarSign, Clock, Mail, Phone, User, Wrench, Plane } from 'lucide-react';
@@ -17,6 +17,7 @@ import { CustomDatePicker, CustomTimePicker } from '../components/DateTimePicker
 import PriceComparison from '../components/PriceComparison';
 import TrustBadges from '../components/TrustBadges';
 import SocialProofCounter from '../components/SocialProofCounter';
+import AddressAutocomplete from '../components/AddressAutocomplete';
 import { API } from '../config/api';
 
 const DROPOFF_QUICK_ADDRESSES = [
@@ -30,7 +31,6 @@ export const BookNow = () => {
   const [formData, setFormData] = useState({
     serviceType: '',
     pickupAddress: '',
-    pickupAddresses: [],
     dropoffAddress: '',
     date: '',
     time: '',
@@ -127,81 +127,13 @@ export const BookNow = () => {
 
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
-  // Address autocomplete with debounce + stale-request cancellation
-  const [pickupSuggestions, setPickupSuggestions] = useState([]);
-  const [dropoffSuggestions, setDropoffSuggestions] = useState([]);
-  const [showPickupSuggestions, setShowPickupSuggestions] = useState(false);
-  const [showDropoffSuggestions, setShowDropoffSuggestions] = useState(false);
-  const [loadingPickupSuggestions, setLoadingPickupSuggestions] = useState(false);
-  const [loadingDropoffSuggestions, setLoadingDropoffSuggestions] = useState(false);
-  const addressDebounceRef = useRef({});
-  const addressRequestIdRef = useRef({ pickup: 0, dropoff: 0 });
-  const [extraPickupSuggestions, setExtraPickupSuggestions] = useState({});
-  const [showExtraPickupSuggestions, setShowExtraPickupSuggestions] = useState({});
-
-  const fetchAddressSuggestions = (query, setter, showSetter) => {
-    const key = setter === setPickupSuggestions ? 'pickup' : 'dropoff';
-    const setLoading = key === 'pickup' ? setLoadingPickupSuggestions : setLoadingDropoffSuggestions;
-    if (addressDebounceRef.current[key]) clearTimeout(addressDebounceRef.current[key]);
-
-    if (query.length < 3) { setter([]); showSetter(false); setLoading(false); return; }
-
-    setLoading(true);
-    // Debounce 300ms so rapid typing doesn't fire on every keystroke
-    addressDebounceRef.current[key] = setTimeout(async () => {
-      const requestId = ++addressRequestIdRef.current[key];
-      try {
-        const res = await axios.get(`${API}/places/autocomplete`, { params: { input: query }, timeout: 10000 });
-        // Only apply if this is still the latest request for THIS field
-        if (requestId !== addressRequestIdRef.current[key]) return;
-        const predictions = res.data?.predictions || [];
-        if (res.data?.source === 'fallback') {
-          console.warn('[BookARide] Google Maps API not available, using fallback addresses. Reason:', res.data?.reason);
-        }
-        setter(predictions);
-        showSetter(predictions.length > 0);
-      } catch (err) {
-        if (requestId !== addressRequestIdRef.current[key]) return;
-        console.error('[BookARide] Address autocomplete failed:', err?.message || err, 'URL:', `${API}/places/autocomplete`);
-        setter([]); showSetter(false);
-      } finally {
-        if (requestId === addressRequestIdRef.current[key]) setLoading(false);
-      }
-    }, 300);
-  };
-
-  const fetchExtraPickupSuggestions = (index, query) => {
-    const key = `extra_${index}`;
-    if (addressDebounceRef.current[key]) clearTimeout(addressDebounceRef.current[key]);
-
-    if (query.length < 3) {
-      setExtraPickupSuggestions(prev => ({ ...prev, [index]: [] }));
-      setShowExtraPickupSuggestions(prev => ({ ...prev, [index]: false }));
-      return;
-    }
-
-    if (!addressRequestIdRef.current[key]) addressRequestIdRef.current[key] = 0;
-    addressDebounceRef.current[key] = setTimeout(async () => {
-      const requestId = ++addressRequestIdRef.current[key];
-      try {
-        const res = await axios.get(`${API}/places/autocomplete`, { params: { input: query } });
-        if (requestId !== addressRequestIdRef.current[key]) return;
-        const predictions = res.data?.predictions || [];
-        setExtraPickupSuggestions(prev => ({ ...prev, [index]: predictions }));
-        setShowExtraPickupSuggestions(prev => ({ ...prev, [index]: predictions.length > 0 }));
-      } catch (err) {
-        if (requestId !== addressRequestIdRef.current[key]) return;
-        setExtraPickupSuggestions(prev => ({ ...prev, [index]: [] }));
-        setShowExtraPickupSuggestions(prev => ({ ...prev, [index]: false }));
-      }
-    }, 300);
-  };
+  // Address autocomplete is handled by AddressAutocomplete component (portal-based)
 
   const finalTotal = pricing.totalPrice;
 
   const serviceOptions = [
-    { value: 'airport-shuttle', label: 'Airport Shuttle' },
-    { value: 'private-transfer', label: 'Private Shuttle Transfer' }
+    { value: 'airport-transfer', label: 'Airport Transfer' },
+    { value: 'private-transfer', label: 'Private Transfer' }
   ];
 
   // Calculate price when key fields change
@@ -215,8 +147,7 @@ export const BookNow = () => {
         calculatePrice();
       }, 400);
     }
-    return () => { if (priceCalcTimerRef.current) clearTimeout(priceCalcTimerRef.current); };
-  }, [formData.pickupAddress, formData.dropoffAddress, formData.pickupAddresses, formData.passengers, formData.serviceType, formData.returnDate, formData.returnTime, formData.vipAirportPickup, formData.oversizedLuggage]);
+  }, [formData.pickupAddress, formData.dropoffAddress, formData.passengers, formData.serviceType, formData.returnDate, formData.returnTime, formData.vipAirportPickup, formData.oversizedLuggage]);
 
   const calculatePrice = async () => {
     const requestId = ++priceCalcRef.current;
@@ -227,7 +158,6 @@ export const BookNow = () => {
       const response = await axios.post(`${API}/calculate-price`, {
         serviceType: formData.serviceType,
         pickupAddress: formData.pickupAddress,
-        pickupAddresses: (formData.pickupAddresses || []).filter(addr => addr.trim()),
         dropoffAddress: formData.dropoffAddress,
         passengers: parseInt(formData.passengers) || 1,
         vipAirportPickup: formData.vipAirportPickup,
@@ -312,17 +242,6 @@ export const BookNow = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleAddPickup = () => {
-    setFormData(prev => ({ ...prev, pickupAddresses: [...prev.pickupAddresses, ''] }));
-  };
-
-  const handleRemovePickup = (index) => {
-    setFormData(prev => ({ ...prev, pickupAddresses: prev.pickupAddresses.filter((_, i) => i !== index) }));
-  };
-
-  const handlePickupAddressChange = (index, value) => {
-    setFormData(prev => ({ ...prev, pickupAddresses: prev.pickupAddresses.map((addr, i) => i === index ? value : addr) }));
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -337,8 +256,7 @@ export const BookNow = () => {
 
     // Validate return trip fields
     const hasReturnTrip = !!(formData.returnDate && formData.returnTime);
-    const isAirportShuttle = formData.serviceType?.toLowerCase().includes('airport') ||
-                            formData.serviceType?.toLowerCase().includes('shuttle');
+    const isAirportTransfer = formData.serviceType?.toLowerCase().includes('airport');
 
     // Catch case where customer enters return flight number but forgets date/time
     if (formData.returnFlightNumber && formData.returnFlightNumber.trim() && !hasReturnTrip) {
@@ -346,7 +264,7 @@ export const BookNow = () => {
       return;
     }
 
-    if (isAirportShuttle && hasReturnTrip) {
+    if (isAirportTransfer && hasReturnTrip) {
       if (!formData.returnFlightNumber || !formData.returnFlightNumber.trim()) {
         toast.error('Flight number is mandatory for return trips. Bookings without flight numbers may face cancellation.');
         return;
@@ -528,93 +446,25 @@ export const BookNow = () => {
                       </div>
 
                       {/* Pickup Address */}
-                      <div className="space-y-2 mb-6 relative">
+                      <div className="space-y-2 mb-6">
                         <Label htmlFor="pickupAddress" className="flex items-center space-x-2">
                           <MapPin className="w-4 h-4 text-gold" />
-                          <span>Pickup Location 1 *</span>
+                          <span>Pickup Location *</span>
                         </Label>
-                        <Input
+                        <AddressAutocomplete
                           id="pickupAddress"
-                          name="pickupAddress"
                           value={formData.pickupAddress}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setFormData(prev => ({ ...prev, pickupAddress: val }));
-                            fetchAddressSuggestions(val, setPickupSuggestions, setShowPickupSuggestions);
-                          }}
-                          onBlur={() => setTimeout(() => setShowPickupSuggestions(false), 350)}
+                          onChange={(val) => setFormData(prev => ({ ...prev, pickupAddress: val }))}
+                          onSelect={(val) => setFormData(prev => ({ ...prev, pickupAddress: val }))}
                           placeholder="Start typing your address..."
                           required
-                          autoComplete="off"
-                          className="transition-all duration-200 focus:ring-2 focus:ring-gold"
                         />
-                        {loadingPickupSuggestions && (
-                          <div className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 px-4 py-3 text-sm text-gray-500">
-                            Searching addresses...
-                          </div>
-                        )}
-                        {showPickupSuggestions && pickupSuggestions.length > 0 && !loadingPickupSuggestions && (
-                          <ul className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
-                            {pickupSuggestions.map((s, i) => (
-                              <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm border-b last:border-b-0"
-                                onPointerDown={(e) => {
-                                  e.preventDefault();
-                                  setFormData(prev => ({ ...prev, pickupAddress: s.description }));
-                                  setShowPickupSuggestions(false);
-                                }}>
-                                {s.description}
-                              </li>
-                            ))}
-                          </ul>
-                        )}
                       </div>
 
                       {/* Additional Pickup Addresses */}
-                      {formData.pickupAddresses.map((pickup, index) => (
-                        <div key={index} className="space-y-2 mb-6 relative">
-                          <Label className="flex items-center space-x-2">
-                            <MapPin className="w-4 h-4 text-gold" />
-                            <span>Pickup Location {index + 2}</span>
-                          </Label>
-                          <div className="flex gap-2">
-                            <Input
-                              value={pickup}
-                              onChange={(e) => {
-                                handlePickupAddressChange(index, e.target.value);
-                                fetchExtraPickupSuggestions(index, e.target.value);
-                              }}
-                              onBlur={() => setTimeout(() => setShowExtraPickupSuggestions(prev => ({ ...prev, [index]: false })), 200)}
-                              placeholder="Additional pickup address..."
-                              autoComplete="off"
-                              className="flex-1 transition-all duration-200 focus:ring-2 focus:ring-gold"
-                            />
-                            <Button type="button" variant="outline" size="sm" onClick={() => handleRemovePickup(index)} className="text-red-500 hover:text-red-700">Remove</Button>
-                          </div>
-                          {showExtraPickupSuggestions[index] && extraPickupSuggestions[index]?.length > 0 && (
-                            <ul className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
-                              {extraPickupSuggestions[index].map((s, i) => (
-                                <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm border-b last:border-b-0"
-                                  onPointerDown={(e) => {
-                                    e.preventDefault();
-                                    handlePickupAddressChange(index, s.description);
-                                    setShowExtraPickupSuggestions(prev => ({ ...prev, [index]: false }));
-                                  }}>
-                                  {s.description}
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </div>
-                      ))}
-
-                      {formData.pickupAddresses.length < 3 && (
-                        <Button type="button" variant="outline" onClick={handleAddPickup} className="mb-6 text-sm">
-                          + Add another pickup location
-                        </Button>
-                      )}
 
                       {/* Drop-off Address */}
-                      <div className="space-y-2 mb-6 relative">
+                      <div className="space-y-2 mb-6">
                         <Label htmlFor="dropoffAddress" className="flex items-center space-x-2">
                           <MapPin className="w-4 h-4 text-gold" />
                           <span>Drop-off Location *</span>
@@ -636,40 +486,14 @@ export const BookNow = () => {
                             </button>
                           ))}
                         </div>
-                        <Input
+                        <AddressAutocomplete
                           id="dropoffAddress"
-                          name="dropoffAddress"
                           value={formData.dropoffAddress}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setFormData(prev => ({ ...prev, dropoffAddress: val }));
-                            fetchAddressSuggestions(val, setDropoffSuggestions, setShowDropoffSuggestions);
-                          }}
-                          onBlur={() => setTimeout(() => setShowDropoffSuggestions(false), 350)}
+                          onChange={(val) => setFormData(prev => ({ ...prev, dropoffAddress: val }))}
+                          onSelect={(val) => setFormData(prev => ({ ...prev, dropoffAddress: val }))}
                           placeholder="Start typing destination..."
                           required
-                          autoComplete="off"
-                          className="transition-all duration-200 focus:ring-2 focus:ring-gold"
                         />
-                        {loadingDropoffSuggestions && (
-                          <div className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 px-4 py-3 text-sm text-gray-500">
-                            Searching addresses...
-                          </div>
-                        )}
-                        {showDropoffSuggestions && dropoffSuggestions.length > 0 && !loadingDropoffSuggestions && (
-                          <ul className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
-                            {dropoffSuggestions.map((s, i) => (
-                              <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm border-b last:border-b-0"
-                                onPointerDown={(e) => {
-                                  e.preventDefault();
-                                  setFormData(prev => ({ ...prev, dropoffAddress: s.description }));
-                                  setShowDropoffSuggestions(false);
-                                }}>
-                                {s.description}
-                              </li>
-                            ))}
-                          </ul>
-                        )}
                       </div>
 
                       {/* Date & Time */}
@@ -1042,9 +866,6 @@ export const BookNow = () => {
                             <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 space-y-2" data-testid="route-map-container">
                               <p className="text-sm font-medium text-gray-700">Your route</p>
                               <p className="text-sm text-gray-600">Pickup: {formData.pickupAddress}</p>
-                              {formData.pickupAddresses?.filter(Boolean).map((addr, i) => (
-                                <p key={i} className="text-sm text-gray-600">+ Stop: {addr}</p>
-                              ))}
                               <p className="text-sm text-gray-600">Drop-off: {formData.dropoffAddress}</p>
                             </div>
                           )}
