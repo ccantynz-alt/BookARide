@@ -187,6 +187,86 @@ Multiple pickup was removed from ALL forms — customer AND admin. Keep it simpl
 
 ---
 
+## MANDATORY AUTOMATED CHECKS — RUN BEFORE EVERY COMMIT
+
+**These checks are NON-NEGOTIABLE. Every agent session MUST run ALL of them before committing ANY code.**
+**The owner is not a developer — agents are 100% responsible for code quality. No excuses.**
+
+### Step 1: Engineering Gap Scan (run EVERY session, even if "not related" to your task)
+
+Before starting work, scan for and fix existing issues. These are silent production killers:
+
+```bash
+# 1. Smart/curly quotes (cause Python SyntaxError — invisible in most editors)
+python3 -c "
+import glob
+for f in glob.glob('backend/**/*.py', recursive=True):
+    content = open(f, encoding='utf-8').read()
+    for char, name in [('\u2018','left-sq'), ('\u2019','right-sq'), ('\u201C','left-dq'), ('\u201D','right-dq')]:
+        if char in content:
+            print(f'FAIL: {f} contains {name} smart quote — replace with ASCII quotes')
+"
+
+# 2. Python syntax check (catches what smart quotes, bad indentation, etc.)
+python3 -m py_compile backend/server.py
+python3 -m py_compile backend/database.py
+python3 -m py_compile backend/email_sender.py
+
+# 3. Frontend build
+cd frontend && npm run build
+
+# 4. Check for banned imports/references
+grep -rn "pymongo\|MongoClient\|motor\|mongodb://" backend/ && echo "FAIL: MongoDB references found" || true
+grep -rn "SendGrid\|sendgrid\|smtplib\|MIMEMultipart\|MIMEText" backend/ && echo "FAIL: SMTP/SendGrid references found" || true
+grep -rn "geoapify\|GEOAPIFY" backend/ frontend/src/ && echo "FAIL: Geoapify references found" || true
+grep -rn "airport-shuttle" frontend/src/ backend/ && echo "FAIL: Removed service type 'airport-shuttle' found" || true
+grep -rn "@vuer-ai/react-helmet-async" frontend/ && echo "FAIL: Broken helmet fork found" || true
+```
+
+**If ANY of these fail, fix them IMMEDIATELY before doing anything else.**
+
+### Step 2: Pre-Commit Verification (run before EVERY commit)
+
+```bash
+# 1. Python syntax — ALL .py files that were changed
+python3 -m py_compile <each changed .py file>
+
+# 2. Frontend build — if ANY frontend file changed
+cd frontend && npm run build
+
+# 3. No smart quotes in changed files
+python3 -c "content=open('<file>').read(); assert '\u2018' not in content and '\u2019' not in content and '\u201c' not in content and '\u201d' not in content, 'Smart quotes found!'"
+
+# 4. No console.log left in production code (except intentional debug endpoints)
+grep -rn "console\.log" frontend/src/ --include="*.jsx" --include="*.js" | grep -v node_modules | grep -v "// debug" || true
+
+# 5. No broken imports — verify every import resolves
+# For Python: check that imported modules exist
+# For React: check that imported components exist in the project
+```
+
+### Step 3: Proactive Bug Hunt (run at START of every session)
+
+Every agent MUST spend the first few minutes scanning for issues, not just jumping to the assigned task:
+
+1. **Check for runtime errors**: Look at recent git history for hastily-added code that might have bugs
+2. **Check for encoding issues**: Smart quotes, BOM characters, non-ASCII in Python source files
+3. **Check for dead code**: Unused imports, unreachable functions, orphaned components
+4. **Check for broken references**: Components imported but not existing, API endpoints called but not defined
+5. **Check for inconsistencies**: camelCase vs snake_case in database fields, mismatched field names between frontend and backend
+6. **If you find ANY issue, fix it immediately** — do not defer it, do not log it for later, FIX IT NOW
+
+### Step 4: Post-Change Validation
+
+After making changes, before committing:
+
+1. **Test the full path**: If you changed a backend endpoint, verify the frontend calls it correctly
+2. **Test related features**: If you changed pricing, verify the booking form still calculates correctly
+3. **Check for regressions**: Did your change break anything that was working before?
+4. **Verify deploy compatibility**: Will this work on both Vercel (frontend) AND Render (backend)?
+
+---
+
 ## PRE-CHANGE CHECKLIST
 
 Before making ANY change, verify:
@@ -198,6 +278,9 @@ Before making ANY change, verify:
 5. Does my change remove or modify an existing import? **Verify nothing else uses it.**
 6. Am I adding a new JSX component usage? **Add the import statement too.**
 7. Does my build pass with `cd frontend && npm run build`? **Test before committing.**
+8. Does my Python code pass `python3 -m py_compile`? **Test before committing.**
+9. Does my code contain smart/curly quotes? **Replace with ASCII quotes.**
+10. Have I scanned for engineering gaps unrelated to my task? **Fix them too.**
 
 ---
 
@@ -461,3 +544,5 @@ No exceptions. If you add a new payment path, it must include all 4.
 | 2026-03-21 | CSV import wrong field names          | `paymentStatus` (camelCase) instead of `payment_status` (snake_case) |
 | 2026-03-21 | Footer social links broken            | href="#" placeholders — links went nowhere |
 | 2026-03-21 | Duplicate route unreachable page      | Two routes for same path, first match shadowed dedicated page |
+| 2026-03-24 | Backend won't start on Render          | Smart/curly quotes (U+2018/U+2019) in server.py caused Python SyntaxError — invisible in editors, no agent caught it |
+| 2026-03-24 | Maps diagnostic endpoint unreachable   | Backend crash meant new endpoint couldn't be tested — blocked debugging of month-old autocomplete issue |
