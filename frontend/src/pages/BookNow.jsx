@@ -19,6 +19,7 @@ import TrustBadges from '../components/TrustBadges';
 import SocialProofCounter from '../components/SocialProofCounter';
 import AddressAutocomplete from '../components/AddressAutocomplete';
 import { API } from '../config/api';
+import AddressAutocomplete from '../components/AddressAutocomplete';
 
 const DROPOFF_QUICK_ADDRESSES = [
   { label: 'Auckland Airport', address: 'Auckland Airport, Ray Emery Drive, Mangere, Auckland 2022, New Zealand' },
@@ -126,8 +127,6 @@ export const BookNow = () => {
   }, []);
 
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
-
-  // Address autocomplete is handled by AddressAutocomplete component (portal-based)
 
   const finalTotal = pricing.totalPrice;
 
@@ -462,6 +461,30 @@ export const BookNow = () => {
                       </div>
 
                       {/* Additional Pickup Addresses */}
+                      {formData.pickupAddresses.map((pickup, index) => (
+                        <div key={index} className="space-y-2 mb-6">
+                          <Label className="flex items-center space-x-2">
+                            <MapPin className="w-4 h-4 text-gold" />
+                            <span>Pickup Location {index + 2}</span>
+                          </Label>
+                          <div className="flex gap-2">
+                            <AddressAutocomplete
+                              value={pickup}
+                              onChange={(val) => handlePickupAddressChange(index, val)}
+                              onSelect={(val) => handlePickupAddressChange(index, val)}
+                              placeholder="Additional pickup address..."
+                              className="flex-1"
+                            />
+                            <Button type="button" variant="outline" size="sm" onClick={() => handleRemovePickup(index)} className="text-red-500 hover:text-red-700">Remove</Button>
+                          </div>
+                        </div>
+                      ))}
+
+                      {formData.pickupAddresses.length < 3 && (
+                        <Button type="button" variant="outline" onClick={handleAddPickup} className="mb-6 text-sm">
+                          + Add another pickup location
+                        </Button>
+                      )}
 
                       {/* Drop-off Address */}
                       <div className="space-y-2 mb-6">
