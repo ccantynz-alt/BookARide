@@ -9,8 +9,8 @@
  * 3. Google Calendar event (future)
  * 4. iCloud contact sync (future)
  */
-const { findOne, updateOne, insertOne } = require('../lib/db');
-const { sendEmail } = require('../lib/mailgun');
+const { findOne, updateOne, insertOne } = require('../_lib/db');
+const { sendEmail } = require('../_lib/mailgun');
 
 // Vercel serverless: disable body parsing so we get the raw body for Stripe verification
 module.exports.config = {

@@ -3,7 +3,7 @@
  * Google Places Autocomplete for address search.
  * Replaces: Python backend GET /api/places/autocomplete
  */
-const { autocomplete } = require('../lib/google-maps');
+const { autocomplete } = require('../_lib/google-maps');
 
 // Common NZ addresses as fallback when Google API is unavailable
 const NZ_FALLBACK_ADDRESSES = [

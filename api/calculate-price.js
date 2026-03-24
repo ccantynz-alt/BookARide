@@ -3,8 +3,8 @@
  * Calculate booking price based on pickup/dropoff addresses.
  * Replaces: Python backend POST /api/calculate-price
  */
-const { calculatePrice } = require('./lib/pricing');
-const { getDistance } = require('./lib/google-maps');
+const { calculatePrice } = require('./_lib/pricing');
+const { getDistance } = require('./_lib/google-maps');
 
 module.exports = async function handler(req, res) {
   // Handle CORS preflight

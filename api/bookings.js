@@ -4,8 +4,8 @@
  *
  * Replaces: Python backend POST /api/bookings, GET /api/bookings
  */
-const { findOne, findMany, insertOne, updateOne, getDb } = require('./lib/db');
-const { sendEmail } = require('./lib/mailgun');
+const { findOne, findMany, insertOne, updateOne, getDb } = require('./_lib/db');
+const { sendEmail } = require('./_lib/mailgun');
 const { v4: uuidv4 } = require('uuid');
 
 async function getNextReferenceNumber() {

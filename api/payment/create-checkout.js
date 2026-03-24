@@ -3,7 +3,7 @@
  * Create a Stripe Checkout session for a booking.
  * Replaces: Python backend POST /api/payment/create-checkout
  */
-const { findOne, updateOne, insertOne } = require('../lib/db');
+const { findOne, updateOne, insertOne } = require('../_lib/db');
 const { v4: uuidv4 } = require('uuid');
 
 module.exports = async function handler(req, res) {

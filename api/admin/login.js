@@ -3,7 +3,7 @@
  * Admin login — returns JWT token.
  * Replaces: Python backend POST /api/admin/login
  */
-const { findOne } = require('../lib/db');
+const { findOne } = require('../_lib/db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
