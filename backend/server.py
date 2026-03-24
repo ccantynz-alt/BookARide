@@ -40,15 +40,16 @@ except ImportError:
     get_noreply_email = lambda: os.environ.get("NOREPLY_EMAIL") or os.environ.get("SENDER_EMAIL", "noreply@bookaride.co.nz")
 
 
-def _send_email_with_fallbacks(to_email, subject, html_content, from_email=None, from_name="BookaRide"):
-    """Send email trying all available providers: email_sender module -> Google SMTP -> Mailgun.
-    Returns True if any provider succeeds."""
+def _send_email_with_fallbacks(to_email, subject, html_content, from_email=None, from_name="BookaRide", reply_to=None, cc=None):
+    """Send email via Mailgun (the ONLY email provider). No SMTP fallback.
+    Returns True if Mailgun succeeds."""
     if not to_email or not isinstance(to_email, str) or '@' not in to_email.strip():
         logging.getLogger(__name__).error(f"Cannot send email: invalid recipient '{to_email}'. Subject: {subject}")
         return False
     to_email = to_email.strip()
     sender = from_email or get_noreply_email()
 
+    # Try email_sender module first (which uses Mailgun)
     if send_email_unified:
         try:
             if send_email_unified(to_email, subject, html_content, from_email=sender, from_name=from_name, reply_to=reply_to, cc=cc):
@@ -56,41 +57,25 @@ def _send_email_with_fallbacks(to_email, subject, html_content, from_email=None,
         except Exception as e:
             logging.getLogger(__name__).warning(f"email_sender module failed: {e}")
 
-    # 2) Try SMTP (Google Workspace / Gmail)
-    smtp_user = os.environ.get('SMTP_USER')
-    smtp_pass = os.environ.get('SMTP_PASS')
-    if smtp_user and smtp_pass:
-        try:
-            message = MIMEMultipart('alternative')
-            message['Subject'] = subject
-            message['From'] = f"{from_name} <{sender}>" if from_name else sender
-            message['To'] = to_email
-            message.attach(MIMEText(html_content, 'html'))
-            smtp_host = os.environ.get('SMTP_HOST', 'smtp.gmail.com')
-            smtp_port = int(os.environ.get('SMTP_PORT', '587'))
-            with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as server:
-                server.starttls()
-                server.login(smtp_user, smtp_pass)
-                server.send_message(message)
-            logging.getLogger(__name__).info(f"Email sent via SMTP to {to_email}")
-            return True
-        except Exception as e:
-            logging.getLogger(__name__).warning(f"SMTP send failed: {e}")
-
-    # 3) Try Mailgun API
+    # Fallback: direct Mailgun API call
     mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
     mailgun_domain = os.environ.get('MAILGUN_DOMAIN', 'mg.bookaride.co.nz')
     if mailgun_api_key:
         try:
+            data = {
+                "from": f"{from_name} <{sender}>",
+                "to": to_email,
+                "subject": subject,
+                "html": html_content,
+            }
+            if reply_to:
+                data["h:Reply-To"] = reply_to
+            if cc:
+                data["cc"] = cc
             response = requests.post(
                 f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
                 auth=("api", mailgun_api_key),
-                data={
-                    "from": f"{from_name} <{sender}>",
-                    "to": to_email,
-                    "subject": subject,
-                    "html": html_content,
-                },
+                data=data,
                 timeout=15,
             )
             if response.status_code == 200:
@@ -101,7 +86,7 @@ def _send_email_with_fallbacks(to_email, subject, html_content, from_email=None,
         except Exception as e:
             logging.getLogger(__name__).warning(f"Mailgun send failed: {e}")
 
-    logging.getLogger(__name__).error(f"ALL email providers failed for {to_email}. Configure SMTP_USER+SMTP_PASS (Google) or MAILGUN_API_KEY.")
+    logging.getLogger(__name__).error(f"Email send failed for {to_email}. Check MAILGUN_API_KEY is configured.")
     return False
 
 
@@ -2012,7 +1997,7 @@ async def calculate_price(request: PriceCalculationRequest):
         else:
             rate_per_km = 3.50   # $3.50 per km for 100km+
         
-        # Calculate base price: distance ÃƒÆ'Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ'Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â rate for that bracket
+        # Calculate base price: distance x rate for that bracket
         base_price = distance_km * rate_per_km
         
         # VIP Airport Pickup fee: Optional $15 extra service
@@ -3047,48 +3032,22 @@ def send_via_mailgun(booking: dict):
         return False
 
 
-def send_via_smtp(booking: dict):
-    """Fallback: Send via Gmail SMTP"""
+def send_via_mailgun_confirmation(booking: dict):
+    """Send booking confirmation email via Mailgun."""
     try:
-        smtp_user = os.environ.get('SMTP_USER')
-        smtp_pass = os.environ.get('SMTP_PASS')
-        sender_email = get_noreply_email()
-        
-        if not smtp_user or not smtp_pass:
-            logger.warning("SMTP credentials not configured")
-            return False
-        
-        # Create email content using the beautiful template
         booking_ref = get_booking_reference(booking)
         subject = f"Booking Confirmation - Ref: {booking_ref}"
         recipient_email = booking.get('email')
-        
-        # Use the beautiful email template
         html_content = generate_confirmation_email_html(booking)
-        
-        # Create message
-        message = MIMEMultipart('alternative')
-        message['Subject'] = subject
-        message['From'] = sender_email
-        message['To'] = recipient_email
-        
-        # Attach HTML
-        html_part = MIMEText(html_content, 'html')
-        message.attach(html_part)
-        
-        # Send via SMTP (Google Workspace / Gmail)
-        smtp_host = os.environ.get('SMTP_HOST', 'smtp.gmail.com')
-        smtp_port = int(os.environ.get('SMTP_PORT', '587'))
-        with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as server:
-            server.starttls()
-            server.login(smtp_user, smtp_pass)
-            server.send_message(message)
 
-        logger.info(f"Confirmation email sent to {recipient_email} via SMTP")
-        return True
-        
+        return _send_email_with_fallbacks(
+            to_email=recipient_email,
+            subject=subject,
+            html_content=html_content,
+            from_name="BookaRide"
+        )
     except Exception as e:
-        logger.error(f"SMTP error: {str(e)}")
+        logger.error(f"Mailgun confirmation error: {str(e)}")
         import traceback
         logger.error(traceback.format_exc())
         return False
@@ -3183,26 +3142,13 @@ def send_customer_confirmation(booking: dict):
     # Update database with confirmation status via async helper
     if booking_id:
         try:
-            from pymongo import MongoClient
-            sync_client = MongoClient(os.environ.get('MONGO_URL', 'mongodb://localhost:27017'),
-                                      serverSelectionTimeoutMS=5000, connectTimeoutMS=5000)
-            sync_db = sync_client[os.environ.get('DB_NAME', 'bookaride')]
-
             nz_tz = pytz.timezone('Pacific/Auckland')
             now = datetime.now(nz_tz).isoformat()
 
-            sync_db.bookings.update_one(
-                {"id": booking_id},
-                {"$set": {
-                    'confirmation_sent': results['email'] or results['sms'],
-                    'confirmation_sent_at': now,
-                    'email_confirmation_sent': results['email'],
-                    'sms_confirmation_sent': results['sms'],
-                    'notifications_sent': True
-                }}
-            )
-            sync_client.close()
-            logger.info(f"ÃƒÆ'Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ'Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ'Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Confirmation status updated for booking {booking_id}")
+            # Schedule async DB update via the event loop (NeonDB is async)
+            loop = asyncio.get_event_loop()
+            loop.create_task(update_confirmation_status(booking_id, results))
+            logger.info(f"Confirmation status update scheduled for booking {booking_id}")
         except Exception as e:
             logger.error(f"Error scheduling confirmation status update: {e}")
     
@@ -3226,7 +3172,7 @@ async def update_confirmation_status(booking_id: str, results: dict):
             {"id": booking_id},
             {"$set": update_data}
         )
-        logger.info(f" Confirmation status updated for booking {booking_id}")
+        logger.info(f"Confirmation status updated for booking {booking_id}")
     except Exception as e:
         logger.error(f"Error updating confirmation status: {e}")
 
@@ -4633,7 +4579,7 @@ Price: ${booking.get('totalPrice', 0):.2f}
                     }},
                     upsert=True
                 )
-                logger.info(f"ÃƒÆ'Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ'Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ'Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Stored pending approval for booking #{booking_ref}")
+                logger.info(f"Stored pending approval for booking #{booking_ref}")
             except Exception as db_error:
                 logger.error(f"Failed to store pending approval: {db_error}")
             
@@ -5379,14 +5325,12 @@ async def config_check():
     Call this endpoint to verify Render env vars are set."""
     google_key = os.environ.get('GOOGLE_MAPS_API_KEY', '').strip()
     stripe_key = os.environ.get('STRIPE_API_KEY') or os.environ.get('STRIPE_SECRET_KEY')
-    smtp_ok = bool(os.environ.get("SMTP_USER") and os.environ.get("SMTP_PASS"))
     mailgun_ok = bool(os.environ.get("MAILGUN_API_KEY"))
     return {
         "google_maps_api_key": f"{google_key[:8]}***" if google_key else "NOT SET",
         "stripe_key": f"{stripe_key[:8]}***" if stripe_key else "NOT SET",
-        "email_smtp": smtp_ok,
         "email_mailgun": mailgun_ok,
-        "email_any_provider": send_email_unified is not None or smtp_ok or mailgun_ok,
+        "email_any_provider": send_email_unified is not None or mailgun_ok,
         "twilio_sms": bool(os.environ.get("TWILIO_ACCOUNT_SID")),
         "hint": "If any key shows NOT SET, add it in Render > Environment > Env Vars",
     }
@@ -5540,7 +5484,7 @@ def _get_booking_email_data(booking: dict) -> dict:
         'notes': notes,
         'payment_method': payment_method,
         'payment_status': (booking.get('payment_status') or 'unpaid').upper(),
-        'service_display': (booking.get('serviceType') or 'airport-shuttle').replace('-', ' ').title(),
+        'service_display': (booking.get('serviceType') or 'airport-transfer').replace('-', ' ').title(),
         'has_return': bool(booking.get('bookReturn') or booking.get('returnDate')),
         'return_date': booking.get('returnDate', ''),
         'return_time': booking.get('returnTime', ''),
@@ -6994,7 +6938,7 @@ async def twilio_sms_webhook(request: Request):
                         html_content = f"""
                         <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px;">
                             <div style="background: #22c55e; color: white; padding: 15px; border-radius: 8px 8px 0 0; text-align: center;">
-                                <h2 style="margin: 0;">ÃƒÆ'Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ'Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ'Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Driver Acknowledged Job</h2>
+                                <h2 style="margin: 0;">Driver Acknowledged Job</h2>
                             </div>
                             <div style="background: #f0fdf4; padding: 20px; border: 1px solid #86efac; border-top: none; border-radius: 0 0 8px 8px;">
                                 <p><strong>Driver:</strong> {driver_name}</p>
@@ -7480,7 +7424,7 @@ async def send_tracking_link_to_driver(booking_id: str, current_admin: dict = De
             customer_name = booking.get('name', 'Customer')
             pickup = booking.get('pickupAddress', 'N/A')
             
-            sms_body = f"""ÃƒÆ'Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ'Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ'Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å"ÃƒÆ'Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â SHARE YOUR LOCATION
+            sms_body = f"""SHARE YOUR LOCATION
             
 Job: {booking_ref}
 Customer: {customer_name}
@@ -7500,7 +7444,7 @@ Customer will be auto-notified when you start.
                 to=formatted_phone
             )
             
-            logger.info(f"ÃƒÆ'Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ'Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ'Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å"ÃƒÆ'Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â± Tracking link sent to driver {driver.get('name')} at {formatted_phone}")
+            logger.info(f"Tracking link sent to driver {driver.get('name')} at {formatted_phone}")
             
             # Update booking with tracking info
             collection = db.shuttle_bookings if booking_type == "shuttle" else db.bookings
@@ -7540,7 +7484,7 @@ SYNC_SECRET_KEY = os.environ.get("SYNC_SECRET_KEY", "bookaride-sync-2024-secret"
 async def auto_sync_from_production():
     """Automatically sync data from production every 5 minutes"""
     try:
-        logger.info("ÃƒÆ'Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ'Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ'Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ'Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¾ Auto-sync: Starting sync from production...")
+        logger.info("Auto-sync: Starting sync from production...")
         
         response = requests.get(
             f"{PRODUCTION_API_URL}/sync/export",
@@ -13209,7 +13153,7 @@ async def send_arrival_pickup_emails():
         mailgun_configured = bool(os.environ.get("MAILGUN_API_KEY") and os.environ.get("MAILGUN_DOMAIN"))
 
         if not mailgun_configured and send_email_unified is None:
-            logger.warning("ÃƒÆ'Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ'Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ'Ã¢â‚¬Â¹ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ'Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ'Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ'Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â [Arrival Emails] Email not configured")
+            logger.warning("[Arrival Emails] Email not configured")
             return {"sent": 0, "error": "Email not configured"}
         
         sent_count = 0
@@ -13493,7 +13437,7 @@ async def run_daily_error_check():
         # Send email report
         try:
             admin_email = os.environ.get('ADMIN_EMAIL', 'info@bookaride.co.nz')
-            subject = f"{'ÃƒÆ'Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ'Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ'Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ'Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¨ ISSUES FOUND' if issues else 'ÃƒÆ'Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ'Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ'Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ All Clear'} - BookaRide Daily Check {report_time}"
+            subject = f"{'ISSUES FOUND' if issues else 'All Clear'} - BookaRide Daily Check {report_time}"
             
             html_report = f"""
             <html>
@@ -13506,9 +13450,9 @@ async def run_daily_error_check():
             ok = _send_email_with_fallbacks(admin_email, subject, html_report, from_name="BookaRide System")
 
             if ok:
-                logger.info(f"ÃƒÆ'Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ'Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ'Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ'Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â [Daily Error Check] Email report sent to {admin_email}")
+                logger.info(f"[Daily Error Check] Email report sent to {admin_email}")
             else:
-                logger.error(f"ÃƒÆ'Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ'Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ'Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ'Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â [Daily Error Check] Failed to send email")
+                logger.error(f"[Daily Error Check] Failed to send email")
         except Exception as email_err:
             logger.error(f" [Daily Error Check] Email error: {str(email_err)}")
         
@@ -13755,7 +13699,7 @@ async def startup_event():
             "created_at": datetime.now(timezone.utc).isoformat(),
             "is_active": True
         })
-        logger.info("ÃƒÆ'Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ'Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ'Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Default admin user created")
+        logger.info("Default admin user created")
     else:
         # Update password and email to ensure they're correct
         hashed_pw = "$2b$12$C6UzMDM.H6dfI/f/IKcEeO8m8Y4YkQkQ1h6s4H6c3Z8Y5G7c8Y4r2"
@@ -13766,7 +13710,7 @@ async def startup_event():
                 "email": "info@bookaride.co.nz"
             }}
         )
-        logger.info("ÃƒÆ'Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ'Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ'Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Admin password reset and email updated to info@bookaride.co.nz")
+        logger.info("Admin password reset and email updated to info@bookaride.co.nz")
     
     # Create database indexes for faster queries
     try:
@@ -13777,7 +13721,7 @@ async def startup_event():
         await db.bookings.create_index("referenceNumber")
         await db.bookings.create_index("original_booking_id")
         await db.bookings.create_index([("date", -1), ("status", 1)])
-        logger.info("ÃƒÆ'Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ'Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ'Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Database indexes created for faster queries")
+        logger.info("Database indexes created for faster queries")
     except Exception as e:
         logger.warning(f"Index creation note: {str(e)}")
     
@@ -13787,7 +13731,7 @@ async def startup_event():
         await db.bookings_archive.create_index("name")
         await db.bookings_archive.create_index("email")
         await db.bookings_archive.create_index("referenceNumber")
-        logger.info("ÃƒÆ'Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ'Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ'Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Archive indexes created")
+        logger.info("Archive indexes created")
     except Exception as e:
         logger.warning(f"Archive index creation note: {str(e)}")
     
