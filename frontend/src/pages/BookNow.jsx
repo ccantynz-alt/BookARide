@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { MapPin, Calendar, Users, DollarSign, Clock, Mail, Phone, User, Wrench, Plane } from 'lucide-react';
@@ -890,11 +890,11 @@ export const BookNow = () => {
                           </svg>
                           <span className="font-semibold text-gray-800">Secure Payment</span>
                         </div>
-                        <p className="text-sm text-gray-600 mb-3">Pay securely with credit/debit card via Stripe</p>
+                        <p className="text-sm text-gray-600 mb-3">Pay securely with credit/debit card</p>
                         <div className="flex items-center gap-2">
                           <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Visa_Inc._logo.svg/100px-Visa_Inc._logo.svg.png" alt="Visa" className="h-6 object-contain" />
                           <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Mastercard-logo.svg/100px-Mastercard-logo.svg.png" alt="Mastercard" className="h-6 object-contain" />
-                          <span className="text-xs text-gray-400 ml-2">Powered by Stripe</span>
+                          <span className="text-xs text-gray-400 ml-2">Secure payment</span>
                         </div>
                       </div>
 

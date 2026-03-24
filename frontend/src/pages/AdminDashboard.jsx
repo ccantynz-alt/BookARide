@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Search, Filter, Mail, DollarSign, CheckCircle, XCircle, Clock, Eye, Edit2, Users, BookOpen, Car, Settings, Trash2, MapPin, Calendar, RefreshCw, Send, Bell, Globe, Square, CheckSquare, FileText, Smartphone, RotateCcw, AlertTriangle, AlertCircle, Home, ExternalLink, Navigation, Upload, Archive, Activity, Download, Shield } from 'lucide-react';
+import { LogOut, Search, Mail, DollarSign, CheckCircle, XCircle, Clock, Eye, Edit2, Users, BookOpen, Settings, Trash2, MapPin, Calendar, RefreshCw, Send, Bell, Square, CheckSquare, FileText, Smartphone, RotateCcw, AlertTriangle, AlertCircle, Home, Upload, Archive, Activity, Download, Shield } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent } from '../components/ui/card';
@@ -1689,7 +1689,7 @@ export const AdminDashboard = () => {
       const csvContent = [
         headers.join(','),
         ...rows.map(row => row.map(cell => `\"${cell}\"`).join(','))
-      ].join('\\n');
+      ].join('\n');
       
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
