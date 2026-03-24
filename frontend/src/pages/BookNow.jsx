@@ -132,6 +132,8 @@ export const BookNow = () => {
   const [dropoffSuggestions, setDropoffSuggestions] = useState([]);
   const [showPickupSuggestions, setShowPickupSuggestions] = useState(false);
   const [showDropoffSuggestions, setShowDropoffSuggestions] = useState(false);
+  const [loadingPickupSuggestions, setLoadingPickupSuggestions] = useState(false);
+  const [loadingDropoffSuggestions, setLoadingDropoffSuggestions] = useState(false);
   const addressDebounceRef = useRef({});
   const addressRequestIdRef = useRef({ pickup: 0, dropoff: 0 });
   const [extraPickupSuggestions, setExtraPickupSuggestions] = useState({});
@@ -139,24 +141,31 @@ export const BookNow = () => {
 
   const fetchAddressSuggestions = (query, setter, showSetter) => {
     const key = setter === setPickupSuggestions ? 'pickup' : 'dropoff';
+    const setLoading = key === 'pickup' ? setLoadingPickupSuggestions : setLoadingDropoffSuggestions;
     if (addressDebounceRef.current[key]) clearTimeout(addressDebounceRef.current[key]);
 
-    if (query.length < 3) { setter([]); showSetter(false); return; }
+    if (query.length < 3) { setter([]); showSetter(false); setLoading(false); return; }
 
+    setLoading(true);
     // Debounce 300ms so rapid typing doesn't fire on every keystroke
     addressDebounceRef.current[key] = setTimeout(async () => {
       const requestId = ++addressRequestIdRef.current[key];
       try {
-        const res = await axios.get(`${API}/places/autocomplete`, { params: { input: query } });
+        const res = await axios.get(`${API}/places/autocomplete`, { params: { input: query }, timeout: 10000 });
         // Only apply if this is still the latest request for THIS field
         if (requestId !== addressRequestIdRef.current[key]) return;
         const predictions = res.data?.predictions || [];
+        if (res.data?.source === 'fallback') {
+          console.warn('[BookARide] Google Maps API not available, using fallback addresses. Reason:', res.data?.reason);
+        }
         setter(predictions);
         showSetter(predictions.length > 0);
       } catch (err) {
         if (requestId !== addressRequestIdRef.current[key]) return;
         console.error('[BookARide] Address autocomplete failed:', err?.message || err, 'URL:', `${API}/places/autocomplete`);
         setter([]); showSetter(false);
+      } finally {
+        if (requestId === addressRequestIdRef.current[key]) setLoading(false);
       }
     }, 300);
   };
@@ -196,13 +205,21 @@ export const BookNow = () => {
   ];
 
   // Calculate price when key fields change
+  const priceCalcRef = useRef(0); // Guard against stale API responses
+  const priceCalcTimerRef = useRef(null);
   useEffect(() => {
     if (formData.pickupAddress && formData.dropoffAddress && formData.serviceType) {
-      calculatePrice();
+      // Debounce price calculation to avoid hammering API when multiple fields change at once
+      if (priceCalcTimerRef.current) clearTimeout(priceCalcTimerRef.current);
+      priceCalcTimerRef.current = setTimeout(() => {
+        calculatePrice();
+      }, 400);
     }
+    return () => { if (priceCalcTimerRef.current) clearTimeout(priceCalcTimerRef.current); };
   }, [formData.pickupAddress, formData.dropoffAddress, formData.pickupAddresses, formData.passengers, formData.serviceType, formData.returnDate, formData.returnTime, formData.vipAirportPickup, formData.oversizedLuggage]);
 
   const calculatePrice = async () => {
+    const requestId = ++priceCalcRef.current;
     setPricing(prev => ({ ...prev, calculating: true }));
 
     try {
@@ -210,13 +227,16 @@ export const BookNow = () => {
       const response = await axios.post(`${API}/calculate-price`, {
         serviceType: formData.serviceType,
         pickupAddress: formData.pickupAddress,
-        pickupAddresses: formData.pickupAddresses.filter(addr => addr.trim()),
+        pickupAddresses: (formData.pickupAddresses || []).filter(addr => addr.trim()),
         dropoffAddress: formData.dropoffAddress,
-        passengers: parseInt(formData.passengers),
+        passengers: parseInt(formData.passengers) || 1,
         vipAirportPickup: formData.vipAirportPickup,
         oversizedLuggage: formData.oversizedLuggage,
         bookReturn: hasReturnTrip
       });
+
+      // Discard stale response if a newer request was fired
+      if (requestId !== priceCalcRef.current) return;
 
       const data = response.data;
       setPricing({
@@ -231,14 +251,13 @@ export const BookNow = () => {
         calculating: false
       });
 
-      if (promoCode.trim() && !promoApplied) {
-        setTimeout(() => {
-          handleApplyPromoWithSubtotal(promoCode.trim(), data.subtotal);
-        }, 100);
-      } else {
-        setPromoApplied(null);
+      // Re-apply promo if one was already applied (don't trigger on every calc)
+      const currentPromo = promoCode.trim();
+      if (currentPromo && promoApplied) {
+        handleApplyPromoWithSubtotal(currentPromo, data.subtotal);
       }
     } catch (error) {
+      if (requestId !== priceCalcRef.current) return;
       console.error('Error calculating price:', error);
       setPricing(prev => ({ ...prev, calculating: false }));
       toast.error('Unable to calculate distance. Please check addresses.');
@@ -523,13 +542,18 @@ export const BookNow = () => {
                             setFormData(prev => ({ ...prev, pickupAddress: val }));
                             fetchAddressSuggestions(val, setPickupSuggestions, setShowPickupSuggestions);
                           }}
-                          onBlur={() => setTimeout(() => setShowPickupSuggestions(false), 200)}
+                          onBlur={() => setTimeout(() => setShowPickupSuggestions(false), 350)}
                           placeholder="Start typing your address..."
                           required
                           autoComplete="off"
                           className="transition-all duration-200 focus:ring-2 focus:ring-gold"
                         />
-                        {showPickupSuggestions && pickupSuggestions.length > 0 && (
+                        {loadingPickupSuggestions && (
+                          <div className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 px-4 py-3 text-sm text-gray-500">
+                            Searching addresses...
+                          </div>
+                        )}
+                        {showPickupSuggestions && pickupSuggestions.length > 0 && !loadingPickupSuggestions && (
                           <ul className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
                             {pickupSuggestions.map((s, i) => (
                               <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm border-b last:border-b-0"
@@ -621,13 +645,18 @@ export const BookNow = () => {
                             setFormData(prev => ({ ...prev, dropoffAddress: val }));
                             fetchAddressSuggestions(val, setDropoffSuggestions, setShowDropoffSuggestions);
                           }}
-                          onBlur={() => setTimeout(() => setShowDropoffSuggestions(false), 200)}
+                          onBlur={() => setTimeout(() => setShowDropoffSuggestions(false), 350)}
                           placeholder="Start typing destination..."
                           required
                           autoComplete="off"
                           className="transition-all duration-200 focus:ring-2 focus:ring-gold"
                         />
-                        {showDropoffSuggestions && dropoffSuggestions.length > 0 && (
+                        {loadingDropoffSuggestions && (
+                          <div className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 px-4 py-3 text-sm text-gray-500">
+                            Searching addresses...
+                          </div>
+                        )}
+                        {showDropoffSuggestions && dropoffSuggestions.length > 0 && !loadingDropoffSuggestions && (
                           <ul className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
                             {dropoffSuggestions.map((s, i) => (
                               <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm border-b last:border-b-0"
