@@ -3,8 +3,6 @@ import { useParams, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent } from '../../components/ui/card';
-import { Header } from '../../components/Header';
-import { Footer } from '../../components/Footer';
 import { 
   Clock, MapPin, DollarSign, Car, Calendar, Phone,
   CheckCircle, Star, ArrowRight, Shield
@@ -124,8 +122,6 @@ const RoutePage = () => {
         <link rel="canonical" href={`https://bookaride.co.nz/routes/${routeSlug}`} />
         <script type="application/ld+json">{JSON.stringify(schema)}</script>
       </Helmet>
-
-      <Header />
 
       {/* Hero */}
       <section className="bg-gradient-to-br from-black via-gray-900 to-black text-white py-16">
@@ -269,7 +265,6 @@ const RoutePage = () => {
         </div>
       </section>
 
-      <Footer />
     </div>
   );
 };

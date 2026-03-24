@@ -3,8 +3,6 @@ import { useLocation, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent } from '../../components/ui/card';
-import { Header } from '../../components/Header';
-import { Footer } from '../../components/Footer';
 import { 
   Clock, MapPin, DollarSign, Car, Calendar, Phone,
   CheckCircle, Star, ArrowRight, Shield, Users, Plane,
@@ -90,8 +88,6 @@ const SEORoutePage = () => {
         <script type="application/ld+json">{JSON.stringify(schemaMarkup)}</script>
         <script type="application/ld+json">{JSON.stringify(faqSchema)}</script>
       </Helmet>
-
-      <Header />
 
       {/* Hero Section */}
       <section className="relative bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white py-20">
@@ -351,7 +347,6 @@ const SEORoutePage = () => {
         </div>
       </section>
 
-      <Footer />
     </div>
   );
 };

@@ -3,8 +3,6 @@ import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { Card, CardContent } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
-import { Header } from '../../components/Header';
-import { Footer } from '../../components/Footer';
 import { MapPin, Clock, DollarSign, ArrowRight } from 'lucide-react';
 
 const routes = [
@@ -66,8 +64,6 @@ const RoutesDirectory = () => {
         <meta name="description" content="Auckland airport shuttle routes covering all areas. CBD, North Shore, South Auckland, West Auckland, East Auckland & Hibiscus Coast to Auckland Airport." />
         <link rel="canonical" href="https://bookaride.co.nz/routes" />
       </Helmet>
-
-      <Header />
 
       {/* Hero */}
       <section className="bg-gradient-to-br from-black via-gray-900 to-black text-white py-16">
@@ -133,7 +129,6 @@ const RoutesDirectory = () => {
         </div>
       </section>
 
-      <Footer />
     </div>
   );
 };
