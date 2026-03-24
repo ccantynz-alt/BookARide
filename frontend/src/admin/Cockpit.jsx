@@ -9,6 +9,7 @@ import {
   CheckCircle,
   Loader2,
   Search,
+  MapPin,
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
@@ -24,6 +25,8 @@ export default function Cockpit() {
   const [fixNowLoading, setFixNowLoading] = useState(false);
   const [calendarSyncLoading, setCalendarSyncLoading] = useState(false);
   const [seoCheckLoading, setSeoCheckLoading] = useState(false);
+  const [mapsStatus, setMapsStatus] = useState(null);
+  const [mapsLoading, setMapsLoading] = useState(false);
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
   const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
@@ -103,6 +106,24 @@ export default function Cockpit() {
       toast.error(err.response?.data?.detail || 'Calendar sync failed');
     } finally {
       setCalendarSyncLoading(false);
+    }
+  };
+
+  const runMapsCheck = async () => {
+    setMapsLoading(true);
+    try {
+      const response = await axios.get(`${API}/admin/maps-status`, { headers: authHeaders });
+      setMapsStatus(response.data);
+      if (response.data.status === 'ok') {
+        toast.success('All Google Maps APIs working');
+      } else {
+        toast.error(response.data.message || 'Google Maps API issues detected');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Maps check failed');
+      setMapsStatus(null);
+    } finally {
+      setMapsLoading(false);
     }
   };
 
@@ -283,6 +304,68 @@ export default function Cockpit() {
                 <p className="text-xs text-slate-500 mt-3">
                   Fix imported: restore deleted WordPress imports and fix date formats. Sync to calendar: add all bookings missing from Google Calendar.
                 </p>
+              </div>
+
+              {/* Google Maps API Diagnostic */}
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 mt-6">
+                <h3 className="font-medium text-slate-800 flex items-center gap-2 mb-3">
+                  <MapPin className="w-4 h-4" />
+                  Google Maps API (address autocomplete + pricing)
+                </h3>
+                <p className="text-sm text-slate-600 mb-3">
+                  Tests Places Autocomplete, Distance Matrix, and Directions APIs. If autocomplete is broken, customers can't search addresses in the booking form.
+                </p>
+                {mapsStatus && (
+                  <div className={`rounded-lg p-4 mb-3 ${mapsStatus.status === 'ok' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+                    <p className={`text-sm font-medium ${mapsStatus.status === 'ok' ? 'text-green-800' : 'text-red-800'}`}>
+                      {mapsStatus.status === 'ok' ? 'All APIs working' : 'Issues detected'}
+                    </p>
+                    {mapsStatus.key_prefix && (
+                      <p className="text-xs text-slate-500 mt-1">API Key: <code className="bg-slate-200 px-1 rounded">{mapsStatus.key_prefix}</code></p>
+                    )}
+                    {!mapsStatus.configured && (
+                      <p className="text-sm text-red-700 mt-2 font-medium">GOOGLE_MAPS_API_KEY is not set! Set it in Render → Environment tab.</p>
+                    )}
+                    {mapsStatus.tests && (
+                      <div className="mt-3 space-y-2">
+                        {Object.entries(mapsStatus.tests).map(([name, test]) => (
+                          <div key={name} className="flex items-start gap-2 text-xs">
+                            {test.status === 'ok' ? (
+                              <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+                            ) : (
+                              <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+                            )}
+                            <div>
+                              <span className="font-medium text-slate-700">
+                                {name === 'places_autocomplete' ? 'Places Autocomplete (Legacy)' :
+                                 name === 'distance_matrix' ? 'Distance Matrix' :
+                                 name === 'directions' ? 'Directions' :
+                                 name === 'places_new_api' ? 'Places Autocomplete (New)' : name}
+                              </span>
+                              {test.status === 'ok' ? (
+                                <span className="text-green-700 ml-2">
+                                  OK
+                                  {test.first_result && ` — "${test.first_result}"`}
+                                  {test.distance && ` — ${test.distance}`}
+                                </span>
+                              ) : (
+                                <span className="text-red-700 ml-2">
+                                  FAILED
+                                  {test.api_status && test.api_status !== 'OK' && ` (${test.api_status})`}
+                                  {test.error_message && ` — ${test.error_message}`}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+                <Button variant="outline" size="sm" onClick={runMapsCheck} disabled={mapsLoading}>
+                  {mapsLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
+                  <span className="ml-2">Test Google Maps APIs</span>
+                </Button>
               </div>
 
               {/* SEO Health Agent */}
