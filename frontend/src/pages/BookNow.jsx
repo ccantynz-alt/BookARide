@@ -19,7 +19,6 @@ import TrustBadges from '../components/TrustBadges';
 import SocialProofCounter from '../components/SocialProofCounter';
 import AddressAutocomplete from '../components/AddressAutocomplete';
 import { API } from '../config/api';
-import AddressAutocomplete from '../components/AddressAutocomplete';
 
 const DROPOFF_QUICK_ADDRESSES = [
   { label: 'Auckland Airport', address: 'Auckland Airport, Ray Emery Drive, Mangere, Auckland 2022, New Zealand' },
