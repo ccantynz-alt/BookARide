@@ -1,0 +1,104 @@
+import logging
+import os
+from datetime import datetime, timezone
+
+from fastapi import APIRouter, HTTPException, Request
+
+from app.core.config import settings
+
+router = APIRouter(prefix="/payment", tags=["Payments"])
+logger = logging.getLogger(__name__)
+
+
+@router.post("/create-checkout")
+async def create_checkout(data: dict):
+    from app.main import db
+
+    booking_id = data.get("booking_id")
+    if not booking_id:
+        raise HTTPException(status_code=400, detail="booking_id required")
+
+    booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    stripe_key = settings.STRIPE_SECRET_KEY
+    if not stripe_key:
+        raise HTTPException(status_code=500, detail="Stripe not configured")
+
+    import stripe
+
+    stripe.api_key = stripe_key
+    total_price = booking.get("totalPrice") or booking.get("pricing", {}).get("totalPrice", 0)
+    amount_cents = int(float(total_price) * 100)
+
+    checkout_session = stripe.checkout.Session.create(
+        payment_method_types=["card"],
+        mode="payment",
+        line_items=[
+            {
+                "price_data": {
+                    "currency": "nzd",
+                    "product_data": {
+                        "name": f"BookARide - Ref #{booking.get('referenceNumber', 'N/A')}",
+                        "description": f"{booking.get('pickupAddress')} → {booking.get('dropoffAddress')}",
+                    },
+                    "unit_amount": amount_cents,
+                },
+                "quantity": 1,
+            }
+        ],
+        customer_email=booking.get("email"),
+        success_url=f"{settings.PUBLIC_DOMAIN}/payment-success?booking_id={booking_id}",
+        cancel_url=f"{settings.PUBLIC_DOMAIN}/book-now?cancelled=true",
+        metadata={"booking_id": booking_id},
+    )
+
+    await db.payment_transactions.insert_one(
+        {
+            "id": checkout_session.id,
+            "booking_id": booking_id,
+            "amount": total_price,
+            "currency": "nzd",
+            "status": "pending",
+            "stripe_session_id": checkout_session.id,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+    )
+
+    return {"url": checkout_session.url, "session_id": checkout_session.id}
+
+
+@router.post("/webhook/stripe")
+async def stripe_webhook(request: Request):
+    from app.main import db
+
+    payload = await request.body()
+    sig = request.headers.get("stripe-signature")
+
+    import stripe
+
+    stripe.api_key = settings.STRIPE_SECRET_KEY
+
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig, settings.STRIPE_WEBHOOK_SECRET
+        )
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid webhook signature")
+
+    if event["type"] == "checkout.session.completed":
+        session = event["data"]["object"]
+        booking_id = session.get("metadata", {}).get("booking_id")
+        if booking_id:
+            await db.bookings.update_one(
+                {"id": booking_id},
+                {"$set": {"payment_status": "paid", "status": "confirmed"}},
+            )
+            await db.payment_transactions.update_one(
+                {"stripe_session_id": session["id"]},
+                {"$set": {"status": "completed"}},
+            )
+            logger.info(f"Payment confirmed for booking {booking_id}")
+
+    return {"received": True}

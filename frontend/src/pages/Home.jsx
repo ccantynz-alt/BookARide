@@ -138,7 +138,7 @@ export const Home = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     <Clock className="w-5 h-5 text-gold" />
-                    <span className="text-white/80 text-sm font-medium">24/7 Support</span>
+                    <span className="text-white/80 text-sm font-medium">24/7 Service</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Users className="w-5 h-5 text-gold" />

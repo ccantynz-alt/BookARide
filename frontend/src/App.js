@@ -10,6 +10,7 @@ import About from './pages/About';
 import Contact from './pages/Contact';
 import BookNow from './pages/BookNow';
 import PaymentSuccess from './pages/PaymentSuccess';
+import PayNow from './pages/PayNow';
 import HobbitonTransfers from './pages/HobbitonTransfers';
 import CruiseTransfers from './pages/CruiseTransfers';
 import SuburbPage from './pages/SuburbPageSEO';
@@ -65,7 +66,6 @@ import BlogIndex from './pages/blog/BlogIndex';
 import BlogPost from './pages/blog/BlogPost';
 import ComparisonPage from './pages/compare/ComparisonPage';
 import ComparisonDirectory from './pages/compare/ComparisonDirectory';
-import FacebookStrategy from './pages/FacebookStrategy';
 // SEO Battle Pages
 import HibiscusCoastShuttlePage from './pages/seo/HibiscusCoastShuttlePage';
 import BookarideVsHibiscusShuttles from './pages/seo/BookarideVsHibiscusShuttles';
@@ -209,7 +209,6 @@ function App() {
     { path: "auckland-airport-to-takapuna", element: <SEORoutePage /> },
     { path: "auckland-airport-to-devonport", element: <SEORoutePage /> },
     { path: "auckland-airport-to-matakana", element: <SEORoutePage /> },
-    { path: "auckland-airport-to-city", element: <SEORoutePage /> },
     { path: "auckland-cruise-terminal-transfer", element: <SEORoutePage /> },
     // NEW: Route Pages (Directory)
     { path: "routes", element: <RoutesDirectory /> },
@@ -299,6 +298,17 @@ function App() {
     { path: "murrays-bay-to-auckland-airport", element: <SuburbTransferPage /> },
     { path: "torbay-to-auckland-airport", element: <SuburbTransferPage /> },
     { path: "long-bay-to-auckland-airport", element: <SuburbTransferPage /> },
+    // Expansion Suburbs
+    { path: "pukekohe-to-auckland-airport", element: <SuburbTransferPage /> },
+    { path: "drury-to-auckland-airport", element: <SuburbTransferPage /> },
+    { path: "flat-bush-to-auckland-airport", element: <SuburbTransferPage /> },
+    { path: "te-atatu-to-auckland-airport", element: <SuburbTransferPage /> },
+    { path: "massey-to-auckland-airport", element: <SuburbTransferPage /> },
+    { path: "papakura-to-auckland-airport", element: <SuburbTransferPage /> },
+    { path: "onehunga-to-auckland-airport", element: <SuburbTransferPage /> },
+    { path: "mount-roskill-to-auckland-airport", element: <SuburbTransferPage /> },
+    { path: "royal-oak-to-auckland-airport", element: <SuburbTransferPage /> },
+    { path: "beachlands-to-auckland-airport", element: <SuburbTransferPage /> },
     // Standard Pages
     { path: "services", element: <Services /> },
     { path: "about", element: <About /> },
@@ -314,6 +324,7 @@ function App() {
     { path: "hotels", element: <HotelsDirectory /> },
     { path: "hotels/:slug", element: <HotelPage /> },
     { path: "payment-success", element: <PaymentSuccess /> },
+    { path: "pay/:bookingId", element: <PayNow /> },
     // Payment Pages
     { path: "afterpay", element: <AfterpayPage /> },
     { path: "referral", element: <ReferralProgram /> },
@@ -345,7 +356,6 @@ function App() {
             <Route path="/admin/reset-password" element={<AdminResetPassword />} />
             <Route path="/admin/dashboard" element={<AdminErrorBoundary><AdminDashboard /></AdminErrorBoundary>} />
             <Route path="/admin/seo" element={<SEODashboard />} />
-            <Route path="/admin/facebook-strategy" element={<FacebookStrategy />} />
             
             {/* Language-prefixed routes (zh, ja, ko, es, fr) */}
             {languagePrefixes.map(lang => (

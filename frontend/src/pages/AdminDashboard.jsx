@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Search, Filter, Mail, DollarSign, CheckCircle, XCircle, Clock, Eye, Edit2, Users, BookOpen, Car, Settings, Trash2, MapPin, Calendar, RefreshCw, Send, Bell, Facebook, Globe, Square, CheckSquare, FileText, Smartphone, RotateCcw, AlertTriangle, AlertCircle, Home, Bus, ExternalLink, Navigation, Upload, Archive, Activity, Download, Shield } from 'lucide-react';
+import { LogOut, Search, Filter, Mail, DollarSign, CheckCircle, XCircle, Clock, Eye, Edit2, Users, BookOpen, Car, Settings, Trash2, MapPin, Calendar, RefreshCw, Send, Bell, Globe, Square, CheckSquare, FileText, Smartphone, RotateCcw, AlertTriangle, AlertCircle, Home, ExternalLink, Navigation, Upload, Archive, Activity, Download, Shield } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent } from '../components/ui/card';
@@ -19,6 +19,8 @@ import { AdminBreadcrumb } from '../components/admin/AdminBreadcrumb';
 import ReturnsOverviewPanel from '../components/admin/ReturnsOverviewPanel';
 import { API } from '../config/api';
 import Cockpit from '../admin/Cockpit';
+import CreateBookingModal from '../components/admin/CreateBookingModal';
+import EditBookingModal from '../components/admin/EditBookingModal';
 
 // Helper function to format date to DD/MM/YYYY
 const formatDate = (dateString) => {
@@ -500,7 +502,10 @@ export const AdminDashboard = () => {
   let filterBookings = () => {};
   const fetchBookingsRef = useRef(null);
   const filterBookingsRef = useRef(null);
-  const [activeTab, setActiveTab] = useState('bookings');
+  const [activeTab, setActiveTab] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return 'bookings';
+  });
   const [bookings, setBookings] = useState([]);
   const [filteredBookings, setFilteredBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -516,6 +521,7 @@ export const AdminDashboard = () => {
   const [runningAutoArchive, setRunningAutoArchive] = useState(false);
   const [orphanPayments, setOrphanPayments] = useState([]);
   const [loadingOrphans, setLoadingOrphans] = useState(false);
+  const [syncingPayments, setSyncingPayments] = useState(false);
   const [recoverSessionId, setRecoverSessionId] = useState('');
   const [recovering, setRecovering] = useState(false);
   const [loadingDeleted, setLoadingDeleted] = useState(false);
@@ -545,42 +551,7 @@ export const AdminDashboard = () => {
   const [showDriverAssignPreview, setShowDriverAssignPreview] = useState(false);
   const [pendingAssignment, setPendingAssignment] = useState(null); // {tripType, driverPayout, driver}
   const [showCreateBookingModal, setShowCreateBookingModal] = useState(false);
-  const [newBooking, setNewBooking] = useState({
-    name: '',
-    email: '',
-    ccEmail: '',  // CC email for confirmation
-    phone: '',
-    serviceType: 'airport-shuttle',
-    pickupAddress: '',
-    pickupAddresses: [],  // Multiple pickups support
-    dropoffAddress: '',
-    date: '',
-    time: '',
-    passengers: '1',
-    paymentMethod: 'stripe',  // Default to Stripe payment link (mandatory online payment)
-    notes: '',
-    flightArrivalNumber: '',
-    flightArrivalTime: '',
-    flightDepartureNumber: '',
-    flightDepartureTime: '',
-    // Return trip fields
-    bookReturn: false,
-    returnDate: '',
-    returnTime: '',
-    returnDepartureFlightNumber: '',
-    returnDepartureTime: '',
-    returnArrivalFlightNumber: '',
-    returnArrivalTime: ''
-  });
-  const [bookingPricing, setBookingPricing] = useState({
-    distance: 0,
-    basePrice: 0,
-    airportFee: 0,
-    passengerFee: 0,
-    totalPrice: 0
-  });
-  const [calculatingPrice, setCalculatingPrice] = useState(false);
-  const [manualPriceOverride, setManualPriceOverride] = useState('');
+
   const [selectedPaymentStatus, setSelectedPaymentStatus] = useState('');
   const [showEditBookingModal, setShowEditBookingModal] = useState(false);
   // Bulk delete state
@@ -589,12 +560,7 @@ export const AdminDashboard = () => {
   const [editingBooking, setEditingBooking] = useState(null);
   const [calendarLoading, setCalendarLoading] = useState(false);
   
-  // Customer autocomplete state
-  const [customerSearchQuery, setCustomerSearchQuery] = useState('');
-  const [customerSearchResults, setCustomerSearchResults] = useState([]);
-  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
-  const [searchingCustomers, setSearchingCustomers] = useState(false);
-  const customerSearchRef = useRef(null);
+
 
   // useMemo guarantees stable render-time ordering that minifiers cannot reorder,
   // fixing the "Cannot read properties of undefined (reading 'add')" crash that
@@ -613,24 +579,14 @@ export const AdminDashboard = () => {
   // Xero invoice date state (for backdating)
   const [xeroInvoiceDate, setXeroInvoiceDate] = useState(null);
   
-  // Address autocomplete state for admin forms (create + edit)
-  const [adminPickupSuggestions, setAdminPickupSuggestions] = useState([]);
-  const [adminDropoffSuggestions, setAdminDropoffSuggestions] = useState([]);
-  const [showAdminPickupSuggestions, setShowAdminPickupSuggestions] = useState(false);
-  const [showAdminDropoffSuggestions, setShowAdminDropoffSuggestions] = useState(false);
+
   // Edit modal address autocomplete
   const [editPickupSuggestions, setEditPickupSuggestions] = useState([]);
   const [editDropoffSuggestions, setEditDropoffSuggestions] = useState([]);
   const [showEditPickupSuggestions, setShowEditPickupSuggestions] = useState(false);
   const [showEditDropoffSuggestions, setShowEditDropoffSuggestions] = useState(false);
 
-  // Date/Time picker states for admin form
-  const [adminPickupDate, setAdminPickupDate] = useState(null);
-  const [adminPickupTime, setAdminPickupTime] = useState(null);
-  const [adminReturnDate, setAdminReturnDate] = useState(null);
-  const [adminReturnTime, setAdminReturnTime] = useState(null);
-  const [adminFlightArrivalTime, setAdminFlightArrivalTime] = useState(null);
-  const [adminFlightDepartureTime, setAdminFlightDepartureTime] = useState(null);
+
 
   // Pagination state (must be before useEffects that depend on dateFrom/dateTo)
   const [currentPage, setCurrentPage] = useState(1);
@@ -761,6 +717,37 @@ export const AdminDashboard = () => {
   };
   fetchBookingsRef.current = fetchBookings;
 
+  // ── Optimistic helpers: update UI instantly without full reload ──
+  const updateBookingLocally = (bookingId, updates) => {
+    setBookings(prev => prev.map(b => b && b.id === bookingId ? { ...b, ...updates } : b));
+  };
+
+  const removeBookingLocally = (bookingId) => {
+    setBookings(prev => prev.filter(b => b && b.id !== bookingId));
+  };
+
+  // Silent background refresh — syncs with server without showing spinner
+  const silentRefresh = async () => {
+    try {
+      const params = {
+        page: loadAllBookings ? 1 : 1,
+        limit: loadAllBookings ? 0 : bookingsPerPage
+      };
+      if (dateFrom) params.date_from = dateFrom;
+      if (dateTo) params.date_to = dateTo;
+      const response = await axios.get(`${API}/bookings`, { ...getAuthHeaders(), params });
+      const fresh = Array.isArray(response.data) ? response.data : [];
+      setBookings(fresh);
+      try {
+        localStorage.setItem('cachedBookings', JSON.stringify(fresh.slice(0, 50)));
+        localStorage.setItem('cachedBookingsTime', new Date().toISOString());
+      } catch (e) { /* localStorage full — not critical */ }
+    } catch (error) {
+      // Silent refresh failed — not critical, optimistic state is still valid
+      console.error('Silent refresh failed:', error);
+    }
+  };
+
   const fetchBookingCounts = async () => {
     try {
       const response = await axios.get(`${API}/bookings/count`, getAuthHeaders());
@@ -796,6 +783,27 @@ export const AdminDashboard = () => {
     }
   };
 
+  const syncPendingPayments = async () => {
+    setSyncingPayments(true);
+    try {
+      const response = await axios.post(`${API}/bookings/sync-pending-payments`, {}, getAuthHeaders());
+      const data = response.data;
+      if (data.count > 0) {
+        toast.success(`Synced ${data.count} booking(s) — they were paid in Stripe but stuck as pending. Now confirmed.`);
+        silentRefresh();
+      } else if (data.checked > 0) {
+        toast.info(`Checked ${data.checked} pending booking(s) — none have been paid in Stripe yet.`);
+      } else {
+        toast.info('No pending bookings with payment links to check.');
+      }
+    } catch (error) {
+      console.error('Error syncing payments:', error);
+      toast.error(error.response?.data?.detail || 'Failed to sync payment statuses');
+    } finally {
+      setSyncingPayments(false);
+    }
+  };
+
   const fetchOrphanPayments = async () => {
     setLoadingOrphans(true);
     try {
@@ -820,7 +828,7 @@ export const AdminDashboard = () => {
       toast.success(response.data?.message || 'Booking recovered and added to the list.');
       setRecoverSessionId('');
       setOrphanPayments(prev => prev.filter(o => o.booking_id !== (response.data?.booking_id || bookingId)));
-      fetchBookingsRef.current?.();
+      silentRefresh();
     } catch (error) {
       const detail = error.response?.data?.detail;
       toast.error(typeof detail === 'string' ? detail : 'Recover failed');
@@ -863,7 +871,7 @@ export const AdminDashboard = () => {
     try {
       const response = await axios.post(`${API}/bookings/archive/${bookingId}`, {}, getAuthHeaders());
       toast.success(`Booking #${response.data.referenceNumber} archived successfully`);
-      fetchBookingsRef.current?.();
+      removeBookingLocally(bookingId);
       fetchArchivedCount();
     } catch (error) {
       console.error('Error archiving booking:', error);
@@ -877,7 +885,7 @@ export const AdminDashboard = () => {
       const response = await axios.post(`${API}/bookings/unarchive/${bookingId}`, {}, getAuthHeaders());
       toast.success(`Booking #${response.data.referenceNumber} restored to active bookings`);
       fetchArchivedBookings(archivePage, archiveSearchTerm);
-      fetchBookingsRef.current?.();
+      silentRefresh();
     } catch (error) {
       console.error('Error unarchiving booking:', error);
       toast.error(error.response?.data?.detail || 'Failed to restore booking');
@@ -901,7 +909,7 @@ export const AdminDashboard = () => {
         toast.success(`Auto-archive complete! Archived ${archived} completed bookings.`);
         fetchArchivedBookings(1, '');
         fetchArchivedCount();
-        fetchBookingsRef.current?.(); // Refresh active bookings list
+        silentRefresh(); // Refresh active bookings list
       } else {
         toast.info('No bookings to archive. All completed trips are either already archived or still have pending return dates.');
       }
@@ -951,7 +959,7 @@ export const AdminDashboard = () => {
     try {
       const response = await axios.post(`${API}/xero/create-invoice/${bookingId}`, {}, getAuthHeaders());
       toast.success(response.data.message);
-      fetchBookingsRef.current?.();
+      silentRefresh();
     } catch (error) {
       console.error('Error creating Xero invoice:', error);
       toast.error(error.response?.data?.detail || 'Failed to create invoice');
@@ -962,7 +970,7 @@ export const AdminDashboard = () => {
     try {
       const response = await axios.post(`${API}/xero/record-payment/${bookingId}`, {}, getAuthHeaders());
       toast.success(response.data.message);
-      fetchBookingsRef.current?.();
+      silentRefresh();
     } catch (error) {
       console.error('Error recording payment:', error);
       toast.error(error.response?.data?.detail || 'Failed to record payment');
@@ -974,7 +982,7 @@ export const AdminDashboard = () => {
       await axios.post(`${API}/bookings/restore/${bookingId}`, {}, getAuthHeaders());
       toast.success('Booking restored successfully!');
       fetchDeletedBookings();
-      fetchBookingsRef.current?.();
+      silentRefresh();
     } catch (error) {
       console.error('Error restoring booking:', error);
       toast.error('Failed to restore booking');
@@ -1009,7 +1017,7 @@ export const AdminDashboard = () => {
       toast.success(count ? `Restored ${count} booking(s). Your list is reinstated.` : res.data?.message || 'Done');
       setDeletedCountForBanner(0);
       fetchDeletedBookings();
-      fetchBookingsRef.current?.();
+      silentRefresh();
     } catch (error) {
       console.error('Error restoring all bookings:', error);
       toast.error(error.response?.data?.detail || 'Failed to restore all bookings');
@@ -1062,7 +1070,7 @@ export const AdminDashboard = () => {
       const res = await axios.post(`${API}/admin/backups/${label}/restore`, {}, getAuthHeaders());
       if (res.data.restored > 0) {
         toast.success(`Restored ${res.data.restored} missing booking(s) from ${label}`);
-        fetchBookingsRef.current?.();
+        silentRefresh();
       } else {
         toast.info(`No missing bookings found in ${label} backup — all bookings already present`);
       }
@@ -1103,7 +1111,7 @@ export const AdminDashboard = () => {
       setBackupRestoreResult(res.data);
       const { imported_count, skipped_count, error_count } = res.data;
       toast.success(`Restored ${imported_count} booking(s) from backup. Skipped ${skipped_count} duplicates.${error_count ? ` ${error_count} errors.` : ''}`);
-      fetchBookingsRef.current?.();
+      silentRefresh();
     } catch (error) {
       const msg = error.response?.data?.detail || error.message || 'Restore failed';
       toast.error(msg);
@@ -1123,7 +1131,7 @@ export const AdminDashboard = () => {
       setBackupRestoreResult(res.data);
       const { imported_count, skipped_count, source_file } = res.data;
       toast.success(`Restored ${imported_count} booking(s) from ${source_file || 'server backup'}. Skipped ${skipped_count} duplicates.`);
-      fetchBookingsRef.current?.();
+      silentRefresh();
     } catch (error) {
       const msg = error.response?.data?.detail || error.message || 'Restore failed';
       toast.error(msg);
@@ -1249,7 +1257,24 @@ export const AdminDashboard = () => {
       setDriverPayoutOverride('');
       setShowDriverAssignPreview(false);
       setPendingAssignment(null);
-      fetchBookingsRef.current?.();
+      // Optimistic: update driver info in local booking
+      const confirmAssignedDriver = drivers.find(d => d.id === selectedDriver);
+      if (tripType === 'return') {
+        updateBookingLocally(selectedBooking.id, {
+          return_driver_id: selectedDriver,
+          return_driver_name: confirmAssignedDriver?.name || '',
+          return_driver_phone: confirmAssignedDriver?.phone || '',
+          return_driver_email: confirmAssignedDriver?.email || '',
+        });
+      } else {
+        updateBookingLocally(selectedBooking.id, {
+          driver_id: selectedDriver,
+          driver_name: confirmAssignedDriver?.name || '',
+          driver_phone: confirmAssignedDriver?.phone || '',
+          driver_email: confirmAssignedDriver?.email || '',
+        });
+      }
+      silentRefresh();
     } catch (error) {
       console.error('Error assigning driver:', error);
       toast.error('Failed to assign driver');
@@ -1298,7 +1323,24 @@ export const AdminDashboard = () => {
       toast.success(response.data?.message || 'Driver assigned successfully!');
       setSelectedDriver('');
       setDriverPayoutOverride('');
-      fetchBookingsRef.current?.();
+      // Optimistic: update driver info in local booking
+      const assignedDriverObj = drivers.find(d => d.id === selectedDriver);
+      if (tripType === 'return') {
+        updateBookingLocally(selectedBooking.id, {
+          return_driver_id: selectedDriver,
+          return_driver_name: assignedDriverObj?.name || '',
+          return_driver_phone: assignedDriverObj?.phone || '',
+          return_driver_email: assignedDriverObj?.email || '',
+        });
+      } else {
+        updateBookingLocally(selectedBooking.id, {
+          driver_id: selectedDriver,
+          driver_name: assignedDriverObj?.name || '',
+          driver_phone: assignedDriverObj?.phone || '',
+          driver_email: assignedDriverObj?.email || '',
+        });
+      }
+      silentRefresh();
     } catch (error) {
       console.error('Error assigning driver:', error);
       toast.error('Failed to assign driver');
@@ -1344,7 +1386,19 @@ export const AdminDashboard = () => {
       }
       
       toast.success(response.data?.message || 'Driver unassigned successfully!');
-      fetchBookingsRef.current?.();
+      // Optimistic: clear driver info in local booking
+      if (tripType === 'return') {
+        updateBookingLocally(selectedBooking.id, {
+          return_driver_id: null, return_driver_name: null,
+          return_driver_phone: null, return_driver_email: null,
+        });
+      } else {
+        updateBookingLocally(selectedBooking.id, {
+          driver_id: null, driver_name: null,
+          driver_phone: null, driver_email: null, driverConfirmed: false,
+        });
+      }
+      silentRefresh();
     } catch (error) {
       console.error('Error unassigning driver:', error);
       toast.error(error.response?.data?.detail || 'Failed to unassign driver');
@@ -1452,7 +1506,8 @@ export const AdminDashboard = () => {
     try {
       await axios.patch(`${API}/bookings/${bookingId}`, { status: newStatus }, getAuthHeaders());
       toast.success('Status updated successfully');
-      fetchBookingsRef.current?.();
+      updateBookingLocally(bookingId, { status: newStatus });
+      silentRefresh();
     } catch (error) {
       if (error.response?.status === 401) {
         toast.error('Session expired. Please login again.');
@@ -1481,7 +1536,7 @@ export const AdminDashboard = () => {
       } else {
         toast.success('Booking silently deleted - No notification sent');
       }
-      fetchBookingsRef.current?.();
+      removeBookingLocally(bookingId);
     } catch (error) {
       if (error.response?.status === 401) {
         toast.error('Session expired. Please login again.');
@@ -1489,7 +1544,30 @@ export const AdminDashboard = () => {
         return;
       }
       console.error('Error deleting booking:', error);
-      toast.error('Failed to cancel booking');
+      const detail = error.response?.data?.detail;
+      if (error.response?.status === 400 && detail && detail.includes('paid Stripe payment')) {
+        const forceCancel = window.confirm(
+          `This booking has a paid Stripe payment.\n\nDo you want to force-cancel it anyway?\n\n⚠️ You may need to process a refund separately in Stripe.`
+        );
+        if (forceCancel) {
+          try {
+            await axios.delete(`${API}/bookings/${bookingId}?send_notification=${sendNotification}&force=true`, getAuthHeaders());
+            if (sendNotification) {
+              toast.success('Paid booking force-cancelled - Customer notified');
+            } else {
+              toast.success('Paid booking force-deleted silently');
+            }
+            removeBookingLocally(bookingId);
+            return;
+          } catch (retryError) {
+            console.error('Error force-deleting booking:', retryError);
+            toast.error(retryError.response?.data?.detail || 'Failed to force-cancel booking');
+            return;
+          }
+        }
+        return;
+      }
+      toast.error(detail || 'Failed to cancel booking');
     }
   };
 
@@ -1523,7 +1601,7 @@ export const AdminDashboard = () => {
     }
     
     setSelectedBookings(new Set());
-    fetchBookingsRef.current?.();
+    silentRefresh();
   };
 
   const handleSendToAdmin = async (bookingId) => {
@@ -1678,7 +1756,10 @@ export const AdminDashboard = () => {
       }, getAuthHeaders());
       toast.success('Price updated successfully');
       setShowDetailsModal(false);
-      fetchBookingsRef.current?.();
+      updateBookingLocally(selectedBooking.id, {
+        pricing: { ...selectedBooking.pricing, totalPrice: newPrice, overridden: true }
+      });
+      silentRefresh();
     } catch (error) {
       console.error('Error updating price:', error);
       toast.error('Failed to update price');
@@ -1698,8 +1779,9 @@ export const AdminDashboard = () => {
 
       if (response.data.success) {
         toast.success('Payment status updated successfully');
-        fetchBookingsRef.current?.();
+        updateBookingLocally(selectedBooking.id, { payment_status: selectedPaymentStatus });
         setShowDetailsModal(false);
+        silentRefresh();
       }
     } catch (error) {
       console.error('Error updating payment status:', error);
@@ -1816,7 +1898,7 @@ export const AdminDashboard = () => {
     try {
       const response = await axios.post(`${API}/bookings/${bookingId}/sync-calendar`, {}, getAuthHeaders());
       toast.success(response.data.message || 'Booking synced to Google Calendar!');
-      fetchBookingsRef.current?.();
+      silentRefresh();
     } catch (error) {
       console.error('Error syncing to calendar:', error);
       toast.error(error.response?.data?.detail || 'Failed to sync to calendar');
@@ -1861,8 +1943,7 @@ export const AdminDashboard = () => {
       const response = await axios.post(`${API}/tracking/send-driver-link/${bookingId}`, {}, getAuthHeaders());
       toast.dismiss();
       toast.success(response.data.message || 'Tracking link sent to driver!');
-      // Refresh bookings to show tracking info
-      fetchBookingsRef.current?.();
+      silentRefresh();
     } catch (error) {
       toast.dismiss();
       console.error('Error sending tracking link:', error);
@@ -2554,6 +2635,22 @@ export const AdminDashboard = () => {
           </CardContent>
         </Card>
 
+        {/* Sync pending payments — check Stripe for bookings stuck as "pending" */}
+        <Card className="mb-6 border-blue-200 bg-blue-50/50">
+          <CardContent className="p-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <AlertTriangle className="w-5 h-5 text-blue-600 shrink-0" />
+              <div>
+                <p className="font-medium text-blue-900">Booking shows "pending" but customer says they paid?</p>
+                <p className="text-sm text-blue-800">Checks Stripe for all pending bookings and updates any that have actually been paid.</p>
+              </div>
+              <Button variant="outline" size="sm" onClick={syncPendingPayments} disabled={syncingPayments} className="border-blue-500 text-blue-800 hover:bg-blue-100">
+                {syncingPayments ? 'Checking Stripe...' : 'Sync Pending Payments'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Recover missing bookings (e.g. #74 – payment in Stripe but booking never appeared) */}
         <Card className="mb-6 border-amber-200 bg-amber-50/50">
           <CardContent className="p-4">
@@ -2896,47 +2993,48 @@ export const AdminDashboard = () => {
                           </Select>
                         </td>
                         {/* ACTIONS COLUMN */}
-                        <td className="px-1 py-2">
-                          <div className="flex gap-1">
+                        <td className="px-1 py-2 relative z-10">
+                          <div className="flex flex-wrap gap-1 min-w-[180px]">
                             <button
-                              onClick={() => openDetailsModal(booking)}
-                              className="p-1.5 hover:bg-gray-100 rounded flex flex-col items-center"
+                              onClick={(e) => { e.stopPropagation(); openDetailsModal(booking); }}
+                              className="p-2 hover:bg-gray-100 rounded flex flex-col items-center cursor-pointer active:bg-gray-200 min-w-[36px]"
                               title="View booking details"
                             >
                               <Eye className="w-4 h-4 text-gray-600" />
                               <span className="text-[8px] text-gray-500">View</span>
                             </button>
                             <button
-                              onClick={() => openEditBookingModal(booking)}
-                              className="p-1.5 hover:bg-blue-100 rounded flex flex-col items-center"
+                              onClick={(e) => { e.stopPropagation(); openEditBookingModal(booking); }}
+                              className="p-2 hover:bg-blue-100 rounded flex flex-col items-center cursor-pointer active:bg-blue-200 min-w-[36px]"
                               title="Edit booking details"
                             >
                               <Edit2 className="w-4 h-4 text-blue-600" />
                               <span className="text-[8px] text-blue-500">Edit</span>
                             </button>
                             <button
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 setSelectedBooking(booking);
                                 setShowEmailModal(true);
                               }}
-                              className="p-1.5 hover:bg-green-100 rounded flex flex-col items-center"
+                              className="p-2 hover:bg-green-100 rounded flex flex-col items-center cursor-pointer active:bg-green-200 min-w-[36px]"
                               title="Send custom email (won't send SMS)"
                             >
                               <Mail className="w-4 h-4 text-green-600" />
                               <span className="text-[8px] text-green-500">Email</span>
                             </button>
                             <button
-                              onClick={() => handleResendConfirmation(booking.id)}
-                              className="p-1.5 hover:bg-amber-100 rounded flex flex-col items-center border border-amber-200"
-                              title="⚠️ Resend confirmation EMAIL + SMS to customer"
+                              onClick={(e) => { e.stopPropagation(); handleResendConfirmation(booking.id); }}
+                              className="p-2 hover:bg-amber-100 rounded flex flex-col items-center border border-amber-200 cursor-pointer active:bg-amber-200 min-w-[36px]"
+                              title="Resend confirmation EMAIL + SMS to customer"
                             >
                               <RefreshCw className="w-4 h-4 text-amber-600" />
                               <span className="text-[8px] text-amber-600 font-medium">Resend</span>
                             </button>
                             {booking.status === 'completed' && (
                               <button
-                                onClick={() => handleArchiveBooking(booking.id)}
-                                className="p-1.5 hover:bg-blue-100 rounded flex flex-col items-center border border-blue-200"
+                                onClick={(e) => { e.stopPropagation(); handleArchiveBooking(booking.id); }}
+                                className="p-2 hover:bg-blue-100 rounded flex flex-col items-center border border-blue-200 cursor-pointer active:bg-blue-200 min-w-[36px]"
                                 title="Archive this completed booking"
                               >
                                 <Archive className="w-4 h-4 text-blue-600" />
@@ -2944,16 +3042,16 @@ export const AdminDashboard = () => {
                               </button>
                             )}
                             <button
-                              onClick={() => handleDeleteBooking(booking.id, booking.name, true)}
-                              className="p-1.5 hover:bg-red-100 rounded flex flex-col items-center"
+                              onClick={(e) => { e.stopPropagation(); handleDeleteBooking(booking.id, booking.name, true); }}
+                              className="p-2 hover:bg-red-100 rounded flex flex-col items-center cursor-pointer active:bg-red-200 min-w-[36px]"
                               title="Cancel & notify customer via email/SMS"
                             >
                               <Trash2 className="w-4 h-4 text-red-500" />
                               <span className="text-[8px] text-red-500">Cancel</span>
                             </button>
                             <button
-                              onClick={() => handleDeleteBooking(booking.id, booking.name, false)}
-                              className="p-1.5 hover:bg-gray-200 rounded flex flex-col items-center"
+                              onClick={(e) => { e.stopPropagation(); handleDeleteBooking(booking.id, booking.name, false); }}
+                              className="p-2 hover:bg-gray-200 rounded flex flex-col items-center cursor-pointer active:bg-gray-300 min-w-[36px]"
                               title="Silent delete - NO notification to customer (use for duplicates)"
                             >
                               <XCircle className="w-4 h-4 text-gray-500" />
@@ -3480,9 +3578,9 @@ export const AdminDashboard = () => {
                   Import historical bookings from your WordPress Chauffeur Booking System. This preserves original booking IDs for cross-reference and won't send notifications for imported bookings.
                 </p>
                 
-                <ImportBookingsSection 
+                <ImportBookingsSection
                   onSuccess={() => {
-                    fetchBookingsRef.current?.();
+                    silentRefresh();
                     toast.success('Bookings imported successfully!');
                   }}
                 />
