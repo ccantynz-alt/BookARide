@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Search, Filter, Mail, DollarSign, CheckCircle, XCircle, Clock, Eye, Edit2, Users, BookOpen, Car, Settings, Trash2, MapPin, Calendar, RefreshCw, Send, Bell, Globe, Square, CheckSquare, FileText, Smartphone, RotateCcw, AlertTriangle, AlertCircle, Home, ExternalLink, Navigation, Upload, Archive, Activity, Download, Shield } from 'lucide-react';
+import { LogOut, Search, Mail, DollarSign, CheckCircle, XCircle, Clock, Eye, Edit2, Users, BookOpen, Settings, Trash2, MapPin, Calendar, RefreshCw, Send, Bell, Square, CheckSquare, FileText, Smartphone, RotateCcw, AlertTriangle, AlertCircle, Home, Upload, Archive, Activity, Download, Shield } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent } from '../components/ui/card';
@@ -10,7 +10,7 @@ import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { toast } from 'sonner';
-import { CustomDatePicker, CustomTimePicker } from '../components/DateTimePicker';
+import { CustomDatePicker } from '../components/DateTimePicker';
 import axios from 'axios';
 import { CustomersTab } from '../components/admin/CustomersTab';
 import { DriverApplicationsTab } from '../components/admin/DriverApplicationsTab';
@@ -1689,7 +1689,7 @@ export const AdminDashboard = () => {
       const csvContent = [
         headers.join(','),
         ...rows.map(row => row.map(cell => `\"${cell}\"`).join(','))
-      ].join('\\n');
+      ].join('\n');
       
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
@@ -1839,29 +1839,7 @@ export const AdminDashboard = () => {
     }
   };
 
-  // Handle adding pickup to edit form
-  const handleAddEditPickup = () => {
-    setEditingBooking(prev => ({
-      ...prev,
-      pickupAddresses: [...(prev.pickupAddresses || []), '']
-    }));
-  };
-
-  // Handle removing pickup from edit form
-  const handleRemoveEditPickup = (index) => {
-    setEditingBooking(prev => ({
-      ...prev,
-      pickupAddresses: prev.pickupAddresses.filter((_, i) => i !== index)
-    }));
-  };
-
-  // Handle edit pickup address change
-  const handleEditPickupAddressChange = (index, value) => {
-    setEditingBooking(prev => ({
-      ...prev,
-      pickupAddresses: prev.pickupAddresses.map((addr, i) => i === index ? value : addr)
-    }));
-  };
+  // Multi-pickup handlers removed per CLAUDE.md rule 10 (one pickup address only)
 
   // Manual calendar sync
   const handleManualCalendarSync = async (bookingId) => {
@@ -4194,42 +4172,6 @@ export const AdminDashboard = () => {
                         ))}
                       </ul>
                     )}
-                  </div>
-
-                  {/* Additional Pickup Addresses */}
-                  {editingBooking.pickupAddresses?.map((pickup, index) => (
-                    <div key={index} className="relative">
-                      <Label>Pickup Address {index + 2}</Label>
-                      <div className="flex gap-2 mt-1">
-                        <Input
-                          value={pickup}
-                          onChange={(e) => handleEditPickupAddressChange(index, e.target.value)}
-                          placeholder="Enter full address..."
-                          className="flex-1"
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => handleRemoveEditPickup(index)}
-                          className="text-red-600 hover:bg-red-50"
-                        >
-                          ✕
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-
-                  {/* Add Pickup Button */}
-                  <div>
-                    <button
-                      type="button"
-                      onClick={handleAddEditPickup}
-                      className="group w-full flex items-center justify-center gap-3 px-6 py-4 bg-gradient-to-r from-gold/10 to-gold/5 hover:from-gold/20 hover:to-gold/10 border-2 border-dashed border-gold/40 hover:border-gold/60 rounded-lg transition-all duration-300"
-                    >
-                      <MapPin className="w-4 h-4 text-gold" />
-                      <span className="text-sm font-semibold text-gray-700">Add Another Pickup Location</span>
-                      <span className="w-6 h-6 rounded-full bg-gold text-white text-xs font-bold flex items-center justify-center">+</span>
-                    </button>
                   </div>
 
                   <div className="relative">

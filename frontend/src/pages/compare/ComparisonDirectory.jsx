@@ -2,8 +2,6 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { Card, CardContent } from '../../components/ui/card';
-import { Header } from '../../components/Header';
-import { Footer } from '../../components/Footer';
 import { ArrowRight, Award, CheckCircle, XCircle } from 'lucide-react';
 
 const comparisons = [
@@ -44,8 +42,6 @@ const ComparisonDirectory = () => {
         <meta name="description" content="Compare Auckland airport transfer options. See how BookaRide compares to SuperShuttle, Uber, and Taxis for price, service, and reliability." />
         <link rel="canonical" href="https://bookaride.co.nz/compare" />
       </Helmet>
-
-      <Header />
 
       {/* Hero */}
       <section className="bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white py-16">
@@ -120,7 +116,6 @@ const ComparisonDirectory = () => {
         </div>
       </section>
 
-      <Footer />
     </div>
   );
 };

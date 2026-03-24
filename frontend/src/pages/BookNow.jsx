@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { MapPin, Calendar, Users, DollarSign, Clock, Mail, Phone, User, Wrench, Plane } from 'lucide-react';
@@ -459,32 +459,6 @@ export const BookNow = () => {
                         />
                       </div>
 
-                      {/* Additional Pickup Addresses */}
-                      {formData.pickupAddresses.map((pickup, index) => (
-                        <div key={index} className="space-y-2 mb-6">
-                          <Label className="flex items-center space-x-2">
-                            <MapPin className="w-4 h-4 text-gold" />
-                            <span>Pickup Location {index + 2}</span>
-                          </Label>
-                          <div className="flex gap-2">
-                            <AddressAutocomplete
-                              value={pickup}
-                              onChange={(val) => handlePickupAddressChange(index, val)}
-                              onSelect={(val) => handlePickupAddressChange(index, val)}
-                              placeholder="Additional pickup address..."
-                              className="flex-1"
-                            />
-                            <Button type="button" variant="outline" size="sm" onClick={() => handleRemovePickup(index)} className="text-red-500 hover:text-red-700">Remove</Button>
-                          </div>
-                        </div>
-                      ))}
-
-                      {formData.pickupAddresses.length < 3 && (
-                        <Button type="button" variant="outline" onClick={handleAddPickup} className="mb-6 text-sm">
-                          + Add another pickup location
-                        </Button>
-                      )}
-
                       {/* Drop-off Address */}
                       <div className="space-y-2 mb-6">
                         <Label htmlFor="dropoffAddress" className="flex items-center space-x-2">
@@ -916,11 +890,11 @@ export const BookNow = () => {
                           </svg>
                           <span className="font-semibold text-gray-800">Secure Payment</span>
                         </div>
-                        <p className="text-sm text-gray-600 mb-3">Pay securely with credit/debit card via Stripe</p>
+                        <p className="text-sm text-gray-600 mb-3">Pay securely with credit/debit card</p>
                         <div className="flex items-center gap-2">
                           <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Visa_Inc._logo.svg/100px-Visa_Inc._logo.svg.png" alt="Visa" className="h-6 object-contain" />
                           <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Mastercard-logo.svg/100px-Mastercard-logo.svg.png" alt="Mastercard" className="h-6 object-contain" />
-                          <span className="text-xs text-gray-400 ml-2">Powered by Stripe</span>
+                          <span className="text-xs text-gray-400 ml-2">Secure payment</span>
                         </div>
                       </div>
 

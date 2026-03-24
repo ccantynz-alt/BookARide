@@ -5,8 +5,6 @@ import { Plane, MapPin, Clock, Shield, Star, CreditCard, Users, CheckCircle } fr
 import { Button } from '../../components/ui/button';
 import { Card, CardContent } from '../../components/ui/card';
 import SEO from '../../components/SEO';
-import { Header } from '../../components/Header';
-import { Footer } from '../../components/Footer';
 
 const USALanding = () => {
   // Schema markup for American visitors
@@ -106,8 +104,6 @@ const USALanding = () => {
         <script type="application/ld+json">{JSON.stringify(schemaMarkup)}</script>
         <script type="application/ld+json">{JSON.stringify(faqSchema)}</script>
       </Helmet>
-
-      <Header />
 
       {/* Hero Section with Beautiful USA Image */}
       <section className="relative pt-32 pb-20 bg-gradient-to-br from-blue-900 via-blue-800 to-red-900 overflow-hidden">
@@ -348,7 +344,6 @@ const USALanding = () => {
         </div>
       </section>
 
-      <Footer />
     </div>
   );
 };
