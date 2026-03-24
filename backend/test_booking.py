@@ -28,7 +28,7 @@ def create_test_booking(api_url: str, admin_email: str):
     future_date = (datetime.now() + timedelta(days=7)).strftime("%Y-%m-%d")
 
     booking_data = {
-        "serviceType": "airport-shuttle",
+        "serviceType": "airport-transfer",
         "pickupAddress": "123 Test Street, Auckland CBD, Auckland 1010",
         "dropoffAddress": "Auckland Airport, Auckland 2022",
         "date": future_date,
