@@ -3202,7 +3202,7 @@ def send_customer_confirmation(booking: dict):
                 }}
             )
             sync_client.close()
-            logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Confirmation status updated for booking {booking_id}")
+            logger.info(f"ÃƒÆ'Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ'Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ'Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Confirmation status updated for booking {booking_id}")
         except Exception as e:
             logger.error(f"Error scheduling confirmation status update: {e}")
     
@@ -3896,32 +3896,32 @@ async def handle_incoming_email(request: Request):
     """
     Webhook endpoint for Mailgun incoming emails.
     Uses Claude AI to generate context-aware booking support responses.
-    Looks up the sender’s booking history for personalised answers.
+    Looks up the sender's booking history for personalised answers.
     """
     try:
         # Parse the incoming email from Mailgun webhook
         form_data = await request.form()
 
-        sender = form_data.get(‘sender’, ‘’)
-        from_email = form_data.get(‘from’, sender)
-        subject = form_data.get(‘subject’, ‘No Subject’)
-        body_plain = form_data.get(‘body-plain’, ‘’)
-        body_html = form_data.get(‘body-html’, ‘’)
-        recipient = form_data.get(‘recipient’, ‘’)
+        sender = form_data.get('sender', '')
+        from_email = form_data.get('from', sender)
+        subject = form_data.get('subject', 'No Subject')
+        body_plain = form_data.get('body-plain', '')
+        body_html = form_data.get('body-html', '')
+        recipient = form_data.get('recipient', '')
 
         # Extract email address from "Name <email>" format
         import re
-        email_match = re.search(r’[\w\.-]+@[\w\.-]+’, from_email)
+        email_match = re.search(r'[\w\.-]+@[\w\.-]+', from_email)
         reply_to_email = email_match.group(0) if email_match else from_email
 
         # Extract sender name
-        name_match = re.match(r’^([^<]+)’, from_email)
+        name_match = re.match(r'^([^<]+)', from_email)
         sender_name = name_match.group(1).strip() if name_match else ""
 
         logger.info(f"Incoming support email from: {reply_to_email}, Subject: {subject}")
 
-        # Don’t reply to our own emails, no-reply addresses, or mailer-daemon
-        skip_patterns = [‘bookaride’, ‘noreply’, ‘no-reply’, ‘mailer-daemon’, ‘postmaster’]
+        # Don't reply to our own emails, no-reply addresses, or mailer-daemon
+        skip_patterns = ['bookaride', 'noreply', 'no-reply', 'mailer-daemon', 'postmaster']
         if any(p in reply_to_email.lower() for p in skip_patterns):
             logger.info("Skipping auto-reply to system/no-reply email")
             return {"status": "skipped", "reason": "system email"}
@@ -3942,7 +3942,7 @@ async def handle_incoming_email(request: Request):
             logger.warning(f"Rate limit hit: {reply_to_email} has {len(recent_replies)} replies today")
             return {"status": "skipped", "reason": "rate limited"}
 
-        # Look up customer’s booking history for context
+        # Look up customer's booking history for context
         booking_context = ""
         try:
             customer_bookings = await db.bookings.find(
@@ -3956,18 +3956,18 @@ async def handle_incoming_email(request: Request):
             if customer_bookings:
                 booking_context = f"\n\nThis customer has {len(customer_bookings)} recent booking(s):\n"
                 for b in customer_bookings:
-                    ref = b.get(‘referenceNumber’, ‘N/A’)
-                    date = b.get(‘date’, ‘N/A’)
-                    time = b.get(‘time’, ‘N/A’)
-                    pickup = b.get(‘pickupAddress’, ‘N/A’)
-                    dropoff = b.get(‘dropoffAddress’, ‘N/A’)
-                    status = b.get(‘status’, ‘N/A’)
-                    payment = b.get(‘payment_status’, b.get(‘paymentStatus’, ‘N/A’))
-                    total = b.get(‘totalPrice’, b.get(‘pricing’, {}).get(‘totalPrice’, ‘N/A’))
-                    passengers = b.get(‘passengers’, ‘N/A’)
-                    flight = b.get(‘flightNumber’, b.get(‘flightArrivalNumber’, ‘’))
-                    return_date = b.get(‘returnDate’, ‘’)
-                    return_time = b.get(‘returnTime’, ‘’)
+                    ref = b.get('referenceNumber', 'N/A')
+                    date = b.get('date', 'N/A')
+                    time = b.get('time', 'N/A')
+                    pickup = b.get('pickupAddress', 'N/A')
+                    dropoff = b.get('dropoffAddress', 'N/A')
+                    status = b.get('status', 'N/A')
+                    payment = b.get('payment_status', b.get('paymentStatus', 'N/A'))
+                    total = b.get('totalPrice', b.get('pricing', {}).get('totalPrice', 'N/A'))
+                    passengers = b.get('passengers', 'N/A')
+                    flight = b.get('flightNumber', b.get('flightArrivalNumber', ''))
+                    return_date = b.get('returnDate', '')
+                    return_time = b.get('returnTime', '')
                     booking_context += (
                         f"  - Ref #{ref}: {date} at {time}, {pickup} → {dropoff}, "
                         f"{passengers} pax, status={status}, payment={payment}, total=${total}"
@@ -3993,7 +3993,7 @@ async def handle_incoming_email(request: Request):
         )
 
         # Prepare the reply
-        reply_subject = f"Re: {subject}" if not subject.startswith(‘Re:’) else subject
+        reply_subject = f"Re: {subject}" if not subject.startswith('Re:') else subject
 
         # Create HTML version
         html_response = f"""
@@ -4003,7 +4003,7 @@ async def handle_incoming_email(request: Request):
                 <p style="color: #888; margin: 5px 0 0 0;">Airport Transfers & Private Tours</p>
             </div>
             <div style="padding: 30px; background: #fff; line-height: 1.6; color: #333;">
-                {ai_response.replace(chr(10), ‘<br>’)}
+                {ai_response.replace(chr(10), '<br>')}
             </div>
             <div style="background: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; color: #666;">
                 <p><strong>Book Online:</strong> <a href="https://bookaride.co.nz/book-now" style="color: #D4AF37;">bookaride.co.nz/book-now</a></p>
@@ -4054,11 +4054,11 @@ async def handle_incoming_email(request: Request):
                     <hr>
                     <p><strong>Customer wrote:</strong></p>
                     <div style="background: #f9f9f9; padding: 15px; border-left: 3px solid #D4AF37; margin: 10px 0;">
-                        {email_content[:2000].replace(chr(10), ‘<br>’)}
+                        {email_content[:2000].replace(chr(10), '<br>')}
                     </div>
                     <p><strong>AI replied:</strong></p>
                     <div style="background: #f0f7ff; padding: 15px; border-left: 3px solid #2196F3; margin: 10px 0;">
-                        {ai_response.replace(chr(10), ‘<br>’)}
+                        {ai_response.replace(chr(10), '<br>')}
                     </div>
                     <p style="font-size: 12px; color: #999;">Review in admin: Email Logs tab</p>
                 </div>""",
@@ -4633,7 +4633,7 @@ Price: ${booking.get('totalPrice', 0):.2f}
                     }},
                     upsert=True
                 )
-                logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Stored pending approval for booking #{booking_ref}")
+                logger.info(f"ÃƒÆ'Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ'Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ'Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Stored pending approval for booking #{booking_ref}")
             except Exception as db_error:
                 logger.error(f"Failed to store pending approval: {db_error}")
             
@@ -6994,7 +6994,7 @@ async def twilio_sms_webhook(request: Request):
                         html_content = f"""
                         <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px;">
                             <div style="background: #22c55e; color: white; padding: 15px; border-radius: 8px 8px 0 0; text-align: center;">
-                                <h2 style="margin: 0;">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Driver Acknowledged Job</h2>
+                                <h2 style="margin: 0;">ÃƒÆ'Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ'Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ'Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Driver Acknowledged Job</h2>
                             </div>
                             <div style="background: #f0fdf4; padding: 20px; border: 1px solid #86efac; border-top: none; border-radius: 0 0 8px 8px;">
                                 <p><strong>Driver:</strong> {driver_name}</p>
@@ -7480,7 +7480,7 @@ async def send_tracking_link_to_driver(booking_id: str, current_admin: dict = De
             customer_name = booking.get('name', 'Customer')
             pickup = booking.get('pickupAddress', 'N/A')
             
-            sms_body = f"""ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â SHARE YOUR LOCATION
+            sms_body = f"""ÃƒÆ'Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ'Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ'Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å"ÃƒÆ'Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â SHARE YOUR LOCATION
             
 Job: {booking_ref}
 Customer: {customer_name}
@@ -7500,7 +7500,7 @@ Customer will be auto-notified when you start.
                 to=formatted_phone
             )
             
-            logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â± Tracking link sent to driver {driver.get('name')} at {formatted_phone}")
+            logger.info(f"ÃƒÆ'Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ'Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ'Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å"ÃƒÆ'Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â± Tracking link sent to driver {driver.get('name')} at {formatted_phone}")
             
             # Update booking with tracking info
             collection = db.shuttle_bookings if booking_type == "shuttle" else db.bookings
@@ -7540,7 +7540,7 @@ SYNC_SECRET_KEY = os.environ.get("SYNC_SECRET_KEY", "bookaride-sync-2024-secret"
 async def auto_sync_from_production():
     """Automatically sync data from production every 5 minutes"""
     try:
-        logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¾ Auto-sync: Starting sync from production...")
+        logger.info("ÃƒÆ'Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ'Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ'Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ'Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¾ Auto-sync: Starting sync from production...")
         
         response = requests.get(
             f"{PRODUCTION_API_URL}/sync/export",
@@ -13209,7 +13209,7 @@ async def send_arrival_pickup_emails():
         mailgun_configured = bool(os.environ.get("MAILGUN_API_KEY") and os.environ.get("MAILGUN_DOMAIN"))
 
         if not mailgun_configured and send_email_unified is None:
-            logger.warning("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã¢â‚¬Â¹ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â [Arrival Emails] Email not configured")
+            logger.warning("ÃƒÆ'Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ'Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ'Ã¢â‚¬Â¹ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ'Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ'Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ'Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â [Arrival Emails] Email not configured")
             return {"sent": 0, "error": "Email not configured"}
         
         sent_count = 0
@@ -13493,7 +13493,7 @@ async def run_daily_error_check():
         # Send email report
         try:
             admin_email = os.environ.get('ADMIN_EMAIL', 'info@bookaride.co.nz')
-            subject = f"{'ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¨ ISSUES FOUND' if issues else 'ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ All Clear'} - BookaRide Daily Check {report_time}"
+            subject = f"{'ÃƒÆ'Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ'Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ'Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ'Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¨ ISSUES FOUND' if issues else 'ÃƒÆ'Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ'Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ'Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ All Clear'} - BookaRide Daily Check {report_time}"
             
             html_report = f"""
             <html>
@@ -13506,9 +13506,9 @@ async def run_daily_error_check():
             ok = _send_email_with_fallbacks(admin_email, subject, html_report, from_name="BookaRide System")
 
             if ok:
-                logger.info(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â [Daily Error Check] Email report sent to {admin_email}")
+                logger.info(f"ÃƒÆ'Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ'Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ'Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ'Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â [Daily Error Check] Email report sent to {admin_email}")
             else:
-                logger.error(f"ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â [Daily Error Check] Failed to send email")
+                logger.error(f"ÃƒÆ'Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ'Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ'Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ'Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â [Daily Error Check] Failed to send email")
         except Exception as email_err:
             logger.error(f" [Daily Error Check] Email error: {str(email_err)}")
         
@@ -13755,7 +13755,7 @@ async def startup_event():
             "created_at": datetime.now(timezone.utc).isoformat(),
             "is_active": True
         })
-        logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Default admin user created")
+        logger.info("ÃƒÆ'Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ'Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ'Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Default admin user created")
     else:
         # Update password and email to ensure they're correct
         hashed_pw = "$2b$12$C6UzMDM.H6dfI/f/IKcEeO8m8Y4YkQkQ1h6s4H6c3Z8Y5G7c8Y4r2"
@@ -13766,7 +13766,7 @@ async def startup_event():
                 "email": "info@bookaride.co.nz"
             }}
         )
-        logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Admin password reset and email updated to info@bookaride.co.nz")
+        logger.info("ÃƒÆ'Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ'Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ'Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Admin password reset and email updated to info@bookaride.co.nz")
     
     # Create database indexes for faster queries
     try:
@@ -13777,7 +13777,7 @@ async def startup_event():
         await db.bookings.create_index("referenceNumber")
         await db.bookings.create_index("original_booking_id")
         await db.bookings.create_index([("date", -1), ("status", 1)])
-        logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Database indexes created for faster queries")
+        logger.info("ÃƒÆ'Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ'Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ'Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Database indexes created for faster queries")
     except Exception as e:
         logger.warning(f"Index creation note: {str(e)}")
     
@@ -13787,7 +13787,7 @@ async def startup_event():
         await db.bookings_archive.create_index("name")
         await db.bookings_archive.create_index("email")
         await db.bookings_archive.create_index("referenceNumber")
-        logger.info("ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Archive indexes created")
+        logger.info("ÃƒÆ'Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ'Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ'Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Archive indexes created")
     except Exception as e:
         logger.warning(f"Archive index creation note: {str(e)}")
     
