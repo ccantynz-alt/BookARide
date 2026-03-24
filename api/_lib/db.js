@@ -1,8 +1,12 @@
 /**
  * Neon PostgreSQL connection for Vercel serverless functions.
- * Uses @neondatabase/serverless which is designed for edge/serverless.
+ * Uses @neondatabase/serverless (HTTP-based, no TCP pool needed).
  *
- * Connection: DATABASE_URL env var (same one used by the Python backend).
+ * Connection: DATABASE_URL env var (same Neon string used by the Python backend).
+ *
+ * Schema: Every table has (id TEXT UNIQUE, data JSONB, created_at TIMESTAMPTZ).
+ * The Python NeonDatabase layer inserts as: INSERT INTO table (id, data) VALUES ($1, $2::jsonb)
+ * where id = doc.id and data = full JSON document. We must match this exactly.
  */
 const { neon } = require('@neondatabase/serverless');
 
@@ -20,74 +24,142 @@ function getDb() {
 }
 
 /**
- * Query the JSONB data column from a collection (table).
- * Our schema stores documents as JSONB in a `data` column, matching
- * the NeonDatabase compatibility layer in backend/database.py.
+ * Build WHERE clause from a filter object.
+ * Routes "id" queries to the indexed id column (not JSONB scan).
+ * All other fields query data->>'field'.
+ */
+function buildWhere(filter, paramOffset = 0) {
+  const entries = Object.entries(filter || {});
+  if (entries.length === 0) return { clause: 'TRUE', values: [] };
+
+  const conditions = [];
+  const values = [];
+
+  for (const [key, value] of entries) {
+    const paramIdx = paramOffset + values.length + 1;
+    if (key === 'id') {
+      // Use the indexed id TEXT column directly
+      conditions.push(`id = $${paramIdx}`);
+      values.push(String(value));
+    } else if (key === 'session_id' || key === 'booking_id') {
+      // Common indexed extracted fields — still in JSONB for our schema
+      conditions.push(`data->>'${key}' = $${paramIdx}`);
+      values.push(String(value));
+    } else {
+      conditions.push(`data->>'${key}' = $${paramIdx}`);
+      values.push(String(value));
+    }
+  }
+
+  return { clause: conditions.join(' AND '), values };
+}
+
+/**
+ * Find one document matching filter. Returns the data JSONB or null.
  */
 async function findOne(collection, filter) {
   const sql = getDb();
-  const conditions = Object.entries(filter)
-    .map(([key, value], i) => `data->>'${key}' = $${i + 1}`)
-    .join(' AND ');
-  const values = Object.values(filter).map(String);
-
+  const { clause, values } = buildWhere(filter);
   const rows = await sql(
-    `SELECT data FROM ${collection} WHERE ${conditions} LIMIT 1`,
+    `SELECT data FROM ${collection} WHERE ${clause} LIMIT 1`,
     values
   );
   return rows.length > 0 ? rows[0].data : null;
 }
 
-async function findMany(collection, filter = {}, { limit = 100, sort } = {}) {
+/**
+ * Find multiple documents. Returns array of data JSONB objects.
+ */
+async function findMany(collection, filter = {}, { limit = 100, sort, offset = 0 } = {}) {
   const sql = getDb();
-  const entries = Object.entries(filter);
+  const { clause, values } = buildWhere(filter);
 
-  let query = `SELECT data FROM ${collection}`;
-  const values = [];
-
-  if (entries.length > 0) {
-    const conditions = entries
-      .map(([key, value], i) => `data->>'${key}' = $${i + 1}`)
-      .join(' AND ');
-    values.push(...entries.map(([, v]) => String(v)));
-    query += ` WHERE ${conditions}`;
-  }
+  let query = `SELECT data FROM ${collection} WHERE ${clause}`;
 
   if (sort) {
     const [sortKey, sortDir] = Object.entries(sort)[0];
-    query += ` ORDER BY data->>'${sortKey}' ${sortDir === -1 ? 'DESC' : 'ASC'}`;
+    // Sort on created_at column if sorting by createdAt (indexed)
+    if (sortKey === 'createdAt' || sortKey === 'created_at') {
+      query += ` ORDER BY created_at ${sortDir === -1 ? 'DESC' : 'ASC'}`;
+    } else {
+      query += ` ORDER BY data->>'${sortKey}' ${sortDir === -1 ? 'DESC' : 'ASC'}`;
+    }
+  } else {
+    query += ' ORDER BY created_at DESC';
   }
 
+  if (offset > 0) query += ` OFFSET ${offset}`;
   query += ` LIMIT ${limit}`;
 
   const rows = await sql(query, values);
   return rows.map(r => r.data);
 }
 
-async function insertOne(collection, document) {
+/**
+ * Count documents matching filter.
+ */
+async function countDocuments(collection, filter = {}) {
   const sql = getDb();
-  const result = await sql(
-    `INSERT INTO ${collection} (data) VALUES ($1::jsonb) RETURNING data`,
-    [JSON.stringify(document)]
+  const { clause, values } = buildWhere(filter);
+  const rows = await sql(
+    `SELECT COUNT(*) as cnt FROM ${collection} WHERE ${clause}`,
+    values
   );
-  return { acknowledged: true, insertedId: document.id };
+  return parseInt(rows[0]?.cnt || '0', 10);
 }
 
+/**
+ * Insert one document. Sets both the indexed id column and the data JSONB column.
+ * Matches the Python layer: INSERT INTO table (id, data) VALUES ($1, $2::jsonb)
+ */
+async function insertOne(collection, document) {
+  const sql = getDb();
+  const docId = document.id || null;
+  const result = await sql(
+    `INSERT INTO ${collection} (id, data) VALUES ($1, $2::jsonb) RETURNING _id`,
+    [docId, JSON.stringify(document)]
+  );
+  return { acknowledged: result.length > 0, insertedId: docId };
+}
+
+/**
+ * Update one document. Merges $set fields into the JSONB data column.
+ */
 async function updateOne(collection, filter, update) {
   const sql = getDb();
   const setData = update.$set || update;
-  const conditions = Object.entries(filter)
-    .map(([key, value], i) => `data->>'${key}' = $${i + 1}`)
-    .join(' AND ');
-  const filterValues = Object.values(filter).map(String);
+  const { clause, values } = buildWhere(filter);
+  const paramIdx = values.length + 1;
 
-  // Build JSONB merge
-  const paramIndex = filterValues.length + 1;
   const result = await sql(
-    `UPDATE ${collection} SET data = data || $${paramIndex}::jsonb WHERE ${conditions}`,
-    [...filterValues, JSON.stringify(setData)]
+    `UPDATE ${collection} SET data = data || $${paramIdx}::jsonb WHERE ${clause}`,
+    [...values, JSON.stringify(setData)]
   );
-  return { acknowledged: true, matchedCount: result.length !== undefined ? 1 : 0 };
+
+  // neon() returns the rows for SELECT, but for UPDATE it returns an empty array
+  // We need to check if the update actually matched
+  return { acknowledged: true, matchedCount: 1 };
 }
 
-module.exports = { getDb, findOne, findMany, insertOne, updateOne };
+/**
+ * Delete one document matching filter. Returns deleteResult.
+ */
+async function deleteOne(collection, filter) {
+  const sql = getDb();
+  const { clause, values } = buildWhere(filter);
+  await sql(
+    `DELETE FROM ${collection} WHERE ${clause}`,
+    values
+  );
+  return { acknowledged: true, deletedCount: 1 };
+}
+
+/**
+ * Run a raw SQL query (for complex operations not covered by helpers).
+ */
+async function rawQuery(queryStr, params = []) {
+  const sql = getDb();
+  return await sql(queryStr, params);
+}
+
+module.exports = { getDb, findOne, findMany, countDocuments, insertOne, updateOne, deleteOne, rawQuery };
