@@ -37,6 +37,7 @@ const AddressAutocomplete = ({
   const [suggestions, setSuggestions] = useState([]);
   const [open, setOpen] = useState(false);
   const [dropdownStyle, setDropdownStyle] = useState({});
+  const [error, setError] = useState(null);
   const inputRef = useRef(null);
   const dropdownRef = useRef(null);
   const debounceRef = useRef(null);
@@ -62,8 +63,11 @@ const AddressAutocomplete = ({
           const preds = resp.data.predictions || [];
           setSuggestions(preds);
           setOpen(preds.length > 0);
+          setError(preds.length === 0 && text.length >= 3 ? 'no_results' : null);
         } catch (err) {
           console.error('[AddressAutocomplete] error:', err.message);
+          if (gen !== fetchGenRef.current) return;
+          setError('api_error');
         }
       }, 300);
     },
@@ -99,6 +103,7 @@ const AddressAutocomplete = ({
     fetchGenRef.current++;              // invalidate any in-flight request
     setOpen(false);
     setSuggestions([]);
+    setError(null);
     if (onSelect) onSelect(description);
     else if (onChange) onChange(description);
   };
@@ -162,6 +167,7 @@ const AddressAutocomplete = ({
         value={value}
         onChange={(e) => {
           if (onChange) onChange(e.target.value);
+          setError(null);
           fetchSuggestions(e.target.value);
         }}
         onFocus={() => {
@@ -176,6 +182,16 @@ const AddressAutocomplete = ({
         autoComplete="off"
         className={`transition-all duration-200 focus:ring-2 focus:ring-gold ${className}`}
       />
+      {error === 'api_error' && value && value.length >= 3 && (
+        <p className="text-xs text-amber-600 mt-1">
+          Address lookup unavailable — you can type the full address manually
+        </p>
+      )}
+      {error === 'no_results' && value && value.length >= 3 && !open && (
+        <p className="text-xs text-gray-500 mt-1">
+          No suggestions found — try a different search or type the full address
+        </p>
+      )}
       {dropdown}
     </>
   );
