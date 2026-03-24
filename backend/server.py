@@ -1680,7 +1680,7 @@ async def places_autocomplete(input: str = "", types: str = "", region: str = "n
 
 @api_router.get("/admin/maps-status")
 async def check_maps_status(current_admin: dict = Depends(get_current_admin)):
-    """Admin diagnostic: test if Google Maps API key is working."""
+    """Admin diagnostic: comprehensive test of all Google Maps APIs used by the booking system."""
     google_key = os.environ.get('GOOGLE_MAPS_API_KEY', '').strip()
     if not google_key:
         return {
@@ -1688,50 +1688,176 @@ async def check_maps_status(current_admin: dict = Depends(get_current_admin)):
             "configured": False,
             "message": "GOOGLE_MAPS_API_KEY is not set in environment variables. "
                        "Set it in Render → Environment tab. "
-                       "Address autocomplete is using fallback addresses only."
+                       "Address autocomplete is using fallback addresses only.",
+            "tests": {}
         }
 
-    # Test with a known NZ address
+    key_prefix = google_key[:8] + "..." + google_key[-4:]
+    tests = {}
+
+    # --- Test 1: Places Autocomplete (Legacy) ---
     try:
         url = "https://maps.googleapis.com/maps/api/place/autocomplete/json"
         params = {
-            "input": "Auckland Airport",
+            "input": "83 Alexander Street Auckland",
             "key": google_key,
             "components": "country:nz",
+            "location": "-36.8485,174.7633",
+            "radius": "500000",
         }
         async with httpx.AsyncClient(timeout=8.0) as client:
             r = await client.get(url, params=params)
         data = r.json()
         api_status = data.get("status", "UNKNOWN")
+        count = len(data.get("predictions", []))
+        first_result = data["predictions"][0]["description"] if count > 0 else None
+        error_msg = data.get("error_message", "")
+        tests["places_autocomplete"] = {
+            "status": "ok" if api_status == "OK" and count > 0 else "error",
+            "api_status": api_status,
+            "result_count": count,
+            "first_result": first_result,
+            "error_message": error_msg or None,
+            "http_status": r.status_code,
+        }
+    except Exception as e:
+        tests["places_autocomplete"] = {
+            "status": "error",
+            "error_message": str(e),
+        }
+
+    # --- Test 2: Distance Matrix ---
+    try:
+        url = "https://maps.googleapis.com/maps/api/distancematrix/json"
+        params = {
+            "origins": "Auckland Airport, New Zealand",
+            "destinations": "Auckland CBD, New Zealand",
+            "key": google_key,
+            "units": "metric",
+        }
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            r = await client.get(url, params=params)
+        data = r.json()
+        api_status = data.get("status", "UNKNOWN")
+        element_status = None
+        distance_text = None
+        error_msg = data.get("error_message", "")
         if api_status == "OK":
-            count = len(data.get("predictions", []))
-            return {
-                "status": "ok",
-                "configured": True,
-                "api_status": api_status,
-                "test_results": count,
-                "message": f"Google Maps API is working. Test query returned {count} results.",
-                "key_prefix": google_key[:8] + "..."
+            rows = data.get("rows", [])
+            if rows:
+                elements = rows[0].get("elements", [])
+                if elements:
+                    element_status = elements[0].get("status", "UNKNOWN")
+                    dist = elements[0].get("distance", {})
+                    distance_text = dist.get("text")
+        tests["distance_matrix"] = {
+            "status": "ok" if api_status == "OK" and element_status == "OK" else "error",
+            "api_status": api_status,
+            "element_status": element_status,
+            "distance": distance_text,
+            "error_message": error_msg or None,
+            "http_status": r.status_code,
+        }
+    except Exception as e:
+        tests["distance_matrix"] = {
+            "status": "error",
+            "error_message": str(e),
+        }
+
+    # --- Test 3: Directions API ---
+    try:
+        url = "https://maps.googleapis.com/maps/api/directions/json"
+        params = {
+            "origin": "Auckland Airport, New Zealand",
+            "destination": "Auckland CBD, New Zealand",
+            "key": google_key,
+        }
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            r = await client.get(url, params=params)
+        data = r.json()
+        api_status = data.get("status", "UNKNOWN")
+        error_msg = data.get("error_message", "")
+        route_count = len(data.get("routes", []))
+        tests["directions"] = {
+            "status": "ok" if api_status == "OK" and route_count > 0 else "error",
+            "api_status": api_status,
+            "route_count": route_count,
+            "error_message": error_msg or None,
+            "http_status": r.status_code,
+        }
+    except Exception as e:
+        tests["directions"] = {
+            "status": "error",
+            "error_message": str(e),
+        }
+
+    # --- Test 4: Places Autocomplete (New API) ---
+    try:
+        new_url = "https://places.googleapis.com/v1/places:autocomplete"
+        headers = {
+            "Content-Type": "application/json",
+            "X-Goog-Api-Key": google_key,
+        }
+        body = {
+            "input": "83 Alexander Street Auckland",
+            "includedRegionCodes": ["nz"],
+        }
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            r = await client.post(new_url, json=body, headers=headers)
+        if r.status_code == 200:
+            data = r.json()
+            suggestions = data.get("suggestions", [])
+            first_result = None
+            if suggestions:
+                pred = suggestions[0].get("placePrediction", {})
+                first_result = pred.get("text", {}).get("text", "")
+            tests["places_new_api"] = {
+                "status": "ok" if suggestions else "error",
+                "result_count": len(suggestions),
+                "first_result": first_result,
+                "http_status": r.status_code,
             }
         else:
-            error_msg = data.get("error_message", "No details provided")
-            return {
+            tests["places_new_api"] = {
                 "status": "error",
-                "configured": True,
-                "api_status": api_status,
-                "error_message": error_msg,
-                "message": f"Google Maps API key is set but returned status: {api_status}. "
-                           f"Error: {error_msg}. "
-                           "Check that Places API is enabled in Google Cloud Console and billing is active.",
-                "key_prefix": google_key[:8] + "..."
+                "http_status": r.status_code,
+                "error_message": r.text[:300],
             }
     except Exception as e:
-        return {
+        tests["places_new_api"] = {
             "status": "error",
-            "configured": True,
-            "message": f"Google Maps API request failed: {str(e)}",
-            "key_prefix": google_key[:8] + "..."
+            "error_message": str(e),
         }
+
+    # --- Summary ---
+    all_ok = all(t.get("status") == "ok" for t in tests.values())
+    autocomplete_ok = tests.get("places_autocomplete", {}).get("status") == "ok"
+    distance_ok = tests.get("distance_matrix", {}).get("status") == "ok"
+
+    if all_ok:
+        message = "All Google Maps APIs are working correctly."
+    else:
+        problems = []
+        if not autocomplete_ok:
+            ac_err = tests.get("places_autocomplete", {}).get("error_message") or tests.get("places_autocomplete", {}).get("api_status", "unknown error")
+            problems.append(f"Places Autocomplete FAILED: {ac_err}")
+        if not distance_ok:
+            problems.append("Distance Matrix FAILED — pricing calculations will use fallback distances")
+        if tests.get("directions", {}).get("status") != "ok":
+            problems.append("Directions API FAILED")
+        if tests.get("places_new_api", {}).get("status") != "ok":
+            problems.append("Places New API FAILED (backup for autocomplete)")
+        message = " | ".join(problems)
+
+    return {
+        "status": "ok" if all_ok else "error",
+        "configured": True,
+        "key_prefix": key_prefix,
+        "message": message,
+        "autocomplete_working": autocomplete_ok,
+        "distance_working": distance_ok,
+        "tests": tests,
+    }
 
 
 # Price Calculation Endpoint
