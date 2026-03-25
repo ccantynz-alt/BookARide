@@ -39,6 +39,8 @@ except ImportError:
     send_email_unified = None
     get_noreply_email = lambda: os.environ.get("NOREPLY_EMAIL") or os.environ.get("SENDER_EMAIL", "noreply@bookaride.co.nz")
 
+from email_templates import email_wrapper, email_section, email_button, email_booking_summary, email_price_table, email_divider
+
 
 def _send_email_with_fallbacks(to_email, subject, html_content, from_email=None, from_name="BookaRide", reply_to=None, cc=None):
     """Send email via Mailgun (the ONLY email provider). No SMTP fallback.
