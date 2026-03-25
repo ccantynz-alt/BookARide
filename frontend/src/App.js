@@ -124,7 +124,6 @@ import TravelAgents from './pages/TravelAgents';
 import HotelConciergePortal from './pages/HotelConciergePortal';
 import NotFound from './pages/NotFound';
 
-import RecentBookingsNotification from './components/RecentBookingsNotification';
 import AIChatbot from './components/AIChatbot';
 import MobileStickyButton from './components/MobileStickyButton';
 
@@ -138,7 +137,6 @@ const MainLayout = () => (
     </main>
     <Footer />
     <BackToTop />
-    <RecentBookingsNotification />
     <AIChatbot />
     <MobileStickyButton />
   </>

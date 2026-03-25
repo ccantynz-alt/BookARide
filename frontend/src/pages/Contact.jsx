@@ -12,7 +12,8 @@ import { toast } from 'sonner';
 import { companyInfo } from '../mock';
 import SEO from '../components/SEO';
 import PageBreadcrumb from '../components/PageBreadcrumb';
-import { FAQSchema, LocalBusinessSchema } from '../components/SchemaMarkup';
+import { FAQSchema } from '../components/SchemaMarkup';
+import StructuredData from '../components/StructuredData';
 
 export const Contact = () => {
   const [formData, setFormData] = useState({
@@ -64,7 +65,7 @@ export const Contact = () => {
         keywords="book airport shuttle, contact airport shuttle, airport shuttle booking, airport shuttle Auckland contact, shuttle service booking, airport transfer contact, book shuttle online"
         canonical="/contact"
       />
-      <LocalBusinessSchema />
+      <StructuredData />
       <FAQSchema faqs={[
         { question: "How do I book an airport shuttle?", answer: "You can book online at bookaride.co.nz in under 2 minutes, call us, or send an enquiry through this contact form. We provide instant quotes for all Auckland, Hamilton, and Whangarei transfers." },
         { question: "What are your operating hours?", answer: "We operate 24/7, 365 days a year. Whether you have an early morning flight at 4am or a late-night arrival, we're available to get you there safely." },

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { ArrowRight, Plane, Briefcase, MapPin, Calendar, Star, Check, Shield, Clock, Award, Users, Sparkles, DollarSign } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
-import { services, testimonials, howItWorksSteps } from '../mock';
+import { services, howItWorksSteps } from '../mock';
 import SEO from '../components/SEO';
 import StructuredData from '../components/StructuredData';
 import { HomePageSchema } from '../components/SchemaMarkup';
@@ -142,7 +142,7 @@ export const Home = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     <Users className="w-5 h-5 text-gold" />
-                    <span className="text-white/80 text-sm font-medium">10,000+ Happy Clients</span>
+                    <span className="text-white/80 text-sm font-medium">Trusted by Auckland Locals</span>
                   </div>
                 </div>
               </div>
@@ -492,33 +492,24 @@ export const Home = () => {
         </div>
       </section>
 
-      {/* Testimonials */}
+      {/* Customer Reviews */}
       <section className="py-24 bg-white">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
+          <div className="text-center">
             <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">What Our Customers Say</h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Don't just take our word for it
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto mb-8">
+              See what real customers think about our service
             </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-            {testimonials.map((testimonial) => (
-              <Card key={testimonial.id} className="border-2 border-gray-200 hover:border-gold hover:shadow-xl transition-all duration-200">
-                <CardContent className="p-8">
-                  <div className="flex mb-6">
-                    {[...Array(testimonial.rating)].map((_, i) => (
-                      <Star key={i} className="w-5 h-5 text-gold fill-gold" />
-                    ))}
-                  </div>
-                  <p className="text-gray-700 mb-6 italic leading-relaxed">"{testimonial.content}"</p>
-                  <div className="border-t border-gray-200 pt-4">
-                    <div className="font-semibold text-gray-900">{testimonial.name}</div>
-                    <div className="text-sm text-gray-600 mt-1">{testimonial.role}</div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+            <a
+              href="https://www.google.com/search?q=book+a+ride+nz+auckland+reviews"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 bg-gold hover:bg-gold/90 text-black font-semibold px-8 py-3 rounded-lg transition-all duration-200 shadow-lg"
+            >
+              <Star className="w-5 h-5 fill-current" />
+              Read Our Reviews on Google
+              <ArrowRight className="w-4 h-4" />
+            </a>
           </div>
         </div>
       </section>

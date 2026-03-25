@@ -3,7 +3,8 @@ import { Shield, Users, Clock, Award, Target, Heart } from 'lucide-react';
 import { Card, CardContent } from '../components/ui/card';
 import SEO from '../components/SEO';
 import PageBreadcrumb from '../components/PageBreadcrumb';
-import { FAQSchema, LocalBusinessSchema } from '../components/SchemaMarkup';
+import { FAQSchema } from '../components/SchemaMarkup';
+import StructuredData from '../components/StructuredData';
 
 export const About = () => {
   return (
@@ -14,7 +15,7 @@ export const About = () => {
         keywords="airport shuttle company, shuttle service New Zealand, Auckland airport transfer company, professional shuttle service, reliable airport shuttle, NZ transportation service, safe shuttle service"
         canonical="/about"
       />
-      <LocalBusinessSchema />
+      <StructuredData />
       <FAQSchema faqs={[
         { question: "How long has BookaRide been operating?", answer: "BookaRide has been providing premium airport transfer services in Auckland and throughout New Zealand, building a reputation for reliability, safety, and exceptional customer service." },
         { question: "Are your drivers licensed and vetted?", answer: "Yes, all our drivers are fully licensed P-endorsement holders, background checked, and undergo regular vehicle inspections. Safety is our top priority." },
