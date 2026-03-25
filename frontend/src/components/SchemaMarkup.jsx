@@ -136,41 +136,7 @@ export const TransportationSchema = ({ route }) => {
   );
 };
 
-// Review Schema Component
-export const ReviewSchema = ({ reviews }) => {
-  if (!reviews || reviews.length === 0) return null;
-
-  const schema = reviews.map(review => ({
-    "@context": "https://schema.org",
-    "@type": "Review",
-    "author": {
-      "@type": "Person",
-      "name": review.author
-    },
-    "datePublished": review.date,
-    "reviewBody": review.text,
-    "reviewRating": {
-      "@type": "Rating",
-      "ratingValue": review.rating,
-      "bestRating": "5",
-      "worstRating": "1"
-    },
-    "itemReviewed": {
-      "@type": "LocalBusiness",
-      "name": "BookaRide NZ"
-    }
-  }));
-
-  return (
-    <Helmet>
-      {schema.map((s, idx) => (
-        <script key={idx} type="application/ld+json">
-          {JSON.stringify(s)}
-        </script>
-      ))}
-    </Helmet>
-  );
-};
+// ReviewSchema removed — only add review schema when connected to real, verified review data.
 
 // WebSite Schema for search box
 export const WebSiteSchema = () => {
@@ -238,7 +204,6 @@ export default {
   FAQSchema,
   BreadcrumbSchema,
   TransportationSchema,
-  ReviewSchema,
   WebSiteSchema,
   HomePageSchema
 };

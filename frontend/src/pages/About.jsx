@@ -11,7 +11,7 @@ export const About = () => {
     <div className="min-h-screen bg-white">
       <SEO 
         title="About Us - Professional Airport Shuttle Service in New Zealand"
-        description="Learn about Book A Ride NZ - your trusted airport shuttle service provider. Serving Auckland, Hamilton, and Whangarei airports with safe, reliable, and professional transportation. Over 10,000 happy customers, 24/7 available."
+        description="Learn about Book A Ride NZ - your trusted airport shuttle service provider. Serving Auckland, Hamilton, and Whangarei airports with safe, reliable, and professional transportation. Available 24/7."
         keywords="airport shuttle company, shuttle service New Zealand, Auckland airport transfer company, professional shuttle service, reliable airport shuttle, NZ transportation service, safe shuttle service"
         canonical="/about"
       />
@@ -138,13 +138,7 @@ export const About = () => {
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-5xl mx-auto">
             {[
-              { value: '10,000+', label: 'Happy Customers' },
-              { value: '50+', label: 'Professional Drivers' },
-              { value: '100+', label: 'Vehicles' },
-              { value: '4.9/5', label: 'Customer Rating' },
               { value: '24/7', label: 'Service Available' },
-              { value: '8+', label: 'Years Experience' },
-              { value: '99%', label: 'On-Time Rate' },
               { value: '100%', label: 'Satisfaction Goal' }
             ].map((stat, index) => (
               <div key={index} className="text-center p-8 bg-gray-50 rounded-xl border border-gray-200 hover:border-gold hover:shadow-md transition-all duration-200">

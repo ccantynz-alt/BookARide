@@ -182,7 +182,7 @@ const CountryLandingPage = () => {
             </div>
             <div className="flex items-center gap-2">
               <Users className="w-6 h-6" />
-              <span className="text-lg">10,000+ Happy Customers</span>
+              <span className="text-lg">Trusted by Auckland Locals</span>
             </div>
             <div className="flex items-center gap-2">
               <Award className="w-6 h-6" />
@@ -320,41 +320,39 @@ const CountryLandingPage = () => {
         </div>
       </section>
 
-      {/* TESTIMONIALS */}
+      {/* REVIEWS */}
       <section className="py-20 bg-white">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
+          <div className="text-center mb-8">
             <span className="text-gold font-bold text-sm uppercase tracking-wider">Real Reviews</span>
-            <h2 className="text-4xl md:text-5xl font-black mt-4">What {country.demonym} Visitors Say</h2>
+            <h2 className="text-4xl md:text-5xl font-black mt-4">What Our Customers Say</h2>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
-            {(country.testimonials || [
-              { name: 'Sarah M.', location: country.name, text: 'After a long flight, having someone waiting for us was amazing. No stress, no hassle. Highly recommend!', rating: 5 },
-              { name: 'James K.', location: country.name, text: 'Fixed price was exactly what we paid. Driver was professional and the car was spotless. Will use again!', rating: 5 },
-              { name: 'The Williams Family', location: country.name, text: 'Traveling with kids is hard. BookaRide made it easy. Child seats ready, driver was patient. Perfect!', rating: 5 }
-            ]).map((review, i) => (
-              <Card key={i} className="border-0 shadow-lg">
-                <CardContent className="p-8">
-                  <div className="flex gap-1 mb-4">
-                    {[...Array(review.rating)].map((_, j) => (
-                      <Star key={j} className="w-5 h-5 text-gold fill-gold" />
-                    ))}
-                  </div>
-                  <Quote className="w-10 h-10 text-gold/20 mb-4" />
-                  <p className="text-gray-700 mb-6 italic">"{review.text}"</p>
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-gold/20 rounded-full flex items-center justify-center font-bold text-gold">
-                      {review.name.charAt(0)}
-                    </div>
-                    <div>
-                      <p className="font-bold">{review.name}</p>
-                      <p className="text-gray-500 text-sm">{review.location}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+          <div className="max-w-md mx-auto text-center">
+            <Card className="border-0 shadow-lg">
+              <CardContent className="p-8">
+                <div className="flex items-center justify-center gap-2 mb-4">
+                  <img src="https://www.google.com/favicon.ico" alt="Google" className="w-8 h-8" loading="lazy" />
+                  <span className="text-xl font-bold">Google Reviews</span>
+                </div>
+                <div className="flex justify-center mb-4">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <Star key={i} className="w-6 h-6 text-gold fill-gold" />
+                  ))}
+                </div>
+                <p className="text-gray-700 mb-6">
+                  Read verified reviews from our customers on Google.
+                </p>
+                <a
+                  href="https://www.google.com/search?q=book+a+ride+nz+auckland+reviews"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 bg-gold hover:bg-gold/90 text-black font-semibold px-8 py-3 rounded-lg transition-all duration-200 shadow-lg"
+                >
+                  See Our Reviews on Google
+                </a>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </section>
