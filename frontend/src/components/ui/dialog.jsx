@@ -31,19 +31,34 @@ const DialogContent = React.forwardRef(({ className, children, onPointerDownOuts
       ref={ref}
       onPointerDownOutside={(e) => {
         // Prevent Radix from closing the dialog when clicking on portal-rendered
-        // dropdowns (e.g. AddressAutocomplete suggestions rendered via React Portal)
-        // Radix custom events store the real DOM target in e.detail.originalEvent.target,
-        // NOT in e.target (which points to the dialog content element itself)
-        const target = (e.detail && e.detail.originalEvent && e.detail.originalEvent.target) || e.target;
-        if (target && target.closest && target.closest('[data-autocomplete-dropdown]')) {
+        // dropdowns (e.g. AddressAutocomplete suggestions, customer search).
+        // Use elementFromPoint with pointer coordinates — reliable across all
+        // Radix versions regardless of how the custom event wraps the target.
+        const orig = e.detail && e.detail.originalEvent;
+        if (orig && typeof orig.clientX === 'number') {
+          const el = document.elementFromPoint(orig.clientX, orig.clientY);
+          if (el && el.closest && el.closest('[data-autocomplete-dropdown]')) {
+            e.preventDefault();
+            return;
+          }
+        }
+        // Fallback: if any autocomplete dropdown is currently open, prevent dismiss
+        if (document.querySelector('[data-autocomplete-dropdown]')) {
           e.preventDefault();
           return;
         }
         if (onPointerDownOutside) onPointerDownOutside(e);
       }}
       onInteractOutside={(e) => {
-        const target = (e.detail && e.detail.originalEvent && e.detail.originalEvent.target) || e.target;
-        if (target && target.closest && target.closest('[data-autocomplete-dropdown]')) {
+        const orig = e.detail && e.detail.originalEvent;
+        if (orig && typeof orig.clientX === 'number') {
+          const el = document.elementFromPoint(orig.clientX, orig.clientY);
+          if (el && el.closest && el.closest('[data-autocomplete-dropdown]')) {
+            e.preventDefault();
+            return;
+          }
+        }
+        if (document.querySelector('[data-autocomplete-dropdown]')) {
           e.preventDefault();
           return;
         }
