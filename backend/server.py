@@ -2237,7 +2237,15 @@ async def create_booking(booking: BookingCreate, background_tasks: BackgroundTas
             f"customer confirmation for booking #{ref_number}"
         )
         logger.info(f"Queued customer confirmation for booking #{ref_number}")
-        
+
+        # Agent 3: Check for driver booking conflicts in background
+        background_tasks.add_task(
+            run_async_task,
+            check_booking_driver_conflict,
+            booking_dict,
+            f"conflict detection for booking #{ref_number}"
+        )
+
         return booking_obj
     except Exception as e:
         logger.error(f"Error creating booking: {str(e)}")
@@ -9365,7 +9373,15 @@ async def create_manual_booking(booking: ManualBooking, background_tasks: Backgr
             )
         else:
             logger.info(f"Skipping all notifications for booking #{ref_number} as requested")
-        
+
+        # Agent 3: Check for driver booking conflicts in background
+        background_tasks.add_task(
+            run_async_task,
+            check_booking_driver_conflict,
+            new_booking,
+            f"conflict detection for booking #{ref_number}"
+        )
+
         return {"message": "Booking created successfully", "id": new_booking['id'], "referenceNumber": ref_number, "paymentLinkSent": booking.paymentMethod in ['stripe', 'paypal'] and not booking.skipNotifications}
     except Exception as e:
         logger.error(f"Error creating manual booking: {str(e)}")
@@ -13650,6 +13666,655 @@ async def cancel_airline_booking(booking_id: str, airline: dict = Depends(airlin
         raise HTTPException(status_code=500, detail="Cancellation failed")
 
 
+# =============================================================================
+# AI AUTOMATION AGENTS — Scheduled background jobs
+# =============================================================================
+
+async def send_daily_business_summary():
+    """Agent 1: Daily Business Summary Email — runs at 6 PM NZ daily.
+    Sends admin a summary of today's activity and tomorrow's schedule."""
+    try:
+        nz_tz = pytz.timezone('Pacific/Auckland')
+        now_nz = datetime.now(nz_tz)
+        today_str = now_nz.strftime('%Y-%m-%d')
+        tomorrow_str = (now_nz + timedelta(days=1)).strftime('%Y-%m-%d')
+
+        # Count today's bookings by status
+        todays_bookings = await db.bookings.find({
+            'created_at': {'$gte': today_str},
+            'serviceType': {'$ne': 'shared-shuttle'}
+        }, {'_id': 0}).to_list(500)
+
+        new_count = 0
+        confirmed_count = 0
+        completed_count = 0
+        cancelled_count = 0
+        total_revenue = 0.0
+
+        for b in todays_bookings:
+            status = (b.get('status') or '').lower()
+            if status == 'confirmed':
+                confirmed_count += 1
+            elif status == 'completed':
+                completed_count += 1
+            elif status == 'cancelled':
+                cancelled_count += 1
+            else:
+                new_count += 1
+
+            if b.get('payment_status') == 'paid':
+                price = b.get('totalPrice', 0)
+                if isinstance(b.get('pricing'), dict):
+                    price = b['pricing'].get('totalPrice', price)
+                try:
+                    total_revenue += float(price or 0)
+                except (ValueError, TypeError):
+                    pass
+
+        # Tomorrow's bookings
+        tomorrow_bookings = await db.bookings.find({
+            'date': tomorrow_str,
+            'status': {'$nin': ['cancelled', 'deleted']}
+        }, {'_id': 0}).to_list(200)
+
+        # Flag issues
+        urgent_issues = []
+        unassigned = []
+        unpaid_tomorrow = []
+        pending_approvals = []
+
+        for b in tomorrow_bookings:
+            ref = get_booking_reference(b)
+            name = b.get('name', 'Unknown')
+            time_str = b.get('time', 'N/A')
+            pickup = b.get('pickupAddress', 'N/A')
+            dropoff = b.get('dropoffAddress', 'N/A')
+            driver = b.get('driver_name') or ''
+
+            if not driver or driver.strip() == '':
+                unassigned.append(f"#{ref} {name} at {time_str}")
+                urgent_issues.append(f"UNASSIGNED: #{ref} {name} at {time_str}")
+
+            pay_status = b.get('payment_status', 'unpaid')
+            if pay_status not in ('paid', 'cash', 'pay-on-pickup'):
+                unpaid_tomorrow.append(f"#{ref} {name} - {pay_status}")
+                urgent_issues.append(f"UNPAID: #{ref} {name} ({pay_status})")
+
+            if (b.get('status') or '').lower() == 'pending_approval':
+                pending_approvals.append(f"#{ref} {name}")
+                urgent_issues.append(f"PENDING APPROVAL: #{ref} {name}")
+
+        # Build tomorrow schedule HTML rows
+        schedule_rows = ''
+        for b in sorted(tomorrow_bookings, key=lambda x: x.get('time', '00:00')):
+            ref = get_booking_reference(b)
+            name = b.get('name', 'Unknown')
+            time_str = format_time_ampm(b.get('time', ''))
+            pickup = b.get('pickupAddress', 'N/A')
+            dropoff = b.get('dropoffAddress', 'N/A')
+            driver = b.get('driver_name') or '<span style="color:#DC2626;font-weight:bold;">UNASSIGNED</span>'
+            schedule_rows += f'''<tr>
+                <td style="padding:8px;border-bottom:1px solid #e5e7eb;">{time_str}</td>
+                <td style="padding:8px;border-bottom:1px solid #e5e7eb;">{name} (#{ref})</td>
+                <td style="padding:8px;border-bottom:1px solid #e5e7eb;">{pickup[:40]}</td>
+                <td style="padding:8px;border-bottom:1px solid #e5e7eb;">{dropoff[:40]}</td>
+                <td style="padding:8px;border-bottom:1px solid #e5e7eb;">{driver}</td>
+            </tr>'''
+
+        if not schedule_rows:
+            schedule_rows = '<tr><td colspan="5" style="padding:16px;text-align:center;color:#6b7280;">No bookings scheduled for tomorrow.</td></tr>'
+
+        # Issues section
+        issues_html = ''
+        if urgent_issues:
+            issues_html = '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:16px;margin-bottom:24px;">'
+            issues_html += '<h3 style="color:#DC2626;margin:0 0 12px 0;">Action Required</h3><ul style="margin:0;padding-left:20px;">'
+            for issue in urgent_issues:
+                issues_html += f'<li style="color:#991b1b;margin-bottom:4px;">{issue}</li>'
+            issues_html += '</ul></div>'
+
+        formatted_date = now_nz.strftime('%A, %d %B %Y')
+        tomorrow_formatted = (now_nz + timedelta(days=1)).strftime('%A, %d %B %Y')
+
+        html_content = f'''<html>
+        <body style="font-family:Arial,sans-serif;max-width:700px;margin:0 auto;background:#f9fafb;">
+            <div style="background:linear-gradient(135deg,#1e3a5f 0%,#2563eb 100%);color:white;padding:24px;border-radius:12px 12px 0 0;text-align:center;">
+                <h1 style="margin:0;font-size:22px;">Daily Business Summary</h1>
+                <p style="margin:8px 0 0;opacity:0.9;">{formatted_date}</p>
+            </div>
+            <div style="background:white;padding:24px;border-radius:0 0 12px 12px;border:1px solid #e5e7eb;">
+                <h2 style="color:#1e3a5f;font-size:18px;margin-top:0;">Today's Activity</h2>
+                <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
+                    <tr>
+                        <td style="padding:12px;background:#eff6ff;border-radius:8px;text-align:center;width:25%;">
+                            <div style="font-size:28px;font-weight:bold;color:#2563eb;">{new_count}</div>
+                            <div style="color:#6b7280;font-size:13px;">New</div>
+                        </td>
+                        <td style="padding:12px;background:#f0fdf4;border-radius:8px;text-align:center;width:25%;">
+                            <div style="font-size:28px;font-weight:bold;color:#16a34a;">{confirmed_count}</div>
+                            <div style="color:#6b7280;font-size:13px;">Confirmed</div>
+                        </td>
+                        <td style="padding:12px;background:#fefce8;border-radius:8px;text-align:center;width:25%;">
+                            <div style="font-size:28px;font-weight:bold;color:#ca8a04;">{completed_count}</div>
+                            <div style="color:#6b7280;font-size:13px;">Completed</div>
+                        </td>
+                        <td style="padding:12px;background:#fef2f2;border-radius:8px;text-align:center;width:25%;">
+                            <div style="font-size:28px;font-weight:bold;color:#DC2626;">{cancelled_count}</div>
+                            <div style="color:#6b7280;font-size:13px;">Cancelled</div>
+                        </td>
+                    </tr>
+                </table>
+                <div style="background:#f0fdf4;border-radius:8px;padding:16px;text-align:center;margin-bottom:24px;">
+                    <div style="color:#6b7280;font-size:13px;">Today's Revenue</div>
+                    <div style="font-size:32px;font-weight:bold;color:#16a34a;">${total_revenue:,.2f} NZD</div>
+                </div>
+
+                {issues_html}
+
+                <h2 style="color:#1e3a5f;font-size:18px;">Tomorrow's Schedule ({tomorrow_formatted})</h2>
+                <p style="color:#6b7280;margin-bottom:12px;">{len(tomorrow_bookings)} booking(s) scheduled</p>
+                <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                    <thead>
+                        <tr style="background:#f3f4f6;">
+                            <th style="padding:8px;text-align:left;">Time</th>
+                            <th style="padding:8px;text-align:left;">Customer</th>
+                            <th style="padding:8px;text-align:left;">Pickup</th>
+                            <th style="padding:8px;text-align:left;">Dropoff</th>
+                            <th style="padding:8px;text-align:left;">Driver</th>
+                        </tr>
+                    </thead>
+                    <tbody>{schedule_rows}</tbody>
+                </table>
+            </div>
+        </body>
+        </html>'''
+
+        admin_email = os.environ.get('ADMIN_EMAIL', 'info@bookaride.co.nz')
+        subject = f"Daily Summary - {now_nz.strftime('%d/%m/%Y')} | {len(tomorrow_bookings)} tomorrow | ${total_revenue:,.0f} revenue"
+        _send_email_with_fallbacks(admin_email, subject, html_content, from_name="BookaRide Daily Summary")
+        logger.info(f"[Daily Summary] Sent to {admin_email}: {new_count} new, ${total_revenue:.2f} revenue, {len(tomorrow_bookings)} tomorrow")
+
+        # Send SMS if urgent issues exist (unassigned or unpaid for tomorrow)
+        if urgent_issues:
+            try:
+                admin_phone = os.environ.get('ADMIN_PHONE', '+6421743321')
+                twilio_sid = os.environ.get('TWILIO_ACCOUNT_SID')
+                twilio_token = os.environ.get('TWILIO_AUTH_TOKEN')
+                twilio_from = os.environ.get('TWILIO_PHONE_NUMBER')
+                if twilio_sid and twilio_token and twilio_from and Client:
+                    client = Client(twilio_sid, twilio_token)
+                    sms_body = f"BookaRide Alert: {len(urgent_issues)} issue(s) for tomorrow.\n"
+                    for issue in urgent_issues[:3]:
+                        sms_body += f"- {issue}\n"
+                    if len(urgent_issues) > 3:
+                        sms_body += f"+ {len(urgent_issues) - 3} more. Check email."
+                    client.messages.create(body=sms_body, from_=twilio_from, to=admin_phone)
+                    logger.info("[Daily Summary] Urgent SMS sent to admin")
+            except Exception as sms_err:
+                logger.error(f"[Daily Summary] SMS error: {sms_err}")
+
+    except Exception as e:
+        logger.error(f"[Daily Summary] Fatal error: {str(e)}", exc_info=True)
+
+
+async def check_unpaid_bookings():
+    """Agent 2: Payment Follow-up — runs every 2 hours.
+    Sends a gentle reminder to customers who started a Stripe booking but
+    never completed payment (between 4 and 48 hours old)."""
+    try:
+        now_utc = datetime.now(timezone.utc)
+        four_hours_ago = (now_utc - timedelta(hours=4)).isoformat()
+        forty_eight_hours_ago = (now_utc - timedelta(hours=48)).isoformat()
+
+        # Find unpaid Stripe bookings in the 4-48 hour window that have not been reminded
+        unpaid_bookings = await db.bookings.find({
+            'payment_status': {'$nin': ['paid', 'cash', 'pay-on-pickup']},
+            'paymentMethod': 'stripe',
+            'status': {'$nin': ['cancelled', 'deleted']},
+            'createdAt': {'$lte': four_hours_ago, '$gte': forty_eight_hours_ago},
+            'paymentReminderSent': {'$ne': True}
+        }, {'_id': 0}).to_list(50)
+
+        if not unpaid_bookings:
+            logger.info("[Payment Follow-up] No unpaid bookings needing reminders")
+            return
+
+        reminded_count = 0
+        flagged_count = 0
+        frontend_url = os.environ.get('FRONTEND_URL', 'https://bookaride.co.nz')
+
+        for booking in unpaid_bookings:
+            booking_id = booking.get('id', '')
+            email = booking.get('email', '')
+            name = booking.get('name', 'Customer')
+            ref = get_booking_reference(booking)
+            created_at = booking.get('createdAt', '')
+
+            if not email or '@' not in email:
+                continue
+
+            # Check if booking is older than 48 hours — flag for admin instead
+            try:
+                if isinstance(created_at, str):
+                    created_dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                else:
+                    created_dt = created_at
+                age_hours = (now_utc - created_dt).total_seconds() / 3600
+            except Exception:
+                age_hours = 0
+
+            if age_hours >= 48:
+                # Flag for admin review — do not send reminder
+                await db.bookings.update_one(
+                    {'id': booking_id},
+                    {'$set': {
+                        'status_note': 'Payment not completed within 48 hours',
+                        'paymentReminderSent': True
+                    }}
+                )
+                flagged_count += 1
+                logger.info(f"[Payment Follow-up] Flagged #{ref} for admin review (48h expired)")
+                continue
+
+            # Send gentle reminder email
+            formatted_date = format_date_ddmmyyyy(booking.get('date', ''))
+            formatted_time = format_time_ampm(booking.get('time', ''))
+            total_price = booking.get('totalPrice', 0)
+            if isinstance(booking.get('pricing'), dict):
+                total_price = booking['pricing'].get('totalPrice', total_price)
+
+            html_content = f'''<html>
+            <body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+                <div style="background:linear-gradient(135deg,#1e3a5f 0%,#f59e0b 100%);color:white;padding:24px;border-radius:12px 12px 0 0;text-align:center;">
+                    <h1 style="margin:0;font-size:22px;">Complete Your Booking</h1>
+                </div>
+                <div style="background:white;padding:24px;border:1px solid #e5e7eb;border-radius:0 0 12px 12px;">
+                    <p>Hi {name},</p>
+                    <p>We noticed you have not completed payment for your upcoming transfer. Your booking is held for 48 hours so you still have time to secure it.</p>
+                    <div style="background:#f9fafb;border-radius:8px;padding:16px;margin:20px 0;">
+                        <p style="margin:4px 0;"><strong>Booking Ref:</strong> #{ref}</p>
+                        <p style="margin:4px 0;"><strong>Date:</strong> {formatted_date}</p>
+                        <p style="margin:4px 0;"><strong>Time:</strong> {formatted_time}</p>
+                        <p style="margin:4px 0;"><strong>Pickup:</strong> {booking.get('pickupAddress', 'N/A')}</p>
+                        <p style="margin:4px 0;"><strong>Amount:</strong> ${total_price} NZD</p>
+                    </div>
+                    <div style="text-align:center;margin:24px 0;">
+                        <a href="{frontend_url}/book-now" style="display:inline-block;padding:14px 32px;background:#f59e0b;color:white;text-decoration:none;border-radius:8px;font-weight:bold;font-size:16px;">Complete Payment</a>
+                    </div>
+                    <p style="color:#6b7280;font-size:13px;">If you have any questions, simply reply to this email or visit <a href="{frontend_url}">bookaride.co.nz</a>.</p>
+                    <p style="color:#6b7280;font-size:13px;">If you no longer need this transfer, you can ignore this email and the booking will be released.</p>
+                </div>
+            </body>
+            </html>'''
+
+            subject = f"Complete your BookaRide booking #{ref} - {formatted_date}"
+            sent = _send_email_with_fallbacks(email, subject, html_content, from_name="BookaRide")
+
+            if sent:
+                await db.bookings.update_one(
+                    {'id': booking_id},
+                    {'$set': {
+                        'paymentReminderSent': True,
+                        'paymentReminderSentAt': datetime.now(timezone.utc).isoformat()
+                    }}
+                )
+                reminded_count += 1
+                logger.info(f"[Payment Follow-up] Reminder sent to {email} for booking #{ref}")
+
+        logger.info(f"[Payment Follow-up] Complete: {reminded_count} reminders sent, {flagged_count} flagged for admin")
+
+    except Exception as e:
+        logger.error(f"[Payment Follow-up] Fatal error: {str(e)}", exc_info=True)
+
+
+async def check_booking_driver_conflict(new_booking: dict):
+    """Agent 3: Smart Booking Conflict Detection.
+    Called after a new booking is created. Checks if the assigned driver
+    has another confirmed booking within 30 minutes on the same date."""
+    try:
+        driver_id = new_booking.get('driver_id') or ''
+        driver_name = new_booking.get('driver_name') or ''
+        booking_date = new_booking.get('date', '')
+        booking_time = new_booking.get('time', '')
+        new_booking_id = new_booking.get('id', '')
+
+        # Only check if a driver is actually assigned and we have date+time
+        if (not driver_id and not driver_name) or not booking_date or not booking_time:
+            return
+
+        # Parse the new booking time
+        try:
+            new_time = datetime.strptime(booking_time, '%H:%M')
+        except ValueError:
+            try:
+                new_time = datetime.strptime(booking_time, '%I:%M %p')
+            except ValueError:
+                logger.warning(f"[Conflict Detection] Could not parse time '{booking_time}' for booking {new_booking_id}")
+                return
+
+        # Find other confirmed bookings for the same driver on the same date
+        if driver_id:
+            driver_filter = {'$or': [{'driver_id': driver_id}, {'driver_name': driver_name}]}
+        else:
+            driver_filter = {'driver_name': driver_name}
+
+        query = {
+            **driver_filter,
+            'date': booking_date,
+            'status': {'$in': ['confirmed', 'pending_approval']},
+            'id': {'$ne': new_booking_id}
+        }
+
+        other_bookings = await db.bookings.find(query, {'_id': 0}).to_list(50)
+
+        conflicts = []
+        for other in other_bookings:
+            other_time_str = other.get('time', '')
+            if not other_time_str:
+                continue
+            try:
+                other_time = datetime.strptime(other_time_str, '%H:%M')
+            except ValueError:
+                try:
+                    other_time = datetime.strptime(other_time_str, '%I:%M %p')
+                except ValueError:
+                    continue
+
+            diff_minutes = abs((new_time - other_time).total_seconds()) / 60
+            if diff_minutes <= 30:
+                other_ref = get_booking_reference(other)
+                conflicts.append({
+                    'ref': other_ref,
+                    'time': other_time_str,
+                    'name': other.get('name', 'Unknown')
+                })
+
+        if not conflicts:
+            return
+
+        new_ref = get_booking_reference(new_booking)
+        conflict_driver = driver_name or driver_id
+        formatted_date = format_date_ddmmyyyy(booking_date)
+
+        logger.warning(
+            f"[Conflict Detection] Driver '{conflict_driver}' has {len(conflicts)} overlapping booking(s) "
+            f"on {formatted_date} near {booking_time}: new #{new_ref} conflicts with "
+            + ', '.join(f'#{c["ref"]}' for c in conflicts)
+        )
+
+        # Send SMS alert to admin
+        try:
+            admin_phone = os.environ.get('ADMIN_PHONE', '+6421743321')
+            twilio_sid = os.environ.get('TWILIO_ACCOUNT_SID')
+            twilio_token = os.environ.get('TWILIO_AUTH_TOKEN')
+            twilio_from = os.environ.get('TWILIO_PHONE_NUMBER')
+            if twilio_sid and twilio_token and twilio_from and Client:
+                client = Client(twilio_sid, twilio_token)
+                conflict_refs = ', '.join(f'#{c["ref"]}' for c in conflicts)
+                sms_body = (
+                    f"CONFLICT: Driver {conflict_driver} has overlapping bookings at "
+                    f"{booking_time} on {formatted_date}. "
+                    f"New #{new_ref} conflicts with {conflict_refs}. Check dashboard."
+                )
+                client.messages.create(body=sms_body, from_=twilio_from, to=admin_phone)
+                logger.info(f"[Conflict Detection] SMS alert sent for driver '{conflict_driver}'")
+        except Exception as sms_err:
+            logger.error(f"[Conflict Detection] SMS error: {sms_err}")
+
+        # Also send email to admin
+        try:
+            admin_email = os.environ.get('ADMIN_EMAIL', 'info@bookaride.co.nz')
+            conflict_list = ''.join(
+                f'<li>#{c["ref"]} - {c["name"]} at {format_time_ampm(c["time"])}</li>'
+                for c in conflicts
+            )
+            html_content = f'''<html>
+            <body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+                <div style="background:#DC2626;color:white;padding:20px;border-radius:12px 12px 0 0;text-align:center;">
+                    <h1 style="margin:0;">Driver Booking Conflict</h1>
+                </div>
+                <div style="background:white;padding:24px;border:1px solid #e5e7eb;border-radius:0 0 12px 12px;">
+                    <p><strong>Driver:</strong> {conflict_driver}</p>
+                    <p><strong>Date:</strong> {formatted_date}</p>
+                    <p><strong>New booking:</strong> #{new_ref} ({new_booking.get('name', 'Unknown')}) at {format_time_ampm(booking_time)}</p>
+                    <p><strong>Conflicting booking(s):</strong></p>
+                    <ul>{conflict_list}</ul>
+                    <p style="color:#DC2626;font-weight:bold;">Please reassign one of these bookings to a different driver.</p>
+                </div>
+            </body>
+            </html>'''
+            _send_email_with_fallbacks(
+                admin_email,
+                f"CONFLICT: Driver {conflict_driver} double-booked on {formatted_date}",
+                html_content,
+                from_name="BookaRide Alert"
+            )
+        except Exception as email_err:
+            logger.error(f"[Conflict Detection] Email error: {email_err}")
+
+    except Exception as e:
+        logger.error(f"[Conflict Detection] Fatal error: {str(e)}", exc_info=True)
+
+
+async def send_weekly_report():
+    """Agent 4: Weekly Performance Report — runs Sunday 8 AM NZ.
+    Summarises the past week vs the previous week with revenue, routes,
+    busiest days, and customer acquisition metrics."""
+    try:
+        nz_tz = pytz.timezone('Pacific/Auckland')
+        now_nz = datetime.now(nz_tz)
+
+        # This week = last 7 days, last week = 7-14 days ago
+        this_week_start = (now_nz - timedelta(days=7)).strftime('%Y-%m-%d')
+        last_week_start = (now_nz - timedelta(days=14)).strftime('%Y-%m-%d')
+
+        # Fetch this week's bookings
+        this_week_bookings = await db.bookings.find({
+            'created_at': {'$gte': this_week_start},
+            'serviceType': {'$ne': 'shared-shuttle'},
+            'status': {'$nin': ['deleted']}
+        }, {'_id': 0}).to_list(1000)
+
+        # Fetch last week's bookings
+        last_week_bookings = await db.bookings.find({
+            'created_at': {'$gte': last_week_start, '$lt': this_week_start},
+            'serviceType': {'$ne': 'shared-shuttle'},
+            'status': {'$nin': ['deleted']}
+        }, {'_id': 0}).to_list(1000)
+
+        # Also check archived bookings for completeness
+        this_week_archived = await db.bookings_archive.find({
+            'created_at': {'$gte': this_week_start},
+            'serviceType': {'$ne': 'shared-shuttle'}
+        }, {'_id': 0}).to_list(500)
+
+        last_week_archived = await db.bookings_archive.find({
+            'created_at': {'$gte': last_week_start, '$lt': this_week_start},
+            'serviceType': {'$ne': 'shared-shuttle'}
+        }, {'_id': 0}).to_list(500)
+
+        # Merge active + archived
+        all_this_week = this_week_bookings + this_week_archived
+        all_last_week = last_week_bookings + last_week_archived
+
+        # Totals
+        this_week_count = len(all_this_week)
+        last_week_count = len(all_last_week)
+        growth_pct = 0.0
+        if last_week_count > 0:
+            growth_pct = ((this_week_count - last_week_count) / last_week_count) * 100
+
+        # Revenue helper
+        def _calc_revenue(bookings_list):
+            total = 0.0
+            for b in bookings_list:
+                if b.get('payment_status') == 'paid' or (b.get('status') or '').lower() == 'completed':
+                    price = b.get('totalPrice', 0)
+                    if isinstance(b.get('pricing'), dict):
+                        price = b['pricing'].get('totalPrice', price)
+                    try:
+                        total += float(price or 0)
+                    except (ValueError, TypeError):
+                        pass
+            return total
+
+        this_week_revenue = _calc_revenue(all_this_week)
+        last_week_revenue = _calc_revenue(all_last_week)
+        revenue_growth = 0.0
+        if last_week_revenue > 0:
+            revenue_growth = ((this_week_revenue - last_week_revenue) / last_week_revenue) * 100
+
+        # Average booking value
+        paid_bookings = [b for b in all_this_week if b.get('payment_status') == 'paid' or (b.get('status') or '').lower() == 'completed']
+        avg_value = this_week_revenue / len(paid_bookings) if paid_bookings else 0
+
+        # Top 3 busiest days
+        day_counts = {}
+        for b in all_this_week:
+            d = b.get('date', (b.get('created_at') or '')[:10])
+            if d:
+                day_counts[d] = day_counts.get(d, 0) + 1
+        busiest_days = sorted(day_counts.items(), key=lambda x: x[1], reverse=True)[:3]
+
+        # Most popular routes (group by pickup area -> dropoff area)
+        route_counts = {}
+        for b in all_this_week:
+            pickup = (b.get('pickupAddress') or 'Unknown')
+            dropoff = (b.get('dropoffAddress') or 'Unknown')
+            pickup_short = pickup.split(',')[0].strip()[:30] if pickup else 'Unknown'
+            dropoff_short = dropoff.split(',')[0].strip()[:30] if dropoff else 'Unknown'
+            route_key = f"{pickup_short} -> {dropoff_short}"
+            route_counts[route_key] = route_counts.get(route_key, 0) + 1
+        popular_routes = sorted(route_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+
+        # Customer acquisition: new vs returning
+        checked_emails = set()
+        new_customers = 0
+        returning_customers = 0
+        for b in all_this_week:
+            email = (b.get('email') or '').lower().strip()
+            if email and email not in checked_emails:
+                checked_emails.add(email)
+                prev = await db.bookings.find_one({
+                    'email': {'$regex': f'^{email}$', '$options': 'i'},
+                    'created_at': {'$lt': this_week_start}
+                })
+                if not prev:
+                    prev = await db.bookings_archive.find_one({
+                        'email': {'$regex': f'^{email}$', '$options': 'i'},
+                        'created_at': {'$lt': this_week_start}
+                    })
+                if prev:
+                    returning_customers += 1
+                else:
+                    new_customers += 1
+
+        # Build HTML
+        growth_color = '#16a34a' if growth_pct >= 0 else '#DC2626'
+        growth_arrow = '+' if growth_pct >= 0 else ''
+        rev_growth_color = '#16a34a' if revenue_growth >= 0 else '#DC2626'
+        rev_growth_arrow = '+' if revenue_growth >= 0 else ''
+
+        busiest_html = ''
+        for day_str, count in busiest_days:
+            try:
+                day_dt = datetime.strptime(day_str, '%Y-%m-%d')
+                day_formatted = day_dt.strftime('%A %d/%m')
+            except ValueError:
+                day_formatted = day_str
+            busiest_html += f'<li>{day_formatted}: <strong>{count} bookings</strong></li>'
+        if not busiest_html:
+            busiest_html = '<li>No bookings this week</li>'
+
+        routes_html = ''
+        for route, count in popular_routes:
+            routes_html += f'<li>{route}: <strong>{count}x</strong></li>'
+        if not routes_html:
+            routes_html = '<li>No routes this week</li>'
+
+        week_ending = now_nz.strftime('%d/%m/%Y')
+        week_starting = (now_nz - timedelta(days=7)).strftime('%d/%m/%Y')
+
+        html_content = f'''<html>
+        <body style="font-family:Arial,sans-serif;max-width:700px;margin:0 auto;background:#f9fafb;">
+            <div style="background:linear-gradient(135deg,#7c3aed 0%,#2563eb 100%);color:white;padding:24px;border-radius:12px 12px 0 0;text-align:center;">
+                <h1 style="margin:0;font-size:22px;">Weekly Performance Report</h1>
+                <p style="margin:8px 0 0;opacity:0.9;">{week_starting} - {week_ending}</p>
+            </div>
+            <div style="background:white;padding:24px;border:1px solid #e5e7eb;border-radius:0 0 12px 12px;">
+
+                <h2 style="color:#1e3a5f;font-size:18px;margin-top:0;">Bookings</h2>
+                <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
+                    <tr>
+                        <td style="padding:16px;background:#eff6ff;border-radius:8px;text-align:center;width:33%;">
+                            <div style="font-size:32px;font-weight:bold;color:#2563eb;">{this_week_count}</div>
+                            <div style="color:#6b7280;font-size:13px;">This Week</div>
+                        </td>
+                        <td style="padding:16px;background:#f3f4f6;border-radius:8px;text-align:center;width:33%;">
+                            <div style="font-size:32px;font-weight:bold;color:#6b7280;">{last_week_count}</div>
+                            <div style="color:#6b7280;font-size:13px;">Last Week</div>
+                        </td>
+                        <td style="padding:16px;background:#f0fdf4;border-radius:8px;text-align:center;width:33%;">
+                            <div style="font-size:28px;font-weight:bold;color:{growth_color};">{growth_arrow}{growth_pct:.1f}%</div>
+                            <div style="color:#6b7280;font-size:13px;">Growth</div>
+                        </td>
+                    </tr>
+                </table>
+
+                <h2 style="color:#1e3a5f;font-size:18px;">Revenue</h2>
+                <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
+                    <tr>
+                        <td style="padding:16px;background:#f0fdf4;border-radius:8px;text-align:center;width:33%;">
+                            <div style="font-size:28px;font-weight:bold;color:#16a34a;">${this_week_revenue:,.2f}</div>
+                            <div style="color:#6b7280;font-size:13px;">This Week</div>
+                        </td>
+                        <td style="padding:16px;background:#f3f4f6;border-radius:8px;text-align:center;width:33%;">
+                            <div style="font-size:28px;font-weight:bold;color:#6b7280;">${last_week_revenue:,.2f}</div>
+                            <div style="color:#6b7280;font-size:13px;">Last Week</div>
+                        </td>
+                        <td style="padding:16px;background:#eff6ff;border-radius:8px;text-align:center;width:33%;">
+                            <div style="font-size:24px;font-weight:bold;color:{rev_growth_color};">{rev_growth_arrow}{revenue_growth:.1f}%</div>
+                            <div style="color:#6b7280;font-size:13px;">Growth</div>
+                        </td>
+                    </tr>
+                </table>
+                <div style="background:#fefce8;border-radius:8px;padding:16px;text-align:center;margin-bottom:24px;">
+                    <div style="color:#6b7280;font-size:13px;">Average Booking Value</div>
+                    <div style="font-size:28px;font-weight:bold;color:#ca8a04;">${avg_value:,.2f} NZD</div>
+                </div>
+
+                <h2 style="color:#1e3a5f;font-size:18px;">Top 3 Busiest Days</h2>
+                <ul style="margin-bottom:24px;">{busiest_html}</ul>
+
+                <h2 style="color:#1e3a5f;font-size:18px;">Most Popular Routes</h2>
+                <ul style="margin-bottom:24px;">{routes_html}</ul>
+
+                <h2 style="color:#1e3a5f;font-size:18px;">Customer Acquisition</h2>
+                <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
+                    <tr>
+                        <td style="padding:16px;background:#eff6ff;border-radius:8px;text-align:center;width:50%;">
+                            <div style="font-size:32px;font-weight:bold;color:#2563eb;">{new_customers}</div>
+                            <div style="color:#6b7280;font-size:13px;">New Customers</div>
+                        </td>
+                        <td style="padding:16px;background:#f0fdf4;border-radius:8px;text-align:center;width:50%;">
+                            <div style="font-size:32px;font-weight:bold;color:#16a34a;">{returning_customers}</div>
+                            <div style="color:#6b7280;font-size:13px;">Returning Customers</div>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </body>
+        </html>'''
+
+        admin_email = os.environ.get('ADMIN_EMAIL', 'info@bookaride.co.nz')
+        subject = f"Weekly Report {week_starting}-{week_ending} | {this_week_count} bookings | ${this_week_revenue:,.0f} revenue"
+        _send_email_with_fallbacks(admin_email, subject, html_content, from_name="BookaRide Weekly Report")
+        logger.info(f"[Weekly Report] Sent to {admin_email}: {this_week_count} bookings, ${this_week_revenue:.2f} revenue")
+
+    except Exception as e:
+        logger.error(f"[Weekly Report] Fatal error: {str(e)}", exc_info=True)
+
+
 # Include the router in the main app (MUST be after all routes are defined)
 app.include_router(api_router)
 
@@ -14468,20 +15133,52 @@ async def startup_event():
     #     name='Startup sync from production',
     #     replace_existing=True
     # )
-    
+
+    # DAILY BUSINESS SUMMARY - Runs at 6 PM NZ daily
+    scheduler.add_job(
+        send_daily_business_summary,
+        CronTrigger(hour=18, minute=0, timezone=nz_tz),
+        id='daily_business_summary',
+        name='Daily business summary email at 6 PM NZ',
+        replace_existing=True,
+        misfire_grace_time=3600 * 4
+    )
+
+    # PAYMENT FOLLOW-UP - Runs every 2 hours
+    scheduler.add_job(
+        check_unpaid_bookings,
+        IntervalTrigger(hours=2),
+        id='payment_followup',
+        name='Payment follow-up reminders (every 2 hours)',
+        replace_existing=True
+    )
+
+    # WEEKLY PERFORMANCE REPORT - Runs Sunday 8 AM NZ
+    scheduler.add_job(
+        send_weekly_report,
+        CronTrigger(day_of_week='sun', hour=8, minute=0, timezone=nz_tz),
+        id='weekly_performance_report',
+        name='Weekly performance report (Sunday 8 AM NZ)',
+        replace_existing=True,
+        misfire_grace_time=3600 * 12
+    )
+
     scheduler.start()
     logger.info(" Scheduler started with all jobs:")
     logger.info("    Reminder: 8:00 AM NZ daily (primary)")
     logger.info("    Arrival emails: 9:00 AM NZ daily")
     logger.info("    Reminder: Hourly backup check")
     logger.info("    Abandoned bookings: Every 30 mins")
-    logger.info("    Auto-sync: Every 5 minutes")
     logger.info("    Return alerts: Every 15 minutes")
     logger.info("    Daily error check: 6:00 AM NZ daily")
     logger.info("    Auto-archive: 2:00 AM NZ daily")
     logger.info("    Auto-complete: 10:00 PM NZ daily")
     logger.info("    Post-trip email catchup: 10:30 PM NZ daily")
     logger.info("    Content freshness: 4:00 AM NZ daily")
+    logger.info("    Daily business summary: 6:00 PM NZ daily")
+    logger.info("    Payment follow-up: Every 2 hours")
+    logger.info("    Weekly report: Sunday 8:00 AM NZ")
+    logger.info("    Conflict detection: On every new booking")
     logger.info("    Startup reminder check (running now...)")
     
     # Layer 3: Immediate startup check
