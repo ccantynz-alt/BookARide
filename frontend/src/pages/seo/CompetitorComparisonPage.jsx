@@ -31,8 +31,8 @@ const CompetitorComparisonPage = () => {
       meetAndGreet: true,
       instantQuote: true,
       onlineBooking: true,
-      rating: '4.9',
-      reviews: '500+'
+      rating: 'Highly Rated',
+      reviews: 'See Google'
     },
     competitor: {
       name: competitorData.name,
@@ -195,7 +195,7 @@ const CompetitorComparisonPage = () => {
       <section className="py-16 bg-black text-white">
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl font-bold mb-4">Ready to Experience the BookaRide Difference?</h2>
-          <p className="text-gray-400 mb-8">Join thousands of happy customers who chose premium service</p>
+          <p className="text-gray-400 mb-8">Choose premium service for your next airport transfer</p>
           <Link to="/book-now">
             <Button size="lg" className="bg-gold hover:bg-yellow-500 text-black font-bold">
               Book Now <ArrowRight className="ml-2 w-5 h-5" />

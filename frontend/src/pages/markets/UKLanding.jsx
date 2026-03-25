@@ -80,25 +80,29 @@ const UKLanding = () => {
         </div>
       </section>
 
-      {/* Testimonials */}
+      {/* Reviews */}
       <section className="py-16 bg-gray-900 text-white">
         <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center mb-12">What Fellow Brits Say</h2>
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              { name: 'James H.', location: 'London', text: 'Brilliant service after a 24-hour journey. Driver was waiting even though we were delayed. Top marks!' },
-              { name: 'Sarah W.', location: 'Manchester', text: 'Used them for our entire North Island trip. Reliable, friendly, and great value for money.' },
-              { name: 'The Smiths', location: 'Edinburgh', text: 'Traveling with elderly parents, they were so helpful. Would definitely recommend.' },
-            ].map((review, idx) => (
-              <div key={idx} className="bg-white/10 p-6 rounded-xl">
-                <div className="flex gap-1 mb-4">
-                  {[...Array(5)].map((_, i) => <Star key={i} className="w-5 h-5 fill-gold text-gold" />)}
-                </div>
-                <p className="text-white/90 mb-4">"{review.text}"</p>
-                <p className="font-semibold">{review.name}</p>
-                <p className="text-sm text-white/60">{review.location}, UK</p>
+          <div className="max-w-md mx-auto text-center">
+            <h2 className="text-3xl font-bold text-center mb-8">What Our Customers Say</h2>
+            <div className="bg-white/10 backdrop-blur-md border border-gold/20 rounded-2xl p-8">
+              <div className="flex items-center justify-center gap-2 mb-4">
+                <img src="https://www.google.com/favicon.ico" alt="Google" className="w-8 h-8" loading="lazy" />
+                <span className="text-xl font-bold text-white">Google Reviews</span>
               </div>
-            ))}
+              <div className="flex justify-center mb-4">
+                {[1, 2, 3, 4, 5].map((i) => <Star key={i} className="w-6 h-6 text-gold fill-gold" />)}
+              </div>
+              <p className="text-white/80 mb-6">Read verified reviews from our customers on Google.</p>
+              <a
+                href="https://www.google.com/search?q=book+a+ride+nz+auckland+reviews"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 bg-gold hover:bg-gold/90 text-black font-semibold px-8 py-3 rounded-lg transition-all duration-200 shadow-lg"
+              >
+                See Our Reviews on Google
+              </a>
+            </div>
           </div>
         </div>
       </section>
@@ -107,7 +111,7 @@ const UKLanding = () => {
       <section className="py-16 bg-gold">
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl font-bold text-black mb-4">Ready to Book?</h2>
-          <p className="text-black/80 mb-8">Join thousands of British visitors who trust us.</p>
+          <p className="text-black/80 mb-8">Trusted by visitors from the UK and around the world.</p>
           <Link to="/book-now">
             <Button className="bg-black hover:bg-gray-900 text-white font-semibold px-8 py-6 text-lg">
               Book Now →

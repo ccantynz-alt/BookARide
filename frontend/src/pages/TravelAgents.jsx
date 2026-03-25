@@ -67,11 +67,6 @@ const TravelAgents = () => {
     { icon: Building2, title: 'Hobbiton & Day Tours', desc: 'Transport to NZ\'s top attractions.' }
   ];
 
-  const testimonials = [
-    { name: 'Sarah Chen', company: 'Pacific Tours NZ', text: 'BookaRide has been our trusted ground transport partner for 3 years. Reliable, professional, and our clients love them.' },
-    { name: 'Michael Thompson', company: 'Auckland Inbound Tours', text: 'The commission structure is excellent and their real-time booking system saves us hours every week.' },
-    { name: 'Emma Williams', company: 'Kiwi Experience Travel', text: 'Best airport transfer partner in Auckland. 24/7 support means we can always assist our international clients.' }
-  ];
 
   return (
     <div className="min-h-screen bg-white">
@@ -98,7 +93,7 @@ const TravelAgents = () => {
               Your Trusted Ground Transport Partner in New Zealand
             </h1>
             <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
-              Join 200+ travel agents and tour operators who trust BookaRide for reliable airport transfers, cruise transfers, and group transport across Auckland.
+              Partner with BookaRide for reliable airport transfers, cruise transfers, and group transport across Auckland.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button 
@@ -108,14 +103,14 @@ const TravelAgents = () => {
               >
                 Become a Partner <ArrowRight className="ml-2 w-5 h-5" />
               </Button>
-              <Button 
-                size="lg" 
-                variant="outline" 
+              <Button
+                size="lg"
+                variant="outline"
                 className="border-white text-white hover:bg-white/10"
                 asChild
               >
-                <a href="tel:+6421743321">
-                  <Phone className="mr-2 w-5 h-5" /> Call Partnerships Team
+                <a href="mailto:partners@bookaride.co.nz">
+                  Email Partnerships Team
                 </a>
               </Button>
             </div>
@@ -242,24 +237,29 @@ const TravelAgents = () => {
         </div>
       </section>
 
-      {/* Testimonials */}
+      {/* Reviews */}
       <section className="py-16 bg-gray-50">
         <div className="container mx-auto px-4">
-          <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">What Our Partners Say</h2>
-          
-          <div className="grid md:grid-cols-3 gap-8">
-            {testimonials.map((testimonial, idx) => (
-              <div key={idx} className="bg-white rounded-xl p-6 shadow-lg">
-                <div className="flex gap-1 text-gold mb-4">
-                  {[...Array(5)].map((_, i) => <Star key={i} className="w-5 h-5 fill-current" />)}
-                </div>
-                <p className="text-gray-600 mb-4 italic">&ldquo;{testimonial.text}&rdquo;</p>
-                <div>
-                  <div className="font-semibold text-gray-900">{testimonial.name}</div>
-                  <div className="text-sm text-gray-500">{testimonial.company}</div>
-                </div>
+          <div className="max-w-md mx-auto text-center">
+            <h2 className="text-3xl md:text-4xl font-bold text-center mb-8">What Our Customers Say</h2>
+            <div className="bg-white rounded-2xl shadow-lg p-8">
+              <div className="flex items-center justify-center gap-2 mb-4">
+                <img src="https://www.google.com/favicon.ico" alt="Google" className="w-8 h-8" loading="lazy" />
+                <span className="text-xl font-bold">Google Reviews</span>
               </div>
-            ))}
+              <div className="flex justify-center mb-4">
+                {[1, 2, 3, 4, 5].map((i) => <Star key={i} className="w-6 h-6 text-gold fill-gold" />)}
+              </div>
+              <p className="text-gray-600 mb-6">Read verified reviews from our customers on Google.</p>
+              <a
+                href="https://www.google.com/search?q=book+a+ride+nz+auckland+reviews"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 bg-gold hover:bg-gold/90 text-black font-semibold px-8 py-3 rounded-lg transition-all duration-200 shadow-lg"
+              >
+                See Our Reviews on Google
+              </a>
+            </div>
           </div>
         </div>
       </section>
@@ -353,8 +353,8 @@ const TravelAgents = () => {
             <div className="mt-8 text-center text-gray-600">
               <p className="mb-2">Prefer to talk? Contact our partnerships team directly:</p>
               <div className="flex justify-center gap-6">
-                <a href="tel:+6421743321" className="flex items-center gap-2 text-gold hover:underline">
-                  <Phone className="w-4 h-4" /> 021 743 321
+                <a href="mailto:partners@bookaride.co.nz" className="flex items-center gap-2 text-gold hover:underline">
+                  partners@bookaride.co.nz
                 </a>
                 <a href="mailto:partners@bookaride.co.nz" className="flex items-center gap-2 text-gold hover:underline">
                   <Mail className="w-4 h-4" /> partners@bookaride.co.nz

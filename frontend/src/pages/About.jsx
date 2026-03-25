@@ -3,18 +3,19 @@ import { Shield, Users, Clock, Award, Target, Heart } from 'lucide-react';
 import { Card, CardContent } from '../components/ui/card';
 import SEO from '../components/SEO';
 import PageBreadcrumb from '../components/PageBreadcrumb';
-import { FAQSchema, LocalBusinessSchema } from '../components/SchemaMarkup';
+import { FAQSchema } from '../components/SchemaMarkup';
+import StructuredData from '../components/StructuredData';
 
 export const About = () => {
   return (
     <div className="min-h-screen bg-white">
       <SEO 
         title="About Us - Professional Airport Shuttle Service in New Zealand"
-        description="Learn about Book A Ride NZ - your trusted airport shuttle service provider. Serving Auckland, Hamilton, and Whangarei airports with safe, reliable, and professional transportation. Over 10,000 happy customers, 24/7 available."
+        description="Learn about Book A Ride NZ - your trusted airport shuttle service provider. Serving Auckland, Hamilton, and Whangarei airports with safe, reliable, and professional transportation. Available 24/7."
         keywords="airport shuttle company, shuttle service New Zealand, Auckland airport transfer company, professional shuttle service, reliable airport shuttle, NZ transportation service, safe shuttle service"
         canonical="/about"
       />
-      <LocalBusinessSchema />
+      <StructuredData />
       <FAQSchema faqs={[
         { question: "How long has BookaRide been operating?", answer: "BookaRide has been providing premium airport transfer services in Auckland and throughout New Zealand, building a reputation for reliability, safety, and exceptional customer service." },
         { question: "Are your drivers licensed and vetted?", answer: "Yes, all our drivers are fully licensed P-endorsement holders, background checked, and undergo regular vehicle inspections. Safety is our top priority." },
@@ -55,7 +56,7 @@ export const About = () => {
                 Book A Ride NZ specializes in airport shuttle services connecting Auckland, Hamilton, and Whangarei airports, as well as private shuttle transfers throughout Auckland. We've built our reputation on reliable, safe, and comfortable transportation for travelers and locals alike.
               </p>
               <p className="text-gray-600 text-lg leading-relaxed">
-                Over the years, we've had the privilege of serving thousands of customers - from business travelers catching early flights to families heading on vacation, and locals needing reliable transportation around Auckland. Our commitment to excellent service has remained unchanged - we treat every ride with the utmost care and professionalism.
+                Over the years, we've had the privilege of serving customers across Auckland - from business travelers catching early flights to families heading on vacation, and locals needing reliable transportation. Our commitment to excellent service has remained unchanged - we treat every ride with the utmost care and professionalism.
               </p>
               <p className="text-gray-600 text-lg leading-relaxed">
                 Today, we operate 24/7 with a fleet of well-maintained shuttle vehicles and a team of experienced, professional drivers who know these routes inside out. Whether you're heading to the airport or need private transport around Auckland, we're here to help.
@@ -137,13 +138,7 @@ export const About = () => {
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-5xl mx-auto">
             {[
-              { value: '10,000+', label: 'Happy Customers' },
-              { value: '50+', label: 'Professional Drivers' },
-              { value: '100+', label: 'Vehicles' },
-              { value: '4.9/5', label: 'Customer Rating' },
               { value: '24/7', label: 'Service Available' },
-              { value: '8+', label: 'Years Experience' },
-              { value: '99%', label: 'On-Time Rate' },
               { value: '100%', label: 'Satisfaction Goal' }
             ].map((stat, index) => (
               <div key={index} className="text-center p-8 bg-gray-50 rounded-xl border border-gray-200 hover:border-gold hover:shadow-md transition-all duration-200">

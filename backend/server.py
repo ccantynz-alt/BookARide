@@ -39,6 +39,8 @@ except ImportError:
     send_email_unified = None
     get_noreply_email = lambda: os.environ.get("NOREPLY_EMAIL") or os.environ.get("SENDER_EMAIL", "noreply@bookaride.co.nz")
 
+from email_templates import email_wrapper, email_section, email_button, email_booking_summary, email_price_table, email_divider
+
 
 def _send_email_with_fallbacks(to_email, subject, html_content, from_email=None, from_name="BookaRide", reply_to=None, cc=None):
     """Send email via Mailgun (the ONLY email provider). No SMTP fallback.
@@ -179,8 +181,8 @@ async def root_health_check():
 
 @app.get("/email-status")
 @app.get("/api/email-status")
-async def root_email_status():
-    """Email config check – Mailgun only. No auth."""
+async def root_email_status(current_admin: dict = Depends(get_current_admin)):
+    """Email config check – Mailgun only. Requires admin auth."""
     try:
         from email_sender import is_email_configured, get_noreply_email as _get_noreply
         return {
@@ -585,8 +587,8 @@ async def get_booking_counter(current_admin: dict = Depends(get_current_admin)):
 # Authentication Endpoints
 
 @api_router.post("/admin/register", response_model=Token)
-async def register_admin(admin: AdminCreate):
-    """Register a new admin user"""
+async def register_admin(admin: AdminCreate, current_admin: dict = Depends(get_current_admin)):
+    """Register a new admin user — requires an existing authenticated admin"""
     try:
         # Check if username already exists
         existing_admin = await db.admin_users.find_one({"username": admin.username}, {"_id": 0})
@@ -607,7 +609,7 @@ async def register_admin(admin: AdminCreate):
         )
         
         await db.admin_users.insert_one(admin_user.dict())
-        logger.info(f"Admin user created: {admin.username}")
+        logger.info(f"Admin user created: {admin.username} (by {current_admin.get('username', 'unknown')})")
         
         # Create access token
         access_token = create_access_token(data={"sub": admin.username})
@@ -2237,7 +2239,15 @@ async def create_booking(booking: BookingCreate, background_tasks: BackgroundTas
             f"customer confirmation for booking #{ref_number}"
         )
         logger.info(f"Queued customer confirmation for booking #{ref_number}")
-        
+
+        # Agent 3: Check for driver booking conflicts in background
+        background_tasks.add_task(
+            run_async_task,
+            check_booking_driver_conflict,
+            booking_dict,
+            f"conflict detection for booking #{ref_number}"
+        )
+
         return booking_obj
     except Exception as e:
         logger.error(f"Error creating booking: {str(e)}")
@@ -2618,7 +2628,20 @@ async def update_booking(booking_id: str, update_data: dict, current_admin: dict
             except Exception as cal_error:
                 logger.warning(f" Failed to update calendar event: {str(cal_error)}")
                 # Don't fail the whole update if calendar sync fails
-        
+
+        # Send post-trip thank-you email when status is changed to "completed"
+        if update_data.get('status') == 'completed':
+            try:
+                updated_booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+                if updated_booking and not updated_booking.get('postTripEmailSent'):
+                    email_ok = send_post_trip_email(updated_booking)
+                    if email_ok:
+                        await mark_post_trip_email_sent(booking_id)
+                        logger.info(f"Post-trip email sent for manually completed booking {booking_id}")
+            except Exception as email_err:
+                logger.warning(f"Failed to send post-trip email for booking {booking_id}: {email_err}")
+                # Don't fail the update if email fails
+
         return {"message": "Booking updated successfully"}
     except HTTPException:
         raise
@@ -3177,6 +3200,94 @@ async def update_confirmation_status(booking_id: str, results: dict):
         logger.error(f"Error updating confirmation status: {e}")
 
 
+def send_post_trip_email(booking: dict):
+    """Send a thank-you email after trip completion with Google Review link.
+    Returns True if sent successfully, False otherwise.
+    Checks postTripEmailSent flag to prevent duplicate sends."""
+    try:
+        # Prevent duplicate sends
+        if booking.get('postTripEmailSent'):
+            logger.info(f"Post-trip email already sent for booking {booking.get('id')}, skipping")
+            return False
+
+        email = booking.get('email', '').strip()
+        if not email or '@' not in email:
+            logger.warning(f"No valid email for post-trip email, booking {booking.get('id')}")
+            return False
+
+        name = booking.get('name', 'Valued Customer')
+        first_name = name.split()[0] if name else 'there'
+        pickup = booking.get('pickupAddress', 'pickup location')
+        dropoff = booking.get('dropoffAddress', 'destination')
+        booking_date = booking.get('date', '')
+        ref_number = booking.get('referenceNumber', booking.get('id', '')[:8])
+
+        # Google Review URL — placeholder Place ID (update when real one is available)
+        google_review_url = 'https://search.google.com/local/writereview?placeid=ChIJBookARideNZ'
+
+        subject = f"Thanks for riding with BookaRide, {first_name}!"
+
+        greeting_html = (
+            f'<strong style="font-size:18px;">Thank you, {first_name}!</strong><br /><br />'
+            'We hope you had a wonderful experience with BookARide. It was our pleasure '
+            'to take care of your transfer.'
+        )
+
+        summary_html = email_booking_summary(booking)
+
+        review_html = (
+            'Enjoyed your ride? We would love to hear from you!<br />'
+            'Your review helps other travellers find reliable airport transfers.'
+        )
+
+        referral_html = (
+            'Know someone who needs an Auckland airport transfer? Share your experience '
+            'and tell them to book at '
+            '<a href="https://bookaride.co.nz/book-now" style="color:#D4AF37;text-decoration:none;font-weight:bold;">bookaride.co.nz</a>.'
+        )
+
+        body_parts = [
+            email_section(None, greeting_html),
+            email_section("Your Trip Summary", summary_html),
+            email_section(None, review_html),
+            email_button("Leave Us a Google Review", google_review_url),
+            email_divider(),
+            email_section("Refer a Friend", referral_html),
+        ]
+
+        html_content = email_wrapper(
+            body_html="\n".join(body_parts),
+            preheader="Thank you for riding with BookARide!",
+        )
+
+        ok = _send_email_with_fallbacks(email, subject, html_content, from_name="BookaRide NZ")
+        if ok:
+            logger.info(f"Post-trip thank-you email sent to {email} for booking {booking.get('id')}")
+            # Mark as sent — caller is responsible for the DB update since this is a sync function
+            return True
+        else:
+            logger.error(f"Failed to send post-trip email to {email} for booking {booking.get('id')}")
+            return False
+
+    except Exception as e:
+        logger.error(f"Error sending post-trip email for booking {booking.get('id')}: {e}")
+        return False
+
+
+async def mark_post_trip_email_sent(booking_id: str):
+    """Mark a booking as having had its post-trip email sent."""
+    try:
+        nz_tz = pytz.timezone('Pacific/Auckland')
+        now = datetime.now(nz_tz).isoformat()
+        await db.bookings.update_one(
+            {"id": booking_id},
+            {"$set": {"postTripEmailSent": True, "postTripEmailSentAt": now}}
+        )
+        logger.info(f"Post-trip email flag set for booking {booking_id}")
+    except Exception as e:
+        logger.error(f"Error marking post-trip email sent for booking {booking_id}: {e}")
+
+
 def send_reminder_email(booking: dict):
     """Send day-before reminder email to customer with professional pickup instructions"""
     try:
@@ -3260,73 +3371,63 @@ def send_reminder_email(booking: dict):
                     </div>
             '''
         
-        # Logo as inline SVG
-        logo_svg = '''
-            <svg width="50" height="50" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect width="64" height="64" rx="12" fill="#D4AF37"/>
-                <circle cx="32" cy="32" r="20" stroke="white" stroke-width="3" fill="none"/>
-                <text x="32" y="42" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="white" text-anchor="middle">B</text>
-            </svg>
-        '''
-        
-        html_content = f'''
-        <!DOCTYPE html>
-        <html>
-        <head><meta charset="utf-8"></head>
-        <body style="font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f5f5f5;">
-            <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
-                <div style="background: linear-gradient(135deg, #ffffff 0%, #faf8f3 100%); padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;">
-                    {logo_svg}
-                    <h1 style="margin: 10px 0 0 0; color: #1a1a1a; font-size: 20px;">BOOK<span style="color: #D4AF37;">A</span>RIDE</h1>
-                </div>
-                
-                <div style="background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%); padding: 20px; text-align: center;">
-                    <h2 style="margin: 0; color: white; font-size: 20px;">Your Ride is Tomorrow!</h2>
-                    <p style="margin: 8px 0 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">{formatted_date} at {formatted_time}</p>
-                </div>
-                
-                <div style="padding: 25px;">
-                    <p style="color: #333; font-size: 15px;">Dear <strong>{customer_name}</strong>,</p>
-                    <p style="color: #333; font-size: 15px;">This is a friendly reminder that your transfer is scheduled for <strong>tomorrow</strong>. Please find your booking details and pickup instructions below.</p>
-                    
-                    <div style="background: #faf8f3; border-radius: 10px; padding: 20px; margin: 20px 0; border: 1px solid #e8e4d9;">
-                        <h3 style="margin: 0 0 15px 0; color: #1a1a1a; font-size: 16px;"> BOOKING DETAILS</h3>
-                        <table style="width: 100%; font-size: 14px; color: #333;">
-                            <tr><td style="padding: 5px 0; width: 120px;"><strong>Reference:</strong></td><td>{booking_ref}</td></tr>
-                            <tr><td style="padding: 5px 0;"><strong>Date:</strong></td><td>{formatted_date}</td></tr>
-                            <tr><td style="padding: 5px 0;"><strong>Time:</strong></td><td>{formatted_time}</td></tr>
-                            <tr><td style="padding: 5px 0;"><strong>Passengers:</strong></td><td>{booking.get('passengers', 'N/A')}</td></tr>
-                            {f'<tr><td style="padding: 5px 0;"><strong>Driver:</strong></td><td>{driver_name}</td></tr>' if driver_name else ''}
-                        </table>
-                        <hr style="border: none; border-top: 1px solid #ddd; margin: 15px 0;">
-                        {pickup_html}
-                        <p style="margin: 5px 0;"><strong>Drop-off:</strong> {booking.get('dropoffAddress', 'N/A')}</p>
-                    </div>
-                    
-                    {airport_instructions}
-                    
-                    {ready_reminder_html}
-                    
-                    <div style="background: #f0f9ff; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                        <p style="margin: 0 0 10px 0; font-size: 14px; color: #333;"><strong>&#128222; Contact Us</strong></p>
-                        <p style="margin: 0; font-size: 14px; color: #666;">
-                            Need to make changes or have questions?<br>
-                            Phone: <a href="tel:+6421743321" style="color: #D4AF37; font-weight: bold;">+64 21 743 321</a><br>
-                            Email: <a href="mailto:info@bookaride.co.nz" style="color: #D4AF37;">info@bookaride.co.nz</a>
-                        </p>
-                    </div>
-                    
-                    <p style="color: #333; margin-top: 25px;">We look forward to seeing you tomorrow!<br><strong>The BookaRide Team</strong></p>
-                </div>
-                
-                <div style="background: #1a1a1a; padding: 20px; text-align: center;">
-                    <p style="margin: 0; color: #888; font-size: 12px;">BookaRide NZ | Auckland Airport Transfers</p>
-                    <p style="margin: 5px 0 0 0; color: #666; font-size: 11px;">bookaride.co.nz | +64 21 743 321</p>
-                </div>
-            </div>
-        </body>
-        </html>
-        '''
+        # Reminder banner
+        reminder_banner = (
+            '<table width="100%" cellpadding="0" cellspacing="0" border="0">'
+            '<tr><td bgcolor="#D4AF37" align="center" style="padding:18px 20px;font-family:Arial,Helvetica,sans-serif;">'
+            '<p style="margin:0;color:#ffffff;font-size:20px;font-weight:bold;">Your Ride is Tomorrow!</p>'
+            f'<p style="margin:8px 0 0 0;color:#ffffff;font-size:14px;">{formatted_date} at {formatted_time}</p>'
+            '</td></tr></table>'
+        )
+
+        greeting_html = (
+            f'Dear <strong>{customer_name}</strong>,<br /><br />'
+            'This is a friendly reminder that your transfer is scheduled for '
+            '<strong>tomorrow</strong>. Please find your booking details and pickup '
+            'instructions below.'
+        )
+
+        # Build airport meeting instructions for the wrapper (Outlook-safe tables)
+        airport_section = ""
+        if is_airport_pickup:
+            airport_section = email_section("International Arrivals - Meeting Point", (
+                '<strong>Your driver will be waiting for you in the Arrivals Hall.</strong><br /><br />'
+                f'Look for your driver holding either a <strong>BOOK A RIDE</strong> sign or an iPad displaying your name: <strong>{customer_name}</strong><br /><br />'
+                '<strong>Directions to Meeting Point:</strong><br />'
+                '1. After collecting your luggage, exit through the Customs doors<br />'
+                '2. TURN LEFT immediately upon entering the Arrivals Hall<br />'
+                '3. Walk towards the Allpress Espresso Cafe<br />'
+                '4. All drivers wait directly in front of the cafe<br /><br />'
+                '<em>Tip: If you turn RIGHT, you will be heading towards the domestic terminal. '
+                'Turn LEFT to find your driver at the Allpress Cafe meeting point.</em>'
+            ))
+
+        # Ready reminder for non-airport pickups
+        ready_section = ""
+        if not is_airport_pickup:
+            ready_section = email_section(None, (
+                '<strong>Please be ready</strong> at your pickup location 5 minutes '
+                'before your scheduled time.'
+            ))
+
+        body_parts = [
+            reminder_banner,
+            email_section(None, greeting_html),
+            email_section("Booking Details", email_booking_summary(booking)),
+            airport_section,
+            ready_section,
+            email_divider(),
+            email_section("Need Help?", (
+                'Need to make changes or have questions?<br />'
+                'Email: <a href="mailto:info@bookaride.co.nz" style="color:#D4AF37;text-decoration:none;">info@bookaride.co.nz</a>'
+            )),
+            email_button("Contact Support", "mailto:support@bookaride.co.nz"),
+        ]
+
+        html_content = email_wrapper(
+            body_html="\n".join(p for p in body_parts if p),
+            preheader="Reminder: Your transfer is tomorrow",
+        )
         
         reminder_subject = f"Your Ride Tomorrow - {formatted_date} at {formatted_time} - Ref: {booking_ref}"
         ok = _send_email_with_fallbacks(recipient_email, reminder_subject, html_content, from_email=sender_email)
@@ -3723,6 +3824,182 @@ async def _get_mock_flight_data(fn: str):
 # AI EMAIL AUTO-RESPONDER
 # ============================================
 
+def _format_booking_context_line(b: dict) -> str:
+    """Format a single booking into a readable context line for the AI agent."""
+    ref = get_booking_reference(b)
+    date = format_date_ddmmyyyy(b.get('date', 'N/A'))
+    time = format_time_ampm(b.get('time', 'N/A'))
+    pickup = b.get('pickupAddress', 'N/A')
+    dropoff = b.get('dropoffAddress', 'N/A')
+    status = b.get('status', 'unknown')
+    payment = b.get('payment_status', b.get('paymentStatus', 'unknown'))
+    price = b.get('totalPrice', b.get('price', 'N/A'))
+    service = b.get('serviceType', 'N/A')
+    name = b.get('name', 'N/A')
+    passengers = b.get('passengers', 1)
+    trip_type = b.get('tripType', 'one-way')
+    return (
+        f"  - Ref: {ref} | Date: {date} {time} | {pickup} -> {dropoff} | "
+        f"Status: {status} | Payment: {payment} | Price: ${price} | "
+        f"Service: {service} | Passengers: {passengers} | Trip: {trip_type} | Name: {name}\n"
+    )
+
+
+def _send_admin_sms(message: str) -> bool:
+    """Send an SMS to the admin phone number via Twilio. Returns True on success."""
+    try:
+        admin_phone = os.environ.get('ADMIN_PHONE', '+6421743321')
+        twilio_sid = os.environ.get('TWILIO_ACCOUNT_SID')
+        twilio_token = os.environ.get('TWILIO_AUTH_TOKEN')
+        twilio_from = os.environ.get('TWILIO_PHONE_NUMBER')
+
+        if not (twilio_sid and twilio_token and twilio_from):
+            logger.warning("Twilio not configured - cannot send admin SMS")
+            return False
+
+        from twilio.rest import Client
+        client = Client(twilio_sid, twilio_token)
+        client.messages.create(
+            body=message[:1600],
+            from_=twilio_from,
+            to=admin_phone
+        )
+        logger.info(f"Admin SMS sent: {message[:80]}...")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send admin SMS: {e}")
+        return False
+
+
+async def _process_ai_actions(ai_response: str, sender_email: str, sender_name: str, customer_bookings: list) -> dict:
+    """
+    Parse ACTION tags from Claude's response and execute the corresponding actions.
+    Returns a dict with actions_taken (list of descriptions) and the cleaned response text.
+    """
+    import re
+    actions_taken = []
+    cleaned_response = ai_response
+
+    # Build a lookup of bookings by reference number for quick matching
+    bookings_by_ref = {}
+    for b in customer_bookings:
+        ref = b.get('referenceNumber', '')
+        if ref:
+            bookings_by_ref[str(ref)] = b
+            bookings_by_ref[f"#{ref}"] = b
+        # Also index by short ID
+        bid = b.get('id', '')
+        if bid:
+            bookings_by_ref[bid[:8].upper()] = b
+
+    # --- RESEND_CONFIRMATION ---
+    resend_matches = re.findall(r'\[ACTION:RESEND_CONFIRMATION:([^\]]+)\]', ai_response)
+    for ref in resend_matches:
+        ref_clean = ref.strip().lstrip('#')
+        booking = bookings_by_ref.get(ref_clean) or bookings_by_ref.get(f"#{ref_clean}")
+        if booking:
+            try:
+                send_customer_confirmation(booking)
+                actions_taken.append(f"Resent confirmation for booking #{ref_clean}")
+                logger.info(f"AI agent resent confirmation for booking #{ref_clean} (requested by {sender_email})")
+            except Exception as e:
+                logger.error(f"AI agent failed to resend confirmation for #{ref_clean}: {e}")
+                actions_taken.append(f"Failed to resend confirmation for #{ref_clean}: {e}")
+        else:
+            logger.warning(f"AI agent tried to resend confirmation for #{ref_clean} but booking not found")
+            actions_taken.append(f"Could not find booking #{ref_clean} to resend confirmation")
+
+    # --- FLAG_CANCELLATION ---
+    cancel_matches = re.findall(r'\[ACTION:FLAG_CANCELLATION:([^\]]+)\]', ai_response)
+    for ref in cancel_matches:
+        ref_clean = ref.strip().lstrip('#')
+        booking = bookings_by_ref.get(ref_clean) or bookings_by_ref.get(f"#{ref_clean}")
+        if booking:
+            try:
+                await db.bookings.update_one(
+                    {"id": booking.get('id')},
+                    {"$set": {
+                        "cancellation_requested": True,
+                        "cancellation_requested_at": datetime.now(timezone.utc).isoformat(),
+                        "cancellation_requested_by": sender_email,
+                    }}
+                )
+                booking_ref_display = get_booking_reference(booking)
+                sms_msg = (
+                    f"CANCELLATION REQUEST: {sender_name or sender_email} "
+                    f"wants to cancel booking {booking_ref_display}. "
+                    f"Date: {format_date_ddmmyyyy(booking.get('date', 'N/A'))} "
+                    f"{format_time_ampm(booking.get('time', 'N/A'))}. "
+                    f"Review in admin dashboard."
+                )
+                _send_admin_sms(sms_msg)
+                actions_taken.append(f"Flagged booking #{ref_clean} for cancellation and notified admin")
+                logger.info(f"AI agent flagged cancellation for booking #{ref_clean} (requested by {sender_email})")
+            except Exception as e:
+                logger.error(f"AI agent failed to flag cancellation for #{ref_clean}: {e}")
+                actions_taken.append(f"Failed to flag cancellation for #{ref_clean}: {e}")
+        else:
+            logger.warning(f"AI agent tried to flag cancellation for #{ref_clean} but booking not found")
+            actions_taken.append(f"Could not find booking #{ref_clean} to flag cancellation")
+
+    # --- FLAG_MODIFICATION ---
+    mod_matches = re.findall(r'\[ACTION:FLAG_MODIFICATION:([^:\]]+):([^\]]+)\]', ai_response)
+    for ref, details in mod_matches:
+        ref_clean = ref.strip().lstrip('#')
+        booking = bookings_by_ref.get(ref_clean) or bookings_by_ref.get(f"#{ref_clean}")
+        if booking:
+            try:
+                await db.bookings.update_one(
+                    {"id": booking.get('id')},
+                    {"$set": {
+                        "modification_requested": details.strip(),
+                        "modification_requested_at": datetime.now(timezone.utc).isoformat(),
+                        "modification_requested_by": sender_email,
+                    }}
+                )
+                booking_ref_display = get_booking_reference(booking)
+                sms_msg = (
+                    f"MODIFICATION REQUEST: {sender_name or sender_email} "
+                    f"wants to change booking {booking_ref_display}: "
+                    f"{details.strip()[:100]}. "
+                    f"Review in admin dashboard."
+                )
+                _send_admin_sms(sms_msg)
+                actions_taken.append(f"Flagged booking #{ref_clean} for modification: {details.strip()}")
+                logger.info(f"AI agent flagged modification for booking #{ref_clean}: {details.strip()} (requested by {sender_email})")
+            except Exception as e:
+                logger.error(f"AI agent failed to flag modification for #{ref_clean}: {e}")
+                actions_taken.append(f"Failed to flag modification for #{ref_clean}: {e}")
+        else:
+            logger.warning(f"AI agent tried to flag modification for #{ref_clean} but booking not found")
+            actions_taken.append(f"Could not find booking #{ref_clean} to flag modification")
+
+    # --- URGENT_ESCALATE ---
+    if '[ACTION:URGENT_ESCALATE]' in ai_response:
+        try:
+            sms_msg = (
+                f"URGENT SUPPORT: {sender_name or 'Customer'} ({sender_email}) "
+                f"needs immediate help. Subject: {cleaned_response[:100]}... "
+                f"Check email logs in admin dashboard."
+            )
+            _send_admin_sms(sms_msg)
+            actions_taken.append("Sent urgent escalation SMS to admin")
+            logger.info(f"AI agent escalated urgent issue from {sender_email}")
+        except Exception as e:
+            logger.error(f"AI agent failed to send urgent escalation: {e}")
+            actions_taken.append(f"Failed to send urgent escalation: {e}")
+
+    # Strip all action tags from the response before sending to customer
+    cleaned_response = re.sub(r'\[ACTION:[^\]]*\]', '', cleaned_response).strip()
+    # Clean up any double newlines left by tag removal
+    cleaned_response = re.sub(r'\n{3,}', '\n\n', cleaned_response)
+
+    return {
+        "actions_taken": actions_taken,
+        "cleaned_response": cleaned_response
+    }
+
+
 async def _generate_claude_support_response(
     sender_name: str,
     sender_email: str,
@@ -3794,7 +4071,22 @@ RESPONSE RULES:
 - NEVER make up booking details or prices you're unsure about
 - NEVER share other customers' information
 - Sign off as "BookaRide Support Team"
-- If the question is complex or you can't fully answer it, say the team will follow up within 24 hours"""
+- If the question is complex or you can't fully answer it, say the team will follow up within 24 hours
+
+ACTIONS YOU CAN TAKE:
+You can take actions by including special tags in your response. These tags will be removed before sending to the customer, so write your reply as if the tags are not there. Only include a tag when you are confident the action is appropriate.
+
+Available actions:
+- [ACTION:RESEND_CONFIRMATION:REF123] — Resend booking confirmation email and SMS. Use this when the customer says they did not receive their confirmation, asks you to resend it, or says "send again". Replace REF123 with the actual booking reference number from their booking history.
+- [ACTION:FLAG_CANCELLATION:REF123] — Flag a booking for cancellation (admin will review and process). Use when the customer asks to cancel a booking. Replace REF123 with their booking reference. Tell the customer their cancellation request has been noted and the team will confirm shortly.
+- [ACTION:FLAG_MODIFICATION:REF123:description of changes] — Flag a booking for modification. Use when the customer wants to change the date, time, pickup/dropoff address, or passenger count. Include a brief description of the requested changes after the second colon. Tell the customer their change request has been noted and the team will confirm shortly.
+- [ACTION:URGENT_ESCALATE] — Immediately alert the admin via SMS. Use this ONLY when the situation is genuinely urgent: the customer is stranded, at the airport with no driver, their ride is late, or they are clearly upset/distressed about an imminent booking. Do NOT use for routine questions.
+
+Rules for actions:
+- You may include multiple action tags if appropriate (e.g. flag modification AND escalate if urgent).
+- Only use a booking reference that appears in the customer's booking history shown to you. Never guess a reference.
+- Always tell the customer what you have done: "I have resent your confirmation", "I have flagged your cancellation request for our team", etc.
+- For cancellations and modifications, always explain that the team will process their request shortly and they can also call 021 743 321 for immediate assistance."""
 
     user_message = f"""Customer email received:
 
@@ -3889,40 +4181,50 @@ async def handle_incoming_email(request: Request):
             return {"status": "skipped", "reason": "rate limited"}
 
         # Look up customer's booking history for context
+        # Prioritise upcoming bookings (most likely what they are emailing about)
         booking_context = ""
+        customer_bookings_list = []
         try:
-            customer_bookings = await db.bookings.find(
-                {"$or": [
-                    {"email": {"$regex": reply_to_email, "$options": "i"}},
-                    {"phone": {"$regex": reply_to_email, "$options": "i"}}
+            today_str = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+
+            # Fetch upcoming bookings first (sorted by date ascending — nearest first)
+            upcoming_bookings = await db.bookings.find(
+                {"$and": [
+                    {"$or": [
+                        {"email": {"$regex": reply_to_email, "$options": "i"}},
+                        {"phone": {"$regex": reply_to_email, "$options": "i"}}
+                    ]},
+                    {"date": {"$gte": today_str}}
                 ]},
                 {"_id": 0}
-            ).sort("createdAt", -1).limit(5).to_list(5)
+            ).sort("date", 1).limit(5).to_list(5)
 
-            if customer_bookings:
-                booking_context = f"\n\nThis customer has {len(customer_bookings)} recent booking(s):\n"
-                for b in customer_bookings:
-                    ref = b.get('referenceNumber', 'N/A')
-                    date = b.get('date', 'N/A')
-                    time = b.get('time', 'N/A')
-                    pickup = b.get('pickupAddress', 'N/A')
-                    dropoff = b.get('dropoffAddress', 'N/A')
-                    status = b.get('status', 'N/A')
-                    payment = b.get('payment_status', b.get('paymentStatus', 'N/A'))
-                    total = b.get('totalPrice', b.get('pricing', {}).get('totalPrice', 'N/A'))
-                    passengers = b.get('passengers', 'N/A')
-                    flight = b.get('flightNumber', b.get('flightArrivalNumber', ''))
-                    return_date = b.get('returnDate', '')
-                    return_time = b.get('returnTime', '')
-                    booking_context += (
-                        f"  - Ref #{ref}: {date} at {time}, {pickup} → {dropoff}, "
-                        f"{passengers} pax, status={status}, payment={payment}, total=${total}"
-                    )
-                    if flight:
-                        booking_context += f", flight={flight}"
-                    if return_date:
-                        booking_context += f", return={return_date} {return_time}"
-                    booking_context += "\n"
+            # Also fetch recent past bookings (in case they are asking about a completed trip)
+            past_bookings = await db.bookings.find(
+                {"$and": [
+                    {"$or": [
+                        {"email": {"$regex": reply_to_email, "$options": "i"}},
+                        {"phone": {"$regex": reply_to_email, "$options": "i"}}
+                    ]},
+                    {"date": {"$lt": today_str}}
+                ]},
+                {"_id": 0}
+            ).sort("date", -1).limit(3).to_list(3)
+
+            customer_bookings_list = upcoming_bookings + past_bookings
+
+            if customer_bookings_list:
+                upcoming_count = len(upcoming_bookings)
+                past_count = len(past_bookings)
+                booking_context = f"\n\nThis customer has {upcoming_count} upcoming and {past_count} past booking(s):\n"
+                if upcoming_bookings:
+                    booking_context += "UPCOMING BOOKINGS (most likely what they are asking about):\n"
+                for b in upcoming_bookings:
+                    booking_context += _format_booking_context_line(b)
+                if past_bookings:
+                    booking_context += "RECENT PAST BOOKINGS:\n"
+                for b in past_bookings:
+                    booking_context += _format_booking_context_line(b)
             else:
                 booking_context = "\n\nNo bookings found for this email address."
         except Exception as e:
@@ -3938,44 +4240,53 @@ async def handle_incoming_email(request: Request):
             booking_context=booking_context
         )
 
+        # Process any action tags Claude included in the response
+        action_result = await _process_ai_actions(
+            ai_response=ai_response,
+            sender_email=reply_to_email,
+            sender_name=sender_name or "Customer",
+            customer_bookings=customer_bookings_list
+        )
+        customer_response = action_result["cleaned_response"]
+        actions_taken = action_result["actions_taken"]
+
+        if actions_taken:
+            logger.info(f"AI agent took {len(actions_taken)} action(s) for {reply_to_email}: {actions_taken}")
+
         # Prepare the reply
         reply_subject = f"Re: {subject}" if not subject.startswith('Re:') else subject
 
-        # Create HTML version
-        html_response = f"""
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <div style="background: linear-gradient(135deg, #1a1a1a, #2d2d2d); padding: 20px; text-align: center;">
-                <h1 style="color: #D4AF37; margin: 0;">BookaRide NZ</h1>
-                <p style="color: #888; margin: 5px 0 0 0;">Airport Transfers & Private Tours</p>
-            </div>
-            <div style="padding: 30px; background: #fff; line-height: 1.6; color: #333;">
-                {ai_response.replace(chr(10), '<br>')}
-            </div>
-            <div style="background: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; color: #666;">
-                <p><strong>Book Online:</strong> <a href="https://bookaride.co.nz/book-now" style="color: #D4AF37;">bookaride.co.nz/book-now</a></p>
-                <p>Get instant pricing — just enter your pickup and drop-off!</p>
-                <hr style="border: none; border-top: 1px solid #ddd; margin: 15px 0;">
-                <p style="font-size: 10px; color: #999;">
-                    This response was generated by our AI booking assistant.
-                    For anything complex, our team will follow up within 24 hours.
-                    Reply to this email or call/text <strong>021 743 321</strong>.
-                </p>
-            </div>
-        </div>
-        """
+        # Create HTML version (use the cleaned response without action tags)
+        response_body_html = customer_response.replace(chr(10), '<br>')
+        auto_note = (
+            '<em style="font-size:12px;color:#999999;">'
+            'This is an automated response from our support team. '
+            'For anything complex, our team will follow up within 24 hours. '
+            'Reply to this email or call/text <strong>021 743 321</strong>.</em>'
+        )
+        body_parts = [
+            email_section(None, response_body_html),
+            email_divider(),
+            email_section(None, auto_note),
+            email_button("Book Online", "https://bookaride.co.nz/book-now"),
+        ]
+        preheader_text = f"Re: {subject}" if not subject.startswith('Re:') else subject
+        html_response = email_wrapper(
+            body_html="\n".join(body_parts),
+            preheader=preheader_text,
+        )
 
         ok = _send_email_with_fallbacks(
             reply_to_email, reply_subject, html_response,
             from_name="BookaRide Support",
             from_email="support@bookaride.co.nz",
-            text_content=ai_response,
             reply_to="support@bookaride.co.nz"
         )
 
         if ok:
             logger.info(f"AI support reply sent to {reply_to_email}")
 
-            # Store the email interaction for admin review
+            # Store the email interaction for admin review (include raw AI response with tags + actions taken)
             await db.email_logs.insert_one({
                 "id": str(uuid.uuid4()),
                 "from": reply_to_email,
@@ -3983,10 +4294,22 @@ async def handle_incoming_email(request: Request):
                 "subject": subject,
                 "original_message": email_content[:5000],
                 "ai_response": ai_response,
+                "customer_response": customer_response,
+                "actions_taken": actions_taken,
                 "booking_context": booking_context[:2000],
                 "status": "sent",
                 "created_at": datetime.now(timezone.utc).isoformat()
             })
+
+            # Build actions summary for admin notification
+            actions_html = ""
+            if actions_taken:
+                actions_list = "".join(f"<li>{a}</li>" for a in actions_taken)
+                actions_html = (
+                    f'<p><strong>Actions taken by AI agent:</strong></p>'
+                    f'<ul style="background: #fff3cd; padding: 15px 15px 15px 35px; '
+                    f'border-left: 3px solid #ffc107; margin: 10px 0;">{actions_list}</ul>'
+                )
 
             # Notify admin of new support email
             admin_email = os.environ.get("ADMIN_EMAIL", "bookings@bookaride.co.nz")
@@ -4002,16 +4325,17 @@ async def handle_incoming_email(request: Request):
                     <div style="background: #f9f9f9; padding: 15px; border-left: 3px solid #D4AF37; margin: 10px 0;">
                         {email_content[:2000].replace(chr(10), '<br>')}
                     </div>
-                    <p><strong>AI replied:</strong></p>
+                    {actions_html}
+                    <p><strong>AI replied (sent to customer):</strong></p>
                     <div style="background: #f0f7ff; padding: 15px; border-left: 3px solid #2196F3; margin: 10px 0;">
-                        {ai_response.replace(chr(10), '<br>')}
+                        {customer_response.replace(chr(10), '<br>')}
                     </div>
                     <p style="font-size: 12px; color: #999;">Review in admin: Email Logs tab</p>
                 </div>""",
                 from_name="BookaRide Support Bot"
             )
 
-            return {"status": "success", "message": "AI support response sent"}
+            return {"status": "success", "message": "AI support response sent", "actions_taken": actions_taken}
         else:
             logger.error(f"Failed to send support reply to {reply_to_email}")
             return {"status": "error", "reason": "Failed to send reply"}
@@ -4119,41 +4443,36 @@ async def send_abandoned_booking_emails():
                 dropoff = booking.get('dropoff', 'your destination')
                 price = booking.get('price')
                 
-                subject = "Complete Your BookaRide Booking "
-                
-                price_text = f"Your quote was ${price:.2f}" if price else "Get your instant quote"
-                
-                html_content = f"""
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                    <div style="background: linear-gradient(135deg, #1a1a1a, #2d2d2d); padding: 30px; text-align: center;">
-                        <h1 style="color: #D4AF37; margin: 0;">BookaRide NZ</h1>
-                    </div>
-                    <div style="padding: 30px; background: #fff;">
-                        <h2 style="color: #333;">Hi {name},</h2>
-                        <p style="color: #666; font-size: 16px;">
-                            We noticed you started booking an airport transfer but didn't complete it. 
-                            No worries - your details are still saved!
-                        </p>
-                        <div style="background: #f5f5f5; padding: 20px; border-radius: 10px; margin: 20px 0;">
-                            <p style="margin: 5px 0; color: #333;"><strong>From:</strong> {pickup}</p>
-                            <p style="margin: 5px 0; color: #333;"><strong>To:</strong> {dropoff}</p>
-                            <p style="margin: 10px 0; color: #D4AF37; font-size: 18px;"><strong>{price_text}</strong></p>
-                        </div>
-                        <div style="text-align: center; margin: 30px 0;">
-                            <a href="https://bookaride.co.nz/book-now" 
-                               style="background: #D4AF37; color: #000; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
-                                Complete Your Booking 
-                            </a>
-                        </div>
-                        <p style="color: #999; font-size: 14px; text-align: center;">
-                            Questions? Just reply to this email or use our 24/7 AI chat on the website.
-                        </p>
-                    </div>
-                    <div style="background: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; color: #666;">
-                        <p> BookaRide NZ | Auckland Airport Transfers</p>
-                    </div>
-                </div>
-                """
+                subject = "Complete Your BookaRide Booking"
+
+                price_text = f"Your quote was <strong>${price:.2f} NZD</strong>" if price else "Get your instant quote"
+
+                greeting_html = (
+                    f'Hi {name},<br /><br />'
+                    'We noticed you started booking an airport transfer but did not complete it. '
+                    'No worries - your details are still saved!'
+                )
+
+                details_html = (
+                    f'<strong>From:</strong> {pickup}<br />'
+                    f'<strong>To:</strong> {dropoff}<br /><br />'
+                    f'<span style="color:#D4AF37;font-size:16px;">{price_text}</span>'
+                )
+
+                help_html = 'Questions? Just reply to this email or email <a href="mailto:support@bookaride.co.nz" style="color:#D4AF37;text-decoration:none;">support@bookaride.co.nz</a>.'
+
+                body_parts = [
+                    email_section(None, greeting_html),
+                    email_section("Your Saved Booking", details_html),
+                    email_button("Complete Your Booking", "https://bookaride.co.nz/book-now"),
+                    email_divider(),
+                    email_section(None, help_html),
+                ]
+
+                html_content = email_wrapper(
+                    body_html="\n".join(body_parts),
+                    preheader="Your BookARide booking is waiting",
+                )
                 
                 ok = _send_email_with_fallbacks(email, subject, html_content, from_name="BookaRide NZ")
 
@@ -4179,22 +4498,51 @@ class ChatbotMessageRequest(BaseModel):
     message: str
     conversationHistory: Optional[List[dict]] = []
 
+# In-memory rate limiter for chatbot: { ip_or_session: [timestamp, ...] }
+_chatbot_rate_limits: dict = {}
+
 @api_router.post("/chatbot/message")
-async def chatbot_message(request: ChatbotMessageRequest):
-    """AI-powered chatbot for booking assistance"""
+async def chatbot_message(request: ChatbotMessageRequest, req: Request):
+    """AI-powered chatbot for booking assistance using Claude Haiku"""
+
+    static_fallback = (
+        "Thanks for your message! For instant pricing and to book, visit "
+        "bookaride.co.nz/book-now and enter your pickup and dropoff addresses. "
+        "For other questions, email info@bookaride.co.nz and we will get back "
+        "to you within 24 hours."
+    )
+
     try:
-        # Emergent LLM no longer used - return static guidance
-        history_context = ""
-        if request.conversationHistory:
-            for msg in request.conversationHistory[-6:]:  # Last 6 messages for context
-                role = "Customer" if msg.get('role') == 'user' else "Assistant"
-                history_context += f"{role}: {msg.get('content', '')}\n"
-        
+        # Rate limit: 20 messages per IP per hour
+        client_ip = req.client.host if req.client else "unknown"
+        now = datetime.now(timezone.utc)
+        one_hour_ago = now - timedelta(hours=1)
+
+        if client_ip not in _chatbot_rate_limits:
+            _chatbot_rate_limits[client_ip] = []
+
+        # Prune old timestamps
+        _chatbot_rate_limits[client_ip] = [
+            ts for ts in _chatbot_rate_limits[client_ip] if ts > one_hour_ago
+        ]
+
+        if len(_chatbot_rate_limits[client_ip]) >= 20:
+            logger.warning(f"Chatbot rate limit hit for {client_ip}")
+            return {
+                "response": (
+                    "You have sent a lot of messages recently. For immediate help, "
+                    "please visit bookaride.co.nz/book-now for instant pricing or "
+                    "email info@bookaride.co.nz."
+                )
+            }
+
+        _chatbot_rate_limits[client_ip].append(now)
+
         # System prompt for the booking assistant
         system_prompt = """You are a friendly and helpful booking assistant for BookaRide NZ, a premium airport transfer service in Auckland, New Zealand.
 
 KEY INFORMATION:
-- We offer airport shuttles to/from Auckland Airport, Hamilton Airport, and Whangarei
+- We offer airport transfers to/from Auckland Airport, Hamilton Airport, and Whangarei
 - Popular services: Airport transfers, Hobbiton tours, Cruise terminal transfers, Wine tours
 - Payment options: Credit/Debit cards, Afterpay (pay in 4 instalments)
 - We offer Meet & Greet service where drivers hold a name sign at arrivals
@@ -4220,28 +4568,74 @@ EXAMPLE PRICE RANGES (but always direct them to enter addresses for exact price)
 YOUR STYLE:
 - Be warm, friendly and professional
 - Keep responses concise (2-3 sentences when possible)
-- Use emojis sparingly but naturally 
+- Use emojis sparingly but naturally
 - ALWAYS explain we need their exact addresses to give a precise price (because we use Google Maps per-kilometer pricing)
 - Direct them to bookaride.co.nz/book-now - they just enter pickup & dropoff to see the exact price instantly
 - For questions you can't answer, suggest they email info@bookaride.co.nz
 
-IMPORTANT: 
+IMPORTANT:
 - Never give phone numbers - we don't take phone bookings
 - Always direct to the online booking form for quotes and bookings
 - Explain WHY we can't give exact prices without addresses (every house is different distance!)
-- The booking form has a LIVE PRICE CALCULATOR - they see the price instantly when they enter addresses"""
+- The booking form has a LIVE PRICE CALCULATOR - they see the price instantly when they enter addresses
+- You do NOT have access to any real bookings - never pretend you can look up or modify bookings
+- NEVER make up prices - always direct to bookaride.co.nz/book-now for exact quotes"""
 
-        response = (
-            "Thanks for your message! For instant pricing and to book, visit bookaride.co.nz/book-now and enter your pickup and dropoff addresses. "
-            "For other questions, email info@bookaride.co.nz and we'll get back to you within 24 hours."
-        )
-        return {"response": response}
-        
+        # Check for API key
+        api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+        if not api_key:
+            logger.warning("ANTHROPIC_API_KEY not set - chatbot using static fallback")
+            return {"response": static_fallback}
+
+        # Build conversation messages from history
+        messages = []
+        if request.conversationHistory:
+            for msg in request.conversationHistory[-10:]:  # Last 10 messages for context
+                role = msg.get("role", "user")
+                content = msg.get("content", "")
+                if role in ("user", "assistant") and content.strip():
+                    messages.append({"role": role, "content": content})
+
+        # Add the current user message
+        messages.append({"role": "user", "content": request.message})
+
+        # Ensure messages alternate roles properly (Claude requires this)
+        # Deduplicate consecutive same-role messages by merging them
+        cleaned_messages = []
+        for msg in messages:
+            if cleaned_messages and cleaned_messages[-1]["role"] == msg["role"]:
+                cleaned_messages[-1]["content"] += "\n" + msg["content"]
+            else:
+                cleaned_messages.append(msg)
+
+        # Ensure first message is from user
+        if cleaned_messages and cleaned_messages[0]["role"] != "user":
+            cleaned_messages = cleaned_messages[1:]
+
+        if not cleaned_messages:
+            cleaned_messages = [{"role": "user", "content": request.message}]
+
+        # Call Claude Haiku
+        try:
+            import anthropic
+            client = anthropic.Anthropic(api_key=api_key)
+            response = client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=300,
+                system=system_prompt,
+                messages=cleaned_messages,
+            )
+            ai_text = response.content[0].text.strip()
+            logger.info(f"Chatbot Claude response generated ({len(ai_text)} chars)")
+            return {"response": ai_text}
+        except Exception as e:
+            logger.error(f"Chatbot Claude API error: {e}")
+            return {"response": static_fallback}
+
     except Exception as e:
         logger.error(f"Chatbot error: {str(e)}")
-        # Fallback response
         return {
-            "response": "I apologize, I'm having a brief technical issue. For immediate assistance, please call us at 0800 BOOK A RIDE or visit bookaride.co.nz/book-now to make a booking. We're here to help! "
+            "response": "I apologize, I am having a brief technical issue. Please visit bookaride.co.nz/book-now for instant pricing or email info@bookaride.co.nz for help."
         }
 
 
@@ -4368,7 +4762,11 @@ async def send_daily_reminders_core(source: str = "unknown"):
 async def cron_send_reminders(api_key: str = None):
     """Endpoint for external cron service to trigger reminders (requires API key)"""
     try:
-        expected_key = os.environ.get('CRON_API_KEY', 'bookaride-cron-secret-2024')
+        expected_key = os.environ.get('CRON_API_KEY')
+
+        if not expected_key:
+            logger.error("CRON_API_KEY environment variable is not set")
+            raise HTTPException(status_code=503, detail="Cron endpoint not configured")
         
         if api_key != expected_key:
             raise HTTPException(status_code=401, detail="Invalid API key")
@@ -5299,8 +5697,8 @@ async def resend_booking_confirmation(booking_id: str, current_admin: dict = Dep
 
 # Email diagnostics (so you can see why confirmations aren't arriving)
 @api_router.get("/email-status")
-async def get_email_status():
-    """Check if email is configured on this server (no auth). Use to verify Render env vars."""
+async def get_email_status(current_admin: dict = Depends(get_current_admin)):
+    """Check if email is configured on this server. Requires admin auth."""
     try:
         from email_sender import is_email_configured, get_noreply_email
     except ImportError:
@@ -5320,9 +5718,8 @@ async def get_email_status():
 
 
 @api_router.get("/config-check")
-async def config_check():
-    """Quick diagnostic: which services are configured? No auth required.
-    Call this endpoint to verify Render env vars are set."""
+async def config_check(current_admin: dict = Depends(get_current_admin)):
+    """Quick diagnostic: which services are configured? Requires admin auth."""
     google_key = os.environ.get('GOOGLE_MAPS_API_KEY', '').strip()
     stripe_key = os.environ.get('STRIPE_API_KEY') or os.environ.get('STRIPE_SECRET_KEY')
     mailgun_ok = bool(os.environ.get("MAILGUN_API_KEY"))
@@ -5496,290 +5893,66 @@ def _get_booking_email_data(booking: dict) -> dict:
 
 
 def generate_confirmation_email_html(booking: dict, for_admin: bool = False) -> str:
-    """Generate the confirmation email HTML for preview or sending - Clean professional design.
-    Includes all booking details: flights, return trip, notes, route, payment.
+    """Generate the confirmation email HTML for preview or sending.
+    Uses the shared email_wrapper template for a consistent, Outlook-safe design.
     Set for_admin=True to add admin copy banner (same content, both get full details)."""
-    sender_email = os.environ.get('SENDER_EMAIL', 'bookings@bookaride.co.nz')
     d = _get_booking_email_data(booking)
-    
-    total_price = d['total_price']
-    distance = d['distance']
-    formatted_date = d['formatted_date']
-    formatted_time = d['formatted_time']
     booking_ref = d['booking_ref']
-    primary_pickup = d['primary_pickup']
-    pickup_addresses = d['pickup_addresses']
-    dropoff_address = d['dropoff_address']
-    departure_flight = d['departure_flight']
-    arrival_flight = d['arrival_flight']
-    departure_time = d['departure_time']
-    arrival_time_flight = d['arrival_time']
-    
-    service_display = d['service_display']
-    has_return = d['has_return']
-    transfer_type = "Return Trip" if has_return else "One Way"
-    payment_status = d['payment_status']
-    notes = d['notes']
-    passengers = d['passengers']
-    payment_color = '#22c55e' if payment_status == 'PAID' else '#f59e0b'
-    payment_method = d['payment_method']
-    
-    # Build return trip section
-    return_section_html = ""
-    if has_return:
-        return_date = d['return_date']
-        return_time = d['return_time']
-        return_flight = d['return_flight']
-        return_arrival_flight = d['return_arrival']
 
-        formatted_return_date = format_date_ddmmyyyy(return_date) if return_date else 'TBC'
-        formatted_return_time = format_time_ampm(return_time) if return_time else 'TBC'
+    # Admin banner (placed before the greeting inside the wrapper body)
+    admin_banner = ""
+    if for_admin:
+        admin_banner = (
+            '<table width="100%" cellpadding="0" cellspacing="0" border="0">'
+            '<tr><td bgcolor="#fef9c3" align="center" style="padding:12px 20px;border-bottom:2px solid #eab308;'
+            'font-family:Arial,Helvetica,sans-serif;">'
+            '<p style="margin:0;font-size:13px;font-weight:700;color:#713f12;">ADMIN COPY - New Booking</p>'
+            '<p style="margin:4px 0 0 0;font-size:11px;color:#92400e;">Assign driver in '
+            '<a href="https://bookaride.co.nz/admin/login" style="color:#b45309;font-weight:600;">Admin Dashboard</a></p>'
+            '</td></tr></table>'
+        )
 
-        return_flight_rows = ""
-        if return_flight:
-            return_flight_rows += f'''
-                        <tr>
-                            <td style="padding: 10px 20px; color: #555; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Flight Number</td>
-                            <td style="padding: 10px 20px; color: #111; font-size: 14px; font-weight: 600; border-bottom: 1px solid #f0f0f0;">{return_flight}</td>
-                        </tr>'''
-        if return_arrival_flight and return_arrival_flight != return_flight:
-            return_flight_rows += f'''
-                        <tr>
-                            <td style="padding: 10px 20px; color: #555; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Arrival Flight</td>
-                            <td style="padding: 10px 20px; color: #111; font-size: 14px; font-weight: 600; border-bottom: 1px solid #f0f0f0;">{return_arrival_flight}</td>
-                        </tr>'''
+    # Confirmation banner with reference number
+    confirmation_banner = (
+        '<table width="100%" cellpadding="0" cellspacing="0" border="0">'
+        '<tr><td bgcolor="#eab308" align="center" style="padding:18px 20px;font-family:Arial,Helvetica,sans-serif;">'
+        '<p style="margin:0;color:#ffffff;font-size:12px;text-transform:uppercase;letter-spacing:2px;font-weight:600;">Booking Confirmed</p>'
+        f'<p style="margin:6px 0 0 0;color:#ffffff;font-size:30px;font-weight:800;letter-spacing:1px;">#{booking_ref}</p>'
+        '</td></tr></table>'
+    )
 
-        return_section_html = f'''
-                        <tr>
-                            <td colspan="2" style="padding: 24px 0 8px 0;">
-                                <div style="background: #fef9c3; color: #713f12; padding: 10px 20px; font-weight: 700; font-size: 13px; letter-spacing: 1px; text-transform: uppercase; border-left: 4px solid #eab308;">
-                                    Return Journey
-                                </div>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 10px 20px; color: #555; font-size: 13px; width: 140px; border-bottom: 1px solid #f0f0f0;">Date</td>
-                            <td style="padding: 10px 20px; color: #111; font-size: 14px; font-weight: 500; border-bottom: 1px solid #f0f0f0;">{formatted_return_date}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 10px 20px; color: #555; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Pickup Time</td>
-                            <td style="padding: 10px 20px; color: #111; font-size: 14px; font-weight: 600; border-bottom: 1px solid #f0f0f0;">{formatted_return_time}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 10px 20px; color: #555; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Pickup</td>
-                            <td style="padding: 10px 20px; color: #111; font-size: 14px; border-bottom: 1px solid #f0f0f0;">{dropoff_address}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 10px 20px; color: #555; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Drop-off</td>
-                            <td style="padding: 10px 20px; color: #111; font-size: 14px; border-bottom: 1px solid #f0f0f0;">{primary_pickup}</td>
-                        </tr>
-                        {return_flight_rows}
-        '''
+    # Greeting
+    greeting = (
+        f'Hi <strong>{booking.get("name", "there")}</strong>, thank you for your booking. '
+        'Here are your trip details:'
+    )
 
-    # Build additional stops for outbound
-    additional_stops_html = ""
-    if pickup_addresses:
-        for i, addr in enumerate(pickup_addresses):
-            if addr and addr.strip():
-                additional_stops_html += f'''
-                        <tr>
-                            <td style="padding: 10px 20px; color: #555; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Stop {i+2}</td>
-                            <td style="padding: 10px 20px; color: #111; font-size: 14px; border-bottom: 1px solid #f0f0f0;">{addr}</td>
-                        </tr>
-                '''
+    # Contact details section
+    contact_html = (
+        '<table width="100%" cellpadding="0" cellspacing="0" border="0">'
+        '<tr><td style="padding:0 24px 16px 24px;font-family:Arial,Helvetica,sans-serif;">'
+        '<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#fafafa">'
+        '<tr><td style="padding:16px 18px;font-family:Arial,Helvetica,sans-serif;">'
+        '<p style="margin:0 0 8px 0;color:#999999;font-size:11px;text-transform:uppercase;letter-spacing:1px;font-weight:600;">Your Contact Details</p>'
+        f'<p style="margin:0 0 2px 0;color:#333333;font-size:14px;">{booking.get("email", "N/A")}</p>'
+        f'<p style="margin:0;color:#333333;font-size:14px;">{booking.get("phone", "N/A")}</p>'
+        '</td></tr></table></td></tr></table>'
+    )
 
-    # Notes section
-    notes_html = ""
-    if notes:
-        notes_html = f'''
-                        <tr>
-                            <td colspan="2" style="padding: 20px 20px 10px 20px;">
-                                <div style="background: #fffbeb; border-left: 4px solid #eab308; padding: 14px 18px; border-radius: 0 6px 6px 0;">
-                                    <p style="margin: 0 0 4px 0; color: #92400e; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Special Instructions</p>
-                                    <p style="margin: 0; color: #333; font-size: 14px; line-height: 1.5;">{notes}</p>
-                                </div>
-                            </td>
-                        </tr>
-        '''
+    body_parts = [
+        admin_banner,
+        confirmation_banner,
+        email_section(None, greeting),
+        email_section("Booking Details", email_booking_summary(booking)),
+        email_section("Pricing", email_price_table(booking)),
+        contact_html,
+        email_button("View Your Booking", "https://bookaride.co.nz/book-now"),
+    ]
 
-    # Flight info section
-    flight_info_html = ""
-    if departure_flight or arrival_flight:
-        flight_info_html = '''
-                        <tr>
-                            <td colspan="2" style="padding: 24px 0 8px 0;">
-                                <div style="background: #fef9c3; color: #713f12; padding: 10px 20px; font-weight: 700; font-size: 13px; letter-spacing: 1px; text-transform: uppercase; border-left: 4px solid #eab308;">
-                                    Flight Details
-                                </div>
-                            </td>
-                        </tr>
-        '''
-        if departure_flight:
-            flight_info_html += f'''
-                        <tr>
-                            <td style="padding: 10px 20px; color: #555; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Departure Flight</td>
-                            <td style="padding: 10px 20px; color: #111; font-size: 14px; font-weight: 600; border-bottom: 1px solid #f0f0f0;">{departure_flight}{' at ' + format_time_ampm(departure_time) if departure_time else ''}</td>
-                        </tr>
-            '''
-        if arrival_flight:
-            flight_info_html += f'''
-                        <tr>
-                            <td style="padding: 10px 20px; color: #555; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Arrival Flight</td>
-                            <td style="padding: 10px 20px; color: #111; font-size: 14px; font-weight: 600; border-bottom: 1px solid #f0f0f0;">{arrival_flight}{' at ' + format_time_ampm(arrival_time_flight) if arrival_time_flight else ''}</td>
-                        </tr>
-            '''
-
-    admin_banner = '''
-                <div style="background: #fef9c3; color: #713f12; padding: 12px 20px; text-align: center; border-bottom: 2px solid #eab308;">
-                    <p style="margin: 0; font-size: 13px; font-weight: 700;">ADMIN COPY - New Booking</p>
-                    <p style="margin: 4px 0 0 0; font-size: 11px; color: #92400e;">Assign driver in <a href="https://bookaride.co.nz/admin/login" style="color: #b45309; font-weight: 600;">Admin Dashboard</a></p>
-                </div>
-    ''' if for_admin else ''
-
-    html_content = f'''
-    <!DOCTYPE html>
-    <html>
-        <head>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        </head>
-        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 0; background-color: #f5f5f5; line-height: 1.6;">
-            <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; box-shadow: 0 4px 16px rgba(0,0,0,0.08); border-radius: 8px; overflow: hidden;">
-                {admin_banner}
-                <!-- Header -->
-                <div style="background: #ffffff; padding: 32px 20px 20px 20px; text-align: center; border-bottom: 3px solid #eab308;">
-                    <h1 style="margin: 0; color: #111; font-size: 26px; font-weight: 700; letter-spacing: 1px;">BOOK A RIDE</h1>
-                    <p style="margin: 6px 0 0 0; color: #999; font-size: 11px; letter-spacing: 2px; text-transform: uppercase;">Premium Airport Transfers</p>
-                </div>
-
-                <!-- Confirmation Banner -->
-                <div style="background: #eab308; padding: 18px 20px; text-align: center;">
-                    <p style="margin: 0; color: #ffffff; font-size: 12px; text-transform: uppercase; letter-spacing: 2px; font-weight: 600;">Booking Confirmed</p>
-                    <p style="margin: 6px 0 0 0; color: #ffffff; font-size: 30px; font-weight: 800; letter-spacing: 1px;">#{booking_ref}</p>
-                </div>
-
-                <!-- Greeting -->
-                <div style="padding: 24px 24px 0 24px;">
-                    <p style="margin: 0; color: #333; font-size: 15px;">Hi <strong>{booking.get('name', 'there')}</strong>, thank you for your booking. Here are your trip details:</p>
-                </div>
-
-                <!-- Main Content -->
-                <div style="padding: 10px 4px 0 4px;">
-                    <table style="width: 100%; border-collapse: collapse;">
-
-                        <!-- Outbound Journey Header -->
-                        <tr>
-                            <td colspan="2" style="padding: 16px 0 8px 0;">
-                                <div style="background: #fef9c3; color: #713f12; padding: 10px 20px; font-weight: 700; font-size: 13px; letter-spacing: 1px; text-transform: uppercase; border-left: 4px solid #eab308;">
-                                    {'Departure Journey' if has_return else 'Journey Details'}
-                                </div>
-                            </td>
-                        </tr>
-
-                        <tr>
-                            <td style="padding: 10px 20px; color: #555; font-size: 13px; width: 140px; border-bottom: 1px solid #f0f0f0;">Passenger</td>
-                            <td style="padding: 10px 20px; color: #111; font-size: 14px; font-weight: 600; border-bottom: 1px solid #f0f0f0;">{booking.get('name', 'N/A')}</td>
-                        </tr>
-
-                        <tr>
-                            <td style="padding: 10px 20px; color: #555; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Service</td>
-                            <td style="padding: 10px 20px; color: #111; font-size: 14px; border-bottom: 1px solid #f0f0f0;">{service_display}</td>
-                        </tr>
-
-                        <tr>
-                            <td style="padding: 10px 20px; color: #555; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Date</td>
-                            <td style="padding: 10px 20px; color: #111; font-size: 14px; font-weight: 500; border-bottom: 1px solid #f0f0f0;">{formatted_date}</td>
-                        </tr>
-
-                        <tr>
-                            <td style="padding: 10px 20px; color: #555; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Pickup Time</td>
-                            <td style="padding: 10px 20px; color: #111; font-size: 14px; font-weight: 700; border-bottom: 1px solid #f0f0f0;">{formatted_time}</td>
-                        </tr>
-
-                        <tr>
-                            <td style="padding: 10px 20px; color: #555; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Passengers</td>
-                            <td style="padding: 10px 20px; color: #111; font-size: 14px; border-bottom: 1px solid #f0f0f0;">{passengers}</td>
-                        </tr>
-
-                        <tr>
-                            <td style="padding: 10px 20px; color: #555; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Pickup</td>
-                            <td style="padding: 10px 20px; color: #111; font-size: 14px; border-bottom: 1px solid #f0f0f0;">{primary_pickup}</td>
-                        </tr>
-
-                        {additional_stops_html}
-
-                        <tr>
-                            <td style="padding: 10px 20px; color: #555; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Drop-off</td>
-                            <td style="padding: 10px 20px; color: #111; font-size: 14px; border-bottom: 1px solid #f0f0f0;">{dropoff_address}</td>
-                        </tr>
-
-                        {flight_info_html}
-
-                        {return_section_html}
-
-                        {notes_html}
-
-                        <!-- Price Section -->
-                        <tr>
-                            <td colspan="2" style="padding: 24px 20px;">
-                                <div style="background: #ffffff; border: 2px solid #f0f0f0; border-radius: 8px; padding: 20px;">
-                                    <table style="width: 100%; border-collapse: collapse;">
-                                        {f'<tr><td style="color: #888; font-size: 13px; padding-bottom: 6px;">Distance</td><td style="text-align: right; color: #333; font-size: 14px; padding-bottom: 6px;">{distance} km</td></tr>' if distance else ''}
-                                        <tr>
-                                            <td style="color: #555; font-size: 14px; padding-top: 6px; border-top: 1px solid #f0f0f0;">Total Fare</td>
-                                            <td style="text-align: right; color: #111; font-size: 26px; font-weight: 800; padding-top: 6px; border-top: 1px solid #f0f0f0;">${total_price:.2f} <span style="font-size: 12px; color: #999; font-weight: 400;">NZD</span></td>
-                                        </tr>
-                                        <tr>
-                                            <td style="color: #888; font-size: 13px; padding-top: 10px;">Payment Method</td>
-                                            <td style="text-align: right; padding-top: 10px; font-size: 13px; color: #555;">{payment_method}</td>
-                                        </tr>
-                                        <tr>
-                                            <td style="color: #888; font-size: 13px; padding-top: 6px;">Status</td>
-                                            <td style="text-align: right; padding-top: 6px;">
-                                                <span style="background: {'#22c55e' if payment_status == 'PAID' else '#eab308'}; color: white; padding: 3px 14px; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: 0.5px;">{payment_status}</span>
-                                            </td>
-                                        </tr>
-                                    </table>
-                                </div>
-                            </td>
-                        </tr>
-
-                        <!-- Contact Details -->
-                        <tr>
-                            <td colspan="2" style="padding: 0 20px 20px 20px;">
-                                <div style="background: #fafafa; border-radius: 8px; padding: 16px 18px; border: 1px solid #f0f0f0;">
-                                    <p style="margin: 0 0 8px 0; color: #999; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Your Contact Details</p>
-                                    <p style="margin: 0 0 2px 0; color: #333; font-size: 14px;">{booking.get('email', 'N/A')}</p>
-                                    <p style="margin: 0; color: #333; font-size: 14px;">{booking.get('phone', 'N/A')}</p>
-                                </div>
-                            </td>
-                        </tr>
-
-                    </table>
-                </div>
-
-                <!-- Footer -->
-                <div style="background: #fafafa; padding: 28px 20px; text-align: center; border-top: 1px solid #eee;">
-                    <p style="margin: 0 0 12px 0; color: #888; font-size: 13px;">Questions about your booking? Contact us anytime</p>
-                    <p style="margin: 0 0 4px 0;">
-                        <a href="tel:+6421743321" style="color: #111; text-decoration: none; font-size: 18px; font-weight: 700;">021 743 321</a>
-                    </p>
-                    <p style="margin: 0 0 16px 0;">
-                        <a href="mailto:{sender_email}" style="color: #eab308; text-decoration: none; font-size: 13px; font-weight: 500;">{sender_email}</a>
-                    </p>
-                    <div style="border-top: 1px solid #e5e5e5; padding-top: 16px; margin-top: 8px;">
-                        <p style="margin: 0; color: #bbb; font-size: 11px;">Thank you for choosing Book A Ride</p>
-                        <p style="margin: 4px 0 0 0;">
-                            <a href="https://bookaride.co.nz" style="color: #eab308; text-decoration: none; font-size: 12px; font-weight: 600;">bookaride.co.nz</a>
-                        </p>
-                    </div>
-                </div>
-
-            </div>
-        </body>
-    </html>
-    '''
-    return html_content
+    return email_wrapper(
+        body_html="\n".join(body_parts),
+        preheader="Your BookARide transfer is confirmed!",
+    )
 
 
 # Import Bookings from WordPress/CSV
@@ -7834,8 +8007,8 @@ async def get_urgent_return_bookings(current_admin: dict = Depends(get_current_a
 
 # Endpoint to EXPORT data (called by other environments to fetch data)
 @api_router.get("/sync/export")
-async def export_data_for_sync(secret: str = ""):
-    """Export bookings and drivers for sync - requires secret key"""
+async def export_data_for_sync(secret: str = "", current_admin: dict = Depends(get_current_admin)):
+    """Export bookings and drivers for sync - requires admin auth and secret key"""
     if secret != SYNC_SECRET_KEY:
         raise HTTPException(status_code=403, detail="Invalid sync key")
     
@@ -7854,8 +8027,8 @@ async def export_data_for_sync(secret: str = ""):
 
 
 @api_router.post("/admin/sync")
-async def sync_from_production():
-    """Sync bookings and drivers from production database via deployed API"""
+async def sync_from_production(current_admin: dict = Depends(get_current_admin)):
+    """Sync bookings and drivers from production database via deployed API — requires admin auth"""
     try:
         sync_results = {
             "bookings_synced": 0,
@@ -7942,8 +8115,8 @@ async def sync_from_production():
 
 # Analytics Endpoints
 @api_router.get("/analytics/stats")
-async def get_analytics_stats(start_date: Optional[str] = None, end_date: Optional[str] = None):
-    """Get comprehensive analytics statistics"""
+async def get_analytics_stats(start_date: Optional[str] = None, end_date: Optional[str] = None, current_admin: dict = Depends(get_current_admin)):
+    """Get comprehensive analytics statistics — requires admin auth"""
     try:
         query = {}
         if start_date or end_date:
@@ -8003,8 +8176,8 @@ async def get_analytics_stats(start_date: Optional[str] = None, end_date: Option
 
 # Customer Management
 @api_router.get("/customers")
-async def get_customers():
-    """Get all customers with their booking history"""
+async def get_customers(current_admin: dict = Depends(get_current_admin)):
+    """Get all customers with their booking history — requires admin auth"""
     try:
         bookings = await db.bookings.find({}, {"_id": 0}).to_list(10000)
         
@@ -8047,8 +8220,8 @@ async def get_customers():
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.get("/customers/search")
-async def search_customers(q: str = ""):
-    """Fast customer search for autocomplete - searches name, email, phone"""
+async def search_customers(q: str = "", current_admin: dict = Depends(get_current_admin)):
+    """Fast customer search for autocomplete - searches name, email, phone — requires admin auth"""
     try:
         if not q or len(q) < 2:
             return {"customers": []}
@@ -8090,8 +8263,8 @@ async def search_customers(q: str = ""):
 
 # Export to CSV
 @api_router.get("/export/csv")
-async def export_csv():
-    """Export bookings to CSV"""
+async def export_csv(current_admin: dict = Depends(get_current_admin)):
+    """Export bookings to CSV — requires admin auth"""
     try:
         import pandas as pd
         from io import BytesIO
@@ -8515,81 +8688,52 @@ async def send_payment_link_email(booking: dict, payment_link: str, payment_type
         customer_name = booking.get('name', '')
         booking_ref = booking.get('referenceNumber', booking.get('booking_ref', booking.get('id', '')[:6]))
         total_price = booking.get('totalPrice', 0)
-        
-        payment_type_display = "Stripe" if payment_type == "stripe" else "PayPal"
-        
-        html_content = f'''
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        </head>
-        <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
-            <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
-                <!-- Header -->
-                <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 30px; text-align: center;">
-                    <h1 style="color: #D4AF37; margin: 0; font-size: 28px;">Book A Ride NZ</h1>
-                    <p style="color: #ffffff; margin: 10px 0 0 0; font-size: 14px;">www.bookaride.co.nz</p>
-                    <p style="color: #cccccc; margin: 8px 0 0 0; font-size: 13px;">Booking Reference: {booking_ref}</p>
-                </div>
 
-                <!-- Content -->
-                <div style="padding: 30px;">
-                    <p style="font-size: 16px; color: #333;">Dear {customer_name},</p>
+        # FIX: Never show "Stripe" to customers - display as "Credit/Debit Card"
+        payment_type_labels = {
+            'stripe': 'Credit/Debit Card',
+            'paypal': 'PayPal',
+        }
+        payment_type_display = payment_type_labels.get(payment_type, payment_type.title() if payment_type else 'Credit/Debit Card')
 
-                    <p style="font-size: 16px; color: #333;">
-                        Thank you for your booking with Book A Ride NZ. Please complete your payment using the secure link below.
-                    </p>
+        greeting_html = (
+            f'Dear {customer_name},<br /><br />'
+            'Thank you for your booking with BookARide NZ. Please complete your '
+            'payment using the secure link below.'
+        )
 
-                    <!-- Payment Amount Box -->
-                    <div style="background: #f9f9f9; border: 2px solid #D4AF37; border-radius: 10px; padding: 20px; text-align: center; margin: 25px 0;">
-                        <p style="margin: 0; color: #666; font-size: 14px;">Amount Due</p>
-                        <p style="margin: 10px 0; color: #1a1a2e; font-size: 36px; font-weight: bold;">${total_price:.2f} NZD</p>
-                        <p style="margin: 0; color: #666; font-size: 12px;">via {payment_type_display}</p>
-                    </div>
+        amount_html = (
+            '<table width="100%" cellpadding="0" cellspacing="0" border="0">'
+            '<tr><td align="center" style="padding:8px 24px 16px 24px;font-family:Arial,Helvetica,sans-serif;">'
+            '<table cellpadding="0" cellspacing="0" border="0" align="center" bgcolor="#f9f9f9" '
+            'style="border:2px solid #D4AF37;">'
+            '<tr><td align="center" style="padding:20px 30px;font-family:Arial,Helvetica,sans-serif;">'
+            '<p style="margin:0;color:#666666;font-size:14px;">Amount Due</p>'
+            f'<p style="margin:10px 0;color:#1a1a1a;font-size:36px;font-weight:bold;">${total_price:.2f} NZD</p>'
+            f'<p style="margin:0;color:#666666;font-size:12px;">via {payment_type_display}</p>'
+            '</td></tr></table></td></tr></table>'
+        )
 
-                    <!-- Payment Button -->
-                    <div style="text-align: center; margin: 30px 0;">
-                        <a href="{payment_link}"
-                           style="display: inline-block; background: #D4AF37; color: #1a1a2e; padding: 15px 40px;
-                                  border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 18px;">
-                            Pay Now Securely
-                        </a>
-                    </div>
+        link_fallback_html = (
+            f'Or copy this link:<br />'
+            f'<a href="{payment_link}" style="color:#D4AF37;word-break:break-all;">{payment_link}</a>'
+            '<br /><br />'
+            '<span style="font-size:12px;color:#999999;">'
+            'Your payment is processed securely. BookARide NZ never stores your card details.</span>'
+        )
 
-                    <p style="font-size: 13px; color: #888; text-align: center;">
-                        This link goes to <strong>bookaride.co.nz</strong> for secure payment.
-                    </p>
+        body_parts = [
+            email_section(None, greeting_html),
+            email_section("Booking Details", email_booking_summary(booking)),
+            amount_html,
+            email_button("Pay Now Securely", payment_link),
+            email_section(None, link_fallback_html),
+        ]
 
-                    <p style="font-size: 14px; color: #666; text-align: center; margin-top: 15px;">
-                        Or copy this link: <br>
-                        <a href="{payment_link}" style="color: #D4AF37; word-break: break-all;">{payment_link}</a>
-                    </p>
-
-                    <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-
-                    <p style="font-size: 14px; color: #666;">
-                        If you have any questions, please contact us at
-                        <a href="mailto:bookings@bookaride.co.nz" style="color: #D4AF37;">bookings@bookaride.co.nz</a>
-                    </p>
-
-                    <p style="font-size: 12px; color: #999; margin-top: 15px;">
-                        Your payment is processed securely. Book A Ride NZ never stores your card details.
-                    </p>
-                </div>
-
-                <!-- Footer -->
-                <div style="background: #1a1a2e; padding: 20px; text-align: center;">
-                    <p style="color: #888; font-size: 12px; margin: 0;">
-                        Book A Ride NZ | Premium Airport Transfers<br>
-                        <span style="color: #666;">www.bookaride.co.nz</span>
-                    </p>
-                </div>
-            </div>
-        </body>
-        </html>
-        '''
+        html_content = email_wrapper(
+            body_html="\n".join(body_parts),
+            preheader="Complete your payment for BookARide",
+        )
         
         # Send via Mailgun (from noreply address)
         if send_email_unified and send_email_unified(
@@ -8810,8 +8954,8 @@ class ManualBooking(BaseModel):
     status: Optional[str] = "confirmed"  # Booking status
 
 @api_router.post("/bookings/manual")
-async def create_manual_booking(booking: ManualBooking, background_tasks: BackgroundTasks):
-    """Create a booking manually"""
+async def create_manual_booking(booking: ManualBooking, background_tasks: BackgroundTasks, current_admin: dict = Depends(get_current_admin)):
+    """Create a booking manually — requires admin auth"""
     try:
         # Get sequential reference number OR use provided one (store as string for search)
         if booking.referenceNumber:
@@ -8942,7 +9086,15 @@ async def create_manual_booking(booking: ManualBooking, background_tasks: Backgr
             )
         else:
             logger.info(f"Skipping all notifications for booking #{ref_number} as requested")
-        
+
+        # Agent 3: Check for driver booking conflicts in background
+        background_tasks.add_task(
+            run_async_task,
+            check_booking_driver_conflict,
+            new_booking,
+            f"conflict detection for booking #{ref_number}"
+        )
+
         return {"message": "Booking created successfully", "id": new_booking['id'], "referenceNumber": ref_number, "paymentLinkSent": booking.paymentMethod in ['stripe', 'paypal'] and not booking.skipNotifications}
     except Exception as e:
         logger.error(f"Error creating manual booking: {str(e)}")
@@ -9134,8 +9286,8 @@ async def get_driver_applications(current_admin: dict = Depends(get_current_admi
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.patch("/driver-applications/{application_id}")
-async def update_driver_application(application_id: str, status: str, notes: Optional[str] = ""):
-    """Update driver application status"""
+async def update_driver_application(application_id: str, status: str, notes: Optional[str] = "", current_admin: dict = Depends(get_current_admin)):
+    """Update driver application status — requires admin auth"""
     try:
         result = await db.driver_applications.update_one(
             {"id": application_id},
@@ -9160,8 +9312,8 @@ class DriverCreate(BaseModel):
     notes: Optional[str] = ""
 
 @api_router.get("/drivers")
-async def get_drivers():
-    """Get all drivers"""
+async def get_drivers(current_admin: dict = Depends(get_current_admin)):
+    """Get all drivers — requires admin auth"""
     try:
         drivers = await db.drivers.find({}, {"_id": 0}).to_list(1000)
         return {"drivers": drivers}
@@ -9170,8 +9322,8 @@ async def get_drivers():
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.post("/drivers")
-async def create_driver(driver: DriverCreate):
-    """Create a new driver"""
+async def create_driver(driver: DriverCreate, current_admin: dict = Depends(get_current_admin)):
+    """Create a new driver — requires admin auth"""
     try:
         driver_id = str(uuid.uuid4())
         new_driver = {
@@ -9205,8 +9357,8 @@ async def create_driver(driver: DriverCreate):
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.put("/drivers/{driver_id}")
-async def update_driver(driver_id: str, driver: DriverCreate):
-    """Update a driver"""
+async def update_driver(driver_id: str, driver: DriverCreate, current_admin: dict = Depends(get_current_admin)):
+    """Update a driver — requires admin auth"""
     try:
         result = await db.drivers.update_one(
             {"id": driver_id},
@@ -9230,8 +9382,8 @@ async def update_driver(driver_id: str, driver: DriverCreate):
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.delete("/drivers/{driver_id}")
-async def delete_driver(driver_id: str):
-    """Delete a driver"""
+async def delete_driver(driver_id: str, current_admin: dict = Depends(get_current_admin)):
+    """Delete a driver — requires admin auth"""
     try:
         result = await db.drivers.delete_one({"id": driver_id})
         if result.deleted_count == 0:
@@ -9244,7 +9396,7 @@ async def delete_driver(driver_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.patch("/drivers/{driver_id}/assign")
-async def assign_driver_to_booking(driver_id: str, booking_id: str, trip_type: str = "outbound", driver_payout: Optional[float] = None):
+async def assign_driver_to_booking(driver_id: str, booking_id: str, trip_type: str = "outbound", driver_payout: Optional[float] = None, current_admin: dict = Depends(get_current_admin)):
     """Assign a driver to a booking - supports separate outbound and return trip assignments
     
     Args:
@@ -9758,62 +9910,48 @@ async def send_cancellation_email(booking: dict, to_email: str, customer_name: s
     dropoff = booking.get('dropoffAddress', 'N/A')
     service_type = booking.get('serviceType', 'Transfer')
     
-    html_content = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <style>
-            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
-            .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-            .header {{ background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
-            .header h1 {{ margin: 0; color: white; }}
-            .content {{ background: #ffffff; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e8e4d9; border-top: none; }}
-            .booking-details {{ background: #faf8f3; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #dc2626; }}
-            .detail-row {{ margin: 10px 0; }}
-            .label {{ font-weight: bold; color: #666; }}
-            .footer {{ text-align: center; margin-top: 30px; padding: 20px; color: #666; font-size: 14px; background: #faf8f3; border-radius: 8px; }}
-            .contact {{ background: #fff8e6; padding: 15px; border-radius: 8px; margin-top: 20px; text-align: center; border: 1px solid #D4AF37; }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                <h1>Booking Cancelled</h1>
-                <p style="margin: 10px 0 0 0; color: rgba(255,255,255,0.9);">Book A Ride NZ</p>
-            </div>
-            <div class="content">
-                <p>Dear {customer_name},</p>
-                
-                <p>We're sorry to inform you that your booking has been cancelled. If you did not request this cancellation, please contact us immediately.</p>
-                
-                <div class="booking-details">
-                    <h3 style="margin-top: 0; color: #dc2626;">Cancelled Booking Details</h3>
-                    <div class="detail-row"><span class="label">Reference:</span> {booking_ref}</div>
-                    <div class="detail-row" style="font-size: 11px; color: #999;">Full ID: {full_booking_id}</div>
-                    <div class="detail-row"><span class="label">Service:</span> {service_type}</div>
-                    <div class="detail-row"><span class="label">Date:</span> {formatted_date}</div>
-                    <div class="detail-row"><span class="label">Time:</span> {booking_time}</div>
-                    <div class="detail-row"><span class="label">Pickup:</span> {pickup}</div>
-                    <div class="detail-row"><span class="label">Drop-off:</span> {dropoff}</div>
-                </div>
-                
-                <p>If you paid for this booking, a refund will be processed within 5-7 business days.</p>
-                
-                <p>We hope to serve you again in the future!</p>
-                
-                <div class="contact">
-                    <p style="margin: 0;"><strong>Need to rebook?</strong></p>
-                    <p style="margin: 5px 0;">Visit <a href="https://bookaride.co.nz/book-now" style="color: #D4AF37;">bookaride.co.nz</a> or call us at <strong style="color: #D4AF37;">+64 21 743 321</strong></p>
-                </div>
-            </div>
-            <div class="footer">
-                <p>Book A Ride NZ - Your Trusted Airport Shuttle Service</p>
-                <p>Auckland | Hamilton | Nationwide</p>
-            </div>
-        </div>
-    </body>
-    </html>
-    """
+    # Cancellation banner
+    cancel_banner = (
+        '<table width="100%" cellpadding="0" cellspacing="0" border="0">'
+        '<tr><td bgcolor="#dc2626" align="center" style="padding:18px 20px;font-family:Arial,Helvetica,sans-serif;">'
+        '<p style="margin:0;color:#ffffff;font-size:20px;font-weight:bold;">Booking Cancelled</p>'
+        f'<p style="margin:6px 0 0 0;color:#ffffff;font-size:14px;">Reference: {booking_ref}</p>'
+        '</td></tr></table>'
+    )
+
+    greeting_html = (
+        f'Dear {customer_name},<br /><br />'
+        'We are sorry to inform you that your booking has been cancelled. '
+        'If you did not request this cancellation, please contact us immediately.'
+    )
+
+    details_html = (
+        f'<strong>Reference:</strong> {booking_ref}<br />'
+        f'<span style="font-size:11px;color:#999999;">Full ID: {full_booking_id}</span><br />'
+        f'<strong>Service:</strong> {service_type}<br />'
+        f'<strong>Date:</strong> {formatted_date}<br />'
+        f'<strong>Time:</strong> {booking_time}<br />'
+        f'<strong>Pickup:</strong> {pickup}<br />'
+        f'<strong>Drop-off:</strong> {dropoff}'
+    )
+
+    refund_html = (
+        'If you paid for this booking, a refund will be processed within 5-7 business days.<br /><br />'
+        'We hope to serve you again in the future!'
+    )
+
+    body_parts = [
+        cancel_banner,
+        email_section(None, greeting_html),
+        email_section("Cancelled Booking Details", details_html),
+        email_section(None, refund_html),
+        email_button("Book Again", "https://bookaride.co.nz/book-now"),
+    ]
+
+    html_content = email_wrapper(
+        body_html="\n".join(body_parts),
+        preheader="Your BookARide booking has been cancelled",
+    )
     
     cancel_subject = f"Booking Cancelled - Ref: {booking_ref} - Book A Ride NZ"
     ok = _send_email_with_fallbacks(to_email, cancel_subject, html_content, from_email=sender_email, from_name="Book A Ride NZ")
@@ -11445,7 +11583,8 @@ class ImportBookingsRequest(BaseModel):
 async def import_bookings_from_csv(
     request: Request,
     file: UploadFile = File(...),
-    skip_notifications: bool = Form(True)
+    skip_notifications: bool = Form(True),
+    current_admin: dict = Depends(get_current_admin)
 ):
     """
     Import bookings from WordPress Chauffeur Booking System CSV export.
@@ -11606,10 +11745,10 @@ async def get_import_status(current_admin: dict = Depends(get_current_admin)):
 
 
 @api_router.post("/admin/quick-import-wordpress")
-async def quick_import_wordpress(request: Request):
+async def quick_import_wordpress(request: Request, current_admin: dict = Depends(get_current_admin)):
     """
     Import from CSV - accepts either server file or POST body with CSV content.
-    No authentication required for simplicity.
+    Requires admin auth.
     """
     try:
         csv_text = None
@@ -11748,12 +11887,12 @@ async def quick_import_wordpress(request: Request):
 
 
 @api_router.post("/admin/fix-imported-bookings")
-async def fix_imported_bookings():
+async def fix_imported_bookings(current_admin: dict = Depends(get_current_admin)):
     """
     Fix all imported WordPress bookings:
     1. Restore from deleted status
     2. Fix date format (DD-MM-YYYY to YYYY-MM-DD)
-    No authentication required.
+    Requires admin auth.
     """
     try:
         import re
@@ -11808,8 +11947,8 @@ async def fix_imported_bookings():
 
 
 @api_router.get("/admin/fix-now")
-async def fix_now():
-    """Direct URL to fix bookings - just visit this URL"""
+async def fix_now(current_admin: dict = Depends(get_current_admin)):
+    """Direct URL to fix bookings — requires admin auth"""
     try:
         import re
         restored = 0
@@ -12457,6 +12596,176 @@ async def get_review_stats():
         return {"review_count": 287, "average_rating": 4.9, "updated_at": None}
 
 
+# ==================== AUTO-COMPLETE PAST BOOKINGS ====================
+# Automatically marks confirmed bookings as "completed" once the trip date has passed
+# Runs daily at 10 PM NZ time (after all trips for the day are done)
+
+async def auto_complete_past_bookings():
+    """
+    Automatically mark confirmed bookings as 'completed' when the trip date has passed
+    and payment was handled. Runs daily at 10 PM NZ time.
+
+    Criteria:
+    - status is 'confirmed'
+    - date is today or earlier (trip has passed)
+    - payment_status is 'paid', 'pay-on-pickup', 'cash', or 'bank-transfer'
+
+    After marking as completed, sends a post-trip thank-you email with Google Review link.
+    """
+    try:
+        nz_tz = pytz.timezone('Pacific/Auckland')
+        now_nz = datetime.now(nz_tz)
+        today_str = now_nz.strftime('%Y-%m-%d')
+
+        logger.info(f"[Auto-Complete] Starting - NZ time: {now_nz.strftime('%Y-%m-%d %H:%M')}")
+
+        valid_payment_statuses = ['paid', 'pay-on-pickup', 'cash', 'bank-transfer']
+
+        # Find all confirmed bookings with valid payment that are due or past
+        confirmed_bookings = await db.bookings.find({
+            'status': 'confirmed'
+        }, {'_id': 0}).to_list(5000)
+
+        completed_count = 0
+        skipped_count = 0
+        email_sent_count = 0
+
+        for booking in confirmed_bookings:
+            try:
+                booking_date = booking.get('date', '')
+                payment_status = booking.get('payment_status', '')
+
+                # Skip if no date or date is in the future
+                if not booking_date or booking_date > today_str:
+                    skipped_count += 1
+                    continue
+
+                # Skip if payment was not handled
+                if payment_status not in valid_payment_statuses:
+                    skipped_count += 1
+                    continue
+
+                # For return bookings, check the return date instead
+                is_return = booking.get('bookReturn', False)
+                return_date = booking.get('returnDate', '')
+                if is_return and return_date and return_date > today_str:
+                    # Return trip hasn't happened yet
+                    skipped_count += 1
+                    continue
+
+                booking_id = booking.get('id')
+
+                # Update status to completed
+                result = await db.bookings.update_one(
+                    {"id": booking_id, "status": "confirmed"},
+                    {"$set": {
+                        "status": "completed",
+                        "completedAt": datetime.now(timezone.utc).isoformat(),
+                        "completedBy": "auto-complete"
+                    }}
+                )
+
+                if result.matched_count > 0:
+                    completed_count += 1
+
+                    if completed_count <= 10:
+                        logger.info(
+                            f"[Auto-Complete] Completed: Ref #{booking.get('referenceNumber', 'N/A')} "
+                            f"- {booking.get('name', 'Unknown')} (date: {booking_date})"
+                        )
+
+                    # Send post-trip thank-you email
+                    if not booking.get('postTripEmailSent'):
+                        try:
+                            email_ok = send_post_trip_email(booking)
+                            if email_ok:
+                                await mark_post_trip_email_sent(booking_id)
+                                email_sent_count += 1
+                        except Exception as email_err:
+                            logger.error(f"[Auto-Complete] Post-trip email error for {booking_id}: {email_err}")
+                else:
+                    skipped_count += 1
+
+            except Exception as e:
+                logger.error(f"[Auto-Complete] Error processing booking {booking.get('id', 'unknown')}: {str(e)}")
+                continue
+
+        logger.info(
+            f"[Auto-Complete] Done - Completed: {completed_count}, "
+            f"Emails sent: {email_sent_count}, Skipped: {skipped_count}"
+        )
+        return {"completed": completed_count, "emails_sent": email_sent_count, "skipped": skipped_count, "date": today_str}
+
+    except Exception as e:
+        logger.error(f"[Auto-Complete] Error: {str(e)}")
+        return {"completed": 0, "error": str(e)}
+
+
+async def send_pending_post_trip_emails():
+    """
+    Catch-up job: sends post-trip thank-you emails for any completed bookings
+    that haven't received one yet. Runs at 10:30 PM NZ (30 min after auto-complete).
+
+    This catches bookings that were manually marked as completed by admin
+    or where the email failed during auto-complete.
+    """
+    try:
+        nz_tz = pytz.timezone('Pacific/Auckland')
+        now_nz = datetime.now(nz_tz)
+
+        logger.info(f"[Post-Trip Catchup] Starting - NZ time: {now_nz.strftime('%Y-%m-%d %H:%M')}")
+
+        # Find completed bookings that never got a post-trip email
+        pending_bookings = await db.bookings.find({
+            'status': 'completed',
+            '$or': [
+                {'postTripEmailSent': {'$exists': False}},
+                {'postTripEmailSent': False}
+            ]
+        }, {'_id': 0}).to_list(500)
+
+        sent_count = 0
+        failed_count = 0
+
+        for booking in pending_bookings:
+            try:
+                booking_id = booking.get('id')
+                email = booking.get('email', '').strip()
+
+                if not email or '@' not in email:
+                    continue
+
+                email_ok = send_post_trip_email(booking)
+                if email_ok:
+                    await mark_post_trip_email_sent(booking_id)
+                    sent_count += 1
+                else:
+                    failed_count += 1
+
+            except Exception as e:
+                logger.error(f"[Post-Trip Catchup] Error for booking {booking.get('id', 'unknown')}: {e}")
+                failed_count += 1
+                continue
+
+        logger.info(f"[Post-Trip Catchup] Done - Sent: {sent_count}, Failed: {failed_count}")
+        return {"sent": sent_count, "failed": failed_count}
+
+    except Exception as e:
+        logger.error(f"[Post-Trip Catchup] Error: {str(e)}")
+        return {"sent": 0, "error": str(e)}
+
+
+@api_router.post("/admin/trigger-auto-complete")
+async def trigger_auto_complete(current_admin: dict = Depends(get_current_admin)):
+    """Manually trigger the auto-complete process."""
+    try:
+        result = await auto_complete_past_bookings()
+        return result
+    except Exception as e:
+        logger.error(f"Error running auto-complete: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ==================== AUTO-ARCHIVE SYSTEM ====================
 # Automatically archives completed bookings after trip date has passed
 
@@ -13056,6 +13365,655 @@ async def cancel_airline_booking(booking_id: str, airline: dict = Depends(airlin
         raise HTTPException(status_code=500, detail="Cancellation failed")
 
 
+# =============================================================================
+# AI AUTOMATION AGENTS — Scheduled background jobs
+# =============================================================================
+
+async def send_daily_business_summary():
+    """Agent 1: Daily Business Summary Email — runs at 6 PM NZ daily.
+    Sends admin a summary of today's activity and tomorrow's schedule."""
+    try:
+        nz_tz = pytz.timezone('Pacific/Auckland')
+        now_nz = datetime.now(nz_tz)
+        today_str = now_nz.strftime('%Y-%m-%d')
+        tomorrow_str = (now_nz + timedelta(days=1)).strftime('%Y-%m-%d')
+
+        # Count today's bookings by status
+        todays_bookings = await db.bookings.find({
+            'created_at': {'$gte': today_str},
+            'serviceType': {'$ne': 'shared-shuttle'}
+        }, {'_id': 0}).to_list(500)
+
+        new_count = 0
+        confirmed_count = 0
+        completed_count = 0
+        cancelled_count = 0
+        total_revenue = 0.0
+
+        for b in todays_bookings:
+            status = (b.get('status') or '').lower()
+            if status == 'confirmed':
+                confirmed_count += 1
+            elif status == 'completed':
+                completed_count += 1
+            elif status == 'cancelled':
+                cancelled_count += 1
+            else:
+                new_count += 1
+
+            if b.get('payment_status') == 'paid':
+                price = b.get('totalPrice', 0)
+                if isinstance(b.get('pricing'), dict):
+                    price = b['pricing'].get('totalPrice', price)
+                try:
+                    total_revenue += float(price or 0)
+                except (ValueError, TypeError):
+                    pass
+
+        # Tomorrow's bookings
+        tomorrow_bookings = await db.bookings.find({
+            'date': tomorrow_str,
+            'status': {'$nin': ['cancelled', 'deleted']}
+        }, {'_id': 0}).to_list(200)
+
+        # Flag issues
+        urgent_issues = []
+        unassigned = []
+        unpaid_tomorrow = []
+        pending_approvals = []
+
+        for b in tomorrow_bookings:
+            ref = get_booking_reference(b)
+            name = b.get('name', 'Unknown')
+            time_str = b.get('time', 'N/A')
+            pickup = b.get('pickupAddress', 'N/A')
+            dropoff = b.get('dropoffAddress', 'N/A')
+            driver = b.get('driver_name') or ''
+
+            if not driver or driver.strip() == '':
+                unassigned.append(f"#{ref} {name} at {time_str}")
+                urgent_issues.append(f"UNASSIGNED: #{ref} {name} at {time_str}")
+
+            pay_status = b.get('payment_status', 'unpaid')
+            if pay_status not in ('paid', 'cash', 'pay-on-pickup'):
+                unpaid_tomorrow.append(f"#{ref} {name} - {pay_status}")
+                urgent_issues.append(f"UNPAID: #{ref} {name} ({pay_status})")
+
+            if (b.get('status') or '').lower() == 'pending_approval':
+                pending_approvals.append(f"#{ref} {name}")
+                urgent_issues.append(f"PENDING APPROVAL: #{ref} {name}")
+
+        # Build tomorrow schedule HTML rows
+        schedule_rows = ''
+        for b in sorted(tomorrow_bookings, key=lambda x: x.get('time', '00:00')):
+            ref = get_booking_reference(b)
+            name = b.get('name', 'Unknown')
+            time_str = format_time_ampm(b.get('time', ''))
+            pickup = b.get('pickupAddress', 'N/A')
+            dropoff = b.get('dropoffAddress', 'N/A')
+            driver = b.get('driver_name') or '<span style="color:#DC2626;font-weight:bold;">UNASSIGNED</span>'
+            schedule_rows += f'''<tr>
+                <td style="padding:8px;border-bottom:1px solid #e5e7eb;">{time_str}</td>
+                <td style="padding:8px;border-bottom:1px solid #e5e7eb;">{name} (#{ref})</td>
+                <td style="padding:8px;border-bottom:1px solid #e5e7eb;">{pickup[:40]}</td>
+                <td style="padding:8px;border-bottom:1px solid #e5e7eb;">{dropoff[:40]}</td>
+                <td style="padding:8px;border-bottom:1px solid #e5e7eb;">{driver}</td>
+            </tr>'''
+
+        if not schedule_rows:
+            schedule_rows = '<tr><td colspan="5" style="padding:16px;text-align:center;color:#6b7280;">No bookings scheduled for tomorrow.</td></tr>'
+
+        # Issues section
+        issues_html = ''
+        if urgent_issues:
+            issues_html = '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:16px;margin-bottom:24px;">'
+            issues_html += '<h3 style="color:#DC2626;margin:0 0 12px 0;">Action Required</h3><ul style="margin:0;padding-left:20px;">'
+            for issue in urgent_issues:
+                issues_html += f'<li style="color:#991b1b;margin-bottom:4px;">{issue}</li>'
+            issues_html += '</ul></div>'
+
+        formatted_date = now_nz.strftime('%A, %d %B %Y')
+        tomorrow_formatted = (now_nz + timedelta(days=1)).strftime('%A, %d %B %Y')
+
+        html_content = f'''<html>
+        <body style="font-family:Arial,sans-serif;max-width:700px;margin:0 auto;background:#f9fafb;">
+            <div style="background:linear-gradient(135deg,#1e3a5f 0%,#2563eb 100%);color:white;padding:24px;border-radius:12px 12px 0 0;text-align:center;">
+                <h1 style="margin:0;font-size:22px;">Daily Business Summary</h1>
+                <p style="margin:8px 0 0;opacity:0.9;">{formatted_date}</p>
+            </div>
+            <div style="background:white;padding:24px;border-radius:0 0 12px 12px;border:1px solid #e5e7eb;">
+                <h2 style="color:#1e3a5f;font-size:18px;margin-top:0;">Today's Activity</h2>
+                <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
+                    <tr>
+                        <td style="padding:12px;background:#eff6ff;border-radius:8px;text-align:center;width:25%;">
+                            <div style="font-size:28px;font-weight:bold;color:#2563eb;">{new_count}</div>
+                            <div style="color:#6b7280;font-size:13px;">New</div>
+                        </td>
+                        <td style="padding:12px;background:#f0fdf4;border-radius:8px;text-align:center;width:25%;">
+                            <div style="font-size:28px;font-weight:bold;color:#16a34a;">{confirmed_count}</div>
+                            <div style="color:#6b7280;font-size:13px;">Confirmed</div>
+                        </td>
+                        <td style="padding:12px;background:#fefce8;border-radius:8px;text-align:center;width:25%;">
+                            <div style="font-size:28px;font-weight:bold;color:#ca8a04;">{completed_count}</div>
+                            <div style="color:#6b7280;font-size:13px;">Completed</div>
+                        </td>
+                        <td style="padding:12px;background:#fef2f2;border-radius:8px;text-align:center;width:25%;">
+                            <div style="font-size:28px;font-weight:bold;color:#DC2626;">{cancelled_count}</div>
+                            <div style="color:#6b7280;font-size:13px;">Cancelled</div>
+                        </td>
+                    </tr>
+                </table>
+                <div style="background:#f0fdf4;border-radius:8px;padding:16px;text-align:center;margin-bottom:24px;">
+                    <div style="color:#6b7280;font-size:13px;">Today's Revenue</div>
+                    <div style="font-size:32px;font-weight:bold;color:#16a34a;">${total_revenue:,.2f} NZD</div>
+                </div>
+
+                {issues_html}
+
+                <h2 style="color:#1e3a5f;font-size:18px;">Tomorrow's Schedule ({tomorrow_formatted})</h2>
+                <p style="color:#6b7280;margin-bottom:12px;">{len(tomorrow_bookings)} booking(s) scheduled</p>
+                <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                    <thead>
+                        <tr style="background:#f3f4f6;">
+                            <th style="padding:8px;text-align:left;">Time</th>
+                            <th style="padding:8px;text-align:left;">Customer</th>
+                            <th style="padding:8px;text-align:left;">Pickup</th>
+                            <th style="padding:8px;text-align:left;">Dropoff</th>
+                            <th style="padding:8px;text-align:left;">Driver</th>
+                        </tr>
+                    </thead>
+                    <tbody>{schedule_rows}</tbody>
+                </table>
+            </div>
+        </body>
+        </html>'''
+
+        admin_email = os.environ.get('ADMIN_EMAIL', 'info@bookaride.co.nz')
+        subject = f"Daily Summary - {now_nz.strftime('%d/%m/%Y')} | {len(tomorrow_bookings)} tomorrow | ${total_revenue:,.0f} revenue"
+        _send_email_with_fallbacks(admin_email, subject, html_content, from_name="BookaRide Daily Summary")
+        logger.info(f"[Daily Summary] Sent to {admin_email}: {new_count} new, ${total_revenue:.2f} revenue, {len(tomorrow_bookings)} tomorrow")
+
+        # Send SMS if urgent issues exist (unassigned or unpaid for tomorrow)
+        if urgent_issues:
+            try:
+                admin_phone = os.environ.get('ADMIN_PHONE', '+6421743321')
+                twilio_sid = os.environ.get('TWILIO_ACCOUNT_SID')
+                twilio_token = os.environ.get('TWILIO_AUTH_TOKEN')
+                twilio_from = os.environ.get('TWILIO_PHONE_NUMBER')
+                if twilio_sid and twilio_token and twilio_from and Client:
+                    client = Client(twilio_sid, twilio_token)
+                    sms_body = f"BookaRide Alert: {len(urgent_issues)} issue(s) for tomorrow.\n"
+                    for issue in urgent_issues[:3]:
+                        sms_body += f"- {issue}\n"
+                    if len(urgent_issues) > 3:
+                        sms_body += f"+ {len(urgent_issues) - 3} more. Check email."
+                    client.messages.create(body=sms_body, from_=twilio_from, to=admin_phone)
+                    logger.info("[Daily Summary] Urgent SMS sent to admin")
+            except Exception as sms_err:
+                logger.error(f"[Daily Summary] SMS error: {sms_err}")
+
+    except Exception as e:
+        logger.error(f"[Daily Summary] Fatal error: {str(e)}", exc_info=True)
+
+
+async def check_unpaid_bookings():
+    """Agent 2: Payment Follow-up — runs every 2 hours.
+    Sends a gentle reminder to customers who started a Stripe booking but
+    never completed payment (between 4 and 48 hours old)."""
+    try:
+        now_utc = datetime.now(timezone.utc)
+        four_hours_ago = (now_utc - timedelta(hours=4)).isoformat()
+        forty_eight_hours_ago = (now_utc - timedelta(hours=48)).isoformat()
+
+        # Find unpaid Stripe bookings in the 4-48 hour window that have not been reminded
+        unpaid_bookings = await db.bookings.find({
+            'payment_status': {'$nin': ['paid', 'cash', 'pay-on-pickup']},
+            'paymentMethod': 'stripe',
+            'status': {'$nin': ['cancelled', 'deleted']},
+            'createdAt': {'$lte': four_hours_ago, '$gte': forty_eight_hours_ago},
+            'paymentReminderSent': {'$ne': True}
+        }, {'_id': 0}).to_list(50)
+
+        if not unpaid_bookings:
+            logger.info("[Payment Follow-up] No unpaid bookings needing reminders")
+            return
+
+        reminded_count = 0
+        flagged_count = 0
+        frontend_url = os.environ.get('FRONTEND_URL', 'https://bookaride.co.nz')
+
+        for booking in unpaid_bookings:
+            booking_id = booking.get('id', '')
+            email = booking.get('email', '')
+            name = booking.get('name', 'Customer')
+            ref = get_booking_reference(booking)
+            created_at = booking.get('createdAt', '')
+
+            if not email or '@' not in email:
+                continue
+
+            # Check if booking is older than 48 hours — flag for admin instead
+            try:
+                if isinstance(created_at, str):
+                    created_dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                else:
+                    created_dt = created_at
+                age_hours = (now_utc - created_dt).total_seconds() / 3600
+            except Exception:
+                age_hours = 0
+
+            if age_hours >= 48:
+                # Flag for admin review — do not send reminder
+                await db.bookings.update_one(
+                    {'id': booking_id},
+                    {'$set': {
+                        'status_note': 'Payment not completed within 48 hours',
+                        'paymentReminderSent': True
+                    }}
+                )
+                flagged_count += 1
+                logger.info(f"[Payment Follow-up] Flagged #{ref} for admin review (48h expired)")
+                continue
+
+            # Send gentle reminder email
+            formatted_date = format_date_ddmmyyyy(booking.get('date', ''))
+            formatted_time = format_time_ampm(booking.get('time', ''))
+            total_price = booking.get('totalPrice', 0)
+            if isinstance(booking.get('pricing'), dict):
+                total_price = booking['pricing'].get('totalPrice', total_price)
+
+            html_content = f'''<html>
+            <body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+                <div style="background:linear-gradient(135deg,#1e3a5f 0%,#f59e0b 100%);color:white;padding:24px;border-radius:12px 12px 0 0;text-align:center;">
+                    <h1 style="margin:0;font-size:22px;">Complete Your Booking</h1>
+                </div>
+                <div style="background:white;padding:24px;border:1px solid #e5e7eb;border-radius:0 0 12px 12px;">
+                    <p>Hi {name},</p>
+                    <p>We noticed you have not completed payment for your upcoming transfer. Your booking is held for 48 hours so you still have time to secure it.</p>
+                    <div style="background:#f9fafb;border-radius:8px;padding:16px;margin:20px 0;">
+                        <p style="margin:4px 0;"><strong>Booking Ref:</strong> #{ref}</p>
+                        <p style="margin:4px 0;"><strong>Date:</strong> {formatted_date}</p>
+                        <p style="margin:4px 0;"><strong>Time:</strong> {formatted_time}</p>
+                        <p style="margin:4px 0;"><strong>Pickup:</strong> {booking.get('pickupAddress', 'N/A')}</p>
+                        <p style="margin:4px 0;"><strong>Amount:</strong> ${total_price} NZD</p>
+                    </div>
+                    <div style="text-align:center;margin:24px 0;">
+                        <a href="{frontend_url}/book-now" style="display:inline-block;padding:14px 32px;background:#f59e0b;color:white;text-decoration:none;border-radius:8px;font-weight:bold;font-size:16px;">Complete Payment</a>
+                    </div>
+                    <p style="color:#6b7280;font-size:13px;">If you have any questions, simply reply to this email or visit <a href="{frontend_url}">bookaride.co.nz</a>.</p>
+                    <p style="color:#6b7280;font-size:13px;">If you no longer need this transfer, you can ignore this email and the booking will be released.</p>
+                </div>
+            </body>
+            </html>'''
+
+            subject = f"Complete your BookaRide booking #{ref} - {formatted_date}"
+            sent = _send_email_with_fallbacks(email, subject, html_content, from_name="BookaRide")
+
+            if sent:
+                await db.bookings.update_one(
+                    {'id': booking_id},
+                    {'$set': {
+                        'paymentReminderSent': True,
+                        'paymentReminderSentAt': datetime.now(timezone.utc).isoformat()
+                    }}
+                )
+                reminded_count += 1
+                logger.info(f"[Payment Follow-up] Reminder sent to {email} for booking #{ref}")
+
+        logger.info(f"[Payment Follow-up] Complete: {reminded_count} reminders sent, {flagged_count} flagged for admin")
+
+    except Exception as e:
+        logger.error(f"[Payment Follow-up] Fatal error: {str(e)}", exc_info=True)
+
+
+async def check_booking_driver_conflict(new_booking: dict):
+    """Agent 3: Smart Booking Conflict Detection.
+    Called after a new booking is created. Checks if the assigned driver
+    has another confirmed booking within 30 minutes on the same date."""
+    try:
+        driver_id = new_booking.get('driver_id') or ''
+        driver_name = new_booking.get('driver_name') or ''
+        booking_date = new_booking.get('date', '')
+        booking_time = new_booking.get('time', '')
+        new_booking_id = new_booking.get('id', '')
+
+        # Only check if a driver is actually assigned and we have date+time
+        if (not driver_id and not driver_name) or not booking_date or not booking_time:
+            return
+
+        # Parse the new booking time
+        try:
+            new_time = datetime.strptime(booking_time, '%H:%M')
+        except ValueError:
+            try:
+                new_time = datetime.strptime(booking_time, '%I:%M %p')
+            except ValueError:
+                logger.warning(f"[Conflict Detection] Could not parse time '{booking_time}' for booking {new_booking_id}")
+                return
+
+        # Find other confirmed bookings for the same driver on the same date
+        if driver_id:
+            driver_filter = {'$or': [{'driver_id': driver_id}, {'driver_name': driver_name}]}
+        else:
+            driver_filter = {'driver_name': driver_name}
+
+        query = {
+            **driver_filter,
+            'date': booking_date,
+            'status': {'$in': ['confirmed', 'pending_approval']},
+            'id': {'$ne': new_booking_id}
+        }
+
+        other_bookings = await db.bookings.find(query, {'_id': 0}).to_list(50)
+
+        conflicts = []
+        for other in other_bookings:
+            other_time_str = other.get('time', '')
+            if not other_time_str:
+                continue
+            try:
+                other_time = datetime.strptime(other_time_str, '%H:%M')
+            except ValueError:
+                try:
+                    other_time = datetime.strptime(other_time_str, '%I:%M %p')
+                except ValueError:
+                    continue
+
+            diff_minutes = abs((new_time - other_time).total_seconds()) / 60
+            if diff_minutes <= 30:
+                other_ref = get_booking_reference(other)
+                conflicts.append({
+                    'ref': other_ref,
+                    'time': other_time_str,
+                    'name': other.get('name', 'Unknown')
+                })
+
+        if not conflicts:
+            return
+
+        new_ref = get_booking_reference(new_booking)
+        conflict_driver = driver_name or driver_id
+        formatted_date = format_date_ddmmyyyy(booking_date)
+
+        logger.warning(
+            f"[Conflict Detection] Driver '{conflict_driver}' has {len(conflicts)} overlapping booking(s) "
+            f"on {formatted_date} near {booking_time}: new #{new_ref} conflicts with "
+            + ', '.join(f'#{c["ref"]}' for c in conflicts)
+        )
+
+        # Send SMS alert to admin
+        try:
+            admin_phone = os.environ.get('ADMIN_PHONE', '+6421743321')
+            twilio_sid = os.environ.get('TWILIO_ACCOUNT_SID')
+            twilio_token = os.environ.get('TWILIO_AUTH_TOKEN')
+            twilio_from = os.environ.get('TWILIO_PHONE_NUMBER')
+            if twilio_sid and twilio_token and twilio_from and Client:
+                client = Client(twilio_sid, twilio_token)
+                conflict_refs = ', '.join(f'#{c["ref"]}' for c in conflicts)
+                sms_body = (
+                    f"CONFLICT: Driver {conflict_driver} has overlapping bookings at "
+                    f"{booking_time} on {formatted_date}. "
+                    f"New #{new_ref} conflicts with {conflict_refs}. Check dashboard."
+                )
+                client.messages.create(body=sms_body, from_=twilio_from, to=admin_phone)
+                logger.info(f"[Conflict Detection] SMS alert sent for driver '{conflict_driver}'")
+        except Exception as sms_err:
+            logger.error(f"[Conflict Detection] SMS error: {sms_err}")
+
+        # Also send email to admin
+        try:
+            admin_email = os.environ.get('ADMIN_EMAIL', 'info@bookaride.co.nz')
+            conflict_list = ''.join(
+                f'<li>#{c["ref"]} - {c["name"]} at {format_time_ampm(c["time"])}</li>'
+                for c in conflicts
+            )
+            html_content = f'''<html>
+            <body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+                <div style="background:#DC2626;color:white;padding:20px;border-radius:12px 12px 0 0;text-align:center;">
+                    <h1 style="margin:0;">Driver Booking Conflict</h1>
+                </div>
+                <div style="background:white;padding:24px;border:1px solid #e5e7eb;border-radius:0 0 12px 12px;">
+                    <p><strong>Driver:</strong> {conflict_driver}</p>
+                    <p><strong>Date:</strong> {formatted_date}</p>
+                    <p><strong>New booking:</strong> #{new_ref} ({new_booking.get('name', 'Unknown')}) at {format_time_ampm(booking_time)}</p>
+                    <p><strong>Conflicting booking(s):</strong></p>
+                    <ul>{conflict_list}</ul>
+                    <p style="color:#DC2626;font-weight:bold;">Please reassign one of these bookings to a different driver.</p>
+                </div>
+            </body>
+            </html>'''
+            _send_email_with_fallbacks(
+                admin_email,
+                f"CONFLICT: Driver {conflict_driver} double-booked on {formatted_date}",
+                html_content,
+                from_name="BookaRide Alert"
+            )
+        except Exception as email_err:
+            logger.error(f"[Conflict Detection] Email error: {email_err}")
+
+    except Exception as e:
+        logger.error(f"[Conflict Detection] Fatal error: {str(e)}", exc_info=True)
+
+
+async def send_weekly_report():
+    """Agent 4: Weekly Performance Report — runs Sunday 8 AM NZ.
+    Summarises the past week vs the previous week with revenue, routes,
+    busiest days, and customer acquisition metrics."""
+    try:
+        nz_tz = pytz.timezone('Pacific/Auckland')
+        now_nz = datetime.now(nz_tz)
+
+        # This week = last 7 days, last week = 7-14 days ago
+        this_week_start = (now_nz - timedelta(days=7)).strftime('%Y-%m-%d')
+        last_week_start = (now_nz - timedelta(days=14)).strftime('%Y-%m-%d')
+
+        # Fetch this week's bookings
+        this_week_bookings = await db.bookings.find({
+            'created_at': {'$gte': this_week_start},
+            'serviceType': {'$ne': 'shared-shuttle'},
+            'status': {'$nin': ['deleted']}
+        }, {'_id': 0}).to_list(1000)
+
+        # Fetch last week's bookings
+        last_week_bookings = await db.bookings.find({
+            'created_at': {'$gte': last_week_start, '$lt': this_week_start},
+            'serviceType': {'$ne': 'shared-shuttle'},
+            'status': {'$nin': ['deleted']}
+        }, {'_id': 0}).to_list(1000)
+
+        # Also check archived bookings for completeness
+        this_week_archived = await db.bookings_archive.find({
+            'created_at': {'$gte': this_week_start},
+            'serviceType': {'$ne': 'shared-shuttle'}
+        }, {'_id': 0}).to_list(500)
+
+        last_week_archived = await db.bookings_archive.find({
+            'created_at': {'$gte': last_week_start, '$lt': this_week_start},
+            'serviceType': {'$ne': 'shared-shuttle'}
+        }, {'_id': 0}).to_list(500)
+
+        # Merge active + archived
+        all_this_week = this_week_bookings + this_week_archived
+        all_last_week = last_week_bookings + last_week_archived
+
+        # Totals
+        this_week_count = len(all_this_week)
+        last_week_count = len(all_last_week)
+        growth_pct = 0.0
+        if last_week_count > 0:
+            growth_pct = ((this_week_count - last_week_count) / last_week_count) * 100
+
+        # Revenue helper
+        def _calc_revenue(bookings_list):
+            total = 0.0
+            for b in bookings_list:
+                if b.get('payment_status') == 'paid' or (b.get('status') or '').lower() == 'completed':
+                    price = b.get('totalPrice', 0)
+                    if isinstance(b.get('pricing'), dict):
+                        price = b['pricing'].get('totalPrice', price)
+                    try:
+                        total += float(price or 0)
+                    except (ValueError, TypeError):
+                        pass
+            return total
+
+        this_week_revenue = _calc_revenue(all_this_week)
+        last_week_revenue = _calc_revenue(all_last_week)
+        revenue_growth = 0.0
+        if last_week_revenue > 0:
+            revenue_growth = ((this_week_revenue - last_week_revenue) / last_week_revenue) * 100
+
+        # Average booking value
+        paid_bookings = [b for b in all_this_week if b.get('payment_status') == 'paid' or (b.get('status') or '').lower() == 'completed']
+        avg_value = this_week_revenue / len(paid_bookings) if paid_bookings else 0
+
+        # Top 3 busiest days
+        day_counts = {}
+        for b in all_this_week:
+            d = b.get('date', (b.get('created_at') or '')[:10])
+            if d:
+                day_counts[d] = day_counts.get(d, 0) + 1
+        busiest_days = sorted(day_counts.items(), key=lambda x: x[1], reverse=True)[:3]
+
+        # Most popular routes (group by pickup area -> dropoff area)
+        route_counts = {}
+        for b in all_this_week:
+            pickup = (b.get('pickupAddress') or 'Unknown')
+            dropoff = (b.get('dropoffAddress') or 'Unknown')
+            pickup_short = pickup.split(',')[0].strip()[:30] if pickup else 'Unknown'
+            dropoff_short = dropoff.split(',')[0].strip()[:30] if dropoff else 'Unknown'
+            route_key = f"{pickup_short} -> {dropoff_short}"
+            route_counts[route_key] = route_counts.get(route_key, 0) + 1
+        popular_routes = sorted(route_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+
+        # Customer acquisition: new vs returning
+        checked_emails = set()
+        new_customers = 0
+        returning_customers = 0
+        for b in all_this_week:
+            email = (b.get('email') or '').lower().strip()
+            if email and email not in checked_emails:
+                checked_emails.add(email)
+                prev = await db.bookings.find_one({
+                    'email': {'$regex': f'^{email}$', '$options': 'i'},
+                    'created_at': {'$lt': this_week_start}
+                })
+                if not prev:
+                    prev = await db.bookings_archive.find_one({
+                        'email': {'$regex': f'^{email}$', '$options': 'i'},
+                        'created_at': {'$lt': this_week_start}
+                    })
+                if prev:
+                    returning_customers += 1
+                else:
+                    new_customers += 1
+
+        # Build HTML
+        growth_color = '#16a34a' if growth_pct >= 0 else '#DC2626'
+        growth_arrow = '+' if growth_pct >= 0 else ''
+        rev_growth_color = '#16a34a' if revenue_growth >= 0 else '#DC2626'
+        rev_growth_arrow = '+' if revenue_growth >= 0 else ''
+
+        busiest_html = ''
+        for day_str, count in busiest_days:
+            try:
+                day_dt = datetime.strptime(day_str, '%Y-%m-%d')
+                day_formatted = day_dt.strftime('%A %d/%m')
+            except ValueError:
+                day_formatted = day_str
+            busiest_html += f'<li>{day_formatted}: <strong>{count} bookings</strong></li>'
+        if not busiest_html:
+            busiest_html = '<li>No bookings this week</li>'
+
+        routes_html = ''
+        for route, count in popular_routes:
+            routes_html += f'<li>{route}: <strong>{count}x</strong></li>'
+        if not routes_html:
+            routes_html = '<li>No routes this week</li>'
+
+        week_ending = now_nz.strftime('%d/%m/%Y')
+        week_starting = (now_nz - timedelta(days=7)).strftime('%d/%m/%Y')
+
+        html_content = f'''<html>
+        <body style="font-family:Arial,sans-serif;max-width:700px;margin:0 auto;background:#f9fafb;">
+            <div style="background:linear-gradient(135deg,#7c3aed 0%,#2563eb 100%);color:white;padding:24px;border-radius:12px 12px 0 0;text-align:center;">
+                <h1 style="margin:0;font-size:22px;">Weekly Performance Report</h1>
+                <p style="margin:8px 0 0;opacity:0.9;">{week_starting} - {week_ending}</p>
+            </div>
+            <div style="background:white;padding:24px;border:1px solid #e5e7eb;border-radius:0 0 12px 12px;">
+
+                <h2 style="color:#1e3a5f;font-size:18px;margin-top:0;">Bookings</h2>
+                <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
+                    <tr>
+                        <td style="padding:16px;background:#eff6ff;border-radius:8px;text-align:center;width:33%;">
+                            <div style="font-size:32px;font-weight:bold;color:#2563eb;">{this_week_count}</div>
+                            <div style="color:#6b7280;font-size:13px;">This Week</div>
+                        </td>
+                        <td style="padding:16px;background:#f3f4f6;border-radius:8px;text-align:center;width:33%;">
+                            <div style="font-size:32px;font-weight:bold;color:#6b7280;">{last_week_count}</div>
+                            <div style="color:#6b7280;font-size:13px;">Last Week</div>
+                        </td>
+                        <td style="padding:16px;background:#f0fdf4;border-radius:8px;text-align:center;width:33%;">
+                            <div style="font-size:28px;font-weight:bold;color:{growth_color};">{growth_arrow}{growth_pct:.1f}%</div>
+                            <div style="color:#6b7280;font-size:13px;">Growth</div>
+                        </td>
+                    </tr>
+                </table>
+
+                <h2 style="color:#1e3a5f;font-size:18px;">Revenue</h2>
+                <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
+                    <tr>
+                        <td style="padding:16px;background:#f0fdf4;border-radius:8px;text-align:center;width:33%;">
+                            <div style="font-size:28px;font-weight:bold;color:#16a34a;">${this_week_revenue:,.2f}</div>
+                            <div style="color:#6b7280;font-size:13px;">This Week</div>
+                        </td>
+                        <td style="padding:16px;background:#f3f4f6;border-radius:8px;text-align:center;width:33%;">
+                            <div style="font-size:28px;font-weight:bold;color:#6b7280;">${last_week_revenue:,.2f}</div>
+                            <div style="color:#6b7280;font-size:13px;">Last Week</div>
+                        </td>
+                        <td style="padding:16px;background:#eff6ff;border-radius:8px;text-align:center;width:33%;">
+                            <div style="font-size:24px;font-weight:bold;color:{rev_growth_color};">{rev_growth_arrow}{revenue_growth:.1f}%</div>
+                            <div style="color:#6b7280;font-size:13px;">Growth</div>
+                        </td>
+                    </tr>
+                </table>
+                <div style="background:#fefce8;border-radius:8px;padding:16px;text-align:center;margin-bottom:24px;">
+                    <div style="color:#6b7280;font-size:13px;">Average Booking Value</div>
+                    <div style="font-size:28px;font-weight:bold;color:#ca8a04;">${avg_value:,.2f} NZD</div>
+                </div>
+
+                <h2 style="color:#1e3a5f;font-size:18px;">Top 3 Busiest Days</h2>
+                <ul style="margin-bottom:24px;">{busiest_html}</ul>
+
+                <h2 style="color:#1e3a5f;font-size:18px;">Most Popular Routes</h2>
+                <ul style="margin-bottom:24px;">{routes_html}</ul>
+
+                <h2 style="color:#1e3a5f;font-size:18px;">Customer Acquisition</h2>
+                <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
+                    <tr>
+                        <td style="padding:16px;background:#eff6ff;border-radius:8px;text-align:center;width:50%;">
+                            <div style="font-size:32px;font-weight:bold;color:#2563eb;">{new_customers}</div>
+                            <div style="color:#6b7280;font-size:13px;">New Customers</div>
+                        </td>
+                        <td style="padding:16px;background:#f0fdf4;border-radius:8px;text-align:center;width:50%;">
+                            <div style="font-size:32px;font-weight:bold;color:#16a34a;">{returning_customers}</div>
+                            <div style="color:#6b7280;font-size:13px;">Returning Customers</div>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </body>
+        </html>'''
+
+        admin_email = os.environ.get('ADMIN_EMAIL', 'info@bookaride.co.nz')
+        subject = f"Weekly Report {week_starting}-{week_ending} | {this_week_count} bookings | ${this_week_revenue:,.0f} revenue"
+        _send_email_with_fallbacks(admin_email, subject, html_content, from_name="BookaRide Weekly Report")
+        logger.info(f"[Weekly Report] Sent to {admin_email}: {this_week_count} bookings, ${this_week_revenue:.2f} revenue")
+
+    except Exception as e:
+        logger.error(f"[Weekly Report] Fatal error: {str(e)}", exc_info=True)
+
+
 # Include the router in the main app (MUST be after all routes are defined)
 app.include_router(api_router)
 
@@ -13653,8 +14611,8 @@ def create_arrival_email_html(customer_name: str, booking_date: str, pickup_time
                 <!-- Contact -->
                 <div style="background: #f9fafb; border-radius: 12px; padding: 20px; text-align: center;">
                     <p style="color: #6b7280; margin: 0 0 10px 0; font-size: 14px;">Can't find your driver?</p>
-                    <a href="tel:+6421743321" style="color: #f59e0b; font-size: 20px; font-weight: bold; text-decoration: none;">
-                         021 743 321
+                    <a href="mailto:info@bookaride.co.nz" style="color: #f59e0b; font-size: 16px; font-weight: bold; text-decoration: none;">
+                        Email us at info@bookaride.co.nz
                     </a>
                 </div>
                 
@@ -13826,6 +14784,26 @@ async def startup_event():
         misfire_grace_time=3600 * 4
     )
     
+    # AUTO-COMPLETE PAST BOOKINGS - Runs at 10 PM NZ time (after all trips for the day)
+    scheduler.add_job(
+        auto_complete_past_bookings,
+        CronTrigger(hour=22, minute=0, timezone=nz_tz),
+        id='auto_complete_past_bookings',
+        name='Auto-complete confirmed bookings after trip date',
+        replace_existing=True,
+        misfire_grace_time=3600 * 4
+    )
+
+    # POST-TRIP EMAIL CATCHUP - Runs at 10:30 PM NZ (30 min after auto-complete)
+    scheduler.add_job(
+        send_pending_post_trip_emails,
+        CronTrigger(hour=22, minute=30, timezone=nz_tz),
+        id='post_trip_email_catchup',
+        name='Send pending post-trip thank-you emails',
+        replace_existing=True,
+        misfire_grace_time=3600 * 4
+    )
+
     # AUTO-ARCHIVE COMPLETED BOOKINGS - Runs at 2 AM NZ time
     scheduler.add_job(
         auto_archive_completed_bookings,
@@ -13854,18 +14832,52 @@ async def startup_event():
     #     name='Startup sync from production',
     #     replace_existing=True
     # )
-    
+
+    # DAILY BUSINESS SUMMARY - Runs at 6 PM NZ daily
+    scheduler.add_job(
+        send_daily_business_summary,
+        CronTrigger(hour=18, minute=0, timezone=nz_tz),
+        id='daily_business_summary',
+        name='Daily business summary email at 6 PM NZ',
+        replace_existing=True,
+        misfire_grace_time=3600 * 4
+    )
+
+    # PAYMENT FOLLOW-UP - Runs every 2 hours
+    scheduler.add_job(
+        check_unpaid_bookings,
+        IntervalTrigger(hours=2),
+        id='payment_followup',
+        name='Payment follow-up reminders (every 2 hours)',
+        replace_existing=True
+    )
+
+    # WEEKLY PERFORMANCE REPORT - Runs Sunday 8 AM NZ
+    scheduler.add_job(
+        send_weekly_report,
+        CronTrigger(day_of_week='sun', hour=8, minute=0, timezone=nz_tz),
+        id='weekly_performance_report',
+        name='Weekly performance report (Sunday 8 AM NZ)',
+        replace_existing=True,
+        misfire_grace_time=3600 * 12
+    )
+
     scheduler.start()
     logger.info(" Scheduler started with all jobs:")
     logger.info("    Reminder: 8:00 AM NZ daily (primary)")
     logger.info("    Arrival emails: 9:00 AM NZ daily")
     logger.info("    Reminder: Hourly backup check")
     logger.info("    Abandoned bookings: Every 30 mins")
-    logger.info("    Auto-sync: Every 5 minutes")
     logger.info("    Return alerts: Every 15 minutes")
     logger.info("    Daily error check: 6:00 AM NZ daily")
     logger.info("    Auto-archive: 2:00 AM NZ daily")
+    logger.info("    Auto-complete: 10:00 PM NZ daily")
+    logger.info("    Post-trip email catchup: 10:30 PM NZ daily")
     logger.info("    Content freshness: 4:00 AM NZ daily")
+    logger.info("    Daily business summary: 6:00 PM NZ daily")
+    logger.info("    Payment follow-up: Every 2 hours")
+    logger.info("    Weekly report: Sunday 8:00 AM NZ")
+    logger.info("    Conflict detection: On every new booking")
     logger.info("    Startup reminder check (running now...)")
     
     # Layer 3: Immediate startup check

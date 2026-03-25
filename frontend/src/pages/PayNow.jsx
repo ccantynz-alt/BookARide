@@ -57,7 +57,7 @@ const PayNow = () => {
           <div>
             <Loader2 className="w-12 h-12 text-[#D4AF37] animate-spin mx-auto mb-4" />
             <p className="text-gray-700 text-lg font-medium">Preparing your secure payment...</p>
-            <p className="text-gray-500 text-sm mt-2">You'll be redirected to Stripe's secure checkout.</p>
+            <p className="text-gray-500 text-sm mt-2">You'll be redirected to our secure checkout.</p>
             <div className="flex items-center justify-center gap-2 mt-4 text-gray-400 text-xs">
               <Lock className="w-3 h-3" />
               <span>256-bit SSL encrypted</span>
@@ -71,7 +71,7 @@ const PayNow = () => {
             <p className="text-gray-700 text-lg font-medium">Redirecting to secure checkout...</p>
             <div className="flex items-center justify-center gap-2 mt-4 text-gray-400 text-xs">
               <Shield className="w-3 h-3" />
-              <span>Powered by Stripe</span>
+              <span>Secure Payment</span>
             </div>
           </div>
         )}

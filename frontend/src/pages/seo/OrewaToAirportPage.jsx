@@ -137,7 +137,7 @@ export const OrewaToAirportPage = () => {
               { icon: Clock, title: 'On-Time Guarantee', desc: 'We monitor your flight and adjust pickup times automatically' },
               { icon: Car, title: 'Private Vehicle', desc: 'No sharing - just you and your group in a clean, comfortable vehicle' },
               { icon: Shield, title: 'Transparent Pricing', desc: 'Instant quote based on distance. No surge pricing, ever.' },
-              { icon: Star, title: '4.9★ Rated', desc: 'Trusted by hundreds of Orewa residents' },
+              { icon: Star, title: 'Highly Rated', desc: 'Trusted by Orewa residents' },
             ].map((item, idx) => (
               <Card key={idx}>
                 <CardContent className="p-6 text-center">

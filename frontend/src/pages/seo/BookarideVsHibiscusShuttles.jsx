@@ -229,8 +229,8 @@ export const BookarideVsHibiscusShuttles = () => {
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl font-bold mb-4">Experience the BookaRide Difference</h2>
           <p className="text-gray-400 mb-8 max-w-2xl mx-auto">
-            Join thousands of Hibiscus Coast locals and visitors who&apos;ve switched to BookaRide 
-            for their airport transfers.
+            Hibiscus Coast locals and visitors choose BookaRide
+            for reliable airport transfers.
           </p>
           <div className="flex flex-wrap justify-center gap-4">
             <Link to="/book-now">

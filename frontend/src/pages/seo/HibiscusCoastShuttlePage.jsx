@@ -96,11 +96,11 @@ export const HibiscusCoastShuttlePage = () => {
               <div className="flex text-gold">
                 {[...Array(5)].map((_, i) => <Star key={i} className="w-5 h-5 fill-current" />)}
               </div>
-              <span className="font-semibold">4.9/5 Rating</span>
+              <span className="font-semibold">Highly Rated</span>
             </div>
             <div className="flex items-center gap-2">
               <CheckCircle className="w-5 h-5 text-green-600" />
-              <span className="font-semibold">1000+ Happy Customers</span>
+              <span className="font-semibold">Trusted Locally</span>
             </div>
             <div className="flex items-center gap-2">
               <Shield className="w-5 h-5 text-blue-600" />
@@ -307,7 +307,7 @@ export const HibiscusCoastShuttlePage = () => {
             Ready to Book Your Hibiscus Coast Shuttle?
           </h2>
           <p className="text-lg mb-8 max-w-2xl mx-auto">
-            Join thousands of Hibiscus Coast locals who trust BookaRide for their airport transfers.
+            Hibiscus Coast locals trust BookaRide for reliable airport transfers.
           </p>
           <div className="flex flex-wrap justify-center gap-4">
             <Link to="/book-now">

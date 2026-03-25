@@ -1,81 +1,8 @@
 import React from 'react';
 import { Helmet } from 'react-helmet-async';
 
-// Advanced Schema Markup for SEO dominance
-export const LocalBusinessSchema = () => {
-  const schema = {
-    "@context": "https://schema.org",
-    "@type": "LocalBusiness",
-    "@id": "https://bookaride.co.nz/#organization",
-    "name": "BookaRide NZ - Auckland Airport Transfers",
-    "alternateName": ["Book A Ride NZ", "BookaRide Auckland", "Auckland Airport Shuttle"],
-    "description": "Auckland's premium airport transfer service. Private door-to-door shuttles from all Auckland suburbs to Auckland Airport. Fixed prices, flight tracking, professional drivers.",
-    "url": "https://bookaride.co.nz",
-    "telephone": "+64-9-XXX-XXXX",
-    "email": "bookings@bookaride.co.nz",
-    "address": {
-      "@type": "PostalAddress",
-      "streetAddress": "Auckland",
-      "addressLocality": "Auckland",
-      "addressRegion": "Auckland",
-      "postalCode": "0600",
-      "addressCountry": "NZ"
-    },
-    "geo": {
-      "@type": "GeoCoordinates",
-      "latitude": -36.8485,
-      "longitude": 174.7633
-    },
-    "areaServed": [
-      { "@type": "City", "name": "Auckland" },
-      { "@type": "Place", "name": "Auckland Airport" },
-      { "@type": "Place", "name": "North Shore" },
-      { "@type": "Place", "name": "Hibiscus Coast" },
-      { "@type": "Place", "name": "Auckland CBD" }
-    ],
-    "priceRange": "$$",
-    "openingHoursSpecification": {
-      "@type": "OpeningHoursSpecification",
-      "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
-      "opens": "00:00",
-      "closes": "23:59"
-    },
-    "sameAs": [
-      "https://www.facebook.com/bookaridenz",
-      "https://www.instagram.com/bookaridenz"
-    ],
-    "hasOfferCatalog": {
-      "@type": "OfferCatalog",
-      "name": "Airport Transfer Services",
-      "itemListElement": [
-        {
-          "@type": "Offer",
-          "itemOffered": {
-            "@type": "Service",
-            "name": "Private Airport Transfer",
-            "description": "Door-to-door private transfer to Auckland Airport"
-          }
-        },
-        {
-          "@type": "Offer",
-          "itemOffered": {
-            "@type": "Service",
-            "name": "Cruise Ship Transfer",
-            "description": "Transfer from Auckland Cruise Terminal"
-          }
-        }
-      ]
-    }
-  };
-
-  return (
-    <Helmet>
-      <script type="application/ld+json">
-        {JSON.stringify(schema)}
-      </script>
-    </Helmet>
-  );
-};
+// LocalBusiness schema has been consolidated into StructuredData.jsx
+// Use <StructuredData /> from '../components/StructuredData' for LocalBusiness JSON-LD.
 
 export const ServiceSchema = ({ serviceName, description, areaServed, priceRange }) => {
   const schema = {
@@ -133,41 +60,8 @@ export const FAQSchema = ({ faqs }) => {
   );
 };
 
-export const ReviewSchema = ({ reviews, aggregateRating }) => {
-  const schema = {
-    "@context": "https://schema.org",
-    "@type": "LocalBusiness",
-    "name": "BookaRide NZ",
-    "aggregateRating": {
-      "@type": "AggregateRating",
-      "ratingValue": aggregateRating?.value || "4.9",
-      "reviewCount": aggregateRating?.count || "500",
-      "bestRating": "5",
-      "worstRating": "1"
-    },
-    "review": reviews?.slice(0, 5).map(review => ({
-      "@type": "Review",
-      "reviewRating": {
-        "@type": "Rating",
-        "ratingValue": review.rating,
-        "bestRating": "5"
-      },
-      "author": {
-        "@type": "Person",
-        "name": review.author
-      },
-      "reviewBody": review.text
-    }))
-  };
-
-  return (
-    <Helmet>
-      <script type="application/ld+json">
-        {JSON.stringify(schema)}
-      </script>
-    </Helmet>
-  );
-};
+// ReviewSchema removed — contained duplicate LocalBusiness with fake aggregateRating.
+// The authoritative LocalBusiness schema lives in StructuredData.jsx.
 
 export const BreadcrumbSchema = ({ items }) => {
   const schema = {
@@ -223,4 +117,6 @@ export const TransportServiceSchema = ({ route, price, duration }) => {
   );
 };
 
-export default LocalBusinessSchema;
+// Default export — LocalBusinessSchema was consolidated into StructuredData.jsx.
+// Export the remaining schemas for backward compatibility.
+export default { ServiceSchema, FAQSchema, BreadcrumbSchema, TransportServiceSchema };

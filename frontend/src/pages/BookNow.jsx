@@ -16,7 +16,6 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import { CustomDatePicker, CustomTimePicker } from '../components/DateTimePicker';
 import PriceComparison from '../components/PriceComparison';
 import TrustBadges from '../components/TrustBadges';
-import SocialProofCounter from '../components/SocialProofCounter';
 import AddressAutocomplete from '../components/AddressAutocomplete';
 import { API } from '../config/api';
 
@@ -866,9 +865,6 @@ export const BookNow = () => {
                             </div>
                           )}
 
-                          <div className="mt-4">
-                            <SocialProofCounter variant="urgency" />
-                          </div>
                         </div>
                       ) : (
                         <div className="text-center py-8">

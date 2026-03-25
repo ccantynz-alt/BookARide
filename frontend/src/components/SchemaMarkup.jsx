@@ -1,98 +1,8 @@
 import React from 'react';
 import { Helmet } from 'react-helmet-async';
 
-// LocalBusiness Schema for BookaRide
-export const LocalBusinessSchema = () => {
-  const schema = {
-    "@context": "https://schema.org",
-    "@type": "LocalBusiness",
-    "@id": "https://bookaride.co.nz/#organization",
-    "name": "BookaRide NZ",
-    "alternateName": "Book A Ride New Zealand",
-    "description": "Premium private airport shuttle service in Auckland and Hamilton, New Zealand. Door-to-door transfers, flight tracking, 24/7 availability.",
-    "url": "https://bookaride.co.nz",
-    "email": "info@bookaride.co.nz",
-    "logo": "https://bookaride.co.nz/bookaride-logo.png",
-    "image": "https://bookaride.co.nz/bookaride-logo.png",
-    "priceRange": "$$",
-    "currenciesAccepted": "NZD",
-    "paymentAccepted": "Credit Card, Debit Card, Online Payment",
-    "address": {
-      "@type": "PostalAddress",
-      "streetAddress": "Auckland",
-      "addressLocality": "Auckland",
-      "addressRegion": "Auckland",
-      "postalCode": "0632",
-      "addressCountry": "NZ"
-    },
-    "geo": {
-      "@type": "GeoCoordinates",
-      "latitude": "-36.8485",
-      "longitude": "174.7633"
-    },
-    "openingHoursSpecification": [
-      {
-        "@type": "OpeningHoursSpecification",
-        "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
-        "opens": "00:00",
-        "closes": "23:59"
-      }
-    ],
-    "sameAs": [
-      "https://www.facebook.com/bookaridenz",
-      "https://www.instagram.com/bookaridenz"
-    ],
-    "hasOfferCatalog": {
-      "@type": "OfferCatalog",
-      "name": "Airport Transfer Services",
-      "itemListElement": [
-        {
-          "@type": "Offer",
-          "itemOffered": {
-            "@type": "Service",
-            "name": "Auckland Airport Shuttle"
-          }
-        },
-        {
-          "@type": "Offer",
-          "itemOffered": {
-            "@type": "Service",
-            "name": "Hamilton Airport Transfers"
-          }
-        },
-        {
-          "@type": "Offer",
-          "itemOffered": {
-            "@type": "Service",
-            "name": "Cruise Terminal Transfers"
-          }
-        },
-        {
-          "@type": "Offer",
-          "itemOffered": {
-            "@type": "Service",
-            "name": "Hobbiton Transfers"
-          }
-        }
-      ]
-    },
-    "aggregateRating": {
-      "@type": "AggregateRating",
-      "ratingValue": "4.9",
-      "reviewCount": "287",
-      "bestRating": "5",
-      "worstRating": "1"
-    }
-  };
-
-  return (
-    <Helmet>
-      <script type="application/ld+json">
-        {JSON.stringify(schema)}
-      </script>
-    </Helmet>
-  );
-};
+// LocalBusiness schema has been consolidated into StructuredData.jsx
+// Use <StructuredData /> from '../components/StructuredData' for LocalBusiness JSON-LD.
 
 // Service Schema Component
 export const ServiceSchema = ({ service }) => {
@@ -226,41 +136,7 @@ export const TransportationSchema = ({ route }) => {
   );
 };
 
-// Review Schema Component
-export const ReviewSchema = ({ reviews }) => {
-  if (!reviews || reviews.length === 0) return null;
-
-  const schema = reviews.map(review => ({
-    "@context": "https://schema.org",
-    "@type": "Review",
-    "author": {
-      "@type": "Person",
-      "name": review.author
-    },
-    "datePublished": review.date,
-    "reviewBody": review.text,
-    "reviewRating": {
-      "@type": "Rating",
-      "ratingValue": review.rating,
-      "bestRating": "5",
-      "worstRating": "1"
-    },
-    "itemReviewed": {
-      "@type": "LocalBusiness",
-      "name": "BookaRide NZ"
-    }
-  }));
-
-  return (
-    <Helmet>
-      {schema.map((s, idx) => (
-        <script key={idx} type="application/ld+json">
-          {JSON.stringify(s)}
-        </script>
-      ))}
-    </Helmet>
-  );
-};
+// ReviewSchema removed — only add review schema when connected to real, verified review data.
 
 // WebSite Schema for search box
 export const WebSiteSchema = () => {
@@ -286,10 +162,10 @@ export const WebSiteSchema = () => {
 };
 
 // Combined Schema Component for Home Page
+// Note: LocalBusiness schema is handled by StructuredData.jsx (rendered separately)
 export const HomePageSchema = () => {
   return (
     <>
-      <LocalBusinessSchema />
       <WebSiteSchema />
       <ServiceSchema 
         service={{
@@ -324,12 +200,10 @@ export const HomePageSchema = () => {
 };
 
 export default {
-  LocalBusinessSchema,
   ServiceSchema,
   FAQSchema,
   BreadcrumbSchema,
   TransportationSchema,
-  ReviewSchema,
   WebSiteSchema,
   HomePageSchema
 };

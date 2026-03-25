@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { CheckCircle, Clock, Shield, Star, Phone, MapPin, ArrowRight, Users, Plane } from 'lucide-react';
+import { CheckCircle, Clock, Shield, Star, MapPin, ArrowRight, Users, Plane } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 
 // Reusable SEO Landing Page Component for Auckland Suburbs
@@ -53,7 +53,6 @@ const SuburbAirportPage = ({
     "name": `BookaRide ${suburb} Airport Transfers`,
     "description": `Professional airport shuttle service from ${suburb} to Auckland Airport. Reliable, affordable, door-to-door transfers.`,
     "url": `https://bookaride.co.nz/airport-shuttle-${suburbSlug}`,
-    "telephone": "+64 21 743 321",
     "address": {
       "@type": "PostalAddress",
       "addressLocality": suburb,
@@ -140,12 +139,12 @@ const SuburbAirportPage = ({
                     <ArrowRight className="ml-2 w-5 h-5" />
                   </Button>
                 </Link>
-                <a href="tel:+64217433321">
+                <Link to="/book-now">
                   <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10 px-8 py-6 text-lg w-full sm:w-auto">
-                    <Phone className="mr-2 w-5 h-5" />
-                    Call Now
+                    <Plane className="mr-2 w-5 h-5" />
+                    Book Now
                   </Button>
-                </a>
+                </Link>
               </div>
 
               {/* Trust Badges */}
@@ -367,12 +366,12 @@ const SuburbAirportPage = ({
                   <ArrowRight className="ml-2 w-5 h-5" />
                 </Button>
               </Link>
-              <a href="tel:+64217433321">
+              <Link to="/book-now">
                 <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10 px-8 py-6 text-lg">
-                  <Phone className="mr-2 w-5 h-5" />
-                  +64 21 743 321
+                  <Plane className="mr-2 w-5 h-5" />
+                  Book Now
                 </Button>
-              </a>
+              </Link>
             </div>
           </div>
         </section>

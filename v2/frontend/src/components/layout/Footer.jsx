@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Plane, Phone, Mail, MapPin } from 'lucide-react'
+import { Plane, Mail, MapPin } from 'lucide-react'
 
 const FOOTER_LINKS = {
   Services: [
@@ -39,9 +39,6 @@ export default function Footer() {
               private and shared shuttle rides at the best prices.
             </p>
             <div className="space-y-3 text-sm">
-              <a href="tel:+6421880793" className="flex items-center gap-2 hover:text-gold transition-colors">
-                <Phone className="w-4 h-4 text-gold" /> 021 880 793
-              </a>
               <a href="mailto:info@bookaride.co.nz" className="flex items-center gap-2 hover:text-gold transition-colors">
                 <Mail className="w-4 h-4 text-gold" /> info@bookaride.co.nz
               </a>

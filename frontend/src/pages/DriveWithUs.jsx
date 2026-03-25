@@ -66,11 +66,6 @@ const DriveWithUs = () => {
     { num: "03", title: "Start Driving", desc: "Get approved and start accepting bookings" }
   ];
 
-  const testimonials = [
-    { name: "Tony H.", location: "Orewa", quote: "Best decision I made. Flexible hours and great customers. The airport runs are gold.", rating: 5 },
-    { name: "Sarah M.", location: "Albany", quote: "Finally a company that respects drivers. Professional setup and reliable bookings.", rating: 5 },
-    { name: "Mike R.", location: "Whangaparaoa", quote: "I was doing rideshare before - this is so much better. Premium fares, premium service.", rating: 5 }
-  ];
 
   return (
     <div className="min-h-screen bg-white">
@@ -223,41 +218,33 @@ const DriveWithUs = () => {
         </div>
       </section>
 
-      {/* Testimonials */}
+      {/* Reviews */}
       <section className="py-24 bg-white">
-        <div className="max-w-6xl mx-auto px-4">
-          <div className="text-center mb-16">
-            <div className="inline-block px-4 py-1 rounded-full text-sm font-medium mb-4" style={{backgroundColor: `${goldColor}15`, color: goldDark}}>TESTIMONIALS</div>
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">What Our <span style={{color: goldColor}}>Drivers Say</span></h2>
+        <div className="max-w-md mx-auto px-4 text-center">
+          <div className="text-center mb-8">
+            <div className="inline-block px-4 py-1 rounded-full text-sm font-medium mb-4" style={{backgroundColor: `${goldColor}15`, color: goldDark}}>REVIEWS</div>
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">What Our <span style={{color: goldColor}}>Customers Say</span></h2>
           </div>
-          
-          <div className="grid md:grid-cols-3 gap-8">
-            {testimonials.map((testimonial, index) => (
-              <div 
-                key={index} 
-                className="bg-white rounded-3xl p-8 hover:shadow-xl transition-shadow"
-                style={{border: `2px solid ${goldColor}20`}}
-              >
-                <div className="flex gap-1 mb-6">
-                  {[...Array(testimonial.rating)].map((_, i) => (
-                    <Star key={i} className="w-6 h-6" style={{color: goldColor, fill: goldColor}} />
-                  ))}
-                </div>
-                <p className="text-gray-600 mb-6 text-lg italic">"{testimonial.quote}"</p>
-                <div className="flex items-center gap-4">
-                  <div 
-                    className="w-12 h-12 rounded-full flex items-center justify-center shadow-lg"
-                    style={{background: `linear-gradient(135deg, ${goldColor}, ${goldDark})`}}
-                  >
-                    <span className="text-white font-bold text-lg">{testimonial.name[0]}</span>
-                  </div>
-                  <div>
-                    <div className="font-bold text-gray-900">{testimonial.name}</div>
-                    <div className="text-sm text-gray-500">{testimonial.location}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
+          <div className="bg-gray-50 rounded-2xl p-8 shadow-lg" style={{border: `2px solid ${goldColor}20`}}>
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <img src="https://www.google.com/favicon.ico" alt="Google" className="w-8 h-8" loading="lazy" />
+              <span className="text-xl font-bold">Google Reviews</span>
+            </div>
+            <div className="flex justify-center mb-4">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <Star key={i} className="w-6 h-6" style={{color: goldColor, fill: goldColor}} />
+              ))}
+            </div>
+            <p className="text-gray-600 mb-6">Read verified reviews from our customers on Google.</p>
+            <a
+              href="https://www.google.com/search?q=book+a+ride+nz+auckland+reviews"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 text-black font-semibold px-8 py-3 rounded-lg transition-all duration-200 shadow-lg"
+              style={{background: `linear-gradient(135deg, ${goldColor}, ${goldLight})`}}
+            >
+              See Our Reviews on Google
+            </a>
           </div>
         </div>
       </section>

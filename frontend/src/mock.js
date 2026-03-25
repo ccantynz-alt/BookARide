@@ -31,29 +31,8 @@ export const services = [
   }
 ];
 
-export const testimonials = [
-  {
-    id: 1,
-    name: "Sarah Mitchell",
-    role: "Business Traveler",
-    content: "BookaRide has been my go-to service for airport transfers. Always on time, professional drivers, and comfortable vehicles. Highly recommended!",
-    rating: 5
-  },
-  {
-    id: 2,
-    name: "James Chen",
-    role: "Corporate Client",
-    content: "We use BookaRide for all our corporate transportation needs. Their reliability and professionalism are unmatched. Great service!",
-    rating: 5
-  },
-  {
-    id: 3,
-    name: "Emma Thompson",
-    role: "Regular Customer",
-    content: "Safe, comfortable, and always punctual. The drivers are friendly and the booking process is so easy. Five stars all the way!",
-    rating: 5
-  }
-];
+// Fabricated testimonials removed — only real, verified reviews should be shown.
+// See TestimonialsCarousel.jsx which links to real Google Reviews.
 
 export const howItWorksSteps = [
   {

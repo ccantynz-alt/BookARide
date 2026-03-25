@@ -14,11 +14,6 @@ const SharedRidePage = () => {
     "provider": {
       "@type": "LocalBusiness",
       "name": "Book A Ride NZ",
-      "aggregateRating": {
-        "@type": "AggregateRating",
-        "ratingValue": "4.9",
-        "reviewCount": "2847"
-      }
     },
     "areaServed": { "@type": "City", "name": "Auckland" },
     "offers": {

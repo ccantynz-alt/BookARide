@@ -306,7 +306,7 @@ export const SuburbPageSEO = () => {
             Book Your {suburb.name} Airport Shuttle Today
           </h2>
           <p className="text-xl mb-8 max-w-2xl mx-auto">
-            Join thousands of satisfied customers who trust us for their {suburb.name} to Auckland Airport transfers
+            Trust us for your {suburb.name} to Auckland Airport transfer. Reliable, professional, always on time.
           </p>
           <Button 
             size="lg"
