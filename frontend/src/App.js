@@ -1,131 +1,139 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import './App.css';
 import './i18n/config';
 import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
-import Home from './pages/Home';
-import Services from './pages/Services';
-import About from './pages/About';
-import Contact from './pages/Contact';
-import BookNow from './pages/BookNow';
-import PaymentSuccess from './pages/PaymentSuccess';
-import PayNow from './pages/PayNow';
-import HobbitonTransfers from './pages/HobbitonTransfers';
-import CruiseTransfers from './pages/CruiseTransfers';
-import SuburbPage from './pages/SuburbPageSEO';
-import SuburbLandingAdvanced from './pages/seo/SuburbLandingAdvanced';
-import SuburbsDirectory from './pages/SuburbsDirectory';
-import HotelPage from './pages/HotelPage';
-import HotelsDirectory from './pages/HotelsDirectory';
-import HibiscusCoastPage from './pages/HibiscusCoastPage';
-import InternationalHomePage from './pages/InternationalHomePage';
-import AucklandAirportInternational from './pages/international/AucklandAirportInternational';
-import HamiltonAirportInternational from './pages/international/HamiltonAirportInternational';
-import CorporateTransfers from './pages/international/CorporateTransfers';
-import GroupBookings from './pages/international/GroupBookings';
-// International Market Landing Pages
-import AustraliaLanding from './pages/markets/AustraliaLanding';
-import ChinaLanding from './pages/markets/ChinaLanding';
-import JapanLanding from './pages/markets/JapanLanding';
-import KoreaLanding from './pages/markets/KoreaLanding';
-import SingaporeLanding from './pages/markets/SingaporeLanding';
-import USALanding from './pages/markets/USALanding';
-import UKLanding from './pages/markets/UKLanding';
-import GermanyLanding from './pages/markets/GermanyLanding';
-import FranceLanding from './pages/markets/FranceLanding';
-import AdminLogin from './pages/AdminLogin';
-import AdminAuthCallback from './pages/AdminAuthCallback';
-import AdminForgotPassword from './pages/AdminForgotPassword';
-import AdminResetPassword from './pages/AdminResetPassword';
-import TermsAndConditions from './pages/TermsAndConditions';
-import WebsiteUsagePolicy from './pages/WebsiteUsagePolicy';
-import PrivacyPolicy from './pages/PrivacyPolicy';
 import siteConfig from './config/siteConfig';
-import AdminDashboard from './pages/AdminDashboard';
 import AdminErrorBoundary from './components/admin/AdminErrorBoundary';
 import RootErrorBoundary from './components/RootErrorBoundary';
-import SEODashboard from './pages/SEODashboard';
-import DriverLogin from './pages/DriverLogin';
-import DriverPortal from './pages/DriverPortal';
-import DriveWithUs from './pages/DriveWithUs';
 import { Toaster } from './components/ui/sonner';
 import BackToTop from './components/BackToTop';
 import AdminBackButton from './components/AdminBackButton';
 import InternationalBanner from './components/InternationalBanner';
 import LanguageRedirect from './components/LanguageRedirect';
 import { SUPPORTED_LANGUAGES } from './config/languages';
-// New SEO Pages
-import AucklandAirportShuttle from './pages/seo/AucklandAirportShuttle';
-import GlobalLanding from './pages/seo/GlobalLanding';
-import VisitorsHub from './pages/seo/VisitorsHub';
-import SEORoutePage from './pages/seo/SEORoutePage';
-import RoutePage from './pages/routes/RoutePage';
-import RoutesDirectory from './pages/routes/RoutesDirectory';
-import BlogIndex from './pages/blog/BlogIndex';
-import BlogPost from './pages/blog/BlogPost';
-import ComparisonPage from './pages/compare/ComparisonPage';
-import ComparisonDirectory from './pages/compare/ComparisonDirectory';
-// SEO Battle Pages
-import HibiscusCoastShuttlePage from './pages/seo/HibiscusCoastShuttlePage';
-import BookarideVsHibiscusShuttles from './pages/seo/BookarideVsHibiscusShuttles';
-import BestHibiscusCoastShuttle from './pages/seo/BestHibiscusCoastShuttle';
-import OrewaToAirportPage from './pages/seo/OrewaToAirportPage';
-import WhangaparoaAirportPage from './pages/seo/WhangaparoaAirportPage';
-import TakapunaAirportPage from './pages/seo/TakapunaAirportPage';
-import AlbanyAirportPage from './pages/seo/AlbanyAirportPage';
-import NorthShoreAirportPage from './pages/seo/NorthShoreAirportPage';
-import AirportToCityPage from './pages/seo/AirportToCityPage';
-import AfterpayPage from './pages/AfterpayPage';
-import ReferralProgram from './pages/ReferralProgram';
-import FlightTrackerPage from './pages/FlightTrackerPage';
-import TravelResourcesPage from './pages/TravelResourcesPage';
-import InternationalVisitors from './pages/InternationalVisitors';
-// Auckland CBD SEO Pages
-import CBDHubPage from './pages/seo/auckland-cbd/CBDHubPage';
-import PonsonbyAirportPage from './pages/seo/auckland-cbd/PonsonbyAirportPage';
-import ParnellAirportPage from './pages/seo/auckland-cbd/ParnellAirportPage';
-import NewmarketAirportPage from './pages/seo/auckland-cbd/NewmarketAirportPage';
-import RemueraAirportPage from './pages/seo/auckland-cbd/RemueraAirportPage';
-import MtEdenAirportPage from './pages/seo/auckland-cbd/MtEdenAirportPage';
-import GreyLynnAirportPage from './pages/seo/auckland-cbd/GreyLynnAirportPage';
-import EpsomAirportPage from './pages/seo/auckland-cbd/EpsomAirportPage';
-import MissionBayAirportPage from './pages/seo/auckland-cbd/MissionBayAirportPage';
-import ViaductAirportPage from './pages/seo/auckland-cbd/ViaductAirportPage';
-// Programmatic SEO Pages
-import SuburbTransferPage from './pages/seo/SuburbTransferPage';
-import CompetitorComparisonPage from './pages/seo/CompetitorComparisonPage';
-// NEW SEO Attack Pages - Top 5 Keywords
-import AirportShuttlePage from './pages/seo/AirportShuttlePage';
-import AirportShuttleServicePage from './pages/seo/AirportShuttleServicePage';
-import SharedRidePage from './pages/seo/SharedRidePage';
-import AucklandCBDToAirportPage from './pages/seo/AucklandCBDToAirportPage';
-// NEW: Mount Roskill Corridor SEO Pages
-import MountRoskillAirportPage from './pages/seo/MountRoskillAirportPage';
-import SandringhamAirportPage from './pages/seo/SandringhamAirportPage';
-import MountEdenAirportPage from './pages/seo/MountEdenAirportPage';
-import MountAlbertAirportPage from './pages/seo/MountAlbertAirportPage';
-import EpsomAirportPageNew from './pages/seo/EpsomAirportPage';
-import NewmarketAirportPageNew from './pages/seo/NewmarketAirportPage';
-import ParnellAirportPageNew from './pages/seo/ParnellAirportPage';
-import RemueraAirportPageNew from './pages/seo/RemueraAirportPage';
-import GreyLynnAirportPageNew from './pages/seo/GreyLynnAirportPage';
-import PonsonbyAirportPageNew from './pages/seo/PonsonbyAirportPage';
-// International Market Landing Pages
-import CountryLandingPage from './pages/international/CountryLandingPage';
-// Live GPS Tracking
-import DriverTracking from './pages/DriverTracking';
-import CustomerTracking from './pages/CustomerTracking';
-// Airport Pickup Guide
-import AirportPickupGuide from './pages/AirportPickupGuide';
-// Travel Agent Page
-import TravelAgents from './pages/TravelAgents';
-// Hotel Concierge Portal
-import HotelConciergePortal from './pages/HotelConciergePortal';
-import NotFound from './pages/NotFound';
-
 import AIChatbot from './components/AIChatbot';
 import MobileStickyButton from './components/MobileStickyButton';
+
+// Lazy-loaded page components
+const Home = React.lazy(() => import('./pages/Home'));
+const Services = React.lazy(() => import('./pages/Services'));
+const About = React.lazy(() => import('./pages/About'));
+const Contact = React.lazy(() => import('./pages/Contact'));
+const BookNow = React.lazy(() => import('./pages/BookNow'));
+const PaymentSuccess = React.lazy(() => import('./pages/PaymentSuccess'));
+const PayNow = React.lazy(() => import('./pages/PayNow'));
+const HobbitonTransfers = React.lazy(() => import('./pages/HobbitonTransfers'));
+const CruiseTransfers = React.lazy(() => import('./pages/CruiseTransfers'));
+const SuburbPage = React.lazy(() => import('./pages/SuburbPageSEO'));
+const SuburbLandingAdvanced = React.lazy(() => import('./pages/seo/SuburbLandingAdvanced'));
+const SuburbsDirectory = React.lazy(() => import('./pages/SuburbsDirectory'));
+const HotelPage = React.lazy(() => import('./pages/HotelPage'));
+const HotelsDirectory = React.lazy(() => import('./pages/HotelsDirectory'));
+const HibiscusCoastPage = React.lazy(() => import('./pages/HibiscusCoastPage'));
+const InternationalHomePage = React.lazy(() => import('./pages/InternationalHomePage'));
+const AucklandAirportInternational = React.lazy(() => import('./pages/international/AucklandAirportInternational'));
+const HamiltonAirportInternational = React.lazy(() => import('./pages/international/HamiltonAirportInternational'));
+const CorporateTransfers = React.lazy(() => import('./pages/international/CorporateTransfers'));
+const GroupBookings = React.lazy(() => import('./pages/international/GroupBookings'));
+// International Market Landing Pages
+const AustraliaLanding = React.lazy(() => import('./pages/markets/AustraliaLanding'));
+const ChinaLanding = React.lazy(() => import('./pages/markets/ChinaLanding'));
+const JapanLanding = React.lazy(() => import('./pages/markets/JapanLanding'));
+const KoreaLanding = React.lazy(() => import('./pages/markets/KoreaLanding'));
+const SingaporeLanding = React.lazy(() => import('./pages/markets/SingaporeLanding'));
+const USALanding = React.lazy(() => import('./pages/markets/USALanding'));
+const UKLanding = React.lazy(() => import('./pages/markets/UKLanding'));
+const GermanyLanding = React.lazy(() => import('./pages/markets/GermanyLanding'));
+const FranceLanding = React.lazy(() => import('./pages/markets/FranceLanding'));
+const AdminLogin = React.lazy(() => import('./pages/AdminLogin'));
+const AdminAuthCallback = React.lazy(() => import('./pages/AdminAuthCallback'));
+const AdminForgotPassword = React.lazy(() => import('./pages/AdminForgotPassword'));
+const AdminResetPassword = React.lazy(() => import('./pages/AdminResetPassword'));
+const TermsAndConditions = React.lazy(() => import('./pages/TermsAndConditions'));
+const WebsiteUsagePolicy = React.lazy(() => import('./pages/WebsiteUsagePolicy'));
+const PrivacyPolicy = React.lazy(() => import('./pages/PrivacyPolicy'));
+const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard'));
+const SEODashboard = React.lazy(() => import('./pages/SEODashboard'));
+const DriverLogin = React.lazy(() => import('./pages/DriverLogin'));
+const DriverPortal = React.lazy(() => import('./pages/DriverPortal'));
+const DriveWithUs = React.lazy(() => import('./pages/DriveWithUs'));
+// New SEO Pages
+const AucklandAirportShuttle = React.lazy(() => import('./pages/seo/AucklandAirportShuttle'));
+const GlobalLanding = React.lazy(() => import('./pages/seo/GlobalLanding'));
+const VisitorsHub = React.lazy(() => import('./pages/seo/VisitorsHub'));
+const SEORoutePage = React.lazy(() => import('./pages/seo/SEORoutePage'));
+const RoutePage = React.lazy(() => import('./pages/routes/RoutePage'));
+const RoutesDirectory = React.lazy(() => import('./pages/routes/RoutesDirectory'));
+const BlogIndex = React.lazy(() => import('./pages/blog/BlogIndex'));
+const BlogPost = React.lazy(() => import('./pages/blog/BlogPost'));
+const ComparisonPage = React.lazy(() => import('./pages/compare/ComparisonPage'));
+const ComparisonDirectory = React.lazy(() => import('./pages/compare/ComparisonDirectory'));
+// SEO Battle Pages
+const HibiscusCoastShuttlePage = React.lazy(() => import('./pages/seo/HibiscusCoastShuttlePage'));
+const BookarideVsHibiscusShuttles = React.lazy(() => import('./pages/seo/BookarideVsHibiscusShuttles'));
+const BestHibiscusCoastShuttle = React.lazy(() => import('./pages/seo/BestHibiscusCoastShuttle'));
+const OrewaToAirportPage = React.lazy(() => import('./pages/seo/OrewaToAirportPage'));
+const WhangaparoaAirportPage = React.lazy(() => import('./pages/seo/WhangaparoaAirportPage'));
+const TakapunaAirportPage = React.lazy(() => import('./pages/seo/TakapunaAirportPage'));
+const AlbanyAirportPage = React.lazy(() => import('./pages/seo/AlbanyAirportPage'));
+const NorthShoreAirportPage = React.lazy(() => import('./pages/seo/NorthShoreAirportPage'));
+const AirportToCityPage = React.lazy(() => import('./pages/seo/AirportToCityPage'));
+const AfterpayPage = React.lazy(() => import('./pages/AfterpayPage'));
+const ReferralProgram = React.lazy(() => import('./pages/ReferralProgram'));
+const FlightTrackerPage = React.lazy(() => import('./pages/FlightTrackerPage'));
+const TravelResourcesPage = React.lazy(() => import('./pages/TravelResourcesPage'));
+const InternationalVisitors = React.lazy(() => import('./pages/InternationalVisitors'));
+// Auckland CBD SEO Pages
+const CBDHubPage = React.lazy(() => import('./pages/seo/auckland-cbd/CBDHubPage'));
+const PonsonbyAirportPage = React.lazy(() => import('./pages/seo/auckland-cbd/PonsonbyAirportPage'));
+const ParnellAirportPage = React.lazy(() => import('./pages/seo/auckland-cbd/ParnellAirportPage'));
+const NewmarketAirportPage = React.lazy(() => import('./pages/seo/auckland-cbd/NewmarketAirportPage'));
+const RemueraAirportPage = React.lazy(() => import('./pages/seo/auckland-cbd/RemueraAirportPage'));
+const MtEdenAirportPage = React.lazy(() => import('./pages/seo/auckland-cbd/MtEdenAirportPage'));
+const GreyLynnAirportPage = React.lazy(() => import('./pages/seo/auckland-cbd/GreyLynnAirportPage'));
+const EpsomAirportPage = React.lazy(() => import('./pages/seo/auckland-cbd/EpsomAirportPage'));
+const MissionBayAirportPage = React.lazy(() => import('./pages/seo/auckland-cbd/MissionBayAirportPage'));
+const ViaductAirportPage = React.lazy(() => import('./pages/seo/auckland-cbd/ViaductAirportPage'));
+// Programmatic SEO Pages
+const SuburbTransferPage = React.lazy(() => import('./pages/seo/SuburbTransferPage'));
+const CompetitorComparisonPage = React.lazy(() => import('./pages/seo/CompetitorComparisonPage'));
+// NEW SEO Attack Pages - Top 5 Keywords
+const AirportShuttlePage = React.lazy(() => import('./pages/seo/AirportShuttlePage'));
+const AirportShuttleServicePage = React.lazy(() => import('./pages/seo/AirportShuttleServicePage'));
+const SharedRidePage = React.lazy(() => import('./pages/seo/SharedRidePage'));
+const AucklandCBDToAirportPage = React.lazy(() => import('./pages/seo/AucklandCBDToAirportPage'));
+// NEW: Mount Roskill Corridor SEO Pages
+const MountRoskillAirportPage = React.lazy(() => import('./pages/seo/MountRoskillAirportPage'));
+const SandringhamAirportPage = React.lazy(() => import('./pages/seo/SandringhamAirportPage'));
+const MountEdenAirportPage = React.lazy(() => import('./pages/seo/MountEdenAirportPage'));
+const MountAlbertAirportPage = React.lazy(() => import('./pages/seo/MountAlbertAirportPage'));
+const EpsomAirportPageNew = React.lazy(() => import('./pages/seo/EpsomAirportPage'));
+const NewmarketAirportPageNew = React.lazy(() => import('./pages/seo/NewmarketAirportPage'));
+const ParnellAirportPageNew = React.lazy(() => import('./pages/seo/ParnellAirportPage'));
+const RemueraAirportPageNew = React.lazy(() => import('./pages/seo/RemueraAirportPage'));
+const GreyLynnAirportPageNew = React.lazy(() => import('./pages/seo/GreyLynnAirportPage'));
+const PonsonbyAirportPageNew = React.lazy(() => import('./pages/seo/PonsonbyAirportPage'));
+// International Market Landing Pages
+const CountryLandingPage = React.lazy(() => import('./pages/international/CountryLandingPage'));
+// Live GPS Tracking
+const DriverTracking = React.lazy(() => import('./pages/DriverTracking'));
+const CustomerTracking = React.lazy(() => import('./pages/CustomerTracking'));
+// Airport Pickup Guide
+const AirportPickupGuide = React.lazy(() => import('./pages/AirportPickupGuide'));
+// Travel Agent Page
+const TravelAgents = React.lazy(() => import('./pages/TravelAgents'));
+// Hotel Concierge Portal
+const HotelConciergePortal = React.lazy(() => import('./pages/HotelConciergePortal'));
+const NotFound = React.lazy(() => import('./pages/NotFound'));
+
+// Loading spinner shown while lazy components load
+const LoadingFallback = () => (
+  <div className="flex items-center justify-center min-h-screen">
+    <div className="w-8 h-8 border-4 border-gold border-t-transparent rounded-full animate-spin"></div>
+  </div>
+);
 
 // Layout component with Header/Footer
 const MainLayout = () => (
@@ -253,7 +261,7 @@ function App() {
     { path: "epsom-to-airport", element: <EpsomAirportPage /> },
     { path: "mission-bay-to-airport", element: <MissionBayAirportPage /> },
     { path: "viaduct-to-airport", element: <ViaductAirportPage /> },
-    // Additional Auckland CBD & Inner Suburb Pages  
+    // Additional Auckland CBD & Inner Suburb Pages
     { path: "britomart-to-auckland-airport", element: <SuburbTransferPage /> },
     { path: "freemans-bay-to-auckland-airport", element: <SuburbTransferPage /> },
     { path: "herne-bay-to-auckland-airport", element: <SuburbTransferPage /> },
@@ -338,55 +346,57 @@ function App() {
       <div className="App">
         <BrowserRouter>
           <LanguageRedirect>
-            <Routes>
-            {/* Driver Routes (No Header/Footer) */}
-            <Route path="/driver/login" element={<DriverLogin />} />
-            <Route path="/driver/portal" element={<DriverPortal />} />
-            <Route path="/drive-with-us" element={<DriveWithUs />} />
-            
-            {/* Live GPS Tracking Routes (No Header/Footer) */}
-            <Route path="/track/driver/:sessionId" element={<DriverTracking />} />
-            <Route path="/track/:trackingRef" element={<CustomerTracking />} />
-            
-            {/* Admin Routes (No language prefix) */}
-            <Route path="/admin/login" element={<AdminLogin />} />
-            <Route path="/admin/auth/callback" element={<AdminAuthCallback />} />
-            <Route path="/admin/forgot-password" element={<AdminForgotPassword />} />
-            <Route path="/admin/reset-password" element={<AdminResetPassword />} />
-            <Route path="/admin/dashboard" element={<AdminErrorBoundary><AdminDashboard /></AdminErrorBoundary>} />
-            <Route path="/admin/seo" element={<SEODashboard />} />
-            
-            {/* Language-prefixed routes (zh, ja, ko, es, fr) */}
-            {languagePrefixes.map(lang => (
-              <Route key={lang} path={`/${lang}`} element={<MainLayout />}>
+            <Suspense fallback={<LoadingFallback />}>
+              <Routes>
+              {/* Driver Routes (No Header/Footer) */}
+              <Route path="/driver/login" element={<DriverLogin />} />
+              <Route path="/driver/portal" element={<DriverPortal />} />
+              <Route path="/drive-with-us" element={<DriveWithUs />} />
+
+              {/* Live GPS Tracking Routes (No Header/Footer) */}
+              <Route path="/track/driver/:sessionId" element={<DriverTracking />} />
+              <Route path="/track/:trackingRef" element={<CustomerTracking />} />
+
+              {/* Admin Routes (No language prefix) */}
+              <Route path="/admin/login" element={<AdminLogin />} />
+              <Route path="/admin/auth/callback" element={<AdminAuthCallback />} />
+              <Route path="/admin/forgot-password" element={<AdminForgotPassword />} />
+              <Route path="/admin/reset-password" element={<AdminResetPassword />} />
+              <Route path="/admin/dashboard" element={<AdminErrorBoundary><AdminDashboard /></AdminErrorBoundary>} />
+              <Route path="/admin/seo" element={<SEODashboard />} />
+
+              {/* Language-prefixed routes (zh, ja, ko, es, fr) */}
+              {languagePrefixes.map(lang => (
+                <Route key={lang} path={`/${lang}`} element={<MainLayout />}>
+                  {commonRoutes.map((route, idx) => (
+                    <Route
+                      key={`${lang}-${idx}`}
+                      index={route.index}
+                      path={route.path}
+                      element={route.element}
+                    />
+                  ))}
+                </Route>
+              ))}
+
+              {/* Default English routes (no prefix) */}
+              <Route path="/" element={<MainLayout />}>
                 {commonRoutes.map((route, idx) => (
-                  <Route 
-                    key={`${lang}-${idx}`}
+                  <Route
+                    key={`en-${idx}`}
                     index={route.index}
                     path={route.path}
                     element={route.element}
                   />
                 ))}
               </Route>
-            ))}
-            
-            {/* Default English routes (no prefix) */}
-            <Route path="/" element={<MainLayout />}>
-              {commonRoutes.map((route, idx) => (
-                <Route
-                  key={`en-${idx}`}
-                  index={route.index}
-                  path={route.path}
-                  element={route.element}
-                />
-              ))}
-            </Route>
 
-            {/* 404 Catch-all — must be LAST */}
-            <Route path="*" element={<MainLayout />}>
-              <Route path="*" element={<NotFound />} />
-            </Route>
-          </Routes>
+              {/* 404 Catch-all — must be LAST */}
+              <Route path="*" element={<MainLayout />}>
+                <Route path="*" element={<NotFound />} />
+              </Route>
+            </Routes>
+            </Suspense>
             <Toaster />
           </LanguageRedirect>
         </BrowserRouter>
