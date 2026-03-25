@@ -2618,7 +2618,20 @@ async def update_booking(booking_id: str, update_data: dict, current_admin: dict
             except Exception as cal_error:
                 logger.warning(f" Failed to update calendar event: {str(cal_error)}")
                 # Don't fail the whole update if calendar sync fails
-        
+
+        # Send post-trip thank-you email when status is changed to "completed"
+        if update_data.get('status') == 'completed':
+            try:
+                updated_booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+                if updated_booking and not updated_booking.get('postTripEmailSent'):
+                    email_ok = send_post_trip_email(updated_booking)
+                    if email_ok:
+                        await mark_post_trip_email_sent(booking_id)
+                        logger.info(f"Post-trip email sent for manually completed booking {booking_id}")
+            except Exception as email_err:
+                logger.warning(f"Failed to send post-trip email for booking {booking_id}: {email_err}")
+                # Don't fail the update if email fails
+
         return {"message": "Booking updated successfully"}
     except HTTPException:
         raise
@@ -12641,6 +12654,176 @@ async def get_review_stats():
         return {"review_count": 287, "average_rating": 4.9, "updated_at": None}
 
 
+# ==================== AUTO-COMPLETE PAST BOOKINGS ====================
+# Automatically marks confirmed bookings as "completed" once the trip date has passed
+# Runs daily at 10 PM NZ time (after all trips for the day are done)
+
+async def auto_complete_past_bookings():
+    """
+    Automatically mark confirmed bookings as 'completed' when the trip date has passed
+    and payment was handled. Runs daily at 10 PM NZ time.
+
+    Criteria:
+    - status is 'confirmed'
+    - date is today or earlier (trip has passed)
+    - payment_status is 'paid', 'pay-on-pickup', 'cash', or 'bank-transfer'
+
+    After marking as completed, sends a post-trip thank-you email with Google Review link.
+    """
+    try:
+        nz_tz = pytz.timezone('Pacific/Auckland')
+        now_nz = datetime.now(nz_tz)
+        today_str = now_nz.strftime('%Y-%m-%d')
+
+        logger.info(f"[Auto-Complete] Starting - NZ time: {now_nz.strftime('%Y-%m-%d %H:%M')}")
+
+        valid_payment_statuses = ['paid', 'pay-on-pickup', 'cash', 'bank-transfer']
+
+        # Find all confirmed bookings with valid payment that are due or past
+        confirmed_bookings = await db.bookings.find({
+            'status': 'confirmed'
+        }, {'_id': 0}).to_list(5000)
+
+        completed_count = 0
+        skipped_count = 0
+        email_sent_count = 0
+
+        for booking in confirmed_bookings:
+            try:
+                booking_date = booking.get('date', '')
+                payment_status = booking.get('payment_status', '')
+
+                # Skip if no date or date is in the future
+                if not booking_date or booking_date > today_str:
+                    skipped_count += 1
+                    continue
+
+                # Skip if payment was not handled
+                if payment_status not in valid_payment_statuses:
+                    skipped_count += 1
+                    continue
+
+                # For return bookings, check the return date instead
+                is_return = booking.get('bookReturn', False)
+                return_date = booking.get('returnDate', '')
+                if is_return and return_date and return_date > today_str:
+                    # Return trip hasn't happened yet
+                    skipped_count += 1
+                    continue
+
+                booking_id = booking.get('id')
+
+                # Update status to completed
+                result = await db.bookings.update_one(
+                    {"id": booking_id, "status": "confirmed"},
+                    {"$set": {
+                        "status": "completed",
+                        "completedAt": datetime.now(timezone.utc).isoformat(),
+                        "completedBy": "auto-complete"
+                    }}
+                )
+
+                if result.matched_count > 0:
+                    completed_count += 1
+
+                    if completed_count <= 10:
+                        logger.info(
+                            f"[Auto-Complete] Completed: Ref #{booking.get('referenceNumber', 'N/A')} "
+                            f"- {booking.get('name', 'Unknown')} (date: {booking_date})"
+                        )
+
+                    # Send post-trip thank-you email
+                    if not booking.get('postTripEmailSent'):
+                        try:
+                            email_ok = send_post_trip_email(booking)
+                            if email_ok:
+                                await mark_post_trip_email_sent(booking_id)
+                                email_sent_count += 1
+                        except Exception as email_err:
+                            logger.error(f"[Auto-Complete] Post-trip email error for {booking_id}: {email_err}")
+                else:
+                    skipped_count += 1
+
+            except Exception as e:
+                logger.error(f"[Auto-Complete] Error processing booking {booking.get('id', 'unknown')}: {str(e)}")
+                continue
+
+        logger.info(
+            f"[Auto-Complete] Done - Completed: {completed_count}, "
+            f"Emails sent: {email_sent_count}, Skipped: {skipped_count}"
+        )
+        return {"completed": completed_count, "emails_sent": email_sent_count, "skipped": skipped_count, "date": today_str}
+
+    except Exception as e:
+        logger.error(f"[Auto-Complete] Error: {str(e)}")
+        return {"completed": 0, "error": str(e)}
+
+
+async def send_pending_post_trip_emails():
+    """
+    Catch-up job: sends post-trip thank-you emails for any completed bookings
+    that haven't received one yet. Runs at 10:30 PM NZ (30 min after auto-complete).
+
+    This catches bookings that were manually marked as completed by admin
+    or where the email failed during auto-complete.
+    """
+    try:
+        nz_tz = pytz.timezone('Pacific/Auckland')
+        now_nz = datetime.now(nz_tz)
+
+        logger.info(f"[Post-Trip Catchup] Starting - NZ time: {now_nz.strftime('%Y-%m-%d %H:%M')}")
+
+        # Find completed bookings that never got a post-trip email
+        pending_bookings = await db.bookings.find({
+            'status': 'completed',
+            '$or': [
+                {'postTripEmailSent': {'$exists': False}},
+                {'postTripEmailSent': False}
+            ]
+        }, {'_id': 0}).to_list(500)
+
+        sent_count = 0
+        failed_count = 0
+
+        for booking in pending_bookings:
+            try:
+                booking_id = booking.get('id')
+                email = booking.get('email', '').strip()
+
+                if not email or '@' not in email:
+                    continue
+
+                email_ok = send_post_trip_email(booking)
+                if email_ok:
+                    await mark_post_trip_email_sent(booking_id)
+                    sent_count += 1
+                else:
+                    failed_count += 1
+
+            except Exception as e:
+                logger.error(f"[Post-Trip Catchup] Error for booking {booking.get('id', 'unknown')}: {e}")
+                failed_count += 1
+                continue
+
+        logger.info(f"[Post-Trip Catchup] Done - Sent: {sent_count}, Failed: {failed_count}")
+        return {"sent": sent_count, "failed": failed_count}
+
+    except Exception as e:
+        logger.error(f"[Post-Trip Catchup] Error: {str(e)}")
+        return {"sent": 0, "error": str(e)}
+
+
+@api_router.post("/admin/trigger-auto-complete")
+async def trigger_auto_complete(current_admin: dict = Depends(get_current_admin)):
+    """Manually trigger the auto-complete process."""
+    try:
+        result = await auto_complete_past_bookings()
+        return result
+    except Exception as e:
+        logger.error(f"Error running auto-complete: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ==================== AUTO-ARCHIVE SYSTEM ====================
 # Automatically archives completed bookings after trip date has passed
 
@@ -14010,6 +14193,26 @@ async def startup_event():
         misfire_grace_time=3600 * 4
     )
     
+    # AUTO-COMPLETE PAST BOOKINGS - Runs at 10 PM NZ time (after all trips for the day)
+    scheduler.add_job(
+        auto_complete_past_bookings,
+        CronTrigger(hour=22, minute=0, timezone=nz_tz),
+        id='auto_complete_past_bookings',
+        name='Auto-complete confirmed bookings after trip date',
+        replace_existing=True,
+        misfire_grace_time=3600 * 4
+    )
+
+    # POST-TRIP EMAIL CATCHUP - Runs at 10:30 PM NZ (30 min after auto-complete)
+    scheduler.add_job(
+        send_pending_post_trip_emails,
+        CronTrigger(hour=22, minute=30, timezone=nz_tz),
+        id='post_trip_email_catchup',
+        name='Send pending post-trip thank-you emails',
+        replace_existing=True,
+        misfire_grace_time=3600 * 4
+    )
+
     # AUTO-ARCHIVE COMPLETED BOOKINGS - Runs at 2 AM NZ time
     scheduler.add_job(
         auto_archive_completed_bookings,
@@ -14049,6 +14252,8 @@ async def startup_event():
     logger.info("    Return alerts: Every 15 minutes")
     logger.info("    Daily error check: 6:00 AM NZ daily")
     logger.info("    Auto-archive: 2:00 AM NZ daily")
+    logger.info("    Auto-complete: 10:00 PM NZ daily")
+    logger.info("    Post-trip email catchup: 10:30 PM NZ daily")
     logger.info("    Content freshness: 4:00 AM NZ daily")
     logger.info("    Startup reminder check (running now...)")
     
