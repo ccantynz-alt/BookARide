@@ -3915,7 +3915,22 @@ RESPONSE RULES:
 - NEVER make up booking details or prices you're unsure about
 - NEVER share other customers' information
 - Sign off as "BookaRide Support Team"
-- If the question is complex or you can't fully answer it, say the team will follow up within 24 hours"""
+- If the question is complex or you can't fully answer it, say the team will follow up within 24 hours
+
+ACTIONS YOU CAN TAKE:
+You can take actions by including special tags in your response. These tags will be removed before sending to the customer, so write your reply as if the tags are not there. Only include a tag when you are confident the action is appropriate.
+
+Available actions:
+- [ACTION:RESEND_CONFIRMATION:REF123] — Resend booking confirmation email and SMS. Use this when the customer says they did not receive their confirmation, asks you to resend it, or says "send again". Replace REF123 with the actual booking reference number from their booking history.
+- [ACTION:FLAG_CANCELLATION:REF123] — Flag a booking for cancellation (admin will review and process). Use when the customer asks to cancel a booking. Replace REF123 with their booking reference. Tell the customer their cancellation request has been noted and the team will confirm shortly.
+- [ACTION:FLAG_MODIFICATION:REF123:description of changes] — Flag a booking for modification. Use when the customer wants to change the date, time, pickup/dropoff address, or passenger count. Include a brief description of the requested changes after the second colon. Tell the customer their change request has been noted and the team will confirm shortly.
+- [ACTION:URGENT_ESCALATE] — Immediately alert the admin via SMS. Use this ONLY when the situation is genuinely urgent: the customer is stranded, at the airport with no driver, their ride is late, or they are clearly upset/distressed about an imminent booking. Do NOT use for routine questions.
+
+Rules for actions:
+- You may include multiple action tags if appropriate (e.g. flag modification AND escalate if urgent).
+- Only use a booking reference that appears in the customer's booking history shown to you. Never guess a reference.
+- Always tell the customer what you have done: "I have resent your confirmation", "I have flagged your cancellation request for our team", etc.
+- For cancellations and modifications, always explain that the team will process their request shortly and they can also call 021 743 321 for immediate assistance."""
 
     user_message = f"""Customer email received:
 
@@ -4010,40 +4025,50 @@ async def handle_incoming_email(request: Request):
             return {"status": "skipped", "reason": "rate limited"}
 
         # Look up customer's booking history for context
+        # Prioritise upcoming bookings (most likely what they are emailing about)
         booking_context = ""
+        customer_bookings_list = []
         try:
-            customer_bookings = await db.bookings.find(
-                {"$or": [
-                    {"email": {"$regex": reply_to_email, "$options": "i"}},
-                    {"phone": {"$regex": reply_to_email, "$options": "i"}}
+            today_str = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+
+            # Fetch upcoming bookings first (sorted by date ascending — nearest first)
+            upcoming_bookings = await db.bookings.find(
+                {"$and": [
+                    {"$or": [
+                        {"email": {"$regex": reply_to_email, "$options": "i"}},
+                        {"phone": {"$regex": reply_to_email, "$options": "i"}}
+                    ]},
+                    {"date": {"$gte": today_str}}
                 ]},
                 {"_id": 0}
-            ).sort("createdAt", -1).limit(5).to_list(5)
+            ).sort("date", 1).limit(5).to_list(5)
 
-            if customer_bookings:
-                booking_context = f"\n\nThis customer has {len(customer_bookings)} recent booking(s):\n"
-                for b in customer_bookings:
-                    ref = b.get('referenceNumber', 'N/A')
-                    date = b.get('date', 'N/A')
-                    time = b.get('time', 'N/A')
-                    pickup = b.get('pickupAddress', 'N/A')
-                    dropoff = b.get('dropoffAddress', 'N/A')
-                    status = b.get('status', 'N/A')
-                    payment = b.get('payment_status', b.get('paymentStatus', 'N/A'))
-                    total = b.get('totalPrice', b.get('pricing', {}).get('totalPrice', 'N/A'))
-                    passengers = b.get('passengers', 'N/A')
-                    flight = b.get('flightNumber', b.get('flightArrivalNumber', ''))
-                    return_date = b.get('returnDate', '')
-                    return_time = b.get('returnTime', '')
-                    booking_context += (
-                        f"  - Ref #{ref}: {date} at {time}, {pickup} → {dropoff}, "
-                        f"{passengers} pax, status={status}, payment={payment}, total=${total}"
-                    )
-                    if flight:
-                        booking_context += f", flight={flight}"
-                    if return_date:
-                        booking_context += f", return={return_date} {return_time}"
-                    booking_context += "\n"
+            # Also fetch recent past bookings (in case they are asking about a completed trip)
+            past_bookings = await db.bookings.find(
+                {"$and": [
+                    {"$or": [
+                        {"email": {"$regex": reply_to_email, "$options": "i"}},
+                        {"phone": {"$regex": reply_to_email, "$options": "i"}}
+                    ]},
+                    {"date": {"$lt": today_str}}
+                ]},
+                {"_id": 0}
+            ).sort("date", -1).limit(3).to_list(3)
+
+            customer_bookings_list = upcoming_bookings + past_bookings
+
+            if customer_bookings_list:
+                upcoming_count = len(upcoming_bookings)
+                past_count = len(past_bookings)
+                booking_context = f"\n\nThis customer has {upcoming_count} upcoming and {past_count} past booking(s):\n"
+                if upcoming_bookings:
+                    booking_context += "UPCOMING BOOKINGS (most likely what they are asking about):\n"
+                for b in upcoming_bookings:
+                    booking_context += _format_booking_context_line(b)
+                if past_bookings:
+                    booking_context += "RECENT PAST BOOKINGS:\n"
+                for b in past_bookings:
+                    booking_context += _format_booking_context_line(b)
             else:
                 booking_context = "\n\nNo bookings found for this email address."
         except Exception as e:
