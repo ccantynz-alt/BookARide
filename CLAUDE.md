@@ -204,6 +204,67 @@ Multiple pickup was removed from ALL forms — customer AND admin. Keep it simpl
 - Falls back gracefully to static auto-reply if Claude API is down or unconfigured
 - Admin is always notified of incoming support emails
 
+### 12. AI Automation Agents (2026-03-25)
+
+The system now runs multiple AI-powered and scheduled automation agents. All are defined in `backend/server.py`.
+
+**Active Agents:**
+
+| # | Agent | Endpoint / Trigger | Details |
+|---|-------|--------------------|---------|
+| 1 | **AI Chatbot** | `POST /api/chatbot/message` | Customer-facing chat powered by Claude Haiku. Rate limited to 20 messages per hour per session. Provides booking help, pricing guidance, and company info. |
+| 2 | **AI Email Support** | `POST /api/email/incoming` (Mailgun webhook) | Already documented in section 11. Now also supports action capabilities: resend confirmation, flag cancellation request, flag modification request, and urgent escalation to admin. |
+| 3 | **Auto-complete Bookings** | Scheduled daily at 10 PM NZ time | Automatically marks past confirmed+paid bookings as `completed`. Prevents stale bookings sitting in active list forever. |
+| 4 | **Post-trip Thank You Email** | Triggered when booking status changes to `completed` | Sends a thank-you email to the customer with a Google Review link. Encourages organic reviews. |
+| 5 | **Daily Business Summary** | Scheduled daily at 6 PM NZ time | Emails admin with today's booking stats (count, revenue, status breakdown) and tomorrow's upcoming bookings list. |
+| 6 | **Payment Follow-up** | Scheduled every 2 hours | Finds unpaid Stripe bookings between 4-48 hours old and sends a payment reminder email to the customer. |
+| 7 | **Booking Conflict Detection** | Triggered on every new booking creation | Checks for driver double-bookings (overlapping pickup times for the same assigned driver). Alerts admin if a conflict is detected. |
+| 8 | **Weekly Performance Report** | Scheduled Sunday 8 AM NZ time | Emails admin a weekly summary: total bookings, revenue, completion rate, popular routes, and driver performance. |
+
+**Rules for ALL automation agents:**
+- All AI agents use `claude-haiku-4-5-20251001` — **NEVER** use GPT, OpenAI, or any other LLM provider
+- All emails sent via Mailgun — **NEVER** use SMTP, SendGrid, or any other email provider
+- All scheduled agents must have duplicate prevention flags (e.g., check if already sent today before sending again)
+- All agents must log errors with `logger.error(f"CRITICAL: ...")` — never swallow errors silently
+- **NEVER** remove or disable an automation agent without explicit owner approval
+- **NEVER** change rate limits, schedules, or thresholds without explicit owner approval
+
+### 13. Admin Dashboard Tabs (2026-03-25)
+
+The admin dashboard (`AdminDashboard.jsx`) has 10 active tabs. These are the canonical tabs — do not remove or reorder without owner approval.
+
+| # | Tab Name | Component | Icon (lucide-react) |
+|---|----------|-----------|---------------------|
+| 1 | Bookings | (inline in AdminDashboard) | Main tab |
+| 2 | Deleted | (inline in AdminDashboard) | Trash-related |
+| 3 | Archive | (inline in AdminDashboard) | Archive |
+| 4 | Customers | (inline in AdminDashboard) | Users |
+| 5 | Import | (inline in AdminDashboard) | Upload |
+| 6 | Cockpit | (inline in AdminDashboard) | Dashboard/Gauge |
+| 7 | Drivers | `DriversTab` component | Car/User |
+| 8 | Applications | `DriverApplicationsTab` component | ClipboardList |
+| 9 | Analytics | `AnalyticsTab` component | BarChart |
+| 10 | Marketing | `LandingPagesTab` component | Megaphone |
+
+**Rules:**
+- **NEVER** remove existing tabs without explicit owner approval
+- All new tabs must have an icon from `lucide-react`
+- Component files: `DriversTab.jsx`, `DriverApplicationsTab.jsx`, `AnalyticsTab.jsx`, `LandingPagesTab.jsx`
+- Every tab must have both a `TabsTrigger` button AND a `TabsContent` panel — if either is missing, the tab is invisible or broken
+- **NEVER** re-add the shuttle tab or `Bus` icon (see Locked Decision #8)
+
+### 14. Parallel Checking Rule (2026-03-25)
+
+**When fixing any form (customer-facing OR admin), the agent MUST check ALL forms that share similar functionality in the SAME session.**
+
+This means:
+- **NEVER** fix `BookNow.jsx` without also checking `CreateBookingModal.jsx`, `EditBookingModal.jsx`, and AdminDashboard inline editing
+- **NEVER** fix `CreateBookingModal.jsx` without also checking `BookNow.jsx`, `EditBookingModal.jsx`, and AdminDashboard inline editing
+- **NEVER** fix `EditBookingModal.jsx` without also checking `BookNow.jsx`, `CreateBookingModal.jsx`, and AdminDashboard inline editing
+- The same bug pattern (e.g., wrong field name, missing validation, broken dropdown) is almost always present in ALL forms — fix them all at once
+
+This rule exists because agents repeatedly fixed one form while leaving the identical bug in 2-3 other forms, causing the same issue to resurface in different contexts.
+
 ---
 
 ## MANDATORY AUTOMATED CHECKS — RUN BEFORE EVERY COMMIT
@@ -565,3 +626,10 @@ No exceptions. If you add a new payment path, it must include all 4.
 | 2026-03-21 | Duplicate route unreachable page      | Two routes for same path, first match shadowed dedicated page |
 | 2026-03-24 | Backend won't start on Render          | Smart/curly quotes (U+2018/U+2019) in server.py caused Python SyntaxError — invisible in editors, no agent caught it |
 | 2026-03-24 | Maps diagnostic endpoint unreachable   | Backend crash meant new endpoint couldn't be tested — blocked debugging of month-old autocomplete issue |
+| 2026-03-25 | Customer search dropdown blank in admin | `database.py` `_apply_project()` didn't handle exclusion-only projections |
+| 2026-03-25 | Address autocomplete unselectable in admin dialogs | Radix Dialog dismissed on portal dropdown click — fixed with `elementFromPoint` |
+| 2026-03-25 | 4 admin tabs invisible (Drivers, Applications, Analytics, Marketing) | Components built but no `TabsTrigger` buttons added |
+| 2026-03-25 | Chatbot returned static text | Never wired to Claude API despite system prompt existing |
+| 2026-03-25 | Fake testimonials and review counts across 30+ files | Fabricated stats violated honesty rules |
+| 2026-03-25 | 20 ghost URLs in sitemap | Pages listed in `sitemap.xml` had no matching routes |
+| 2026-03-25 | Open admin registration | `POST /api/admin/register` had no auth requirement |
