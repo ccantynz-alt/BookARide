@@ -3844,6 +3844,182 @@ async def _get_mock_flight_data(fn: str):
 # AI EMAIL AUTO-RESPONDER
 # ============================================
 
+def _format_booking_context_line(b: dict) -> str:
+    """Format a single booking into a readable context line for the AI agent."""
+    ref = get_booking_reference(b)
+    date = format_date_ddmmyyyy(b.get('date', 'N/A'))
+    time = format_time_ampm(b.get('time', 'N/A'))
+    pickup = b.get('pickupAddress', 'N/A')
+    dropoff = b.get('dropoffAddress', 'N/A')
+    status = b.get('status', 'unknown')
+    payment = b.get('payment_status', b.get('paymentStatus', 'unknown'))
+    price = b.get('totalPrice', b.get('price', 'N/A'))
+    service = b.get('serviceType', 'N/A')
+    name = b.get('name', 'N/A')
+    passengers = b.get('passengers', 1)
+    trip_type = b.get('tripType', 'one-way')
+    return (
+        f"  - Ref: {ref} | Date: {date} {time} | {pickup} -> {dropoff} | "
+        f"Status: {status} | Payment: {payment} | Price: ${price} | "
+        f"Service: {service} | Passengers: {passengers} | Trip: {trip_type} | Name: {name}\n"
+    )
+
+
+def _send_admin_sms(message: str) -> bool:
+    """Send an SMS to the admin phone number via Twilio. Returns True on success."""
+    try:
+        admin_phone = os.environ.get('ADMIN_PHONE', '+6421743321')
+        twilio_sid = os.environ.get('TWILIO_ACCOUNT_SID')
+        twilio_token = os.environ.get('TWILIO_AUTH_TOKEN')
+        twilio_from = os.environ.get('TWILIO_PHONE_NUMBER')
+
+        if not (twilio_sid and twilio_token and twilio_from):
+            logger.warning("Twilio not configured - cannot send admin SMS")
+            return False
+
+        from twilio.rest import Client
+        client = Client(twilio_sid, twilio_token)
+        client.messages.create(
+            body=message[:1600],
+            from_=twilio_from,
+            to=admin_phone
+        )
+        logger.info(f"Admin SMS sent: {message[:80]}...")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send admin SMS: {e}")
+        return False
+
+
+async def _process_ai_actions(ai_response: str, sender_email: str, sender_name: str, customer_bookings: list) -> dict:
+    """
+    Parse ACTION tags from Claude's response and execute the corresponding actions.
+    Returns a dict with actions_taken (list of descriptions) and the cleaned response text.
+    """
+    import re
+    actions_taken = []
+    cleaned_response = ai_response
+
+    # Build a lookup of bookings by reference number for quick matching
+    bookings_by_ref = {}
+    for b in customer_bookings:
+        ref = b.get('referenceNumber', '')
+        if ref:
+            bookings_by_ref[str(ref)] = b
+            bookings_by_ref[f"#{ref}"] = b
+        # Also index by short ID
+        bid = b.get('id', '')
+        if bid:
+            bookings_by_ref[bid[:8].upper()] = b
+
+    # --- RESEND_CONFIRMATION ---
+    resend_matches = re.findall(r'\[ACTION:RESEND_CONFIRMATION:([^\]]+)\]', ai_response)
+    for ref in resend_matches:
+        ref_clean = ref.strip().lstrip('#')
+        booking = bookings_by_ref.get(ref_clean) or bookings_by_ref.get(f"#{ref_clean}")
+        if booking:
+            try:
+                send_customer_confirmation(booking)
+                actions_taken.append(f"Resent confirmation for booking #{ref_clean}")
+                logger.info(f"AI agent resent confirmation for booking #{ref_clean} (requested by {sender_email})")
+            except Exception as e:
+                logger.error(f"AI agent failed to resend confirmation for #{ref_clean}: {e}")
+                actions_taken.append(f"Failed to resend confirmation for #{ref_clean}: {e}")
+        else:
+            logger.warning(f"AI agent tried to resend confirmation for #{ref_clean} but booking not found")
+            actions_taken.append(f"Could not find booking #{ref_clean} to resend confirmation")
+
+    # --- FLAG_CANCELLATION ---
+    cancel_matches = re.findall(r'\[ACTION:FLAG_CANCELLATION:([^\]]+)\]', ai_response)
+    for ref in cancel_matches:
+        ref_clean = ref.strip().lstrip('#')
+        booking = bookings_by_ref.get(ref_clean) or bookings_by_ref.get(f"#{ref_clean}")
+        if booking:
+            try:
+                await db.bookings.update_one(
+                    {"id": booking.get('id')},
+                    {"$set": {
+                        "cancellation_requested": True,
+                        "cancellation_requested_at": datetime.now(timezone.utc).isoformat(),
+                        "cancellation_requested_by": sender_email,
+                    }}
+                )
+                booking_ref_display = get_booking_reference(booking)
+                sms_msg = (
+                    f"CANCELLATION REQUEST: {sender_name or sender_email} "
+                    f"wants to cancel booking {booking_ref_display}. "
+                    f"Date: {format_date_ddmmyyyy(booking.get('date', 'N/A'))} "
+                    f"{format_time_ampm(booking.get('time', 'N/A'))}. "
+                    f"Review in admin dashboard."
+                )
+                _send_admin_sms(sms_msg)
+                actions_taken.append(f"Flagged booking #{ref_clean} for cancellation and notified admin")
+                logger.info(f"AI agent flagged cancellation for booking #{ref_clean} (requested by {sender_email})")
+            except Exception as e:
+                logger.error(f"AI agent failed to flag cancellation for #{ref_clean}: {e}")
+                actions_taken.append(f"Failed to flag cancellation for #{ref_clean}: {e}")
+        else:
+            logger.warning(f"AI agent tried to flag cancellation for #{ref_clean} but booking not found")
+            actions_taken.append(f"Could not find booking #{ref_clean} to flag cancellation")
+
+    # --- FLAG_MODIFICATION ---
+    mod_matches = re.findall(r'\[ACTION:FLAG_MODIFICATION:([^:\]]+):([^\]]+)\]', ai_response)
+    for ref, details in mod_matches:
+        ref_clean = ref.strip().lstrip('#')
+        booking = bookings_by_ref.get(ref_clean) or bookings_by_ref.get(f"#{ref_clean}")
+        if booking:
+            try:
+                await db.bookings.update_one(
+                    {"id": booking.get('id')},
+                    {"$set": {
+                        "modification_requested": details.strip(),
+                        "modification_requested_at": datetime.now(timezone.utc).isoformat(),
+                        "modification_requested_by": sender_email,
+                    }}
+                )
+                booking_ref_display = get_booking_reference(booking)
+                sms_msg = (
+                    f"MODIFICATION REQUEST: {sender_name or sender_email} "
+                    f"wants to change booking {booking_ref_display}: "
+                    f"{details.strip()[:100]}. "
+                    f"Review in admin dashboard."
+                )
+                _send_admin_sms(sms_msg)
+                actions_taken.append(f"Flagged booking #{ref_clean} for modification: {details.strip()}")
+                logger.info(f"AI agent flagged modification for booking #{ref_clean}: {details.strip()} (requested by {sender_email})")
+            except Exception as e:
+                logger.error(f"AI agent failed to flag modification for #{ref_clean}: {e}")
+                actions_taken.append(f"Failed to flag modification for #{ref_clean}: {e}")
+        else:
+            logger.warning(f"AI agent tried to flag modification for #{ref_clean} but booking not found")
+            actions_taken.append(f"Could not find booking #{ref_clean} to flag modification")
+
+    # --- URGENT_ESCALATE ---
+    if '[ACTION:URGENT_ESCALATE]' in ai_response:
+        try:
+            sms_msg = (
+                f"URGENT SUPPORT: {sender_name or 'Customer'} ({sender_email}) "
+                f"needs immediate help. Subject: {cleaned_response[:100]}... "
+                f"Check email logs in admin dashboard."
+            )
+            _send_admin_sms(sms_msg)
+            actions_taken.append("Sent urgent escalation SMS to admin")
+            logger.info(f"AI agent escalated urgent issue from {sender_email}")
+        except Exception as e:
+            logger.error(f"AI agent failed to send urgent escalation: {e}")
+            actions_taken.append(f"Failed to send urgent escalation: {e}")
+
+    # Strip all action tags from the response before sending to customer
+    cleaned_response = re.sub(r'\[ACTION:[^\]]*\]', '', cleaned_response).strip()
+    # Clean up any double newlines left by tag removal
+    cleaned_response = re.sub(r'\n{3,}', '\n\n', cleaned_response)
+
+    return {
+        "actions_taken": actions_taken,
+        "cleaned_response": cleaned_response
+    }
+
+
 async def _generate_claude_support_response(
     sender_name: str,
     sender_email: str,
@@ -4084,10 +4260,23 @@ async def handle_incoming_email(request: Request):
             booking_context=booking_context
         )
 
+        # Process any action tags Claude included in the response
+        action_result = await _process_ai_actions(
+            ai_response=ai_response,
+            sender_email=reply_to_email,
+            sender_name=sender_name or "Customer",
+            customer_bookings=customer_bookings_list
+        )
+        customer_response = action_result["cleaned_response"]
+        actions_taken = action_result["actions_taken"]
+
+        if actions_taken:
+            logger.info(f"AI agent took {len(actions_taken)} action(s) for {reply_to_email}: {actions_taken}")
+
         # Prepare the reply
         reply_subject = f"Re: {subject}" if not subject.startswith('Re:') else subject
 
-        # Create HTML version
+        # Create HTML version (use the cleaned response without action tags)
         html_response = f"""
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <div style="background: linear-gradient(135deg, #1a1a1a, #2d2d2d); padding: 20px; text-align: center;">
@@ -4095,7 +4284,7 @@ async def handle_incoming_email(request: Request):
                 <p style="color: #888; margin: 5px 0 0 0;">Airport Transfers & Private Tours</p>
             </div>
             <div style="padding: 30px; background: #fff; line-height: 1.6; color: #333;">
-                {ai_response.replace(chr(10), '<br>')}
+                {customer_response.replace(chr(10), '<br>')}
             </div>
             <div style="background: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; color: #666;">
                 <p><strong>Book Online:</strong> <a href="https://bookaride.co.nz/book-now" style="color: #D4AF37;">bookaride.co.nz/book-now</a></p>
@@ -4114,14 +4303,14 @@ async def handle_incoming_email(request: Request):
             reply_to_email, reply_subject, html_response,
             from_name="BookaRide Support",
             from_email="support@bookaride.co.nz",
-            text_content=ai_response,
+            text_content=customer_response,
             reply_to="support@bookaride.co.nz"
         )
 
         if ok:
             logger.info(f"AI support reply sent to {reply_to_email}")
 
-            # Store the email interaction for admin review
+            # Store the email interaction for admin review (include raw AI response with tags + actions taken)
             await db.email_logs.insert_one({
                 "id": str(uuid.uuid4()),
                 "from": reply_to_email,
@@ -4129,10 +4318,22 @@ async def handle_incoming_email(request: Request):
                 "subject": subject,
                 "original_message": email_content[:5000],
                 "ai_response": ai_response,
+                "customer_response": customer_response,
+                "actions_taken": actions_taken,
                 "booking_context": booking_context[:2000],
                 "status": "sent",
                 "created_at": datetime.now(timezone.utc).isoformat()
             })
+
+            # Build actions summary for admin notification
+            actions_html = ""
+            if actions_taken:
+                actions_list = "".join(f"<li>{a}</li>" for a in actions_taken)
+                actions_html = (
+                    f'<p><strong>Actions taken by AI agent:</strong></p>'
+                    f'<ul style="background: #fff3cd; padding: 15px 15px 15px 35px; '
+                    f'border-left: 3px solid #ffc107; margin: 10px 0;">{actions_list}</ul>'
+                )
 
             # Notify admin of new support email
             admin_email = os.environ.get("ADMIN_EMAIL", "bookings@bookaride.co.nz")
@@ -4148,16 +4349,17 @@ async def handle_incoming_email(request: Request):
                     <div style="background: #f9f9f9; padding: 15px; border-left: 3px solid #D4AF37; margin: 10px 0;">
                         {email_content[:2000].replace(chr(10), '<br>')}
                     </div>
-                    <p><strong>AI replied:</strong></p>
+                    {actions_html}
+                    <p><strong>AI replied (sent to customer):</strong></p>
                     <div style="background: #f0f7ff; padding: 15px; border-left: 3px solid #2196F3; margin: 10px 0;">
-                        {ai_response.replace(chr(10), '<br>')}
+                        {customer_response.replace(chr(10), '<br>')}
                     </div>
                     <p style="font-size: 12px; color: #999;">Review in admin: Email Logs tab</p>
                 </div>""",
                 from_name="BookaRide Support Bot"
             )
 
-            return {"status": "success", "message": "AI support response sent"}
+            return {"status": "success", "message": "AI support response sent", "actions_taken": actions_taken}
         else:
             logger.error(f"Failed to send support reply to {reply_to_email}")
             return {"status": "error", "reason": "Failed to send reply"}
