@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { CheckCircle, Calendar, MapPin, Clock, Users, ArrowRight, Phone, Mail, Loader2 } from 'lucide-react'
+import { CheckCircle, Calendar, MapPin, Clock, Users, ArrowRight, Mail, Loader2 } from 'lucide-react'
 import api from '../../lib/api'
 
 export default function PaymentSuccess() {
@@ -52,8 +52,8 @@ export default function PaymentSuccess() {
             Contact us if you need assistance.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <a href="tel:+6421880793" className="btn-primary">
-              <Phone className="w-4 h-4 mr-2" /> Call Us
+            <a href="mailto:info@bookaride.co.nz" className="btn-primary">
+              Email Us
             </a>
             <Link to="/" className="btn-outline">Back to Home</Link>
           </div>
@@ -167,9 +167,7 @@ export default function PaymentSuccess() {
           </div>
 
           <p className="text-sm text-gray-400">
-            Questions? Call{' '}
-            <a href="tel:+6421880793" className="text-gold hover:underline">021 880 793</a>
-            {' '}or email{' '}
+            Questions? Email{' '}
             <a href="mailto:info@bookaride.co.nz" className="text-gold hover:underline">info@bookaride.co.nz</a>
           </p>
         </motion.div>

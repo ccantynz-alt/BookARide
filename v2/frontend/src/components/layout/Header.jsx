@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Menu, X, Phone, Plane } from 'lucide-react'
+import { Menu, X, Plane } from 'lucide-react'
 import { cn } from '../../lib/cn'
 
 const NAV_LINKS = [
@@ -47,13 +47,6 @@ export default function Header() {
 
           {/* Right side */}
           <div className="flex items-center gap-3">
-            <a
-              href="tel:+6421880793"
-              className="hidden sm:flex items-center gap-2 text-sm text-gray-600 hover:text-gold transition-colors"
-            >
-              <Phone className="w-4 h-4" />
-              021 880 793
-            </a>
             <Link to="/book-now" className="btn-primary text-sm py-2 px-4">
               Book Now
             </Link>
@@ -89,13 +82,6 @@ export default function Header() {
                 {link.label}
               </Link>
             ))}
-            <a
-              href="tel:+6421880793"
-              className="flex items-center gap-2 px-4 py-3 text-gray-600 hover:text-gold"
-            >
-              <Phone className="w-4 h-4" />
-              021 880 793
-            </a>
           </nav>
         </div>
       )}

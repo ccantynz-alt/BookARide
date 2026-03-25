@@ -298,13 +298,12 @@ export default function Home() {
               Book Now
               <ArrowRight className="w-5 h-5 ml-2" />
             </Link>
-            <a
-              href="tel:+6421880793"
+            <Link
+              to="/book-now"
               className="btn-secondary text-base px-8 py-4 border-white/20 text-white hover:bg-white/10 hover:text-white"
             >
-              <Phone className="w-5 h-5 mr-2" />
-              Call Us
-            </a>
+              Get a Quote
+            </Link>
           </div>
         </div>
       </section>
