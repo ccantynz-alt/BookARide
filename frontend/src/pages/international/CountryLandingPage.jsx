@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { 
   Plane, Clock, Shield, Star, CreditCard, CheckCircle, 
   ArrowRight, Sparkles, Users, Award, Zap,
-  ChevronRight, Quote, Play, Calendar, MapPin
+  ChevronRight, Play, Calendar, MapPin
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent } from '../../components/ui/card';
@@ -178,7 +178,7 @@ const CountryLandingPage = () => {
           <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16 text-black font-bold">
             <div className="flex items-center gap-2">
               <Star className="w-6 h-6 fill-black" />
-              <span className="text-lg">4.9/5 Rating</span>
+              <span className="text-lg">Highly Rated Service</span>
             </div>
             <div className="flex items-center gap-2">
               <Users className="w-6 h-6" />

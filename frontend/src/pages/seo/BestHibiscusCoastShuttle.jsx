@@ -21,7 +21,7 @@ export const BestHibiscusCoastShuttle = () => {
     {
       rank: 1,
       name: 'BookaRide',
-      rating: 4.9,
+      rating: 0,
       price: 'Get Instant Quote',
       pros: ['Instant online booking', 'Private transfers only', '24/7 service', 'Flight tracking', 'Free child seats', '9 language support'],
       cons: ['Premium pricing'],
@@ -152,12 +152,18 @@ export const BestHibiscusCoastShuttle = () => {
                       <div>
                         <h3 className="text-2xl font-bold">{service.name}</h3>
                         <div className="flex items-center mt-1">
-                          <div className="flex text-gold">
-                            {[...Array(5)].map((_, i) => (
-                              <Star key={i} className={`w-4 h-4 ${i < Math.floor(service.rating) ? 'fill-current' : ''}`} />
-                            ))}
-                          </div>
-                          <span className="ml-2 text-sm font-medium">{service.rating}/5</span>
+                          {service.rating ? (
+                            <>
+                              <div className="flex text-gold">
+                                {[...Array(5)].map((_, i) => (
+                                  <Star key={i} className={`w-4 h-4 ${i < Math.floor(service.rating) ? 'fill-current' : ''}`} />
+                                ))}
+                              </div>
+                              <span className="ml-2 text-sm font-medium">{service.rating}/5</span>
+                            </>
+                          ) : (
+                            <a href="https://www.google.com/search?q=book+a+ride+nz+auckland+reviews" target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-gold hover:underline">See Google Reviews</a>
+                          )}
                         </div>
                       </div>
                     </div>

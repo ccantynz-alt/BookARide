@@ -50,7 +50,7 @@ const AirportShuttleServicePage = () => {
         "name": "What makes a good airport shuttle service?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "A quality airport shuttle service offers: reliability (on-time pickups), professional drivers, clean vehicles, fixed transparent pricing, flight monitoring for delays, easy online booking, and excellent customer service. Book A Ride delivers on all these points with our 4.9-star rating."
+          "text": "A quality airport shuttle service offers: reliability (on-time pickups), professional drivers, clean vehicles, fixed transparent pricing, flight monitoring for delays, easy online booking, and excellent customer service. Book A Ride delivers on all these points."
         }
       },
       {
@@ -109,7 +109,7 @@ const AirportShuttleServicePage = () => {
     <>
       <Helmet>
         <title>Airport Shuttle Service Auckland | Professional Transfers | Book A Ride</title>
-        <meta name="description" content="Auckland's premier airport shuttle service. Professional drivers, fixed pricing from $35, 24/7 availability, flight monitoring, meet & greet. 4.9★ rated. Book online now!" />
+        <meta name="description" content="Auckland's premier airport shuttle service. Professional drivers, fixed pricing from $35, 24/7 availability, flight monitoring, meet & greet. Highly rated on Google. Book online now!" />
         <meta name="keywords" content="airport shuttle service, airport shuttle service auckland, airport transfer service, professional airport shuttle, auckland airport transfer service, reliable airport shuttle" />
         <link rel="canonical" href="https://bookaride.co.nz/airport-shuttle-service" />
         
@@ -128,7 +128,7 @@ const AirportShuttleServicePage = () => {
             <div className="max-w-4xl mx-auto text-center">
               <div className="inline-flex items-center gap-2 bg-black/10 px-4 py-2 rounded-full mb-6">
                 <Star className="w-4 h-4" />
-                <span className="text-sm font-medium">4.9★ Rated Airport Shuttle Service</span>
+                <span className="text-sm font-medium">Highly Rated Airport Shuttle Service</span>
               </div>
               
               <h1 className="text-4xl md:text-6xl font-bold mb-6">

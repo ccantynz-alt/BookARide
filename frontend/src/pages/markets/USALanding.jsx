@@ -334,7 +334,7 @@ const USALanding = () => {
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl font-bold text-black mb-4">Ready for Your NZ Adventure?</h2>
           <p className="text-black/80 mb-8 max-w-xl mx-auto">
-            Join thousands of American visitors who trust BookaRide for their New Zealand transportation.
+            Trust BookaRide for your New Zealand transportation needs.
           </p>
           <Link to="/book-now">
             <Button className="bg-black hover:bg-gray-900 text-white font-semibold px-8 py-6 text-lg">

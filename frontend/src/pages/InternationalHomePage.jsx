@@ -253,7 +253,7 @@ const InternationalHomePage = () => {
                 <Star key={i} className="w-6 h-6 fill-yellow-400 text-yellow-400" />
               ))}
             </div>
-            <p className="text-gray-600">4.9/5 average rating from 2,500+ international guests</p>
+            <p className="text-gray-600">Trusted by international guests visiting New Zealand</p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">

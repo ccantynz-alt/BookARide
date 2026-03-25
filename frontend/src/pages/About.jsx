@@ -56,7 +56,7 @@ export const About = () => {
                 Book A Ride NZ specializes in airport shuttle services connecting Auckland, Hamilton, and Whangarei airports, as well as private shuttle transfers throughout Auckland. We've built our reputation on reliable, safe, and comfortable transportation for travelers and locals alike.
               </p>
               <p className="text-gray-600 text-lg leading-relaxed">
-                Over the years, we've had the privilege of serving thousands of customers - from business travelers catching early flights to families heading on vacation, and locals needing reliable transportation around Auckland. Our commitment to excellent service has remained unchanged - we treat every ride with the utmost care and professionalism.
+                Over the years, we've had the privilege of serving customers across Auckland - from business travelers catching early flights to families heading on vacation, and locals needing reliable transportation. Our commitment to excellent service has remained unchanged - we treat every ride with the utmost care and professionalism.
               </p>
               <p className="text-gray-600 text-lg leading-relaxed">
                 Today, we operate 24/7 with a fleet of well-maintained shuttle vehicles and a team of experienced, professional drivers who know these routes inside out. Whether you're heading to the airport or need private transport around Auckland, we're here to help.

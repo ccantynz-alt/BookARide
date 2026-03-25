@@ -154,7 +154,7 @@ export const WhangaparoaAirportPage = () => {
               <Card className="bg-green-600 text-white">
                 <CardContent className="p-6 text-center">
                   <Star className="w-10 h-10 mx-auto mb-3 fill-current" />
-                  <h3 className="font-bold">4.9★ Rating</h3>
+                  <h3 className="font-bold">Highly Rated</h3>
                   <p className="text-sm text-green-100">Trusted service</p>
                 </CardContent>
               </Card>

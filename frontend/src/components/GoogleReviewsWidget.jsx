@@ -6,50 +6,14 @@ import axios from 'axios';
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
-// Fallback reviews in case API fails
-const fallbackReviews = [
-  {
-    name: "Sarah M.",
-    rating: 5,
-    date: "2 weeks ago",
-    text: "Fantastic service! Driver was on time, car was spotless, and the price was exactly as quoted. Will definitely use again for my next airport trip.",
-    avatar: "S"
-  },
-  {
-    name: "David T.",
-    rating: 5,
-    date: "1 month ago",
-    text: "Used BookaRide for our family trip to the airport. The driver helped with all our luggage and the kids loved the ride. Much better than Uber!",
-    avatar: "D"
-  },
-  {
-    name: "Michelle K.",
-    rating: 5,
-    date: "3 weeks ago",
-    text: "Best airport transfer in Auckland! Fixed pricing means no surprises. Driver tracked my flight and was waiting when I landed. Highly recommend!",
-    avatar: "M"
-  },
-  {
-    name: "James W.",
-    rating: 5,
-    date: "1 week ago",
-    text: "Professional, punctual, and great value. The online booking was easy and I got my price instantly. No more guessing with taxi meters!",
-    avatar: "J"
-  },
-  {
-    name: "Emma L.",
-    rating: 5,
-    date: "2 months ago",
-    text: "Absolutely brilliant service from Hibiscus Coast to the airport. Driver was friendly and the car was immaculate. Will be using again!",
-    avatar: "E"
-  }
-];
+// No fallback reviews — only show real reviews from the API.
+// If the API fails, the widget shows a link to Google Reviews instead.
 
 const GoogleReviewsWidget = ({ compact = false }) => {
   const [reviewsData, setReviewsData] = useState({
-    rating: 4.9,
-    totalReviews: 127,
-    reviews: fallbackReviews,
+    rating: null,
+    totalReviews: null,
+    reviews: [],
     isLoading: true,
     isFallback: false
   });
@@ -60,8 +24,8 @@ const GoogleReviewsWidget = ({ compact = false }) => {
         const response = await axios.get(`${API}/google-reviews`);
         if (response.data && response.data.reviews && response.data.reviews.length > 0) {
           setReviewsData({
-            rating: response.data.rating || 4.9,
-            totalReviews: response.data.totalReviews || 127,
+            rating: response.data.rating,
+            totalReviews: response.data.totalReviews,
             reviews: response.data.reviews,
             isLoading: false,
             isFallback: response.data.isFallback || false
@@ -88,19 +52,45 @@ const GoogleReviewsWidget = ({ compact = false }) => {
 
   const { rating, totalReviews, reviews, isLoading } = reviewsData;
 
+  // When no real review data is available, show a simple Google Reviews link
+  if (!isLoading && (reviewsData.isFallback || reviews.length === 0)) {
+    return (
+      <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100 text-center">
+        <div className="flex items-center justify-center gap-2 mb-4">
+          <img src="https://www.google.com/favicon.ico" alt="Google" className="w-8 h-8" />
+          <span className="text-xl font-bold text-gray-900">Google Reviews</span>
+        </div>
+        <div className="flex justify-center mb-4">
+          {[1,2,3,4,5].map(i => (
+            <Star key={i} className="w-6 h-6 fill-yellow-400 text-yellow-400" />
+          ))}
+        </div>
+        <p className="text-gray-600 mb-4">Read verified reviews from our customers on Google.</p>
+        <a
+          href="https://www.google.com/search?q=book+a+ride+nz+auckland+reviews"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 bg-gold hover:bg-gold/90 text-black font-semibold px-6 py-2 rounded-lg transition-all duration-200"
+        >
+          See Our Reviews on Google <ExternalLink className="w-4 h-4" />
+        </a>
+      </div>
+    );
+  }
+
   if (compact) {
     return (
       <div className="flex items-center gap-3 bg-white rounded-lg p-3 shadow-sm border border-gray-100">
         <div className="flex items-center gap-1">
           <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
-          <span className="font-bold text-gray-900">{rating}</span>
+          {rating && <span className="font-bold text-gray-900">{rating}</span>}
           <div className="flex">
             {[1,2,3,4,5].map(i => (
-              <Star key={i} className={`w-4 h-4 ${i <= Math.round(rating) ? 'fill-yellow-400 text-yellow-400' : 'fill-gray-200 text-gray-200'}`} />
+              <Star key={i} className={`w-4 h-4 ${rating && i <= Math.round(rating) ? 'fill-yellow-400 text-yellow-400' : 'fill-gray-200 text-gray-200'}`} />
             ))}
           </div>
         </div>
-        <span className="text-sm text-gray-500">({totalReviews} reviews)</span>
+        {totalReviews && <span className="text-sm text-gray-500">({totalReviews} reviews)</span>}
       </div>
     );
   }
@@ -184,7 +174,7 @@ const GoogleReviewsWidget = ({ compact = false }) => {
       {/* Trust Badge */}
       <div className="mt-4 pt-4 border-t border-gray-100 text-center">
         <p className="text-xs text-gray-500">
-          ⭐ Rated excellent by {totalReviews}+ happy customers
+          Reviews sourced from Google
         </p>
       </div>
     </div>

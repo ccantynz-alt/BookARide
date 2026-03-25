@@ -142,7 +142,7 @@ const AirportShuttlePage = () => {
     { icon: Clock, title: '24/7 Service', desc: 'Airport shuttles available any time, day or night' },
     { icon: DollarSign, title: 'Fixed Pricing', desc: 'No surge charges, no hidden fees' },
     { icon: Shield, title: 'Flight Monitoring', desc: 'We track your flight and adjust for delays' },
-    { icon: Star, title: '4.9★ Rated', desc: 'Over 2,800+ five-star reviews' },
+    { icon: Star, title: 'Highly Rated', desc: 'See our reviews on Google' },
     { icon: Users, title: 'All Group Sizes', desc: 'From solo travelers to groups of 11' },
     { icon: MapPin, title: 'Door-to-Door', desc: 'Picked up and dropped off at your exact address' }
   ];
@@ -160,7 +160,7 @@ const AirportShuttlePage = () => {
     <>
       <Helmet>
         <title>Airport Shuttle Auckland | #1 Rated Service | Book A Ride NZ</title>
-        <meta name="description" content="Auckland's best airport shuttle service. Door-to-door transfers, fixed pricing from $35, 24/7 availability, flight tracking. 4.9★ rated with 2800+ reviews. Book online now!" />
+        <meta name="description" content="Auckland's best airport shuttle service. Door-to-door transfers, fixed pricing from $35, 24/7 availability, flight tracking. Highly rated on Google. Book online now!" />
         <meta name="keywords" content="airport shuttle, airport shuttle auckland, auckland airport shuttle, airport transfer, airport taxi, shuttle to airport, airport pickup, airport dropoff, book airport shuttle" />
         <link rel="canonical" href="https://bookaride.co.nz/airport-shuttle" />
         
@@ -192,7 +192,7 @@ const AirportShuttlePage = () => {
               
               <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
                 Professional door-to-door airport shuttle service. Fixed pricing, 24/7 availability, 
-                flight tracking, and a 4.9★ rating from 2,800+ happy customers.
+                flight tracking, and consistently excellent reviews from our customers.
               </p>
               
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -322,7 +322,7 @@ const AirportShuttlePage = () => {
           <div className="container mx-auto px-4 text-center">
             <h2 className="text-3xl font-bold mb-4">Ready to Book Your Airport Shuttle?</h2>
             <p className="text-gray-400 mb-8 max-w-2xl mx-auto">
-              Join thousands of satisfied customers who trust Book A Ride for their airport transfers.
+              Trust Book A Ride for your airport transfers. Reliable, professional, and always on time.
             </p>
             <Link to="/book">
               <Button size="lg" className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold px-8 py-6 text-lg">

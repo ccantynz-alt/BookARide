@@ -161,7 +161,7 @@ export const Home = () => {
                   <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-white/20 via-transparent to-transparent pointer-events-none" />
                   {/* Main value prop */}
                   <div className="mb-8">
-                    <h3 className="text-3xl font-bold text-white mb-4">Why Thousands Choose Us</h3>
+                    <h3 className="text-3xl font-bold text-white mb-4">Why Customers Choose Us</h3>
                     <p className="text-white/80 text-lg leading-relaxed">
                       New Zealand's most trusted airport transfer service. We don't just drive you—we deliver peace of mind.
                     </p>
@@ -200,20 +200,23 @@ export const Home = () => {
                     </div>
                   </div>
 
-                  {/* Social proof - glass card */}
+                  {/* Google Reviews link */}
                   <div className="bg-white/10 backdrop-blur-xl rounded-xl p-5 border border-white/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-1">
-                        {[...Array(5)].map((_, i) => (
-                          <Star key={i} className="w-5 h-5 text-gold fill-gold" />
-                        ))}
-                      </div>
-                      <span className="text-gold font-bold text-lg">4.9/5</span>
+                    <div className="flex items-center gap-2 mb-3">
+                      <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" loading="lazy" />
+                      <span className="text-white font-bold">Google Reviews</span>
                     </div>
-                    <p className="text-white/90 text-sm italic mb-3">
-                      "Best airport transfer I've ever had in NZ. Professional, on-time, and great value. Highly recommend!"
+                    <p className="text-white/90 text-sm mb-3">
+                      See what real customers say about our airport transfer service.
                     </p>
-                    <p className="text-white/60 text-xs">— Michael T., International Traveller</p>
+                    <a
+                      href="https://www.google.com/search?q=book+a+ride+nz+auckland+reviews"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-gold hover:text-gold/80 text-sm font-semibold"
+                    >
+                      Read our reviews on Google &rarr;
+                    </a>
                   </div>
                 </div>
               </div>
