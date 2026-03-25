@@ -1554,6 +1554,15 @@ _NZ_FALLBACK_ADDRESSES = [
 ]
 
 
+@api_router.get("/maps/client-key")
+async def get_maps_client_key():
+    """Return the Google Maps API key for client-side Places Autocomplete widget."""
+    key = os.environ.get('GOOGLE_MAPS_API_KEY', '')
+    if not key:
+        raise HTTPException(status_code=503, detail="Google Maps not configured")
+    return {"key": key}
+
+
 @api_router.get("/places/autocomplete")
 async def places_autocomplete(input: str = "", types: str = "", region: str = "nz"):
     """Return address suggestions using Google Places Autocomplete API.

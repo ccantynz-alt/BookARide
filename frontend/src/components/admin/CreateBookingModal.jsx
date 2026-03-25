@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Textarea } from '../ui/textarea';
 import { toast } from 'sonner';
 import { CustomDatePicker, CustomTimePicker } from '../DateTimePicker';
-import AddressAutocomplete from '../AddressAutocomplete';
+import GoogleAddressInput from '../GoogleAddressInput';
 import axios from 'axios';
 import { API } from '../../config/api';
 
@@ -278,7 +278,11 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+    <Dialog open={open} onOpenChange={(v) => {
+      // Prevent dialog close while any autocomplete/search dropdown is open (critical for iOS)
+      if (!v && document.querySelector('[data-autocomplete-dropdown]')) return;
+      if (!v) onClose();
+    }}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create Manual Booking</DialogTitle>
@@ -320,6 +324,11 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
                     <div
                       key={idx}
                       className="px-4 py-3 hover:bg-amber-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                      onTouchEnd={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        selectCustomer(customer);
+                      }}
                       onPointerDown={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
@@ -446,7 +455,7 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
             <div className="space-y-4">
               <div>
                 <Label>Pickup Address *</Label>
-                <AddressAutocomplete
+                <GoogleAddressInput
                   value={newBooking.pickupAddress}
                   onChange={(val) => setNewBooking(prev => ({ ...prev, pickupAddress: val }))}
                   onSelect={(val) => setNewBooking(prev => ({ ...prev, pickupAddress: val }))}
@@ -457,7 +466,7 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
 
               <div>
                 <Label>Drop-off Address *</Label>
-                <AddressAutocomplete
+                <GoogleAddressInput
                   value={newBooking.dropoffAddress}
                   onChange={(val) => setNewBooking(prev => ({ ...prev, dropoffAddress: val }))}
                   onSelect={(val) => setNewBooking(prev => ({ ...prev, dropoffAddress: val }))}
