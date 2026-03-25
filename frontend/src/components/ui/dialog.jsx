@@ -32,7 +32,9 @@ const DialogContent = React.forwardRef(({ className, children, onPointerDownOuts
       onPointerDownOutside={(e) => {
         // Prevent Radix from closing the dialog when clicking on portal-rendered
         // dropdowns (e.g. AddressAutocomplete suggestions rendered via React Portal)
-        const target = e.target || (e.detail && e.detail.originalEvent && e.detail.originalEvent.target);
+        // Radix custom events store the real DOM target in e.detail.originalEvent.target,
+        // NOT in e.target (which points to the dialog content element itself)
+        const target = (e.detail && e.detail.originalEvent && e.detail.originalEvent.target) || e.target;
         if (target && target.closest && target.closest('[data-autocomplete-dropdown]')) {
           e.preventDefault();
           return;
@@ -40,7 +42,7 @@ const DialogContent = React.forwardRef(({ className, children, onPointerDownOuts
         if (onPointerDownOutside) onPointerDownOutside(e);
       }}
       onInteractOutside={(e) => {
-        const target = e.target || (e.detail && e.detail.originalEvent && e.detail.originalEvent.target);
+        const target = (e.detail && e.detail.originalEvent && e.detail.originalEvent.target) || e.target;
         if (target && target.closest && target.closest('[data-autocomplete-dropdown]')) {
           e.preventDefault();
           return;

@@ -5,6 +5,25 @@
 
 ---
 
+## THE 10 RULES — MANDATORY FOR EVERY AGENT SESSION
+
+These rules are non-negotiable. Every agent must follow all 10, every session, no exceptions.
+
+| # | Rule | What It Means |
+|---|------|---------------|
+| 1 | **Scan Before You Build** | Every session starts by checking for security issues, broken code, and problems — BEFORE doing anything new. Run the Engineering Gap Scan (see Mandatory Automated Checks below). |
+| 2 | **Auto-Repair** | If you find a bug while working on anything, fix it immediately. No "that's out of scope" excuses. No deferring. No logging for later. FIX IT NOW. |
+| 3 | **Proactive Research** | Before building anything significant, check if there's a better library, technique, or approach. No guessing. Verify imports exist, check versions, read docs. |
+| 4 | **Engineering Gap Detection** | Systematically check for: features that promise something the code can't deliver, missing error handling, security gaps, dead code, broken references, field name mismatches. |
+| 5 | **Technology Currency** | Check if our tools are up to date. If there's a newer, safer, better-supported version of a dependency — flag it. Don't silently use outdated or deprecated APIs. |
+| 6 | **Explain Like You're Not A Developer** | The owner is NOT a developer. All communication in plain English. "Your users were seeing X, now they see Y" — not tech jargon. No acronyms without explanation. |
+| 7 | **Never Leave It Worse** | Every file you touch gets cleaned up. No leaving messes behind. No orphaned imports. No dead code. No commented-out blocks. Leave it better than you found it. |
+| 8 | **Autonomous Testing** | After changes, verify everything still works. Run `py_compile`, run `npm run build`, check for smart quotes, check for banned imports. No "it should be fine." |
+| 9 | **Mandatory Documentation** | Every change gets documented so the next session knows what happened. Update CLAUDE.md if you add new rules, locked decisions, or break history. Commit messages must explain WHY, not just WHAT. |
+| 10 | **Complete The Loop** | Every feature must work end-to-end. If it doesn't work from start to finish — form loads, user types, autocomplete appears, user selects, price calculates, booking submits, payment works, confirmation sends — it's not done. |
+
+---
+
 ## LOCKED DECISIONS — DO NOT CHANGE, REVERT, OR "IMPROVE"
 
 These decisions are FINAL. Do not introduce alternatives, fallbacks, or "improvements".
