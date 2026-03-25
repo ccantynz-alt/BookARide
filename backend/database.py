@@ -474,19 +474,28 @@ class AggregationCursor:
 
     @staticmethod
     def _apply_project(docs, project_spec):
+        # Check if this is an exclusion-only projection (all values are 0)
+        # MongoDB convention: {"_id": 0} means "include everything EXCEPT _id"
+        inclusion_fields = {k: v for k, v in project_spec.items() if v != 0}
+        exclusion_fields = {k for k, v in project_spec.items() if v == 0}
+        is_exclusion_only = len(inclusion_fields) == 0 and len(exclusion_fields) > 0
+
         results = []
         for doc in docs:
-            new_doc = {}
-            for field, val in project_spec.items():
-                if val == 0:
-                    continue
-                elif val == 1:
-                    if field in doc:
-                        new_doc[field] = doc[field]
-                elif isinstance(val, str) and val.startswith("$"):
-                    new_doc[field] = doc.get(val[1:])
-                else:
-                    new_doc[field] = val
+            if is_exclusion_only:
+                new_doc = {k: v for k, v in doc.items() if k not in exclusion_fields}
+            else:
+                new_doc = {}
+                for field, val in project_spec.items():
+                    if val == 0:
+                        continue
+                    elif val == 1:
+                        if field in doc:
+                            new_doc[field] = doc[field]
+                    elif isinstance(val, str) and val.startswith("$"):
+                        new_doc[field] = doc.get(val[1:])
+                    else:
+                        new_doc[field] = val
             results.append(new_doc)
         return results
 
