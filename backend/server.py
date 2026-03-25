@@ -3222,64 +3222,43 @@ def send_post_trip_email(booking: dict):
         booking_date = booking.get('date', '')
         ref_number = booking.get('referenceNumber', booking.get('id', '')[:8])
 
-        # Google Review URL — update the Place ID when the real one is available
-        google_review_url = 'https://search.google.com/local/writereview?placeid=YOUR_PLACE_ID'
+        # Google Review URL — placeholder Place ID (update when real one is available)
+        google_review_url = 'https://search.google.com/local/writereview?placeid=ChIJBookARideNZ'
 
         subject = f"Thanks for riding with BookaRide, {first_name}!"
 
-        html_content = f"""
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
-            <div style="background: linear-gradient(135deg, #1a1a1a, #2d2d2d); padding: 30px; text-align: center;">
-                <h1 style="color: #D4AF37; margin: 0; font-size: 28px;">BookaRide NZ</h1>
-                <p style="color: #ccc; margin: 5px 0 0 0; font-size: 14px;">Premium Auckland Transfers</p>
-            </div>
-            <div style="padding: 30px; background: #fff;">
-                <h2 style="color: #333; margin-top: 0;">Thank you, {first_name}!</h2>
-                <p style="color: #666; font-size: 16px; line-height: 1.6;">
-                    We hope you had a wonderful experience with BookaRide. It was our pleasure
-                    to take care of your transfer.
-                </p>
+        greeting_html = (
+            f'<strong style="font-size:18px;">Thank you, {first_name}!</strong><br /><br />'
+            'We hope you had a wonderful experience with BookARide. It was our pleasure '
+            'to take care of your transfer.'
+        )
 
-                <div style="background: #f9f8f5; padding: 20px; border-radius: 10px; margin: 25px 0; border-left: 4px solid #D4AF37;">
-                    <h3 style="color: #333; margin: 0 0 10px 0; font-size: 16px;">Your Trip Summary</h3>
-                    <p style="margin: 5px 0; color: #555;"><strong>Date:</strong> {booking_date}</p>
-                    <p style="margin: 5px 0; color: #555;"><strong>From:</strong> {pickup}</p>
-                    <p style="margin: 5px 0; color: #555;"><strong>To:</strong> {dropoff}</p>
-                    <p style="margin: 5px 0; color: #999; font-size: 13px;">Ref: #{ref_number}</p>
-                </div>
+        summary_html = email_booking_summary(booking)
 
-                <div style="text-align: center; margin: 30px 0;">
-                    <p style="color: #333; font-size: 16px; font-weight: bold; margin-bottom: 15px;">
-                        Enjoyed your ride? We would love to hear from you!
-                    </p>
-                    <a href="{google_review_url}"
-                       style="background: #D4AF37; color: #000; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; font-size: 16px;">
-                        Leave Us a Google Review
-                    </a>
-                    <p style="color: #999; font-size: 13px; margin-top: 10px;">
-                        Your review helps other travellers find reliable airport transfers
-                    </p>
-                </div>
+        review_html = (
+            'Enjoyed your ride? We would love to hear from you!<br />'
+            'Your review helps other travellers find reliable airport transfers.'
+        )
 
-                <div style="background: #f0f7f0; padding: 20px; border-radius: 10px; margin: 25px 0;">
-                    <h3 style="color: #333; margin: 0 0 8px 0; font-size: 15px;">Refer a Friend</h3>
-                    <p style="color: #666; font-size: 14px; margin: 0; line-height: 1.5;">
-                        Know someone who needs an Auckland airport transfer? Share your experience
-                        and tell them to book at
-                        <a href="https://bookaride.co.nz/book-now" style="color: #D4AF37; text-decoration: none; font-weight: bold;">bookaride.co.nz</a>.
-                    </p>
-                </div>
+        referral_html = (
+            'Know someone who needs an Auckland airport transfer? Share your experience '
+            'and tell them to book at '
+            '<a href="https://bookaride.co.nz/book-now" style="color:#D4AF37;text-decoration:none;font-weight:bold;">bookaride.co.nz</a>.'
+        )
 
-                <p style="color: #999; font-size: 14px; text-align: center; margin-top: 25px;">
-                    We look forward to driving you again next time!
-                </p>
-            </div>
-            <div style="background: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; color: #666;">
-                <p style="margin: 0;"><span style="color: #D4AF37; font-weight: bold;">BookaRide NZ</span> | Auckland Airport Transfers</p>
-                <p style="margin: 5px 0 0 0;">bookaride.co.nz | +64 21 743 321</p>
-            </div>
-        </div>
-        """
+        body_parts = [
+            email_section(None, greeting_html),
+            email_section("Your Trip Summary", summary_html),
+            email_section(None, review_html),
+            email_button("Leave Us a Google Review", google_review_url),
+            email_divider(),
+            email_section("Refer a Friend", referral_html),
+        ]
+
+        html_content = email_wrapper(
+            body_html="\n".join(body_parts),
+            preheader="Thank you for riding with BookARide!",
+        )
 
         ok = _send_email_with_fallbacks(email, subject, html_content, from_name="BookaRide NZ")
         if ok:
@@ -3392,72 +3371,63 @@ def send_reminder_email(booking: dict):
                     </div>
             '''
         
-        # Logo as inline SVG
-        logo_svg = '''
-            <svg width="50" height="50" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect width="64" height="64" rx="12" fill="#D4AF37"/>
-                <circle cx="32" cy="32" r="20" stroke="white" stroke-width="3" fill="none"/>
-                <text x="32" y="42" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="white" text-anchor="middle">B</text>
-            </svg>
-        '''
-        
-        html_content = f'''
-        <!DOCTYPE html>
-        <html>
-        <head><meta charset="utf-8"></head>
-        <body style="font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f5f5f5;">
-            <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
-                <div style="background: linear-gradient(135deg, #ffffff 0%, #faf8f3 100%); padding: 25px; text-align: center; border-bottom: 3px solid #D4AF37;">
-                    {logo_svg}
-                    <h1 style="margin: 10px 0 0 0; color: #1a1a1a; font-size: 20px;">BOOK<span style="color: #D4AF37;">A</span>RIDE</h1>
-                </div>
-                
-                <div style="background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%); padding: 20px; text-align: center;">
-                    <h2 style="margin: 0; color: white; font-size: 20px;">Your Ride is Tomorrow!</h2>
-                    <p style="margin: 8px 0 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">{formatted_date} at {formatted_time}</p>
-                </div>
-                
-                <div style="padding: 25px;">
-                    <p style="color: #333; font-size: 15px;">Dear <strong>{customer_name}</strong>,</p>
-                    <p style="color: #333; font-size: 15px;">This is a friendly reminder that your transfer is scheduled for <strong>tomorrow</strong>. Please find your booking details and pickup instructions below.</p>
-                    
-                    <div style="background: #faf8f3; border-radius: 10px; padding: 20px; margin: 20px 0; border: 1px solid #e8e4d9;">
-                        <h3 style="margin: 0 0 15px 0; color: #1a1a1a; font-size: 16px;"> BOOKING DETAILS</h3>
-                        <table style="width: 100%; font-size: 14px; color: #333;">
-                            <tr><td style="padding: 5px 0; width: 120px;"><strong>Reference:</strong></td><td>{booking_ref}</td></tr>
-                            <tr><td style="padding: 5px 0;"><strong>Date:</strong></td><td>{formatted_date}</td></tr>
-                            <tr><td style="padding: 5px 0;"><strong>Time:</strong></td><td>{formatted_time}</td></tr>
-                            <tr><td style="padding: 5px 0;"><strong>Passengers:</strong></td><td>{booking.get('passengers', 'N/A')}</td></tr>
-                            {f'<tr><td style="padding: 5px 0;"><strong>Driver:</strong></td><td>{driver_name}</td></tr>' if driver_name else ''}
-                        </table>
-                        <hr style="border: none; border-top: 1px solid #ddd; margin: 15px 0;">
-                        {pickup_html}
-                        <p style="margin: 5px 0;"><strong>Drop-off:</strong> {booking.get('dropoffAddress', 'N/A')}</p>
-                    </div>
-                    
-                    {airport_instructions}
-                    
-                    {ready_reminder_html}
-                    
-                    <div style="background: #f0f9ff; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                        <p style="margin: 0 0 10px 0; font-size: 14px; color: #333;"><strong>&#9993; Contact Us</strong></p>
-                        <p style="margin: 0; font-size: 14px; color: #666;">
-                            Need to make changes or have questions?<br>
-                            Email: <a href="mailto:info@bookaride.co.nz" style="color: #D4AF37;">info@bookaride.co.nz</a>
-                        </p>
-                    </div>
-                    
-                    <p style="color: #333; margin-top: 25px;">We look forward to seeing you tomorrow!<br><strong>The BookaRide Team</strong></p>
-                </div>
-                
-                <div style="background: #1a1a1a; padding: 20px; text-align: center;">
-                    <p style="margin: 0; color: #888; font-size: 12px;">BookaRide NZ | Auckland Airport Transfers</p>
-                    <p style="margin: 5px 0 0 0; color: #666; font-size: 11px;">bookaride.co.nz | +64 21 743 321</p>
-                </div>
-            </div>
-        </body>
-        </html>
-        '''
+        # Reminder banner
+        reminder_banner = (
+            '<table width="100%" cellpadding="0" cellspacing="0" border="0">'
+            '<tr><td bgcolor="#D4AF37" align="center" style="padding:18px 20px;font-family:Arial,Helvetica,sans-serif;">'
+            '<p style="margin:0;color:#ffffff;font-size:20px;font-weight:bold;">Your Ride is Tomorrow!</p>'
+            f'<p style="margin:8px 0 0 0;color:#ffffff;font-size:14px;">{formatted_date} at {formatted_time}</p>'
+            '</td></tr></table>'
+        )
+
+        greeting_html = (
+            f'Dear <strong>{customer_name}</strong>,<br /><br />'
+            'This is a friendly reminder that your transfer is scheduled for '
+            '<strong>tomorrow</strong>. Please find your booking details and pickup '
+            'instructions below.'
+        )
+
+        # Build airport meeting instructions for the wrapper (Outlook-safe tables)
+        airport_section = ""
+        if is_airport_pickup:
+            airport_section = email_section("International Arrivals - Meeting Point", (
+                '<strong>Your driver will be waiting for you in the Arrivals Hall.</strong><br /><br />'
+                f'Look for your driver holding either a <strong>BOOK A RIDE</strong> sign or an iPad displaying your name: <strong>{customer_name}</strong><br /><br />'
+                '<strong>Directions to Meeting Point:</strong><br />'
+                '1. After collecting your luggage, exit through the Customs doors<br />'
+                '2. TURN LEFT immediately upon entering the Arrivals Hall<br />'
+                '3. Walk towards the Allpress Espresso Cafe<br />'
+                '4. All drivers wait directly in front of the cafe<br /><br />'
+                '<em>Tip: If you turn RIGHT, you will be heading towards the domestic terminal. '
+                'Turn LEFT to find your driver at the Allpress Cafe meeting point.</em>'
+            ))
+
+        # Ready reminder for non-airport pickups
+        ready_section = ""
+        if not is_airport_pickup:
+            ready_section = email_section(None, (
+                '<strong>Please be ready</strong> at your pickup location 5 minutes '
+                'before your scheduled time.'
+            ))
+
+        body_parts = [
+            reminder_banner,
+            email_section(None, greeting_html),
+            email_section("Booking Details", email_booking_summary(booking)),
+            airport_section,
+            ready_section,
+            email_divider(),
+            email_section("Need Help?", (
+                'Need to make changes or have questions?<br />'
+                'Email: <a href="mailto:info@bookaride.co.nz" style="color:#D4AF37;text-decoration:none;">info@bookaride.co.nz</a>'
+            )),
+            email_button("Contact Support", "mailto:support@bookaride.co.nz"),
+        ]
+
+        html_content = email_wrapper(
+            body_html="\n".join(p for p in body_parts if p),
+            preheader="Reminder: Your transfer is tomorrow",
+        )
         
         reminder_subject = f"Your Ride Tomorrow - {formatted_date} at {formatted_time} - Ref: {booking_ref}"
         ok = _send_email_with_fallbacks(recipient_email, reminder_subject, html_content, from_email=sender_email)
@@ -4287,33 +4257,29 @@ async def handle_incoming_email(request: Request):
         reply_subject = f"Re: {subject}" if not subject.startswith('Re:') else subject
 
         # Create HTML version (use the cleaned response without action tags)
-        html_response = f"""
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <div style="background: linear-gradient(135deg, #1a1a1a, #2d2d2d); padding: 20px; text-align: center;">
-                <h1 style="color: #D4AF37; margin: 0;">BookaRide NZ</h1>
-                <p style="color: #888; margin: 5px 0 0 0;">Airport Transfers & Private Tours</p>
-            </div>
-            <div style="padding: 30px; background: #fff; line-height: 1.6; color: #333;">
-                {customer_response.replace(chr(10), '<br>')}
-            </div>
-            <div style="background: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; color: #666;">
-                <p><strong>Book Online:</strong> <a href="https://bookaride.co.nz/book-now" style="color: #D4AF37;">bookaride.co.nz/book-now</a></p>
-                <p>Get instant pricing — just enter your pickup and drop-off!</p>
-                <hr style="border: none; border-top: 1px solid #ddd; margin: 15px 0;">
-                <p style="font-size: 10px; color: #999;">
-                    This response was generated by our AI booking assistant.
-                    For anything complex, our team will follow up within 24 hours.
-                    Reply to this email or call/text <strong>021 743 321</strong>.
-                </p>
-            </div>
-        </div>
-        """
+        response_body_html = customer_response.replace(chr(10), '<br>')
+        auto_note = (
+            '<em style="font-size:12px;color:#999999;">'
+            'This is an automated response from our support team. '
+            'For anything complex, our team will follow up within 24 hours. '
+            'Reply to this email or call/text <strong>021 743 321</strong>.</em>'
+        )
+        body_parts = [
+            email_section(None, response_body_html),
+            email_divider(),
+            email_section(None, auto_note),
+            email_button("Book Online", "https://bookaride.co.nz/book-now"),
+        ]
+        preheader_text = f"Re: {subject}" if not subject.startswith('Re:') else subject
+        html_response = email_wrapper(
+            body_html="\n".join(body_parts),
+            preheader=preheader_text,
+        )
 
         ok = _send_email_with_fallbacks(
             reply_to_email, reply_subject, html_response,
             from_name="BookaRide Support",
             from_email="support@bookaride.co.nz",
-            text_content=customer_response,
             reply_to="support@bookaride.co.nz"
         )
 
@@ -4477,41 +4443,36 @@ async def send_abandoned_booking_emails():
                 dropoff = booking.get('dropoff', 'your destination')
                 price = booking.get('price')
                 
-                subject = "Complete Your BookaRide Booking "
-                
-                price_text = f"Your quote was ${price:.2f}" if price else "Get your instant quote"
-                
-                html_content = f"""
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                    <div style="background: linear-gradient(135deg, #1a1a1a, #2d2d2d); padding: 30px; text-align: center;">
-                        <h1 style="color: #D4AF37; margin: 0;">BookaRide NZ</h1>
-                    </div>
-                    <div style="padding: 30px; background: #fff;">
-                        <h2 style="color: #333;">Hi {name},</h2>
-                        <p style="color: #666; font-size: 16px;">
-                            We noticed you started booking an airport transfer but didn't complete it. 
-                            No worries - your details are still saved!
-                        </p>
-                        <div style="background: #f5f5f5; padding: 20px; border-radius: 10px; margin: 20px 0;">
-                            <p style="margin: 5px 0; color: #333;"><strong>From:</strong> {pickup}</p>
-                            <p style="margin: 5px 0; color: #333;"><strong>To:</strong> {dropoff}</p>
-                            <p style="margin: 10px 0; color: #D4AF37; font-size: 18px;"><strong>{price_text}</strong></p>
-                        </div>
-                        <div style="text-align: center; margin: 30px 0;">
-                            <a href="https://bookaride.co.nz/book-now" 
-                               style="background: #D4AF37; color: #000; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
-                                Complete Your Booking 
-                            </a>
-                        </div>
-                        <p style="color: #999; font-size: 14px; text-align: center;">
-                            Questions? Just reply to this email or use our 24/7 AI chat on the website.
-                        </p>
-                    </div>
-                    <div style="background: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; color: #666;">
-                        <p> BookaRide NZ | Auckland Airport Transfers</p>
-                    </div>
-                </div>
-                """
+                subject = "Complete Your BookaRide Booking"
+
+                price_text = f"Your quote was <strong>${price:.2f} NZD</strong>" if price else "Get your instant quote"
+
+                greeting_html = (
+                    f'Hi {name},<br /><br />'
+                    'We noticed you started booking an airport transfer but did not complete it. '
+                    'No worries - your details are still saved!'
+                )
+
+                details_html = (
+                    f'<strong>From:</strong> {pickup}<br />'
+                    f'<strong>To:</strong> {dropoff}<br /><br />'
+                    f'<span style="color:#D4AF37;font-size:16px;">{price_text}</span>'
+                )
+
+                help_html = 'Questions? Just reply to this email or email <a href="mailto:support@bookaride.co.nz" style="color:#D4AF37;text-decoration:none;">support@bookaride.co.nz</a>.'
+
+                body_parts = [
+                    email_section(None, greeting_html),
+                    email_section("Your Saved Booking", details_html),
+                    email_button("Complete Your Booking", "https://bookaride.co.nz/book-now"),
+                    email_divider(),
+                    email_section(None, help_html),
+                ]
+
+                html_content = email_wrapper(
+                    body_html="\n".join(body_parts),
+                    preheader="Your BookARide booking is waiting",
+                )
                 
                 ok = _send_email_with_fallbacks(email, subject, html_content, from_name="BookaRide NZ")
 
@@ -5932,287 +5893,66 @@ def _get_booking_email_data(booking: dict) -> dict:
 
 
 def generate_confirmation_email_html(booking: dict, for_admin: bool = False) -> str:
-    """Generate the confirmation email HTML for preview or sending - Clean professional design.
-    Includes all booking details: flights, return trip, notes, route, payment.
+    """Generate the confirmation email HTML for preview or sending.
+    Uses the shared email_wrapper template for a consistent, Outlook-safe design.
     Set for_admin=True to add admin copy banner (same content, both get full details)."""
-    sender_email = os.environ.get('SENDER_EMAIL', 'bookings@bookaride.co.nz')
     d = _get_booking_email_data(booking)
-    
-    total_price = d['total_price']
-    distance = d['distance']
-    formatted_date = d['formatted_date']
-    formatted_time = d['formatted_time']
     booking_ref = d['booking_ref']
-    primary_pickup = d['primary_pickup']
-    pickup_addresses = d['pickup_addresses']
-    dropoff_address = d['dropoff_address']
-    departure_flight = d['departure_flight']
-    arrival_flight = d['arrival_flight']
-    departure_time = d['departure_time']
-    arrival_time_flight = d['arrival_time']
-    
-    service_display = d['service_display']
-    has_return = d['has_return']
-    transfer_type = "Return Trip" if has_return else "One Way"
-    payment_status = d['payment_status']
-    notes = d['notes']
-    passengers = d['passengers']
-    payment_color = '#22c55e' if payment_status == 'PAID' else '#f59e0b'
-    payment_method = d['payment_method']
-    
-    # Build return trip section
-    return_section_html = ""
-    if has_return:
-        return_date = d['return_date']
-        return_time = d['return_time']
-        return_flight = d['return_flight']
-        return_arrival_flight = d['return_arrival']
 
-        formatted_return_date = format_date_ddmmyyyy(return_date) if return_date else 'TBC'
-        formatted_return_time = format_time_ampm(return_time) if return_time else 'TBC'
+    # Admin banner (placed before the greeting inside the wrapper body)
+    admin_banner = ""
+    if for_admin:
+        admin_banner = (
+            '<table width="100%" cellpadding="0" cellspacing="0" border="0">'
+            '<tr><td bgcolor="#fef9c3" align="center" style="padding:12px 20px;border-bottom:2px solid #eab308;'
+            'font-family:Arial,Helvetica,sans-serif;">'
+            '<p style="margin:0;font-size:13px;font-weight:700;color:#713f12;">ADMIN COPY - New Booking</p>'
+            '<p style="margin:4px 0 0 0;font-size:11px;color:#92400e;">Assign driver in '
+            '<a href="https://bookaride.co.nz/admin/login" style="color:#b45309;font-weight:600;">Admin Dashboard</a></p>'
+            '</td></tr></table>'
+        )
 
-        return_flight_rows = ""
-        if return_flight:
-            return_flight_rows += f'''
-                        <tr>
-                            <td style="padding: 10px 20px; color: #555; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Flight Number</td>
-                            <td style="padding: 10px 20px; color: #111; font-size: 14px; font-weight: 600; border-bottom: 1px solid #f0f0f0;">{return_flight}</td>
-                        </tr>'''
-        if return_arrival_flight and return_arrival_flight != return_flight:
-            return_flight_rows += f'''
-                        <tr>
-                            <td style="padding: 10px 20px; color: #555; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Arrival Flight</td>
-                            <td style="padding: 10px 20px; color: #111; font-size: 14px; font-weight: 600; border-bottom: 1px solid #f0f0f0;">{return_arrival_flight}</td>
-                        </tr>'''
+    # Confirmation banner with reference number
+    confirmation_banner = (
+        '<table width="100%" cellpadding="0" cellspacing="0" border="0">'
+        '<tr><td bgcolor="#eab308" align="center" style="padding:18px 20px;font-family:Arial,Helvetica,sans-serif;">'
+        '<p style="margin:0;color:#ffffff;font-size:12px;text-transform:uppercase;letter-spacing:2px;font-weight:600;">Booking Confirmed</p>'
+        f'<p style="margin:6px 0 0 0;color:#ffffff;font-size:30px;font-weight:800;letter-spacing:1px;">#{booking_ref}</p>'
+        '</td></tr></table>'
+    )
 
-        return_section_html = f'''
-                        <tr>
-                            <td colspan="2" style="padding: 24px 0 8px 0;">
-                                <div style="background: #fef9c3; color: #713f12; padding: 10px 20px; font-weight: 700; font-size: 13px; letter-spacing: 1px; text-transform: uppercase; border-left: 4px solid #eab308;">
-                                    Return Journey
-                                </div>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 10px 20px; color: #555; font-size: 13px; width: 140px; border-bottom: 1px solid #f0f0f0;">Date</td>
-                            <td style="padding: 10px 20px; color: #111; font-size: 14px; font-weight: 500; border-bottom: 1px solid #f0f0f0;">{formatted_return_date}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 10px 20px; color: #555; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Pickup Time</td>
-                            <td style="padding: 10px 20px; color: #111; font-size: 14px; font-weight: 600; border-bottom: 1px solid #f0f0f0;">{formatted_return_time}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 10px 20px; color: #555; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Pickup</td>
-                            <td style="padding: 10px 20px; color: #111; font-size: 14px; border-bottom: 1px solid #f0f0f0;">{dropoff_address}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 10px 20px; color: #555; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Drop-off</td>
-                            <td style="padding: 10px 20px; color: #111; font-size: 14px; border-bottom: 1px solid #f0f0f0;">{primary_pickup}</td>
-                        </tr>
-                        {return_flight_rows}
-        '''
+    # Greeting
+    greeting = (
+        f'Hi <strong>{booking.get("name", "there")}</strong>, thank you for your booking. '
+        'Here are your trip details:'
+    )
 
-    # Build additional stops for outbound
-    additional_stops_html = ""
-    if pickup_addresses:
-        for i, addr in enumerate(pickup_addresses):
-            if addr and addr.strip():
-                additional_stops_html += f'''
-                        <tr>
-                            <td style="padding: 10px 20px; color: #555; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Stop {i+2}</td>
-                            <td style="padding: 10px 20px; color: #111; font-size: 14px; border-bottom: 1px solid #f0f0f0;">{addr}</td>
-                        </tr>
-                '''
+    # Contact details section
+    contact_html = (
+        '<table width="100%" cellpadding="0" cellspacing="0" border="0">'
+        '<tr><td style="padding:0 24px 16px 24px;font-family:Arial,Helvetica,sans-serif;">'
+        '<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#fafafa">'
+        '<tr><td style="padding:16px 18px;font-family:Arial,Helvetica,sans-serif;">'
+        '<p style="margin:0 0 8px 0;color:#999999;font-size:11px;text-transform:uppercase;letter-spacing:1px;font-weight:600;">Your Contact Details</p>'
+        f'<p style="margin:0 0 2px 0;color:#333333;font-size:14px;">{booking.get("email", "N/A")}</p>'
+        f'<p style="margin:0;color:#333333;font-size:14px;">{booking.get("phone", "N/A")}</p>'
+        '</td></tr></table></td></tr></table>'
+    )
 
-    # Notes section
-    notes_html = ""
-    if notes:
-        notes_html = f'''
-                        <tr>
-                            <td colspan="2" style="padding: 20px 20px 10px 20px;">
-                                <div style="background: #fffbeb; border-left: 4px solid #eab308; padding: 14px 18px; border-radius: 0 6px 6px 0;">
-                                    <p style="margin: 0 0 4px 0; color: #92400e; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Special Instructions</p>
-                                    <p style="margin: 0; color: #333; font-size: 14px; line-height: 1.5;">{notes}</p>
-                                </div>
-                            </td>
-                        </tr>
-        '''
+    body_parts = [
+        admin_banner,
+        confirmation_banner,
+        email_section(None, greeting),
+        email_section("Booking Details", email_booking_summary(booking)),
+        email_section("Pricing", email_price_table(booking)),
+        contact_html,
+        email_button("View Your Booking", "https://bookaride.co.nz/book-now"),
+    ]
 
-    # Flight info section
-    flight_info_html = ""
-    if departure_flight or arrival_flight:
-        flight_info_html = '''
-                        <tr>
-                            <td colspan="2" style="padding: 24px 0 8px 0;">
-                                <div style="background: #fef9c3; color: #713f12; padding: 10px 20px; font-weight: 700; font-size: 13px; letter-spacing: 1px; text-transform: uppercase; border-left: 4px solid #eab308;">
-                                    Flight Details
-                                </div>
-                            </td>
-                        </tr>
-        '''
-        if departure_flight:
-            flight_info_html += f'''
-                        <tr>
-                            <td style="padding: 10px 20px; color: #555; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Departure Flight</td>
-                            <td style="padding: 10px 20px; color: #111; font-size: 14px; font-weight: 600; border-bottom: 1px solid #f0f0f0;">{departure_flight}{' at ' + format_time_ampm(departure_time) if departure_time else ''}</td>
-                        </tr>
-            '''
-        if arrival_flight:
-            flight_info_html += f'''
-                        <tr>
-                            <td style="padding: 10px 20px; color: #555; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Arrival Flight</td>
-                            <td style="padding: 10px 20px; color: #111; font-size: 14px; font-weight: 600; border-bottom: 1px solid #f0f0f0;">{arrival_flight}{' at ' + format_time_ampm(arrival_time_flight) if arrival_time_flight else ''}</td>
-                        </tr>
-            '''
-
-    admin_banner = '''
-                <div style="background: #fef9c3; color: #713f12; padding: 12px 20px; text-align: center; border-bottom: 2px solid #eab308;">
-                    <p style="margin: 0; font-size: 13px; font-weight: 700;">ADMIN COPY - New Booking</p>
-                    <p style="margin: 4px 0 0 0; font-size: 11px; color: #92400e;">Assign driver in <a href="https://bookaride.co.nz/admin/login" style="color: #b45309; font-weight: 600;">Admin Dashboard</a></p>
-                </div>
-    ''' if for_admin else ''
-
-    html_content = f'''
-    <!DOCTYPE html>
-    <html>
-        <head>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        </head>
-        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 0; background-color: #f5f5f5; line-height: 1.6;">
-            <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; box-shadow: 0 4px 16px rgba(0,0,0,0.08); border-radius: 8px; overflow: hidden;">
-                {admin_banner}
-                <!-- Header -->
-                <div style="background: #ffffff; padding: 32px 20px 20px 20px; text-align: center; border-bottom: 3px solid #eab308;">
-                    <h1 style="margin: 0; color: #111; font-size: 26px; font-weight: 700; letter-spacing: 1px;">BOOK A RIDE</h1>
-                    <p style="margin: 6px 0 0 0; color: #999; font-size: 11px; letter-spacing: 2px; text-transform: uppercase;">Premium Airport Transfers</p>
-                </div>
-
-                <!-- Confirmation Banner -->
-                <div style="background: #eab308; padding: 18px 20px; text-align: center;">
-                    <p style="margin: 0; color: #ffffff; font-size: 12px; text-transform: uppercase; letter-spacing: 2px; font-weight: 600;">Booking Confirmed</p>
-                    <p style="margin: 6px 0 0 0; color: #ffffff; font-size: 30px; font-weight: 800; letter-spacing: 1px;">#{booking_ref}</p>
-                </div>
-
-                <!-- Greeting -->
-                <div style="padding: 24px 24px 0 24px;">
-                    <p style="margin: 0; color: #333; font-size: 15px;">Hi <strong>{booking.get('name', 'there')}</strong>, thank you for your booking. Here are your trip details:</p>
-                </div>
-
-                <!-- Main Content -->
-                <div style="padding: 10px 4px 0 4px;">
-                    <table style="width: 100%; border-collapse: collapse;">
-
-                        <!-- Outbound Journey Header -->
-                        <tr>
-                            <td colspan="2" style="padding: 16px 0 8px 0;">
-                                <div style="background: #fef9c3; color: #713f12; padding: 10px 20px; font-weight: 700; font-size: 13px; letter-spacing: 1px; text-transform: uppercase; border-left: 4px solid #eab308;">
-                                    {'Departure Journey' if has_return else 'Journey Details'}
-                                </div>
-                            </td>
-                        </tr>
-
-                        <tr>
-                            <td style="padding: 10px 20px; color: #555; font-size: 13px; width: 140px; border-bottom: 1px solid #f0f0f0;">Passenger</td>
-                            <td style="padding: 10px 20px; color: #111; font-size: 14px; font-weight: 600; border-bottom: 1px solid #f0f0f0;">{booking.get('name', 'N/A')}</td>
-                        </tr>
-
-                        <tr>
-                            <td style="padding: 10px 20px; color: #555; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Service</td>
-                            <td style="padding: 10px 20px; color: #111; font-size: 14px; border-bottom: 1px solid #f0f0f0;">{service_display}</td>
-                        </tr>
-
-                        <tr>
-                            <td style="padding: 10px 20px; color: #555; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Date</td>
-                            <td style="padding: 10px 20px; color: #111; font-size: 14px; font-weight: 500; border-bottom: 1px solid #f0f0f0;">{formatted_date}</td>
-                        </tr>
-
-                        <tr>
-                            <td style="padding: 10px 20px; color: #555; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Pickup Time</td>
-                            <td style="padding: 10px 20px; color: #111; font-size: 14px; font-weight: 700; border-bottom: 1px solid #f0f0f0;">{formatted_time}</td>
-                        </tr>
-
-                        <tr>
-                            <td style="padding: 10px 20px; color: #555; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Passengers</td>
-                            <td style="padding: 10px 20px; color: #111; font-size: 14px; border-bottom: 1px solid #f0f0f0;">{passengers}</td>
-                        </tr>
-
-                        <tr>
-                            <td style="padding: 10px 20px; color: #555; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Pickup</td>
-                            <td style="padding: 10px 20px; color: #111; font-size: 14px; border-bottom: 1px solid #f0f0f0;">{primary_pickup}</td>
-                        </tr>
-
-                        {additional_stops_html}
-
-                        <tr>
-                            <td style="padding: 10px 20px; color: #555; font-size: 13px; border-bottom: 1px solid #f0f0f0;">Drop-off</td>
-                            <td style="padding: 10px 20px; color: #111; font-size: 14px; border-bottom: 1px solid #f0f0f0;">{dropoff_address}</td>
-                        </tr>
-
-                        {flight_info_html}
-
-                        {return_section_html}
-
-                        {notes_html}
-
-                        <!-- Price Section -->
-                        <tr>
-                            <td colspan="2" style="padding: 24px 20px;">
-                                <div style="background: #ffffff; border: 2px solid #f0f0f0; border-radius: 8px; padding: 20px;">
-                                    <table style="width: 100%; border-collapse: collapse;">
-                                        {f'<tr><td style="color: #888; font-size: 13px; padding-bottom: 6px;">Distance</td><td style="text-align: right; color: #333; font-size: 14px; padding-bottom: 6px;">{distance} km</td></tr>' if distance else ''}
-                                        <tr>
-                                            <td style="color: #555; font-size: 14px; padding-top: 6px; border-top: 1px solid #f0f0f0;">Total Fare</td>
-                                            <td style="text-align: right; color: #111; font-size: 26px; font-weight: 800; padding-top: 6px; border-top: 1px solid #f0f0f0;">${total_price:.2f} <span style="font-size: 12px; color: #999; font-weight: 400;">NZD</span></td>
-                                        </tr>
-                                        <tr>
-                                            <td style="color: #888; font-size: 13px; padding-top: 10px;">Payment Method</td>
-                                            <td style="text-align: right; padding-top: 10px; font-size: 13px; color: #555;">{payment_method}</td>
-                                        </tr>
-                                        <tr>
-                                            <td style="color: #888; font-size: 13px; padding-top: 6px;">Status</td>
-                                            <td style="text-align: right; padding-top: 6px;">
-                                                <span style="background: {'#22c55e' if payment_status == 'PAID' else '#eab308'}; color: white; padding: 3px 14px; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: 0.5px;">{payment_status}</span>
-                                            </td>
-                                        </tr>
-                                    </table>
-                                </div>
-                            </td>
-                        </tr>
-
-                        <!-- Contact Details -->
-                        <tr>
-                            <td colspan="2" style="padding: 0 20px 20px 20px;">
-                                <div style="background: #fafafa; border-radius: 8px; padding: 16px 18px; border: 1px solid #f0f0f0;">
-                                    <p style="margin: 0 0 8px 0; color: #999; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Your Contact Details</p>
-                                    <p style="margin: 0 0 2px 0; color: #333; font-size: 14px;">{booking.get('email', 'N/A')}</p>
-                                    <p style="margin: 0; color: #333; font-size: 14px;">{booking.get('phone', 'N/A')}</p>
-                                </div>
-                            </td>
-                        </tr>
-
-                    </table>
-                </div>
-
-                <!-- Footer -->
-                <div style="background: #fafafa; padding: 28px 20px; text-align: center; border-top: 1px solid #eee;">
-                    <p style="margin: 0 0 12px 0; color: #888; font-size: 13px;">Questions about your booking? Contact us anytime</p>
-                    <p style="margin: 0 0 16px 0;">
-                        <a href="mailto:{sender_email}" style="color: #eab308; text-decoration: none; font-size: 13px; font-weight: 500;">{sender_email}</a>
-                    </p>
-                    <div style="border-top: 1px solid #e5e5e5; padding-top: 16px; margin-top: 8px;">
-                        <p style="margin: 0; color: #bbb; font-size: 11px;">Thank you for choosing Book A Ride</p>
-                        <p style="margin: 4px 0 0 0;">
-                            <a href="https://bookaride.co.nz" style="color: #eab308; text-decoration: none; font-size: 12px; font-weight: 600;">bookaride.co.nz</a>
-                        </p>
-                    </div>
-                </div>
-
-            </div>
-        </body>
-    </html>
-    '''
-    return html_content
+    return email_wrapper(
+        body_html="\n".join(body_parts),
+        preheader="Your BookARide transfer is confirmed!",
+    )
 
 
 # Import Bookings from WordPress/CSV
@@ -8948,81 +8688,52 @@ async def send_payment_link_email(booking: dict, payment_link: str, payment_type
         customer_name = booking.get('name', '')
         booking_ref = booking.get('referenceNumber', booking.get('booking_ref', booking.get('id', '')[:6]))
         total_price = booking.get('totalPrice', 0)
-        
-        payment_type_display = "Stripe" if payment_type == "stripe" else "PayPal"
-        
-        html_content = f'''
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        </head>
-        <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
-            <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
-                <!-- Header -->
-                <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 30px; text-align: center;">
-                    <h1 style="color: #D4AF37; margin: 0; font-size: 28px;">Book A Ride NZ</h1>
-                    <p style="color: #ffffff; margin: 10px 0 0 0; font-size: 14px;">www.bookaride.co.nz</p>
-                    <p style="color: #cccccc; margin: 8px 0 0 0; font-size: 13px;">Booking Reference: {booking_ref}</p>
-                </div>
 
-                <!-- Content -->
-                <div style="padding: 30px;">
-                    <p style="font-size: 16px; color: #333;">Dear {customer_name},</p>
+        # FIX: Never show "Stripe" to customers - display as "Credit/Debit Card"
+        payment_type_labels = {
+            'stripe': 'Credit/Debit Card',
+            'paypal': 'PayPal',
+        }
+        payment_type_display = payment_type_labels.get(payment_type, payment_type.title() if payment_type else 'Credit/Debit Card')
 
-                    <p style="font-size: 16px; color: #333;">
-                        Thank you for your booking with Book A Ride NZ. Please complete your payment using the secure link below.
-                    </p>
+        greeting_html = (
+            f'Dear {customer_name},<br /><br />'
+            'Thank you for your booking with BookARide NZ. Please complete your '
+            'payment using the secure link below.'
+        )
 
-                    <!-- Payment Amount Box -->
-                    <div style="background: #f9f9f9; border: 2px solid #D4AF37; border-radius: 10px; padding: 20px; text-align: center; margin: 25px 0;">
-                        <p style="margin: 0; color: #666; font-size: 14px;">Amount Due</p>
-                        <p style="margin: 10px 0; color: #1a1a2e; font-size: 36px; font-weight: bold;">${total_price:.2f} NZD</p>
-                        <p style="margin: 0; color: #666; font-size: 12px;">via {payment_type_display}</p>
-                    </div>
+        amount_html = (
+            '<table width="100%" cellpadding="0" cellspacing="0" border="0">'
+            '<tr><td align="center" style="padding:8px 24px 16px 24px;font-family:Arial,Helvetica,sans-serif;">'
+            '<table cellpadding="0" cellspacing="0" border="0" align="center" bgcolor="#f9f9f9" '
+            'style="border:2px solid #D4AF37;">'
+            '<tr><td align="center" style="padding:20px 30px;font-family:Arial,Helvetica,sans-serif;">'
+            '<p style="margin:0;color:#666666;font-size:14px;">Amount Due</p>'
+            f'<p style="margin:10px 0;color:#1a1a1a;font-size:36px;font-weight:bold;">${total_price:.2f} NZD</p>'
+            f'<p style="margin:0;color:#666666;font-size:12px;">via {payment_type_display}</p>'
+            '</td></tr></table></td></tr></table>'
+        )
 
-                    <!-- Payment Button -->
-                    <div style="text-align: center; margin: 30px 0;">
-                        <a href="{payment_link}"
-                           style="display: inline-block; background: #D4AF37; color: #1a1a2e; padding: 15px 40px;
-                                  border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 18px;">
-                            Pay Now Securely
-                        </a>
-                    </div>
+        link_fallback_html = (
+            f'Or copy this link:<br />'
+            f'<a href="{payment_link}" style="color:#D4AF37;word-break:break-all;">{payment_link}</a>'
+            '<br /><br />'
+            '<span style="font-size:12px;color:#999999;">'
+            'Your payment is processed securely. BookARide NZ never stores your card details.</span>'
+        )
 
-                    <p style="font-size: 13px; color: #888; text-align: center;">
-                        This link goes to <strong>bookaride.co.nz</strong> for secure payment.
-                    </p>
+        body_parts = [
+            email_section(None, greeting_html),
+            email_section("Booking Details", email_booking_summary(booking)),
+            amount_html,
+            email_button("Pay Now Securely", payment_link),
+            email_section(None, link_fallback_html),
+        ]
 
-                    <p style="font-size: 14px; color: #666; text-align: center; margin-top: 15px;">
-                        Or copy this link: <br>
-                        <a href="{payment_link}" style="color: #D4AF37; word-break: break-all;">{payment_link}</a>
-                    </p>
-
-                    <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-
-                    <p style="font-size: 14px; color: #666;">
-                        If you have any questions, please contact us at
-                        <a href="mailto:bookings@bookaride.co.nz" style="color: #D4AF37;">bookings@bookaride.co.nz</a>
-                    </p>
-
-                    <p style="font-size: 12px; color: #999; margin-top: 15px;">
-                        Your payment is processed securely. Book A Ride NZ never stores your card details.
-                    </p>
-                </div>
-
-                <!-- Footer -->
-                <div style="background: #1a1a2e; padding: 20px; text-align: center;">
-                    <p style="color: #888; font-size: 12px; margin: 0;">
-                        Book A Ride NZ | Premium Airport Transfers<br>
-                        <span style="color: #666;">www.bookaride.co.nz</span>
-                    </p>
-                </div>
-            </div>
-        </body>
-        </html>
-        '''
+        html_content = email_wrapper(
+            body_html="\n".join(body_parts),
+            preheader="Complete your payment for BookARide",
+        )
         
         # Send via Mailgun (from noreply address)
         if send_email_unified and send_email_unified(
@@ -10199,62 +9910,48 @@ async def send_cancellation_email(booking: dict, to_email: str, customer_name: s
     dropoff = booking.get('dropoffAddress', 'N/A')
     service_type = booking.get('serviceType', 'Transfer')
     
-    html_content = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <style>
-            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
-            .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-            .header {{ background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
-            .header h1 {{ margin: 0; color: white; }}
-            .content {{ background: #ffffff; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e8e4d9; border-top: none; }}
-            .booking-details {{ background: #faf8f3; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #dc2626; }}
-            .detail-row {{ margin: 10px 0; }}
-            .label {{ font-weight: bold; color: #666; }}
-            .footer {{ text-align: center; margin-top: 30px; padding: 20px; color: #666; font-size: 14px; background: #faf8f3; border-radius: 8px; }}
-            .contact {{ background: #fff8e6; padding: 15px; border-radius: 8px; margin-top: 20px; text-align: center; border: 1px solid #D4AF37; }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                <h1>Booking Cancelled</h1>
-                <p style="margin: 10px 0 0 0; color: rgba(255,255,255,0.9);">Book A Ride NZ</p>
-            </div>
-            <div class="content">
-                <p>Dear {customer_name},</p>
-                
-                <p>We're sorry to inform you that your booking has been cancelled. If you did not request this cancellation, please contact us immediately.</p>
-                
-                <div class="booking-details">
-                    <h3 style="margin-top: 0; color: #dc2626;">Cancelled Booking Details</h3>
-                    <div class="detail-row"><span class="label">Reference:</span> {booking_ref}</div>
-                    <div class="detail-row" style="font-size: 11px; color: #999;">Full ID: {full_booking_id}</div>
-                    <div class="detail-row"><span class="label">Service:</span> {service_type}</div>
-                    <div class="detail-row"><span class="label">Date:</span> {formatted_date}</div>
-                    <div class="detail-row"><span class="label">Time:</span> {booking_time}</div>
-                    <div class="detail-row"><span class="label">Pickup:</span> {pickup}</div>
-                    <div class="detail-row"><span class="label">Drop-off:</span> {dropoff}</div>
-                </div>
-                
-                <p>If you paid for this booking, a refund will be processed within 5-7 business days.</p>
-                
-                <p>We hope to serve you again in the future!</p>
-                
-                <div class="contact">
-                    <p style="margin: 0;"><strong>Need to rebook?</strong></p>
-                    <p style="margin: 5px 0;">Visit <a href="https://bookaride.co.nz/book-now" style="color: #D4AF37;">bookaride.co.nz</a> or call us at <strong style="color: #D4AF37;">+64 21 743 321</strong></p>
-                </div>
-            </div>
-            <div class="footer">
-                <p>Book A Ride NZ - Your Trusted Airport Shuttle Service</p>
-                <p>Auckland | Hamilton | Nationwide</p>
-            </div>
-        </div>
-    </body>
-    </html>
-    """
+    # Cancellation banner
+    cancel_banner = (
+        '<table width="100%" cellpadding="0" cellspacing="0" border="0">'
+        '<tr><td bgcolor="#dc2626" align="center" style="padding:18px 20px;font-family:Arial,Helvetica,sans-serif;">'
+        '<p style="margin:0;color:#ffffff;font-size:20px;font-weight:bold;">Booking Cancelled</p>'
+        f'<p style="margin:6px 0 0 0;color:#ffffff;font-size:14px;">Reference: {booking_ref}</p>'
+        '</td></tr></table>'
+    )
+
+    greeting_html = (
+        f'Dear {customer_name},<br /><br />'
+        'We are sorry to inform you that your booking has been cancelled. '
+        'If you did not request this cancellation, please contact us immediately.'
+    )
+
+    details_html = (
+        f'<strong>Reference:</strong> {booking_ref}<br />'
+        f'<span style="font-size:11px;color:#999999;">Full ID: {full_booking_id}</span><br />'
+        f'<strong>Service:</strong> {service_type}<br />'
+        f'<strong>Date:</strong> {formatted_date}<br />'
+        f'<strong>Time:</strong> {booking_time}<br />'
+        f'<strong>Pickup:</strong> {pickup}<br />'
+        f'<strong>Drop-off:</strong> {dropoff}'
+    )
+
+    refund_html = (
+        'If you paid for this booking, a refund will be processed within 5-7 business days.<br /><br />'
+        'We hope to serve you again in the future!'
+    )
+
+    body_parts = [
+        cancel_banner,
+        email_section(None, greeting_html),
+        email_section("Cancelled Booking Details", details_html),
+        email_section(None, refund_html),
+        email_button("Book Again", "https://bookaride.co.nz/book-now"),
+    ]
+
+    html_content = email_wrapper(
+        body_html="\n".join(body_parts),
+        preheader="Your BookARide booking has been cancelled",
+    )
     
     cancel_subject = f"Booking Cancelled - Ref: {booking_ref} - Book A Ride NZ"
     ok = _send_email_with_fallbacks(to_email, cancel_subject, html_content, from_email=sender_email, from_name="Book A Ride NZ")
