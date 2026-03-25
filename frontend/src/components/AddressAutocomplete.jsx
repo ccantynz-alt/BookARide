@@ -135,15 +135,19 @@ const AddressAutocomplete = ({
               <button
                 key={i}
                 type="button"
+                onTouchEnd={(e) => {
+                  // iOS Safari: touchend fires reliably even when Radix intercepts pointerdown.
+                  // This is the primary selection path on mobile/tablet devices.
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleSelect(s.description);
+                }}
                 onPointerDown={(e) => {
                   e.preventDefault();  // keep focus on input
                   e.stopPropagation(); // prevent Radix Dialog from intercepting
                   handleSelect(s.description);
                 }}
                 onMouseDown={(e) => {
-                  // Fallback for environments where pointerdown doesn't fire (e.g. jsdom tests).
-                  // In real browsers pointerdown fires first and handleSelect closes the dropdown
-                  // before mousedown fires, so this is effectively a no-op in production.
                   e.preventDefault();
                   e.stopPropagation();
                   if (open) handleSelect(s.description);

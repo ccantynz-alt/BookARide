@@ -278,7 +278,11 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+    <Dialog open={open} onOpenChange={(v) => {
+      // Prevent dialog close while any autocomplete/search dropdown is open (critical for iOS)
+      if (!v && document.querySelector('[data-autocomplete-dropdown]')) return;
+      if (!v) onClose();
+    }}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create Manual Booking</DialogTitle>
@@ -320,6 +324,11 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
                     <div
                       key={idx}
                       className="px-4 py-3 hover:bg-amber-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                      onTouchEnd={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        selectCustomer(customer);
+                      }}
                       onPointerDown={(e) => {
                         e.preventDefault();
                         e.stopPropagation();

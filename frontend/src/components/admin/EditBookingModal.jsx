@@ -60,7 +60,11 @@ const EditBookingModal = memo(({ open, onClose, booking, onSuccess, onPreviewCon
   if (!editingBooking) return null;
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+    <Dialog open={open} onOpenChange={(v) => {
+      // Prevent dialog close while any autocomplete/search dropdown is open (critical for iOS)
+      if (!v && document.querySelector('[data-autocomplete-dropdown]')) return;
+      if (!v) onClose();
+    }}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Booking #{editingBooking?.referenceNumber || editingBooking?.id?.slice(0, 8)}</DialogTitle>
