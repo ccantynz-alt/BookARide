@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Search, Mail, DollarSign, CheckCircle, XCircle, Clock, Eye, Edit2, Users, BookOpen, Settings, Trash2, MapPin, Calendar, RefreshCw, Send, Bell, Square, CheckSquare, FileText, Smartphone, RotateCcw, AlertTriangle, AlertCircle, Home, Upload, Archive, Activity, Download, Shield } from 'lucide-react';
+import { LogOut, Search, Mail, DollarSign, CheckCircle, XCircle, Clock, Eye, Edit2, Users, BookOpen, Settings, Trash2, MapPin, Calendar, RefreshCw, Send, Bell, Square, CheckSquare, FileText, Smartphone, RotateCcw, AlertTriangle, AlertCircle, Home, Upload, Archive, Activity, Download, Shield, Car, UserPlus, BarChart3, Megaphone } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent } from '../components/ui/card';
@@ -14,6 +14,8 @@ import { CustomDatePicker } from '../components/DateTimePicker';
 import axios from 'axios';
 import { CustomersTab } from '../components/admin/CustomersTab';
 import { DriverApplicationsTab } from '../components/admin/DriverApplicationsTab';
+import { DriversTab } from '../components/admin/DriversTab';
+import { AnalyticsTab } from '../components/admin/AnalyticsTab';
 import { LandingPagesTab } from '../components/admin/LandingPagesTab';
 import { AdminBreadcrumb } from '../components/admin/AdminBreadcrumb';
 import ReturnsOverviewPanel from '../components/admin/ReturnsOverviewPanel';
@@ -2102,6 +2104,22 @@ export const AdminDashboard = () => {
               <Activity className="w-3 h-3 md:w-4 md:h-4" />
               <span>Cockpit</span>
             </TabsTrigger>
+            <TabsTrigger value="drivers" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4">
+              <Car className="w-3 h-3 md:w-4 md:h-4" />
+              <span>Drivers</span>
+            </TabsTrigger>
+            <TabsTrigger value="applications" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4">
+              <UserPlus className="w-3 h-3 md:w-4 md:h-4" />
+              <span>Applications</span>
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4">
+              <BarChart3 className="w-3 h-3 md:w-4 md:h-4" />
+              <span>Analytics</span>
+            </TabsTrigger>
+            <TabsTrigger value="marketing" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4">
+              <Megaphone className="w-3 h-3 md:w-4 md:h-4" />
+              <span>Marketing</span>
+            </TabsTrigger>
           </TabsList>
 
 
@@ -2853,9 +2871,19 @@ export const AdminDashboard = () => {
             <CustomersTab />
           </TabsContent>
 
+          {/* Drivers Tab */}
+          <TabsContent value="drivers">
+            <DriversTab />
+          </TabsContent>
+
           {/* Driver Applications Tab */}
           <TabsContent value="applications">
             <DriverApplicationsTab />
+          </TabsContent>
+
+          {/* Analytics Tab */}
+          <TabsContent value="analytics">
+            <AnalyticsTab />
           </TabsContent>
 
           {/* Marketing Tab - Landing Pages & Social */}

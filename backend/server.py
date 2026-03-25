@@ -3177,6 +3177,115 @@ async def update_confirmation_status(booking_id: str, results: dict):
         logger.error(f"Error updating confirmation status: {e}")
 
 
+def send_post_trip_email(booking: dict):
+    """Send a thank-you email after trip completion with Google Review link.
+    Returns True if sent successfully, False otherwise.
+    Checks postTripEmailSent flag to prevent duplicate sends."""
+    try:
+        # Prevent duplicate sends
+        if booking.get('postTripEmailSent'):
+            logger.info(f"Post-trip email already sent for booking {booking.get('id')}, skipping")
+            return False
+
+        email = booking.get('email', '').strip()
+        if not email or '@' not in email:
+            logger.warning(f"No valid email for post-trip email, booking {booking.get('id')}")
+            return False
+
+        name = booking.get('name', 'Valued Customer')
+        first_name = name.split()[0] if name else 'there'
+        pickup = booking.get('pickupAddress', 'pickup location')
+        dropoff = booking.get('dropoffAddress', 'destination')
+        booking_date = booking.get('date', '')
+        ref_number = booking.get('referenceNumber', booking.get('id', '')[:8])
+
+        # Google Review URL — update the Place ID when the real one is available
+        google_review_url = 'https://search.google.com/local/writereview?placeid=YOUR_PLACE_ID'
+
+        subject = f"Thanks for riding with BookaRide, {first_name}!"
+
+        html_content = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
+            <div style="background: linear-gradient(135deg, #1a1a1a, #2d2d2d); padding: 30px; text-align: center;">
+                <h1 style="color: #D4AF37; margin: 0; font-size: 28px;">BookaRide NZ</h1>
+                <p style="color: #ccc; margin: 5px 0 0 0; font-size: 14px;">Premium Auckland Transfers</p>
+            </div>
+            <div style="padding: 30px; background: #fff;">
+                <h2 style="color: #333; margin-top: 0;">Thank you, {first_name}!</h2>
+                <p style="color: #666; font-size: 16px; line-height: 1.6;">
+                    We hope you had a wonderful experience with BookaRide. It was our pleasure
+                    to take care of your transfer.
+                </p>
+
+                <div style="background: #f9f8f5; padding: 20px; border-radius: 10px; margin: 25px 0; border-left: 4px solid #D4AF37;">
+                    <h3 style="color: #333; margin: 0 0 10px 0; font-size: 16px;">Your Trip Summary</h3>
+                    <p style="margin: 5px 0; color: #555;"><strong>Date:</strong> {booking_date}</p>
+                    <p style="margin: 5px 0; color: #555;"><strong>From:</strong> {pickup}</p>
+                    <p style="margin: 5px 0; color: #555;"><strong>To:</strong> {dropoff}</p>
+                    <p style="margin: 5px 0; color: #999; font-size: 13px;">Ref: #{ref_number}</p>
+                </div>
+
+                <div style="text-align: center; margin: 30px 0;">
+                    <p style="color: #333; font-size: 16px; font-weight: bold; margin-bottom: 15px;">
+                        Enjoyed your ride? We would love to hear from you!
+                    </p>
+                    <a href="{google_review_url}"
+                       style="background: #D4AF37; color: #000; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; font-size: 16px;">
+                        Leave Us a Google Review
+                    </a>
+                    <p style="color: #999; font-size: 13px; margin-top: 10px;">
+                        Your review helps other travellers find reliable airport transfers
+                    </p>
+                </div>
+
+                <div style="background: #f0f7f0; padding: 20px; border-radius: 10px; margin: 25px 0;">
+                    <h3 style="color: #333; margin: 0 0 8px 0; font-size: 15px;">Refer a Friend</h3>
+                    <p style="color: #666; font-size: 14px; margin: 0; line-height: 1.5;">
+                        Know someone who needs an Auckland airport transfer? Share your experience
+                        and tell them to book at
+                        <a href="https://bookaride.co.nz/book-now" style="color: #D4AF37; text-decoration: none; font-weight: bold;">bookaride.co.nz</a>.
+                    </p>
+                </div>
+
+                <p style="color: #999; font-size: 14px; text-align: center; margin-top: 25px;">
+                    We look forward to driving you again next time!
+                </p>
+            </div>
+            <div style="background: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; color: #666;">
+                <p style="margin: 0;"><span style="color: #D4AF37; font-weight: bold;">BookaRide NZ</span> | Auckland Airport Transfers</p>
+                <p style="margin: 5px 0 0 0;">bookaride.co.nz | +64 21 743 321</p>
+            </div>
+        </div>
+        """
+
+        ok = _send_email_with_fallbacks(email, subject, html_content, from_name="BookaRide NZ")
+        if ok:
+            logger.info(f"Post-trip thank-you email sent to {email} for booking {booking.get('id')}")
+            # Mark as sent — caller is responsible for the DB update since this is a sync function
+            return True
+        else:
+            logger.error(f"Failed to send post-trip email to {email} for booking {booking.get('id')}")
+            return False
+
+    except Exception as e:
+        logger.error(f"Error sending post-trip email for booking {booking.get('id')}: {e}")
+        return False
+
+
+async def mark_post_trip_email_sent(booking_id: str):
+    """Mark a booking as having had its post-trip email sent."""
+    try:
+        nz_tz = pytz.timezone('Pacific/Auckland')
+        now = datetime.now(nz_tz).isoformat()
+        await db.bookings.update_one(
+            {"id": booking_id},
+            {"$set": {"postTripEmailSent": True, "postTripEmailSentAt": now}}
+        )
+        logger.info(f"Post-trip email flag set for booking {booking_id}")
+    except Exception as e:
+        logger.error(f"Error marking post-trip email sent for booking {booking_id}: {e}")
+
+
 def send_reminder_email(booking: dict):
     """Send day-before reminder email to customer with professional pickup instructions"""
     try:
@@ -4178,22 +4287,51 @@ class ChatbotMessageRequest(BaseModel):
     message: str
     conversationHistory: Optional[List[dict]] = []
 
+# In-memory rate limiter for chatbot: { ip_or_session: [timestamp, ...] }
+_chatbot_rate_limits: dict = {}
+
 @api_router.post("/chatbot/message")
-async def chatbot_message(request: ChatbotMessageRequest):
-    """AI-powered chatbot for booking assistance"""
+async def chatbot_message(request: ChatbotMessageRequest, req: Request):
+    """AI-powered chatbot for booking assistance using Claude Haiku"""
+
+    static_fallback = (
+        "Thanks for your message! For instant pricing and to book, visit "
+        "bookaride.co.nz/book-now and enter your pickup and dropoff addresses. "
+        "For other questions, email info@bookaride.co.nz and we will get back "
+        "to you within 24 hours."
+    )
+
     try:
-        # Emergent LLM no longer used - return static guidance
-        history_context = ""
-        if request.conversationHistory:
-            for msg in request.conversationHistory[-6:]:  # Last 6 messages for context
-                role = "Customer" if msg.get('role') == 'user' else "Assistant"
-                history_context += f"{role}: {msg.get('content', '')}\n"
-        
+        # Rate limit: 20 messages per IP per hour
+        client_ip = req.client.host if req.client else "unknown"
+        now = datetime.now(timezone.utc)
+        one_hour_ago = now - timedelta(hours=1)
+
+        if client_ip not in _chatbot_rate_limits:
+            _chatbot_rate_limits[client_ip] = []
+
+        # Prune old timestamps
+        _chatbot_rate_limits[client_ip] = [
+            ts for ts in _chatbot_rate_limits[client_ip] if ts > one_hour_ago
+        ]
+
+        if len(_chatbot_rate_limits[client_ip]) >= 20:
+            logger.warning(f"Chatbot rate limit hit for {client_ip}")
+            return {
+                "response": (
+                    "You have sent a lot of messages recently. For immediate help, "
+                    "please visit bookaride.co.nz/book-now for instant pricing or "
+                    "email info@bookaride.co.nz."
+                )
+            }
+
+        _chatbot_rate_limits[client_ip].append(now)
+
         # System prompt for the booking assistant
         system_prompt = """You are a friendly and helpful booking assistant for BookaRide NZ, a premium airport transfer service in Auckland, New Zealand.
 
 KEY INFORMATION:
-- We offer airport shuttles to/from Auckland Airport, Hamilton Airport, and Whangarei
+- We offer airport transfers to/from Auckland Airport, Hamilton Airport, and Whangarei
 - Popular services: Airport transfers, Hobbiton tours, Cruise terminal transfers, Wine tours
 - Payment options: Credit/Debit cards, Afterpay (pay in 4 instalments)
 - We offer Meet & Greet service where drivers hold a name sign at arrivals
@@ -4219,28 +4357,74 @@ EXAMPLE PRICE RANGES (but always direct them to enter addresses for exact price)
 YOUR STYLE:
 - Be warm, friendly and professional
 - Keep responses concise (2-3 sentences when possible)
-- Use emojis sparingly but naturally 
+- Use emojis sparingly but naturally
 - ALWAYS explain we need their exact addresses to give a precise price (because we use Google Maps per-kilometer pricing)
 - Direct them to bookaride.co.nz/book-now - they just enter pickup & dropoff to see the exact price instantly
 - For questions you can't answer, suggest they email info@bookaride.co.nz
 
-IMPORTANT: 
+IMPORTANT:
 - Never give phone numbers - we don't take phone bookings
 - Always direct to the online booking form for quotes and bookings
 - Explain WHY we can't give exact prices without addresses (every house is different distance!)
-- The booking form has a LIVE PRICE CALCULATOR - they see the price instantly when they enter addresses"""
+- The booking form has a LIVE PRICE CALCULATOR - they see the price instantly when they enter addresses
+- You do NOT have access to any real bookings - never pretend you can look up or modify bookings
+- NEVER make up prices - always direct to bookaride.co.nz/book-now for exact quotes"""
 
-        response = (
-            "Thanks for your message! For instant pricing and to book, visit bookaride.co.nz/book-now and enter your pickup and dropoff addresses. "
-            "For other questions, email info@bookaride.co.nz and we'll get back to you within 24 hours."
-        )
-        return {"response": response}
-        
+        # Check for API key
+        api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+        if not api_key:
+            logger.warning("ANTHROPIC_API_KEY not set - chatbot using static fallback")
+            return {"response": static_fallback}
+
+        # Build conversation messages from history
+        messages = []
+        if request.conversationHistory:
+            for msg in request.conversationHistory[-10:]:  # Last 10 messages for context
+                role = msg.get("role", "user")
+                content = msg.get("content", "")
+                if role in ("user", "assistant") and content.strip():
+                    messages.append({"role": role, "content": content})
+
+        # Add the current user message
+        messages.append({"role": "user", "content": request.message})
+
+        # Ensure messages alternate roles properly (Claude requires this)
+        # Deduplicate consecutive same-role messages by merging them
+        cleaned_messages = []
+        for msg in messages:
+            if cleaned_messages and cleaned_messages[-1]["role"] == msg["role"]:
+                cleaned_messages[-1]["content"] += "\n" + msg["content"]
+            else:
+                cleaned_messages.append(msg)
+
+        # Ensure first message is from user
+        if cleaned_messages and cleaned_messages[0]["role"] != "user":
+            cleaned_messages = cleaned_messages[1:]
+
+        if not cleaned_messages:
+            cleaned_messages = [{"role": "user", "content": request.message}]
+
+        # Call Claude Haiku
+        try:
+            import anthropic
+            client = anthropic.Anthropic(api_key=api_key)
+            response = client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=300,
+                system=system_prompt,
+                messages=cleaned_messages,
+            )
+            ai_text = response.content[0].text.strip()
+            logger.info(f"Chatbot Claude response generated ({len(ai_text)} chars)")
+            return {"response": ai_text}
+        except Exception as e:
+            logger.error(f"Chatbot Claude API error: {e}")
+            return {"response": static_fallback}
+
     except Exception as e:
         logger.error(f"Chatbot error: {str(e)}")
-        # Fallback response
         return {
-            "response": "I apologize, I'm having a brief technical issue. For immediate assistance, please call us at 0800 BOOK A RIDE or visit bookaride.co.nz/book-now to make a booking. We're here to help! "
+            "response": "I apologize, I am having a brief technical issue. Please visit bookaride.co.nz/book-now for instant pricing or email info@bookaride.co.nz for help."
         }
 
 
