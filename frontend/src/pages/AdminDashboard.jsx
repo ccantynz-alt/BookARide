@@ -23,7 +23,7 @@ import { API } from '../config/api';
 import Cockpit from '../admin/Cockpit';
 import CreateBookingModal from '../components/admin/CreateBookingModal';
 import EditBookingModal from '../components/admin/EditBookingModal';
-import AddressAutocomplete from '../components/AddressAutocomplete';
+import GoogleAddressInput from '../components/GoogleAddressInput';
 
 // Helper function to format date to DD/MM/YYYY
 const formatDate = (dateString) => {
@@ -4127,7 +4127,7 @@ export const AdminDashboard = () => {
                 <div className="space-y-4">
                   <div>
                     <Label>Pickup Address 1 *</Label>
-                    <AddressAutocomplete
+                    <GoogleAddressInput
                       value={editingBooking.pickupAddress}
                       onChange={(val) => setEditingBooking(prev => ({ ...prev, pickupAddress: val }))}
                       onSelect={(val) => setEditingBooking(prev => ({ ...prev, pickupAddress: val }))}
@@ -4138,7 +4138,7 @@ export const AdminDashboard = () => {
 
                   <div>
                     <Label>Drop-off Address *</Label>
-                    <AddressAutocomplete
+                    <GoogleAddressInput
                       value={editingBooking.dropoffAddress}
                       onChange={(val) => setEditingBooking(prev => ({ ...prev, dropoffAddress: val }))}
                       onSelect={(val) => setEditingBooking(prev => ({ ...prev, dropoffAddress: val }))}

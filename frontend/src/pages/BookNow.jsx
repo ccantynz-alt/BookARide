@@ -16,7 +16,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import { CustomDatePicker, CustomTimePicker } from '../components/DateTimePicker';
 import PriceComparison from '../components/PriceComparison';
 import TrustBadges from '../components/TrustBadges';
-import AddressAutocomplete from '../components/AddressAutocomplete';
+import GoogleAddressInput from '../components/GoogleAddressInput';
 import { API } from '../config/api';
 
 const DROPOFF_QUICK_ADDRESSES = [
@@ -448,7 +448,7 @@ export const BookNow = () => {
                           <MapPin className="w-4 h-4 text-gold" />
                           <span>Pickup Location *</span>
                         </Label>
-                        <AddressAutocomplete
+                        <GoogleAddressInput
                           id="pickupAddress"
                           value={formData.pickupAddress}
                           onChange={(val) => setFormData(prev => ({ ...prev, pickupAddress: val }))}
@@ -481,7 +481,7 @@ export const BookNow = () => {
                             </button>
                           ))}
                         </div>
-                        <AddressAutocomplete
+                        <GoogleAddressInput
                           id="dropoffAddress"
                           value={formData.dropoffAddress}
                           onChange={(val) => setFormData(prev => ({ ...prev, dropoffAddress: val }))}

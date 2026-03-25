@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Textarea } from '../ui/textarea';
 import { toast } from 'sonner';
 import { CustomDatePicker, CustomTimePicker } from '../DateTimePicker';
-import AddressAutocomplete from '../AddressAutocomplete';
+import GoogleAddressInput from '../GoogleAddressInput';
 import axios from 'axios';
 import { API } from '../../config/api';
 
@@ -455,7 +455,7 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
             <div className="space-y-4">
               <div>
                 <Label>Pickup Address *</Label>
-                <AddressAutocomplete
+                <GoogleAddressInput
                   value={newBooking.pickupAddress}
                   onChange={(val) => setNewBooking(prev => ({ ...prev, pickupAddress: val }))}
                   onSelect={(val) => setNewBooking(prev => ({ ...prev, pickupAddress: val }))}
@@ -466,7 +466,7 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
 
               <div>
                 <Label>Drop-off Address *</Label>
-                <AddressAutocomplete
+                <GoogleAddressInput
                   value={newBooking.dropoffAddress}
                   onChange={(val) => setNewBooking(prev => ({ ...prev, dropoffAddress: val }))}
                   onSelect={(val) => setNewBooking(prev => ({ ...prev, dropoffAddress: val }))}

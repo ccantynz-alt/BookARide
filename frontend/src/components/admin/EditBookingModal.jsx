@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Textarea } from '../ui/textarea';
 import { toast } from 'sonner';
-import AddressAutocomplete from '../AddressAutocomplete';
+import GoogleAddressInput from '../GoogleAddressInput';
 import axios from 'axios';
 import { API } from '../../config/api';
 
@@ -142,7 +142,7 @@ const EditBookingModal = memo(({ open, onClose, booking, onSuccess, onPreviewCon
             <div className="space-y-4">
               <div>
                 <Label>Pickup Address *</Label>
-                <AddressAutocomplete
+                <GoogleAddressInput
                   value={editingBooking.pickupAddress}
                   onChange={(val) => setEditingBooking(prev => ({ ...prev, pickupAddress: val }))}
                   onSelect={(val) => setEditingBooking(prev => ({ ...prev, pickupAddress: val }))}
@@ -153,7 +153,7 @@ const EditBookingModal = memo(({ open, onClose, booking, onSuccess, onPreviewCon
 
               <div>
                 <Label>Drop-off Address *</Label>
-                <AddressAutocomplete
+                <GoogleAddressInput
                   value={editingBooking.dropoffAddress}
                   onChange={(val) => setEditingBooking(prev => ({ ...prev, dropoffAddress: val }))}
                   onSelect={(val) => setEditingBooking(prev => ({ ...prev, dropoffAddress: val }))}
