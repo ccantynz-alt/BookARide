@@ -101,11 +101,6 @@ const AucklandAirportShuttle = () => {
       'opens': '00:00',
       'closes': '23:59'
     },
-    'aggregateRating': {
-      '@type': 'AggregateRating',
-      'ratingValue': '4.9',
-      'reviewCount': '2500'
-    }
   };
 
   // Service Schema

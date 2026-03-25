@@ -19,11 +19,6 @@ const AirportShuttleServicePage = () => {
         "addressLocality": "Auckland",
         "addressCountry": "NZ"
       },
-      "aggregateRating": {
-        "@type": "AggregateRating",
-        "ratingValue": "4.9",
-        "reviewCount": "2847"
-      }
     },
     "areaServed": {
       "@type": "City",

@@ -39,12 +39,6 @@ const AirportShuttlePage = () => {
       "opens": "00:00",
       "closes": "23:59"
     },
-    "aggregateRating": {
-      "@type": "AggregateRating",
-      "ratingValue": "4.9",
-      "reviewCount": "2847",
-      "bestRating": "5"
-    },
     "sameAs": [
       "https://www.facebook.com/bookaridenz",
       "https://www.instagram.com/bookaridenz"
