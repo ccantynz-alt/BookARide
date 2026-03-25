@@ -21,6 +21,7 @@ import { API } from '../config/api';
 import Cockpit from '../admin/Cockpit';
 import CreateBookingModal from '../components/admin/CreateBookingModal';
 import EditBookingModal from '../components/admin/EditBookingModal';
+import AddressAutocomplete from '../components/AddressAutocomplete';
 
 // Helper function to format date to DD/MM/YYYY
 const formatDate = (dateString) => {
@@ -580,11 +581,6 @@ export const AdminDashboard = () => {
   const [xeroInvoiceDate, setXeroInvoiceDate] = useState(null);
   
 
-  // Edit modal address autocomplete
-  const [editPickupSuggestions, setEditPickupSuggestions] = useState([]);
-  const [editDropoffSuggestions, setEditDropoffSuggestions] = useState([]);
-  const [showEditPickupSuggestions, setShowEditPickupSuggestions] = useState(false);
-  const [showEditDropoffSuggestions, setShowEditDropoffSuggestions] = useState(false);
 
 
 
@@ -1619,48 +1615,6 @@ export const AdminDashboard = () => {
     }
   };
   
-  // Address autocomplete for admin forms with debounce + stale-request guard
-  // Each field (create-pickup, create-dropoff, edit-pickup, edit-dropoff) gets its own key
-  const adminAddrDebounceRef = useRef({});
-  const adminAddrRequestIdRef = useRef({});
-  const fetchAdminAddressSuggestions = (query, setter, showSetter) => {
-    // Use unique key per field to prevent cross-field/cross-modal collisions
-    let key;
-    if (setter === setEditPickupSuggestions) key = 'edit-pickup';
-    else key = 'edit-dropoff';
-
-    if (adminAddrDebounceRef.current[key]) clearTimeout(adminAddrDebounceRef.current[key]);
-
-    if (query.length < 3) { setter([]); showSetter(false); return; }
-
-    adminAddrDebounceRef.current[key] = setTimeout(async () => {
-      if (!adminAddrRequestIdRef.current[key]) adminAddrRequestIdRef.current[key] = 0;
-      const requestId = ++adminAddrRequestIdRef.current[key];
-      try {
-        const res = await axios.get(`${API}/places/autocomplete`, { params: { input: query }, timeout: 10000 });
-        if (requestId !== adminAddrRequestIdRef.current[key]) return;
-        const predictions = res.data?.predictions || [];
-        if (res.data?.source === 'fallback') {
-          console.warn('[BookARide] Google Maps API not available on backend. Reason:', res.data?.reason);
-        }
-        setter(predictions);
-        showSetter(predictions.length > 0);
-      } catch (err) {
-        if (requestId !== adminAddrRequestIdRef.current[key]) return;
-        console.error('Admin address autocomplete error:', err);
-        setter([]); showSetter(false);
-      }
-    }, 300);
-  };
-
-  // Clear all admin address suggestion state and cancel pending requests
-  const clearEditAddressSuggestions = () => {
-    Object.keys(adminAddrDebounceRef.current).forEach(k => {
-      if (k.startsWith('edit-')) clearTimeout(adminAddrDebounceRef.current[k]);
-    });
-    setEditPickupSuggestions([]); setShowEditPickupSuggestions(false);
-    setEditDropoffSuggestions([]); setShowEditDropoffSuggestions(false);
-  };
 
   const exportToCSV = () => {
     try {
@@ -1831,7 +1785,6 @@ export const AdminDashboard = () => {
       toast.success('Booking updated successfully!');
       setShowEditBookingModal(false);
       setEditingBooking(null);
-      clearEditAddressSuggestions();
       fetchBookingsRef.current?.();
     } catch (error) {
       console.error('Error updating booking:', error);
@@ -4144,64 +4097,26 @@ export const AdminDashboard = () => {
               <div>
                 <h3 className="font-semibold text-gray-900 mb-3">Trip Information</h3>
                 <div className="space-y-4">
-                  <div className="relative">
+                  <div>
                     <Label>Pickup Address 1 *</Label>
-                    <Input
+                    <AddressAutocomplete
                       value={editingBooking.pickupAddress}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setEditingBooking(prev => ({ ...prev, pickupAddress: val }));
-                        fetchAdminAddressSuggestions(val, setEditPickupSuggestions, setShowEditPickupSuggestions);
-                      }}
-                      onBlur={() => setTimeout(() => setShowEditPickupSuggestions(false), 350)}
+                      onChange={(val) => setEditingBooking(prev => ({ ...prev, pickupAddress: val }))}
+                      onSelect={(val) => setEditingBooking(prev => ({ ...prev, pickupAddress: val }))}
                       placeholder="Start typing address..."
-                      autoComplete="off"
                       className="mt-1"
                     />
-                    {showEditPickupSuggestions && editPickupSuggestions.length > 0 && (
-                      <ul className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
-                        {editPickupSuggestions.map((s, i) => (
-                          <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm border-b last:border-b-0"
-                            onPointerDown={(e) => {
-                              e.preventDefault();
-                              setEditingBooking(prev => ({ ...prev, pickupAddress: s.description }));
-                              setShowEditPickupSuggestions(false);
-                            }}>
-                            {s.description}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
                   </div>
 
-                  <div className="relative">
+                  <div>
                     <Label>Drop-off Address *</Label>
-                    <Input
+                    <AddressAutocomplete
                       value={editingBooking.dropoffAddress}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setEditingBooking(prev => ({ ...prev, dropoffAddress: val }));
-                        fetchAdminAddressSuggestions(val, setEditDropoffSuggestions, setShowEditDropoffSuggestions);
-                      }}
-                      onBlur={() => setTimeout(() => setShowEditDropoffSuggestions(false), 350)}
+                      onChange={(val) => setEditingBooking(prev => ({ ...prev, dropoffAddress: val }))}
+                      onSelect={(val) => setEditingBooking(prev => ({ ...prev, dropoffAddress: val }))}
                       placeholder="Start typing address..."
-                      autoComplete="off"
                       className="mt-1"
                     />
-                    {showEditDropoffSuggestions && editDropoffSuggestions.length > 0 && (
-                      <ul className="absolute z-[9999] w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
-                        {editDropoffSuggestions.map((s, i) => (
-                          <li key={i} className="px-4 py-2.5 hover:bg-gold/10 cursor-pointer text-sm border-b last:border-b-0"
-                            onPointerDown={(e) => {
-                              e.preventDefault();
-                              setEditingBooking(prev => ({ ...prev, dropoffAddress: s.description }));
-                              setShowEditDropoffSuggestions(false);
-                            }}>
-                            {s.description}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -4364,8 +4279,7 @@ export const AdminDashboard = () => {
                   onClick={() => {
                     setShowEditBookingModal(false);
                     setEditingBooking(null);
-                    clearEditAddressSuggestions();
-                  }}
+                                }}
                 >
                   Cancel
                 </Button>
