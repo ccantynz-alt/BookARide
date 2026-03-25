@@ -23,7 +23,7 @@ const TrustBadges = ({ variant = 'default' }) => {
         </div>
         <div className="flex items-center gap-1 text-gray-400 text-xs">
           <Lock className="w-3 h-3" />
-          <span>Secure checkout via Stripe</span>
+          <span>Secure Card Payment</span>
         </div>
       </div>
     );

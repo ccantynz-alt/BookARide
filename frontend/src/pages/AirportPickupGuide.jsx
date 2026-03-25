@@ -202,7 +202,7 @@ export default function AirportPickupGuide() {
                 <Phone className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
                 <div>
                   <p className="font-medium text-gray-900">Can't Find Your Driver?</p>
-                  <p className="text-gray-600 text-sm mt-1">Call us: <a href="tel:+6421743321" className="text-amber-600 font-semibold">021 743 321</a></p>
+                  <p className="text-gray-600 text-sm mt-1">Email us: <a href="mailto:support@bookaride.co.nz" className="text-amber-600 font-semibold">support@bookaride.co.nz</a></p>
                 </div>
               </div>
             </div>
@@ -225,12 +225,11 @@ export default function AirportPickupGuide() {
           <p className="text-amber-100 mb-6">Our team is here to assist you</p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <a 
-              href="tel:+6421743321"
+            <a
+              href="mailto:support@bookaride.co.nz"
               className="inline-flex items-center justify-center gap-2 bg-white text-amber-600 px-6 py-3 rounded-xl font-semibold hover:bg-amber-50 transition-colors"
             >
-              <Phone className="w-5 h-5" />
-              021 743 321
+              Email Support
             </a>
             <Link
               to="/contact"

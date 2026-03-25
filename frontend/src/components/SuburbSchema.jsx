@@ -11,7 +11,6 @@ const SuburbSchema = ({ suburb }) => {
       "@type": "LocalBusiness",
       "name": siteConfig.siteName,
       "image": `${siteConfig.siteUrl}/logo.png`,
-      "telephone": siteConfig.phone,
       "email": siteConfig.email,
       "address": {
         "@type": "PostalAddress",

@@ -122,6 +122,7 @@ import AirportPickupGuide from './pages/AirportPickupGuide';
 import TravelAgents from './pages/TravelAgents';
 // Hotel Concierge Portal
 import HotelConciergePortal from './pages/HotelConciergePortal';
+import NotFound from './pages/NotFound';
 
 import RecentBookingsNotification from './components/RecentBookingsNotification';
 import AIChatbot from './components/AIChatbot';
@@ -374,13 +375,18 @@ function App() {
             {/* Default English routes (no prefix) */}
             <Route path="/" element={<MainLayout />}>
               {commonRoutes.map((route, idx) => (
-                <Route 
+                <Route
                   key={`en-${idx}`}
                   index={route.index}
                   path={route.path}
                   element={route.element}
                 />
               ))}
+            </Route>
+
+            {/* 404 Catch-all — must be LAST */}
+            <Route path="*" element={<MainLayout />}>
+              <Route path="*" element={<NotFound />} />
             </Route>
           </Routes>
             <Toaster />

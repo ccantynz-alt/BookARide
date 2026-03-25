@@ -1,6 +1,6 @@
 import React from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { MapPin, Clock, DollarSign, Shield, Star, ArrowRight, Check, Car, Plane, Phone } from 'lucide-react';
+import { MapPin, Clock, DollarSign, Shield, Star, ArrowRight, Check, Car, Plane } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent } from '../../components/ui/card';
 import SEO from '../../components/SEO';
@@ -99,12 +99,12 @@ const SuburbTransferPage = () => {
                   <ArrowRight className="ml-2 w-5 h-5" />
                 </Button>
               </Link>
-              <a href="tel:+6495555555">
+              <Link to="/book-now">
                 <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10 px-8 py-6 text-lg">
-                  <Phone className="mr-2 w-5 h-5" />
-                  Call Now
+                  <ArrowRight className="mr-2 w-5 h-5" />
+                  Get Instant Quote
                 </Button>
-              </a>
+              </Link>
             </div>
 
             <div className="mt-8 flex flex-wrap justify-center gap-6 text-sm text-gray-400">

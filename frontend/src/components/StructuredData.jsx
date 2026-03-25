@@ -9,7 +9,6 @@ const StructuredData = () => {
     "name": siteConfig.siteName,
     "image": `${siteConfig.siteUrl}/logo.png`,
     "url": siteConfig.siteUrl,
-    "telephone": siteConfig.phone,
     "email": siteConfig.email,
     "address": {
       "@type": "PostalAddress",

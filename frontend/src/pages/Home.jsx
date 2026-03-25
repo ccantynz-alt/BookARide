@@ -335,7 +335,7 @@ export const Home = () => {
                       </div>
                       <div>
                         <h3 className="text-lg font-semibold text-gray-900 mb-2">Secure Online Payments</h3>
-                        <p className="text-gray-600 text-sm">Fast, secure checkout with Stripe. No cash or bank transfer hassles.</p>
+                        <p className="text-gray-600 text-sm">Fast, secure credit/debit card checkout. No cash or bank transfer hassles.</p>
                       </div>
                     </div>
                   </div>
@@ -535,7 +535,7 @@ export const Home = () => {
           <p className="text-xl text-white/80 mb-12 max-w-2xl mx-auto">
             Get in touch today and let us take care of your transportation needs.
           </p>
-          <Link to="/contact">
+          <Link to="/book-now">
             <Button size="lg" className="bg-gold hover:bg-gold/90 text-black font-semibold px-10 py-6 text-base transition-all duration-200 shadow-lg">
               Book Now
               <ArrowRight className="ml-2 w-5 h-5" />

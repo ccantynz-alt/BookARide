@@ -4,7 +4,7 @@ import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { 
   Plane, Clock, Shield, Star, CreditCard, CheckCircle, 
-  ArrowRight, Phone, Sparkles, Users, Award, Zap,
+  ArrowRight, Sparkles, Users, Award, Zap,
   ChevronRight, Quote, Play, Calendar, MapPin
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
@@ -132,12 +132,12 @@ const CountryLandingPage = () => {
                   <ArrowRight className="ml-2 w-6 h-6" />
                 </Button>
               </Link>
-              <a href="tel:+6495555555">
+              <Link to="/book-now">
                 <Button size="lg" variant="outline" className="border-2 border-white text-white hover:bg-white hover:text-black px-10 py-7 text-xl rounded-xl font-bold">
-                  <Phone className="mr-2 w-6 h-6" />
-                  Call Now
+                  <ArrowRight className="mr-2 w-6 h-6" />
+                  Get Instant Quote
                 </Button>
-              </a>
+              </Link>
             </motion.div>
 
             {/* Trust Badges */}

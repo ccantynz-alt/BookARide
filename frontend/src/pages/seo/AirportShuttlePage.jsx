@@ -1,7 +1,7 @@
 import React from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
-import { Plane, Clock, DollarSign, Shield, Star, Users, MapPin, Phone, CheckCircle, ArrowRight, Car, Calendar } from 'lucide-react';
+import { Plane, Clock, DollarSign, Shield, Star, Users, MapPin, CheckCircle, ArrowRight, Car, Calendar } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 
 const AirportShuttlePage = () => {
@@ -14,7 +14,6 @@ const AirportShuttlePage = () => {
     "alternateName": ["BookARide", "Book A Ride Auckland", "Auckland Airport Shuttle"],
     "description": "Auckland's #1 rated airport shuttle service. Professional door-to-door transfers to Auckland Airport with fixed pricing, 24/7 availability, and real-time tracking.",
     "url": "https://bookaride.co.nz",
-    "telephone": "+64-27-XXX-XXXX",
     "email": "bookings@bookaride.co.nz",
     "address": {
       "@type": "PostalAddress",

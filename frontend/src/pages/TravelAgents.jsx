@@ -108,14 +108,14 @@ const TravelAgents = () => {
               >
                 Become a Partner <ArrowRight className="ml-2 w-5 h-5" />
               </Button>
-              <Button 
-                size="lg" 
-                variant="outline" 
+              <Button
+                size="lg"
+                variant="outline"
                 className="border-white text-white hover:bg-white/10"
                 asChild
               >
-                <a href="tel:+6421743321">
-                  <Phone className="mr-2 w-5 h-5" /> Call Partnerships Team
+                <a href="mailto:partners@bookaride.co.nz">
+                  Email Partnerships Team
                 </a>
               </Button>
             </div>
@@ -353,8 +353,8 @@ const TravelAgents = () => {
             <div className="mt-8 text-center text-gray-600">
               <p className="mb-2">Prefer to talk? Contact our partnerships team directly:</p>
               <div className="flex justify-center gap-6">
-                <a href="tel:+6421743321" className="flex items-center gap-2 text-gold hover:underline">
-                  <Phone className="w-4 h-4" /> 021 743 321
+                <a href="mailto:partners@bookaride.co.nz" className="flex items-center gap-2 text-gold hover:underline">
+                  partners@bookaride.co.nz
                 </a>
                 <a href="mailto:partners@bookaride.co.nz" className="flex items-center gap-2 text-gold hover:underline">
                   <Mail className="w-4 h-4" /> partners@bookaride.co.nz

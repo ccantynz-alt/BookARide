@@ -151,11 +151,11 @@ const AirportShuttleServicePage = () => {
                     Book Shuttle Service
                   </Button>
                 </Link>
-                <a href="tel:+6427XXXXXXX">
+                <Link to="/book-now">
                   <Button size="lg" variant="outline" className="border-black text-black hover:bg-black/10 px-8 py-6 text-lg">
-                    Call Now
+                    Get Instant Quote
                   </Button>
-                </a>
+                </Link>
               </div>
             </div>
           </div>

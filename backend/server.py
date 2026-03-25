@@ -179,8 +179,8 @@ async def root_health_check():
 
 @app.get("/email-status")
 @app.get("/api/email-status")
-async def root_email_status():
-    """Email config check – Mailgun only. No auth."""
+async def root_email_status(current_admin: dict = Depends(get_current_admin)):
+    """Email config check – Mailgun only. Requires admin auth."""
     try:
         from email_sender import is_email_configured, get_noreply_email as _get_noreply
         return {
@@ -585,8 +585,8 @@ async def get_booking_counter(current_admin: dict = Depends(get_current_admin)):
 # Authentication Endpoints
 
 @api_router.post("/admin/register", response_model=Token)
-async def register_admin(admin: AdminCreate):
-    """Register a new admin user"""
+async def register_admin(admin: AdminCreate, current_admin: dict = Depends(get_current_admin)):
+    """Register a new admin user — requires an existing authenticated admin"""
     try:
         # Check if username already exists
         existing_admin = await db.admin_users.find_one({"username": admin.username}, {"_id": 0})
@@ -607,7 +607,7 @@ async def register_admin(admin: AdminCreate):
         )
         
         await db.admin_users.insert_one(admin_user.dict())
-        logger.info(f"Admin user created: {admin.username}")
+        logger.info(f"Admin user created: {admin.username} (by {current_admin.get('username', 'unknown')})")
         
         # Create access token
         access_token = create_access_token(data={"sub": admin.username})
@@ -3308,10 +3308,9 @@ def send_reminder_email(booking: dict):
                     {ready_reminder_html}
                     
                     <div style="background: #f0f9ff; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                        <p style="margin: 0 0 10px 0; font-size: 14px; color: #333;"><strong>&#128222; Contact Us</strong></p>
+                        <p style="margin: 0 0 10px 0; font-size: 14px; color: #333;"><strong>&#9993; Contact Us</strong></p>
                         <p style="margin: 0; font-size: 14px; color: #666;">
                             Need to make changes or have questions?<br>
-                            Phone: <a href="tel:+6421743321" style="color: #D4AF37; font-weight: bold;">+64 21 743 321</a><br>
                             Email: <a href="mailto:info@bookaride.co.nz" style="color: #D4AF37;">info@bookaride.co.nz</a>
                         </p>
                     </div>
@@ -4368,7 +4367,11 @@ async def send_daily_reminders_core(source: str = "unknown"):
 async def cron_send_reminders(api_key: str = None):
     """Endpoint for external cron service to trigger reminders (requires API key)"""
     try:
-        expected_key = os.environ.get('CRON_API_KEY', 'bookaride-cron-secret-2024')
+        expected_key = os.environ.get('CRON_API_KEY')
+
+        if not expected_key:
+            logger.error("CRON_API_KEY environment variable is not set")
+            raise HTTPException(status_code=503, detail="Cron endpoint not configured")
         
         if api_key != expected_key:
             raise HTTPException(status_code=401, detail="Invalid API key")
@@ -5299,8 +5302,8 @@ async def resend_booking_confirmation(booking_id: str, current_admin: dict = Dep
 
 # Email diagnostics (so you can see why confirmations aren't arriving)
 @api_router.get("/email-status")
-async def get_email_status():
-    """Check if email is configured on this server (no auth). Use to verify Render env vars."""
+async def get_email_status(current_admin: dict = Depends(get_current_admin)):
+    """Check if email is configured on this server. Requires admin auth."""
     try:
         from email_sender import is_email_configured, get_noreply_email
     except ImportError:
@@ -5320,9 +5323,8 @@ async def get_email_status():
 
 
 @api_router.get("/config-check")
-async def config_check():
-    """Quick diagnostic: which services are configured? No auth required.
-    Call this endpoint to verify Render env vars are set."""
+async def config_check(current_admin: dict = Depends(get_current_admin)):
+    """Quick diagnostic: which services are configured? Requires admin auth."""
     google_key = os.environ.get('GOOGLE_MAPS_API_KEY', '').strip()
     stripe_key = os.environ.get('STRIPE_API_KEY') or os.environ.get('STRIPE_SECRET_KEY')
     mailgun_ok = bool(os.environ.get("MAILGUN_API_KEY"))
@@ -5761,9 +5763,6 @@ def generate_confirmation_email_html(booking: dict, for_admin: bool = False) -> 
                 <!-- Footer -->
                 <div style="background: #fafafa; padding: 28px 20px; text-align: center; border-top: 1px solid #eee;">
                     <p style="margin: 0 0 12px 0; color: #888; font-size: 13px;">Questions about your booking? Contact us anytime</p>
-                    <p style="margin: 0 0 4px 0;">
-                        <a href="tel:+6421743321" style="color: #111; text-decoration: none; font-size: 18px; font-weight: 700;">021 743 321</a>
-                    </p>
                     <p style="margin: 0 0 16px 0;">
                         <a href="mailto:{sender_email}" style="color: #eab308; text-decoration: none; font-size: 13px; font-weight: 500;">{sender_email}</a>
                     </p>
@@ -7834,8 +7833,8 @@ async def get_urgent_return_bookings(current_admin: dict = Depends(get_current_a
 
 # Endpoint to EXPORT data (called by other environments to fetch data)
 @api_router.get("/sync/export")
-async def export_data_for_sync(secret: str = ""):
-    """Export bookings and drivers for sync - requires secret key"""
+async def export_data_for_sync(secret: str = "", current_admin: dict = Depends(get_current_admin)):
+    """Export bookings and drivers for sync - requires admin auth and secret key"""
     if secret != SYNC_SECRET_KEY:
         raise HTTPException(status_code=403, detail="Invalid sync key")
     
@@ -7854,8 +7853,8 @@ async def export_data_for_sync(secret: str = ""):
 
 
 @api_router.post("/admin/sync")
-async def sync_from_production():
-    """Sync bookings and drivers from production database via deployed API"""
+async def sync_from_production(current_admin: dict = Depends(get_current_admin)):
+    """Sync bookings and drivers from production database via deployed API — requires admin auth"""
     try:
         sync_results = {
             "bookings_synced": 0,
@@ -7942,8 +7941,8 @@ async def sync_from_production():
 
 # Analytics Endpoints
 @api_router.get("/analytics/stats")
-async def get_analytics_stats(start_date: Optional[str] = None, end_date: Optional[str] = None):
-    """Get comprehensive analytics statistics"""
+async def get_analytics_stats(start_date: Optional[str] = None, end_date: Optional[str] = None, current_admin: dict = Depends(get_current_admin)):
+    """Get comprehensive analytics statistics — requires admin auth"""
     try:
         query = {}
         if start_date or end_date:
@@ -8003,8 +8002,8 @@ async def get_analytics_stats(start_date: Optional[str] = None, end_date: Option
 
 # Customer Management
 @api_router.get("/customers")
-async def get_customers():
-    """Get all customers with their booking history"""
+async def get_customers(current_admin: dict = Depends(get_current_admin)):
+    """Get all customers with their booking history — requires admin auth"""
     try:
         bookings = await db.bookings.find({}, {"_id": 0}).to_list(10000)
         
@@ -8047,8 +8046,8 @@ async def get_customers():
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.get("/customers/search")
-async def search_customers(q: str = ""):
-    """Fast customer search for autocomplete - searches name, email, phone"""
+async def search_customers(q: str = "", current_admin: dict = Depends(get_current_admin)):
+    """Fast customer search for autocomplete - searches name, email, phone — requires admin auth"""
     try:
         if not q or len(q) < 2:
             return {"customers": []}
@@ -8090,8 +8089,8 @@ async def search_customers(q: str = ""):
 
 # Export to CSV
 @api_router.get("/export/csv")
-async def export_csv():
-    """Export bookings to CSV"""
+async def export_csv(current_admin: dict = Depends(get_current_admin)):
+    """Export bookings to CSV — requires admin auth"""
     try:
         import pandas as pd
         from io import BytesIO
@@ -8810,8 +8809,8 @@ class ManualBooking(BaseModel):
     status: Optional[str] = "confirmed"  # Booking status
 
 @api_router.post("/bookings/manual")
-async def create_manual_booking(booking: ManualBooking, background_tasks: BackgroundTasks):
-    """Create a booking manually"""
+async def create_manual_booking(booking: ManualBooking, background_tasks: BackgroundTasks, current_admin: dict = Depends(get_current_admin)):
+    """Create a booking manually — requires admin auth"""
     try:
         # Get sequential reference number OR use provided one (store as string for search)
         if booking.referenceNumber:
@@ -9134,8 +9133,8 @@ async def get_driver_applications(current_admin: dict = Depends(get_current_admi
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.patch("/driver-applications/{application_id}")
-async def update_driver_application(application_id: str, status: str, notes: Optional[str] = ""):
-    """Update driver application status"""
+async def update_driver_application(application_id: str, status: str, notes: Optional[str] = "", current_admin: dict = Depends(get_current_admin)):
+    """Update driver application status — requires admin auth"""
     try:
         result = await db.driver_applications.update_one(
             {"id": application_id},
@@ -9160,8 +9159,8 @@ class DriverCreate(BaseModel):
     notes: Optional[str] = ""
 
 @api_router.get("/drivers")
-async def get_drivers():
-    """Get all drivers"""
+async def get_drivers(current_admin: dict = Depends(get_current_admin)):
+    """Get all drivers — requires admin auth"""
     try:
         drivers = await db.drivers.find({}, {"_id": 0}).to_list(1000)
         return {"drivers": drivers}
@@ -9170,8 +9169,8 @@ async def get_drivers():
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.post("/drivers")
-async def create_driver(driver: DriverCreate):
-    """Create a new driver"""
+async def create_driver(driver: DriverCreate, current_admin: dict = Depends(get_current_admin)):
+    """Create a new driver — requires admin auth"""
     try:
         driver_id = str(uuid.uuid4())
         new_driver = {
@@ -9205,8 +9204,8 @@ async def create_driver(driver: DriverCreate):
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.put("/drivers/{driver_id}")
-async def update_driver(driver_id: str, driver: DriverCreate):
-    """Update a driver"""
+async def update_driver(driver_id: str, driver: DriverCreate, current_admin: dict = Depends(get_current_admin)):
+    """Update a driver — requires admin auth"""
     try:
         result = await db.drivers.update_one(
             {"id": driver_id},
@@ -9230,8 +9229,8 @@ async def update_driver(driver_id: str, driver: DriverCreate):
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.delete("/drivers/{driver_id}")
-async def delete_driver(driver_id: str):
-    """Delete a driver"""
+async def delete_driver(driver_id: str, current_admin: dict = Depends(get_current_admin)):
+    """Delete a driver — requires admin auth"""
     try:
         result = await db.drivers.delete_one({"id": driver_id})
         if result.deleted_count == 0:
@@ -9244,7 +9243,7 @@ async def delete_driver(driver_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.patch("/drivers/{driver_id}/assign")
-async def assign_driver_to_booking(driver_id: str, booking_id: str, trip_type: str = "outbound", driver_payout: Optional[float] = None):
+async def assign_driver_to_booking(driver_id: str, booking_id: str, trip_type: str = "outbound", driver_payout: Optional[float] = None, current_admin: dict = Depends(get_current_admin)):
     """Assign a driver to a booking - supports separate outbound and return trip assignments
     
     Args:
@@ -11445,7 +11444,8 @@ class ImportBookingsRequest(BaseModel):
 async def import_bookings_from_csv(
     request: Request,
     file: UploadFile = File(...),
-    skip_notifications: bool = Form(True)
+    skip_notifications: bool = Form(True),
+    current_admin: dict = Depends(get_current_admin)
 ):
     """
     Import bookings from WordPress Chauffeur Booking System CSV export.
@@ -11606,10 +11606,10 @@ async def get_import_status(current_admin: dict = Depends(get_current_admin)):
 
 
 @api_router.post("/admin/quick-import-wordpress")
-async def quick_import_wordpress(request: Request):
+async def quick_import_wordpress(request: Request, current_admin: dict = Depends(get_current_admin)):
     """
     Import from CSV - accepts either server file or POST body with CSV content.
-    No authentication required for simplicity.
+    Requires admin auth.
     """
     try:
         csv_text = None
@@ -11748,12 +11748,12 @@ async def quick_import_wordpress(request: Request):
 
 
 @api_router.post("/admin/fix-imported-bookings")
-async def fix_imported_bookings():
+async def fix_imported_bookings(current_admin: dict = Depends(get_current_admin)):
     """
     Fix all imported WordPress bookings:
     1. Restore from deleted status
     2. Fix date format (DD-MM-YYYY to YYYY-MM-DD)
-    No authentication required.
+    Requires admin auth.
     """
     try:
         import re
@@ -11808,8 +11808,8 @@ async def fix_imported_bookings():
 
 
 @api_router.get("/admin/fix-now")
-async def fix_now():
-    """Direct URL to fix bookings - just visit this URL"""
+async def fix_now(current_admin: dict = Depends(get_current_admin)):
+    """Direct URL to fix bookings — requires admin auth"""
     try:
         import re
         restored = 0
@@ -13653,8 +13653,8 @@ def create_arrival_email_html(customer_name: str, booking_date: str, pickup_time
                 <!-- Contact -->
                 <div style="background: #f9fafb; border-radius: 12px; padding: 20px; text-align: center;">
                     <p style="color: #6b7280; margin: 0 0 10px 0; font-size: 14px;">Can't find your driver?</p>
-                    <a href="tel:+6421743321" style="color: #f59e0b; font-size: 20px; font-weight: bold; text-decoration: none;">
-                         021 743 321
+                    <a href="mailto:info@bookaride.co.nz" style="color: #f59e0b; font-size: 16px; font-weight: bold; text-decoration: none;">
+                        Email us at info@bookaride.co.nz
                     </a>
                 </div>
                 
