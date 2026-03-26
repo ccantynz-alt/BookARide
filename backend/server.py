@@ -2973,7 +2973,7 @@ def send_booking_confirmation_email(booking: dict, include_payment_link: bool = 
     html_content = generate_confirmation_email_html(booking)
     from_email = get_noreply_email()
 
-    return _send_email_with_fallbacks(recipient_email, subject, html_content, from_email=from_email, from_name="BookaRide")
+    return _send_email_with_fallbacks(recipient_email, subject, html_content, from_email=from_email, from_name="BookaRide NZ", reply_to="info@bookaride.co.nz")
 
 
 def send_booking_confirmation_sms(booking: dict):
@@ -3159,7 +3159,7 @@ def send_post_trip_email(booking: dict):
             preheader="Thank you for riding with BookARide!",
         )
 
-        ok = _send_email_with_fallbacks(email, subject, html_content, from_name="BookaRide NZ")
+        ok = _send_email_with_fallbacks(email, subject, html_content, from_name="BookaRide NZ", reply_to="info@bookaride.co.nz")
         if ok:
             logger.info(f"Post-trip thank-you email sent to {email} for booking {booking.get('id')}")
             # Mark as sent — caller is responsible for the DB update since this is a sync function
@@ -3329,7 +3329,7 @@ def send_reminder_email(booking: dict):
         )
         
         reminder_subject = f"Your Ride Tomorrow - {formatted_date} at {formatted_time} - Ref: {booking_ref}"
-        ok = _send_email_with_fallbacks(recipient_email, reminder_subject, html_content, from_email=sender_email)
+        ok = _send_email_with_fallbacks(recipient_email, reminder_subject, html_content, from_email=sender_email, from_name="BookaRide NZ", reply_to="info@bookaride.co.nz")
         if ok:
             logger.info(f"Reminder email sent to {recipient_email}")
         else:
@@ -4329,7 +4329,7 @@ async def send_abandoned_booking_emails():
                     preheader="Your BookARide booking is waiting",
                 )
                 
-                ok = _send_email_with_fallbacks(email, subject, html_content, from_name="BookaRide NZ")
+                ok = _send_email_with_fallbacks(email, subject, html_content, from_name="BookaRide NZ", reply_to="info@bookaride.co.nz")
 
                 if ok:
                     await db.abandoned_bookings.update_one(
@@ -8591,7 +8591,9 @@ async def send_payment_link_email(booking: dict, payment_link: str, payment_type
         if send_email_unified and send_email_unified(
             customer_email,
             f"Payment Link - Booking {booking_ref} - ${total_price:.2f} NZD",
-            html_content
+            html_content,
+            from_name="BookaRide NZ",
+            reply_to="info@bookaride.co.nz"
         ):
             logger.info(f"Payment link email sent to {customer_email}")
         else:
@@ -9816,7 +9818,7 @@ async def send_cancellation_email(booking: dict, to_email: str, customer_name: s
     )
     
     cancel_subject = f"Booking Cancelled - Ref: {booking_ref} - Book A Ride NZ"
-    ok = _send_email_with_fallbacks(to_email, cancel_subject, html_content, from_email=sender_email, from_name="Book A Ride NZ")
+    ok = _send_email_with_fallbacks(to_email, cancel_subject, html_content, from_email=sender_email, from_name="BookaRide NZ", reply_to="info@bookaride.co.nz")
     if not ok:
         logger.error(f"Cancellation email failed for {to_email}")
         raise Exception("Failed to send cancellation email")
@@ -13504,7 +13506,7 @@ async def check_unpaid_bookings():
             </html>'''
 
             subject = f"Complete your BookaRide booking #{ref} - {formatted_date}"
-            sent = _send_email_with_fallbacks(email, subject, html_content, from_name="BookaRide")
+            sent = _send_email_with_fallbacks(email, subject, html_content, from_name="BookaRide NZ", reply_to="info@bookaride.co.nz")
 
             if sent:
                 await db.bookings.update_one(
@@ -14010,7 +14012,7 @@ async def send_arrival_pickup_emails():
                 # Send email
                 # Send email
                 arrival_subject = "Your Airport Pickup Tomorrow - Where to Meet Your Driver"
-                ok = _send_email_with_fallbacks(email, arrival_subject, email_html, from_name="BookaRide NZ")
+                ok = _send_email_with_fallbacks(email, arrival_subject, email_html, from_name="BookaRide NZ", reply_to="info@bookaride.co.nz")
                 
                 if ok:
                     # Mark as sent
