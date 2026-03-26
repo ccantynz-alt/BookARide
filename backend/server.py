@@ -1897,21 +1897,15 @@ async def calculate_price(request: PriceCalculationRequest):
         is_from_hibiscus_coast = any(keyword in pickup_lower for keyword in hibiscus_coast_keywords)
         is_to_hibiscus_coast = any(keyword in dropoff_lower for keyword in hibiscus_coast_keywords)
         
-        # Minimum distance for Whangaparaoa Peninsula (far end) <-> Auckland Airport
-        # Gulf Harbour/Army Bay/Stanmore Bay are at the tip of the peninsula — Google Maps
-        # returns ~67km but the actual route with peninsula driving is closer to 75km.
-        # Do NOT apply this to Red Beach, Orewa, Silverdale, Millwater etc — they are
-        # much closer to the airport and Google Maps distance is accurate for those.
+        # Airport keywords used by zone distance checks below
         airport_keywords = ['airport', 'auckland airport', 'international airport', 'domestic airport', 'akl', 'ray emery', 'mangere']
         is_to_airport = any(kw in dropoff_lower for kw in airport_keywords)
         is_from_airport = any(kw in pickup_lower for kw in airport_keywords)
-        whangaparaoa_peninsula_keywords = ['gulf harbour', 'army bay', 'stanmore bay', 'manly', 'whangaparaoa', 'alec craig']
-        is_from_peninsula = any(kw in pickup_lower for kw in whangaparaoa_peninsula_keywords)
-        is_to_peninsula = any(kw in dropoff_lower for kw in whangaparaoa_peninsula_keywords)
-        peninsula_to_airport = (is_from_peninsula and is_to_airport) or (is_to_peninsula and is_from_airport)
-        if peninsula_to_airport and distance_km < 75.0:
-            logger.info(f"Zone distance: Whangaparaoa Peninsula <-> Airport applying minimum 75 km (API returned {distance_km} km)")
-            distance_km = 75.0
+
+        # Note: No minimum distance for Hibiscus Coast <-> Airport.
+        # Google Maps returns the actual driving distance. The km rate table handles pricing.
+        # If prices need adjusting, change the RATES — don't add minimum distances (they
+        # create two competing pricing systems and confuse the calculation).
 
         # Minimum distance for North Auckland (Warkworth, Matakana, Leigh) <-> Airport (~60-70km)
         north_auckland_keywords = ['warkworth', 'snells beach', 'matakana', 'leigh', 'wellsford', 'puhoi', 'alberton']
