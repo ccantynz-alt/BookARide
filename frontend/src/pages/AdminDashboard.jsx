@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Search, Mail, DollarSign, CheckCircle, XCircle, Clock, Eye, Edit2, Users, BookOpen, Settings, Trash2, MapPin, Calendar, RefreshCw, Send, Bell, Square, CheckSquare, FileText, Smartphone, RotateCcw, AlertTriangle, AlertCircle, Home, Upload, Archive, Activity, Download, Shield, Car, UserPlus, BarChart3, Megaphone } from 'lucide-react';
+import { LogOut, Search, Mail, DollarSign, CheckCircle, XCircle, Clock, Eye, Edit2, Users, BookOpen, Settings, Trash2, MapPin, Calendar, RefreshCw, Send, Bell, Square, CheckSquare, FileText, Smartphone, RotateCcw, AlertTriangle, AlertCircle, Home, Upload, Archive, Activity, Download, Shield, Car, UserPlus, BarChart3, Megaphone, ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent } from '../components/ui/card';
@@ -527,6 +527,7 @@ export const AdminDashboard = () => {
   const [syncingPayments, setSyncingPayments] = useState(false);
   const [recoverSessionId, setRecoverSessionId] = useState('');
   const [recovering, setRecovering] = useState(false);
+  const [showPaymentTroubleshooting, setShowPaymentTroubleshooting] = useState(false);
   const [loadingDeleted, setLoadingDeleted] = useState(false);
   const [restoringAll, setRestoringAll] = useState(false);
   const [downloadingBackup, setDownloadingBackup] = useState(false);
@@ -2126,36 +2127,33 @@ export const AdminDashboard = () => {
           {/* Bookings Tab */}
           <TabsContent value="bookings" className="space-y-6">
         
-        {/* CRITICAL: Restore all deleted bookings - prominent so user can reinstate full list immediately */}
+        {/* Compact deleted bookings notification */}
         {deletedCountForBanner != null && deletedCountForBanner > 0 && (
-          <Card className="border-red-300 bg-red-50 shadow-md">
-            <CardContent className="p-4 flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <AlertTriangle className="w-8 h-8 text-red-600 shrink-0" />
-                <div>
-                  <p className="font-bold text-red-900">You have {deletedCountForBanner} booking{deletedCountForBanner !== 1 ? 's' : ''} in Deleted — they are not in this list.</p>
-                  <p className="text-sm text-red-800 mt-0.5">Restore them now to reinstate your full bookings list.</p>
-                </div>
-              </div>
-              <Button
-                onClick={handleRestoreAllBookings}
-                disabled={restoringAll}
-                className="bg-green-600 hover:bg-green-700 text-white font-semibold shrink-0"
-              >
-                {restoringAll ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                    Restoring...
-                  </>
-                ) : (
-                  <>
-                    <RotateCcw className="w-4 h-4 mr-2" />
-                    Restore all {deletedCountForBanner} now
-                  </>
-                )}
-              </Button>
-            </CardContent>
-          </Card>
+          <div className="flex items-center justify-between bg-red-50 border border-red-200 rounded-lg px-4 py-2 text-sm">
+            <div className="flex items-center gap-2 text-red-800">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              <span><strong>{deletedCountForBanner}</strong> deleted booking{deletedCountForBanner !== 1 ? 's' : ''} not shown</span>
+            </div>
+            <Button
+              onClick={handleRestoreAllBookings}
+              disabled={restoringAll}
+              size="sm"
+              variant="outline"
+              className="border-red-300 text-red-800 hover:bg-red-100 h-7 text-xs"
+            >
+              {restoringAll ? (
+                <>
+                  <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
+                  Restoring...
+                </>
+              ) : (
+                <>
+                  <RotateCcw className="w-3 h-3 mr-1" />
+                  Restore all
+                </>
+              )}
+            </Button>
+          </div>
         )}
 
         {/* ALERT: Bookings needing approval */}
@@ -2189,50 +2187,49 @@ export const AdminDashboard = () => {
           }}
         />
         
-        {/* Stats Cards - Professional Light Theme */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500 mb-1">Total Bookings</p>
-                <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
+        {/* Stats Cards - Compact single row */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+          <div className="bg-white rounded-lg border border-gray-200 p-3 shadow-sm">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center shrink-0">
+                <BookOpen className="w-4 h-4 text-blue-600" />
               </div>
-              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                <BookOpen className="w-6 h-6 text-blue-600" />
+              <div>
+                <p className="text-xs text-gray-500">Total</p>
+                <p className="text-xl font-bold text-gray-900">{stats.total}</p>
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500 mb-1">Pending</p>
-                <p className="text-3xl font-bold text-amber-600">{stats.pending}</p>
+          <div className="bg-white rounded-lg border border-gray-200 p-3 shadow-sm">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center shrink-0">
+                <Clock className="w-4 h-4 text-amber-600" />
               </div>
-              <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center">
-                <Clock className="w-6 h-6 text-amber-600" />
+              <div>
+                <p className="text-xs text-gray-500">Pending</p>
+                <p className="text-xl font-bold text-amber-600">{stats.pending}</p>
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500 mb-1">Confirmed</p>
-                <p className="text-3xl font-bold text-green-600">{stats.confirmed}</p>
+          <div className="bg-white rounded-lg border border-gray-200 p-3 shadow-sm">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center shrink-0">
+                <CheckCircle className="w-4 h-4 text-green-600" />
               </div>
-              <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-                <CheckCircle className="w-6 h-6 text-green-600" />
+              <div>
+                <p className="text-xs text-gray-500">Confirmed</p>
+                <p className="text-xl font-bold text-green-600">{stats.confirmed}</p>
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500 mb-1">Revenue (Confirmed)</p>
-                <p className="text-3xl font-bold text-emerald-600">${(stats.totalRevenue ?? 0).toFixed(2)}</p>
-                <p className="text-xs text-gray-400 mt-1">{(stats.confirmed ?? 0) + (stats.completed ?? 0)} jobs</p>
+          <div className="bg-white rounded-lg border border-gray-200 p-3 shadow-sm">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center shrink-0">
+                <DollarSign className="w-4 h-4 text-emerald-600" />
               </div>
-              <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center">
-                <DollarSign className="w-6 h-6 text-emerald-600" />
+              <div>
+                <p className="text-xs text-gray-500">Revenue</p>
+                <p className="text-xl font-bold text-emerald-600">${(stats.totalRevenue ?? 0).toFixed(2)}</p>
               </div>
             </div>
           </div>
@@ -2328,82 +2325,81 @@ export const AdminDashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Data retention: bookings are never lost */}
-        <Card className="mb-6 border-green-200 bg-green-50/50">
-          <CardContent className="p-3">
-            <div className="flex flex-wrap items-center gap-2 text-sm text-green-800">
-              <Shield className="w-4 h-4 shrink-0 text-green-600" />
-              <span><strong>Bookings are always retained.</strong> Deletions only move items to the Deleted tab where you can Restore all. Download a full backup (Deleted tab → Download backup) anytime.</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Sync pending payments — check Stripe for bookings stuck as "pending" */}
-        <Card className="mb-6 border-blue-200 bg-blue-50/50">
-          <CardContent className="p-4">
-            <div className="flex flex-wrap items-center gap-3">
-              <AlertTriangle className="w-5 h-5 text-blue-600 shrink-0" />
-              <div>
-                <p className="font-medium text-blue-900">Booking shows "pending" but customer says they paid?</p>
-                <p className="text-sm text-blue-800">Checks Stripe for all pending bookings and updates any that have actually been paid.</p>
-              </div>
-              <Button variant="outline" size="sm" onClick={syncPendingPayments} disabled={syncingPayments} className="border-blue-500 text-blue-800 hover:bg-blue-100">
-                {syncingPayments ? 'Checking Stripe...' : 'Sync Pending Payments'}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Recover missing bookings (e.g. #74 – payment in Stripe but booking never appeared) */}
-        <Card className="mb-6 border-amber-200 bg-amber-50/50">
-          <CardContent className="p-4">
-            <div className="flex flex-wrap items-center gap-3">
-              <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
-              <div>
-                <p className="font-medium text-amber-900">Payment received in Stripe but booking missing from the list?</p>
-                <p className="text-sm text-amber-800">Use this if a customer paid (e.g. booking #74) but the booking never appeared in the admin panel.</p>
-              </div>
-              <Button variant="outline" size="sm" onClick={fetchOrphanPayments} disabled={loadingOrphans} className="border-amber-500 text-amber-800 hover:bg-amber-100">
-                {loadingOrphans ? 'Checking...' : 'Check for missing payments'}
-              </Button>
-            </div>
-            {Array.isArray(orphanPayments) && orphanPayments.length > 0 && (
-              <div className="mt-4 space-y-2">
-                <p className="text-sm font-medium text-amber-900">Paid payments with no booking in list:</p>
-                {orphanPayments.map((o) => (
-                  <div key={o.booking_id} className="flex flex-wrap items-center gap-2 py-2 px-3 bg-white rounded border border-amber-200">
-                    <span className="text-sm">{o.customer_name || 'Unknown'} – {o.customer_email || 'No email'} – ${Number(o.amount || 0).toFixed(2)}</span>
-                    <Button size="sm" onClick={() => recoverBookingFromPayment(null, o.booking_id)} disabled={recovering} className="bg-amber-600 hover:bg-amber-700">
-                      Recover into list
+        {/* Payment Troubleshooting — collapsible */}
+        <div className="mb-4">
+          <button
+            type="button"
+            onClick={() => setShowPaymentTroubleshooting(!showPaymentTroubleshooting)}
+            className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+          >
+            {showPaymentTroubleshooting ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+            <span>Payment Troubleshooting</span>
+          </button>
+          {showPaymentTroubleshooting && (
+            <div className="mt-3 space-y-3">
+              {/* Sync pending payments */}
+              <Card className="border-blue-200 bg-blue-50/50">
+                <CardContent className="p-4">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <AlertTriangle className="w-5 h-5 text-blue-600 shrink-0" />
+                    <div>
+                      <p className="font-medium text-blue-900">Booking shows "pending" but customer says they paid?</p>
+                      <p className="text-sm text-blue-800">Checks Stripe for all pending bookings and updates any that have actually been paid.</p>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={syncPendingPayments} disabled={syncingPayments} className="border-blue-500 text-blue-800 hover:bg-blue-100">
+                      {syncingPayments ? 'Checking Stripe...' : 'Sync Pending Payments'}
                     </Button>
                   </div>
-                ))}
-              </div>
-            )}
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <input
-                type="text"
-                placeholder="Or paste Stripe session ID (cs_...)"
-                value={recoverSessionId || ''}
-                onChange={(e) => setRecoverSessionId(e.target.value || '')}
-                className="border rounded px-2 py-1.5 text-sm w-64"
-              />
-              <Button size="sm" onClick={() => recoverBookingFromPayment((recoverSessionId || '').trim(), null)} disabled={recovering || !(recoverSessionId || '').trim()} className="bg-amber-600 hover:bg-amber-700">
-                {recovering ? 'Recovering...' : 'Recover from session ID'}
-              </Button>
+                </CardContent>
+              </Card>
+
+              {/* Recover missing bookings */}
+              <Card className="border-amber-200 bg-amber-50/50">
+                <CardContent className="p-4">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
+                    <div>
+                      <p className="font-medium text-amber-900">Payment received in Stripe but booking missing from the list?</p>
+                      <p className="text-sm text-amber-800">Use this if a customer paid but the booking never appeared in the admin panel.</p>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={fetchOrphanPayments} disabled={loadingOrphans} className="border-amber-500 text-amber-800 hover:bg-amber-100">
+                      {loadingOrphans ? 'Checking...' : 'Check for missing payments'}
+                    </Button>
+                  </div>
+                  {Array.isArray(orphanPayments) && orphanPayments.length > 0 && (
+                    <div className="mt-4 space-y-2">
+                      <p className="text-sm font-medium text-amber-900">Paid payments with no booking in list:</p>
+                      {orphanPayments.map((o) => (
+                        <div key={o.booking_id} className="flex flex-wrap items-center gap-2 py-2 px-3 bg-white rounded border border-amber-200">
+                          <span className="text-sm">{o.customer_name || 'Unknown'} – {o.customer_email || 'No email'} – ${Number(o.amount || 0).toFixed(2)}</span>
+                          <Button size="sm" onClick={() => recoverBookingFromPayment(null, o.booking_id)} disabled={recovering} className="bg-amber-600 hover:bg-amber-700">
+                            Recover into list
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <input
+                      type="text"
+                      placeholder="Or paste Stripe session ID (cs_...)"
+                      value={recoverSessionId || ''}
+                      onChange={(e) => setRecoverSessionId(e.target.value || '')}
+                      className="border rounded px-2 py-1.5 text-sm w-64"
+                    />
+                    <Button size="sm" onClick={() => recoverBookingFromPayment((recoverSessionId || '').trim(), null)} disabled={recovering || !(recoverSessionId || '').trim()} className="bg-amber-600 hover:bg-amber-700">
+                      {recovering ? 'Recovering...' : 'Recover from session ID'}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
-          </CardContent>
-        </Card>
+          )}
+        </div>
 
         {/* Bookings Table */}
         <Card>
           <CardContent className="p-0">
-            {!loading && loadAllBookings && bookings.length > 0 && (
-              <div className="bg-emerald-50 border-b border-emerald-200 px-4 py-2 text-sm text-emerald-800 flex items-center gap-2">
-                <span className="font-medium">Full list loaded.</span>
-                <span>Every active booking is shown – none hidden by pagination.</span>
-              </div>
-            )}
             {loading ? (
               <div className="text-center py-12">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold mx-auto"></div>

@@ -167,19 +167,7 @@ const ReturnsOverviewPanel = ({ bookings = [], drivers = [], onAssignDriver, onV
   };
 
   if (allReturns.length === 0) {
-    return (
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-            <Plane className="w-5 h-5 text-purple-600" />
-          </div>
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900">Return Trips</h2>
-            <p className="text-sm text-gray-500">No upcoming returns in the next 7 days</p>
-          </div>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   return (

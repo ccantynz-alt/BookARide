@@ -31,7 +31,7 @@ const DialogContent = React.forwardRef(({ className, children, onPointerDownOuts
       ref={ref}
       onPointerDownOutside={(e) => {
         // Prevent Radix from closing the dialog when clicking on portal-rendered
-        // dropdowns (e.g. AddressAutocomplete suggestions, customer search).
+        // dropdowns (e.g. customer search dropdown, autocomplete suggestions).
         // Use elementFromPoint with pointer coordinates — reliable across all
         // Radix versions regardless of how the custom event wraps the target.
         const orig = e.detail && e.detail.originalEvent;
