@@ -4051,7 +4051,7 @@ export const AdminDashboard = () => {
       <CreateBookingModal
         open={showCreateBookingModal}
         onClose={() => setShowCreateBookingModal(false)}
-        onSuccess={() => fetchBookingsRef.current?.()}
+        onSuccess={() => silentRefresh()}
         getAuthHeaders={getAuthHeaders}
       />
 
