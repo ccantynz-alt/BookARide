@@ -36,8 +36,9 @@ export const BookNow = () => {
     passengers: '1',
     vipAirportPickup: false,
     oversizedLuggage: false,
-    // Single flight number field for outbound
+    // Single flight number and time for outbound
     flightNumber: '',
+    flightTime: '',
     // Return trip - simplified to just date, time, and one flight number
     returnDate: '',
     returnTime: '',
@@ -88,9 +89,10 @@ export const BookNow = () => {
     setIsReturningCustomer(false);
   };
 
-  // Date/Time picker states - simplified from 8 to 4
+  // Date/Time picker states
   const [pickupDate, setPickupDate] = useState(null);
   const [pickupTime, setPickupTime] = useState(null);
+  const [flightTimePicker, setFlightTimePicker] = useState(null);
   const [returnDatePicker, setReturnDatePicker] = useState(null);
   const [returnTimePicker, setReturnTimePicker] = useState(null);
 
@@ -279,9 +281,13 @@ export const BookNow = () => {
       const bookingData = {
         ...formData,
         bookReturn: hasReturnTrip,
-        // Map flightNumber to both fields the backend expects
+        // Map simplified flight fields to backend-expected fields
         departureFlightNumber: formData.flightNumber,
         arrivalFlightNumber: formData.flightNumber,
+        flightArrivalNumber: formData.flightNumber,
+        flightArrivalTime: formData.flightTime,
+        flightDepartureNumber: formData.flightNumber,
+        flightDepartureTime: formData.flightTime,
         // Map returnFlightNumber to the field the backend expects
         returnDepartureFlightNumber: formData.returnFlightNumber,
         returnFlightNumber: formData.returnFlightNumber,
@@ -602,20 +608,40 @@ export const BookNow = () => {
                           <strong>Important:</strong> Flight numbers are required for airport pickups so our driver can meet you on time.
                         </p>
 
-                        {/* Departure Flight Number */}
-                        <div className="space-y-2 mb-6">
-                          <Label htmlFor="flightNumber" className="flex items-center space-x-2">
-                            <Plane className="w-4 h-4 text-gold" />
-                            <span>Departure Flight Number</span>
-                          </Label>
-                          <Input
-                            id="flightNumber"
-                            name="flightNumber"
-                            value={formData.flightNumber}
-                            onChange={handleChange}
-                            placeholder="e.g., NZ123"
-                            className="transition-all duration-200 focus:ring-2 focus:ring-gold"
-                          />
+                        {/* Flight Number and Flight Time */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                          <div className="space-y-2">
+                            <Label htmlFor="flightNumber" className="flex items-center space-x-2">
+                              <Plane className="w-4 h-4 text-gold" />
+                              <span>Flight Number</span>
+                            </Label>
+                            <Input
+                              id="flightNumber"
+                              name="flightNumber"
+                              value={formData.flightNumber}
+                              onChange={handleChange}
+                              placeholder="e.g., NZ123"
+                              className="transition-all duration-200 focus:ring-2 focus:ring-gold"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="flex items-center space-x-2">
+                              <Clock className="w-4 h-4 text-gold" />
+                              <span>Flight Time</span>
+                            </Label>
+                            <CustomTimePicker
+                              selected={flightTimePicker}
+                              onChange={(time) => {
+                                setFlightTimePicker(time);
+                                if (time) {
+                                  const hours = time.getHours().toString().padStart(2, '0');
+                                  const minutes = time.getMinutes().toString().padStart(2, '0');
+                                  setFormData(prev => ({ ...prev, flightTime: `${hours}:${minutes}` }));
+                                }
+                              }}
+                              placeholder="Select flight time"
+                            />
+                          </div>
                         </div>
 
                         {/* Return Journey */}
