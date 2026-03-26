@@ -3123,8 +3123,7 @@ def send_post_trip_email(booking: dict):
         booking_date = booking.get('date', '')
         ref_number = booking.get('referenceNumber', booking.get('id', '')[:8])
 
-        # Google Review URL — placeholder Place ID (update when real one is available)
-        google_review_url = 'https://www.google.com/maps/place/BookARide+NZ'
+        google_review_url = 'https://www.google.com/maps/search/BookARide+NZ+Auckland'
 
         subject = f"Thanks for riding with BookaRide, {first_name}!"
 
@@ -3671,9 +3670,11 @@ async def track_flight(flight_number: str):
 async def _get_mock_flight_data(fn: str):
     """Return unavailable status when flight tracking API is down."""
     return {
-        "flight_number": fn,
+        "flightNumber": fn,
         "status": "unavailable",
-        "message": "Flight tracking data temporarily unavailable. Please check your airline's website for live updates."
+        "message": "Flight tracking data temporarily unavailable. Please check your airline's website for live updates.",
+        "tracked": False,
+        "live": False
     }
 
 
