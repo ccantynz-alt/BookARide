@@ -441,6 +441,36 @@ Before making ANY change, verify:
 - Frontend: **Vercel** (React 18, CRA + CRACO)
 - Backend: **Render** (FastAPI/Uvicorn, Python 3.11+)
 
+### Deployment Rules — MANDATORY
+
+**Customers are paying for reliability, not beta testing. Every change must be tested before it reaches production.**
+
+**Branch strategy:**
+- `main` branch = PRODUCTION. Deploys automatically to Vercel (frontend) and Render (backend).
+- Feature branches = development. Every PR gets a Vercel preview URL for testing.
+- **NEVER push directly to main.** Always use a PR.
+- **NEVER merge a PR without verifying:** `npm run build` passes, `py_compile` passes, and a deep path audit was run if booking/payment/email code changed.
+
+**Pre-merge checklist (every PR):**
+1. Frontend builds: `cd frontend && npm run build` — zero errors
+2. Backend compiles: `python3 -m py_compile backend/server.py` — zero errors
+3. No banned imports (MongoDB, SendGrid, Geoapify, etc.)
+4. No smart quotes in Python files
+5. If booking/payment/email code was changed → Step 5 Deep Path Audit was run
+6. Vercel preview URL was tested manually (forms load, address autocomplete works, pricing calculates)
+
+**Post-deploy verification (after every merge to main):**
+1. Create a test booking on the live site
+2. Verify confirmation email arrives
+3. Verify admin notification arrives
+4. Verify price is correct
+5. If any of these fail → revert the merge immediately
+
+**Environment variables:**
+- All credentials are in Render (backend) and Vercel (frontend) environment settings
+- **NEVER** commit secrets to the repo
+- See `backend/.env.example` for the full list of variables
+
 ## Backend Architecture
 
 - Main server: `backend/server.py` (~14,000 lines, monolithic)
