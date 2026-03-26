@@ -5,6 +5,23 @@
 
 ---
 
+## WHAT TO ASK CLAUDE — AUDIT LEVELS EXPLAINED
+
+The owner is not a developer. When requesting work, use these phrases to get the right depth of checking:
+
+| What You Say | What Claude Does | When To Use It |
+|---|---|---|
+| **"Fix this bug"** | Fixes the specific thing. Surface-level. | When you know exactly what's broken and just need it fixed |
+| **"Audit this"** | Checks the area around the fix — imports, syntax, build. | Normal quality check |
+| **"Deep audit" or "crawl this"** | Traces every code path end-to-end: button click → backend → database → email → customer. Finds silent failures like `run_async_task`. | When something "should work but doesn't" or when launching |
+| **"Full site crawl"** | Audits EVERYTHING: every form, every endpoint, every email, every background task, every admin button. Multiple parallel agents. | Before launch, after major changes, or when multiple things are broken |
+
+**RULE: If the owner says "it's not working" or "it's been broken for weeks" — ALWAYS do a deep audit, not a surface fix.** The bug that broke email notifications for a month passed every surface check (syntax OK, build OK, imports OK). Only tracing the actual execution path found it.
+
+**RULE: Every agent session MUST run Step 5 (Deep Path Audit) from the Mandatory Checks if ANY booking, payment, or email code was changed — even if the change seems minor.**
+
+---
+
 ## THE 10 RULES — MANDATORY FOR EVERY AGENT SESSION
 
 These rules are non-negotiable. Every agent must follow all 10, every session, no exceptions.
@@ -347,6 +364,46 @@ After making changes, before committing:
 3. **Check for regressions**: Did your change break anything that was working before?
 4. **Verify deploy compatibility**: Will this work on both Vercel (frontend) AND Render (backend)?
 
+### Step 5: Deep Path Audit (run when ANY booking/payment/email code changes)
+
+**This step catches the bugs that surface checks miss.** The `run_async_task` bug silently killed all background tasks for a month because no surface check would catch it — syntax was valid, imports existed, build passed. Only tracing the execution path reveals these killers.
+
+**When to run:** Every time booking creation, payment processing, email sending, or background task code is changed. Also run at the START of any session where the owner reports "something isn't working."
+
+**What to check:**
+
+1. **Trace every background task from trigger to execution:**
+   - Find every `background_tasks.add_task()` call in server.py
+   - Verify the task function exists and has the correct signature
+   - If the task is async, verify it runs on the MAIN event loop (not a new one)
+   - If the task calls database operations, verify it uses the shared `db` connection pool
+   - Check that errors in background tasks are LOGGED, not swallowed
+
+2. **Trace every email from trigger to send:**
+   - Pick any email-triggering action (booking creation, cancellation, reminder)
+   - Follow the code: action → email function → HTML generation → Mailgun send
+   - Verify every function in the chain EXISTS and is CALLABLE
+   - Verify `email_wrapper()` is imported correctly where used
+   - Check that email recipient addresses are not empty/None
+
+3. **Trace every frontend submit from button to response:**
+   - Follow: button click → handler → axios call → endpoint URL → backend handler → database write → response → UI update
+   - Verify the endpoint URL matches a real route in server.py
+   - Verify the payload fields match the Pydantic model
+   - Verify the response is handled correctly (success AND error cases)
+   - Check that no field is doubled, tripled, or lost in translation
+
+4. **Check for silent failures:**
+   - Search for `except: pass` or `except Exception: pass` — errors being swallowed
+   - Search for `except` blocks that only log but don't re-raise critical errors
+   - Check that every `try/except` in booking-critical paths has proper error handling
+   - Verify that background task failures don't silently prevent customer notifications
+
+5. **Check for event loop issues:**
+   - Any use of `asyncio.new_event_loop()` is a RED FLAG — this creates a separate loop that can't access the main loop's database connections
+   - Any use of `asyncio.run()` inside an already-running async context is a RED FLAG
+   - Background tasks that are `async def` MUST be awaited, not run in a new loop
+
 ---
 
 ## PRE-CHANGE CHECKLIST
@@ -383,6 +440,36 @@ Before making ANY change, verify:
 
 - Frontend: **Vercel** (React 18, CRA + CRACO)
 - Backend: **Render** (FastAPI/Uvicorn, Python 3.11+)
+
+### Deployment Rules — MANDATORY
+
+**Customers are paying for reliability, not beta testing. Every change must be tested before it reaches production.**
+
+**Branch strategy:**
+- `main` branch = PRODUCTION. Deploys automatically to Vercel (frontend) and Render (backend).
+- Feature branches = development. Every PR gets a Vercel preview URL for testing.
+- **NEVER push directly to main.** Always use a PR.
+- **NEVER merge a PR without verifying:** `npm run build` passes, `py_compile` passes, and a deep path audit was run if booking/payment/email code changed.
+
+**Pre-merge checklist (every PR):**
+1. Frontend builds: `cd frontend && npm run build` — zero errors
+2. Backend compiles: `python3 -m py_compile backend/server.py` — zero errors
+3. No banned imports (MongoDB, SendGrid, Geoapify, etc.)
+4. No smart quotes in Python files
+5. If booking/payment/email code was changed → Step 5 Deep Path Audit was run
+6. Vercel preview URL was tested manually (forms load, address autocomplete works, pricing calculates)
+
+**Post-deploy verification (after every merge to main):**
+1. Create a test booking on the live site
+2. Verify confirmation email arrives
+3. Verify admin notification arrives
+4. Verify price is correct
+5. If any of these fail → revert the merge immediately
+
+**Environment variables:**
+- All credentials are in Render (backend) and Vercel (frontend) environment settings
+- **NEVER** commit secrets to the repo
+- See `backend/.env.example` for the full list of variables
 
 ## Backend Architecture
 
