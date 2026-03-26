@@ -853,7 +853,7 @@ export const BookNow = () => {
                             )}
                           </div>
 
-                          {/* Price Breakdown */}
+                          {/* Price Breakdown — customer sees total only, no km rates or per-passenger fees */}
                           <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm">
                             <div className="flex justify-between">
                               <span className="text-gray-600">Trip fare</span>
@@ -875,8 +875,8 @@ export const BookNow = () => {
 
                           <div className="bg-gray-50 rounded-lg p-4 text-center">
                             <p className="text-sm text-gray-600">
-                              {(formData.returnDate && formData.returnTime) ? `${pricing.distance / 2} km each way` : `${pricing.distance} km`} - {formData.passengers} passenger{parseInt(formData.passengers) > 1 ? 's' : ''}
-                              {(formData.returnDate && formData.returnTime) && ' - Round trip (both ways)'}
+                              {formData.passengers} passenger{parseInt(formData.passengers) > 1 ? 's' : ''}
+                              {(formData.returnDate && formData.returnTime) && ' · Return trip (both ways included)'}
                             </p>
                           </div>
 
