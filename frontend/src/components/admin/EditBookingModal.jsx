@@ -37,15 +37,15 @@ const EditBookingModal = memo(({ open, onClose, booking, onSuccess, onPreviewCon
         time: editingBooking.time,
         passengers: editingBooking.passengers,
         notes: editingBooking.notes,
-        flightArrivalNumber: editingBooking.flightArrivalNumber,
-        flightArrivalTime: editingBooking.flightArrivalTime,
-        flightDepartureNumber: editingBooking.flightDepartureNumber,
-        flightDepartureTime: editingBooking.flightDepartureTime,
+        flightArrivalNumber: editingBooking.flightNumber || editingBooking.flightArrivalNumber || editingBooking.flightDepartureNumber || '',
+        flightArrivalTime: editingBooking.flightTime || editingBooking.flightArrivalTime || editingBooking.flightDepartureTime || '',
+        flightDepartureNumber: editingBooking.flightNumber || editingBooking.flightArrivalNumber || editingBooking.flightDepartureNumber || '',
+        flightDepartureTime: editingBooking.flightTime || editingBooking.flightArrivalTime || editingBooking.flightDepartureTime || '',
         bookReturn: !!(editingBooking.returnDate && editingBooking.returnTime),
         returnDate: editingBooking.returnDate,
         returnTime: editingBooking.returnTime,
-        returnFlightNumber: editingBooking.returnFlightNumber || editingBooking.returnDepartureFlightNumber,
-        returnDepartureFlightNumber: editingBooking.returnDepartureFlightNumber || editingBooking.returnFlightNumber
+        returnFlightNumber: editingBooking.returnFlightNumber || editingBooking.returnDepartureFlightNumber || '',
+        returnDepartureFlightNumber: editingBooking.returnFlightNumber || editingBooking.returnDepartureFlightNumber || ''
       }, getAuthHeaders());
 
       toast.success('Booking updated successfully!');
@@ -189,40 +189,25 @@ const EditBookingModal = memo(({ open, onClose, booking, onSuccess, onPreviewCon
                 <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
                   Flight Details (Optional)
                 </h4>
+                <p className="text-xs text-gray-600 mb-3">
+                  Add flight details for airport pickups/drop-offs to better track and coordinate transfers
+                </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label>Flight Arrival Number</Label>
+                    <Label>Flight Number</Label>
                     <Input
-                      value={editingBooking.flightArrivalNumber || ''}
-                      onChange={(e) => setEditingBooking(prev => ({...prev, flightArrivalNumber: e.target.value}))}
+                      value={editingBooking.flightNumber || editingBooking.flightArrivalNumber || editingBooking.flightDepartureNumber || ''}
+                      onChange={(e) => setEditingBooking(prev => ({...prev, flightNumber: e.target.value}))}
                       placeholder="e.g., NZ123"
                       className="mt-1 bg-white"
                     />
                   </div>
                   <div>
-                    <Label>Flight Arrival Time</Label>
+                    <Label>Flight Time</Label>
                     <Input
                       type="time"
-                      value={editingBooking.flightArrivalTime || ''}
-                      onChange={(e) => setEditingBooking(prev => ({...prev, flightArrivalTime: e.target.value}))}
-                      className="mt-1 bg-white"
-                    />
-                  </div>
-                  <div>
-                    <Label>Flight Departure Number</Label>
-                    <Input
-                      value={editingBooking.flightDepartureNumber || ''}
-                      onChange={(e) => setEditingBooking(prev => ({...prev, flightDepartureNumber: e.target.value}))}
-                      placeholder="e.g., NZ456"
-                      className="mt-1 bg-white"
-                    />
-                  </div>
-                  <div>
-                    <Label>Flight Departure Time</Label>
-                    <Input
-                      type="time"
-                      value={editingBooking.flightDepartureTime || ''}
-                      onChange={(e) => setEditingBooking(prev => ({...prev, flightDepartureTime: e.target.value}))}
+                      value={editingBooking.flightTime || editingBooking.flightArrivalTime || editingBooking.flightDepartureTime || ''}
+                      onChange={(e) => setEditingBooking(prev => ({...prev, flightTime: e.target.value}))}
                       className="mt-1 bg-white"
                     />
                   </div>

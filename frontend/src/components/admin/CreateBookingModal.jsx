@@ -27,17 +27,12 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
     passengers: '1',
     paymentMethod: 'stripe',
     notes: '',
-    flightArrivalNumber: '',
-    flightArrivalTime: '',
-    flightDepartureNumber: '',
-    flightDepartureTime: '',
+    flightNumber: '',
+    flightTime: '',
     bookReturn: false,
     returnDate: '',
     returnTime: '',
-    returnDepartureFlightNumber: '',
-    returnDepartureTime: '',
-    returnArrivalFlightNumber: '',
-    returnArrivalTime: ''
+    returnFlightNumber: ''
   });
   const [bookingPricing, setBookingPricing] = useState({
     distance: 0,
@@ -64,8 +59,7 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
   const [adminPickupTime, setAdminPickupTime] = useState(null);
   const [adminReturnDate, setAdminReturnDate] = useState(null);
   const [adminReturnTime, setAdminReturnTime] = useState(null);
-  const [adminFlightArrivalTime, setAdminFlightArrivalTime] = useState(null);
-  const [adminFlightDepartureTime, setAdminFlightDepartureTime] = useState(null);
+  const [adminFlightTime, setAdminFlightTime] = useState(null);
 
   // Reset form when modal closes
   useEffect(() => {
@@ -75,11 +69,9 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
         serviceType: 'airport-transfer', pickupAddress: '',
         dropoffAddress: '', date: '', time: '', passengers: '1',
         paymentMethod: 'stripe', notes: '',
-        flightArrivalNumber: '', flightArrivalTime: '',
-        flightDepartureNumber: '', flightDepartureTime: '',
+        flightNumber: '', flightTime: '',
         bookReturn: false, returnDate: '', returnTime: '',
-        returnDepartureFlightNumber: '', returnDepartureTime: '',
-        returnArrivalFlightNumber: '', returnArrivalTime: ''
+        returnFlightNumber: ''
       });
       setBookingPricing({ distance: 0, basePrice: 0, airportFee: 0, passengerFee: 0, totalPrice: 0 });
       setManualPriceOverride('');
@@ -88,8 +80,7 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
       setAdminPickupTime(null);
       setAdminReturnDate(null);
       setAdminReturnTime(null);
-      setAdminFlightArrivalTime(null);
-      setAdminFlightDepartureTime(null);
+      setAdminFlightTime(null);
     }
   }, [open]);
 
@@ -217,7 +208,7 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
 
     const hasReturnTrip = !!(newBooking.returnDate && newBooking.returnTime);
     const isAirportTransfer = (newBooking.serviceType || '').toLowerCase().includes('airport');
-    if (hasReturnTrip && isAirportTransfer && !(newBooking.returnDepartureFlightNumber || '').trim()) {
+    if (hasReturnTrip && isAirportTransfer && !(newBooking.returnFlightNumber || '').trim()) {
       toast.error('Return flight number is required for airport transfer return trips');
       return;
     }
@@ -231,9 +222,6 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
 
     try {
       let finalPrice = hasManualPrice ? parseFloat(manualPriceOverride) : bookingPricing.totalPrice;
-      if (hasReturnTrip && !hasManualPrice) {
-        finalPrice = finalPrice * 2;
-      }
       const priceOverride = hasManualPrice ? parseFloat(manualPriceOverride) : (hasReturnTrip ? finalPrice : null);
 
       await axios.post(`${API}/bookings/manual`, {
@@ -251,17 +239,15 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
         paymentMethod: newBooking.paymentMethod,
         notes: newBooking.notes,
         priceOverride: priceOverride,
-        flightArrivalNumber: newBooking.flightArrivalNumber,
-        flightArrivalTime: newBooking.flightArrivalTime,
-        flightDepartureNumber: newBooking.flightDepartureNumber,
-        flightDepartureTime: newBooking.flightDepartureTime,
+        flightArrivalNumber: newBooking.flightNumber,
+        flightArrivalTime: newBooking.flightTime,
+        flightDepartureNumber: newBooking.flightNumber,
+        flightDepartureTime: newBooking.flightTime,
         bookReturn: hasReturnTrip,
         returnDate: newBooking.returnDate,
         returnTime: newBooking.returnTime,
-        returnDepartureFlightNumber: newBooking.returnDepartureFlightNumber,
-        returnDepartureTime: newBooking.returnDepartureTime,
-        returnArrivalFlightNumber: newBooking.returnArrivalFlightNumber,
-        returnArrivalTime: newBooking.returnArrivalTime
+        returnDepartureFlightNumber: newBooking.returnFlightNumber,
+        returnFlightNumber: newBooking.returnFlightNumber
       }, getAuthHeaders());
 
       toast.success('Booking created successfully! Customer will receive email & SMS confirmation.');
@@ -543,54 +529,28 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label>Flight Arrival Number</Label>
+                    <Label>Flight Number</Label>
                     <Input
-                      value={newBooking.flightArrivalNumber}
-                      onChange={(e) => setNewBooking(prev => ({...prev, flightArrivalNumber: e.target.value}))}
+                      value={newBooking.flightNumber}
+                      onChange={(e) => setNewBooking(prev => ({...prev, flightNumber: e.target.value}))}
                       placeholder="e.g., NZ123"
                       className="mt-1 bg-white"
                     />
                   </div>
                   <div>
-                    <Label>Flight Arrival Time</Label>
+                    <Label>Flight Time</Label>
                     <div className="mt-1">
                       <CustomTimePicker
-                        selected={adminFlightArrivalTime}
+                        selected={adminFlightTime}
                         onChange={(time) => {
-                          setAdminFlightArrivalTime(time);
+                          setAdminFlightTime(time);
                           if (time) {
                             const hours = time.getHours().toString().padStart(2, '0');
                             const minutes = time.getMinutes().toString().padStart(2, '0');
-                            setNewBooking(prev => ({...prev, flightArrivalTime: `${hours}:${minutes}`}));
+                            setNewBooking(prev => ({...prev, flightTime: `${hours}:${minutes}`}));
                           }
                         }}
-                        placeholder="Select arrival time"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <Label>Flight Departure Number</Label>
-                    <Input
-                      value={newBooking.flightDepartureNumber}
-                      onChange={(e) => setNewBooking(prev => ({...prev, flightDepartureNumber: e.target.value}))}
-                      placeholder="e.g., NZ456"
-                      className="mt-1 bg-white"
-                    />
-                  </div>
-                  <div>
-                    <Label>Flight Departure Time</Label>
-                    <div className="mt-1">
-                      <CustomTimePicker
-                        selected={adminFlightDepartureTime}
-                        onChange={(time) => {
-                          setAdminFlightDepartureTime(time);
-                          if (time) {
-                            const hours = time.getHours().toString().padStart(2, '0');
-                            const minutes = time.getMinutes().toString().padStart(2, '0');
-                            setNewBooking(prev => ({...prev, flightDepartureTime: `${hours}:${minutes}`}));
-                          }
-                        }}
-                        placeholder="Select departure time"
+                        placeholder="Select flight time"
                       />
                     </div>
                   </div>
@@ -643,28 +603,14 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
                         />
                       </div>
                     </div>
-                  </div>
-                  <div className="mt-4 pt-4 border-t border-blue-100">
-                    <Label className="text-sm font-medium text-gray-700 mb-2 block">Return Flight Information (required if booking return)</Label>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label className="text-xs">Return Flight Number</Label>
-                        <Input
-                          value={newBooking.returnDepartureFlightNumber || ''}
-                          onChange={(e) => setNewBooking(prev => ({...prev, returnDepartureFlightNumber: e.target.value}))}
-                          placeholder="e.g. NZ456"
-                          className="mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs">Return Arrival Flight (optional)</Label>
-                        <Input
-                          value={newBooking.returnArrivalFlightNumber || ''}
-                          onChange={(e) => setNewBooking(prev => ({...prev, returnArrivalFlightNumber: e.target.value}))}
-                          placeholder="e.g. NZ789"
-                          className="mt-1"
-                        />
-                      </div>
+                    <div>
+                      <Label>Return Flight Number</Label>
+                      <Input
+                        value={newBooking.returnFlightNumber || ''}
+                        onChange={(e) => setNewBooking(prev => ({...prev, returnFlightNumber: e.target.value}))}
+                        placeholder="e.g. NZ456"
+                        className="mt-1 bg-white"
+                      />
                     </div>
                   </div>
                 </div>
@@ -715,23 +661,12 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
                       <span className="font-medium">${bookingPricing.passengerFee.toFixed(2)}</span>
                     </div>
                   )}
-                  {(newBooking.returnDate && newBooking.returnTime) && (
-                    <div className="flex justify-between text-green-700">
-                      <span>Return Trip:</span>
-                      <span className="font-medium">x2</span>
-                    </div>
-                  )}
                   <div className="flex justify-between pt-2 border-t font-semibold text-base">
                     <span>Total:</span>
                     <span className="text-gold">
-                      ${((newBooking.returnDate && newBooking.returnTime) ? bookingPricing.totalPrice * 2 : bookingPricing.totalPrice).toFixed(2)}
+                      ${bookingPricing.totalPrice.toFixed(2)}
                     </span>
                   </div>
-                  {(newBooking.returnDate && newBooking.returnTime) && (
-                    <p className="text-xs text-green-600 text-center mt-1">
-                      Includes return trip (outbound + return)
-                    </p>
-                  )}
                 </div>
               ) : (
                 <p className="text-sm text-gray-600 text-center">
