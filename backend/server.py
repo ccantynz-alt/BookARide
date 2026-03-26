@@ -42,7 +42,7 @@ except ImportError:
 from email_templates import email_wrapper, email_section, email_button, email_booking_summary, email_price_table, email_divider
 
 
-def _send_email_with_fallbacks(to_email, subject, html_content, from_email=None, from_name="BookaRide", reply_to=None, cc=None):
+def _send_email_with_fallbacks(to_email, subject, html_content, from_email=None, from_name="BookaRide", reply_to=None, cc=None, text_content=None):
     """Send email via Mailgun (the ONLY email provider). No SMTP fallback.
     Returns True if Mailgun succeeds."""
     if not to_email or not isinstance(to_email, str) or '@' not in to_email.strip():
@@ -70,6 +70,8 @@ def _send_email_with_fallbacks(to_email, subject, html_content, from_email=None,
                 "subject": subject,
                 "html": html_content,
             }
+            if text_content:
+                data["text"] = text_content
             if reply_to:
                 data["h:Reply-To"] = reply_to
             if cc:
