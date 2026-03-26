@@ -113,10 +113,12 @@ Any agent that changes these rates without explicit owner instruction is breakin
 | 35.0      | 50.0    | $4.00             |
 | 50.0      | 60.0    | $2.60             |
 | 60.0      | 75.0    | $2.47             |
-| 75.0      | 100.0   | $2.70             |
+| 70.0      | 100.0   | $2.70             |
 | 100.0     | 300.0   | $3.50             |
 
-**Code location**: `backend/server.py` lines 1681-1700 (and duplicated in concert pricing lines 1733-1746)
+**Note:** The 60-75 and 70-100 tiers overlap. The code uses `elif` chains so the 60-75 tier ($2.47) takes priority for distances 70-75 km. This matches the WordPress pricing plugin behavior (screenshot verified 2026-03-26).
+
+**Code location**: `backend/server.py` (tiered pricing in `calculate_price` function)
 
 **Add-on fees**:
 - VIP Airport Pickup: $15.00
