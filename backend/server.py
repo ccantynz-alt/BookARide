@@ -92,10 +92,6 @@ def _send_email_with_fallbacks(to_email, subject, html_content, from_email=None,
     return False
 
 
-def _send_email_compat(to_email, subject, html_content, from_name="BookaRide", text_content=None, cc=None, reply_to=None):
-    """Compatibility wrapper - delegates to Mailgun via _send_email_with_fallbacks."""
-    return _send_email_with_fallbacks(to_email, subject, html_content, from_name=from_name, text_content=text_content, cc=cc, reply_to=reply_to)
-
 # Global lock to prevent concurrent reminder sending
 reminder_lock = asyncio.Lock()
 
@@ -426,23 +422,6 @@ class BookingCreate(BaseModel):
                 raise ValueError('Return flight number is required for airport shuttle return bookings. Without a flight number, your booking may face cancellation.')
         return self
     
-    # @model_validator(mode='after')
-    # def validate_booking_date(self):
-    #     """Validate that booking date is not in the past"""
-    #     if self.date:
-    #         try:
-    #             nz_tz = pytz.timezone('Pacific/Auckland')
-    #             today = datetime.now(nz_tz).strftime('%Y-%m-%d')
-    #             # Allow bookings for today and future only
-    #             if self.date < today:
-    #                 raise ValueError(f'Booking date ({self.date}) cannot be in the past. Today is {today}.')
-    #         except Exception as e:
-    #             if 'cannot be in the past' in str(e):
-    #                 raise
-    #             # If date parsing fails, let it through (will fail elsewhere)
-    #             pass
-    #     return self
-
 class Booking(BookingCreate):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     referenceNumber: Optional[str] = None  # Sequential reference number (can be int stored as string or custom string like TEST-999)
@@ -1120,12 +1099,6 @@ async def validate_reset_token(token: str):
     except Exception as e:
         logger.error(f"Token validation error: {str(e)}")
         return {"valid": False, "message": "Validation failed"}
-
-
-# Add your routes to the router instead of directly to app
-@api_router.get("/")
-async def root():
-    return {"message": "Welcome to Book A Ride NZ API"}
 
 
 @api_router.get("/health")
@@ -3004,87 +2977,6 @@ def send_booking_confirmation_email(booking: dict, include_payment_link: bool = 
     return _send_email_with_fallbacks(recipient_email, subject, html_content, from_email=from_email, from_name="BookaRide")
 
 
-def send_via_mailgun(booking: dict):
-    """Try sending via Mailgun with beautiful email template"""
-    try:
-        mailgun_api_key = os.environ.get('MAILGUN_API_KEY')
-        mailgun_domain = os.environ.get('MAILGUN_DOMAIN')
-        sender_email = get_noreply_email()
-        
-        if not mailgun_api_key or not mailgun_domain:
-            logger.warning("Mailgun credentials not configured")
-            return False
-        
-        # Get booking reference for subject line
-        booking_ref = get_booking_reference(booking)
-        
-        # Get language preference for subject (default to English)
-        lang = booking.get('language', 'en')
-        if lang not in EMAIL_TRANSLATIONS:
-            lang = 'en'
-        t = EMAIL_TRANSLATIONS[lang]
-        
-        subject = f"{t['subject']} - Ref: {booking_ref}"
-        recipient_email = booking.get('email')
-        
-        # Use the beautiful email template
-        html_content = generate_confirmation_email_html(booking)
-        
-        # Build email data with CC support
-        email_data = {
-            "from": f"BookaRide <{sender_email}>",
-            "to": recipient_email,
-            "subject": subject,
-            "html": html_content
-        }
-        
-        # Add CC if provided
-        cc_email = booking.get('ccEmail', '')
-        if cc_email and cc_email.strip():
-            email_data["cc"] = cc_email.strip()
-        
-        # Send email via Mailgun API
-        response = requests.post(
-            f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
-            auth=("api", mailgun_api_key),
-            data=email_data,
-            timeout=15,
-        )
-
-        if response.status_code == 200:
-            cc_info = f" (CC: {cc_email})" if cc_email else ""
-            logger.info(f"Confirmation email sent to {recipient_email}{cc_info} via Mailgun")
-            return True
-        else:
-            logger.error(f"Mailgun error: {response.status_code} - {response.text}")
-            return False
-        
-    except Exception as e:
-        logger.error(f"Mailgun error: {str(e)}")
-        return False
-
-
-def send_via_mailgun_confirmation(booking: dict):
-    """Send booking confirmation email via Mailgun."""
-    try:
-        booking_ref = get_booking_reference(booking)
-        subject = f"Booking Confirmation - Ref: {booking_ref}"
-        recipient_email = booking.get('email')
-        html_content = generate_confirmation_email_html(booking)
-
-        return _send_email_with_fallbacks(
-            to_email=recipient_email,
-            subject=subject,
-            html_content=html_content,
-            from_name="BookaRide"
-        )
-    except Exception as e:
-        logger.error(f"Mailgun confirmation error: {str(e)}")
-        import traceback
-        logger.error(traceback.format_exc())
-        return False
-
-
 def send_booking_confirmation_sms(booking: dict):
     """Send booking confirmation SMS via Twilio"""
     try:
@@ -3232,7 +3124,7 @@ def send_post_trip_email(booking: dict):
         ref_number = booking.get('referenceNumber', booking.get('id', '')[:8])
 
         # Google Review URL — placeholder Place ID (update when real one is available)
-        google_review_url = 'https://search.google.com/local/writereview?placeid=ChIJBookARideNZ'
+        google_review_url = 'https://www.google.com/maps/place/BookARide+NZ'
 
         subject = f"Thanks for riding with BookaRide, {first_name}!"
 
@@ -3642,8 +3534,6 @@ async def track_flight(flight_number: str):
             return await _get_mock_flight_data(fn)
         
         # Call AviationStack API
-        import httpx
-        
         async with httpx.AsyncClient() as client:
             response = await client.get(
                 "http://api.aviationstack.com/v1/flights",
@@ -3779,53 +3669,11 @@ async def track_flight(flight_number: str):
 
 
 async def _get_mock_flight_data(fn: str):
-    """Fallback mock data when API is unavailable"""
-    import random
-    from datetime import datetime, timedelta
-    import pytz
-    
-    nz_tz = pytz.timezone('Pacific/Auckland')
-    now = datetime.now(nz_tz)
-    
-    statuses = ['On Time', 'On Time', 'On Time', 'Delayed', 'Landed']
-    status = random.choice(statuses)
-    
-    delay_minutes = 0
-    if status == 'Delayed':
-        delay_minutes = random.choice([15, 30, 45, 60])
-    
-    airports = {
-        'AKL': 'Auckland Airport', 'SYD': 'Sydney Airport',
-        'MEL': 'Melbourne Airport', 'LAX': 'Los Angeles Airport'
-    }
-    
-    dep_code = random.choice(['SYD', 'MEL', 'LAX'])
-    arr_code = 'AKL'
-    
-    scheduled_arrival = now + timedelta(hours=random.randint(1, 6))
-    actual_arrival = scheduled_arrival + timedelta(minutes=delay_minutes)
-    departure_time = scheduled_arrival - timedelta(hours=random.randint(2, 14))
-    
+    """Return unavailable status when flight tracking API is down."""
     return {
-        "flightNumber": fn,
-        "status": status,
-        "departure": {
-            "code": dep_code,
-            "airport": airports.get(dep_code, dep_code),
-            "time": departure_time.strftime("%H:%M"),
-            "date": departure_time.strftime("%d %b")
-        },
-        "arrival": {
-            "code": arr_code,
-            "airport": airports.get(arr_code, arr_code),
-            "time": actual_arrival.strftime("%H:%M"),
-            "scheduledTime": scheduled_arrival.strftime("%H:%M"),
-            "date": actual_arrival.strftime("%d %b"),
-            "delay": f"+{delay_minutes} min" if delay_minutes > 0 else None
-        },
-        "tracked": True,
-        "message": "We're monitoring this flight." if status != 'Landed' else "Flight has landed!",
-        "live": False
+        "flight_number": fn,
+        "status": "unavailable",
+        "message": "Flight tracking data temporarily unavailable. Please check your airline's website for live updates."
     }
 
 
@@ -3885,7 +3733,6 @@ async def _process_ai_actions(ai_response: str, sender_email: str, sender_name: 
     Parse ACTION tags from Claude's response and execute the corresponding actions.
     Returns a dict with actions_taken (list of descriptions) and the cleaned response text.
     """
-    import re
     actions_taken = []
     cleaned_response = ai_response
 
@@ -4157,7 +4004,6 @@ async def handle_incoming_email(request: Request):
         recipient = form_data.get('recipient', '')
 
         # Extract email address from "Name <email>" format
-        import re
         email_match = re.search(r'[\w\.-]+@[\w\.-]+', from_email)
         reply_to_email = email_match.group(0) if email_match else from_email
 
@@ -7166,9 +7012,6 @@ async def twilio_sms_webhook(request: Request):
 
 # ==================== LIVE GPS TRACKING ====================
 
-import random
-import string
-
 def generate_tracking_ref(length=6):
     """Generate a short tracking reference for customer links"""
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
@@ -9211,7 +9054,7 @@ async def submit_contact_form(form: ContactForm):
 
         # Store in database for record keeping
         await db.contact_submissions.insert_one({
-            "id": str(uuid4()),
+            "id": str(uuid.uuid4()),
             "name": form.name,
             "email": form.email,
             "phone": form.phone,
@@ -9232,7 +9075,7 @@ async def submit_driver_application(application: DriverApplication):
     """Submit a new driver application"""
     try:
         app_data = {
-            "id": str(uuid4()),
+            "id": str(uuid.uuid4()),
             "name": application.name,
             "email": application.email,
             "phone": application.phone,
@@ -11581,9 +11424,6 @@ async def trigger_arrival_emails(current_admin: dict = Depends(get_current_admin
 
 # ==================== WORDPRESS BOOKING IMPORT ====================
 
-import csv
-from io import StringIO
-
 class ImportBookingsRequest(BaseModel):
     csv_data: str  # Base64 encoded CSV or raw CSV string
     skip_notifications: bool = True
@@ -11904,10 +11744,9 @@ async def fix_imported_bookings(current_admin: dict = Depends(get_current_admin)
     Requires admin auth.
     """
     try:
-        import re
         fixed_status = 0
         fixed_dates = 0
-        
+
         # Find ALL imported bookings and fix them
         cursor = db.bookings.find({"imported_from": "wordpress_chauffeur"})
         
@@ -11959,10 +11798,9 @@ async def fix_imported_bookings(current_admin: dict = Depends(get_current_admin)
 async def fix_now(current_admin: dict = Depends(get_current_admin)):
     """Direct URL to fix bookings — requires admin auth"""
     try:
-        import re
         restored = 0
         fixed_dates = 0
-        
+
         # STEP 1: Move bookings from deleted_bookings collection back to bookings
         deleted_cursor = db.deleted_bookings.find({"imported_from": "wordpress_chauffeur"})
         async for booking in deleted_cursor:
