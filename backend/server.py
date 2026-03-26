@@ -1898,10 +1898,14 @@ async def calculate_price(request: PriceCalculationRequest):
         is_to_hibiscus_coast = any(keyword in dropoff_lower for keyword in hibiscus_coast_keywords)
         
         # Minimum distance for Hibiscus Coast <-> Auckland Airport
-        # Old system: 73.3 km for Gulf Harbour -> Airport = ~$186. Use 73 km minimum for this route.
+        # Gulf Harbour -> Airport is ~67km via Google Maps but historically priced at 75km = ~$190
         airport_keywords = ['airport', 'auckland airport', 'international airport', 'domestic airport', 'akl', 'ray emery', 'mangere']
         is_to_airport = any(kw in dropoff_lower for kw in airport_keywords)
         is_from_airport = any(kw in pickup_lower for kw in airport_keywords)
+        hibiscus_to_airport = (is_from_hibiscus_coast and is_to_airport) or (is_to_hibiscus_coast and is_from_airport)
+        if hibiscus_to_airport and distance_km < 75.0:
+            logger.info(f"Zone distance: Hibiscus Coast <-> Airport applying minimum 75 km (API returned {distance_km} km)")
+            distance_km = 75.0
 
         # Minimum distance for North Auckland (Warkworth, Matakana, Leigh) <-> Airport (~60-70km)
         north_auckland_keywords = ['warkworth', 'snells beach', 'matakana', 'leigh', 'wellsford', 'puhoi', 'alberton']
