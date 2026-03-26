@@ -97,21 +97,18 @@ reminder_lock = asyncio.Lock()
 
 # === Background Task Helpers ===
 async def run_async_task(coro_func, arg, task_description="background task"):
-    """Run an async background task in the main event loop.
+    """Run an async background task.
 
-    IMPORTANT: This must be async (not sync with new_event_loop) because async
-    functions like create_calendar_event use the asyncpg database pool, which is
-    bound to the main event loop. Creating a new event loop would cause
+    This function is itself async and is called by FastAPI BackgroundTasks.
+    FastAPI detects that it is a coroutine and awaits it on the main event loop,
+    which is critical because async functions like create_calendar_event and
+    check_booking_driver_conflict use the asyncpg database pool that is bound
+    to the main event loop. Creating a new event loop would cause
     'attached to a different loop' errors on any database operation.
     """
     try:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            loop.run_until_complete(coro_func(arg))
-            logger.info(f"[BG-OK] {task_description}")
-        finally:
-            loop.close()
+        await coro_func(arg)
+        logger.info(f"[BG-OK] {task_description}")
     except Exception as e:
         logger.error(f"[BG-FAIL] {task_description}: {str(e)}", exc_info=True)
 
@@ -8828,8 +8825,18 @@ async def create_manual_booking(booking: ManualBooking, background_tasks: Backgr
             total_price = booking.pricing.get('totalPrice', 0) if isinstance(booking.pricing, dict) else 0
             pricing_data = booking.pricing
         
-        # Determine payment status
-        payment_status = booking.payment_status if booking.payment_status else booking.paymentMethod
+        # Determine payment status — default to 'unpaid' unless explicitly set or
+        # the payment method implies immediate payment (e.g. 'card' = already paid,
+        # 'pay-on-pickup' = cash on arrival).  Never store the payment *method* as
+        # the payment *status* (that caused "STRIPE" showing in confirmation emails).
+        if booking.payment_status:
+            payment_status = booking.payment_status
+        elif booking.paymentMethod in ('card',):
+            payment_status = 'paid'
+        elif booking.paymentMethod in ('pay-on-pickup', 'cash'):
+            payment_status = booking.paymentMethod
+        else:
+            payment_status = 'unpaid'
         
         new_booking = {
             "id": str(uuid.uuid4()),
