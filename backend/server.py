@@ -1897,11 +1897,15 @@ async def calculate_price(request: PriceCalculationRequest):
         is_from_hibiscus_coast = any(keyword in pickup_lower for keyword in hibiscus_coast_keywords)
         is_to_hibiscus_coast = any(keyword in dropoff_lower for keyword in hibiscus_coast_keywords)
         
-        # Minimum distance for Hibiscus Coast <-> Auckland Airport
-        # Old system: 73.3 km for Gulf Harbour -> Airport = ~$186. Use 73 km minimum for this route.
+        # Airport keywords used by zone distance checks below
         airport_keywords = ['airport', 'auckland airport', 'international airport', 'domestic airport', 'akl', 'ray emery', 'mangere']
         is_to_airport = any(kw in dropoff_lower for kw in airport_keywords)
         is_from_airport = any(kw in pickup_lower for kw in airport_keywords)
+
+        # Note: No minimum distance for Hibiscus Coast <-> Airport.
+        # Google Maps returns the actual driving distance. The km rate table handles pricing.
+        # If prices need adjusting, change the RATES — don't add minimum distances (they
+        # create two competing pricing systems and confuse the calculation).
 
         # Minimum distance for North Auckland (Warkworth, Matakana, Leigh) <-> Airport (~60-70km)
         north_auckland_keywords = ['warkworth', 'snells beach', 'matakana', 'leigh', 'wellsford', 'puhoi', 'alberton']
@@ -1958,7 +1962,8 @@ async def calculate_price(request: PriceCalculationRequest):
                 # From elsewhere - calculate distance to Hibiscus Coast and add $550
                 logger.info(f" CONCERT PRICING: {distance_km}km total, charging to Hibiscus Coast + ${matakana_concert_base} concert transfer")
         
-        # Standard tiered pricing (original rates)
+        # Standard tiered pricing — rate calibrated so key routes price correctly:
+        # Orewa (~48km) = ~$150, Gulf Harbour (~67km) = ~$190 (rates approved 2026-03-26)
         if distance_km <= 15.0:
             rate_per_km = 12.00  # $12.00 per km for 0-15km
         elif distance_km <= 15.8:
@@ -1970,11 +1975,11 @@ async def calculate_price(request: PriceCalculationRequest):
         elif distance_km <= 35.0:
             rate_per_km = 5.00   # $5.00 per km for 25.5-35km
         elif distance_km <= 50.0:
-            rate_per_km = 4.00   # $4.00 per km for 35-50km
+            rate_per_km = 3.13   # $3.13 per km for 35-50km (Orewa ~48km = ~$150)
         elif distance_km <= 60.0:
             rate_per_km = 2.60   # $2.60 per km for 50-60km
         elif distance_km <= 75.0:
-            rate_per_km = 2.47   # $2.47 per km for 60-75km
+            rate_per_km = 2.84   # $2.84 per km for 60-75km (Gulf Harbour ~67km = ~$190)
         elif distance_km <= 100.0:
             rate_per_km = 2.70   # $2.70 per km for 75-100km
         else:

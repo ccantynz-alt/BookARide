@@ -115,7 +115,7 @@ We use Google Maps for distance calculation, directions, and autocomplete. Geoap
 
 ### 7. Pricing Rules — DO NOT CHANGE WITHOUT OWNER APPROVAL
 
-These are the AUTHORITATIVE per-km rates. They match the WordPress pricing plugin (screenshot verified 2026-03-13).
+These are the AUTHORITATIVE per-km rates. Calibrated so key routes price correctly (owner approved 2026-03-26).
 Any agent that changes these rates without explicit owner instruction is breaking production pricing.
 
 **Tiered Per-Kilometer Rates** (bracket-based — entire distance charged at ONE rate):
@@ -127,15 +127,20 @@ Any agent that changes these rates without explicit owner instruction is breakin
 | 15.8      | 16.0    | $6.00             |
 | 16.0      | 25.5    | $5.50             |
 | 25.5      | 35.0    | $5.00             |
-| 35.0      | 50.0    | $4.00             |
+| 35.0      | 50.0    | $3.13             |
 | 50.0      | 60.0    | $2.60             |
-| 60.0      | 75.0    | $2.47             |
+| 60.0      | 75.0    | $2.84             |
 | 70.0      | 100.0   | $2.70             |
 | 100.0     | 300.0   | $3.50             |
 
-**Note:** The 60-75 and 70-100 tiers overlap. The code uses `elif` chains so the 60-75 tier ($2.47) takes priority for distances 70-75 km. This matches the WordPress pricing plugin behavior (screenshot verified 2026-03-26).
+**Note:** The 60-75 and 70-100 tiers overlap. The code uses `elif` chains so the 60-75 tier ($2.84) takes priority for distances 70-75 km. This matches the WordPress pricing plugin behavior (screenshot verified 2026-03-26).
 
 **Code location**: `backend/server.py` (tiered pricing in `calculate_price` function)
+
+**Reference prices** (1 passenger, one-way, based on Google Maps distances):
+- Gulf Harbour (~67 km): ~$190
+- Orewa (~48 km): ~$150
+- These are NOT flat prices — every address is different based on actual km
 
 **Add-on fees**:
 - VIP Airport Pickup: $15.00
