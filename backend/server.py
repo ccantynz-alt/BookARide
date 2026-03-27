@@ -3032,6 +3032,17 @@ def send_post_trip_email(booking: dict):
     Returns True if sent successfully, False otherwise.
     Checks postTripEmailSent flag to prevent duplicate sends."""
     try:
+        # SAFETY CHECK: Never send post-trip emails for cancelled bookings
+        booking_status = booking.get('status', '').lower()
+        if booking_status in ['cancelled', 'canceled', 'deleted']:
+            logger.warning(f"Skipping post-trip email for CANCELLED booking: {booking.get('id')}")
+            return False
+
+        # SAFETY CHECK: Never send if customer requested cancellation
+        if booking.get('cancellation_requested'):
+            logger.warning(f"Skipping post-trip email for booking with cancellation request: {booking.get('id')}")
+            return False
+
         # Prevent duplicate sends
         if booking.get('postTripEmailSent'):
             logger.info(f"Post-trip email already sent for booking {booking.get('id')}, skipping")
@@ -3699,31 +3710,40 @@ async def _process_ai_actions(ai_response: str, sender_email: str, sender_name: 
         booking = bookings_by_ref.get(ref_clean) or bookings_by_ref.get(f"#{ref_clean}")
         if booking:
             try:
+                # Actually cancel the booking AND flag it so admin knows why
                 await db.bookings.update_one(
                     {"id": booking.get('id')},
                     {"$set": {
+                        "status": "cancelled",
                         "cancellation_requested": True,
                         "cancellation_requested_at": datetime.now(timezone.utc).isoformat(),
                         "cancellation_requested_by": sender_email,
+                        "cancelledAt": datetime.now(timezone.utc).isoformat(),
+                        "cancelledVia": "email_ai_support",
                     }}
                 )
                 booking_ref_display = get_booking_reference(booking)
                 sms_msg = (
-                    f"CANCELLATION REQUEST: {sender_name or sender_email} "
-                    f"wants to cancel booking {booking_ref_display}. "
+                    f"BOOKING CANCELLED: {sender_name or sender_email} "
+                    f"cancelled booking {booking_ref_display} via email. "
                     f"Date: {format_date_ddmmyyyy(booking.get('date', 'N/A'))} "
                     f"{format_time_ampm(booking.get('time', 'N/A'))}. "
                     f"Review in admin dashboard."
                 )
                 _send_admin_sms(sms_msg)
-                actions_taken.append(f"Flagged booking #{ref_clean} for cancellation and notified admin")
-                logger.info(f"AI agent flagged cancellation for booking #{ref_clean} (requested by {sender_email})")
+                # Send cancellation confirmation to customer
+                try:
+                    await send_cancellation_notifications(booking)
+                except Exception as cancel_notify_err:
+                    logger.error(f"AI agent: cancellation notification failed for #{ref_clean}: {cancel_notify_err}")
+                actions_taken.append(f"Cancelled booking #{ref_clean} and notified admin")
+                logger.info(f"AI agent cancelled booking #{ref_clean} (requested by {sender_email})")
             except Exception as e:
-                logger.error(f"AI agent failed to flag cancellation for #{ref_clean}: {e}")
-                actions_taken.append(f"Failed to flag cancellation for #{ref_clean}: {e}")
+                logger.error(f"AI agent failed to cancel booking #{ref_clean}: {e}")
+                actions_taken.append(f"Failed to cancel booking #{ref_clean}: {e}")
         else:
-            logger.warning(f"AI agent tried to flag cancellation for #{ref_clean} but booking not found")
-            actions_taken.append(f"Could not find booking #{ref_clean} to flag cancellation")
+            logger.warning(f"AI agent tried to cancel booking #{ref_clean} but booking not found")
+            actions_taken.append(f"Could not find booking #{ref_clean} to cancel")
 
     # --- FLAG_MODIFICATION ---
     mod_matches = re.findall(r'\[ACTION:FLAG_MODIFICATION:([^:\]]+):([^\]]+)\]', ai_response)
@@ -3861,15 +3881,16 @@ You can take actions by including special tags in your response. These tags will
 
 Available actions:
 - [ACTION:RESEND_CONFIRMATION:REF123] — Resend booking confirmation email and SMS. Use this when the customer says they did not receive their confirmation, asks you to resend it, or says "send again". Replace REF123 with the actual booking reference number from their booking history.
-- [ACTION:FLAG_CANCELLATION:REF123] — Flag a booking for cancellation (admin will review and process). Use when the customer asks to cancel a booking. Replace REF123 with their booking reference. Tell the customer their cancellation request has been noted and the team will confirm shortly.
+- [ACTION:FLAG_CANCELLATION:REF123] — Cancel a booking immediately. Use when the customer asks to cancel a booking. Replace REF123 with their booking reference. Tell the customer their booking has been cancelled and they will receive a cancellation confirmation email. The admin will also be notified.
 - [ACTION:FLAG_MODIFICATION:REF123:description of changes] — Flag a booking for modification. Use when the customer wants to change the date, time, pickup/dropoff address, or passenger count. Include a brief description of the requested changes after the second colon. Tell the customer their change request has been noted and the team will confirm shortly.
 - [ACTION:URGENT_ESCALATE] — Immediately alert the admin via SMS. Use this ONLY when the situation is genuinely urgent: the customer is stranded, at the airport with no driver, their ride is late, or they are clearly upset/distressed about an imminent booking. Do NOT use for routine questions.
 
 Rules for actions:
 - You may include multiple action tags if appropriate (e.g. flag modification AND escalate if urgent).
 - Only use a booking reference that appears in the customer's booking history shown to you. Never guess a reference.
-- Always tell the customer what you have done: "I have resent your confirmation", "I have flagged your cancellation request for our team", etc.
-- For cancellations and modifications, always explain that the team will process their request shortly and they can also call 021 743 321 for immediate assistance."""
+- Always tell the customer what you have done: "I have resent your confirmation", "Your booking has been cancelled", etc.
+- For modifications, explain that the team will process their request shortly. For cancellations, confirm the booking is cancelled immediately.
+- If the customer needs further help, they can call 021 743 321."""
 
     user_message = f"""Customer email received:
 
@@ -4451,7 +4472,8 @@ async def send_daily_reminders_core(source: str = "unknown"):
             bookings = await db.bookings.find({
                 "status": "confirmed",
                 "date": nz_tomorrow,
-                "reminderSentForDate": {"$ne": nz_tomorrow}  # Not already sent for tomorrow
+                "reminderSentForDate": {"$ne": nz_tomorrow},  # Not already sent for tomorrow
+                "cancellation_requested": {"$ne": True}  # Never email customers who requested cancellation
             }, {"_id": 0}).to_list(100)
             
             logger.info(f" [{source}] Found {len(bookings)} bookings needing reminders for {nz_tomorrow}")
@@ -7495,7 +7517,8 @@ async def check_return_booking_alerts():
         return_bookings = await db.bookings.find({
             'returnDate': {'$in': [today_str, tomorrow_str]},
             'returnTime': {'$exists': True, '$ne': ''},
-            'status': {'$nin': ['cancelled', 'completed']}
+            'status': {'$nin': ['cancelled', 'completed']},
+            'cancellation_requested': {'$ne': True}
         }, {'_id': 0}).to_list(100)
         
         alerts_sent = 0
@@ -12338,8 +12361,10 @@ async def auto_complete_past_bookings():
         valid_payment_statuses = ['paid', 'pay-on-pickup', 'cash', 'bank-transfer']
 
         # Find all confirmed bookings with valid payment that are due or past
+        # Exclude bookings where cancellation was requested — those should not auto-complete
         confirmed_bookings = await db.bookings.find({
-            'status': 'confirmed'
+            'status': 'confirmed',
+            'cancellation_requested': {'$ne': True}
         }, {'_id': 0}).to_list(5000)
 
         completed_count = 0
@@ -12432,8 +12457,10 @@ async def send_pending_post_trip_emails():
         logger.info(f"[Post-Trip Catchup] Starting - NZ time: {now_nz.strftime('%Y-%m-%d %H:%M')}")
 
         # Find completed bookings that never got a post-trip email
+        # Exclude any with cancellation requested — customer does not want to hear from us
         pending_bookings = await db.bookings.find({
             'status': 'completed',
+            'cancellation_requested': {'$ne': True},
             '$or': [
                 {'postTripEmailSent': {'$exists': False}},
                 {'postTripEmailSent': False}
@@ -13272,10 +13299,12 @@ async def check_unpaid_bookings():
         forty_eight_hours_ago = (now_utc - timedelta(hours=48)).isoformat()
 
         # Find unpaid Stripe bookings in the 4-48 hour window that have not been reminded
+        # Also exclude any bookings where the customer requested cancellation
         unpaid_bookings = await db.bookings.find({
             'payment_status': {'$nin': ['paid', 'cash', 'pay-on-pickup']},
             'paymentMethod': 'stripe',
             'status': {'$nin': ['cancelled', 'deleted']},
+            'cancellation_requested': {'$ne': True},
             'createdAt': {'$lte': four_hours_ago, '$gte': forty_eight_hours_ago},
             'paymentReminderSent': {'$ne': True}
         }, {'_id': 0}).to_list(50)
@@ -13772,9 +13801,11 @@ async def send_arrival_pickup_emails():
         airport_keywords = ['airport', 'auckland airport', 'akl', 'domestic terminal', 'international terminal']
         
         # Build query for pickups FROM airport (arriving customers)
+        # Exclude cancelled and cancellation-requested bookings
         query = {
             "date": tomorrow,
             "status": {"$nin": ["cancelled", "completed"]},
+            "cancellation_requested": {"$ne": True},
             "$or": [
                 {"pickupAddress": {"$regex": "airport", "$options": "i"}},
                 {"pickupAddress": {"$regex": "domestic terminal", "$options": "i"}},

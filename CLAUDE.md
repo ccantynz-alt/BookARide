@@ -697,6 +697,36 @@ No exceptions. If you add a new payment path, it must include all 4.
 
 ---
 
+## TECHNOLOGY EXCELLENCE STANDARD — STRICT, NON-NEGOTIABLE
+
+**BookARide must be 80-90% more advanced than competitors in every technical aspect.** This is a strict instruction from the owner. The economy is tough — we cannot afford to lose a single customer to poor technology.
+
+### Rules:
+
+1. **Use the most advanced, production-proven technologies available.** If a better library, framework pattern, or API exists for what we are building — use it. Do not settle for "good enough" when "best in class" is available.
+
+2. **Every feature must be bulletproof.** No half-measures, no "it mostly works", no "edge case we can fix later." If a customer touches it, it must work perfectly the first time, every time. Zero tolerance for broken flows.
+
+3. **Every scheduled task, background job, and automation must have safeguards.** Duplicate prevention, status checks, cancellation awareness, error logging, and graceful degradation. No silent failures. No spam. No emails to customers who have cancelled.
+
+4. **Proactively upgrade and improve.** If you see outdated patterns, inefficient code, or substandard implementations while working on a task — flag it and fix it. Do not leave technical debt for the next session.
+
+5. **The customer experience is sacred.** Every interaction (booking form, email, SMS, payment, chatbot) must feel professional, polished, and reliable. We represent a premium service — the technology must match.
+
+6. **No embarrassing failures.** Sending emails to cancelled customers, broken forms, unresponsive buttons, placeholder content, fake data — these destroy trust instantly. Every agent session must actively hunt for and eliminate these issues.
+
+### Known Issue Fixed (2026-03-27): Email Reminders to Cancelled Customers
+
+The AI email support system was only FLAGGING cancellations (setting `cancellation_requested: True`) but NOT actually changing the booking status to `cancelled`. This meant all scheduled email systems (reminders, post-trip thank-yous, payment follow-ups) kept emailing customers who had cancelled. Fixed by:
+- AI cancellation now sets `status: "cancelled"` immediately
+- ALL scheduled email queries now exclude `cancellation_requested: True` as a safety net
+- `send_post_trip_email()` now checks both status and `cancellation_requested` flag
+- `auto_complete_past_bookings()` now excludes cancellation-requested bookings
+
+**RULE: Every query that sends emails to customers MUST exclude both `status: 'cancelled'` AND `cancellation_requested: True`. No exceptions.**
+
+---
+
 ## History of Production Breaks (why these rules exist)
 
 | Date       | What broke                          | Root cause                              |
@@ -727,3 +757,4 @@ No exceptions. If you add a new payment path, it must include all 4.
 | 2026-03-25 | Fake testimonials and review counts across 30+ files | Fabricated stats violated honesty rules |
 | 2026-03-25 | 20 ghost URLs in sitemap | Pages listed in `sitemap.xml` had no matching routes |
 | 2026-03-25 | Open admin registration | `POST /api/admin/register` had no auth requirement |
+| 2026-03-27 | Cancelled customers receiving constant emails | AI email cancellation only flagged bookings, never changed status to cancelled — all scheduled jobs kept emailing them |
