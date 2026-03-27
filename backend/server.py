@@ -2004,7 +2004,7 @@ async def calculate_price(request: PriceCalculationRequest):
                 elif distance_to_hibiscus <= 35.0:
                     rate_to_hibiscus = 5.00
                 elif distance_to_hibiscus <= 50.0:
-                    rate_to_hibiscus = 4.00
+                    rate_to_hibiscus = 3.13
                 else:
                     rate_to_hibiscus = 3.50
                 
