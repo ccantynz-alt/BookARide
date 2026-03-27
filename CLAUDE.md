@@ -450,6 +450,12 @@ Before making ANY change, verify:
 
 **Customers are paying for reliability, not beta testing. Every change must be tested before it reaches production.**
 
+**How deployment works:**
+- **Frontend (Vercel)**: Auto-deploys from `main` branch. Every PR also gets a preview URL.
+- **Backend (Render)**: Auto-deploys from `main` branch. If auto-deploy is disabled or fails, you MUST manually deploy from the Render dashboard (`dashboard.render.com` → `bookaride-backend` → Deploy).
+- **IMPORTANT**: After merging a PR to `main`, ALWAYS verify that BOTH Vercel AND Render have deployed successfully. Frontend changes (pricing display, forms) go live via Vercel. Backend changes (pricing rates, email sending, API endpoints) go live via Render. If only one deploys, the system is out of sync.
+- **If Render hasn't redeployed**: Go to `dashboard.render.com` → click the backend service → Events/Deploys tab → check for failed deploys or trigger "Manual Deploy" from `main` branch.
+
 **Branch strategy:**
 - `main` branch = PRODUCTION. Deploys automatically to Vercel (frontend) and Render (backend).
 - Feature branches = development. Every PR gets a Vercel preview URL for testing.
