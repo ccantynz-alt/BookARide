@@ -5533,15 +5533,35 @@ async def resend_payment_link(booking_id: str, payment_method: str = "stripe", c
             payment_link = await generate_stripe_payment_link(booking)
             if payment_link:
                 await send_payment_link_email(booking, payment_link, 'stripe')
+                # Track that payment link was sent
+                sent_count = booking.get('payment_link_sent_count', 0) + 1
+                await db.bookings.update_one(
+                    {"id": booking_id},
+                    {"$set": {
+                        "payment_link_sent_at": datetime.utcnow().isoformat(),
+                        "payment_link_sent_count": sent_count,
+                        "payment_link_method": "stripe"
+                    }}
+                )
                 logger.info(f"Stripe payment link resent for booking #{booking_ref}")
                 return {"success": True, "message": f"Stripe payment link sent to {booking.get('email')}"}
             else:
                 raise HTTPException(status_code=500, detail="Failed to generate Stripe payment link")
-        
+
         elif payment_method == 'paypal':
             payment_link = generate_paypal_payment_link(booking)
             if payment_link:
                 await send_payment_link_email(booking, payment_link, 'paypal')
+                # Track that payment link was sent
+                sent_count = booking.get('payment_link_sent_count', 0) + 1
+                await db.bookings.update_one(
+                    {"id": booking_id},
+                    {"$set": {
+                        "payment_link_sent_at": datetime.utcnow().isoformat(),
+                        "payment_link_sent_count": sent_count,
+                        "payment_link_method": "paypal"
+                    }}
+                )
                 logger.info(f"PayPal payment link resent for booking #{booking_ref}")
                 return {"success": True, "message": f"PayPal payment link sent to {booking.get('email')}"}
             else:
@@ -8118,6 +8138,15 @@ async def send_stripe_payment_link_background(booking: dict):
         payment_link = await generate_stripe_payment_link(booking)
         if payment_link:
             await send_payment_link_email(booking, payment_link, 'stripe')
+            # Track that payment link was sent
+            await db.bookings.update_one(
+                {"id": booking.get('id')},
+                {"$set": {
+                    "payment_link_sent_at": datetime.utcnow().isoformat(),
+                    "payment_link_sent_count": 1,
+                    "payment_link_method": "stripe"
+                }}
+            )
             # Also send confirmation email
             send_booking_confirmation_email(booking, include_payment_link=False)
             logger.info(f"Stripe payment link sent for booking #{booking.get('referenceNumber')}")
@@ -8130,6 +8159,15 @@ async def send_paypal_payment_link_background(booking: dict):
         payment_link = generate_paypal_payment_link(booking)
         if payment_link:
             await send_payment_link_email(booking, payment_link, 'paypal')
+            # Track that payment link was sent
+            await db.bookings.update_one(
+                {"id": booking.get('id')},
+                {"$set": {
+                    "payment_link_sent_at": datetime.utcnow().isoformat(),
+                    "payment_link_sent_count": 1,
+                    "payment_link_method": "paypal"
+                }}
+            )
             # Also send confirmation email
             send_booking_confirmation_email(booking, include_payment_link=False)
             logger.info(f"PayPal payment link sent for booking #{booking.get('referenceNumber')}")

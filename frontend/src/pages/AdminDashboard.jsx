@@ -1828,12 +1828,14 @@ export const AdminDashboard = () => {
     try {
       toast.loading('Sending payment link...');
       const response = await axios.post(
-        `${API}/bookings/${bookingId}/resend-payment-link?payment_method=${paymentMethod}`, 
-        {}, 
+        `${API}/bookings/${bookingId}/resend-payment-link?payment_method=${paymentMethod}`,
+        {},
         getAuthHeaders()
       );
       toast.dismiss();
       toast.success(response.data.message || 'Payment link sent!');
+      // Refresh bookings so the "Link Sent" indicator updates
+      fetchBookings();
     } catch (error) {
       toast.dismiss();
       console.error('Error sending payment link:', error);
@@ -2635,14 +2637,23 @@ export const AdminDashboard = () => {
                         </td>
                         {/* PRICE & PAYMENT COLUMN */}
                         <td className="px-2 py-2">
-                          <div className="flex flex-col items-start">
+                          <div className="flex flex-col items-start gap-0.5">
                             <span className="text-sm font-bold text-gray-900">${booking.pricing?.totalPrice?.toFixed(0) || booking.totalPrice || '0'}</span>
                             <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold ${
-                              booking.payment_status === 'paid' ? 'bg-green-100 text-green-700' : 
+                              booking.payment_status === 'paid' ? 'bg-green-100 text-green-700' :
                               booking.payment_status === 'cash' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
                             }`}>
                               {booking.payment_status === 'paid' ? '✓ PAID' : booking.payment_status === 'cash' ? '💵 CASH' : '✗ UNPAID'}
                             </span>
+                            {booking.payment_status !== 'paid' && booking.payment_status !== 'cash' && booking.payment_link_sent_at ? (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-blue-50 text-blue-600" title={`Payment link sent ${new Date(booking.payment_link_sent_at).toLocaleString()}${booking.payment_link_sent_count > 1 ? ` (${booking.payment_link_sent_count}x)` : ''}`}>
+                                ✉ Link Sent{booking.payment_link_sent_count > 1 ? ` (${booking.payment_link_sent_count}x)` : ''}
+                              </span>
+                            ) : booking.payment_status !== 'paid' && booking.payment_status !== 'cash' && !booking.payment_link_sent_at ? (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gray-50 text-gray-400">
+                                No link sent
+                              </span>
+                            ) : null}
                           </div>
                         </td>
                         {/* DRIVER COLUMN */}
@@ -3366,6 +3377,12 @@ export const AdminDashboard = () => {
                         </Button>
                       </div>
                     </div>
+                    {selectedBooking.payment_link_sent_at && (
+                      <div className="mt-1 text-xs text-blue-600">
+                        ✉ Payment link sent {new Date(selectedBooking.payment_link_sent_at).toLocaleString()}
+                        {selectedBooking.payment_link_sent_count > 1 && ` (sent ${selectedBooking.payment_link_sent_count} times)`}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
