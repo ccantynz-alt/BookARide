@@ -446,6 +446,8 @@ Before making ANY change, verify:
 - Frontend: **Vercel** (React 18, CRA + CRACO)
 - Backend: **Render** (FastAPI/Uvicorn, Python 3.11+)
 
+**IMPORTANT: Both frontend and backend deploy via Vercel and Render respectively from the `main` branch. After merging, verify BOTH have redeployed.**
+
 ### Deployment Rules — MANDATORY
 
 **Customers are paying for reliability, not beta testing. Every change must be tested before it reaches production.**
