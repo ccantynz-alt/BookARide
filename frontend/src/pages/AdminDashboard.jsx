@@ -2083,43 +2083,44 @@ export const AdminDashboard = () => {
               <span className="hidden sm:inline">Bookings</span>
               <span className="sm:hidden">Book</span>
             </TabsTrigger>
-            <TabsTrigger value="deleted" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 text-red-600">
-              <Trash2 className="w-3 h-3 md:w-4 md:h-4" />
-              <span className="hidden md:inline">Deleted</span>
-              <span className="md:hidden">Del</span>
-              {deletedBookings.length > 0 && <span className="text-[10px]">({deletedBookings.length})</span>}
-            </TabsTrigger>
-            <TabsTrigger value="archive" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 text-blue-600">
-              <Archive className="w-3 h-3 md:w-4 md:h-4" />
-              <span className="hidden md:inline">Archive</span>
-              <span className="md:hidden">Arc</span>
-              {archivedCount > 0 && <span className="text-[10px]">({archivedCount})</span>}
+            <TabsTrigger value="drivers" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4">
+              <Car className="w-3 h-3 md:w-4 md:h-4" />
+              <span>Drivers</span>
             </TabsTrigger>
             <TabsTrigger value="customers" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4">
               <Users className="w-3 h-3 md:w-4 md:h-4" />
               <span>Customers</span>
             </TabsTrigger>
-            <TabsTrigger value="import" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 text-purple-600">
-              <FileText className="w-3 h-3 md:w-4 md:h-4" />
-              <span>Import</span>
-            </TabsTrigger>
-            <TabsTrigger value="cockpit" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 text-slate-600">
-              <Activity className="w-3 h-3 md:w-4 md:h-4" />
-              <span>Cockpit</span>
-            </TabsTrigger>
-            <TabsTrigger value="drivers" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4">
-              <Car className="w-3 h-3 md:w-4 md:h-4" />
-              <span>Drivers</span>
-            </TabsTrigger>
             <TabsTrigger value="applications" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4">
               <UserPlus className="w-3 h-3 md:w-4 md:h-4" />
-              <span>Applications</span>
+              <span className="hidden md:inline">Applications</span>
+              <span className="md:hidden">Apps</span>
             </TabsTrigger>
             <TabsTrigger value="analytics" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4">
               <BarChart3 className="w-3 h-3 md:w-4 md:h-4" />
               <span>Analytics</span>
             </TabsTrigger>
-            <TabsTrigger value="marketing" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4">
+            <TabsTrigger value="cockpit" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 text-slate-600">
+              <Activity className="w-3 h-3 md:w-4 md:h-4" />
+              <span>Cockpit</span>
+            </TabsTrigger>
+            <TabsTrigger value="deleted" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 text-gray-500">
+              <Trash2 className="w-3 h-3 md:w-4 md:h-4" />
+              <span className="hidden md:inline">Deleted</span>
+              <span className="md:hidden">Del</span>
+              {deletedBookings.length > 0 && <span className="text-[10px]">({deletedBookings.length})</span>}
+            </TabsTrigger>
+            <TabsTrigger value="archive" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 text-gray-500">
+              <Archive className="w-3 h-3 md:w-4 md:h-4" />
+              <span className="hidden md:inline">Archive</span>
+              <span className="md:hidden">Arc</span>
+              {archivedCount > 0 && <span className="text-[10px]">({archivedCount})</span>}
+            </TabsTrigger>
+            <TabsTrigger value="import" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 text-gray-500">
+              <FileText className="w-3 h-3 md:w-4 md:h-4" />
+              <span>Import</span>
+            </TabsTrigger>
+            <TabsTrigger value="marketing" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 text-gray-500">
               <Megaphone className="w-3 h-3 md:w-4 md:h-4" />
               <span>Marketing</span>
             </TabsTrigger>
@@ -2131,17 +2132,17 @@ export const AdminDashboard = () => {
         
         {/* Compact deleted bookings notification */}
         {deletedCountForBanner != null && deletedCountForBanner > 0 && (
-          <div className="flex items-center justify-between bg-red-50 border border-red-200 rounded-lg px-4 py-2 text-sm">
-            <div className="flex items-center gap-2 text-red-800">
-              <AlertTriangle className="w-4 h-4 shrink-0" />
-              <span><strong>{deletedCountForBanner}</strong> deleted booking{deletedCountForBanner !== 1 ? 's' : ''} not shown</span>
+          <div className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 text-sm">
+            <div className="flex items-center gap-2 text-gray-600">
+              <Trash2 className="w-4 h-4 shrink-0" />
+              <span><strong>{deletedCountForBanner}</strong> deleted booking{deletedCountForBanner !== 1 ? 's' : ''} in trash</span>
             </div>
             <Button
               onClick={handleRestoreAllBookings}
               disabled={restoringAll}
               size="sm"
               variant="outline"
-              className="border-red-300 text-red-800 hover:bg-red-100 h-7 text-xs"
+              className="border-gray-300 text-gray-700 hover:bg-gray-100 h-7 text-xs"
             >
               {restoringAll ? (
                 <>
