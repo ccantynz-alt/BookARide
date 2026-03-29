@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import ReactDOM from 'react-dom';
-import { MapPin } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -140,11 +139,20 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
     setSearchingCustomers(true);
     try {
       const response = await axios.get(`${API}/customers/search?q=${encodeURIComponent(query)}`, getAuthHeaders());
-      setCustomerSearchResults(response.data.customers || []);
-      setShowCustomerDropdown(response.data.customers?.length > 0);
+      const customers = response.data.customers || [];
+      setCustomerSearchResults(customers);
+      setShowCustomerDropdown(customers.length > 0);
+      if (customers.length === 0 && query.length >= 3) {
+        toast.info('No existing customers found for that search');
+      }
     } catch (error) {
       console.error('Error searching customers:', error);
       setCustomerSearchResults([]);
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        toast.error('Session expired — please log in again to search customers');
+      } else {
+        toast.error('Customer search failed — please try again');
+      }
     } finally {
       setSearchingCustomers(false);
     }

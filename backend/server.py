@@ -7997,40 +7997,46 @@ async def search_customers(q: str = "", current_admin: dict = Depends(get_curren
     try:
         if not q or len(q) < 2:
             return {"customers": []}
-        
-        search_term = q.lower().strip()
-        
-        # Get unique customers from bookings
-        pipeline = [
-            {"$match": {
-                "$or": [
-                    {"name": {"$regex": search_term, "$options": "i"}},
-                    {"email": {"$regex": search_term, "$options": "i"}},
-                    {"phone": {"$regex": search_term, "$options": "i"}}
-                ]
-            }},
-            {"$sort": {"createdAt": -1}},  # Most recent first
-            {"$group": {
-                "_id": "$email",
-                "name": {"$first": "$name"},
-                "email": {"$first": "$email"},
-                "phone": {"$first": "$phone"},
-                "pickupAddress": {"$first": "$pickupAddress"},
-                "dropoffAddress": {"$first": "$dropoffAddress"},
-                "lastBookingDate": {"$first": "$date"},
-                "totalBookings": {"$sum": 1}
-            }},
-            {"$sort": {"totalBookings": -1}},
-            {"$limit": 10},
-            {"$project": {"_id": 0}}
-        ]
-        
-        customers = await db.bookings.aggregate(pipeline).to_list(10)
-        
-        logger.info(f"Customer search for '{q}': found {len(customers)} results")
+
+        search_term = q.strip()
+
+        # Direct query approach: find matching bookings, then deduplicate by email in Python
+        # This avoids complex aggregation pipeline issues with the Neon compatibility layer
+        matching_bookings = await db.bookings.find(
+            {"$or": [
+                {"name": {"$regex": search_term, "$options": "i"}},
+                {"email": {"$regex": search_term, "$options": "i"}},
+                {"phone": {"$regex": search_term, "$options": "i"}}
+            ]},
+            {"_id": 0, "name": 1, "email": 1, "phone": 1, "pickupAddress": 1, "dropoffAddress": 1, "date": 1}
+        ).sort("createdAt", -1).to_list(200)
+
+        # Deduplicate by email, keep most recent booking details
+        seen_emails = {}
+        for b in matching_bookings:
+            email = (b.get("email") or "").lower().strip()
+            if not email:
+                continue
+            if email not in seen_emails:
+                seen_emails[email] = {
+                    "name": b.get("name", ""),
+                    "email": b.get("email", ""),
+                    "phone": b.get("phone", ""),
+                    "pickupAddress": b.get("pickupAddress", ""),
+                    "dropoffAddress": b.get("dropoffAddress", ""),
+                    "lastBookingDate": b.get("date", ""),
+                    "totalBookings": 1
+                }
+            else:
+                seen_emails[email]["totalBookings"] += 1
+
+        # Sort by total bookings (most frequent first) and limit to 10
+        customers = sorted(seen_emails.values(), key=lambda c: c["totalBookings"], reverse=True)[:10]
+
+        logger.info(f"Customer search for '{q}': found {len(customers)} results from {len(matching_bookings)} matching bookings")
         return {"customers": customers}
     except Exception as e:
-        logger.error(f"Error searching customers: {str(e)}")
+        logger.error(f"CRITICAL: Customer search failed for '{q}': {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # Export to CSV
