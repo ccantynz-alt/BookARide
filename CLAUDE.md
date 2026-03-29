@@ -711,6 +711,46 @@ No exceptions. If you add a new payment path, it must include all 4.
 
 **BookARide must be 80-90% more advanced than competitors in every technical aspect.** This is a strict instruction from the owner. The economy is tough — we cannot afford to lose a single customer to poor technology.
 
+### ABSOLUTE RULE: Only the Most Advanced Technology — No Exceptions (2026-03-29)
+
+**We only use the most advanced, modern, production-proven technology available. Period.**
+
+This applies to EVERY domain, EVERY component, EVERY library, EVERY pattern in the entire codebase — frontend, backend, emails, APIs, everything. If something is old, outdated, deprecated, or has a better modern replacement — rip it out and replace it immediately.
+
+**Specific mandates:**
+- **No raw HTML pages** — everything is React components with Tailwind CSS. HTML is only acceptable inside email templates (email clients require it) and the root `index.html` entry point
+- **No jQuery or jQuery-era libraries** — no AOS, no Slick Carousel, no Bootstrap, no Lodash (use native JS)
+- **No deprecated React patterns** — no class components (except ErrorBoundary), no `componentDidMount`, no `this.state`, no `.then()` chains
+- **No deprecated build tools** — we use Vite (NOT CRA, NOT Webpack directly, NOT Parcel)
+- **No deprecated Node packages** — if `npm audit` flags it or the package README says "deprecated," replace it
+- **Always use the latest stable version** of every dependency — not bleeding edge (avoid .0 releases), but current stable
+- **Proactively upgrade** — every session, check if key dependencies have newer versions. If a better library exists for what we're doing, flag it and replace it
+- **Code-split everything** — lazy load pages, use dynamic imports, keep initial bundle small
+- **Performance is mandatory** — if a page loads slowly, fix it. If a component re-renders unnecessarily, fix it. If an API call is slow, fix it
+
+**What "most advanced" means in practice:**
+| Category | What We Use | What Is Banned |
+|----------|-------------|----------------|
+| Build tool | Vite | CRA, Webpack, Parcel, Rollup (standalone) |
+| UI framework | React 18+ with hooks | Class components, jQuery, vanilla JS DOM manipulation |
+| Styling | Tailwind CSS | Bootstrap, Material UI, styled-components, inline `style={{}}` |
+| Components | Radix UI (headless) | jQuery UI, Ant Design, old Material UI |
+| Animation | Framer Motion | AOS, jQuery animate, CSS-only hacks |
+| Carousel/Slider | Embla Carousel or CSS Grid | react-slick, Slick Carousel, Swiper (jQuery-based) |
+| Icons | Lucide React | Font Awesome, Material Icons, icon fonts |
+| Charts | Recharts | Chart.js, D3 (unless absolutely needed) |
+| API client | Axios with async/await | fetch without error handling, XMLHttpRequest |
+| Forms | Controlled components + React Hook Form | Uncontrolled inputs, Formik (maintenance mode) |
+| Maps | Google Maps API | Leaflet, Mapbox (unless Google fails) |
+| Routing | React Router v7 | Reach Router, older React Router versions |
+| State | React hooks (useState, useContext) | Redux (overkill for this app), MobX |
+| Email | Mailgun HTTP API (HTML templates) | SMTP, SendGrid, raw nodemailer |
+| Backend | FastAPI (async Python) | Flask, Django, Express |
+| Database | Neon PostgreSQL | MongoDB, SQLite, MySQL |
+| AI | Claude API (Anthropic) | OpenAI, GPT, Gemini |
+
+**If you encounter ANY old, deprecated, or substandard technology while working — replace it immediately. Do not leave it for later. Do not mark it as "tech debt." Fix it now.**
+
 ### Rules:
 
 1. **Use the most advanced, production-proven technologies available.** If a better library, framework pattern, or API exists for what we are building — use it. Do not settle for "good enough" when "best in class" is available.
