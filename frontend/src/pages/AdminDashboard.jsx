@@ -2013,52 +2013,46 @@ export const AdminDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 pt-20">
-      {/* Admin Header — distinct from customer site */}
-      <div className="bg-slate-900 border-b border-slate-700 py-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50 pt-20">
+      {/* Header — Premium, minimal */}
+      <div className="bg-white/80 backdrop-blur-xl border-b border-slate-200/60 py-5">
         <div className="container mx-auto px-4">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-2xl font-bold text-white tracking-tight">BookARide Admin</h1>
-              <p className="text-slate-400 text-sm mt-1">Manage bookings, drivers, and operations</p>
+              <h1 className="text-xl font-bold text-slate-900 tracking-tight">BookARide</h1>
+              <p className="text-slate-400 text-xs mt-0.5 font-medium tracking-wide">ADMIN</p>
             </div>
-            <div className="flex gap-2 flex-wrap">
-              <Button onClick={() => window.open('/', '_blank')} variant="outline" size="sm" className="border-slate-600 text-slate-300 hover:bg-slate-800 hover:text-white">
-                <Home className="w-4 h-4 mr-2" />
+            <div className="flex gap-2 flex-wrap items-center">
+              <button onClick={() => window.open('/', '_blank')} className="text-xs text-slate-400 hover:text-slate-900 transition-colors font-medium px-3 py-1.5">
                 View Site
-              </Button>
-              <Button onClick={handleSyncContactsToiPhone} disabled={syncingContacts} variant="outline" size="sm" className="border-slate-600 text-slate-300 hover:bg-slate-800 hover:text-white">
-                <Smartphone className="w-4 h-4 mr-2" />
-                {syncingContacts ? 'Syncing...' : 'Sync to iPhone'}
-              </Button>
-              <Button
+              </button>
+              <button onClick={handleSyncContactsToiPhone} disabled={syncingContacts} className="text-xs text-slate-400 hover:text-slate-900 transition-colors font-medium px-3 py-1.5">
+                {syncingContacts ? 'Syncing...' : 'Sync Contacts'}
+              </button>
+              <button
                 onClick={handleSync}
                 disabled={syncing}
-                variant="outline"
-                size="sm"
-                className="border-slate-600 text-slate-300 hover:bg-slate-800 hover:text-white"
+                className="text-xs text-slate-400 hover:text-slate-900 transition-colors font-medium px-3 py-1.5"
               >
-                <RefreshCw className={`w-4 h-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
                 {syncing ? 'Syncing...' : 'Sync'}
-              </Button>
-              {xeroConnected ? (
-                <Button variant="outline" size="sm" className="text-emerald-400 border-emerald-600 hover:bg-emerald-900/30">
-                  <DollarSign className="w-4 h-4 mr-2" />
+              </button>
+              {xeroConnected && (
+                <span className="text-xs text-emerald-600 font-medium px-3 py-1.5 bg-emerald-50 rounded-full">
                   Xero: {xeroOrg || 'Connected'}
-                </Button>
-              ) : (
-                <Button onClick={connectXero} variant="outline" size="sm" className="border-slate-600 text-slate-300 hover:bg-slate-800 hover:text-white">
-                  <DollarSign className="w-4 h-4 mr-2" />
-                  Connect Xero
-                </Button>
+                </span>
               )}
-              <Button onClick={() => setShowPasswordModal(true)} variant="outline" size="sm" className="border-slate-600 text-slate-300 hover:bg-slate-800 hover:text-white">
-                Change Password
-              </Button>
-              <Button onClick={handleLogout} variant="outline" size="sm" className="text-red-400 border-red-600/50 hover:bg-red-900/30">
-                <LogOut className="w-4 h-4 mr-2" />
+              {!xeroConnected && (
+                <button onClick={connectXero} className="text-xs text-slate-400 hover:text-slate-900 transition-colors font-medium px-3 py-1.5">
+                  Connect Xero
+                </button>
+              )}
+              <div className="w-px h-4 bg-slate-200 mx-1" />
+              <button onClick={() => setShowPasswordModal(true)} className="text-xs text-slate-400 hover:text-slate-900 transition-colors font-medium px-3 py-1.5">
+                Password
+              </button>
+              <button onClick={handleLogout} className="text-xs text-slate-400 hover:text-red-600 transition-colors font-medium px-3 py-1.5">
                 Logout
-              </Button>
+              </button>
             </div>
           </div>
         </div>
@@ -2192,46 +2186,44 @@ export const AdminDashboard = () => {
           }}
         />
         
-        {/* Stats Cards — Modern Dashboard Style */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
-          <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-shadow">
-            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Total</p>
-            <p className="text-3xl font-bold text-slate-800 mt-1">{stats.total}</p>
-          </div>
-          <button onClick={() => setStatusFilter('pending')} className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md hover:border-amber-300 transition-all text-left cursor-pointer">
-            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Pending</p>
-            <p className="text-3xl font-bold text-amber-600 mt-1">{stats.pending}</p>
+        {/* Stats — Glass cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+          <button onClick={() => setStatusFilter('all')} className="bg-white/60 backdrop-blur-xl rounded-2xl border border-white/30 p-5 shadow-sm shadow-black/5 hover:shadow-md hover:bg-white/80 transition-all text-left">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em]">Total</p>
+            <p className="text-3xl font-bold text-slate-900 mt-2 tabular-nums">{stats.total}</p>
           </button>
-          <button onClick={() => setStatusFilter('confirmed')} className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md hover:border-emerald-300 transition-all text-left cursor-pointer">
-            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Confirmed</p>
-            <p className="text-3xl font-bold text-emerald-600 mt-1">{stats.confirmed}</p>
+          <button onClick={() => setStatusFilter('pending')} className="bg-white/60 backdrop-blur-xl rounded-2xl border border-white/30 p-5 shadow-sm shadow-black/5 hover:shadow-md hover:bg-white/80 transition-all text-left">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em]">Pending</p>
+            <p className="text-3xl font-bold text-amber-600 mt-2 tabular-nums">{stats.pending}</p>
           </button>
-          <button onClick={() => setStatusFilter('completed')} className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md hover:border-blue-300 transition-all text-left cursor-pointer">
-            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Completed</p>
-            <p className="text-3xl font-bold text-blue-600 mt-1">{stats.completed}</p>
+          <button onClick={() => setStatusFilter('confirmed')} className="bg-white/60 backdrop-blur-xl rounded-2xl border border-white/30 p-5 shadow-sm shadow-black/5 hover:shadow-md hover:bg-white/80 transition-all text-left">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em]">Confirmed</p>
+            <p className="text-3xl font-bold text-emerald-600 mt-2 tabular-nums">{stats.confirmed}</p>
           </button>
-          <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-xl p-4 shadow-sm text-white">
-            <p className="text-[11px] font-semibold text-indigo-200 uppercase tracking-wider">Revenue</p>
-            <p className="text-3xl font-bold mt-1">${(stats.totalRevenue ?? 0).toFixed(0)}</p>
+          <button onClick={() => setStatusFilter('completed')} className="bg-white/60 backdrop-blur-xl rounded-2xl border border-white/30 p-5 shadow-sm shadow-black/5 hover:shadow-md hover:bg-white/80 transition-all text-left">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em]">Completed</p>
+            <p className="text-3xl font-bold text-blue-600 mt-2 tabular-nums">{stats.completed}</p>
+          </button>
+          <div className="bg-slate-900 rounded-2xl p-5 shadow-lg shadow-slate-900/20 text-white">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em]">Revenue</p>
+            <p className="text-3xl font-bold mt-2 tabular-nums">${(stats.totalRevenue ?? 0).toFixed(0)}</p>
           </div>
         </div>
 
-        {/* Filter Bar — Clean, modern design */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 mb-6">
-          <div className="flex flex-col lg:flex-row gap-3">
-            {/* Search */}
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+        {/* Filter Bar — Glass */}
+        <div className="bg-white/60 backdrop-blur-xl rounded-2xl border border-white/30 shadow-sm shadow-black/5 p-4 mb-6">
+          <div className="flex flex-col lg:flex-row gap-3 items-center">
+            <div className="flex-1 relative w-full">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 w-4 h-4" />
               <Input
-                placeholder="Search bookings..."
+                placeholder="Search by name, email, phone..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 bg-slate-50 border-slate-200 focus:bg-white focus:border-indigo-400 focus:ring-indigo-400 h-10"
+                className="pl-10 bg-white/50 border-slate-200/60 focus:bg-white focus:border-slate-400 focus:ring-slate-400/20 h-10 rounded-xl text-sm"
               />
             </div>
-            {/* Status filter */}
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full lg:w-[160px] h-10 bg-slate-50 border-slate-200">
+              <SelectTrigger className="w-full lg:w-[150px] h-10 bg-white/50 border-slate-200/60 rounded-xl text-sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -2243,26 +2235,24 @@ export const AdminDashboard = () => {
                 <SelectItem value="cancelled">Cancelled</SelectItem>
               </SelectContent>
             </Select>
-            {/* Date range */}
             <div className="flex items-center gap-2">
-              <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-10 border border-slate-200 bg-slate-50 rounded-lg px-3 text-sm focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400" />
-              <span className="text-slate-300">–</span>
-              <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-10 border border-slate-200 bg-slate-50 rounded-lg px-3 text-sm focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400" />
+              <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-10 border border-slate-200/60 bg-white/50 rounded-xl px-3 text-sm focus:outline-none focus:border-slate-400" />
+              <span className="text-slate-200 text-xs">to</span>
+              <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-10 border border-slate-200/60 bg-white/50 rounded-xl px-3 text-sm focus:outline-none focus:border-slate-400" />
               {(dateFrom || dateTo) && (
-                <button onClick={() => { setDateFrom(''); setDateTo(''); }} className="text-xs text-slate-500 hover:text-slate-700 underline">Clear</button>
+                <button onClick={() => { setDateFrom(''); setDateTo(''); }} className="text-[11px] text-slate-400 hover:text-slate-700 underline underline-offset-2">Clear</button>
               )}
             </div>
-            {/* Actions */}
             <div className="flex items-center gap-2">
-              <Button onClick={exportToCSV} variant="outline" size="sm" className="border-slate-300 text-slate-600 h-10">
+              <button onClick={exportToCSV} className="text-xs font-medium text-slate-500 hover:text-slate-900 transition-colors px-3 py-2">
                 Export
-              </Button>
-              <Button onClick={handleSendReminders} variant="outline" size="sm" className="border-slate-300 text-slate-600 h-10" title="Send reminders to tomorrow's bookings">
-                <Bell className="w-4 h-4 mr-1" /> Remind
-              </Button>
-              <Button onClick={() => setShowCreateBookingModal(true)} size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold h-10 px-5">
+              </button>
+              <button onClick={handleSendReminders} className="text-xs font-medium text-slate-500 hover:text-slate-900 transition-colors px-3 py-2" title="Remind tomorrow's bookings">
+                <Bell className="w-3.5 h-3.5 inline mr-1" />Remind
+              </button>
+              <button onClick={() => setShowCreateBookingModal(true)} className="bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold h-10 px-5 rounded-xl transition-colors">
                 + New Booking
-              </Button>
+              </button>
             </div>
           </div>
         </div>
