@@ -23,6 +23,8 @@ import { API } from '../config/api';
 import Cockpit from '../admin/Cockpit';
 import CreateBookingModal from '../components/admin/CreateBookingModal';
 import EditBookingModal from '../components/admin/EditBookingModal';
+import DeletedTab from '../components/admin/DeletedTab';
+import ArchiveTab from '../components/admin/ArchiveTab';
 import GoogleAddressInput from '../components/GoogleAddressInput';
 
 // Helper function to format date to DD/MM/YYYY
@@ -2004,56 +2006,49 @@ export const AdminDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-20">
-      {/* Professional Light Header */}
-      <div className="bg-white border-b border-gray-200 py-6">
+    <div className="min-h-screen bg-slate-50 pt-20">
+      {/* Admin Header — distinct from customer site */}
+      <div className="bg-slate-900 border-b border-slate-700 py-6">
         <div className="container mx-auto px-4">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-              <p className="text-gray-500 text-sm mt-1">Manage bookings and customer communications</p>
+              <h1 className="text-2xl font-bold text-white tracking-tight">BookARide Admin</h1>
+              <p className="text-slate-400 text-sm mt-1">Manage bookings, drivers, and operations</p>
             </div>
             <div className="flex gap-2 flex-wrap">
-              <Button onClick={() => window.open('/', '_blank')} variant="outline" size="sm">
+              <Button onClick={() => window.open('/', '_blank')} variant="outline" size="sm" className="border-slate-600 text-slate-300 hover:bg-slate-800 hover:text-white">
                 <Home className="w-4 h-4 mr-2" />
                 View Site
               </Button>
-              <Button onClick={handleSyncContactsToiPhone} disabled={syncingContacts} variant="outline" size="sm">
+              <Button onClick={handleSyncContactsToiPhone} disabled={syncingContacts} variant="outline" size="sm" className="border-slate-600 text-slate-300 hover:bg-slate-800 hover:text-white">
                 <Smartphone className="w-4 h-4 mr-2" />
                 {syncingContacts ? 'Syncing...' : 'Sync to iPhone'}
               </Button>
-              <Button onClick={() => navigate('/driver/portal')} variant="outline" size="sm">
-                <Users className="w-4 h-4 mr-2" />
-                Driver Portal
-              </Button>
-              <Button onClick={() => navigate('/admin/seo')} variant="outline" size="sm">
-                <Settings className="w-4 h-4 mr-2" />
-                SEO Management
-              </Button>
-              <Button 
-                onClick={handleSync} 
+              <Button
+                onClick={handleSync}
                 disabled={syncing}
-                variant="outline" 
+                variant="outline"
                 size="sm"
+                className="border-slate-600 text-slate-300 hover:bg-slate-800 hover:text-white"
               >
                 <RefreshCw className={`w-4 h-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
                 {syncing ? 'Syncing...' : 'Sync'}
               </Button>
               {xeroConnected ? (
-                <Button variant="outline" size="sm" className="text-green-600 border-green-300">
+                <Button variant="outline" size="sm" className="text-emerald-400 border-emerald-600 hover:bg-emerald-900/30">
                   <DollarSign className="w-4 h-4 mr-2" />
                   Xero: {xeroOrg || 'Connected'}
                 </Button>
               ) : (
-                <Button onClick={connectXero} variant="outline" size="sm">
+                <Button onClick={connectXero} variant="outline" size="sm" className="border-slate-600 text-slate-300 hover:bg-slate-800 hover:text-white">
                   <DollarSign className="w-4 h-4 mr-2" />
                   Connect Xero
                 </Button>
               )}
-              <Button onClick={() => setShowPasswordModal(true)} variant="outline" size="sm">
+              <Button onClick={() => setShowPasswordModal(true)} variant="outline" size="sm" className="border-slate-600 text-slate-300 hover:bg-slate-800 hover:text-white">
                 Change Password
               </Button>
-              <Button onClick={handleLogout} variant="outline" size="sm" className="text-red-600 border-red-300 hover:bg-red-50">
+              <Button onClick={handleLogout} variant="outline" size="sm" className="text-red-400 border-red-600/50 hover:bg-red-900/30">
                 <LogOut className="w-4 h-4 mr-2" />
                 Logout
               </Button>
@@ -2190,51 +2185,23 @@ export const AdminDashboard = () => {
           }}
         />
         
-        {/* Stats Cards - Compact single row */}
+        {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-          <div className="bg-white rounded-lg border border-gray-200 p-3 shadow-sm">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center shrink-0">
-                <BookOpen className="w-4 h-4 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-500">Total</p>
-                <p className="text-xl font-bold text-gray-900">{stats.total}</p>
-              </div>
-            </div>
+          <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+            <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Total Bookings</p>
+            <p className="text-2xl font-bold text-slate-800 mt-1">{stats.total}</p>
           </div>
-          <div className="bg-white rounded-lg border border-gray-200 p-3 shadow-sm">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center shrink-0">
-                <Clock className="w-4 h-4 text-amber-600" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-500">Pending</p>
-                <p className="text-xl font-bold text-amber-600">{stats.pending}</p>
-              </div>
-            </div>
+          <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+            <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Pending</p>
+            <p className="text-2xl font-bold text-amber-600 mt-1">{stats.pending}</p>
           </div>
-          <div className="bg-white rounded-lg border border-gray-200 p-3 shadow-sm">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center shrink-0">
-                <CheckCircle className="w-4 h-4 text-green-600" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-500">Confirmed</p>
-                <p className="text-xl font-bold text-green-600">{stats.confirmed}</p>
-              </div>
-            </div>
+          <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+            <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Confirmed</p>
+            <p className="text-2xl font-bold text-emerald-600 mt-1">{stats.confirmed}</p>
           </div>
-          <div className="bg-white rounded-lg border border-gray-200 p-3 shadow-sm">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center shrink-0">
-                <DollarSign className="w-4 h-4 text-emerald-600" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-500">Revenue</p>
-                <p className="text-xl font-bold text-emerald-600">${(stats.totalRevenue ?? 0).toFixed(2)}</p>
-              </div>
-            </div>
+          <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+            <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Revenue</p>
+            <p className="text-2xl font-bold text-indigo-600 mt-1">${(stats.totalRevenue ?? 0).toFixed(2)}</p>
           </div>
         </div>
 
@@ -2901,390 +2868,47 @@ export const AdminDashboard = () => {
 
           {/* Deleted Bookings Tab */}
           <TabsContent value="deleted" className="space-y-6">
-            <Card className="border-red-200 bg-red-50">
-              <CardContent className="p-6">
-                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                  <div className="flex items-center gap-3">
-                    <AlertTriangle className="w-6 h-6 text-red-600" />
-                    <h3 className="text-lg font-semibold text-red-800">Recently Deleted Bookings</h3>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button
-                      onClick={handleDownloadBackup}
-                      disabled={downloadingBackup}
-                      variant="outline"
-                      className="border-gray-400 text-gray-700 hover:bg-gray-100"
-                    >
-                      {downloadingBackup ? (
-                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                      ) : (
-                        <Download className="w-4 h-4 mr-2" />
-                      )}
-                      Download backup (JSON)
-                    </Button>
-                    {/* Restore from a backup JSON file (e.g. backup_bookings_full.json) */}
-                    <input
-                      ref={backupFileInputRef}
-                      type="file"
-                      accept=".json"
-                      className="hidden"
-                      onChange={handleRestoreFromBackupFile}
-                    />
-                    <Button
-                      onClick={() => backupFileInputRef.current?.click()}
-                      disabled={restoringFromFile}
-                      variant="outline"
-                      className="border-blue-400 text-blue-700 hover:bg-blue-50"
-                      title="Upload a JSON backup file to restore bookings"
-                    >
-                      {restoringFromFile ? (
-                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                      ) : (
-                        <Upload className="w-4 h-4 mr-2" />
-                      )}
-                      Restore from backup file
-                    </Button>
-                    {/* One-click restore from backup_bookings_full.json on the server */}
-                    <Button
-                      onClick={handleRestoreFromServerBackup}
-                      disabled={restoringFromServerBackup}
-                      className="bg-orange-600 hover:bg-orange-700 text-white"
-                      title="Restore bookings from the backup_bookings_full.json file stored on the server"
-                    >
-                      {restoringFromServerBackup ? (
-                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                      ) : (
-                        <Shield className="w-4 h-4 mr-2" />
-                      )}
-                      Restore from server backup
-                    </Button>
-                    {deletedBookings.length > 0 && (
-                      <Button
-                        onClick={handleRestoreAllBookings}
-                        disabled={restoringAll}
-                        className="bg-green-600 hover:bg-green-700 text-white"
-                      >
-                        {restoringAll ? (
-                          <>
-                            <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                            Restoring...
-                          </>
-                        ) : (
-                          <>
-                            <RotateCcw className="w-4 h-4 mr-2" />
-                            Restore all {deletedBookings.length} booking{deletedBookings.length !== 1 ? 's' : ''}
-                          </>
-                        )}
-                      </Button>
-                    )}
-                  </div>
-                </div>
-                <p className="text-sm text-red-700 mb-4">
-                  Bookings are always retained—we never permanently remove them without your action. Deleted items stay here for recovery; use <strong>Restore all</strong> to reinstate. If bookings disappeared after an update, they may be here. To restore from a backup JSON file, click <strong>Restore from backup file</strong>.
-                </p>
-                {backupRestoreResult && (
-                  <div className={`mb-4 p-3 rounded-lg text-sm ${backupRestoreResult.error ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-800'}`}>
-                    {backupRestoreResult.error ? (
-                      <span>Error: {backupRestoreResult.error}</span>
-                    ) : (
-                      <span>
-                        Restored <strong>{backupRestoreResult.imported_count}</strong> bookings.
-                        Skipped <strong>{backupRestoreResult.skipped_count}</strong> duplicates.
-                        {backupRestoreResult.error_count > 0 && <span className="text-red-600 ml-1">{backupRestoreResult.error_count} errors.</span>}
-                      </span>
-                    )}
-                  </div>
-                )}
-                
-                {/* AUTO DAILY BACKUPS PANEL */}
-                <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <h4 className="font-semibold text-blue-900 text-sm">Automatic Daily Backups</h4>
-                      <p className="text-xs text-blue-700 mt-0.5">Snapshots saved every night at 1 AM — 7 days rolling. Click Restore to recover any missing bookings.</p>
-                    </div>
-                    <Button
-                      onClick={handleTriggerBackup}
-                      disabled={triggeringBackup}
-                      size="sm"
-                      variant="outline"
-                      className="border-blue-400 text-blue-700 hover:bg-blue-100 text-xs"
-                    >
-                      {triggeringBackup ? <RefreshCw className="w-3 h-3 mr-1 animate-spin" /> : <Archive className="w-3 h-3 mr-1" />}
-                      Backup now
-                    </Button>
-                  </div>
-                  {loadingAutoBackups ? (
-                    <p className="text-xs text-blue-600">Loading backups...</p>
-                  ) : autoBackups.length === 0 ? (
-                    <p className="text-xs text-blue-600">No automatic backups yet. Click "Backup now" to create the first one.</p>
-                  ) : (
-                    <div className="space-y-1">
-                      {autoBackups.map(b => (
-                        <div key={b.label} className="flex items-center justify-between bg-white rounded px-3 py-2 border border-blue-100 text-xs">
-                          <div>
-                            <span className="font-medium text-gray-800">{b.label}</span>
-                            <span className="text-gray-500 ml-2">{b.activeCount} active · {b.deletedCount} deleted</span>
-                          </div>
-                          <Button
-                            onClick={() => handleRestoreAutoBackup(b.label)}
-                            disabled={restoringAutoBackup === b.label}
-                            size="sm"
-                            className="bg-green-600 hover:bg-green-700 text-white text-xs py-1 h-7"
-                          >
-                            {restoringAutoBackup === b.label ? <RefreshCw className="w-3 h-3 animate-spin" /> : 'Restore missing'}
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {loadingDeleted ? (
-                  <div className="text-center py-8">
-                    <RefreshCw className="w-8 h-8 animate-spin mx-auto text-gray-400" />
-                    <p className="text-gray-500 mt-2">Loading deleted bookings...</p>
-                  </div>
-                ) : deletedBookings.length === 0 ? (
-                  <div className="text-center py-8 bg-white rounded-lg border border-red-100">
-                    <Trash2 className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-                    <p className="text-gray-500">No deleted bookings</p>
-                    <p className="text-sm text-gray-400">Bookings you delete will appear here for recovery</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {deletedBookings.map((booking) => (
-                      <div key={booking.id} className="bg-white p-4 rounded-lg border border-red-200 shadow-sm">
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-2">
-                              <h4 className="font-semibold text-gray-900">{booking.customerName || booking.name}</h4>
-                              <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded">DELETED</span>
-                            </div>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm text-gray-600">
-                              <div>
-                                <span className="text-gray-400">Date:</span> {formatDate(booking.date)} {booking.time}
-                              </div>
-                              <div>
-                                <span className="text-gray-400">Phone:</span> {booking.phone}
-                              </div>
-                              <div>
-                                <span className="text-gray-400">Total:</span> ${booking.totalPrice || booking.total_price}
-                              </div>
-                              <div>
-                                <span className="text-gray-400">Deleted:</span> {new Date(booking.deletedAt).toLocaleDateString('en-NZ')}
-                              </div>
-                            </div>
-                            <div className="mt-2 text-sm">
-                              <span className="text-gray-400">Pickup:</span> <span className="text-gray-600">{booking.pickup || booking.pickupAddress}</span>
-                            </div>
-                            <div className="text-sm">
-                              <span className="text-gray-400">Dropoff:</span> <span className="text-gray-600">{booking.dropoff || booking.dropoffAddress}</span>
-                            </div>
-                            {booking.deletedBy && (
-                              <div className="mt-1 text-xs text-gray-400">
-                                Deleted by: {booking.deletedBy}
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex gap-2 ml-4">
-                            <Button
-                              onClick={() => handleRestoreBooking(booking.id)}
-                              className="bg-green-600 hover:bg-green-700 text-white"
-                              size="sm"
-                            >
-                              <RotateCcw className="w-4 h-4 mr-1" />
-                              Restore
-                            </Button>
-                            <Button
-                              onClick={() => handlePermanentDelete(booking.id)}
-                              variant="destructive"
-                              size="sm"
-                            >
-                              <Trash2 className="w-4 h-4 mr-1" />
-                              Delete Forever
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <DeletedTab
+              deletedBookings={deletedBookings}
+              loadingDeleted={loadingDeleted}
+              downloadingBackup={downloadingBackup}
+              restoringFromFile={restoringFromFile}
+              restoringFromServerBackup={restoringFromServerBackup}
+              restoringAll={restoringAll}
+              backupRestoreResult={backupRestoreResult}
+              autoBackups={autoBackups}
+              loadingAutoBackups={loadingAutoBackups}
+              triggeringBackup={triggeringBackup}
+              restoringAutoBackup={restoringAutoBackup}
+              onDownloadBackup={handleDownloadBackup}
+              onRestoreFromBackupFile={handleRestoreFromBackupFile}
+              onRestoreFromServerBackup={handleRestoreFromServerBackup}
+              onRestoreAllBookings={handleRestoreAllBookings}
+              onTriggerBackup={handleTriggerBackup}
+              onRestoreAutoBackup={handleRestoreAutoBackup}
+              onRestoreBooking={handleRestoreBooking}
+              onPermanentDelete={handlePermanentDelete}
+            />
           </TabsContent>
 
-          {/* Archive Tab - Long-term booking storage (7 years retention) */}
+          {/* Archive Tab */}
           <TabsContent value="archive" className="space-y-6">
-            <Card className="border-blue-200 bg-blue-50">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <Archive className="w-6 h-6 text-blue-600" />
-                    <div>
-                      <h3 className="text-lg font-semibold text-blue-800">Archived Bookings</h3>
-                      <p className="text-sm text-blue-600">{archivedCount} bookings stored • 7-year retention • Auto-archives daily at 2 AM</p>
-                    </div>
-                  </div>
-                  <Button
-                    onClick={handleRunAutoArchive}
-                    disabled={runningAutoArchive}
-                    variant="outline"
-                    className="border-blue-300 text-blue-700 hover:bg-blue-100"
-                  >
-                    {runningAutoArchive ? (
-                      <>
-                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                        Archiving...
-                      </>
-                    ) : (
-                      <>
-                        <Archive className="w-4 h-4 mr-2" />
-                        Run Auto-Archive Now
-                      </>
-                    )}
-                  </Button>
-                </div>
-                
-                {/* Search Bar */}
-                <form onSubmit={handleArchiveSearch} className="flex gap-2 mb-4">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <Input
-                      placeholder="Search by name, email, phone, or reference #..."
-                      value={archiveSearchTerm}
-                      onChange={(e) => setArchiveSearchTerm(e.target.value)}
-                      className="pl-10 bg-white"
-                    />
-                  </div>
-                  <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
-                    <Search className="w-4 h-4 mr-2" />
-                    Search
-                  </Button>
-                  {archiveSearchTerm && (
-                    <Button 
-                      type="button" 
-                      variant="outline"
-                      onClick={() => {
-                        setArchiveSearchTerm('');
-                        fetchArchivedBookings(1, '');
-                      }}
-                    >
-                      Clear
-                    </Button>
-                  )}
-                </form>
-
-                {loadingArchived ? (
-                  <div className="text-center py-8">
-                    <RefreshCw className="w-8 h-8 animate-spin mx-auto text-gray-400" />
-                    <p className="text-gray-500 mt-2">Loading archived bookings...</p>
-                  </div>
-                ) : archivedBookings.length === 0 ? (
-                  <div className="text-center py-8 bg-white rounded-lg border border-blue-100">
-                    <Archive className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-                    <p className="text-gray-500">No archived bookings found</p>
-                    <p className="text-sm text-gray-400">
-                      {archiveSearchTerm ? 'Try a different search term' : 'Archive completed bookings to move them here'}
-                    </p>
-                  </div>
-                ) : (
-                  <>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="bg-blue-100 text-blue-800">
-                            <th className="px-3 py-2 text-left">Ref #</th>
-                            <th className="px-3 py-2 text-left">Customer</th>
-                            <th className="px-3 py-2 text-left">Date</th>
-                            <th className="px-3 py-2 text-left">Route</th>
-                            <th className="px-3 py-2 text-left">Total</th>
-                            <th className="px-3 py-2 text-left">Archived</th>
-                            <th className="px-3 py-2 text-left">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {archivedBookings.map((booking) => (
-                            <tr key={booking.id} className="border-b border-blue-100 hover:bg-blue-50/50 bg-white">
-                              <td className="px-3 py-3 font-medium text-blue-700">#{booking.referenceNumber}</td>
-                              <td className="px-3 py-3">
-                                <div className="font-medium text-gray-900">{booking.name}</div>
-                                <div className="text-xs text-gray-500">{booking.email}</div>
-                                <div className="text-xs text-gray-500">{booking.phone}</div>
-                              </td>
-                              <td className="px-3 py-3">
-                                <div className="font-medium">{formatDate(booking.date)}</div>
-                                <div className="text-xs text-gray-500">{booking.time}</div>
-                              </td>
-                              <td className="px-3 py-3">
-                                <div className="text-xs text-gray-600 truncate max-w-[200px]" title={booking.pickupAddress}>
-                                  📍 {booking.pickupAddress}
-                                </div>
-                                <div className="text-xs text-gray-600 truncate max-w-[200px]" title={booking.dropoffAddress}>
-                                  🎯 {booking.dropoffAddress}
-                                </div>
-                              </td>
-                              <td className="px-3 py-3 font-medium text-green-700">
-                                ${(booking.pricing?.totalPrice || booking.totalPrice || 0).toFixed(2)}
-                              </td>
-                              <td className="px-3 py-3 text-xs text-gray-500">
-                                {booking.archivedAt ? new Date(booking.archivedAt).toLocaleDateString('en-NZ') : 'N/A'}
-                              </td>
-                              <td className="px-3 py-3">
-                                <div className="flex gap-2">
-                                  <Button
-                                    onClick={() => openDetailsModal(booking)}
-                                    variant="ghost"
-                                    size="sm"
-                                    title="View Details"
-                                  >
-                                    <Eye className="w-4 h-4" />
-                                  </Button>
-                                  <Button
-                                    onClick={() => handleUnarchiveBooking(booking.id)}
-                                    className="bg-blue-600 hover:bg-blue-700 text-white"
-                                    size="sm"
-                                    title="Restore to Active Bookings"
-                                  >
-                                    <RotateCcw className="w-4 h-4 mr-1" />
-                                    Restore
-                                  </Button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                    
-                    {/* Pagination */}
-                    {archiveTotalPages > 1 && (
-                      <div className="flex justify-center items-center gap-4 mt-4">
-                        <Button
-                          onClick={() => fetchArchivedBookings(archivePage - 1, archiveSearchTerm)}
-                          disabled={archivePage <= 1}
-                          variant="outline"
-                          size="sm"
-                        >
-                          Previous
-                        </Button>
-                        <span className="text-sm text-gray-600">
-                          Page {archivePage} of {archiveTotalPages}
-                        </span>
-                        <Button
-                          onClick={() => fetchArchivedBookings(archivePage + 1, archiveSearchTerm)}
-                          disabled={archivePage >= archiveTotalPages}
-                          variant="outline"
-                          size="sm"
-                        >
-                          Next
-                        </Button>
-                      </div>
-                    )}
-                  </>
-                )}
-              </CardContent>
-            </Card>
+            <ArchiveTab
+              archivedBookings={archivedBookings}
+              archivedCount={archivedCount}
+              loadingArchived={loadingArchived}
+              archiveSearchTerm={archiveSearchTerm}
+              archivePage={archivePage}
+              archiveTotalPages={archiveTotalPages}
+              runningAutoArchive={runningAutoArchive}
+              onSearchTermChange={setArchiveSearchTerm}
+              onSearch={handleArchiveSearch}
+              onClearSearch={() => { setArchiveSearchTerm(''); fetchArchivedBookings(1, ''); }}
+              onRunAutoArchive={handleRunAutoArchive}
+              onFetchPage={(page) => fetchArchivedBookings(page, archiveSearchTerm)}
+              onViewDetails={openDetailsModal}
+              onUnarchive={handleUnarchiveBooking}
+            />
           </TabsContent>
 
           {/* Data Import Tab */}
