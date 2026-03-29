@@ -1,10 +1,7 @@
 import React from 'react';
-import Slider from 'react-slick';
 import { Card } from './ui/card';
 import { AnimatedSection } from './AnimatedSection';
-import '../styles/slick.css';
-import '../styles/slick-theme.css';
-import { Car, Users, Luggage } from 'lucide-react';
+import { Users, Luggage } from 'lucide-react';
 
 export const VehicleGallery = () => {
   const vehicles = [
@@ -35,43 +32,19 @@ export const VehicleGallery = () => {
     }
   ];
 
-  const settings = {
-    dots: true,
-    infinite: true,
-    speed: 500,
-    slidesToShow: 3,
-    slidesToScroll: 1,
-    autoplay: true,
-    autoplaySpeed: 3000,
-    responsive: [
-      {
-        breakpoint: 1024,
-        settings: {
-          slidesToShow: 2,
-        }
-      },
-      {
-        breakpoint: 640,
-        settings: {
-          slidesToShow: 1,
-        }
-      }
-    ]
-  };
-
   return (
     <section className="py-24 bg-gradient-to-br from-gray-50 to-white">
       <div className="container mx-auto px-4">
         <AnimatedSection className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4" data-aos="fade-up">
+          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
             Our Fleet
           </h2>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto mb-6" data-aos="fade-up" data-aos-delay="100">
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto mb-6">
             Modern, well-maintained Toyota Hiace vehicles - 24/7 service available
           </p>
           
           {/* MULTIPLE VANS BANNER */}
-          <div className="inline-flex items-center gap-3 bg-gradient-to-r from-gold to-yellow-500 rounded-full px-8 py-4 shadow-xl" data-aos="fade-up" data-aos-delay="200">
+          <div className="inline-flex items-center gap-3 bg-gradient-to-r from-gold to-yellow-500 rounded-full px-8 py-4 shadow-xl">
             <Users className="w-6 h-6 text-black" strokeWidth={2.5} />
             <span className="text-black font-black text-lg">BIG GROUP? Book Multiple Vans!</span>
             <span className="bg-black text-gold px-3 py-1 rounded-full text-sm font-bold">22+ PASSENGERS</span>
@@ -79,9 +52,9 @@ export const VehicleGallery = () => {
         </AnimatedSection>
 
         <div className="max-w-6xl mx-auto mb-12">
-          <Slider {...settings}>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {vehicles.map((vehicle, index) => (
-              <div key={index} className="px-4">
+              <div key={index}>
                 <Card className="overflow-hidden hover-lift transition-all-smooth border-2 border-gray-200 hover:border-gold">
                   <div className="relative h-64 overflow-hidden">
                     {/* Nighttime sky background for night service */}
@@ -160,7 +133,7 @@ export const VehicleGallery = () => {
                 </Card>
               </div>
             ))}
-          </Slider>
+          </div>
         </div>
 
         {/* LARGE GROUP INFO BOX */}

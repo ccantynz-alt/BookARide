@@ -26,12 +26,12 @@ const isPartnerOrigin = (origin) =>
 
 const getBackendUrl = () => {
   // Serverless mode: API routes are on the same Vercel domain
-  if (process.env.REACT_APP_API_MODE === 'local') {
+  if (import.meta.env.VITE_API_MODE === 'local') {
     return ''; // Empty = same origin, /api/* goes to Vercel serverless
   }
 
   // Explicit override
-  const env = process.env.REACT_APP_BACKEND_URL;
+  const env = import.meta.env.VITE_BACKEND_URL;
   if (env && env !== 'undefined') {
     return env.endsWith('/') ? env.slice(0, -1) : env;
   }

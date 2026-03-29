@@ -71,11 +71,15 @@ We use Mailgun. Not SendGrid. Not SMTP. Not Gmail. Not "a fallback".
 
 - **NEVER** use `@vuer-ai/react-helmet-async` — it's a broken fork
 
-### 4. Frontend: CRA + CRACO (NOT Vite, NOT Next.js)
+### 4. Frontend: Vite + React (NOT CRA, NOT Next.js)
 
-- Build: `craco build` (NOT `react-scripts build`)
-- The `@` alias is configured in `craco.config.js` → resolves to `src/`
-- **NEVER** migrate to Vite or Next.js unless explicitly asked
+- Build: `vite build` (output to `build/` directory)
+- Dev server: `vite` (port 3000, instant hot reload)
+- The `@` alias is configured in `vite.config.js` → resolves to `src/`
+- Environment variables use `VITE_` prefix (e.g., `VITE_BACKEND_URL`)
+- **NEVER** use `process.env.REACT_APP_*` — use `import.meta.env.VITE_*`
+- **NEVER** migrate to Next.js unless explicitly asked
+- Migrated from CRA+CRACO to Vite on 2026-03-29 (10x faster builds, 1/5th the dependencies)
 
 ### 5. No Facebook Integration
 
@@ -432,7 +436,7 @@ Before making ANY change, verify:
 
 | Layer      | Tech                              | Location           |
 |------------|-----------------------------------|--------------------|
-| Frontend   | React 18, CRA + CRACO, Tailwind  | `frontend/`        |
+| Frontend   | React 18, Vite, Tailwind          | `frontend/`        |
 | Backend    | FastAPI, Uvicorn, Python 3.11+    | `backend/`         |
 | Database   | Neon PostgreSQL via asyncpg       | `backend/database.py` |
 | Email      | Mailgun API                       | `backend/email_sender.py` |
@@ -443,7 +447,7 @@ Before making ANY change, verify:
 
 ## Hosting
 
-- Frontend: **Vercel** (React 18, CRA + CRACO)
+- Frontend: **Vercel** (React 18, Vite)
 - Backend: **Render** (FastAPI/Uvicorn, Python 3.11+)
 
 ### Deployment Rules — MANDATORY
@@ -511,7 +515,7 @@ Optional (but needed for full functionality, all set in Render):
 ## Build & Test
 
 ```bash
-# Frontend build (MUST use npm run build, not react-scripts directly)
+# Frontend build (uses Vite — fast, ~8 seconds)
 cd frontend && npm run build
 
 # Backend start

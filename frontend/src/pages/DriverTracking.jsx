@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { MapPin, Navigation, AlertCircle, CheckCircle, Loader2, Phone, User, Play, Square, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
+const API_URL = import.meta.env.VITE_BACKEND_URL;
 
 export default function DriverTracking() {
   const { sessionId } = useParams();
