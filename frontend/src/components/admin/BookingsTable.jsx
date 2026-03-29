@@ -1,6 +1,5 @@
 import React from 'react';
-import { Eye, Edit2, Mail, RefreshCw, Trash2, Archive, XCircle, CheckCircle, Clock, Square, CheckSquare, ChevronDown, ChevronRight, MapPin, Phone } from 'lucide-react';
-import { Button } from '../ui/button';
+import { Eye, Edit2, Mail, RefreshCw, Trash2, CheckCircle, Clock, Square, CheckSquare, Phone, Plane, ArrowRight, CreditCard } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 const formatDate = (dateStr) => {
@@ -12,31 +11,15 @@ const formatDate = (dateStr) => {
 
 const isToday = (dateStr) => {
   if (!dateStr) return false;
-  const today = new Date();
-  const [y, m, d] = [today.getFullYear(), String(today.getMonth() + 1).padStart(2, '0'), String(today.getDate()).padStart(2, '0')];
-  return dateStr === `${y}-${m}-${d}`;
+  const t = new Date();
+  return dateStr === `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
 };
 
 const isTomorrow = (dateStr) => {
   if (!dateStr) return false;
-  const tmr = new Date();
-  tmr.setDate(tmr.getDate() + 1);
-  const [y, m, d] = [tmr.getFullYear(), String(tmr.getMonth() + 1).padStart(2, '0'), String(tmr.getDate()).padStart(2, '0')];
-  return dateStr === `${y}-${m}-${d}`;
-};
-
-const statusColors = {
-  pending_approval: 'bg-red-100 text-red-700 border-red-200',
-  pending: 'bg-amber-50 text-amber-700 border-amber-200',
-  confirmed: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  completed: 'bg-blue-50 text-blue-700 border-blue-200',
-  cancelled: 'bg-slate-100 text-slate-500 border-slate-200',
-};
-
-const paymentBadge = (status) => {
-  if (status === 'paid') return { cls: 'bg-emerald-100 text-emerald-700', label: 'PAID' };
-  if (status === 'cash') return { cls: 'bg-amber-100 text-amber-700', label: 'CASH' };
-  return { cls: 'bg-red-100 text-red-700', label: 'UNPAID' };
+  const t = new Date();
+  t.setDate(t.getDate() + 1);
+  return dateStr === `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
 };
 
 const BookingsTable = ({
@@ -52,7 +35,6 @@ const BookingsTable = ({
   onEditBooking,
   onSendEmail,
   onResendConfirmation,
-  onArchiveBooking,
   onDeleteBooking,
   onStatusUpdate,
   onSendPaymentLink,
@@ -69,10 +51,10 @@ const BookingsTable = ({
 
   if (loading) {
     return (
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
-        <div className="flex items-center justify-center py-20">
-          <div className="w-8 h-8 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-          <span className="ml-3 text-slate-500 font-medium">Loading bookings...</span>
+      <div className="rounded-2xl bg-white/60 backdrop-blur-xl border border-white/20 shadow-lg shadow-black/5">
+        <div className="flex flex-col items-center justify-center py-24">
+          <div className="w-10 h-10 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
+          <p className="mt-4 text-sm text-slate-400 font-medium tracking-wide">Loading bookings</p>
         </div>
       </div>
     );
@@ -81,22 +63,25 @@ const BookingsTable = ({
   if (bookings.length === 0) {
     const hasFilters = dateFrom || dateTo || searchTerm || (statusFilter && statusFilter !== 'all');
     return (
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-12 text-center">
-        <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
-          <MapPin className="w-8 h-8 text-slate-300" />
+      <div className="rounded-2xl bg-white/60 backdrop-blur-xl border border-white/20 shadow-lg shadow-black/5 p-16 text-center">
+        <div className="w-20 h-20 rounded-full bg-slate-50 flex items-center justify-center mx-auto mb-6">
+          <ArrowRight className="w-8 h-8 text-slate-300" />
         </div>
-        <p className="text-slate-600 font-semibold text-lg mb-2">
-          {totalBookings > 0 ? 'No bookings match your filters' : 'No bookings yet'}
+        <p className="text-slate-800 font-semibold text-xl">{totalBookings > 0 ? 'No results' : 'No bookings yet'}</p>
+        <p className="text-slate-400 text-sm mt-2 max-w-md mx-auto">
+          {totalBookings > 0 ? 'Try adjusting your search or filters' : 'Bookings will appear here once customers start booking'}
         </p>
         {totalBookings > 0 && hasFilters && (
-          <Button variant="outline" size="sm" onClick={onClearFilters} className="mt-3">Clear all filters</Button>
+          <button onClick={onClearFilters} className="mt-6 text-sm font-medium text-slate-900 underline underline-offset-4 hover:text-slate-600 transition-colors">
+            Clear all filters
+          </button>
         )}
         {totalBookings === 0 && (
-          <div className="mt-6 flex gap-3 justify-center">
-            <Button variant="outline" size="sm" onClick={onOpenDeletedTab}>Check Deleted Tab</Button>
-            <Button size="sm" onClick={onRestoreFromServer} disabled={restoringFromServerBackup} className="bg-indigo-600 hover:bg-indigo-700 text-white">
-              Restore from Backup
-            </Button>
+          <div className="mt-8 flex gap-3 justify-center">
+            <button onClick={onOpenDeletedTab} className="text-sm font-medium text-slate-500 hover:text-slate-800 transition-colors underline underline-offset-4">Check deleted</button>
+            <button onClick={onRestoreFromServer} disabled={restoringFromServerBackup} className="text-sm font-medium text-slate-900 bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-lg transition-colors">
+              Restore from backup
+            </button>
           </div>
         )}
       </div>
@@ -104,159 +89,179 @@ const BookingsTable = ({
   }
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+    <div className="rounded-2xl bg-white/70 backdrop-blur-xl border border-white/30 shadow-lg shadow-black/5 overflow-hidden">
       {/* Bulk action bar */}
       {safeSelected.size > 0 && (
-        <div className="bg-indigo-50 border-b border-indigo-200 px-4 py-2.5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-semibold text-indigo-800">{safeSelected.size} selected</span>
-            <button onClick={onClearSelection} className="text-xs text-indigo-600 hover:text-indigo-800 underline">Clear</button>
+        <div className="bg-slate-900 text-white px-5 py-3 flex items-center justify-between">
+          <span className="text-sm font-medium">{safeSelected.size} selected</span>
+          <div className="flex gap-3 items-center">
+            <button onClick={onClearSelection} className="text-sm text-white/60 hover:text-white transition-colors">Deselect</button>
+            <button onClick={onBulkDelete} className="text-sm font-medium bg-red-500 hover:bg-red-600 text-white px-4 py-1.5 rounded-lg transition-colors">
+              Delete selected
+            </button>
           </div>
-          <Button variant="destructive" size="sm" onClick={onBulkDelete}>
-            <Trash2 className="w-3.5 h-3.5 mr-1.5" /> Delete Selected
-          </Button>
         </div>
       )}
 
+      {/* Table */}
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="bg-slate-50 border-b border-slate-200">
-              <th className="w-10 px-3 py-3">
+            <tr className="border-b border-slate-100">
+              <th className="w-12 px-4 py-4">
                 <button
                   onClick={() => safeSelected.size === bookings.length ? onClearSelection() : onSelectAll()}
-                  className="p-0.5 hover:bg-slate-200 rounded transition-colors"
+                  className="p-1 rounded hover:bg-slate-100 transition-colors"
                 >
                   {safeSelected.size === bookings.length && bookings.length > 0
-                    ? <CheckSquare className="w-4 h-4 text-indigo-600" />
-                    : <Square className="w-4 h-4 text-slate-400" />}
+                    ? <CheckSquare className="w-4 h-4 text-slate-900" />
+                    : <Square className="w-4 h-4 text-slate-300" />}
                 </button>
               </th>
-              <th className="text-left px-3 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Booking</th>
-              <th className="text-left px-3 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Customer</th>
-              <th className="text-left px-3 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden lg:table-cell">Route</th>
-              <th className="text-left px-3 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Payment</th>
-              <th className="text-left px-3 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Driver</th>
-              <th className="text-left px-3 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
-              <th className="text-right px-3 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
+              <th className="text-left px-4 py-4 text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Booking</th>
+              <th className="text-left px-4 py-4 text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Customer</th>
+              <th className="text-left px-4 py-4 text-[11px] font-semibold text-slate-400 uppercase tracking-widest hidden xl:table-cell">Route</th>
+              <th className="text-left px-4 py-4 text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Payment</th>
+              <th className="text-left px-4 py-4 text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Driver</th>
+              <th className="text-left px-4 py-4 text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Status</th>
+              <th className="w-12"></th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody>
             {bookings.map((booking) => {
               const hasReturn = booking.returnDate && booking.returnTime;
               const isUnassigned = !booking.driver_id && !booking.driver_name && !booking.assignedDriver;
-              const isTodayBooking = isToday(booking.date);
-              const isTmrBooking = isTomorrow(booking.date);
-              const urgentUnassigned = isTodayBooking && isUnassigned;
+              const today = isToday(booking.date);
+              const tomorrow = isTomorrow(booking.date);
+              const urgent = today && isUnassigned;
               const flightNum = booking.flightNumber || booking.flightArrivalNumber || booking.arrivalFlightNumber || booking.flightDepartureNumber || booking.departureFlightNumber || '';
-              const payment = paymentBadge(booking.payment_status);
 
               return (
                 <tr
                   key={booking.id}
-                  className={`group transition-colors hover:bg-slate-50/80 cursor-pointer
-                    ${safeSelected.has(booking.id) ? 'bg-indigo-50/50' : ''}
-                    ${urgentUnassigned ? 'bg-red-50/50' : ''}
-                  `}
                   onClick={() => onViewDetails(booking)}
+                  className={`group border-b border-slate-50 cursor-pointer transition-all duration-150
+                    ${safeSelected.has(booking.id) ? 'bg-slate-50' : 'hover:bg-slate-50/60'}
+                    ${urgent ? 'bg-red-50/40' : ''}
+                  `}
                 >
                   {/* Checkbox */}
-                  <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                  <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
                     <button
                       onClick={() => onSelectBooking(booking.id)}
-                      className="p-0.5 hover:bg-slate-200 rounded transition-colors"
+                      className="p-1 rounded hover:bg-slate-100 transition-colors"
                     >
                       {safeSelected.has(booking.id)
-                        ? <CheckSquare className="w-4 h-4 text-indigo-600" />
-                        : <Square className="w-4 h-4 text-slate-300 group-hover:text-slate-400" />}
+                        ? <CheckSquare className="w-4 h-4 text-slate-900" />
+                        : <Square className="w-4 h-4 text-slate-200 group-hover:text-slate-300" />}
                     </button>
                   </td>
 
-                  {/* Booking info */}
-                  <td className="px-3 py-3">
-                    <div className="flex items-start gap-2">
-                      {/* Time indicator bar */}
-                      <div className={`w-1 h-12 rounded-full flex-shrink-0 ${
-                        urgentUnassigned ? 'bg-red-500' :
-                        isTodayBooking ? 'bg-indigo-500' :
-                        isTmrBooking ? 'bg-amber-400' : 'bg-slate-200'
+                  {/* Booking */}
+                  <td className="px-4 py-4">
+                    <div className="flex items-center gap-3">
+                      {/* Time pill */}
+                      <div className={`w-1.5 self-stretch rounded-full flex-shrink-0 min-h-[40px] ${
+                        urgent ? 'bg-red-400' : today ? 'bg-slate-900' : tomorrow ? 'bg-amber-400' : 'bg-slate-200'
                       }`} />
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-bold text-slate-800">#{booking.referenceNumber || booking.id?.slice(0, 5)}</span>
-                          {isTodayBooking && <span className="px-1.5 py-0.5 text-[10px] font-bold bg-indigo-600 text-white rounded">TODAY</span>}
-                          {isTmrBooking && <span className="px-1.5 py-0.5 text-[10px] font-bold bg-amber-500 text-white rounded">TOMORROW</span>}
-                          {hasReturn && <span className="px-1.5 py-0.5 text-[10px] font-bold bg-purple-100 text-purple-700 rounded">RETURN</span>}
+                          <span className="text-sm font-bold text-slate-900 tracking-tight">#{booking.referenceNumber || booking.id?.slice(0, 5)}</span>
+                          {today && <span className="text-[10px] font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded-full tracking-wide">TODAY</span>}
+                          {tomorrow && <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full tracking-wide">TOMORROW</span>}
+                          {hasReturn && <span className="text-[10px] font-medium text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full tracking-wide">RETURN</span>}
                         </div>
-                        <p className="text-xs text-slate-500 mt-0.5">{formatDate(booking.date)} at <span className="font-semibold text-slate-700">{booking.time}</span></p>
-                        {flightNum && <p className="text-[10px] text-blue-600 font-medium mt-0.5">✈ {flightNum}</p>}
+                        <p className="text-[13px] text-slate-500 mt-0.5">
+                          {formatDate(booking.date)} <span className="font-semibold text-slate-700">{booking.time}</span>
+                        </p>
+                        {flightNum && (
+                          <p className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1">
+                            <Plane className="w-3 h-3" />{flightNum}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </td>
 
                   {/* Customer */}
-                  <td className="px-3 py-3">
-                    <p className="text-sm font-semibold text-slate-800 truncate max-w-[140px]">{booking.name}</p>
-                    <p className="text-xs text-slate-400 truncate max-w-[140px]">{booking.email}</p>
-                    <a href={`tel:${booking.phone}`} onClick={(e) => e.stopPropagation()} className="text-xs text-indigo-600 hover:underline flex items-center gap-1 mt-0.5">
+                  <td className="px-4 py-4">
+                    <p className="text-sm font-semibold text-slate-900 tracking-tight">{booking.name}</p>
+                    <p className="text-[12px] text-slate-400 mt-0.5">{booking.email}</p>
+                    <a href={`tel:${booking.phone}`} onClick={(e) => e.stopPropagation()}
+                       className="text-[12px] text-slate-500 hover:text-slate-900 transition-colors flex items-center gap-1 mt-0.5">
                       <Phone className="w-3 h-3" />{booking.phone}
                     </a>
                   </td>
 
                   {/* Route */}
-                  <td className="px-3 py-3 hidden lg:table-cell">
-                    <div className="max-w-[220px]">
-                      <p className="text-xs text-slate-600 truncate"><span className="text-emerald-600 font-bold mr-1">From</span>{booking.pickupAddress}</p>
-                      <p className="text-xs text-slate-600 truncate mt-0.5"><span className="text-red-500 font-bold mr-1">To</span>{booking.dropoffAddress}</p>
+                  <td className="px-4 py-4 hidden xl:table-cell">
+                    <div className="max-w-[240px] space-y-1">
+                      <p className="text-[12px] text-slate-600 truncate">{booking.pickupAddress}</p>
+                      <div className="flex items-center gap-1.5">
+                        <ArrowRight className="w-3 h-3 text-slate-300 flex-shrink-0" />
+                        <p className="text-[12px] text-slate-600 truncate">{booking.dropoffAddress}</p>
+                      </div>
                       {booking.pricing?.distance && (
-                        <p className="text-[10px] text-slate-400 mt-0.5">{booking.pricing.distance} km</p>
+                        <p className="text-[11px] text-slate-300 font-medium">{booking.pricing.distance} km</p>
                       )}
                     </div>
                   </td>
 
                   {/* Payment */}
-                  <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex flex-col gap-1">
-                      <span className="text-sm font-bold text-slate-800">${booking.pricing?.totalPrice?.toFixed(0) || booking.totalPrice || '0'}</span>
-                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold w-fit ${payment.cls}`}>
-                        {payment.label}
+                  <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
+                    <div className="space-y-1.5">
+                      <p className="text-[15px] font-bold text-slate-900 tabular-nums">${booking.pricing?.totalPrice?.toFixed(0) || booking.totalPrice || '0'}</p>
+                      <span className={`inline-block text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-full ${
+                        booking.payment_status === 'paid' ? 'bg-emerald-50 text-emerald-700' :
+                        booking.payment_status === 'cash' ? 'bg-amber-50 text-amber-700' :
+                        'bg-slate-100 text-slate-500'
+                      }`}>
+                        {(booking.payment_status || 'unpaid').toUpperCase()}
                       </span>
                       {booking.payment_status !== 'paid' && booking.payment_status !== 'cash' && (
                         <button
                           onClick={() => onSendPaymentLink(booking.id, 'stripe')}
-                          className="text-[10px] text-indigo-600 hover:text-indigo-800 font-medium hover:underline text-left"
+                          className="block text-[11px] text-slate-400 hover:text-slate-900 transition-colors font-medium"
                         >
-                          {booking.payment_link_sent_at ? `✉ Resend link` : '→ Send payment link'}
+                          {booking.payment_link_sent_at ? 'Resend link' : 'Send link'}
                         </button>
                       )}
                     </div>
                   </td>
 
                   {/* Driver */}
-                  <td className="px-3 py-3">
+                  <td className="px-4 py-4">
                     {booking.driver_id || booking.driver_name ? (
-                      <div className="flex items-center gap-1.5">
-                        <div className={`w-2 h-2 rounded-full flex-shrink-0 ${booking.driverAcknowledged ? 'bg-emerald-500' : 'bg-amber-400 animate-pulse'}`} />
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                          booking.driverAcknowledged ? 'bg-emerald-400' : 'bg-amber-400 animate-pulse'
+                        }`} />
                         <div>
-                          <p className="text-xs font-semibold text-slate-700">{booking.driver_name?.split(' ')[0] || 'Assigned'}</p>
-                          <p className="text-[10px] text-slate-400">{booking.driverAcknowledged ? 'Confirmed' : 'Pending'}</p>
+                          <p className="text-[13px] font-medium text-slate-800">{booking.driver_name?.split(' ')[0] || 'Assigned'}</p>
+                          <p className="text-[11px] text-slate-400">{booking.driverAcknowledged ? 'Confirmed' : 'Pending'}</p>
                         </div>
                       </div>
                     ) : (
-                      <span className={`inline-flex px-2 py-1 rounded text-[10px] font-bold ${
-                        urgentUnassigned ? 'bg-red-100 text-red-700 animate-pulse' : 'bg-slate-100 text-slate-500'
+                      <span className={`text-[11px] font-bold tracking-wider ${
+                        urgent ? 'text-red-500' : 'text-slate-300'
                       }`}>
-                        {urgentUnassigned ? 'ASSIGN NOW' : 'Unassigned'}
+                        {urgent ? 'UNASSIGNED' : 'None'}
                       </span>
                     )}
                   </td>
 
                   {/* Status */}
-                  <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                  <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
                     <Select value={booking.status} onValueChange={(val) => onStatusUpdate(booking.id, val)}>
-                      <SelectTrigger className="h-7 w-[110px] text-[11px] border-0 bg-transparent p-0">
-                        <span className={`inline-flex px-2.5 py-1 rounded-full text-[10px] font-bold border ${statusColors[booking.status] || 'bg-slate-100 text-slate-600 border-slate-200'}`}>
-                          {booking.status?.replace('_', ' ').toUpperCase().slice(0, 12)}
+                      <SelectTrigger className="h-7 w-[120px] text-[11px] border-0 bg-transparent shadow-none focus:ring-0 p-0">
+                        <span className={`text-[11px] font-bold tracking-wider ${
+                          booking.status === 'confirmed' ? 'text-emerald-600' :
+                          booking.status === 'completed' ? 'text-blue-600' :
+                          booking.status === 'cancelled' ? 'text-slate-400' :
+                          booking.status === 'pending_approval' ? 'text-red-600' :
+                          'text-amber-600'
+                        }`}>
+                          {(booking.status || 'pending').replace('_', ' ').toUpperCase()}
                         </span>
                       </SelectTrigger>
                       <SelectContent className="z-[9999]">
@@ -269,23 +274,14 @@ const BookingsTable = ({
                     </Select>
                   </td>
 
-                  {/* Actions */}
-                  <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center justify-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => onViewDetails(booking)} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors" title="View details">
-                        <Eye className="w-4 h-4 text-slate-600" />
+                  {/* Quick actions */}
+                  <td className="px-3 py-4" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => onEditBooking(booking)} className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors" title="Edit">
+                        <Edit2 className="w-3.5 h-3.5 text-slate-400" />
                       </button>
-                      <button onClick={() => onEditBooking(booking)} className="p-1.5 hover:bg-indigo-50 rounded-lg transition-colors" title="Edit">
-                        <Edit2 className="w-4 h-4 text-indigo-600" />
-                      </button>
-                      <button onClick={() => onSendEmail(booking)} className="p-1.5 hover:bg-emerald-50 rounded-lg transition-colors" title="Email">
-                        <Mail className="w-4 h-4 text-emerald-600" />
-                      </button>
-                      <button onClick={() => onResendConfirmation(booking.id)} className="p-1.5 hover:bg-amber-50 rounded-lg transition-colors" title="Resend confirmation">
-                        <RefreshCw className="w-4 h-4 text-amber-600" />
-                      </button>
-                      <button onClick={() => onDeleteBooking(booking.id, booking.name, true)} className="p-1.5 hover:bg-red-50 rounded-lg transition-colors" title="Cancel & notify">
-                        <Trash2 className="w-4 h-4 text-red-500" />
+                      <button onClick={() => onDeleteBooking(booking.id, booking.name, true)} className="p-1.5 rounded-lg hover:bg-red-50 transition-colors" title="Delete">
+                        <Trash2 className="w-3.5 h-3.5 text-slate-400 hover:text-red-500" />
                       </button>
                     </div>
                   </td>
@@ -294,6 +290,14 @@ const BookingsTable = ({
             })}
           </tbody>
         </table>
+      </div>
+
+      {/* Footer */}
+      <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/50">
+        <p className="text-[12px] text-slate-400 font-medium tracking-wide">
+          {bookings.length} booking{bookings.length !== 1 ? 's' : ''}
+          {totalBookings > bookings.length && ` of ${totalBookings}`}
+        </p>
       </div>
     </div>
   );
