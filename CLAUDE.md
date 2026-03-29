@@ -733,6 +733,96 @@ The AI email support system was only FLAGGING cancellations (setting `cancellati
 
 ---
 
+## CLAUDE-ONLY DEVELOPMENT — NO EXCEPTIONS (2026-03-29)
+
+**From this point forward, ALL code changes to BookARide are made by Claude only.** No other AI agents, no human developers, no freelancers. This rule exists because too many hands have introduced inconsistent patterns, sloppy code, and production-breaking bugs since November 2025.
+
+### Rules:
+
+1. **Claude is the sole developer.** Every line of code in this repository is Claude's responsibility. If it's broken, Claude fixes it. If it's sloppy, Claude cleans it. No excuses about "someone else wrote that."
+
+2. **Clean as you go.** Every file Claude touches gets brought up to standard. If you see old patterns, dead code, commented-out blocks, unused imports, or sloppy logic — clean it up in the same session. Don't leave it for next time.
+
+3. **No legacy excuses.** "That was already there" is not acceptable. If it's bad code and you're in the file, fix it. The goal is to systematically bring the entire codebase to professional standard, one session at a time.
+
+4. **Consistent patterns everywhere.** All React components use functional components with hooks. All styling uses Tailwind CSS. All API calls use axios with proper error handling. All state management uses React hooks (useState, useEffect, useContext). No mixing of patterns.
+
+---
+
+## CUSTOMER ERROR SHIELD — MANDATORY (2026-03-29)
+
+**Customers must NEVER see raw errors, technical messages, stack traces, or broken UI.** Every error must be caught and translated into a friendly, helpful message before it reaches the customer. This is a two-layer system: the code tries to work correctly (layer 1), and if it fails, the customer sees a polished error message (layer 2).
+
+### Architecture (already implemented):
+
+| Layer | Component | What It Does |
+|-------|-----------|--------------|
+| 1 | `RootErrorBoundary` | Catches any unhandled React crash — shows friendly "something went wrong" page with reload button |
+| 2 | `AdminErrorBoundary` | Same but for admin dashboard — shows "try again" or "back to login" |
+| 3 | `window.onerror` + `window.onunhandledrejection` | Global catch-all in `index.js` for errors that happen before React loads |
+| 4 | `NotFound.jsx` | Friendly 404 page for bad URLs |
+| 5 | Toast notifications (`sonner`) | Every API call shows success/error toasts — never raw error objects |
+| 6 | BookNow.jsx error handling | Specific friendly messages: "Cannot reach server", "Please check addresses", etc. |
+
+### Rules:
+
+1. **Every API call MUST have a try/catch** with a user-friendly error message in the catch block. Never let `error.message` or `error.response.data` reach the UI directly without sanitising it first.
+
+2. **Never show technical terms to customers.** No "500 Internal Server Error", no "TypeError", no "undefined is not a function", no "NetworkError", no database field names, no "Stripe" branding. Translate everything.
+
+3. **Error messages must be helpful.** Not just "Something went wrong" — tell the customer what to do: "Unable to calculate price. Please check your addresses and try again." or "Payment service temporarily unavailable. Please try again in a few minutes."
+
+4. **Backend errors must return clean JSON.** Every endpoint must catch exceptions and return `{"detail": "Human-readable message"}` — never raw Python tracebacks. FastAPI's HTTPException already does this; make sure custom error handlers do too.
+
+5. **Loading states for everything.** Every button that triggers an API call must show a loading spinner or "Processing..." state. No buttons that appear to do nothing when clicked. No double-submission.
+
+6. **Graceful degradation.** If Google Maps is down, show a message instead of breaking the form. If Stripe is down, still create the booking and tell the customer "we'll send you a payment link by email." If email fails, log it and don't crash the booking.
+
+---
+
+## MODERN CODE STANDARDS — MANDATORY (2026-03-29)
+
+**Every piece of code in this project must follow modern best practices. No exceptions.**
+
+### Frontend (React):
+
+| Pattern | Required | Banned |
+|---------|----------|--------|
+| Components | Functional components with hooks | Class components (except ErrorBoundary — React requires it) |
+| State | `useState`, `useEffect`, `useContext`, `useRef` | `this.state`, `componentDidMount`, `componentWillReceiveProps` |
+| Styling | Tailwind CSS utility classes | Inline `style={{}}` objects (except dynamic values like calculated widths) |
+| API calls | `axios` with async/await in try/catch | Raw `fetch()` without error handling, `.then()` chains |
+| Forms | Controlled components with state | Uncontrolled inputs, `document.getElementById` |
+| Dropdowns in modals | React Portal (`ReactDOM.createPortal`) | `position: absolute` inside scrollable containers |
+| Imports | Named imports, tree-shakeable | `import *`, wildcard imports |
+| Variables | `const` and `let` | `var` |
+| Console | `console.error` in catch blocks only | `console.log` in production code (remove before commit) |
+
+### Backend (Python/FastAPI):
+
+| Pattern | Required | Banned |
+|---------|----------|--------|
+| Async | `async def` for all endpoints | Blocking calls in async context |
+| Database | NeonDatabase (PostgreSQL JSONB) | Motor, pymongo, MongoDB anything |
+| Email | Mailgun HTTP API | SMTP, SendGrid, smtplib |
+| Error handling | `try/except` with `logger.error()` | `except: pass`, silent swallowing |
+| Background tasks | `background_tasks.add_task()` | `asyncio.new_event_loop()`, `asyncio.run()` in async context |
+| Validation | Pydantic models | Manual dict validation |
+| Secrets | Environment variables | Hardcoded strings, committed `.env` files |
+
+### Code Cleanup Checklist (run on every file you touch):
+
+1. Remove unused imports
+2. Remove commented-out code blocks
+3. Remove dead functions/components that nothing calls
+4. Replace `var` with `const`/`let`
+5. Replace inline styles with Tailwind classes (where practical)
+6. Add error handling to any API call missing it
+7. Remove `console.log` statements (keep `console.error` in catch blocks)
+8. Ensure consistent field naming (snake_case for database, camelCase for React props)
+
+---
+
 ## History of Production Breaks (why these rules exist)
 
 | Date       | What broke                          | Root cause                              |

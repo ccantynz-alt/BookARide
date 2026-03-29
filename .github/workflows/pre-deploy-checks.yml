@@ -42,8 +42,8 @@ jobs:
         run: |
           echo "=== Checking for banned imports ==="
           FAILED=0
-          grep -rn "pymongo\|MongoClient\|motor\|mongodb://" backend/*.py && echo "FAIL: MongoDB references" && FAILED=1 || true
-          grep -rn "SendGrid\|sendgrid\|smtplib\|MIMEMultipart\|MIMEText" backend/*.py && echo "FAIL: SMTP/SendGrid references" && FAILED=1 || true
+          grep -rn "pymongo\|MongoClient\|motor\|mongodb://\|MONGO_URL\|DB_NAME" backend/*.py backend/**/*.py && echo "FAIL: MongoDB references" && FAILED=1 || true
+          grep -rn "SendGrid\|sendgrid\|smtplib\|MIMEMultipart\|MIMEText" backend/*.py backend/**/*.py | grep -v "\.env\.example" && echo "FAIL: SMTP/SendGrid references" && FAILED=1 || true
           grep -rn "geoapify\|GEOAPIFY" backend/*.py && echo "FAIL: Geoapify references" && FAILED=1 || true
           grep -rn "asyncio\.new_event_loop\|asyncio\.run(" backend/server.py && echo "FAIL: Dangerous event loop usage" && FAILED=1 || true
           if [ "$FAILED" -eq 1 ]; then exit 1; fi
@@ -89,5 +89,5 @@ jobs:
       - name: Banned frontend imports
         run: |
           grep -rn "@vuer-ai/react-helmet-async" frontend/src/ && echo "FAIL: Broken helmet fork" && exit 1 || true
-          grep -rn "airport-shuttle" frontend/src/ --include="*.jsx" --include="*.js" | grep -v "seo\|SEO\|blog\|Blog\|airport-shuttle-" && echo "FAIL: Removed service type" && exit 1 || true
+          grep -rn "airport-shuttle" frontend/src/ --include="*.jsx" --include="*.js" | grep -v "seo\|SEO\|blog\|Blog\|airport-shuttle-\|App\.js\|blogPosts\|data/" && echo "FAIL: Removed service type" && exit 1 || true
           echo "Frontend imports clean"

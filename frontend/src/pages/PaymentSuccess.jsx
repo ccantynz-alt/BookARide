@@ -75,7 +75,9 @@ export const PaymentSuccess = () => {
           setPaymentDetails(lastCheck.data);
           return;
         }
-      } catch {}
+      } catch (err) {
+        console.error('Final payment status check failed:', err);
+      }
       if (!cancelledRef.current) setPaymentStatus('timeout');
       return;
     }
