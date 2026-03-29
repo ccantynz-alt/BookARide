@@ -25,6 +25,10 @@ import CreateBookingModal from '../components/admin/CreateBookingModal';
 import EditBookingModal from '../components/admin/EditBookingModal';
 import DeletedTab from '../components/admin/DeletedTab';
 import ArchiveTab from '../components/admin/ArchiveTab';
+import EmailModal from '../components/admin/EmailModal';
+import PasswordModal from '../components/admin/PasswordModal';
+import BulkDeleteDialog from '../components/admin/BulkDeleteDialog';
+import PreviewConfirmationModal from '../components/admin/PreviewConfirmationModal';
 import GoogleAddressInput from '../components/GoogleAddressInput';
 
 // Helper function to format date to DD/MM/YYYY
@@ -3547,147 +3551,33 @@ export const AdminDashboard = () => {
       </Dialog>
 
       {/* Email Modal */}
-      <Dialog open={showEmailModal} onOpenChange={setShowEmailModal}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Send Email to Customer</DialogTitle>
-          </DialogHeader>
-          {selectedBooking && (
-            <div className="space-y-4">
-              <div>
-                <Label>To:</Label>
-                <Input value={selectedBooking.email} disabled className="bg-gray-50" />
-              </div>
-              <div>
-                <Label>CC (optional):</Label>
-                <Input
-                  value={emailCC}
-                  onChange={(e) => setEmailCC(e.target.value)}
-                  placeholder="Additional email addresses (comma separated)"
-                />
-              </div>
-              <div>
-                <Label>Subject:</Label>
-                <Input
-                  value={emailSubject}
-                  onChange={(e) => setEmailSubject(e.target.value)}
-                  placeholder="Email subject"
-                />
-              </div>
-              <div>
-                <Label>Message:</Label>
-                <Textarea
-                  value={emailMessage}
-                  onChange={(e) => setEmailMessage(e.target.value)}
-                  placeholder="Email message"
-                  rows={10}
-                />
-              </div>
-              <Button onClick={handleSendEmail} className="w-full bg-gold hover:bg-gold/90 text-black">
-                <Mail className="w-4 h-4 mr-2" />
-                Send Email
-              </Button>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <EmailModal
+        open={showEmailModal}
+        onOpenChange={setShowEmailModal}
+        booking={selectedBooking}
+        emailSubject={emailSubject}
+        emailMessage={emailMessage}
+        emailCC={emailCC}
+        onSubjectChange={setEmailSubject}
+        onMessageChange={setEmailMessage}
+        onCCChange={setEmailCC}
+        onSend={handleSendEmail}
+      />
 
       {/* Change Password Modal */}
-      <Dialog open={showPasswordModal} onOpenChange={(open) => {
-        setShowPasswordModal(open);
-        if (!open) {
-          setSetPasswordMode(false);
-          setCurrentPassword('');
-          setNewPassword('');
-          setConfirmPassword('');
-        }
-      }}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>{setPasswordMode ? 'Set New Password' : 'Change Password'}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 pt-4">
-            {!setPasswordMode && (
-              <div>
-                <Label htmlFor="currentPassword">Current Password</Label>
-                <Input
-                  id="currentPassword"
-                  type="password"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder="Enter current password"
-                  className="mt-1"
-                />
-                <button
-                  type="button"
-                  onClick={() => setSetPasswordMode(true)}
-                  className="text-sm text-gold hover:text-gold/80 mt-1"
-                >
-                  Forgot current password? Set a new one instead.
-                </button>
-              </div>
-            )}
-            {setPasswordMode && (
-              <p className="text-sm text-gray-600">
-                You&apos;re logged in. Set a new password below (no current password needed).
-              </p>
-            )}
-            
-            <div>
-              <Label htmlFor="newPassword">New Password</Label>
-              <Input
-                id="newPassword"
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Enter new password (min 8 characters)"
-                className="mt-1"
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="confirmPassword">Confirm New Password</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirm new password"
-                className="mt-1"
-              />
-            </div>
-            
-            <div className="flex justify-end gap-2 pt-4">
-              {setPasswordMode && (
-                <Button
-                  variant="ghost"
-                  onClick={() => setSetPasswordMode(false)}
-                >
-                  Back
-                </Button>
-              )}
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowPasswordModal(false);
-                  setSetPasswordMode(false);
-                  setCurrentPassword('');
-                  setNewPassword('');
-                  setConfirmPassword('');
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleChangePassword}
-                className="bg-gold hover:bg-gold/90 text-black"
-              >
-                {setPasswordMode ? 'Set Password' : 'Change Password'}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <PasswordModal
+        open={showPasswordModal}
+        onOpenChange={setShowPasswordModal}
+        setPasswordMode={setPasswordMode}
+        currentPassword={currentPassword}
+        newPassword={newPassword}
+        confirmPassword={confirmPassword}
+        onSetPasswordModeChange={setSetPasswordMode}
+        onCurrentPasswordChange={setCurrentPassword}
+        onNewPasswordChange={setNewPassword}
+        onConfirmPasswordChange={setConfirmPassword}
+        onSubmit={handleChangePassword}
+      />
 
       {/* Create Booking Modal */}
       <CreateBookingModal
@@ -3962,95 +3852,22 @@ export const AdminDashboard = () => {
       </Dialog>
 
       {/* Preview Confirmation Modal */}
-      <Dialog open={showPreviewModal} onOpenChange={setShowPreviewModal}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Eye className="w-5 h-5" />
-              Preview Confirmation Email
-            </DialogTitle>
-          </DialogHeader>
-          
-          {previewBookingInfo && (
-            <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-              <p className="text-sm"><strong>To:</strong> {previewBookingInfo.email}</p>
-              {previewBookingInfo.ccEmail && (
-                <p className="text-sm"><strong>CC:</strong> {previewBookingInfo.ccEmail}</p>
-              )}
-              <p className="text-sm"><strong>Customer:</strong> {previewBookingInfo.name}</p>
-              <p className="text-sm"><strong>Phone:</strong> {previewBookingInfo.phone}</p>
-            </div>
-          )}
-          
-          <div className="border rounded-lg overflow-hidden">
-            <div 
-              className="bg-white"
-              dangerouslySetInnerHTML={{ __html: previewHtml }}
-            />
-          </div>
-          
-          <div className="flex justify-end gap-2 pt-4 border-t mt-4">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowPreviewModal(false);
-                setPreviewHtml('');
-                setPreviewBookingInfo(null);
-              }}
-            >
-              Close
-            </Button>
-            <Button
-              onClick={handleSendAfterPreview}
-              className="bg-green-600 hover:bg-green-700 text-white font-semibold"
-            >
-              <Send className="w-4 h-4 mr-2" />
-              Send to Customer
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <PreviewConfirmationModal
+        open={showPreviewModal}
+        onOpenChange={setShowPreviewModal}
+        previewHtml={previewHtml}
+        previewBookingInfo={previewBookingInfo}
+        onClose={() => { setShowPreviewModal(false); setPreviewHtml(''); setPreviewBookingInfo(null); }}
+        onSend={handleSendAfterPreview}
+      />
 
       {/* Bulk Delete Confirmation Dialog */}
-      <Dialog open={showBulkDeleteConfirm} onOpenChange={setShowBulkDeleteConfirm}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-red-600">
-              <Trash2 className="w-5 h-5" />
-              Delete {safeSelectedSet.size} Booking{safeSelectedSet.size > 1 ? 's' : ''}?
-            </DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-              <p className="text-sm text-yellow-800">
-                <strong>⚠️ No notifications will be sent</strong>
-              </p>
-              <p className="text-sm text-yellow-700 mt-1">
-                The selected bookings will be moved to the Deleted tab without sending any SMS or email notifications to customers.
-              </p>
-            </div>
-            <p className="text-gray-600 text-sm">
-              You can restore these bookings later from the Deleted tab if needed.
-            </p>
-          </div>
-          <div className="flex justify-end gap-3">
-            <Button
-              variant="outline"
-              onClick={() => setShowBulkDeleteConfirm(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleBulkDelete}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              Delete {safeSelectedSet.size} Booking{safeSelectedSet.size > 1 ? 's' : ''}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <BulkDeleteDialog
+        open={showBulkDeleteConfirm}
+        onOpenChange={setShowBulkDeleteConfirm}
+        selectedCount={safeSelectedSet.size}
+        onConfirm={handleBulkDelete}
+      />
     </div>
   );
 };
