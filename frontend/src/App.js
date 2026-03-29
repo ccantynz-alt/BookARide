@@ -126,6 +126,9 @@ const AirportPickupGuide = React.lazy(() => import('./pages/AirportPickupGuide')
 const TravelAgents = React.lazy(() => import('./pages/TravelAgents'));
 // Hotel Concierge Portal
 const HotelConciergePortal = React.lazy(() => import('./pages/HotelConciergePortal'));
+// Travel Guide Pages
+const AucklandAirportArrivalsGuide = React.lazy(() => import('./pages/seo/AucklandAirportArrivalsGuide'));
+const NZTravelChecklist = React.lazy(() => import('./pages/seo/NZTravelChecklist'));
 const NotFound = React.lazy(() => import('./pages/NotFound'));
 
 // Loading spinner shown while lazy components load
@@ -324,6 +327,8 @@ function App() {
     { path: "hobbiton-transfers", element: <HobbitonTransfers /> },
     { path: "cruise-transfers", element: <CruiseTransfers /> },
     { path: "airport-pickup-guide", element: <AirportPickupGuide /> },
+    { path: "auckland-airport-arrivals-guide", element: <AucklandAirportArrivalsGuide /> },
+    { path: "new-zealand-travel-checklist", element: <NZTravelChecklist /> },
     { path: "suburbs", element: <SuburbsDirectory /> },
     { path: "suburbs/:slug", element: <SuburbPage /> },
     { path: "airport-transfer/:slug", element: <SuburbLandingAdvanced /> },
