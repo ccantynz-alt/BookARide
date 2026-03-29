@@ -12,7 +12,7 @@ import axios from 'axios';
 import SEO from '../components/SEO';
 import { FAQSchema } from '../components/SchemaMarkup';
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+const API = `${import.meta.env.VITE_BACKEND_URL}/api`;
 
 // True gold color matching BookaRide branding
 const goldColor = '#D4AF37';

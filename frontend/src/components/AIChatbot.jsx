@@ -4,7 +4,7 @@ import { MessageCircle, X, Send, Bot, User, Loader2, Sparkles } from 'lucide-rea
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
 const AIChatbot = () => {
   const [isOpen, setIsOpen] = useState(false);

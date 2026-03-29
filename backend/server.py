@@ -5713,6 +5713,24 @@ def generate_confirmation_email_html(booking: dict, for_admin: bool = False) -> 
         '</td></tr></table></td></tr></table>'
     )
 
+    # eSIM promotion (customer-facing only, not admin copy)
+    esim_promo = ""
+    if not for_admin:
+        esim_promo = (
+            '<table width="100%" cellpadding="0" cellspacing="0" border="0">'
+            '<tr><td style="padding:0 24px 16px 24px;font-family:Arial,Helvetica,sans-serif;">'
+            '<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#eff6ff" style="border:1px solid #bfdbfe;border-radius:8px;">'
+            '<tr><td style="padding:20px;font-family:Arial,Helvetica,sans-serif;">'
+            '<p style="margin:0 0 6px 0;color:#1e40af;font-size:15px;font-weight:700;">Need Mobile Data When You Land?</p>'
+            '<p style="margin:0 0 12px 0;color:#374151;font-size:13px;line-height:1.5;">'
+            'Get an eSIM for New Zealand &mdash; instant mobile data, no physical SIM card needed. '
+            'Activate before your flight and stay connected from the moment you touch down.</p>'
+            '<a href="https://zoobicon.com" style="display:inline-block;padding:10px 24px;background-color:#2563eb;'
+            'color:#ffffff;text-decoration:none;border-radius:6px;font-size:14px;font-weight:600;">'
+            'Get Your eSIM at Zoobicon.com</a>'
+            '</td></tr></table></td></tr></table>'
+        )
+
     body_parts = [
         admin_banner,
         confirmation_banner,
@@ -5720,6 +5738,7 @@ def generate_confirmation_email_html(booking: dict, for_admin: bool = False) -> 
         email_section("Booking Details", email_booking_summary(booking)),
         email_section("Pricing", email_price_table(booking)),
         contact_html,
+        esim_promo,
         email_button("View Your Booking", "https://bookaride.co.nz/book-now"),
     ]
 
@@ -7997,40 +8016,46 @@ async def search_customers(q: str = "", current_admin: dict = Depends(get_curren
     try:
         if not q or len(q) < 2:
             return {"customers": []}
-        
-        search_term = q.lower().strip()
-        
-        # Get unique customers from bookings
-        pipeline = [
-            {"$match": {
-                "$or": [
-                    {"name": {"$regex": search_term, "$options": "i"}},
-                    {"email": {"$regex": search_term, "$options": "i"}},
-                    {"phone": {"$regex": search_term, "$options": "i"}}
-                ]
-            }},
-            {"$sort": {"createdAt": -1}},  # Most recent first
-            {"$group": {
-                "_id": "$email",
-                "name": {"$first": "$name"},
-                "email": {"$first": "$email"},
-                "phone": {"$first": "$phone"},
-                "pickupAddress": {"$first": "$pickupAddress"},
-                "dropoffAddress": {"$first": "$dropoffAddress"},
-                "lastBookingDate": {"$first": "$date"},
-                "totalBookings": {"$sum": 1}
-            }},
-            {"$sort": {"totalBookings": -1}},
-            {"$limit": 10},
-            {"$project": {"_id": 0}}
-        ]
-        
-        customers = await db.bookings.aggregate(pipeline).to_list(10)
-        
-        logger.info(f"Customer search for '{q}': found {len(customers)} results")
+
+        search_term = q.strip()
+
+        # Direct query approach: find matching bookings, then deduplicate by email in Python
+        # This avoids complex aggregation pipeline issues with the Neon compatibility layer
+        matching_bookings = await db.bookings.find(
+            {"$or": [
+                {"name": {"$regex": search_term, "$options": "i"}},
+                {"email": {"$regex": search_term, "$options": "i"}},
+                {"phone": {"$regex": search_term, "$options": "i"}}
+            ]},
+            {"_id": 0, "name": 1, "email": 1, "phone": 1, "pickupAddress": 1, "dropoffAddress": 1, "date": 1}
+        ).sort("createdAt", -1).to_list(200)
+
+        # Deduplicate by email, keep most recent booking details
+        seen_emails = {}
+        for b in matching_bookings:
+            email = (b.get("email") or "").lower().strip()
+            if not email:
+                continue
+            if email not in seen_emails:
+                seen_emails[email] = {
+                    "name": b.get("name", ""),
+                    "email": b.get("email", ""),
+                    "phone": b.get("phone", ""),
+                    "pickupAddress": b.get("pickupAddress", ""),
+                    "dropoffAddress": b.get("dropoffAddress", ""),
+                    "lastBookingDate": b.get("date", ""),
+                    "totalBookings": 1
+                }
+            else:
+                seen_emails[email]["totalBookings"] += 1
+
+        # Sort by total bookings (most frequent first) and limit to 10
+        customers = sorted(seen_emails.values(), key=lambda c: c["totalBookings"], reverse=True)[:10]
+
+        logger.info(f"Customer search for '{q}': found {len(customers)} results from {len(matching_bookings)} matching bookings")
         return {"customers": customers}
     except Exception as e:
-        logger.error(f"Error searching customers: {str(e)}")
+        logger.error(f"CRITICAL: Customer search failed for '{q}': {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # Export to CSV

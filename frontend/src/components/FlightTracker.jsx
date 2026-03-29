@@ -4,7 +4,7 @@ import { Plane, Clock, CheckCircle, AlertTriangle, Loader2, RefreshCw } from 'lu
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
 const FlightTracker = ({ flightNumber, onFlightData, showInline = false }) => {
   const [flight, setFlight] = useState(null);

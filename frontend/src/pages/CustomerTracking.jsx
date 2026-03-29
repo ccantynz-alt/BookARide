@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { MapPin, Clock, Car, User, AlertCircle, Loader2, RefreshCw, ExternalLink } from 'lucide-react';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
+const API_URL = import.meta.env.VITE_BACKEND_URL;
 
 export default function CustomerTracking() {
   const { trackingRef } = useParams();

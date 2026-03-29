@@ -84,7 +84,7 @@ jobs:
         working-directory: frontend
         run: npm run build
         env:
-          REACT_APP_BACKEND_URL: https://bookaride-backend.onrender.com
+          VITE_BACKEND_URL: https://bookaride-backend.onrender.com
 
       - name: Banned frontend imports
         run: |
