@@ -31,6 +31,7 @@ import BulkDeleteDialog from '../components/admin/BulkDeleteDialog';
 import PreviewConfirmationModal from '../components/admin/PreviewConfirmationModal';
 import BookingDetailsModal from '../components/admin/BookingDetailsModal';
 import DriverAssignPreviewModal from '../components/admin/DriverAssignPreviewModal';
+import BookingsTable from '../components/admin/BookingsTable';
 import GoogleAddressInput from '../components/GoogleAddressInput';
 
 // Helper function to format date to DD/MM/YYYY
@@ -2191,115 +2192,80 @@ export const AdminDashboard = () => {
           }}
         />
         
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-          <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
-            <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Total Bookings</p>
-            <p className="text-2xl font-bold text-slate-800 mt-1">{stats.total}</p>
+        {/* Stats Cards — Modern Dashboard Style */}
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
+          <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-shadow">
+            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Total</p>
+            <p className="text-3xl font-bold text-slate-800 mt-1">{stats.total}</p>
           </div>
-          <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
-            <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Pending</p>
-            <p className="text-2xl font-bold text-amber-600 mt-1">{stats.pending}</p>
-          </div>
-          <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
-            <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Confirmed</p>
-            <p className="text-2xl font-bold text-emerald-600 mt-1">{stats.confirmed}</p>
-          </div>
-          <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
-            <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Revenue</p>
-            <p className="text-2xl font-bold text-indigo-600 mt-1">${(stats.totalRevenue ?? 0).toFixed(2)}</p>
+          <button onClick={() => setStatusFilter('pending')} className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md hover:border-amber-300 transition-all text-left cursor-pointer">
+            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Pending</p>
+            <p className="text-3xl font-bold text-amber-600 mt-1">{stats.pending}</p>
+          </button>
+          <button onClick={() => setStatusFilter('confirmed')} className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md hover:border-emerald-300 transition-all text-left cursor-pointer">
+            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Confirmed</p>
+            <p className="text-3xl font-bold text-emerald-600 mt-1">{stats.confirmed}</p>
+          </button>
+          <button onClick={() => setStatusFilter('completed')} className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md hover:border-blue-300 transition-all text-left cursor-pointer">
+            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Completed</p>
+            <p className="text-3xl font-bold text-blue-600 mt-1">{stats.completed}</p>
+          </button>
+          <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-xl p-4 shadow-sm text-white">
+            <p className="text-[11px] font-semibold text-indigo-200 uppercase tracking-wider">Revenue</p>
+            <p className="text-3xl font-bold mt-1">${(stats.totalRevenue ?? 0).toFixed(0)}</p>
           </div>
         </div>
 
-        {/* Filters and Actions */}
-        <Card className="mb-6">
-          <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                  <Input
-                    placeholder="Search by name, email, phone, or address... (also searches archive)"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-                {searchTerm && (
-                  <p className="text-xs text-blue-600 mt-1 flex items-center gap-1">
-                    <Archive className="w-3 h-3" />
-                    Search includes archived bookings
-                  </p>
-                )}
-              </div>
-              <div className="w-full md:w-48">
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="pending_approval">🚨 Needs Approval</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="confirmed">Confirmed</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <input
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                  className="border rounded px-2 py-2 text-sm w-[130px]"
-                  title="From date"
-                />
-                <span className="text-gray-400 text-sm">–</span>
-                <input
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                  className="border rounded px-2 py-2 text-sm w-[130px]"
-                  title="To date"
-                />
-                {(dateFrom || dateTo) && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => { setDateFrom(''); setDateTo(''); fetchBookingsRef.current?.(1, false); }}
-                    className="text-gray-600"
-                  >
-                    Clear dates
-                  </Button>
-                )}
-              </div>
-              <Button 
-                onClick={exportToCSV}
-                variant="outline"
-                className="border-gold text-gold hover:bg-gold hover:text-black"
-              >
-                Export CSV
+        {/* Filter Bar — Clean, modern design */}
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 mb-6">
+          <div className="flex flex-col lg:flex-row gap-3">
+            {/* Search */}
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+              <Input
+                placeholder="Search bookings..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 bg-slate-50 border-slate-200 focus:bg-white focus:border-indigo-400 focus:ring-indigo-400 h-10"
+              />
+            </div>
+            {/* Status filter */}
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full lg:w-[160px] h-10 bg-slate-50 border-slate-200">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="pending_approval">Needs Approval</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="confirmed">Confirmed</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
+            {/* Date range */}
+            <div className="flex items-center gap-2">
+              <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-10 border border-slate-200 bg-slate-50 rounded-lg px-3 text-sm focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400" />
+              <span className="text-slate-300">–</span>
+              <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-10 border border-slate-200 bg-slate-50 rounded-lg px-3 text-sm focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400" />
+              {(dateFrom || dateTo) && (
+                <button onClick={() => { setDateFrom(''); setDateTo(''); }} className="text-xs text-slate-500 hover:text-slate-700 underline">Clear</button>
+              )}
+            </div>
+            {/* Actions */}
+            <div className="flex items-center gap-2">
+              <Button onClick={exportToCSV} variant="outline" size="sm" className="border-slate-300 text-slate-600 h-10">
+                Export
               </Button>
-              <Button 
-                onClick={handleSendReminders}
-                variant="outline"
-                className="border-gold text-gold hover:bg-gold hover:text-black"
-                title="Send reminders to tomorrow's bookings"
-              >
-                <Bell className="w-4 h-4 mr-2" />
-                Send Reminders
+              <Button onClick={handleSendReminders} variant="outline" size="sm" className="border-slate-300 text-slate-600 h-10" title="Send reminders to tomorrow's bookings">
+                <Bell className="w-4 h-4 mr-1" /> Remind
               </Button>
-              <Button 
-                onClick={() => setShowCreateBookingModal(true)}
-                className="bg-gold hover:bg-gold/90 text-black font-semibold"
-              >
-                + Create Booking
+              <Button onClick={() => setShowCreateBookingModal(true)} size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold h-10 px-5">
+                + New Booking
               </Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Payment Troubleshooting — collapsible */}
         <div className="mb-4">
@@ -2373,478 +2339,40 @@ export const AdminDashboard = () => {
           )}
         </div>
 
-        {/* Bookings Table */}
-        <Card>
-          <CardContent className="p-0">
-            {loading ? (
-              <div className="text-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold mx-auto"></div>
-                <p className="text-gray-600 mt-4">Loading bookings...</p>
-              </div>
-            ) : filteredBookings.length === 0 ? (
-              <div className="space-y-4">
-                <div className="text-center py-8">
-                  <p className="text-gray-600 font-medium">
-                    {bookings.length > 0
-                      ? `No bookings match your current filter (${bookings.length} booking${bookings.length !== 1 ? 's' : ''} exist — clear filters to see them)`
-                      : 'No bookings found'}
-                  </p>
-                </div>
-                {/* Only show recovery guidance when the database is genuinely empty */}
-                {bookings.length === 0 && (
-                  <Card className="border-amber-200 bg-amber-50/50 max-w-2xl mx-auto">
-                    <CardContent className="p-4 space-y-3">
-                      {retentionCounts && (
-                        <p className="text-sm font-semibold text-amber-900">
-                          Database: {retentionCounts.active} active, {retentionCounts.deleted} in Deleted.
-                          {retentionCounts.deleted > 0 && ' Restore them from the Deleted tab.'}
-                        </p>
-                      )}
-                      <p className="font-medium text-amber-900">Get your bookings back:</p>
-                      <ul className="list-disc list-inside text-sm text-amber-800 space-y-1">
-                        <li>If bookings disappeared after an update, they may be in the <strong>Deleted</strong> tab. Open Deleted and click <strong>Restore all</strong> to reinstate them.</li>
-                        <li>Click <strong>Restore from server backup</strong> in the Deleted tab to recover from the backup file on the server.</li>
-                        <li>Use <strong>Deleted → Download backup (JSON)</strong> to see exactly what's stored (active + deleted).</li>
-                      </ul>
-                      <div className="flex flex-wrap gap-2 pt-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setActiveTab('deleted')}
-                          className="border-amber-500 text-amber-800 hover:bg-amber-100"
-                        >
-                          Open Deleted tab
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={handleRestoreFromServerBackup}
-                          disabled={restoringFromServerBackup}
-                          className="bg-orange-600 hover:bg-orange-700 text-white"
-                        >
-                          {restoringFromServerBackup ? <RefreshCw className="w-4 h-4 mr-1 animate-spin" /> : <Shield className="w-4 h-4 mr-1" />}
-                          Restore from server backup
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-                {/* When filters are hiding bookings, show a quick-clear option */}
-                {bookings.length > 0 && (dateFrom || dateTo || searchTerm || statusFilter !== 'all') && (
-                  <div className="flex flex-wrap gap-2 justify-center">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => { setDateFrom(''); setDateTo(''); setSearchTerm(''); setStatusFilter('all'); fetchBookingsRef.current?.(1, false); }}
-                      className="border-amber-500 text-amber-800 hover:bg-amber-100"
-                    >
-                      Clear all filters & show all bookings
-                    </Button>
-                  </div>
-                )}
-              </div>
-            ) : (
-            <>
-              <div className="overflow-x-auto">
-                {/* Bulk Action Bar */}
-                {safeSelectedSet.size > 0 && (
-                  <div className="bg-red-50 border-b border-red-200 px-4 py-3 flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm font-medium text-red-800">
-                        {safeSelectedSet.size} booking{safeSelectedSet.size > 1 ? 's' : ''} selected
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setSelectedBookings(new Set())}
-                        className="text-gray-600 hover:text-gray-800"
-                      >
-                        Clear
-                      </Button>
-                    </div>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => setShowBulkDeleteConfirm(true)}
-                      className="bg-red-600 hover:bg-red-700"
-                    >
-                      <Trash2 className="w-4 h-4 mr-1" />
-                      Delete
-                    </Button>
-                  </div>
-                )}
-                <table className="w-full text-sm">
-                  <thead className="bg-gradient-to-r from-gray-100 to-gray-50 border-b-2 border-gray-200">
-                    <tr>
-                      <th className="p-2 w-8">
-                        <button
-                          onClick={() => {
-                            if (safeSelectedSet.size === filteredBookings.length) {
-                              setSelectedBookings(new Set());
-                            } else {
-                              setSelectedBookings(new Set(filteredBookings.map(b => b.id)));
-                            }
-                          }}
-                          className="p-1 hover:bg-gray-200 rounded"
-                          title="Select all"
-                        >
-                          {safeSelectedSet.size === filteredBookings.length && filteredBookings.length > 0 ? (
-                            <CheckSquare className="w-4 h-4 text-gold" />
-                          ) : (
-                            <Square className="w-4 h-4 text-gray-400" />
-                          )}
-                        </button>
-                      </th>
-                      <th className="text-left p-2 font-semibold text-gray-700 text-xs">Ref/Date</th>
-                      <th className="text-left p-2 font-semibold text-gray-700 text-xs">Customer</th>
-                      <th className="text-left p-2 font-semibold text-gray-700 text-xs hidden md:table-cell">Route</th>
-                      <th className="text-left p-2 font-semibold text-gray-700 text-xs hidden lg:table-cell">✈️ Flight</th>
-                      <th className="text-left p-2 font-semibold text-gray-700 text-xs hidden lg:table-cell">🔄 Return</th>
-                      <th className="text-left p-2 font-semibold text-gray-700 text-xs">💰 Price</th>
-                      <th className="text-left p-2 font-semibold text-gray-700 text-xs">🚗 Driver</th>
-                      <th className="text-left p-2 font-semibold text-gray-700 text-xs">Status</th>
-                      <th className="text-left p-2 font-semibold text-gray-700 text-xs">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredBookings.map((booking) => {
-                      const hasReturn = booking.returnDate && booking.returnTime;
-                      const isUnassigned = !booking.driver_id && !booking.driver_name && !booking.assignedDriver;
-                      const isUrgentUnassigned = isToday(booking.date) && isUnassigned;
-                      const flightNum = booking.flightNumber || booking.flight_number || booking.flightArrivalNumber || booking.arrivalFlightNumber || booking.flightDepartureNumber || booking.departureFlightNumber || '';
-                      
-                      return (
-                      <tr key={booking.id} className={`border-b hover:bg-gray-50 transition-colors
-                        ${safeSelectedSet.has(booking.id) ? 'bg-gold/10' : ''} 
-                        ${isUrgentUnassigned ? 'bg-red-50 border-l-4 border-l-red-500' : ''}
-                        ${!isUrgentUnassigned && isToday(booking.date) ? 'bg-blue-50/50 border-l-4 border-l-blue-500' : ''} 
-                        ${!isUrgentUnassigned && !isToday(booking.date) && isTomorrow(booking.date) ? 'border-l-4 border-l-orange-400 bg-orange-50/30' : ''}
-                        ${hasReturn ? 'border-r-4 border-r-purple-400' : ''}
-                      `}>
-                        <td className="px-2 py-2">
-                          <button
-                            onClick={() => {
-                              const newSelected = new Set(safeSelectedSet);
-                              if (newSelected.has(booking.id)) {
-                                newSelected.delete(booking.id);
-                              } else {
-                                newSelected.add(booking.id);
-                              }
-                              setSelectedBookings(newSelected);
-                            }}
-                            className="p-0.5 hover:bg-gray-200 rounded"
-                          >
-                            {safeSelectedSet.has(booking.id) ? (
-                              <CheckSquare className="w-4 h-4 text-gold" />
-                            ) : (
-                              <Square className="w-4 h-4 text-gray-400" />
-                            )}
-                          </button>
-                        </td>
-                        {/* REF & DATE COLUMN - always show return date/time when booking has return */}
-                        <td className="px-2 py-2">
-                          <div className="flex flex-col">
-                            <div className="flex items-center gap-1 mb-0.5">
-                              <span className="text-xs font-bold text-gold bg-gold/10 px-1.5 py-0.5 rounded">#{booking.referenceNumber || booking.id?.slice(0, 5)}</span>
-                              {isToday(booking.date) && <span className="px-1.5 py-0.5 text-[9px] font-bold bg-blue-600 text-white rounded animate-pulse">TODAY</span>}
-                              {isTomorrow(booking.date) && <span className="px-1.5 py-0.5 text-[9px] font-bold bg-orange-500 text-white rounded">TMR</span>}
-                            </div>
-                            <div className="text-xs text-gray-700 font-medium">{formatDate(booking.date)}</div>
-                            <div className="text-sm font-bold text-gray-900">{booking.time}</div>
-                            {hasReturn && (
-                              <div className="mt-1 text-[10px] font-semibold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200" title="Return pickup date and time">
-                                ↩ Return {formatDate(booking.returnDate)} {booking.returnTime}
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                        {/* CUSTOMER COLUMN */}
-                        <td className="px-2 py-2">
-                          <div className="flex flex-col">
-                            <span className="text-sm font-semibold text-gray-900 truncate max-w-[120px]">{booking.name}</span>
-                            <a href={`tel:${booking.phone}`} className="text-xs text-blue-600 hover:underline">{booking.phone}</a>
-                            <span className="text-[10px] text-gray-500 truncate max-w-[120px]">{booking.email}</span>
-                            {booking.passengers > 1 && (
-                              <span className="text-[10px] bg-gray-100 px-1 rounded mt-0.5 w-fit">👥 {booking.passengers} pax</span>
-                            )}
-                          </div>
-                        </td>
-                        {/* ROUTE COLUMN */}
-                        <td className="px-2 py-2 hidden md:table-cell">
-                          <div className="flex flex-col text-[10px] max-w-[180px]">
-                            <div className="flex items-start gap-1">
-                              <span className="text-green-600 font-bold">↑</span>
-                              <span className="text-gray-700 truncate" title={booking.pickupAddress}>{booking.pickupAddress?.slice(0, 35)}...</span>
-                            </div>
-                            <div className="flex items-start gap-1 mt-0.5">
-                              <span className="text-red-600 font-bold">↓</span>
-                              <span className="text-gray-700 truncate" title={booking.dropoffAddress}>{booking.dropoffAddress?.slice(0, 35)}...</span>
-                            </div>
-                          </div>
-                        </td>
-                        {/* FLIGHT COLUMN */}
-                        <td className="px-2 py-2 hidden lg:table-cell">
-                          {flightNum ? (
-                            <div className="flex flex-col">
-                              <span className="text-xs font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded">✈️ {flightNum}</span>
-                              {booking.pickupAddress?.toLowerCase().includes('international') && (
-                                <span className="text-[9px] text-gray-500 mt-0.5">Int'l Terminal</span>
-                              )}
-                              {booking.pickupAddress?.toLowerCase().includes('domestic') && (
-                                <span className="text-[9px] text-gray-500 mt-0.5">Domestic Terminal</span>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-gray-300 text-xs">—</span>
-                          )}
-                        </td>
-                        {/* RETURN COLUMN - return date and time (also in Ref/Date column so never hidden) */}
-                        <td className="px-2 py-2 hidden lg:table-cell">
-                          {hasReturn ? (
-                            <div className="flex flex-col bg-purple-50 p-1.5 rounded border border-purple-200">
-                              <span className="text-[10px] font-semibold text-purple-700">🔄 RETURN</span>
-                              <span className="text-xs font-bold text-purple-900">{formatDate(booking.returnDate)}</span>
-                              <span className="text-sm font-bold text-purple-800">{booking.returnTime}</span>
-                            </div>
-                          ) : (
-                            <span className="text-gray-300 text-xs">—</span>
-                          )}
-                        </td>
-                        {/* PRICE & PAYMENT COLUMN */}
-                        <td className="px-2 py-2">
-                          <div className="flex flex-col items-start gap-0.5">
-                            <span className="text-sm font-bold text-gray-900">${booking.pricing?.totalPrice?.toFixed(0) || booking.totalPrice || '0'}</span>
-                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold ${
-                              booking.payment_status === 'paid' ? 'bg-green-100 text-green-700' :
-                              booking.payment_status === 'cash' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
-                            }`}>
-                              {booking.payment_status === 'paid' ? '✓ PAID' : booking.payment_status === 'cash' ? '💵 CASH' : '✗ UNPAID'}
-                            </span>
-                            {booking.payment_status !== 'paid' && booking.payment_status !== 'cash' && booking.payment_link_sent_at ? (
-                              <span className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-blue-50 text-blue-600" title={`Payment link sent ${new Date(booking.payment_link_sent_at).toLocaleString()}${booking.payment_link_sent_count > 1 ? ` (${booking.payment_link_sent_count}x)` : ''}`}>
-                                ✉ Link Sent{booking.payment_link_sent_count > 1 ? ` (${booking.payment_link_sent_count}x)` : ''}
-                              </span>
-                            ) : booking.payment_status !== 'paid' && booking.payment_status !== 'cash' && !booking.payment_link_sent_at ? (
-                              <span className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gray-50 text-gray-400">
-                                No link sent
-                              </span>
-                            ) : null}
-                          </div>
-                        </td>
-                        {/* DRIVER COLUMN */}
-                        <td className="px-2 py-2">
-                          {booking.driver_id || booking.driver_name || booking.assignedDriver ? (
-                            <div className="flex flex-col">
-                              <div className="flex items-center gap-1">
-                                <span className="text-xs font-medium text-gray-900">{booking.driver_name?.split(' ')[0] || 'Assigned'}</span>
-                                {booking.driverAcknowledged ? (
-                                  <CheckCircle className="w-3.5 h-3.5 text-green-500" title="Driver confirmed" />
-                                ) : (
-                                  <Clock className="w-3.5 h-3.5 text-orange-500 animate-pulse" title="Awaiting confirmation" />
-                                )}
-                              </div>
-                              <span className={`text-[9px] ${booking.driverAcknowledged ? 'text-green-600' : 'text-orange-600'}`}>
-                                {booking.driverAcknowledged ? '✓ Confirmed' : '⏳ Pending'}
-                              </span>
-                            </div>
-                          ) : (
-                            <div className={`flex flex-col items-start ${isToday(booking.date) ? 'animate-pulse' : ''}`}>
-                              <span className={`px-2 py-1 rounded text-[10px] font-bold ${isToday(booking.date) ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-600'}`}>
-                                {isToday(booking.date) ? '⚠️ ASSIGN!' : 'No Driver'}
-                              </span>
-                            </div>
-                          )}
-                        </td>
-                        {/* STATUS COLUMN */}
-                        <td className="px-2 py-2">
-                          <Select
-                            value={booking.status}
-                            onValueChange={(value) => handleStatusUpdate(booking.id, value)}
-                          >
-                            <SelectTrigger className="w-24 h-7 text-[10px]">
-                              <SelectValue>
-                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${getStatusColor(booking.status)}`}>
-                                  {booking.status?.replace('_', ' ').slice(0,10)}
-                                </span>
-                              </SelectValue>
-                            </SelectTrigger>
-                            <SelectContent className="z-[9999]">
-                              <SelectItem value="pending_approval">🚨 Approval</SelectItem>
-                              <SelectItem value="pending">Pending</SelectItem>
-                              <SelectItem value="confirmed">Confirmed</SelectItem>
-                              <SelectItem value="completed">Completed</SelectItem>
-                              <SelectItem value="cancelled">Cancelled</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </td>
-                        {/* ACTIONS COLUMN */}
-                        <td className="px-1 py-2 relative z-10">
-                          <div className="flex flex-wrap gap-1 min-w-[180px]">
-                            <button
-                              onClick={(e) => { e.stopPropagation(); openDetailsModal(booking); }}
-                              className="p-2 hover:bg-gray-100 rounded flex flex-col items-center cursor-pointer active:bg-gray-200 min-w-[36px]"
-                              title="View booking details"
-                            >
-                              <Eye className="w-4 h-4 text-gray-600" />
-                              <span className="text-[8px] text-gray-500">View</span>
-                            </button>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); openEditBookingModal(booking); }}
-                              className="p-2 hover:bg-blue-100 rounded flex flex-col items-center cursor-pointer active:bg-blue-200 min-w-[36px]"
-                              title="Edit booking details"
-                            >
-                              <Edit2 className="w-4 h-4 text-blue-600" />
-                              <span className="text-[8px] text-blue-500">Edit</span>
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedBooking(booking);
-                                setShowEmailModal(true);
-                              }}
-                              className="p-2 hover:bg-green-100 rounded flex flex-col items-center cursor-pointer active:bg-green-200 min-w-[36px]"
-                              title="Send custom email (won't send SMS)"
-                            >
-                              <Mail className="w-4 h-4 text-green-600" />
-                              <span className="text-[8px] text-green-500">Email</span>
-                            </button>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleResendConfirmation(booking.id); }}
-                              className="p-2 hover:bg-amber-100 rounded flex flex-col items-center border border-amber-200 cursor-pointer active:bg-amber-200 min-w-[36px]"
-                              title="Resend confirmation EMAIL + SMS to customer"
-                            >
-                              <RefreshCw className="w-4 h-4 text-amber-600" />
-                              <span className="text-[8px] text-amber-600 font-medium">Resend</span>
-                            </button>
-                            {booking.status === 'completed' && (
-                              <button
-                                onClick={(e) => { e.stopPropagation(); handleArchiveBooking(booking.id); }}
-                                className="p-2 hover:bg-blue-100 rounded flex flex-col items-center border border-blue-200 cursor-pointer active:bg-blue-200 min-w-[36px]"
-                                title="Archive this completed booking"
-                              >
-                                <Archive className="w-4 h-4 text-blue-600" />
-                                <span className="text-[8px] text-blue-600 font-medium">Archive</span>
-                              </button>
-                            )}
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleDeleteBooking(booking.id, booking.name, true); }}
-                              className="p-2 hover:bg-red-100 rounded flex flex-col items-center cursor-pointer active:bg-red-200 min-w-[36px]"
-                              title="Cancel & notify customer via email/SMS"
-                            >
-                              <Trash2 className="w-4 h-4 text-red-500" />
-                              <span className="text-[8px] text-red-500">Cancel</span>
-                            </button>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleDeleteBooking(booking.id, booking.name, false); }}
-                              className="p-2 hover:bg-gray-200 rounded flex flex-col items-center cursor-pointer active:bg-gray-300 min-w-[36px]"
-                              title="Silent delete - NO notification to customer (use for duplicates)"
-                            >
-                              <XCircle className="w-4 h-4 text-gray-500" />
-                              <span className="text-[8px] text-gray-500">Silent</span>
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-              
-              {/* Load More Button - showing if more bookings available */}
-              {!loadAllBookings && bookings.length >= bookingsPerPage * currentPage && (
-                <div className="flex justify-center mt-4 pb-4">
-                  <Button
-                    onClick={loadMoreBookings}
-                    disabled={isLoadingMore}
-                    variant="outline"
-                    className="px-8"
-                  >
-                    {isLoadingMore ? (
-                      <>
-                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                        Loading...
-                      </>
-                    ) : (
-                      <>Load More Bookings</>
-                    )}
-                  </Button>
-                </div>
-              )}
-              
-              {/* Archived Search Results - shown when searching */}
-              {searchTerm && archiveSearchResults.length > 0 && (
-                <div className="mt-6 border-t pt-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Archive className="w-5 h-5 text-blue-600" />
-                    <h4 className="font-semibold text-blue-800">
-                      Found {archiveSearchResults.length} match(es) in Archive
-                    </h4>
-                  </div>
-                  <div className="bg-blue-50 rounded-lg border border-blue-200 overflow-hidden">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="bg-blue-100 text-blue-800 text-xs">
-                          <th className="px-3 py-2 text-left">Ref #</th>
-                          <th className="px-3 py-2 text-left">Customer</th>
-                          <th className="px-3 py-2 text-left">Date</th>
-                          <th className="px-3 py-2 text-left">Status</th>
-                          <th className="px-3 py-2 text-left">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {archiveSearchResults.map((booking) => (
-                          <tr key={booking.id} className="border-b border-blue-100 hover:bg-blue-50/50 bg-white">
-                            <td className="px-3 py-2 font-medium text-blue-700">#{booking.referenceNumber}</td>
-                            <td className="px-3 py-2">
-                              <div className="font-medium text-gray-900">{booking.name}</div>
-                              <div className="text-xs text-gray-500">{booking.phone}</div>
-                            </td>
-                            <td className="px-3 py-2">
-                              <div className="text-gray-800">{formatDate(booking.date)}</div>
-                              <div className="text-xs text-gray-500">{booking.time}</div>
-                            </td>
-                            <td className="px-3 py-2">
-                              <span className="px-2 py-0.5 rounded text-xs bg-blue-100 text-blue-700">ARCHIVED</span>
-                            </td>
-                            <td className="px-3 py-2">
-                              <div className="flex gap-2">
-                                <Button
-                                  onClick={() => openDetailsModal(booking)}
-                                  variant="ghost"
-                                  size="sm"
-                                >
-                                  <Eye className="w-4 h-4" />
-                                </Button>
-                                <Button
-                                  onClick={() => handleUnarchiveBooking(booking.id)}
-                                  className="bg-blue-600 hover:bg-blue-700 text-white"
-                                  size="sm"
-                                >
-                                  <RotateCcw className="w-3 h-3 mr-1" />
-                                  Restore
-                                </Button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-              
-              {/* Pagination Info - always visible */}
-              <div className="text-center text-sm text-gray-500 pb-2">
-                {loadAllBookings
-                  ? `Showing all ${filteredBookings.length} bookings (full list – none hidden)`
-                  : `Showing ${filteredBookings.length} of ${totalBookings || bookings.length} bookings`}
-                {archiveSearchResults.length > 0 && ` + ${archiveSearchResults.length} from archive`}
-              </div>
-            </>
-            )}
-          </CardContent>
-        </Card>
+        {/* Bookings Table — Redesigned */}
+        <BookingsTable
+          bookings={filteredBookings}
+          loading={loading}
+          totalBookings={bookings.length}
+          selectedBookings={safeSelectedSet}
+          onSelectBooking={(id) => {
+            const next = new Set(safeSelectedSet);
+            next.has(id) ? next.delete(id) : next.add(id);
+            setSelectedBookings(next);
+          }}
+          onSelectAll={() => setSelectedBookings(new Set(filteredBookings.map(b => b.id)))}
+          onClearSelection={() => setSelectedBookings(new Set())}
+          onBulkDelete={() => setShowBulkDeleteConfirm(true)}
+          onViewDetails={openDetailsModal}
+          onEditBooking={openEditBookingModal}
+          onSendEmail={(booking) => { setSelectedBooking(booking); setShowEmailModal(true); }}
+          onResendConfirmation={handleResendConfirmation}
+          onArchiveBooking={handleArchiveBooking}
+          onDeleteBooking={handleDeleteBooking}
+          onStatusUpdate={handleStatusUpdate}
+          onSendPaymentLink={handleResendPaymentLink}
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          searchTerm={searchTerm}
+          statusFilter={statusFilter}
+          onClearFilters={() => { setDateFrom(''); setDateTo(''); setSearchTerm(''); setStatusFilter('all'); }}
+          onOpenDeletedTab={() => setActiveTab('deleted')}
+          onRestoreFromServer={handleRestoreFromServerBackup}
+          restoringFromServerBackup={restoringFromServerBackup}
+        />
+
         </TabsContent>
+
 
 
           {/* Customers Tab */}
