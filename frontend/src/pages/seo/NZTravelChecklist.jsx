@@ -64,7 +64,7 @@ const NZTravelChecklist = () => {
       icon: Smartphone,
       color: "green",
       items: [
-        { text: "eSIM for NZ mobile data (activate before you fly)", priority: "recommended" },
+        { text: "eSIM for NZ mobile data — get yours at zoobicon.com (activate before you fly)", priority: "recommended" },
         { text: "Power adapter (NZ uses Type I plug, 230V)", priority: "essential" },
         { text: "Download offline maps of NZ (Google Maps or Maps.me)", priority: "recommended" },
         { text: "Portable charger / power bank for flights", priority: "optional" },
@@ -222,7 +222,7 @@ const NZTravelChecklist = () => {
                 { icon: Globe, title: "Time Zone", desc: "UTC+12 (UTC+13 during daylight saving, Sep-Apr). NZ is one of the first countries to see the new day." },
                 { icon: Thermometer, title: "Climate", desc: "Temperate. Summer (Dec-Feb) 20-30°C, Winter (Jun-Aug) 5-15°C. Weather changes quickly — always carry layers." },
                 { icon: CreditCard, title: "Currency", desc: "New Zealand Dollar (NZD). Cards accepted almost everywhere. Contactless payments (tap to pay) widely used." },
-                { icon: Wifi, title: "Connectivity", desc: "Free WiFi at airports and cafes. Mobile coverage good in cities, patchy in rural areas. Get an eSIM for reliable data." },
+                { icon: Wifi, title: "Connectivity", desc: "Free WiFi at airports and cafes. Mobile coverage good in cities, patchy in rural areas. Get an eSIM at zoobicon.com for reliable data from the moment you land." },
                 { icon: Shield, title: "Safety", desc: "New Zealand is very safe. Emergency number: 111. ACC covers accident injuries for all visitors. Tap water is safe to drink." },
                 { icon: Plane, title: "Getting Around", desc: "Domestic flights connect major cities. Intercity buses available. Rental cars popular for road trips. Drive on the LEFT." }
               ].map((info, idx) => (

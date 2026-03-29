@@ -91,7 +91,7 @@ const AucklandAirportArrivalsGuide = () => {
         "ATMs and currency exchange available in the arrivals hall",
         "Travelex and other exchange offices are in the terminal",
         "Buy a local SIM card from Spark, Vodafone, or 2degrees at the airport",
-        "Or activate an eSIM before you fly for instant data on landing"
+        "Or get an eSIM at zoobicon.com before you fly for instant data on landing"
       ]
     },
     {
@@ -274,7 +274,7 @@ const AucklandAirportArrivalsGuide = () => {
             <h2 className="text-3xl font-bold text-center mb-12">Pro Tips for First-Time Visitors</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {[
-                { icon: Wifi, title: "Get an eSIM Before You Fly", desc: "Have mobile data ready the moment you land. No queuing at SIM card shops, no swapping physical cards. Essential for maps and rideshare apps." },
+                { icon: Wifi, title: "Get an eSIM Before You Fly", desc: "Have mobile data ready the moment you land. Get your NZ eSIM at zoobicon.com — no queuing at SIM card shops, no swapping physical cards. Essential for maps and rideshare apps." },
                 { icon: Clock, title: "Book Your Transfer in Advance", desc: "Airport taxi queues can be 30+ minutes during peak arrivals (6-10am). Pre-booking a transfer means your driver is waiting for you." },
                 { icon: Shield, title: "Declare Everything at Biosecurity", desc: "New Zealand takes biosecurity seriously. When in doubt, declare it. There is no penalty for declaring — only for not declaring." },
                 { icon: CreditCard, title: "Cards Work Everywhere", desc: "You rarely need cash in NZ. Contactless payments (tap and go) work at most places. Your overseas card will work — just notify your bank of travel." },
