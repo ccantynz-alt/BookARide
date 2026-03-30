@@ -14283,16 +14283,13 @@ async def startup_event():
         })
         logger.info("Default admin user created")
     else:
-        # Update password and email to ensure they're correct
-        hashed_pw = "$2b$12$C6UzMDM.H6dfI/f/IKcEeO8m8Y4YkQkQ1h6s4H6c3Z8Y5G7c8Y4r2"
-        await db.admin_users.update_one(
-            {"username": "admin"},
-            {"$set": {
-                "hashed_password": hashed_pw,
-                "email": "info@bookaride.co.nz"
-            }}
-        )
-        logger.info("Admin password reset and email updated to info@bookaride.co.nz")
+        # Only update email if missing — never overwrite the password
+        if not default_admin.get("email"):
+            await db.admin_users.update_one(
+                {"username": "admin"},
+                {"$set": {"email": "info@bookaride.co.nz"}}
+            )
+            logger.info("Admin email updated to info@bookaride.co.nz")
     
     # Create database indexes for faster queries
     try:
