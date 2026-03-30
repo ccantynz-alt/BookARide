@@ -22,6 +22,7 @@ except Exception:
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 from google.oauth2.credentials import Credentials
+from google.oauth2 import id_token as google_id_token
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 from google.auth.transport.requests import Request as GoogleRequest
@@ -809,6 +810,43 @@ async def admin_google_auth_callback(request: Request, code: Optional[str] = Non
     response.delete_cookie("admin_oauth_state")
     logger.info(f"Admin logged in via Google: {admin['username']} ({email})")
     return response
+
+class GoogleIdTokenRequest(BaseModel):
+    credential: str
+
+@api_router.post("/admin/google-auth/verify-token")
+async def admin_google_auth_verify_token(body: GoogleIdTokenRequest):
+    """Verify a Google ID token from frontend GIS and return a JWT if the user is an authorized admin."""
+    client_id = os.environ.get('GOOGLE_CLIENT_ID')
+    if not client_id:
+        raise HTTPException(status_code=500, detail="Google OAuth not configured on the server.")
+    try:
+        idinfo = google_id_token.verify_oauth2_token(
+            body.credential,
+            GoogleRequest(),
+            client_id,
+        )
+    except ValueError as e:
+        logger.warning(f"Google ID token verification failed: {e}")
+        raise HTTPException(status_code=401, detail="Invalid Google sign-in token. Please try again.")
+    email = (idinfo.get("email") or "").lower().strip()
+    if not email:
+        raise HTTPException(status_code=401, detail="Email not provided by Google.")
+    admin = await db.admin_users.find_one({"email": email}, {"_id": 0})
+    if not admin:
+        logger.warning(f"Google OAuth attempt for non-admin: {email}")
+        raise HTTPException(status_code=403, detail="This Google account is not authorized for admin access.")
+    access_token = create_access_token(data={"sub": admin["username"]})
+    logger.info(f"Admin logged in via Google (GIS): {admin['username']} ({email})")
+    return {"access_token": access_token, "token_type": "bearer"}
+
+@api_router.get("/admin/google-auth/client-id")
+async def get_google_client_id():
+    """Return the Google OAuth client ID for frontend GIS initialization."""
+    client_id = os.environ.get('GOOGLE_CLIENT_ID')
+    if not client_id:
+        raise HTTPException(status_code=404, detail="Google OAuth not configured.")
+    return {"client_id": client_id}
 
 class GoogleAuthSession(BaseModel):
     session_id: str
