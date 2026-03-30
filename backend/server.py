@@ -196,33 +196,6 @@ async def root_email_status(current_admin: dict = Depends(get_current_admin)):
             "hint": "Set MAILGUN_API_KEY, MAILGUN_DOMAIN, and NOREPLY_EMAIL in Render env vars.",
         }
 
-# Google auth start - app-level routes (try multiple paths for compatibility)
-@app.get("/api/admin/google-auth/start")
-@app.get("/api/google-auth-start")  # Simpler path fallback
-async def admin_google_auth_start_app():
-    """Start Google OAuth - app-level route for reliability"""
-    client_id = os.environ.get('GOOGLE_CLIENT_ID')
-    client_secret = os.environ.get('GOOGLE_CLIENT_SECRET')
-    if not client_id or not client_secret:
-        raise HTTPException(status_code=500, detail="Google OAuth not configured. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.")
-    public_domain = os.environ.get('PUBLIC_DOMAIN', 'https://bookaride.co.nz')
-    backend_url = os.environ.get('BACKEND_URL') or os.environ.get('RENDER_EXTERNAL_URL') or public_domain
-    redirect_uri = f"{backend_url.rstrip('/')}/api/admin/google-auth/callback"
-    state = f"bookaride_admin_oauth_{uuid.uuid4().hex}"
-    auth_url = (
-        "https://accounts.google.com/o/oauth2/v2/auth?"
-        f"client_id={client_id}&"
-        f"redirect_uri={requests.utils.quote(redirect_uri)}&"
-        "response_type=code&"
-        "scope=openid%20email%20profile&"
-        f"state={state}&"
-        "access_type=offline&"
-        "prompt=select_account"
-    )
-    response = RedirectResponse(url=auth_url)
-    response.set_cookie(key="admin_oauth_state", value=state, httponly=True, max_age=600, samesite="lax")
-    return response
-
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
@@ -713,103 +686,8 @@ async def set_password(
 
 
 # ============================================
-# GOOGLE OAUTH FOR ADMIN
+# GOOGLE OAUTH FOR ADMIN (browser-based via Google Identity Services)
 # ============================================
-
-# Standalone Google OAuth (no Emergent) - redirect flow
-ADMIN_GOOGLE_OAUTH_STATE = "bookaride_admin_oauth"
-
-@api_router.get("/admin/google-auth/start")
-async def admin_google_auth_start():
-    """Start Google OAuth flow for admin login - redirects to Google"""
-    client_id = os.environ.get('GOOGLE_CLIENT_ID')
-    client_secret = os.environ.get('GOOGLE_CLIENT_SECRET')
-    if not client_id or not client_secret:
-        raise HTTPException(status_code=500, detail="Google OAuth not configured. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.")
-    public_domain = os.environ.get('PUBLIC_DOMAIN', 'https://bookaride.co.nz')
-    backend_url = os.environ.get('BACKEND_URL') or os.environ.get('RENDER_EXTERNAL_URL') or public_domain
-    redirect_uri = f"{backend_url.rstrip('/')}/api/admin/google-auth/callback"
-    state = f"{ADMIN_GOOGLE_OAUTH_STATE}_{uuid.uuid4().hex}"
-    auth_url = (
-        "https://accounts.google.com/o/oauth2/v2/auth?"
-        f"client_id={client_id}&"
-        f"redirect_uri={requests.utils.quote(redirect_uri)}&"
-        "response_type=code&"
-        "scope=openid%20email%20profile&"
-        f"state={state}&"
-        "access_type=offline&"
-        "prompt=select_account"
-    )
-    response = RedirectResponse(url=auth_url)
-    response.set_cookie(key="admin_oauth_state", value=state, httponly=True, max_age=600, samesite="lax")
-    return response
-
-@api_router.get("/admin/google-auth/callback")
-async def admin_google_auth_callback(request: Request, code: Optional[str] = None, state: Optional[str] = None):
-    """Handle Google OAuth callback - exchange code for tokens, check admin, redirect to frontend with JWT"""
-    public_domain = os.environ.get('PUBLIC_DOMAIN', 'https://bookaride.co.nz')
-    frontend_url = public_domain.rstrip('/')
-    callback_url = f"{frontend_url}/admin/auth/callback"
-
-    if not code or not state:
-        return RedirectResponse(
-            url=f"{callback_url}?error=missing_params&message=Sign-in%20was%20cancelled%20or%20incomplete.%20Please%20try%20again."
-        )
-
-    client_id = os.environ.get('GOOGLE_CLIENT_ID')
-    client_secret = os.environ.get('GOOGLE_CLIENT_SECRET')
-    if not client_id or not client_secret:
-        return RedirectResponse(url=f"{callback_url}?error=config&message=Server%20OAuth%20not%20configured.")
-    saved_state = request.cookies.get("admin_oauth_state")
-    if not saved_state or saved_state != state or not state.startswith(ADMIN_GOOGLE_OAUTH_STATE):
-        return RedirectResponse(
-            url=f"{callback_url}?error=invalid_state&message=Invalid%20or%20expired%20sign-in.%20Please%20try%20again."
-        )
-    backend_url = os.environ.get('BACKEND_URL') or os.environ.get('RENDER_EXTERNAL_URL') or public_domain
-    redirect_uri = f"{backend_url.rstrip('/')}/api/admin/google-auth/callback"
-    token_resp = requests.post(
-        "https://oauth2.googleapis.com/token",
-        data={
-            "code": code,
-            "client_id": client_id,
-            "client_secret": client_secret,
-            "redirect_uri": redirect_uri,
-            "grant_type": "authorization_code",
-        },
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
-    )
-    if token_resp.status_code != 200:
-        logger.error(f"Google token error: {token_resp.text}")
-        return RedirectResponse(
-            url=f"{callback_url}?error=token_exchange&message=Sign-in%20failed.%20Please%20try%20again."
-        )
-    tokens = token_resp.json()
-    user_resp = requests.get(
-        "https://www.googleapis.com/oauth2/v2/userinfo",
-        headers={"Authorization": f"Bearer {tokens['access_token']}"},
-    )
-    if user_resp.status_code != 200:
-        return RedirectResponse(
-            url=f"{callback_url}?error=user_info&message=Could%20not%20get%20account%20info.%20Please%20try%20again."
-        )
-    user_info = user_resp.json()
-    email = (user_info.get("email") or "").lower().strip()
-    if not email:
-        return RedirectResponse(
-            url=f"{callback_url}?error=no_email&message=Email%20not%20provided%20by%20Google."
-        )
-    admin = await db.admin_users.find_one({"email": email}, {"_id": 0})
-    if not admin:
-        logger.warning(f"Google OAuth attempt for non-admin: {email}")
-        return RedirectResponse(
-            url=f"{callback_url}?error=unauthorized&message=This%20Google%20account%20is%20not%20authorized"
-        )
-    access_token = create_access_token(data={"sub": admin["username"]})
-    redirect_url = f"{callback_url}#token={access_token}"
-    response = RedirectResponse(url=redirect_url)
-    response.delete_cookie("admin_oauth_state")
-    logger.info(f"Admin logged in via Google: {admin['username']} ({email})")
-    return response
 
 class GoogleIdTokenRequest(BaseModel):
     credential: str
@@ -847,17 +725,6 @@ async def get_google_client_id():
     if not client_id:
         raise HTTPException(status_code=404, detail="Google OAuth not configured.")
     return {"client_id": client_id}
-
-class GoogleAuthSession(BaseModel):
-    session_id: str
-
-@api_router.post("/admin/google-auth/session")
-async def process_google_auth_session(auth_data: GoogleAuthSession, response: Response):
-    """Legacy Emergent Auth no longer used. Use Google OAuth via /admin/google-auth/start instead."""
-    raise HTTPException(
-        status_code=410,
-        detail="Emergent auth is no longer used. Please log in via the main Google login button (uses Google OAuth directly)."
-    )
 
 
 @api_router.get("/admin/auth/me")
