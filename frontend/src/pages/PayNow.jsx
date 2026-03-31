@@ -26,9 +26,10 @@ const PayNow = () => {
         origin_url: window.location.origin,
       });
 
-      if (response.data?.url) {
+      const checkoutUrl = response.data?.url || response.data?.checkout_url || response.data?.payment_link;
+      if (checkoutUrl) {
         setStatus('redirecting');
-        window.location.href = response.data.url;
+        window.location.href = checkoutUrl;
       } else {
         setStatus('error');
         setError('Unable to create payment session. Please contact us.');

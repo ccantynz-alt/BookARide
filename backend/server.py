@@ -6137,7 +6137,10 @@ async def create_payment_checkout(request: PaymentCheckoutRequest, http_request:
         cancel_url = f"{request.origin_url}/book-now"
         
         # Get amount from booking (server-side only, never from frontend)
+        # Check both top-level totalPrice and nested pricing.totalPrice
         amount = float(booking.get('totalPrice', 0))
+        if amount <= 0 and isinstance(booking.get('pricing'), dict):
+            amount = float(booking['pricing'].get('totalPrice', 0))
         if amount <= 0:
             raise HTTPException(status_code=400, detail="Invalid booking amount")
         
@@ -6222,7 +6225,10 @@ async def create_payment_checkout_link(request: PaymentCheckoutLinkRequest, http
         success_url = f"{request.origin_url}/payment-success?session_id={{CHECKOUT_SESSION_ID}}"
         cancel_url = f"{request.origin_url}/book-now"
 
+        # Check both top-level totalPrice and nested pricing.totalPrice
         amount = float(booking.get('totalPrice', 0))
+        if amount <= 0 and isinstance(booking.get('pricing'), dict):
+            amount = float(booking['pricing'].get('totalPrice', 0))
         if amount <= 0:
             raise HTTPException(status_code=400, detail="Invalid booking amount")
 
@@ -13431,7 +13437,7 @@ async def check_unpaid_bookings():
                 <p><strong>Pickup:</strong> {booking.get('pickupAddress', 'N/A')}</p>
                 <p><strong>Amount:</strong> ${total_price} NZD</p>
             """)
-            payment_body += email_button("Complete Payment", f"{frontend_url}/book-now", color="#f59e0b")
+            payment_body += email_button("Complete Payment", f"{frontend_url}/pay/{booking_id}", color="#f59e0b")
             payment_body += email_section(None, f"""
                 <p style="color:#6b7280;font-size:13px;">If you have any questions, simply reply to this email or visit <a href="{frontend_url}" style="color:#D4AF37;">bookaride.co.nz</a>.</p>
                 <p style="color:#6b7280;font-size:13px;">If you no longer need this transfer, you can ignore this email and the booking will be released.</p>

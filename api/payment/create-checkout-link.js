@@ -25,7 +25,9 @@ module.exports = async function handler(req, res) {
       return res.status(404).json({ detail: 'Booking not found' });
     }
 
-    const amount = parseFloat(booking.totalPrice || 0);
+    const amount = parseFloat(
+      (booking.pricing && booking.pricing.totalPrice) || booking.totalPrice || 0
+    );
     if (amount <= 0) {
       return res.status(400).json({ detail: 'Invalid booking amount' });
     }
@@ -64,6 +66,7 @@ module.exports = async function handler(req, res) {
 
     return res.status(200).json({
       session_id: session.id,
+      url: session.url,
       checkout_url: session.url,
       payment_link: session.url,
     });
