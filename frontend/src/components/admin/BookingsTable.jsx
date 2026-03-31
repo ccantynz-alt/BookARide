@@ -277,8 +277,17 @@ const BookingsTable = ({
                   {/* Quick actions */}
                   <td className="px-3 py-4" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => onEditBooking(booking)} className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors" title="Edit">
-                        <Edit2 className="w-3.5 h-3.5 text-slate-400" />
+                      <button onClick={() => onViewDetails(booking)} className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors" title="View details">
+                        <Eye className="w-3.5 h-3.5 text-slate-400 hover:text-slate-600" />
+                      </button>
+                      <button onClick={() => onEditBooking(booking)} className="p-1.5 rounded-lg hover:bg-indigo-50 transition-colors" title="Edit">
+                        <Edit2 className="w-3.5 h-3.5 text-slate-400 hover:text-indigo-600" />
+                      </button>
+                      <button onClick={() => onSendEmail(booking)} className="p-1.5 rounded-lg hover:bg-emerald-50 transition-colors" title="Email">
+                        <Mail className="w-3.5 h-3.5 text-slate-400 hover:text-emerald-600" />
+                      </button>
+                      <button onClick={() => onResendConfirmation(booking.id)} className="p-1.5 rounded-lg hover:bg-amber-50 transition-colors" title="Resend confirmation">
+                        <RefreshCw className="w-3.5 h-3.5 text-slate-400 hover:text-amber-600" />
                       </button>
                       <button onClick={() => onDeleteBooking(booking.id, booking.name, true)} className="p-1.5 rounded-lg hover:bg-red-50 transition-colors" title="Delete">
                         <Trash2 className="w-3.5 h-3.5 text-slate-400 hover:text-red-500" />
