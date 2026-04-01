@@ -1,6 +1,6 @@
 /**
  * POST /api/bookings — Create a new booking
- * GET  /api/bookings — List bookings (admin, requires auth)
+ * GET  /api/bookings — List bookings (admin)
  *
  * Replaces: Python backend POST /api/bookings, GET /api/bookings
  */
@@ -64,7 +64,6 @@ async function createBooking(req, res) {
     // Generate unique ID and reference number
     const id = uuidv4();
     const refNumber = await getNextReferenceNumber();
-    const nzDate = new Date().toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' });
 
     // Normalize flight number fields
     const outboundFlight = booking.flightNumber || booking.departureFlightNumber || booking.arrivalFlightNumber || '';
@@ -135,16 +134,62 @@ async function createBooking(req, res) {
 
 async function listBookings(req, res) {
   try {
-    // TODO: Add JWT auth check for admin
-    const bookings = await findMany('bookings', {}, {
-      limit: 200,
-      sort: { createdAt: -1 },
-    });
+    const sql = getDb();
 
-    // Exclude shuttle bookings (shuttle service removed)
-    const filtered = bookings.filter(b => b.serviceType !== 'shared-shuttle');
+    // Parse query parameters from the frontend
+    const page = parseInt(req.query.page) || 1;
+    const limitParam = parseInt(req.query.limit);
+    // limit=0 means "load all" (frontend convention) — cap at 5000
+    const limit = limitParam === 0 ? 5000 : (limitParam || 5000);
+    const offset = (page - 1) * (limitParam === 0 ? 0 : (limitParam || 5000));
+    const search = req.query.search || '';
+    const dateFrom = req.query.date_from || '';
+    const dateTo = req.query.date_to || '';
 
-    return res.status(200).json(filtered);
+    // Build query — exclude shared-shuttle (removed service)
+    let conditions = [`data->>'serviceType' != 'shared-shuttle' OR data->>'serviceType' IS NULL`];
+    let values = [];
+    let paramIdx = 1;
+
+    // Date filters
+    if (dateFrom) {
+      conditions.push(`data->>'date' >= $${paramIdx}`);
+      values.push(dateFrom);
+      paramIdx++;
+    }
+    if (dateTo) {
+      conditions.push(`data->>'date' <= $${paramIdx}`);
+      values.push(dateTo);
+      paramIdx++;
+    }
+
+    // Search filter
+    if (search) {
+      conditions.push(`(
+        data->>'name' ILIKE $${paramIdx} OR
+        data->>'email' ILIKE $${paramIdx} OR
+        data->>'phone' ILIKE $${paramIdx} OR
+        data->>'referenceNumber' ILIKE $${paramIdx} OR
+        data->>'pickupAddress' ILIKE $${paramIdx} OR
+        data->>'dropoffAddress' ILIKE $${paramIdx}
+      )`);
+      values.push(`%${search}%`);
+      paramIdx++;
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    const query = `
+      SELECT data FROM bookings
+      ${whereClause}
+      ORDER BY created_at DESC
+      LIMIT ${limit} OFFSET ${offset}
+    `;
+
+    const rows = await sql(query, values);
+    const bookings = rows.map(r => r.data);
+
+    return res.status(200).json(bookings);
   } catch (err) {
     console.error('Error listing bookings:', err);
     return res.status(500).json({ detail: `Error listing bookings: ${err.message}` });
