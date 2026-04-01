@@ -182,7 +182,7 @@ async function listBookings(req, res) {
     const query = `
       SELECT data FROM bookings
       ${whereClause}
-      ORDER BY created_at DESC
+      ORDER BY data->>'date' ASC, data->>'time' ASC
       LIMIT ${limit} OFFSET ${offset}
     `;
 

@@ -2190,7 +2190,7 @@ export const AdminDashboard = () => {
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
           <button onClick={() => setStatusFilter('all')} className="bg-white/60 backdrop-blur-xl rounded-2xl border border-white/30 p-5 shadow-sm shadow-black/5 hover:shadow-md hover:bg-white/80 transition-all text-left">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em]">Total</p>
-            <p className="text-3xl font-bold text-slate-900 mt-2 tabular-nums">{stats.total}</p>
+            <p className="text-3xl font-bold text-gold mt-2 tabular-nums">{stats.total}</p>
           </button>
           <button onClick={() => setStatusFilter('pending')} className="bg-white/60 backdrop-blur-xl rounded-2xl border border-white/30 p-5 shadow-sm shadow-black/5 hover:shadow-md hover:bg-white/80 transition-all text-left">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em]">Pending</p>
@@ -2250,7 +2250,7 @@ export const AdminDashboard = () => {
               <button onClick={handleSendReminders} className="text-xs font-medium text-slate-500 hover:text-slate-900 transition-colors px-3 py-2" title="Remind tomorrow's bookings">
                 <Bell className="w-3.5 h-3.5 inline mr-1" />Remind
               </button>
-              <button onClick={() => setShowCreateBookingModal(true)} className="bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold h-10 px-5 rounded-xl transition-colors">
+              <button onClick={() => setShowCreateBookingModal(true)} className="bg-gold hover:bg-gold/90 text-black text-sm font-semibold h-10 px-5 rounded-xl transition-colors">
                 + New Booking
               </button>
             </div>
