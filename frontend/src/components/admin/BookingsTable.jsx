@@ -1,5 +1,5 @@
 import React from 'react';
-import { Eye, Edit2, Mail, RefreshCw, Trash2, CheckCircle, Clock, Square, CheckSquare, Phone, Plane, ArrowRight, CreditCard } from 'lucide-react';
+import { Eye, Edit2, Mail, RefreshCw, Trash2, CheckCircle, Clock, Square, CheckSquare, Phone, Plane, ArrowRight, CreditCard, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 const formatDate = (dateStr) => {
@@ -48,7 +48,11 @@ const BookingsTable = ({
   restoringFromServerBackup,
   loadAllBookings,
   onLoadAll,
+  currentPage = 1,
+  bookingsPerPage = 50,
+  onPageChange,
 }) => {
+  const totalPages = bookingsPerPage > 0 ? Math.ceil(totalBookings / bookingsPerPage) : 1;
   const safeSelected = selectedBookings instanceof Set ? selectedBookings : new Set();
 
   if (loading) {
@@ -303,20 +307,47 @@ const BookingsTable = ({
         </table>
       </div>
 
-      {/* Footer */}
+      {/* Footer with pagination */}
       <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
         <p className="text-[12px] text-slate-400 font-medium tracking-wide">
           {bookings.length} booking{bookings.length !== 1 ? 's' : ''}
           {totalBookings > bookings.length && ` of ${totalBookings}`}
         </p>
-        {!loadAllBookings && totalBookings > bookings.length && onLoadAll && (
-          <button
-            onClick={onLoadAll}
-            className="text-[12px] text-slate-500 hover:text-slate-800 font-medium underline underline-offset-4 transition-colors"
-          >
-            Load all bookings
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          {/* Pagination controls */}
+          {!loadAllBookings && totalPages > 1 && onPageChange && (
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => onPageChange(currentPage - 1)}
+                disabled={currentPage <= 1}
+                className="p-1 rounded hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                title="Previous page"
+              >
+                <ChevronLeft className="w-4 h-4 text-slate-500" />
+              </button>
+              <span className="text-[12px] text-slate-500 font-medium px-2">
+                {currentPage} / {totalPages}
+              </span>
+              <button
+                onClick={() => onPageChange(currentPage + 1)}
+                disabled={currentPage >= totalPages}
+                className="p-1 rounded hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                title="Next page"
+              >
+                <ChevronRight className="w-4 h-4 text-slate-500" />
+              </button>
+            </div>
+          )}
+          {/* Load all option */}
+          {!loadAllBookings && totalBookings > bookings.length && onLoadAll && (
+            <button
+              onClick={onLoadAll}
+              className="text-[12px] text-slate-500 hover:text-slate-800 font-medium underline underline-offset-4 transition-colors"
+            >
+              Load all bookings
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -2354,7 +2354,7 @@ export const AdminDashboard = () => {
         <BookingsTable
           bookings={filteredBookings}
           loading={loading}
-          totalBookings={bookings.length}
+          totalBookings={totalBookings || bookings.length}
           selectedBookings={safeSelectedSet}
           onSelectBooking={(id) => {
             const next = new Set(safeSelectedSet);
@@ -2380,6 +2380,11 @@ export const AdminDashboard = () => {
           onOpenDeletedTab={() => setActiveTab('deleted')}
           onRestoreFromServer={handleRestoreFromServerBackup}
           restoringFromServerBackup={restoringFromServerBackup}
+          loadAllBookings={loadAllBookings}
+          onLoadAll={() => { setLoadAllBookings(true); fetchBookingsRef.current?.(1, false); }}
+          currentPage={currentPage}
+          bookingsPerPage={bookingsPerPage}
+          onPageChange={(page) => { setCurrentPage(page); fetchBookingsRef.current?.(page, false); }}
         />
 
         </TabsContent>
