@@ -188,10 +188,16 @@ async function listBookings(req, res) {
       LIMIT ${limit} OFFSET ${offset}
     `;
 
-    const rows = await sql(query, values);
+    // Get total count for pagination (same filters, no LIMIT/OFFSET)
+    const countQuery = `SELECT COUNT(*) as cnt FROM bookings ${whereClause}`;
+    const [countResult, rows] = await Promise.all([
+      sql(countQuery, values),
+      sql(query, values),
+    ]);
+    const total = parseInt(countResult[0]?.cnt || '0', 10);
     const bookings = rows.map(r => r.data);
 
-    return res.status(200).json(bookings);
+    return res.status(200).json({ bookings, total });
   } catch (err) {
     console.error('Error listing bookings:', err);
     return res.status(500).json({ detail: `Error listing bookings: ${err.message}` });

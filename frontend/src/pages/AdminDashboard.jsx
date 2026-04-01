@@ -599,11 +599,11 @@ export const AdminDashboard = () => {
   // Pagination state (must be before useEffects that depend on dateFrom/dateTo)
   const [currentPage, setCurrentPage] = useState(1);
   const [totalBookings, setTotalBookings] = useState(0);
-  const [bookingsPerPage] = useState(200);
+  const [bookingsPerPage] = useState(50);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
-  const [loadAllBookings] = useState(true); // Always load full list so we never miss a booking
+  const [loadAllBookings, setLoadAllBookings] = useState(false); // Paginated by default for performance
 
   // Use refs only - never reference fetchBookings/filterBookings here (they are declared later)
   useEffect(() => {
@@ -613,6 +613,17 @@ export const AdminDashboard = () => {
     if (!localStorage.getItem('adminToken')) return;
     if (dateFrom || dateTo) fetchBookingsRef.current?.(1, false);
   }, [dateFrom, dateTo]);
+
+  // Debounced server-side search: when searchTerm changes, re-fetch from API after 300ms
+  const searchDebounceRef = useRef(null);
+  useEffect(() => {
+    if (!localStorage.getItem('adminToken')) return;
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => {
+      fetchBookingsRef.current?.(1, false);
+    }, 300);
+    return () => { if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current); };
+  }, [searchTerm]);
 
   // When list is empty (no active bookings in DB at all), fetch active/deleted counts so we can show "0 active, 47 deleted"
   // NOTE: use bookings.length (raw fetch result), NOT filteredBookings.length — filters can hide bookings that exist
@@ -658,14 +669,18 @@ export const AdminDashboard = () => {
       };
       if (dateFrom) params.date_from = dateFrom;
       if (dateTo) params.date_to = dateTo;
-      
+      if (searchTerm && searchTerm.trim().length >= 2) params.search = searchTerm.trim();
+
       const response = await axios.get(`${API}/bookings`, {
         ...getAuthHeaders(),
         params
       });
-      
-      const newBookings = Array.isArray(response.data) ? response.data : [];
-      
+
+      // Support both { bookings, total } wrapper and plain array (backward compat)
+      const responseData = response.data;
+      const newBookings = Array.isArray(responseData) ? responseData : (Array.isArray(responseData?.bookings) ? responseData.bookings : []);
+      if (responseData?.total !== undefined) setTotalBookings(responseData.total);
+
       // Cache a small subset for offline fallback (keeps localStorage fast)
       try {
         const toCache = (append ? newBookings : newBookings.slice(0, 50));
@@ -743,8 +758,11 @@ export const AdminDashboard = () => {
       };
       if (dateFrom) params.date_from = dateFrom;
       if (dateTo) params.date_to = dateTo;
+      if (searchTerm && searchTerm.trim().length >= 2) params.search = searchTerm.trim();
       const response = await axios.get(`${API}/bookings`, { ...getAuthHeaders(), params });
-      const fresh = Array.isArray(response.data) ? response.data : [];
+      const rd = response.data;
+      const fresh = Array.isArray(rd) ? rd : (Array.isArray(rd?.bookings) ? rd.bookings : []);
+      if (rd?.total !== undefined) setTotalBookings(rd.total);
       setBookings(fresh);
       try {
         localStorage.setItem('cachedBookings', JSON.stringify(fresh.slice(0, 50)));
@@ -946,10 +964,13 @@ export const AdminDashboard = () => {
       navigate('/admin/login');
       return;
     }
-    fetchBookingsRef.current?.();
-    setTimeout(() => fetchDrivers(), 600);
-    checkXeroStatus();
-    fetchArchivedCount();
+    // Fire all initial loads in parallel for faster first paint
+    Promise.all([
+      fetchBookingsRef.current?.(),
+      fetchDrivers(),
+      checkXeroStatus(),
+      fetchArchivedCount(),
+    ]).catch(() => {});
   }, [navigate]);
 
   const connectXero = async () => {

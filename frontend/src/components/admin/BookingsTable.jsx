@@ -46,6 +46,8 @@ const BookingsTable = ({
   onOpenDeletedTab,
   onRestoreFromServer,
   restoringFromServerBackup,
+  loadAllBookings,
+  onLoadAll,
 }) => {
   const safeSelected = selectedBookings instanceof Set ? selectedBookings : new Set();
 
@@ -302,11 +304,19 @@ const BookingsTable = ({
       </div>
 
       {/* Footer */}
-      <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/50">
+      <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
         <p className="text-[12px] text-slate-400 font-medium tracking-wide">
           {bookings.length} booking{bookings.length !== 1 ? 's' : ''}
           {totalBookings > bookings.length && ` of ${totalBookings}`}
         </p>
+        {!loadAllBookings && totalBookings > bookings.length && onLoadAll && (
+          <button
+            onClick={onLoadAll}
+            className="text-[12px] text-slate-500 hover:text-slate-800 font-medium underline underline-offset-4 transition-colors"
+          >
+            Load all bookings
+          </button>
+        )}
       </div>
     </div>
   );
