@@ -2541,7 +2541,7 @@ export const AdminDashboard = () => {
       {/* Edit Booking Modal */}
       <Dialog open={showEditBookingModal} onOpenChange={(open) => {
         setShowEditBookingModal(open);
-        if (!open) { setEditingBooking(null); clearEditAddressSuggestions(); }
+        if (!open) { setEditingBooking(null); }
       }}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
