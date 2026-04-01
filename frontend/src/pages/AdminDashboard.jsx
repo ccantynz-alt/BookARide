@@ -2206,7 +2206,7 @@ export const AdminDashboard = () => {
           </button>
           <div className="bg-slate-900 rounded-2xl p-5 shadow-lg shadow-slate-900/20 text-white">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em]">Revenue</p>
-            <p className="text-3xl font-bold mt-2 tabular-nums">${(stats.totalRevenue ?? 0).toFixed(0)}</p>
+            <p className="text-3xl font-bold text-gold mt-2 tabular-nums">${(stats.totalRevenue ?? 0).toFixed(0)}</p>
           </div>
         </div>
 
