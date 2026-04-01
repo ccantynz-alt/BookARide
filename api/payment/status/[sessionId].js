@@ -4,6 +4,7 @@
  * Used by PaymentSuccess.jsx to poll until payment confirms.
  */
 const { findOne, updateOne } = require('../../_lib/db');
+const { sendEmail } = require('../../_lib/mailgun');
 
 module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -40,6 +41,39 @@ module.exports = async function handler(req, res) {
       });
       // Refresh booking
       booking = await findOne('bookings', { id: bookingId });
+
+      // Send admin notification (webhook may not have arrived yet)
+      const customerName = `${booking.firstName || ''} ${booking.lastName || ''}`.trim() || booking.name || 'Customer';
+      const adminEmail = process.env.BOOKINGS_NOTIFICATION_EMAIL || 'bookings@bookaride.co.nz';
+      sendEmail({
+        to: adminEmail,
+        subject: `PAID: Booking #${booking.referenceNumber} - ${customerName}`,
+        html: `<h2>Payment Received</h2>
+          <p><strong>Ref:</strong> #${booking.referenceNumber}</p>
+          <p><strong>Customer:</strong> ${customerName} (${booking.email})</p>
+          <p><strong>Phone:</strong> ${booking.phone || 'N/A'}</p>
+          <p><strong>Amount:</strong> $${booking.totalPrice} NZD</p>
+          <p><strong>Route:</strong> ${booking.pickupAddress} → ${booking.dropoffAddress}</p>
+          <p><strong>Date:</strong> ${booking.date} at ${booking.time}</p>
+          <p><strong>Passengers:</strong> ${booking.passengers || 1}</p>
+          <p style="color:#16a34a;font-weight:bold;">Payment confirmed via Stripe</p>`,
+      }).catch(err => console.error('Admin payment notification failed:', err.message));
+
+      // Send customer confirmation
+      sendEmail({
+        to: booking.email,
+        subject: `Booking Confirmed - Ref #${booking.referenceNumber}`,
+        html: `<h2>Payment Successful!</h2>
+          <p>Hi ${customerName},</p>
+          <p>Your booking has been confirmed and payment received.</p>
+          <p><strong>Reference:</strong> #${booking.referenceNumber}</p>
+          <p><strong>Pickup:</strong> ${booking.pickupAddress}</p>
+          <p><strong>Dropoff:</strong> ${booking.dropoffAddress}</p>
+          <p><strong>Date:</strong> ${booking.date} at ${booking.time}</p>
+          <p><strong>Amount Paid:</strong> $${booking.totalPrice} NZD</p>
+          <p><strong>Payment Method:</strong> Credit/Debit Card</p>
+          <p>Thank you for choosing BookaRide!</p>`,
+      }).catch(err => console.error('Customer confirmation failed:', err.message));
     }
 
     return res.status(200).json({
