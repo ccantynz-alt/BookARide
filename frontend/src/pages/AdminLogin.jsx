@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Lock, Loader2, Mail } from 'lucide-react';
 import { Button } from '../components/ui/button';
@@ -13,78 +13,7 @@ export const AdminLogin = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
-  const [gisReady, setGisReady] = useState(false);
-  const [gisError, setGisError] = useState(false);
-  const googleBtnRef = useRef(null);
   const navigate = useNavigate();
-
-  const handleGoogleCredential = useCallback(async (response) => {
-    setGoogleLoading(true);
-    try {
-      const result = await axios.post(`${API}/admin/google-auth/verify-token`, {
-        credential: response.credential,
-      });
-      localStorage.setItem('adminToken', result.data.access_token);
-      localStorage.setItem('adminAuth', 'true');
-      toast.success('Google login successful!');
-      navigate('/admin/dashboard');
-    } catch (error) {
-      const msg = error.response?.data?.detail || 'Google sign-in failed. Please try again.';
-      toast.error(msg);
-    } finally {
-      setGoogleLoading(false);
-    }
-  }, [navigate]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const initGoogleSignIn = async () => {
-      try {
-        const res = await axios.get(`${API}/admin/google-auth/client-id`);
-        if (cancelled) return;
-        const clientId = res.data.client_id;
-
-        if (!document.querySelector(`script[src="${GOOGLE_GIS_SCRIPT}"]`)) {
-          await new Promise((resolve, reject) => {
-            const script = document.createElement('script');
-            script.src = GOOGLE_GIS_SCRIPT;
-            script.async = true;
-            script.onload = resolve;
-            script.onerror = reject;
-            document.head.appendChild(script);
-          });
-        }
-
-        if (cancelled || !window.google?.accounts?.id) return;
-
-        window.google.accounts.id.initialize({
-          client_id: clientId,
-          callback: handleGoogleCredential,
-          auto_select: false,
-        });
-
-        // Render Google's own sign-in button into our hidden container
-        if (googleBtnRef.current) {
-          window.google.accounts.id.renderButton(googleBtnRef.current, {
-            type: 'standard',
-            theme: 'outline',
-            size: 'large',
-            width: googleBtnRef.current.offsetWidth,
-            text: 'signin_with',
-          });
-        }
-
-        if (!cancelled) setGisReady(true);
-      } catch {
-        if (!cancelled) setGisError(true);
-      }
-    };
-
-    initGoogleSignIn();
-    return () => { cancelled = true; };
-  }, [handleGoogleCredential]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -92,8 +21,8 @@ export const AdminLogin = () => {
 
     try {
       const response = await axios.post(`${API}/admin/login`, {
-        username: username,
-        password: password
+        username,
+        password,
       });
 
       localStorage.setItem('adminToken', response.data.access_token);
@@ -182,26 +111,14 @@ export const AdminLogin = () => {
             href={`${BACKEND_URL}/api/admin/google-auth/start`}
             className="flex items-center justify-center w-full gap-2 py-3 px-4 border-2 border-gray-300 rounded-md bg-white hover:bg-gray-50 hover:border-gray-400 transition-colors font-medium text-gray-700 no-underline shadow-sm"
           >
-            {!gisReady && !gisError && (
-              <div className="flex items-center justify-center w-full gap-2 py-3 px-4 border-2 border-gray-200 rounded-md bg-gray-50 text-gray-400 font-medium">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Loading Google Sign-In...
-              </div>
-            )}
-          </div>
-
-          {gisError && (
-            <p className="text-sm text-red-500 text-center mt-2">
-              Google Sign-In unavailable. Please use username and password.
-            </p>
-          )}
-
-          {googleLoading && (
-            <div className="flex items-center justify-center gap-2 mt-3 text-sm text-gray-500">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Verifying your Google account...
-            </div>
-          )}
+            <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+            </svg>
+            Sign in with Google
+          </a>
 
           {/* Forgot Password Link */}
           <div className="mt-6 text-center">
