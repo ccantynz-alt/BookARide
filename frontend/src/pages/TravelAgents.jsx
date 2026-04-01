@@ -11,9 +11,7 @@ import { Textarea } from '../components/ui/textarea';
 import { toast } from 'sonner';
 import axios from 'axios';
 import SEO from '../components/SEO';
-
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+import { API } from '../config/api';
 
 const TravelAgents = () => {
   const [formData, setFormData] = useState({
