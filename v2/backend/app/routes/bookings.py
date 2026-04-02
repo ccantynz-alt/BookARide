@@ -43,6 +43,40 @@ async def _send_booking_notifications(booking_dict: dict):
         logger.error(f"CRITICAL: Admin notification failed: {e}")
 
 
+async def _check_booking_conflicts(booking_dict: dict):
+    """Check for driver double-bookings (overlapping pickup times)."""
+    from app.main import db
+    from app.services.email import send_email, ADMIN_EMAIL
+
+    date = booking_dict.get("date", "")
+    time = booking_dict.get("time", "")
+    if not date or not time:
+        return
+
+    existing = await db.bookings.find(
+        {"date": date, "status": {"$in": ["confirmed", "pending"]}},
+        {"_id": 0},
+    ).to_list(10000)
+
+    conflicts = []
+    for b in existing:
+        d = b.get("data", b) if isinstance(b.get("data"), dict) else b
+        if d.get("id") == booking_dict.get("id"):
+            continue
+        if d.get("time") == time and d.get("assignedDriver") and d.get("assignedDriver") == booking_dict.get("assignedDriver"):
+            conflicts.append(d)
+
+    if conflicts:
+        ref = booking_dict.get("referenceNumber", "?")
+        conflict_refs = ", ".join(f"#{c.get('referenceNumber', '?')}" for c in conflicts)
+        logger.warning(f"CONFLICT: Booking #{ref} conflicts with {conflict_refs}")
+        await send_email(
+            to=ADMIN_EMAIL,
+            subject=f"Driver Conflict Alert - Booking #{ref}",
+            html=f"<p>Booking <strong>#{ref}</strong> at {time} on {date} conflicts with: {conflict_refs}. Same driver assigned at the same time.</p>",
+        )
+
+
 @router.post("/bookings")
 async def create_booking(booking: BookingCreate, background_tasks: BackgroundTasks):
     from app.main import db
@@ -71,8 +105,9 @@ async def create_booking(booking: BookingCreate, background_tasks: BackgroundTas
 
     logger.info(f"Booking created: {booking_obj.id} ref #{ref_number}")
 
-    # Send confirmation emails in background
+    # Send confirmation emails and check for conflicts in background
     background_tasks.add_task(_send_booking_notifications, booking_dict)
+    background_tasks.add_task(_check_booking_conflicts, booking_dict)
 
     return booking_dict
 

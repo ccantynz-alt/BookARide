@@ -10,8 +10,7 @@ const FOOTER_LINKS = {
   ],
   Company: [
     { label: 'About Us', path: '/about' },
-    { label: 'Drive With Us', path: '/drive-with-us' },
-    { label: 'Travel Agents', path: '/travel-agents' },
+    { label: 'Book Now', path: '/book-now' },
     { label: 'Contact', path: '/contact' },
   ],
   Legal: [
