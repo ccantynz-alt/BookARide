@@ -10,22 +10,29 @@ const { v4: uuidv4 } = require('uuid');
 
 async function getNextReferenceNumber() {
   const sql = getDb();
-  // Atomic increment using a counter row
-  const result = await sql`
-    INSERT INTO counters (data)
-    VALUES ('{"name": "booking_reference", "value": 1}'::jsonb)
-    ON CONFLICT ((data->>'name'))
-    DO UPDATE SET data = jsonb_set(counters.data, '{value}', to_jsonb((counters.data->>'value')::int + 1))
-    RETURNING (data->>'value')::int as value
-  `.catch(() => null);
-
-  if (result && result.length > 0) {
-    return result[0].value;
+  try {
+    // Use the id column (which HAS a unique constraint) for atomic upsert
+    const result = await sql`
+      INSERT INTO counters (id, data)
+      VALUES ('booking_reference', '{"name": "booking_reference", "value": 1}'::jsonb)
+      ON CONFLICT (id)
+      DO UPDATE SET data = jsonb_set(counters.data, '{value}', to_jsonb((counters.data->>'value')::int + 1))
+      RETURNING (data->>'value')::int as value
+    `;
+    if (result && result.length > 0) {
+      return result[0].value;
+    }
+  } catch (err) {
+    console.error('Counter increment failed:', err.message);
   }
 
-  // Fallback: count existing bookings
-  const countResult = await sql`SELECT COUNT(*) as cnt FROM bookings`;
-  return (countResult[0]?.cnt || 0) + 1;
+  // Fallback: find the highest existing reference number and add 1
+  const sql2 = getDb();
+  const maxRef = await sql2`
+    SELECT MAX((data->>'referenceNumber')::int) as max_ref FROM bookings
+    WHERE data->>'referenceNumber' IS NOT NULL
+  `.catch(() => [{ max_ref: 0 }]);
+  return (parseInt(maxRef[0]?.max_ref) || 0) + 1;
 }
 
 function isWithin24Hours(dateStr, timeStr) {
@@ -72,9 +79,13 @@ async function createBooking(req, res) {
     // Check if within 24 hours
     const requiresApproval = isWithin24Hours(booking.date, booking.time);
 
+    // Ensure name field is always set (frontend may send name, or firstName+lastName)
+    const resolvedName = booking.name || `${booking.firstName || ''} ${booking.lastName || ''}`.trim() || 'Customer';
+
     const bookingDoc = {
       ...booking,
       id,
+      name: resolvedName,
       referenceNumber: String(refNumber),
       flightNumber: outboundFlight,
       departureFlightNumber: outboundFlight,
@@ -108,13 +119,14 @@ async function createBooking(req, res) {
 
     // Send admin notification (fire-and-forget, don't block response)
     const adminEmail = process.env.BOOKINGS_NOTIFICATION_EMAIL || 'bookings@bookaride.co.nz';
+    const customerName = booking.name || `${booking.firstName || ''} ${booking.lastName || ''}`.trim() || 'Customer';
     sendEmail({
       to: adminEmail,
       subject: requiresApproval
         ? `URGENT: Booking #${refNumber} needs approval (within 24hrs)`
-        : `New Booking #${refNumber} - ${booking.firstName} ${booking.lastName}`,
+        : `New Booking #${refNumber} - ${customerName}`,
       html: `<h2>New Booking #${refNumber}</h2>
-        <p><strong>Name:</strong> ${booking.firstName} ${booking.lastName}</p>
+        <p><strong>Name:</strong> ${customerName}</p>
         <p><strong>Email:</strong> ${booking.email}</p>
         <p><strong>Phone:</strong> ${booking.phone}</p>
         <p><strong>Pickup:</strong> ${booking.pickupAddress}</p>
