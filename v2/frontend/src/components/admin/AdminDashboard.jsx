@@ -1,13 +1,16 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   LayoutDashboard, CalendarCheck, Trash2, Archive, Users, Car,
   LogOut, RefreshCw, Loader2, DollarSign, Clock, CheckCircle,
   XCircle, AlertCircle, ChevronDown, Mail, Send, MoreHorizontal,
-  Eye, Edit3, RotateCcw
+  Eye, Edit3, RotateCcw, Plus
 } from 'lucide-react'
 import api from '../../lib/api'
+
+const EditBookingModal = lazy(() => import('./EditBookingModal'))
+const CreateBookingModal = lazy(() => import('./CreateBookingModal'))
 
 const TABS = [
   { id: 'bookings', label: 'Bookings', icon: CalendarCheck },
@@ -86,6 +89,9 @@ function BookingRow({ booking, onAction }) {
         </button>
         {menuOpen && (
           <div className="absolute right-4 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1 w-48">
+            <button onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onAction('edit', booking) }} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2 cursor-pointer">
+              <Edit3 className="w-4 h-4 text-gray-500" /> Edit
+            </button>
             <button onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onAction('confirm', booking) }} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2 cursor-pointer">
               <CheckCircle className="w-4 h-4 text-blue-500" /> Confirm
             </button>
@@ -243,6 +249,8 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState(false)
   const [toast, setToast] = useState(null)
+  const [editBooking, setEditBooking] = useState(null)
+  const [showCreate, setShowCreate] = useState(false)
   const navigate = useNavigate()
 
   const showToast = (msg, type = 'success') => {
@@ -304,6 +312,11 @@ export default function AdminDashboard() {
     const d = booking.data || booking
     const id = d.id
     if (!id) return
+
+    if (action === 'edit') {
+      setEditBooking(booking)
+      return
+    }
 
     setActionLoading(true)
     try {
@@ -399,7 +412,13 @@ export default function AdminDashboard() {
 
         {/* Tabs */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="border-b border-gray-200 flex overflow-x-auto">
+          <div className="border-b border-gray-200 flex overflow-x-auto items-center">
+            <button
+              onClick={() => setShowCreate(true)}
+              className="ml-auto mr-3 px-3 py-1.5 text-sm bg-gold text-white rounded-lg hover:bg-gold-600 flex items-center gap-1.5 cursor-pointer shrink-0"
+            >
+              <Plus className="w-4 h-4" /> New Booking
+            </button>
             {TABS.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
@@ -455,6 +474,23 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Modals */}
+      <Suspense fallback={null}>
+        {editBooking && (
+          <EditBookingModal
+            booking={editBooking}
+            onClose={() => setEditBooking(null)}
+            onSaved={loadDashboard}
+          />
+        )}
+        {showCreate && (
+          <CreateBookingModal
+            onClose={() => setShowCreate(false)}
+            onCreated={loadDashboard}
+          />
+        )}
+      </Suspense>
     </div>
   )
 }
