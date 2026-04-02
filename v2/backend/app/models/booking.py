@@ -48,12 +48,12 @@ class BookingCreate(BaseModel):
     @model_validator(mode="after")
     def validate_return_flight(self):
         service = (self.serviceType or "").lower()
-        is_airport = "airport" in service or "shuttle" in service
+        is_airport = "airport" in service
         if is_airport and self.bookReturn:
             flight = self.returnFlightNumber or self.returnDepartureFlightNumber or ""
             if not flight.strip():
                 raise ValueError(
-                    "Return flight number is required for airport shuttle return bookings."
+                    "Return flight number is required for airport transfer return bookings."
                 )
         return self
 

@@ -35,7 +35,7 @@ export default function Footer() {
             </Link>
             <p className="text-sm text-gray-400 mb-6 leading-relaxed">
               Auckland&apos;s trusted airport transfer service. Door-to-door
-              private and shared shuttle rides at the best prices.
+              private transfers at the best prices.
             </p>
             <div className="space-y-3 text-sm">
               <a href="mailto:info@bookaride.co.nz" className="flex items-center gap-2 hover:text-gold transition-colors">

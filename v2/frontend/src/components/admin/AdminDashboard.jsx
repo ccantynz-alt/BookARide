@@ -2,10 +2,10 @@ import { useState, useEffect, useCallback, lazy, Suspense } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
-  LayoutDashboard, CalendarCheck, Trash2, Archive, Users, Car,
+  LayoutDashboard, CalendarCheck, Trash2, Archive, Users,
   LogOut, RefreshCw, Loader2, DollarSign, Clock, CheckCircle,
-  XCircle, AlertCircle, ChevronDown, Mail, Send, MoreHorizontal,
-  Eye, Edit3, RotateCcw, Plus
+  XCircle, AlertCircle, Mail, Send, MoreHorizontal,
+  Edit3, Plus
 } from 'lucide-react'
 import api from '../../lib/api'
 
@@ -17,7 +17,6 @@ const TABS = [
   { id: 'deleted', label: 'Deleted', icon: Trash2 },
   { id: 'archive', label: 'Archive', icon: Archive },
   { id: 'customers', label: 'Customers', icon: Users },
-  { id: 'drivers', label: 'Drivers', icon: Car },
 ]
 
 const STATUS_COLORS = {
@@ -202,42 +201,6 @@ function CustomersTable({ customers, loading }) {
   )
 }
 
-function DriversTable({ drivers, loading }) {
-  if (loading) {
-    return <div className="text-center py-12"><Loader2 className="w-8 h-8 text-gold animate-spin mx-auto" /></div>
-  }
-  if (!drivers || drivers.length === 0) {
-    return <div className="text-center py-12 text-gray-400">No drivers found</div>
-  }
-
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full">
-        <thead>
-          <tr className="bg-gray-50 border-b border-gray-200">
-            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">License</th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vehicle</th>
-          </tr>
-        </thead>
-        <tbody>
-          {drivers.map((d) => (
-            <tr key={d.id || d.email} className="border-b border-gray-100 hover:bg-gray-50">
-              <td className="px-4 py-3 text-sm font-medium text-gray-900">{d.name}</td>
-              <td className="px-4 py-3 text-sm text-gray-600">{d.phone}</td>
-              <td className="px-4 py-3 text-sm text-gray-600">{d.email}</td>
-              <td className="px-4 py-3 text-sm text-gray-600">{d.license_number || '-'}</td>
-              <td className="px-4 py-3 text-sm text-gray-600">{d.vehicle || '-'}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )
-}
-
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('bookings')
   const [stats, setStats] = useState(null)
@@ -245,7 +208,6 @@ export default function AdminDashboard() {
   const [deletedBookings, setDeletedBookings] = useState([])
   const [archivedBookings, setArchivedBookings] = useState([])
   const [customers, setCustomers] = useState([])
-  const [drivers, setDrivers] = useState([])
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState(false)
   const [toast, setToast] = useState(null)
@@ -299,9 +261,6 @@ export default function AdminDashboard() {
       } else if (tab === 'customers' && customers.length === 0) {
         const res = await api.get('/admin/customers')
         setCustomers(res.data.customers || [])
-      } else if (tab === 'drivers' && drivers.length === 0) {
-        const res = await api.get('/admin/drivers')
-        setDrivers(res.data.drivers || [])
       }
     } catch {
       showToast(`Failed to load ${tab}`, 'error')
@@ -468,9 +427,6 @@ export default function AdminDashboard() {
               <CustomersTable customers={customers} loading={false} />
             )}
 
-            {activeTab === 'drivers' && (
-              <DriversTable drivers={drivers} loading={false} />
-            )}
           </div>
         </div>
       </div>

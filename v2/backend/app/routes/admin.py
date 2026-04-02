@@ -226,17 +226,6 @@ async def resend_payment_link(
     return {"message": "Payment link sent"}
 
 
-# ── Drivers List ────────────────────────────────────────────────
-
-
-@router.get("/drivers")
-async def list_drivers(current_admin: dict = Depends(get_current_admin)):
-    from app.main import db
-
-    drivers = await db.drivers.find({}, {"_id": 0}).to_list(1000)
-    return {"drivers": drivers}
-
-
 # ── Email Logs ──────────────────────────────────────────────────
 
 

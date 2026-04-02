@@ -43,7 +43,6 @@ export default function App() {
           <Route path="website-usage-policy" element={<WebsiteUsage />} />
 
           {/* Service page aliases */}
-          <Route path="shared-shuttle" element={<Services />} />
           <Route path="cruise-transfers" element={<Services />} />
           <Route path="hobbiton-transfers" element={<Services />} />
 

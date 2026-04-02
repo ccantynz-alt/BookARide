@@ -27,7 +27,6 @@ export default function EditBookingModal({ booking, onClose, onSaved }) {
         payment_status: d.payment_status || 'unpaid',
         notes: d.notes || '',
         flightNumber: d.flightNumber || d.departureFlightNumber || '',
-        assignedDriver: d.assignedDriver || '',
       })
     }
   }, [d])
@@ -84,7 +83,6 @@ export default function EditBookingModal({ booking, onClose, onSaved }) {
               <Field label="Date" value={form.date} onChange={(v) => handleChange('date', v)} type="date" />
               <Field label="Time" value={form.time} onChange={(v) => handleChange('time', v)} />
               <Field label="Flight Number" value={form.flightNumber} onChange={(v) => handleChange('flightNumber', v)} />
-              <Field label="Assigned Driver" value={form.assignedDriver} onChange={(v) => handleChange('assignedDriver', v)} />
             </div>
 
             <Field label="Pickup Address" value={form.pickupAddress} onChange={(v) => handleChange('pickupAddress', v)} full />
