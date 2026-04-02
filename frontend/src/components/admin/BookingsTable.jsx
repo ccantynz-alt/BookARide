@@ -1,5 +1,5 @@
 import React from 'react';
-import { Eye, Edit2, Mail, RefreshCw, Trash2, CheckCircle, Clock, Square, CheckSquare, Phone, Plane, ArrowRight, CreditCard, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Eye, Edit2, Mail, RefreshCw, Trash2, XCircle, CheckCircle, Clock, Square, CheckSquare, Phone, Plane, ArrowRight, CreditCard, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 const formatDate = (dateStr) => {
@@ -295,8 +295,11 @@ const BookingsTable = ({
                       <button onClick={() => onResendConfirmation(booking.id)} className="p-1.5 rounded-lg hover:bg-amber-50 transition-colors" title="Resend confirmation">
                         <RefreshCw className="w-3.5 h-3.5 text-slate-400 hover:text-amber-600" />
                       </button>
-                      <button onClick={() => onDeleteBooking(booking.id, booking.name, true)} className="p-1.5 rounded-lg hover:bg-red-50 transition-colors" title="Delete">
+                      <button onClick={() => onDeleteBooking(booking.id, booking.name, true)} className="p-1.5 rounded-lg hover:bg-red-50 transition-colors" title="Cancel (notifies customer)">
                         <Trash2 className="w-3.5 h-3.5 text-slate-400 hover:text-red-500" />
+                      </button>
+                      <button onClick={() => onDeleteBooking(booking.id, booking.name, false)} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors" title="Silent delete (no notification)">
+                        <XCircle className="w-3.5 h-3.5 text-slate-400 hover:text-gray-600" />
                       </button>
                     </div>
                   </td>
