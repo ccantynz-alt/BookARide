@@ -83,7 +83,7 @@ def _send_email_with_fallbacks(to_email, subject, html_content, from_email=None,
                 data=data,
                 timeout=15,
             )
-            if response.status_code == 200:
+            if response.status_code in (200, 202):
                 logging.getLogger(__name__).info(f"Email sent via Mailgun to {to_email}")
                 return True
             else:
