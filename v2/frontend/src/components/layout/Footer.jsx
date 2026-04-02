@@ -4,9 +4,9 @@ import { Plane, Mail, MapPin } from 'lucide-react'
 const FOOTER_LINKS = {
   Services: [
     { label: 'Airport Transfers', path: '/services' },
-    { label: 'Shared Shuttle', path: '/shared-shuttle' },
-    { label: 'Cruise Transfers', path: '/cruise-transfers' },
-    { label: 'Hobbiton Transfers', path: '/hobbiton-transfers' },
+    { label: 'Private Transfers', path: '/book-now' },
+    { label: 'Cruise Transfers', path: '/services' },
+    { label: 'Hobbiton Transfers', path: '/services' },
   ],
   Company: [
     { label: 'About Us', path: '/about' },

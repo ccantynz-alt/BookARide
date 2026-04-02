@@ -22,9 +22,8 @@ async def _run_post_payment_actions(booking: dict):
         await send_admin_notification(booking)
     except Exception as e:
         logger.error(f"CRITICAL: Admin notification failed for {bid}: {e}")
-    # Action 3: Google Calendar event (TODO: implement in services/calendar.py)
-    # Action 4: iCloud contact sync (TODO: implement in services/contacts.py)
-    logger.info(f"Post-payment actions completed for booking {bid}")
+    # Google Calendar and iCloud contact sync will be added when integrations are configured
+    logger.info(f"Post-payment actions (email confirmation + admin notification) completed for booking {bid}")
 
 
 @router.post("/create-checkout")

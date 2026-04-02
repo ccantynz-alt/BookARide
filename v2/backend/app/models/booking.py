@@ -13,7 +13,7 @@ class BookingCreate(BaseModel):
     dropoffAddress: str
     date: str
     time: str
-    passengers: str
+    passengers: str  # Stored as string for compatibility; convert to int for calculations
     departureFlightNumber: Optional[str] = ""
     departureTime: Optional[str] = ""
     arrivalFlightNumber: Optional[str] = ""

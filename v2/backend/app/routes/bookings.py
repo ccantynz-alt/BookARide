@@ -105,8 +105,13 @@ async def create_booking(booking: BookingCreate, background_tasks: BackgroundTas
 
     logger.info(f"Booking created: {booking_obj.id} ref #{ref_number}")
 
-    # Send confirmation emails and check for conflicts in background
-    background_tasks.add_task(_send_booking_notifications, booking_dict)
+    # Only send confirmation emails for non-card payments (card payments
+    # get emails from the Stripe webhook to avoid duplicates)
+    payment_method = booking_dict.get("paymentMethod", "card")
+    if payment_method in ("cash", "bank-transfer", "pay-on-pickup"):
+        background_tasks.add_task(_send_booking_notifications, booking_dict)
+
+    # Always check for driver conflicts
     background_tasks.add_task(_check_booking_conflicts, booking_dict)
 
     return booking_dict
