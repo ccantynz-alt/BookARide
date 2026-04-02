@@ -9,8 +9,6 @@ import {
   ArrowLeft,
   Loader2,
   CheckCircle,
-  Plus,
-  X,
   Luggage,
   Star,
   RotateCcw,
@@ -23,7 +21,7 @@ import PriceBreakdown from '../booking/PriceBreakdown'
 
 const SERVICE_TYPES = [
   { id: 'airport-transfer', label: 'Airport Transfer', icon: Plane },
-  { id: 'point-to-point', label: 'Point to Point', icon: MapPin },
+  { id: 'private-transfer', label: 'Private Transfer', icon: MapPin },
 ]
 
 const STEPS = ['Trip Details', 'Your Details', 'Confirm & Pay']
@@ -39,7 +37,6 @@ export default function BookNow() {
   const [form, setForm] = useState({
     serviceType: 'airport-transfer',
     pickupAddress: '',
-    pickupAddresses: [],
     dropoffAddress: '',
     date: '',
     time: '',
@@ -62,27 +59,9 @@ export default function BookNow() {
   function update(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }))
     // Clear pricing when trip details change
-    if (['pickupAddress', 'dropoffAddress', 'passengers', 'vipAirportPickup', 'oversizedLuggage', 'bookReturn'].includes(field)) {
+    if (['pickupAddress', 'dropoffAddress', 'passengers', 'vipAirportPickup', 'oversizedLuggage', 'bookReturn', 'serviceType'].includes(field)) {
       setPricing(null)
     }
-  }
-
-  function addPickup() {
-    if (form.pickupAddresses.length < 3) {
-      update('pickupAddresses', [...form.pickupAddresses, ''])
-    }
-  }
-
-  function updatePickup(i, value) {
-    const updated = [...form.pickupAddresses]
-    updated[i] = value
-    update('pickupAddresses', updated)
-    setPricing(null)
-  }
-
-  function removePickup(i) {
-    update('pickupAddresses', form.pickupAddresses.filter((_, idx) => idx !== i))
-    setPricing(null)
   }
 
   async function getPrice() {
@@ -96,7 +75,6 @@ export default function BookNow() {
       const { data } = await api.post('/calculate-price', {
         serviceType: form.serviceType,
         pickupAddress: form.pickupAddress,
-        pickupAddresses: form.pickupAddresses.filter(Boolean),
         dropoffAddress: form.dropoffAddress,
         passengers: parseInt(form.passengers) || 1,
         vipAirportPickup: form.vipAirportPickup,
@@ -159,7 +137,7 @@ export default function BookNow() {
       }
 
       // Otherwise go to success page
-      navigate(`/payment-success?booking_id=${booking.id}`)
+      navigate(`/payment/success?booking_id=${booking.id}`)
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to create booking')
     } finally {
@@ -258,34 +236,6 @@ export default function BookNow() {
                   onChange={(v) => update('pickupAddress', v)}
                   placeholder="e.g. 123 Queen Street, Auckland"
                 />
-
-                {/* Additional pickups */}
-                {form.pickupAddresses.map((addr, i) => (
-                  <div key={i} className="flex gap-2">
-                    <div className="flex-1">
-                      <AddressInput
-                        label={`Additional Pickup ${i + 1}`}
-                        value={addr}
-                        onChange={(v) => updatePickup(i, v)}
-                        placeholder="Additional pickup address"
-                      />
-                    </div>
-                    <button
-                      onClick={() => removePickup(i)}
-                      className="self-end p-3 text-gray-400 hover:text-red-500 transition-colors"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
-                  </div>
-                ))}
-                {form.pickupAddresses.length < 3 && (
-                  <button
-                    onClick={addPickup}
-                    className="text-sm text-gold font-medium flex items-center gap-1 hover:underline"
-                  >
-                    <Plus className="w-4 h-4" /> Add another pickup
-                  </button>
-                )}
 
                 {/* Dropoff */}
                 <AddressInput
@@ -526,9 +476,6 @@ export default function BookNow() {
                 <div className="bg-gray-50 rounded-xl p-5 space-y-3 text-sm">
                   <Row label="Service" value={SERVICE_TYPES.find(s => s.id === form.serviceType)?.label} />
                   <Row label="Pickup" value={form.pickupAddress} />
-                  {form.pickupAddresses.filter(Boolean).map((a, i) => (
-                    <Row key={i} label={`Stop ${i + 1}`} value={a} />
-                  ))}
                   <Row label="Drop-off" value={form.dropoffAddress} />
                   <Row label="Date & Time" value={`${form.date} at ${form.time}`} />
                   <Row label="Passengers" value={form.passengers} />
@@ -566,7 +513,7 @@ export default function BookNow() {
                 </div>
 
                 <p className="text-xs text-gray-400 text-center">
-                  You&apos;ll be redirected to Stripe for secure payment.
+                  You&apos;ll be securely redirected to complete your payment.
                 </p>
               </motion.div>
             )}

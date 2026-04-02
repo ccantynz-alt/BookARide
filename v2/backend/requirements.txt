@@ -28,6 +28,9 @@ stripe>=8.0.0
 twilio>=9.0.0
 python-multipart>=0.0.9
 
+# AI (Claude — NEVER use OpenAI/GPT)
+anthropic>=0.40.0
+
 # Scheduling
 apscheduler>=3.10.0
 
