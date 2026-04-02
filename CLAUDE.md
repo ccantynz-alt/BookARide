@@ -912,3 +912,38 @@ The AI email support system was only FLAGGING cancellations (setting `cancellati
 | 2026-03-25 | 20 ghost URLs in sitemap | Pages listed in `sitemap.xml` had no matching routes |
 | 2026-03-25 | Open admin registration | `POST /api/admin/register` had no auth requirement |
 | 2026-03-27 | Cancelled customers receiving constant emails | AI email cancellation only flagged bookings, never changed status to cancelled — all scheduled jobs kept emailing them |
+| 2026-04-01 | Vercel build failure on main | Broken AdminLogin.jsx — `<a>` closed with `</div>`, undefined GOOGLE_GIS_SCRIPT constant |
+| 2026-04-01 | Admin login always failing | Vercel serverless login.js read `admin.password` instead of `admin.hashed_password` + no pbkdf2 support |
+| 2026-04-01 | Payment links returning errors | Vercel serverless returned `checkout_url` but frontend expected `url` field |
+| 2026-04-01 | Payment follow-up emails wrong URL | Sent customers to `/book-now` instead of `/pay/{bookingId}` |
+| 2026-04-01 | 8 pages crashing with "undefined/api" | Direct `import.meta.env.VITE_BACKEND_URL` usage instead of centralized API config |
+| 2026-04-01 | Admin dashboard crash on edit modal close | `clearEditAddressSuggestions()` called but never defined |
+| 2026-04-02 | Bookings hidden by pagination | "Performance optimization" set loadAllBookings=false, limit=50 — hid bookings including paid ones |
+| 2026-04-02 | Booking #149 invisible | Date sort used text comparison on mixed formats (YYYY-MM-DD vs DD/MM/YYYY) — misclassified as past |
+| 2026-04-02 | Reference number #14271 instead of sequential | Counter used ON CONFLICT on JSONB expression with no unique constraint — fell back to COUNT(*) |
+| 2026-04-02 | "Name: undefined undefined" in admin emails | Email template assumed firstName/lastName but customer submitted single name field |
+| 2026-04-02 | Customers tab crash | CustomersTab.jsx used broken VITE_BACKEND_URL directly + /api/customers endpoint missing |
+
+---
+
+## V2 STRATEGY — LOCKED (2026-04-02)
+
+**BookARide is moving to a complete V2 rebuild.** The current v1 codebase has been damaged by too many hands since November 2025. V2 will be built by Claude only, from scratch.
+
+### V2 Architecture Plan
+
+- **V2 development happens in the `/v2` directory** — NEVER touch the v1 production code in the main directories unless fixing critical bugs
+- **Database is PRESERVED** — the Neon PostgreSQL database is shared between v1 and v2. NO data loss. NO migration needed.
+- **V2 will replace V1 only when fully tested and complete** — swap happens by changing Vercel build directory, not by deleting v1
+- **AI-Intelligent Backend Service** — custom-built, owned by BookARide, not dependent on third-party hosting quirks
+- **AI-Intelligent Frontend Service** — first of its kind, fully integrated with the backend
+- **eSIM Integration** — customers can purchase eSIMs before entering NZ, added to booking cost, available immediately. Coming within 1 week. This has never been done before in the transfer industry.
+
+### V2 Technology Rules
+
+- **Claude-only development** — no other AI, no agencies, no freelancers
+- **No HTML pages** — everything is React components with Tailwind CSS (email templates are the only exception)
+- **Most advanced production-proven technology only** — see the Technology Excellence Standard section
+- **Every component must work end-to-end before shipping** — no placeholder functionality
+- **Backend must be self-hosted/owned** — not dependent on any single hosting provider's proprietary features
+| 2026-03-27 | Cancelled customers receiving constant emails | AI email cancellation only flagged bookings, never changed status to cancelled — all scheduled jobs kept emailing them |
