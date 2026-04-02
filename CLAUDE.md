@@ -45,6 +45,20 @@ These rules are non-negotiable. Every agent must follow all 10, every session, n
 
 These decisions are FINAL. Do not introduce alternatives, fallbacks, or "improvements".
 
+### 0. ABSOLUTE RULES — READ FIRST (2026-04-02)
+
+**These rules exist because agents kept breaking working features with "improvements" and "optimizations".**
+
+1. **If it works, DO NOT TOUCH IT.** No "performance optimizations" that risk hiding bookings. No "refactoring" of working code. No changing sort orders, limits, or query logic on working endpoints.
+2. **NEVER paginate bookings.** `loadAllBookings` MUST be `true`. Setting it to `false` hid bookings and cost the business real money. ALL bookings must load. No limits, no pagination that hides data.
+3. **NEVER change the bookings sort order** from `created_at DESC` without explicit owner approval. Text-based date sorting breaks with mixed date formats.
+4. **ALL frontend files MUST use the centralized API config** — `import { API } from '../config/api'` or `'../../config/api'`. NEVER use `import.meta.env.VITE_BACKEND_URL` directly. This caused crashes on 8+ pages.
+5. **Booking name field** — always resolve: `booking.name || (firstName + lastName) || 'Customer'`. NEVER assume firstName/lastName exist.
+6. **Booking reference counter** — uses `id = 'booking_reference'` in the `counters` table with ON CONFLICT on the `id` column (which has a unique constraint). NEVER use ON CONFLICT on JSONB expressions.
+7. **If you find a bug, fix it immediately.** Do not ask. Do not defer. Do not say "should I fix this?" — just fix it. The owner is not a developer and is paying for things to work.
+8. **Every fix must be tested with `npm run build`** before pushing. No exceptions.
+9. **NEVER introduce a change that reduces the number of visible bookings.** If a booking exists in the database, it MUST show in the admin panel. Missing bookings = lost revenue = business failure.
+
 ### 1. Database: Neon PostgreSQL ONLY
 
 We migrated FROM MongoDB TO Neon PostgreSQL. This is DONE. Do not touch it.
