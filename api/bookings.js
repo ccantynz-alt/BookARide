@@ -182,9 +182,7 @@ async function listBookings(req, res) {
     const query = `
       SELECT data FROM bookings
       ${whereClause}
-      ORDER BY
-        CASE WHEN data->>'date' >= CURRENT_DATE::text THEN 0 ELSE 1 END,
-        data->>'date' ASC, data->>'time' ASC
+      ORDER BY created_at DESC
       LIMIT ${limit} OFFSET ${offset}
     `;
 

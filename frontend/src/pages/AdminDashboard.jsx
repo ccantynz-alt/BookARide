@@ -603,7 +603,7 @@ export const AdminDashboard = () => {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
-  const [loadAllBookings, setLoadAllBookings] = useState(false); // Paginated by default for performance
+  const [loadAllBookings, setLoadAllBookings] = useState(true); // MUST load all — missing bookings when paginated
 
   // Use refs only - never reference fetchBookings/filterBookings here (they are declared later)
   useEffect(() => {
