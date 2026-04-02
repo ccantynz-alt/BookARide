@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { ArrowRight, Car, Users, Ship, MapPin } from 'lucide-react'
+import { ArrowRight, Car, Briefcase, Ship, MapPin } from 'lucide-react'
 
 const SERVICES = [
   {
@@ -7,24 +7,24 @@ const SERVICES = [
     title: 'Private Airport Transfer',
     desc: 'Direct door-to-door service in a private vehicle. Your driver tracks your flight and waits with a name board. Perfect for families, business travellers, and groups up to 11.',
     features: ['Door-to-door service', 'Flight tracking', 'Meet & greet', 'Child seats available', 'Free cancellation (24h)'],
-    price: 'From $55',
+    price: 'From $150',
     path: '/book-now',
   },
   {
-    icon: Users,
-    title: 'Shared Shuttle',
-    desc: 'Share the ride from Auckland CBD to the airport. Daily scheduled departures with multiple pickup points. The most affordable way to get to the airport.',
-    features: ['Daily departures', 'CBD pickup points', 'Airport drop-off', 'From $25 per person', 'Pay on arrival option'],
-    price: 'From $25pp',
-    path: '/shared-shuttle',
+    icon: Briefcase,
+    title: 'Point-to-Point Transfer',
+    desc: 'Private transfers anywhere in the greater Auckland region. Hotels, conference venues, events, or any address.',
+    features: ['Any Auckland address', 'Fixed pricing', 'Professional drivers', 'Comfortable vehicles', 'Luggage handling'],
+    price: 'From $150',
+    path: '/book-now',
   },
   {
     icon: Ship,
     title: 'Cruise Ship Transfers',
     desc: 'Reliable transfers to and from Auckland cruise terminal at Princes Wharf. All cruise lines, all ship sizes.',
     features: ['Princes Wharf terminal', 'All cruise lines', 'Group discounts', 'Luggage handling', 'Flexible scheduling'],
-    price: 'From $65',
-    path: '/cruise-transfers',
+    price: 'From $150',
+    path: '/book-now',
   },
   {
     icon: MapPin,
@@ -32,7 +32,7 @@ const SERVICES = [
     desc: 'Return transfers from Auckland to the world-famous Hobbiton Movie Set in Matamata. A magical day out for the whole family.',
     features: ['Return transfers', 'Auckland pickup', 'Matamata direct', 'Flexible times', 'Group rates'],
     price: 'From $180',
-    path: '/hobbiton-transfers',
+    path: '/book-now',
   },
 ]
 
@@ -43,7 +43,7 @@ export default function Services() {
         <div className="text-center mb-14">
           <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Our Services</h1>
           <p className="text-gray-500 max-w-2xl mx-auto">
-            From budget-friendly shared shuttles to premium private transfers across Auckland.
+            Premium private transfers across Auckland and beyond.
           </p>
         </div>
 

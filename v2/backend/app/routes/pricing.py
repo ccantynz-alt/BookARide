@@ -41,7 +41,13 @@ def _norm(s: str) -> str:
 
 
 def _get_rate(km: float) -> float:
-    """Tiered $/km rate based on distance bracket."""
+    """Tiered $/km rate based on distance bracket.
+
+    LOCKED RATES — do not change without explicit owner approval.
+    Calibrated so key routes price correctly (owner approved 2026-03-26).
+    The 60-75 and 70-100 tiers overlap; the elif chain gives 60-75 priority
+    for distances 70-75 km, matching the WordPress pricing plugin behavior.
+    """
     if km <= 15.0:
         return 12.00
     elif km <= 15.8:
@@ -53,11 +59,11 @@ def _get_rate(km: float) -> float:
     elif km <= 35.0:
         return 5.00
     elif km <= 50.0:
-        return 4.00
+        return 3.13
     elif km <= 60.0:
         return 2.60
     elif km <= 75.0:
-        return 2.47
+        return 2.84
     elif km <= 100.0:
         return 2.70
     else:

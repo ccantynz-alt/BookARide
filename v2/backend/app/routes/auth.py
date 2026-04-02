@@ -1,10 +1,11 @@
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from app.core.auth import (
     create_access_token,
+    get_current_admin,
     hash_password,
     verify_password,
 )
@@ -14,7 +15,8 @@ router = APIRouter(prefix="/admin", tags=["Auth"])
 
 
 @router.post("/register")
-async def register(data: AdminRegister):
+async def register(data: AdminRegister, current_admin: dict = Depends(get_current_admin)):
+    """Create new admin — requires existing admin auth (no open registration)."""
     from app.main import db
 
     existing = await db.admin_users.find_one({"username": data.username})

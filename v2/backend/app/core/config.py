@@ -26,6 +26,9 @@ class Settings:
     GOOGLE_CLIENT_ID: str = os.environ.get("GOOGLE_CLIENT_ID", "")
     GOOGLE_CLIENT_SECRET: str = os.environ.get("GOOGLE_CLIENT_SECRET", "")
 
+    ANTHROPIC_API_KEY: str = os.environ.get("ANTHROPIC_API_KEY", "")
+    ADMIN_EMAIL: str = os.environ.get("ADMIN_EMAIL", "info@bookaride.co.nz")
+
     PUBLIC_DOMAIN: str = os.environ.get("PUBLIC_DOMAIN", "https://bookaride.co.nz")
     PORT: int = int(os.environ.get("PORT", "10000"))
 

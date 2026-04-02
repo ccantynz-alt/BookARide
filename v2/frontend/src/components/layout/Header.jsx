@@ -6,7 +6,7 @@ import { cn } from '../../lib/cn'
 const NAV_LINKS = [
   { label: 'Home', path: '/' },
   { label: 'Services', path: '/services' },
-  { label: 'Shuttle', path: '/shared-shuttle' },
+  { label: 'Book Now', path: '/book-now' },
   { label: 'About', path: '/about' },
   { label: 'Contact', path: '/contact' },
 ]

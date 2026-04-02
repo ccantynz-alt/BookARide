@@ -5,7 +5,6 @@ import {
   Shield,
   Clock,
   DollarSign,
-  Star,
   Users,
   MapPin,
   ArrowRight,
@@ -16,7 +15,7 @@ const FEATURES = [
   {
     icon: Shield,
     title: 'Safe & Reliable',
-    desc: 'Licensed, insured drivers with professional vehicles. Track your ride in real time.',
+    desc: 'Licensed, insured drivers with professional vehicles. Your safety is our priority.',
   },
   {
     icon: Clock,
@@ -25,8 +24,8 @@ const FEATURES = [
   },
   {
     icon: DollarSign,
-    title: 'Best Price Promise',
-    desc: 'Fixed prices, no surge. Pay online or on arrival. Afterpay available.',
+    title: 'Fixed Prices',
+    desc: 'Know your price before you book. No surge pricing, no hidden fees.',
   },
   {
     icon: Users,
@@ -39,34 +38,46 @@ const SERVICES = [
   {
     title: 'Private Airport Transfer',
     desc: 'Direct door-to-door service in a private vehicle. Perfect for families and groups.',
-    path: '/services',
-    price: 'From $55',
+    path: '/book-now',
+    price: 'From $150',
   },
   {
-    title: 'Shared Shuttle',
-    desc: 'Share the ride, share the cost. Daily departures from Auckland CBD to the airport.',
-    path: '/shared-shuttle',
-    price: 'From $25pp',
+    title: 'Point-to-Point Transfer',
+    desc: 'Private transfers anywhere in the greater Auckland region. Hotels, events, and more.',
+    path: '/book-now',
+    price: 'From $150',
   },
   {
     title: 'Cruise Ship Transfers',
     desc: 'Auckland cruise terminal pickups and drop-offs. All cruise lines welcome.',
-    path: '/cruise-transfers',
-    price: 'From $65',
+    path: '/book-now',
+    price: 'From $150',
   },
   {
     title: 'Hobbiton Transfers',
     desc: 'Day trips to the Hobbiton Movie Set from Auckland. Return transfers included.',
-    path: '/hobbiton-transfers',
+    path: '/book-now',
     price: 'From $180',
   },
 ]
 
+const POPULAR_ROUTES = [
+  'North Shore to Airport',
+  'Auckland CBD to Airport',
+  'Hibiscus Coast to Airport',
+  'Whangaparaoa to Airport',
+  'Orewa to Airport',
+  'Takapuna to Airport',
+  'Devonport to Airport',
+  'Browns Bay to Airport',
+  'Gulf Harbour to Airport',
+]
+
 const STATS = [
-  { value: '15,000+', label: 'Happy Customers' },
-  { value: '4.9', label: 'Google Rating', icon: Star },
   { value: '24/7', label: 'Service Available' },
-  { value: '100%', label: 'On-Time Rate' },
+  { value: 'Fixed', label: 'Pricing' },
+  { value: 'NZ', label: 'Locally Owned' },
+  { value: 'Door', label: 'to Door Service' },
 ]
 
 const fadeUp = {
@@ -81,9 +92,8 @@ const fadeUp = {
 export default function Home() {
   return (
     <>
-      {/* ── Hero ─────────────────────────────────────────────── */}
+      {/* Hero */}
       <section className="relative bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 text-white overflow-hidden">
-        {/* Decorative gold accent */}
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-gold-400 via-gold to-gold-600" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(212,175,55,0.08),transparent_60%)]" />
 
@@ -114,7 +124,7 @@ export default function Home() {
               custom={2}
               className="text-lg sm:text-xl text-gray-300 max-w-2xl mb-10 leading-relaxed"
             >
-              Door-to-door private transfers and shared shuttles across Auckland.
+              Door-to-door private transfers across Auckland.
               Fixed prices, flight tracking, and real-time driver updates.
             </motion.p>
 
@@ -134,7 +144,6 @@ export default function Home() {
               </Link>
             </motion.div>
 
-            {/* Trust signals */}
             <motion.div
               initial="hidden"
               animate="visible"
@@ -153,16 +162,13 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── Stats bar ────────────────────────────────────────── */}
+      {/* Stats bar */}
       <section className="bg-gold">
         <div className="container-max px-4 sm:px-6 lg:px-8 py-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
             {STATS.map((stat) => (
               <div key={stat.label}>
-                <div className="text-2xl sm:text-3xl font-bold text-white flex items-center justify-center gap-1">
-                  {stat.icon && <stat.icon className="w-6 h-6 fill-white" />}
-                  {stat.value}
-                </div>
+                <div className="text-2xl sm:text-3xl font-bold text-white">{stat.value}</div>
                 <div className="text-sm text-white/80 mt-1">{stat.label}</div>
               </div>
             ))}
@@ -170,7 +176,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── Features ─────────────────────────────────────────── */}
+      {/* Features */}
       <section className="section-padding bg-white">
         <div className="container-max">
           <div className="text-center mb-14">
@@ -204,7 +210,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── Services ─────────────────────────────────────────── */}
+      {/* Services */}
       <section className="section-padding bg-gray-50">
         <div className="container-max">
           <div className="text-center mb-14">
@@ -212,7 +218,7 @@ export default function Home() {
               Our Services
             </h2>
             <p className="text-gray-500 max-w-2xl mx-auto">
-              From budget-friendly shared shuttles to premium private transfers.
+              Premium private transfers for every occasion.
             </p>
           </div>
           <div className="grid sm:grid-cols-2 gap-6">
@@ -239,7 +245,7 @@ export default function Home() {
                   </div>
                   <p className="text-gray-500 mb-4">{s.desc}</p>
                   <span className="inline-flex items-center text-sm font-medium text-gold">
-                    Learn more <ArrowRight className="w-4 h-4 ml-1" />
+                    Book now <ArrowRight className="w-4 h-4 ml-1" />
                   </span>
                 </Link>
               </motion.div>
@@ -248,7 +254,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── Popular routes ───────────────────────────────────── */}
+      {/* Popular routes */}
       <section className="section-padding bg-white">
         <div className="container-max">
           <div className="text-center mb-14">
@@ -257,20 +263,10 @@ export default function Home() {
             </h2>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[
-              'North Shore to Airport',
-              'Auckland CBD to Airport',
-              'Hibiscus Coast to Airport',
-              'Whangaparaoa to Airport',
-              'Orewa to Airport',
-              'Takapuna to Airport',
-              'Devonport to Airport',
-              'Browns Bay to Airport',
-              'Howick to Airport',
-            ].map((route) => (
+            {POPULAR_ROUTES.map((route) => (
               <Link
                 key={route}
-                to={`/routes/${route.toLowerCase().replace(/\s+/g, '-')}`}
+                to="/book-now"
                 className="flex items-center gap-3 p-4 rounded-xl bg-gray-50 hover:bg-gold-50 transition-colors group"
               >
                 <MapPin className="w-5 h-5 text-gold shrink-0" />
@@ -284,7 +280,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── CTA ──────────────────────────────────────────────── */}
+      {/* CTA */}
       <section className="bg-gradient-to-r from-gray-900 via-gray-950 to-gray-900 text-white">
         <div className="container-max section-padding text-center">
           <h2 className="text-3xl sm:text-4xl font-bold mb-4">
@@ -299,10 +295,10 @@ export default function Home() {
               <ArrowRight className="w-5 h-5 ml-2" />
             </Link>
             <Link
-              to="/book-now"
+              to="/contact"
               className="btn-secondary text-base px-8 py-4 border-white/20 text-white hover:bg-white/10 hover:text-white"
             >
-              Get a Quote
+              Contact Us
             </Link>
           </div>
         </div>

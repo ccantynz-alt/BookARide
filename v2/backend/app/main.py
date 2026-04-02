@@ -42,6 +42,11 @@ async def startup():
             await conn.execute(open(schema_path).read())
         logger.info("Schema applied")
 
+    # Start scheduled tasks
+    from app.services.scheduler import setup_scheduler, run_startup_checks
+    setup_scheduler()
+    await run_startup_checks()
+
 
 @app.on_event("shutdown")
 async def shutdown():
@@ -68,12 +73,12 @@ async def health():
 
 # ── Routes ───────────────────────────────────────────────────────
 
-from app.routes import auth, bookings, places, payments, drivers, admin, pricing
+from app.routes import auth, bookings, places, payments, admin, pricing, chatbot
 
 app.include_router(auth.router, prefix="/api")
 app.include_router(bookings.router, prefix="/api")
 app.include_router(places.router, prefix="/api")
 app.include_router(payments.router, prefix="/api")
-app.include_router(drivers.router, prefix="/api")
 app.include_router(admin.router, prefix="/api")
 app.include_router(pricing.router, prefix="/api")
+app.include_router(chatbot.router, prefix="/api")

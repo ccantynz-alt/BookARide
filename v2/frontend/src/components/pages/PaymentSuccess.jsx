@@ -19,7 +19,7 @@ export default function PaymentSuccess() {
       return
     }
 
-    api.get(`/api/payments/success?session_id=${sessionId}`)
+    api.get(`/payment/success?session_id=${sessionId}`)
       .then(res => {
         setBooking(res.data.booking)
         setLoading(false)
@@ -77,7 +77,7 @@ export default function PaymentSuccess() {
           <p className="text-gray-500">
             Your reference number is{' '}
             <span className="font-mono font-bold text-gold text-lg">
-              {data.reference || data.id}
+              #{data.referenceNumber || data.id}
             </span>
           </p>
         </motion.div>
@@ -96,7 +96,7 @@ export default function PaymentSuccess() {
                 <MapPin className="w-5 h-5 text-gold mt-0.5 shrink-0" />
                 <div>
                   <p className="text-xs text-gray-400 uppercase tracking-wide">Pickup</p>
-                  <p className="text-sm text-gray-700">{data.pickup_address}</p>
+                  <p className="text-sm text-gray-700">{data.pickupAddress}</p>
                 </div>
               </div>
 
@@ -104,7 +104,7 @@ export default function PaymentSuccess() {
                 <MapPin className="w-5 h-5 text-gold mt-0.5 shrink-0" />
                 <div>
                   <p className="text-xs text-gray-400 uppercase tracking-wide">Drop-off</p>
-                  <p className="text-sm text-gray-700">{data.dropoff_address}</p>
+                  <p className="text-sm text-gray-700">{data.dropoffAddress}</p>
                 </div>
               </div>
 
@@ -112,7 +112,7 @@ export default function PaymentSuccess() {
                 <Calendar className="w-5 h-5 text-gold mt-0.5 shrink-0" />
                 <div>
                   <p className="text-xs text-gray-400 uppercase tracking-wide">Date</p>
-                  <p className="text-sm text-gray-700">{data.pickup_date}</p>
+                  <p className="text-sm text-gray-700">{data.date}</p>
                 </div>
               </div>
 
@@ -120,7 +120,7 @@ export default function PaymentSuccess() {
                 <Clock className="w-5 h-5 text-gold mt-0.5 shrink-0" />
                 <div>
                   <p className="text-xs text-gray-400 uppercase tracking-wide">Time</p>
-                  <p className="text-sm text-gray-700">{data.pickup_time}</p>
+                  <p className="text-sm text-gray-700">{data.time}</p>
                 </div>
               </div>
 
@@ -133,12 +133,12 @@ export default function PaymentSuccess() {
               </div>
             </div>
 
-            {data.total_price && (
+            {data.totalPrice && (
               <div className="pt-4 border-t border-gray-100">
                 <div className="flex justify-between items-center">
                   <span className="font-semibold text-gray-700">Total Paid</span>
                   <span className="text-xl font-bold text-gold">
-                    ${Number(data.total_price).toFixed(2)} NZD
+                    ${Number(data.totalPrice).toFixed(2)} NZD
                   </span>
                 </div>
               </div>
