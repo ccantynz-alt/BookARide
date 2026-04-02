@@ -19,7 +19,7 @@ export default function PaymentSuccess() {
       return
     }
 
-    api.get(`/payments/success?session_id=${sessionId}`)
+    api.get(`/payment/success?session_id=${sessionId}`)
       .then(res => {
         setBooking(res.data.booking)
         setLoading(false)
