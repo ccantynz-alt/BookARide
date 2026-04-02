@@ -3,6 +3,13 @@ BookARide V2 — Scheduled Tasks Service.
 
 All scheduled jobs using APScheduler with NZ timezone awareness.
 Every job has duplicate-prevention and cancellation-awareness.
+
+CRITICAL RULE: No scheduled task may EVER delete or move bookings out of
+the active bookings table. Only the admin (via explicit manual action) can
+delete or archive a booking. The auto_complete job changes STATUS ONLY —
+the booking stays in db.bookings forever until an admin manually archives
+or deletes it. This prevents the V1 bug where bookings silently vanished
+the day after completion.
 """
 import logging
 from datetime import datetime, timedelta, timezone
@@ -39,7 +46,13 @@ def get_db():
 
 
 async def auto_complete_past_bookings():
-    """Mark past confirmed bookings as completed, trigger post-trip email."""
+    """Mark past confirmed bookings as completed, trigger post-trip email.
+
+    CRITICAL: This function ONLY changes the status field. It NEVER deletes,
+    moves, or archives bookings. Bookings stay in the active table forever
+    until an admin explicitly archives or deletes them. This prevents the V1
+    bug where completed bookings vanished from the admin panel overnight.
+    """
     db = get_db()
     if not db:
         return

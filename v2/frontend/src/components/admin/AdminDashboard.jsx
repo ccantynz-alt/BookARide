@@ -68,7 +68,10 @@ function BookingRow({ booking, onAction }) {
         <div className="text-sm font-medium text-gray-900">{name}</div>
         <div className="text-xs text-gray-500">{d.email}</div>
       </td>
-      <td className="px-4 py-3 text-sm text-gray-600">{d.date}</td>
+      <td className="px-4 py-3 text-sm text-gray-600">
+        {formatDateDisplay(d.date)}
+        {d.date === getNZToday() && <span className="ml-1 text-[10px] text-green-600 font-bold uppercase">today</span>}
+      </td>
       <td className="px-4 py-3 text-sm text-gray-600">{d.time}</td>
       <td className="px-4 py-3">
         <div className="text-xs text-gray-600 truncate max-w-[160px]" title={d.pickupAddress}>{d.pickupAddress}</div>
@@ -108,6 +111,11 @@ function BookingRow({ booking, onAction }) {
               <Send className="w-4 h-4 text-gray-500" /> Resend Payment Link
             </button>
             <hr className="my-1 border-gray-100" />
+            {status === 'completed' && (
+              <button onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onAction('archive', booking) }} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2 cursor-pointer">
+                <Archive className="w-4 h-4 text-gray-500" /> Archive
+              </button>
+            )}
             <button onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onAction('delete', booking) }} className="w-full text-left px-3 py-2 text-sm hover:bg-red-50 text-red-600 flex items-center gap-2 cursor-pointer">
               <Trash2 className="w-4 h-4" /> Delete
             </button>
@@ -192,7 +200,7 @@ function CustomersTable({ customers, loading }) {
               <td className="px-4 py-3 text-sm text-gray-600">{c.phone || '-'}</td>
               <td className="px-4 py-3 text-sm font-semibold">{c.total_bookings}</td>
               <td className="px-4 py-3 text-sm font-semibold text-gold">${c.total_spent?.toFixed(2)}</td>
-              <td className="px-4 py-3 text-sm text-gray-500">{c.last_booking || '-'}</td>
+              <td className="px-4 py-3 text-sm text-gray-500">{formatDateDisplay(c.last_booking)}</td>
             </tr>
           ))}
         </tbody>
@@ -201,8 +209,42 @@ function CustomersTable({ customers, loading }) {
   )
 }
 
+const STATUS_FILTERS = [
+  { id: 'all', label: 'All' },
+  { id: 'pending', label: 'Pending' },
+  { id: 'confirmed', label: 'Confirmed' },
+  { id: 'completed', label: 'Completed' },
+  { id: 'cancelled', label: 'Cancelled' },
+]
+
+/**
+ * Format a date string for display — always treat YYYY-MM-DD as a local NZ date.
+ * NEVER use new Date("YYYY-MM-DD") as JavaScript parses it as UTC midnight,
+ * which shows as the previous day in NZ timezone. Instead, display the raw
+ * YYYY-MM-DD string directly or split it manually.
+ */
+function formatDateDisplay(dateStr) {
+  if (!dateStr) return '-'
+  // Already YYYY-MM-DD — display as DD/MM/YYYY for NZ users
+  const parts = dateStr.split('-')
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`
+  }
+  return dateStr
+}
+
+/**
+ * Check if a date string (YYYY-MM-DD) is today in NZ timezone.
+ * Uses string comparison only — no Date parsing to avoid UTC issues.
+ */
+function getNZToday() {
+  const nz = new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Auckland' })
+  return nz.format(new Date()) // returns YYYY-MM-DD
+}
+
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('bookings')
+  const [statusFilter, setStatusFilter] = useState('all')
   const [stats, setStats] = useState(null)
   const [bookings, setBookings] = useState([])
   const [deletedBookings, setDeletedBookings] = useState([])
@@ -297,6 +339,9 @@ export default function AdminDashboard() {
       } else if (action === 'resend-payment') {
         await api.post(`/admin/bookings/${id}/resend-payment-link`)
         showToast('Payment link sent')
+      } else if (action === 'archive') {
+        await api.post(`/bookings/${id}/archive`)
+        showToast('Booking archived')
       } else if (action === 'restore') {
         await api.post(`/bookings/${id}/restore`)
         showToast('Booking restored')
@@ -315,9 +360,18 @@ export default function AdminDashboard() {
     navigate('/admin/login')
   }
 
-  const sortedBookings = [...bookings].sort((a, b) => {
+  // Filter by status, then sort by date (YYYY-MM-DD string comparison — safe, no timezone issues)
+  const filteredBookings = statusFilter === 'all'
+    ? bookings
+    : bookings.filter((b) => {
+        const d = b.data || b
+        return d.status === statusFilter
+      })
+
+  const sortedBookings = [...filteredBookings].sort((a, b) => {
     const da = (a.data || a).date || ''
     const db_ = (b.data || b).date || ''
+    // Sort by date descending (newest first) — string compare is safe for YYYY-MM-DD
     return db_.localeCompare(da)
   })
 
@@ -394,6 +448,31 @@ export default function AdminDashboard() {
             ))}
           </div>
 
+          {/* Status Filter (Bookings tab only) */}
+          {activeTab === 'bookings' && (
+            <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-gray-500 font-medium uppercase mr-1">Filter:</span>
+              {STATUS_FILTERS.map((f) => {
+                const count = f.id === 'all'
+                  ? bookings.length
+                  : bookings.filter((b) => (b.data || b).status === f.id).length
+                return (
+                  <button
+                    key={f.id}
+                    onClick={() => setStatusFilter(f.id)}
+                    className={`px-3 py-1 text-xs rounded-full font-medium transition-colors cursor-pointer ${
+                      statusFilter === f.id
+                        ? 'bg-gold text-white'
+                        : 'bg-white text-gray-600 border border-gray-200 hover:border-gold hover:text-gold'
+                    }`}
+                  >
+                    {f.label} ({count})
+                  </button>
+                )
+              })}
+            </div>
+          )}
+
           {/* Tab Content */}
           <div>
             {activeTab === 'bookings' && (
@@ -401,7 +480,7 @@ export default function AdminDashboard() {
                 bookings={sortedBookings}
                 onAction={handleAction}
                 loading={loading}
-                emptyMessage="No active bookings"
+                emptyMessage={statusFilter === 'all' ? 'No active bookings' : `No ${statusFilter} bookings`}
               />
             )}
 
