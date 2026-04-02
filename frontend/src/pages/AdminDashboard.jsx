@@ -1863,8 +1863,22 @@ export const AdminDashboard = () => {
         getAuthHeaders()
       );
       toast.dismiss();
-      toast.success(response.data.message || 'Payment link sent!');
-      // Refresh bookings so the "Link Sent" indicator updates
+      const link = response.data?.payment_link;
+      if (response.data?.email_sent) {
+        toast.success(response.data.message || 'Payment link sent!');
+      } else if (link) {
+        // Email failed but we have the link — show it so admin can copy
+        toast.success(
+          <div>
+            <p className="font-medium">Payment link ready (email may not have delivered):</p>
+            <p className="text-xs mt-1 break-all select-all bg-gray-100 p-2 rounded mt-2">{link}</p>
+            <button className="mt-2 text-xs text-blue-600 underline" onClick={() => { navigator.clipboard.writeText(link); toast.success('Link copied!'); }}>Copy link</button>
+          </div>,
+          { duration: 30000 }
+        );
+      } else {
+        toast.success(response.data.message || 'Payment link sent!');
+      }
       fetchBookings();
     } catch (error) {
       toast.dismiss();
