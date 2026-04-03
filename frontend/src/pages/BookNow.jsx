@@ -106,29 +106,11 @@ export const BookNow = () => {
     subtotal: 0,
     totalPrice: 0,
     calculating: false,
-    promoCode: null,
-    promoDiscount: 0
   });
-
-  // Promo code state
-  const [promoCode, setPromoCode] = useState('');
-  const [promoApplied, setPromoApplied] = useState(null);
-  const [promoError, setPromoError] = useState('');
-  const [applyingPromo, setApplyingPromo] = useState(false);
-  const [hasPromoFromPopup, setHasPromoFromPopup] = useState(false);
-
-  useEffect(() => {
-    const savedPromo = localStorage.getItem('promoCode');
-    if (savedPromo) {
-      setPromoCode(savedPromo);
-      setHasPromoFromPopup(true);
-      localStorage.removeItem('promoCode');
-    }
-  }, []);
 
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
-  const finalTotal = promoApplied ? (pricing.totalPrice - (promoApplied.discountAmount || 0)) : pricing.totalPrice;
+  const finalTotal = pricing.totalPrice;
 
   const serviceOptions = [
     { value: 'airport-transfer', label: 'Airport Transfer' },
@@ -180,56 +162,12 @@ export const BookNow = () => {
         calculating: false
       });
 
-      // Re-apply promo if one was already applied (don't trigger on every calc)
-      const currentPromo = promoCode.trim();
-      if (currentPromo && promoApplied) {
-        handleApplyPromoWithSubtotal(currentPromo, data.subtotal);
-      }
     } catch (error) {
       if (requestId !== priceCalcRef.current) return;
       console.error('Error calculating price:', error);
       setPricing(prev => ({ ...prev, calculating: false }));
       toast.error('Unable to calculate distance. Please check addresses.');
     }
-  };
-
-  const handleApplyPromoWithSubtotal = async (code, subtotal) => {
-    setApplyingPromo(true);
-    setPromoError('');
-    try {
-      const response = await axios.post(`${API}/validate-promo`, { code, subtotal });
-      setPromoApplied(response.data);
-      toast.success(`Promo code applied! You saved $${response.data.discountAmount.toFixed(2)}`);
-    } catch (error) {
-      setPromoError(error.response?.data?.detail || 'Invalid promo code');
-      setPromoApplied(null);
-    } finally {
-      setApplyingPromo(false);
-    }
-  };
-
-  const handleApplyPromo = async () => {
-    if (!promoCode.trim()) { setPromoError('Please enter a promo code'); return; }
-    if (pricing.subtotal <= 0) { setPromoError('Get a quote first, then your code will be applied automatically'); return; }
-
-    setApplyingPromo(true);
-    setPromoError('');
-    try {
-      const response = await axios.post(`${API}/validate-promo`, { code: promoCode.trim(), subtotal: pricing.subtotal });
-      setPromoApplied(response.data);
-      toast.success(`Promo code applied! You saved $${response.data.discountAmount.toFixed(2)}`);
-    } catch (error) {
-      setPromoError(error.response?.data?.detail || 'Invalid promo code');
-      setPromoApplied(null);
-    } finally {
-      setApplyingPromo(false);
-    }
-  };
-
-  const handleRemovePromo = () => {
-    setPromoApplied(null);
-    setPromoCode('');
-    setPromoError('');
   };
 
   const handleChange = (e) => {
@@ -292,8 +230,6 @@ export const BookNow = () => {
         returnDepartureFlightNumber: formData.returnFlightNumber,
         returnFlightNumber: formData.returnFlightNumber,
         pricing: pricing,
-        promoCode: promoApplied?.code || null,
-        promoDiscount: promoApplied?.discountAmount || 0,
         totalPrice: finalTotal,
         status: 'pending',
         language: i18n.language,
@@ -782,29 +718,6 @@ export const BookNow = () => {
                           </div>
                         </div>
 
-                        {/* Promo Code */}
-                        <div className="space-y-2">
-                          <Label>Promo Code</Label>
-                          <div className="flex gap-2">
-                            <Input
-                              value={promoCode}
-                              onChange={(e) => setPromoCode(e.target.value)}
-                              placeholder="Enter promo code"
-                              disabled={!!promoApplied}
-                              className="flex-1"
-                            />
-                            {promoApplied ? (
-                              <Button type="button" variant="outline" onClick={handleRemovePromo} className="text-red-500">Remove</Button>
-                            ) : (
-                              <Button type="button" variant="outline" onClick={handleApplyPromo} disabled={applyingPromo}>
-                                {applyingPromo ? 'Applying...' : 'Apply'}
-                              </Button>
-                            )}
-                          </div>
-                          {promoError && <p className="text-xs text-red-500">{promoError}</p>}
-                          {promoApplied && <p className="text-xs text-green-600 font-medium">You saved ${promoApplied.discountAmount.toFixed(2)} with {promoApplied.code}!</p>}
-                        </div>
-
                         {/* Payment Method */}
                         <div className="space-y-2">
                           <Label>Payment Method</Label>
@@ -849,18 +762,13 @@ export const BookNow = () => {
                             <p className="text-gray-600 mb-2">Your Quote</p>
                             <span className="text-5xl font-bold text-gold">${finalTotal.toFixed(2)}</span>
                             <p className="text-gray-500 text-sm mt-2">NZD - Fixed Price, No Hidden Fees</p>
-                            {promoApplied && (
-                              <p className="text-xs text-green-600 mt-1 font-medium">
-                                You saved ${promoApplied.discountAmount.toFixed(2)} with {promoApplied.code}!
-                              </p>
-                            )}
                           </div>
 
                           {/* Price Breakdown — customer sees total only, no km rates or per-passenger fees */}
                           <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm">
                             <div className="flex justify-between">
                               <span className="text-gray-600">Trip fare</span>
-                              <span className={`font-medium ${promoApplied ? 'line-through text-gray-400' : ''}`}>
+                              <span className="font-medium">
                                 ${pricing.subtotal?.toFixed(2) || pricing.basePrice?.toFixed(2)}
                               </span>
                             </div>
