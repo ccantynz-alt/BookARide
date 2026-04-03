@@ -128,7 +128,7 @@ export const BookNow = () => {
 
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
-  const finalTotal = pricing.totalPrice;
+  const finalTotal = promoApplied ? (pricing.totalPrice - (promoApplied.discountAmount || 0)) : pricing.totalPrice;
 
   const serviceOptions = [
     { value: 'airport-transfer', label: 'Airport Transfer' },
@@ -292,6 +292,9 @@ export const BookNow = () => {
         returnDepartureFlightNumber: formData.returnFlightNumber,
         returnFlightNumber: formData.returnFlightNumber,
         pricing: pricing,
+        promoCode: promoApplied?.code || null,
+        promoDiscount: promoApplied?.discountAmount || 0,
+        totalPrice: finalTotal,
         status: 'pending',
         language: i18n.language,
         createdAt: new Date()
