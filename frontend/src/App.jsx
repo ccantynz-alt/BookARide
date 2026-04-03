@@ -11,6 +11,7 @@ import { Toaster } from './components/ui/sonner';
 import BackToTop from './components/BackToTop';
 import AdminBackButton from './components/AdminBackButton';
 import InternationalBanner from './components/InternationalBanner';
+import FuelSurchargeBanner from './components/FuelSurchargeBanner';
 import LanguageRedirect from './components/LanguageRedirect';
 import { SUPPORTED_LANGUAGES } from './config/languages';
 import AIChatbot from './components/AIChatbot';
@@ -143,6 +144,7 @@ const MainLayout = () => (
     <InternationalBanner />
     <Header />
     <main>
+      <FuelSurchargeBanner />
       <Outlet />
     </main>
     <Footer />

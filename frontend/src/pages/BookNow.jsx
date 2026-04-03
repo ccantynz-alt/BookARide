@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { MapPin, Calendar, Users, DollarSign, Clock, Mail, Phone, User, Wrench, Plane } from 'lucide-react';
+import { MapPin, Calendar, Users, DollarSign, Clock, Mail, Phone, User, Wrench, Plane, Fuel } from 'lucide-react';
 import siteConfig from '../config/siteConfig';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -788,6 +788,13 @@ export const BookNow = () => {
                             <p className="text-sm text-gray-600">
                               {formData.passengers} passenger{parseInt(formData.passengers) > 1 ? 's' : ''}
                               {(formData.returnDate && formData.returnTime) && ' · Return trip (both ways included)'}
+                            </p>
+                          </div>
+
+                          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
+                            <Fuel className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                            <p className="text-xs text-amber-800">
+                              <span className="font-semibold">Fuel surcharge included</span> — diesel has increased 85% in 28 days ($1.85 to $3.43/L). A temporary surcharge is included to support our drivers during this fuel crisis.
                             </p>
                           </div>
 
