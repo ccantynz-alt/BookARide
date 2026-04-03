@@ -1246,22 +1246,24 @@ export const AdminDashboard = () => {
       }
       
       toast.success(response.data?.message || 'Driver assigned successfully!');
+      // Capture driver ID before clearing state (stale closure fix)
+      const capturedDriverId = selectedDriver;
       setSelectedDriver('');
       setDriverPayoutOverride('');
       setShowDriverAssignPreview(false);
       setPendingAssignment(null);
       // Optimistic: update driver info in local booking
-      const confirmAssignedDriver = drivers.find(d => d.id === selectedDriver);
+      const confirmAssignedDriver = drivers.find(d => d.id === capturedDriverId);
       if (tripType === 'return') {
         updateBookingLocally(selectedBooking.id, {
-          return_driver_id: selectedDriver,
+          return_driver_id: capturedDriverId,
           return_driver_name: confirmAssignedDriver?.name || '',
           return_driver_phone: confirmAssignedDriver?.phone || '',
           return_driver_email: confirmAssignedDriver?.email || '',
         });
       } else {
         updateBookingLocally(selectedBooking.id, {
-          driver_id: selectedDriver,
+          driver_id: capturedDriverId,
           driver_name: confirmAssignedDriver?.name || '',
           driver_phone: confirmAssignedDriver?.phone || '',
           driver_email: confirmAssignedDriver?.email || '',
@@ -1314,20 +1316,22 @@ export const AdminDashboard = () => {
       }
       
       toast.success(response.data?.message || 'Driver assigned successfully!');
+      // Capture driver ID before clearing state (stale closure fix)
+      const capturedDriverId2 = selectedDriver;
       setSelectedDriver('');
       setDriverPayoutOverride('');
       // Optimistic: update driver info in local booking
-      const assignedDriverObj = drivers.find(d => d.id === selectedDriver);
+      const assignedDriverObj = drivers.find(d => d.id === capturedDriverId2);
       if (tripType === 'return') {
         updateBookingLocally(selectedBooking.id, {
-          return_driver_id: selectedDriver,
+          return_driver_id: capturedDriverId2,
           return_driver_name: assignedDriverObj?.name || '',
           return_driver_phone: assignedDriverObj?.phone || '',
           return_driver_email: assignedDriverObj?.email || '',
         });
       } else {
         updateBookingLocally(selectedBooking.id, {
-          driver_id: selectedDriver,
+          driver_id: capturedDriverId2,
           driver_name: assignedDriverObj?.name || '',
           driver_phone: assignedDriverObj?.phone || '',
           driver_email: assignedDriverObj?.email || '',
@@ -1841,7 +1845,7 @@ export const AdminDashboard = () => {
       } else {
         toast.success(response.data.message || 'Payment link sent!');
       }
-      fetchBookings();
+      fetchBookingsRef.current?.(1, false);
     } catch (error) {
       toast.dismiss();
       console.error('Error sending payment link:', error);
