@@ -6,8 +6,7 @@ import {
 import { Button } from '../ui/button';
 import axios from 'axios';
 import { toast } from 'sonner';
-
-const API = `${import.meta.env.VITE_BACKEND_URL}/api`;
+import { API } from '../../config/api';
 
 const ReturnsOverviewPanel = ({ bookings = [], drivers = [], onAssignDriver, onViewBooking }) => {
   const [urgentReturns, setUrgentReturns] = useState([]);

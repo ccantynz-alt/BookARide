@@ -1,0 +1,96 @@
+#!/bin/bash
+# BookARide Pre-Commit Hook
+# Catches the recurring mistakes that keep breaking production.
+# This runs automatically before every commit — no agent can bypass it.
+
+ERRORS=0
+
+echo "=== BookARide Pre-Commit Checks ==="
+
+# 1. No raw HTML date/time inputs (must use CustomDatePicker/CustomTimePicker)
+RAW_INPUTS=$(grep -rn 'type="date"\|type="time"' frontend/src/ --include="*.jsx" --include="*.js" 2>/dev/null | grep -v node_modules | grep -v DateTimePicker.jsx)
+if [ -n "$RAW_INPUTS" ]; then
+  echo ""
+  echo "FAIL: Raw HTML date/time inputs found — use CustomDatePicker/CustomTimePicker"
+  echo "$RAW_INPUTS"
+  ERRORS=$((ERRORS + 1))
+fi
+
+# 2. No banned imports
+GEOAPIFY=$(grep -rn "geoapify\|GEOAPIFY" frontend/src/ api/ 2>/dev/null)
+if [ -n "$GEOAPIFY" ]; then
+  echo ""
+  echo "FAIL: Geoapify references found (use Google Maps only)"
+  echo "$GEOAPIFY"
+  ERRORS=$((ERRORS + 1))
+fi
+
+HELMET_FORK=$(grep -rn "@vuer-ai/react-helmet-async" frontend/ 2>/dev/null)
+if [ -n "$HELMET_FORK" ]; then
+  echo ""
+  echo "FAIL: Broken helmet fork found (use react-helmet-async)"
+  echo "$HELMET_FORK"
+  ERRORS=$((ERRORS + 1))
+fi
+
+MONGODB=$(grep -rn "pymongo\|MongoClient\|motor\.motor_asyncio\|mongodb://" frontend/src/ api/ 2>/dev/null | grep -v node_modules | grep -v CLAUDE.md)
+if [ -n "$MONGODB" ]; then
+  echo ""
+  echo "FAIL: MongoDB references found (use Neon PostgreSQL only)"
+  echo "$MONGODB"
+  ERRORS=$((ERRORS + 1))
+fi
+
+SENDGRID=$(grep -rn "sendgrid\|SendGrid\|SENDGRID\|smtplib\|MIMEMultipart\|SMTP_HOST\|SMTP_PORT" frontend/src/ api/ 2>/dev/null | grep -v node_modules | grep -v CLAUDE.md | grep -v "No SMTP\|No SendGrid\|not SendGrid\|no sendgrid" | grep -v "^\s*[\*/]")
+if [ -n "$SENDGRID" ]; then
+  echo ""
+  echo "FAIL: SendGrid/SMTP references found (use Mailgun only)"
+  echo "$SENDGRID"
+  ERRORS=$((ERRORS + 1))
+fi
+
+# 3. No direct VITE_BACKEND_URL usage (must use centralized API config)
+DIRECT_ENV=$(grep -rn "import\.meta\.env\.VITE_BACKEND_URL" frontend/src/ --include="*.jsx" --include="*.js" 2>/dev/null | grep -v node_modules | grep -v config/api)
+if [ -n "$DIRECT_ENV" ]; then
+  echo ""
+  echo "FAIL: Direct import.meta.env.VITE_BACKEND_URL usage found — use API from config/api"
+  echo "$DIRECT_ENV"
+  ERRORS=$((ERRORS + 1))
+fi
+
+# 4. No .toISOString().split('T')[0] (timezone-unsafe for NZ)
+ISO_SPLIT=$(grep -rn "toISOString()\.split" frontend/src/ --include="*.jsx" --include="*.js" 2>/dev/null | grep -v node_modules)
+if [ -n "$ISO_SPLIT" ]; then
+  echo ""
+  echo "WARN: .toISOString().split() found — this is timezone-unsafe for NZ (UTC+12/13)"
+  echo "$ISO_SPLIT"
+  # Warning only, not blocking
+fi
+
+# 5. Frontend build check (only if frontend files changed)
+FRONTEND_CHANGED=$(git diff --cached --name-only | grep -E "^frontend/|^api/" | head -1)
+if [ -n "$FRONTEND_CHANGED" ]; then
+  echo ""
+  echo "Building frontend..."
+  cd frontend && npm run build --silent 2>&1
+  BUILD_EXIT=$?
+  cd ..
+  if [ $BUILD_EXIT -ne 0 ]; then
+    echo ""
+    echo "FAIL: Frontend build failed — fix errors before committing"
+    ERRORS=$((ERRORS + 1))
+  else
+    echo "Build passed."
+  fi
+fi
+
+# Result
+if [ $ERRORS -gt 0 ]; then
+  echo ""
+  echo "=== $ERRORS check(s) FAILED — commit blocked ==="
+  echo "Fix the issues above and try again."
+  exit 1
+fi
+
+echo "=== All checks passed ==="
+exit 0

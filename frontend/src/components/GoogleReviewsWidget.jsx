@@ -2,9 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Star, Quote, ExternalLink, RefreshCw } from 'lucide-react';
 import { motion } from 'framer-motion';
 import axios from 'axios';
-
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+import { API } from '../config/api';
 
 // No fallback reviews — only show real reviews from the API.
 // If the API fails, the widget shows a link to Google Reviews instead.

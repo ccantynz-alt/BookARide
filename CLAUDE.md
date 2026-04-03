@@ -341,6 +341,16 @@ grep -rn 'type="date"\|type="time"' frontend/src/ --include="*.jsx" --include="*
 **These checks are NON-NEGOTIABLE. Every agent session MUST run ALL of them before committing ANY code.**
 **The owner is not a developer — agents are 100% responsible for code quality. No excuses.**
 
+### Step 0: Activate Pre-Commit Hook (run ONCE at the start of every session)
+
+The repo has a pre-commit hook in `.githooks/` that automatically blocks commits with banned imports, raw HTML inputs, broken builds, etc. **Every session MUST activate it:**
+
+```bash
+git config core.hooksPath .githooks
+```
+
+**If you skip this step and push broken code, it's your fault. The hook exists specifically to catch mistakes.**
+
 ### Step 1: Engineering Gap Scan (run EVERY session, even if "not related" to your task)
 
 Before starting work, scan for and fix existing issues. These are silent production killers:

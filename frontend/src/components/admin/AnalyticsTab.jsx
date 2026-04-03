@@ -5,9 +5,7 @@ import { Download, TrendingUp, Users, DollarSign, Calendar } from 'lucide-react'
 import { Button } from '../ui/button';
 import axios from 'axios';
 import { toast } from 'sonner';
-
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+import { API } from '../../config/api';
 
 export const AnalyticsTab = () => {
   const [analytics, setAnalytics] = useState(null);
