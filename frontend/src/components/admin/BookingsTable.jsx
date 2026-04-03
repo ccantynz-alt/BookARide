@@ -356,4 +356,4 @@ const BookingsTable = ({
   );
 };
 
-export default BookingsTable;
+export default React.memo(BookingsTable);

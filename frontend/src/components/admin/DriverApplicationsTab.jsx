@@ -8,9 +8,7 @@ import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
 import { toast } from 'sonner';
 import axios from 'axios';
-
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+import { API } from '../../config/api';
 
 export const DriverApplicationsTab = () => {
   const [applications, setApplications] = useState([]);

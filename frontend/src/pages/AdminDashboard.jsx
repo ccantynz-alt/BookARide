@@ -657,14 +657,14 @@ export const AdminDashboard = () => {
     return () => { cancelled = true; };
   }, [activeTab]);
 
-  const getAuthHeaders = () => {
+  const getAuthHeaders = useCallback(() => {
     const token = localStorage.getItem('adminToken');
     return {
       headers: {
         'Authorization': `Bearer ${token}`
       }
     };
-  };
+  }, []);
 
   fetchBookings = async (page = 1, append = false, isRetry = false) => {
     try {
@@ -1246,22 +1246,24 @@ export const AdminDashboard = () => {
       }
       
       toast.success(response.data?.message || 'Driver assigned successfully!');
+      // Capture driver ID before clearing state (stale closure fix)
+      const capturedDriverId = selectedDriver;
       setSelectedDriver('');
       setDriverPayoutOverride('');
       setShowDriverAssignPreview(false);
       setPendingAssignment(null);
       // Optimistic: update driver info in local booking
-      const confirmAssignedDriver = drivers.find(d => d.id === selectedDriver);
+      const confirmAssignedDriver = drivers.find(d => d.id === capturedDriverId);
       if (tripType === 'return') {
         updateBookingLocally(selectedBooking.id, {
-          return_driver_id: selectedDriver,
+          return_driver_id: capturedDriverId,
           return_driver_name: confirmAssignedDriver?.name || '',
           return_driver_phone: confirmAssignedDriver?.phone || '',
           return_driver_email: confirmAssignedDriver?.email || '',
         });
       } else {
         updateBookingLocally(selectedBooking.id, {
-          driver_id: selectedDriver,
+          driver_id: capturedDriverId,
           driver_name: confirmAssignedDriver?.name || '',
           driver_phone: confirmAssignedDriver?.phone || '',
           driver_email: confirmAssignedDriver?.email || '',
@@ -1314,20 +1316,22 @@ export const AdminDashboard = () => {
       }
       
       toast.success(response.data?.message || 'Driver assigned successfully!');
+      // Capture driver ID before clearing state (stale closure fix)
+      const capturedDriverId2 = selectedDriver;
       setSelectedDriver('');
       setDriverPayoutOverride('');
       // Optimistic: update driver info in local booking
-      const assignedDriverObj = drivers.find(d => d.id === selectedDriver);
+      const assignedDriverObj = drivers.find(d => d.id === capturedDriverId2);
       if (tripType === 'return') {
         updateBookingLocally(selectedBooking.id, {
-          return_driver_id: selectedDriver,
+          return_driver_id: capturedDriverId2,
           return_driver_name: assignedDriverObj?.name || '',
           return_driver_phone: assignedDriverObj?.phone || '',
           return_driver_email: assignedDriverObj?.email || '',
         });
       } else {
         updateBookingLocally(selectedBooking.id, {
-          driver_id: selectedDriver,
+          driver_id: capturedDriverId2,
           driver_name: assignedDriverObj?.name || '',
           driver_phone: assignedDriverObj?.phone || '',
           driver_email: assignedDriverObj?.email || '',
@@ -1398,14 +1402,12 @@ export const AdminDashboard = () => {
     }
   };
 
-  filterBookings = () => {
+  // Memoized filtering — only recalculates when bookings, searchTerm, or statusFilter change
+  const filteredBookingsMemo = useMemo(() => {
     let filtered = Array.isArray(bookings) ? bookings : [];
-
     if (statusFilter !== 'all') {
       filtered = filtered.filter(b => b && b.status === statusFilter);
     }
-
-    // Search filter (local only - archive search is debounced separately below)
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
       filtered = filtered.filter(b => b && (
@@ -1417,9 +1419,15 @@ export const AdminDashboard = () => {
         String(b.referenceNumber)?.includes(searchTerm)
       ));
     }
+    return filtered;
+  }, [bookings, searchTerm, statusFilter]);
 
-    setFilteredBookings(filtered);
-  };
+  // Keep filteredBookings state in sync for components that read it
+  useEffect(() => {
+    setFilteredBookings(filteredBookingsMemo);
+  }, [filteredBookingsMemo]);
+
+  filterBookings = () => setFilteredBookings(filteredBookingsMemo);
   filterBookingsRef.current = filterBookings;
 
   // Search across all bookings (active + archived) - debounced separately from filter
@@ -1841,7 +1849,7 @@ export const AdminDashboard = () => {
       } else {
         toast.success(response.data.message || 'Payment link sent!');
       }
-      fetchBookings();
+      fetchBookingsRef.current?.(1, false);
     } catch (error) {
       toast.dismiss();
       console.error('Error sending payment link:', error);
@@ -1996,18 +2004,21 @@ export const AdminDashboard = () => {
     }
   };
 
-  const bookList = Array.isArray(bookings) ? bookings : [];
-  const stats = {
-    total: bookList.length,
-    pending: bookList.filter(b => b && b.status === 'pending').length,
-    pendingApproval: bookList.filter(b => b && b.status === 'pending_approval').length,
-    confirmed: bookList.filter(b => b && b.status === 'confirmed').length,
-    completed: bookList.filter(b => b && b.status === 'completed').length,
-    cancelled: bookList.filter(b => b && b.status === 'cancelled').length,
-    totalRevenue: bookList
-      .filter(b => b && (b.status === 'confirmed' || b.status === 'completed'))
-      .reduce((sum, b) => sum + (b.pricing?.totalPrice || b.totalPrice || 0), 0)
-  };
+  const stats = useMemo(() => {
+    const bookList = Array.isArray(bookings) ? bookings : [];
+    let pending = 0, pendingApproval = 0, confirmed = 0, completed = 0, cancelled = 0, totalRevenue = 0;
+    for (const b of bookList) {
+      if (!b) continue;
+      switch (b.status) {
+        case 'pending': pending++; break;
+        case 'pending_approval': pendingApproval++; break;
+        case 'confirmed': confirmed++; totalRevenue += (b.pricing?.totalPrice || b.totalPrice || 0); break;
+        case 'completed': completed++; totalRevenue += (b.pricing?.totalPrice || b.totalPrice || 0); break;
+        case 'cancelled': cancelled++; break;
+      }
+    }
+    return { total: bookList.length, pending, pendingApproval, confirmed, completed, cancelled, totalRevenue };
+  }, [bookings]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50 pt-20">
