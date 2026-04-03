@@ -26,6 +26,14 @@ function getRatePerKm(distanceKm) {
   return 3.50; // 100km+ fallback
 }
 
+// ===========================================
+// TEMPORARY FUEL SURCHARGE (April 2026)
+// Diesel up 85% ($1.85 -> $3.43/L), petrol up 36% in 28 days
+// due to Iran conflict disrupting Strait of Hormuz.
+// SET TO 0 WHEN FUEL PRICES NORMALISE.
+// ===========================================
+const FUEL_SURCHARGE_PERCENT = 12; // 12% blanket surcharge on all bookings
+
 // Add-on fees
 const VIP_AIRPORT_PICKUP_FEE = 15.0;
 const OVERSIZED_LUGGAGE_FEE = 25.0;
@@ -189,9 +197,15 @@ function calculatePrice({
     subtotal = oneWaySubtotal;
   }
 
+  // Temporary fuel surcharge (blanket % on subtotal)
+  const fuelSurcharge = FUEL_SURCHARGE_PERCENT > 0
+    ? Math.round(subtotal * (FUEL_SURCHARGE_PERCENT / 100) * 100) / 100
+    : 0;
+  const subtotalWithFuel = Math.round((subtotal + fuelSurcharge) * 100) / 100;
+
   // Stripe processing fee (2.9% + $0.30 NZD) passed to customer
-  const stripeFee = Math.round(((subtotal * 0.029) + 0.30) * 100) / 100;
-  const totalWithStripe = Math.round((subtotal + stripeFee) * 100) / 100;
+  const stripeFee = Math.round(((subtotalWithFuel * 0.029) + 0.30) * 100) / 100;
+  const totalWithStripe = Math.round((subtotalWithFuel + stripeFee) * 100) / 100;
 
   return {
     distance: Math.round(distance * 100) / 100,
@@ -199,8 +213,10 @@ function calculatePrice({
     airportFee: Math.round((bookReturn ? airportFee * 2 : airportFee) * 100) / 100,
     oversizedLuggageFee: Math.round((bookReturn ? luggageFee * 2 : luggageFee) * 100) / 100,
     passengerFee: Math.round((bookReturn ? passengerFee * 2 : passengerFee) * 100) / 100,
+    fuelSurcharge,
+    fuelSurchargePercent: FUEL_SURCHARGE_PERCENT,
     stripeFee,
-    subtotal,
+    subtotal: subtotalWithFuel,
     totalPrice: totalWithStripe,
     ratePerKm: Math.round(ratePerKm * 100) / 100,
   };
