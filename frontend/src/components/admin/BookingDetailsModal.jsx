@@ -43,12 +43,6 @@ const BookingDetailsModal = ({
   onShowAssignPreview,
   onUnassignDriver,
   onSendTrackingLink,
-  // Xero
-  xeroConnected,
-  xeroInvoiceDate,
-  onXeroInvoiceDateChange,
-  onCreateXeroInvoice,
-  onRecordXeroPayment,
   // Admin
   onSendToAdmin,
 }) => {
@@ -98,7 +92,6 @@ const BookingDetailsModal = ({
                         <SelectItem value="paid">✓ Paid</SelectItem>
                         <SelectItem value="cash">💵 Cash</SelectItem>
                         <SelectItem value="pay-on-pickup">🚗 Pay on Pickup</SelectItem>
-                        <SelectItem value="xero-invoiced">📄 Xero Invoiced</SelectItem>
                         <SelectItem value="unpaid">✗ Unpaid</SelectItem>
                       </SelectContent>
                     </Select>
@@ -268,47 +261,6 @@ const BookingDetailsModal = ({
             <div>
               <h3 className="font-semibold text-slate-800 mb-3">Special Requests</h3>
               <p className="text-sm text-slate-700 bg-slate-50 p-3 rounded">{booking.notes}</p>
-            </div>
-          )}
-
-          {/* Xero */}
-          {xeroConnected && (
-            <div className="pt-4 border-t">
-              <h3 className="font-semibold text-slate-800 mb-3">Xero Accounting</h3>
-              {booking.xero_invoice_id ? (
-                <div className="flex items-center justify-between bg-emerald-50 p-3 rounded-lg">
-                  <div>
-                    <p className="text-sm font-medium text-emerald-800">Invoice #{booking.xero_invoice_number}</p>
-                    <p className="text-xs text-emerald-600">Status: {booking.xero_status || 'Created'}</p>
-                  </div>
-                  {booking.xero_status !== 'PAID' && (
-                    <Button onClick={() => onRecordXeroPayment(booking.id)} size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white">Mark as Paid</Button>
-                  )}
-                </div>
-              ) : (
-                <div className="flex gap-2 items-end">
-                  <div className="flex-1">
-                    <Label className="text-xs text-slate-500">Invoice Date</Label>
-                    <CustomDatePicker
-                      selected={xeroInvoiceDate || (booking.date ? new Date(booking.date + 'T00:00:00') : new Date())}
-                      onChange={onXeroInvoiceDateChange}
-                      minDate={new Date('2020-01-01')}
-                      maxDate={new Date('2030-12-31')}
-                      showMonthDropdown showYearDropdown dropdownMode="select"
-                      placeholder="Select invoice date"
-                    />
-                  </div>
-                  <Button
-                    onClick={() => {
-                      const d = xeroInvoiceDate || (booking.date ? new Date(booking.date + 'T00:00:00') : new Date());
-                      onCreateXeroInvoice(booking.id, d.toISOString().split('T')[0]);
-                    }}
-                    className="bg-purple-600 hover:bg-purple-700 text-white"
-                  >
-                    <DollarSign className="w-4 h-4 mr-2" /> Create Invoice
-                  </Button>
-                </div>
-              )}
             </div>
           )}
 
