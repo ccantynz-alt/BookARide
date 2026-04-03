@@ -7,9 +7,47 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Textarea } from '../ui/textarea';
 import { toast } from 'sonner';
+import { CustomDatePicker, CustomTimePicker } from '../DateTimePicker';
 import GoogleAddressInput from '../GoogleAddressInput';
 import axios from 'axios';
 import { API } from '../../config/api';
+
+// Parse a YYYY-MM-DD string into a local Date (avoids UTC timezone shift)
+const parseDateString = (dateStr) => {
+  if (!dateStr) return null;
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+  }
+  return null;
+};
+
+// Parse a HH:MM string into a Date object for the time picker
+const parseTimeString = (timeStr) => {
+  if (!timeStr) return null;
+  const parts = timeStr.split(':');
+  if (parts.length >= 2) {
+    const d = new Date();
+    d.setHours(parseInt(parts[0]), parseInt(parts[1]), 0, 0);
+    return d;
+  }
+  return null;
+};
+
+// Format a Date object to YYYY-MM-DD
+const formatDate = (date) => {
+  if (!date) return '';
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+// Format a Date object to HH:MM
+const formatTime = (date) => {
+  if (!date) return '';
+  return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+};
 
 const EditBookingModal = memo(({ open, onClose, booking, onSuccess, onPreviewConfirmation, onResendConfirmation, onResendPaymentLink, onManualCalendarSync, getAuthHeaders, previewLoading, calendarLoading }) => {
   const [editingBooking, setEditingBooking] = useState(null);
@@ -165,22 +203,28 @@ const EditBookingModal = memo(({ open, onClose, booking, onSuccess, onPreviewCon
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label>Date *</Label>
-                  <Input
-                    type="date"
-                    value={editingBooking.date}
-                    onChange={(e) => setEditingBooking(prev => ({...prev, date: e.target.value}))}
-                    min={new Date().toISOString().split('T')[0]}
-                    className="mt-1"
-                  />
+                  <div className="mt-1">
+                    <CustomDatePicker
+                      selected={parseDateString(editingBooking.date)}
+                      onChange={(date) => setEditingBooking(prev => ({...prev, date: formatDate(date)}))}
+                      placeholder="Select date"
+                      minDate={new Date('2020-01-01')}
+                      maxDate={new Date('2030-12-31')}
+                      showMonthDropdown
+                      showYearDropdown
+                      dropdownMode="select"
+                    />
+                  </div>
                 </div>
                 <div>
                   <Label>Time *</Label>
-                  <Input
-                    type="time"
-                    value={editingBooking.time}
-                    onChange={(e) => setEditingBooking(prev => ({...prev, time: e.target.value}))}
-                    className="mt-1"
-                  />
+                  <div className="mt-1">
+                    <CustomTimePicker
+                      selected={parseTimeString(editingBooking.time)}
+                      onChange={(time) => setEditingBooking(prev => ({...prev, time: formatTime(time)}))}
+                      placeholder="Select time"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -204,12 +248,13 @@ const EditBookingModal = memo(({ open, onClose, booking, onSuccess, onPreviewCon
                   </div>
                   <div>
                     <Label>Flight Time</Label>
-                    <Input
-                      type="time"
-                      value={editingBooking.flightTime || editingBooking.flightArrivalTime || editingBooking.flightDepartureTime || ''}
-                      onChange={(e) => setEditingBooking(prev => ({...prev, flightTime: e.target.value}))}
-                      className="mt-1 bg-white"
-                    />
+                    <div className="mt-1">
+                      <CustomTimePicker
+                        selected={parseTimeString(editingBooking.flightTime || editingBooking.flightArrivalTime || editingBooking.flightDepartureTime || '')}
+                        onChange={(time) => setEditingBooking(prev => ({...prev, flightTime: formatTime(time)}))}
+                        placeholder="Select flight time"
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -219,22 +264,28 @@ const EditBookingModal = memo(({ open, onClose, booking, onSuccess, onPreviewCon
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
                     <div>
                       <Label>Return Date *</Label>
-                      <Input
-                        type="date"
-                        value={editingBooking.returnDate || ''}
-                        onChange={(e) => setEditingBooking(prev => ({...prev, returnDate: e.target.value}))}
-                        min={editingBooking.date || new Date().toISOString().split('T')[0]}
-                        className="mt-1 bg-white"
-                      />
+                      <div className="mt-1">
+                        <CustomDatePicker
+                          selected={parseDateString(editingBooking.returnDate)}
+                          onChange={(date) => setEditingBooking(prev => ({...prev, returnDate: formatDate(date)}))}
+                          placeholder="Select return date"
+                          minDate={parseDateString(editingBooking.date) || new Date()}
+                          maxDate={new Date('2030-12-31')}
+                          showMonthDropdown
+                          showYearDropdown
+                          dropdownMode="select"
+                        />
+                      </div>
                     </div>
                     <div>
                       <Label>Return Time *</Label>
-                      <Input
-                        type="time"
-                        value={editingBooking.returnTime || ''}
-                        onChange={(e) => setEditingBooking(prev => ({...prev, returnTime: e.target.value}))}
-                        className="mt-1 bg-white"
-                      />
+                      <div className="mt-1">
+                        <CustomTimePicker
+                          selected={parseTimeString(editingBooking.returnTime)}
+                          onChange={(time) => setEditingBooking(prev => ({...prev, returnTime: formatTime(time)}))}
+                          placeholder="Select return time"
+                        />
+                      </div>
                     </div>
                     <div>
                       <Label>Return Flight Number</Label>

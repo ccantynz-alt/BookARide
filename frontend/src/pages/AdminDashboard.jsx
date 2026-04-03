@@ -10,7 +10,7 @@ import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { toast } from 'sonner';
-import { CustomDatePicker } from '../components/DateTimePicker';
+import { CustomDatePicker, CustomTimePicker } from '../components/DateTimePicker';
 import axios from 'axios';
 import { CustomersTab } from '../components/admin/CustomersTab';
 import { DriverApplicationsTab } from '../components/admin/DriverApplicationsTab';
@@ -2223,9 +2223,41 @@ export const AdminDashboard = () => {
               </SelectContent>
             </Select>
             <div className="flex items-center gap-2">
-              <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-10 border border-slate-200/60 bg-white/50 rounded-xl px-3 text-sm focus:outline-none focus:border-slate-400" />
-              <span className="text-slate-200 text-xs">to</span>
-              <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-10 border border-slate-200/60 bg-white/50 rounded-xl px-3 text-sm focus:outline-none focus:border-slate-400" />
+              <div className="w-[140px]">
+                <CustomDatePicker
+                  selected={dateFrom ? new Date(dateFrom.replace(/-/g, '/')) : null}
+                  onChange={(date) => {
+                    if (date) {
+                      const val = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                      setDateFrom(val);
+                      if (dateTo && val > dateTo) setDateTo('');
+                    } else {
+                      setDateFrom('');
+                    }
+                  }}
+                  placeholder="From date"
+                  allowPastDates
+                  isClearable
+                />
+              </div>
+              <span className="text-slate-400 text-xs">to</span>
+              <div className="w-[140px]">
+                <CustomDatePicker
+                  selected={dateTo ? new Date(dateTo.replace(/-/g, '/')) : null}
+                  onChange={(date) => {
+                    if (date) {
+                      const val = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                      setDateTo(val);
+                    } else {
+                      setDateTo('');
+                    }
+                  }}
+                  placeholder="To date"
+                  allowPastDates
+                  minDate={dateFrom ? new Date(dateFrom.replace(/-/g, '/')) : null}
+                  isClearable
+                />
+              </div>
               {(dateFrom || dateTo) && (
                 <button onClick={() => { setDateFrom(''); setDateTo(''); }} className="text-[11px] text-slate-400 hover:text-slate-700 underline underline-offset-2">Clear</button>
               )}
@@ -2616,21 +2648,37 @@ export const AdminDashboard = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label>Date *</Label>
-                      <Input
-                        type="date"
-                        value={editingBooking.date}
-                        onChange={(e) => setEditingBooking(prev => ({...prev, date: e.target.value}))}
-                        className="mt-1"
-                      />
+                      <div className="mt-1">
+                        <CustomDatePicker
+                          selected={editingBooking.date ? new Date(editingBooking.date.replace(/-/g, '/')) : null}
+                          onChange={(date) => {
+                            if (date) {
+                              const val = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                              setEditingBooking(prev => ({...prev, date: val}));
+                            }
+                          }}
+                          placeholder="Select date"
+                          minDate={new Date('2020-01-01')}
+                          maxDate={new Date('2030-12-31')}
+                          showMonthDropdown
+                          showYearDropdown
+                          dropdownMode="select"
+                        />
+                      </div>
                     </div>
                     <div>
                       <Label>Time *</Label>
-                      <Input
-                        type="time"
-                        value={editingBooking.time}
-                        onChange={(e) => setEditingBooking(prev => ({...prev, time: e.target.value}))}
-                        className="mt-1"
-                      />
+                      <div className="mt-1">
+                        <CustomTimePicker
+                          selected={editingBooking.time ? (() => { const [h, m] = editingBooking.time.split(':'); const d = new Date(); d.setHours(parseInt(h), parseInt(m), 0, 0); return d; })() : null}
+                          onChange={(time) => {
+                            if (time) {
+                              setEditingBooking(prev => ({...prev, time: `${time.getHours().toString().padStart(2, '0')}:${time.getMinutes().toString().padStart(2, '0')}`}));
+                            }
+                          }}
+                          placeholder="Select time"
+                        />
+                      </div>
                     </div>
                   </div>
 
@@ -2663,22 +2711,37 @@ export const AdminDashboard = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
                         <div>
                           <Label>Return Date *</Label>
-                          <Input
-                            type="date"
-                            value={editingBooking.returnDate || ''}
-                            onChange={(e) => setEditingBooking(prev => ({...prev, returnDate: e.target.value}))}
-                            min={editingBooking.date || new Date().toISOString().split('T')[0]}
-                            className="mt-1 bg-white"
-                          />
+                          <div className="mt-1">
+                            <CustomDatePicker
+                              selected={editingBooking.returnDate ? new Date(editingBooking.returnDate.replace(/-/g, '/')) : null}
+                              onChange={(date) => {
+                                if (date) {
+                                  const val = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                                  setEditingBooking(prev => ({...prev, returnDate: val}));
+                                }
+                              }}
+                              placeholder="Select return date"
+                              minDate={editingBooking.date ? new Date(editingBooking.date.replace(/-/g, '/')) : new Date()}
+                              maxDate={new Date('2030-12-31')}
+                              showMonthDropdown
+                              showYearDropdown
+                              dropdownMode="select"
+                            />
+                          </div>
                         </div>
                         <div>
                           <Label>Return Time *</Label>
-                          <Input
-                            type="time"
-                            value={editingBooking.returnTime || ''}
-                            onChange={(e) => setEditingBooking(prev => ({...prev, returnTime: e.target.value}))}
-                            className="mt-1 bg-white"
-                          />
+                          <div className="mt-1">
+                            <CustomTimePicker
+                              selected={editingBooking.returnTime ? (() => { const [h, m] = editingBooking.returnTime.split(':'); const d = new Date(); d.setHours(parseInt(h), parseInt(m), 0, 0); return d; })() : null}
+                              onChange={(time) => {
+                                if (time) {
+                                  setEditingBooking(prev => ({...prev, returnTime: `${time.getHours().toString().padStart(2, '0')}:${time.getMinutes().toString().padStart(2, '0')}`}));
+                                }
+                              }}
+                              placeholder="Select return time"
+                            />
+                          </div>
                         </div>
                         <div>
                           <Label>Return Flight Number</Label>

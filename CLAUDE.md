@@ -307,6 +307,33 @@ This means:
 
 This rule exists because agents repeatedly fixed one form while leaving the identical bug in 2-3 other forms, causing the same issue to resurface in different contexts.
 
+### 15. No Raw HTML Form Inputs — Use Custom Components ONLY (2026-04-03)
+
+**Every form input in the entire codebase MUST use our custom components. NEVER use raw HTML `<input>` elements for dates, times, or any form field that has a custom component.**
+
+This rule exists because agents repeatedly introduced raw `<input type="date">` and `<input type="time">` elements instead of using the existing `CustomDatePicker` and `CustomTimePicker` components. This causes inconsistent UI, timezone bugs, and a messy user experience across the admin panel.
+
+**Mandatory components (defined in `frontend/src/components/DateTimePicker.jsx`):**
+- **Dates:** `CustomDatePicker` — calendar popup with dd/MM/yyyy display, month/year dropdowns
+- **Times:** `CustomTimePicker` — scrollable time selector with 15-minute intervals, 12-hour format
+- **Date+Time:** `CustomDateTimePicker` — combined picker
+
+**Rules:**
+- **NEVER** use `<input type="date">` or `<Input type="date">` anywhere — use `CustomDatePicker`
+- **NEVER** use `<input type="time">` or `<Input type="time">` anywhere — use `CustomTimePicker`
+- **NEVER** use `.toISOString().split('T')[0]` for date handling — it returns UTC which is wrong for NZ (UTC+12/13). Use local date parsing instead
+- Return date pickers MUST set `minDate` to the pickup date — users cannot book a return before departure
+- Date range filters (e.g., admin bookings filter) MUST enforce that the end date >= start date
+- When converting between Date objects and strings, use local year/month/day — never rely on UTC methods
+
+**If you find ANY raw HTML date or time input while working, replace it with the custom component immediately.**
+
+**Engineering Gap Scan addition — add this check to every session:**
+```bash
+# Check for raw HTML date/time inputs in frontend (should use CustomDatePicker/CustomTimePicker)
+grep -rn 'type="date"\|type="time"' frontend/src/ --include="*.jsx" --include="*.js" | grep -v node_modules | grep -v DateTimePicker.jsx && echo "FAIL: Raw HTML date/time inputs found — use CustomDatePicker/CustomTimePicker" || true
+```
+
 ---
 
 ## MANDATORY AUTOMATED CHECKS — RUN BEFORE EVERY COMMIT
@@ -329,6 +356,9 @@ grep -rn "@vuer-ai/react-helmet-async" frontend/ && echo "FAIL: Broken helmet fo
 
 # 3. No console.log in production frontend code
 grep -rn "console\.log" frontend/src/ --include="*.jsx" --include="*.js" | grep -v node_modules | grep -v "// debug" || true
+
+# 4. No raw HTML date/time inputs — must use CustomDatePicker/CustomTimePicker
+grep -rn 'type="date"\|type="time"' frontend/src/ --include="*.jsx" --include="*.js" | grep -v node_modules | grep -v DateTimePicker.jsx && echo "FAIL: Raw HTML date/time inputs found — use CustomDatePicker/CustomTimePicker" || true
 ```
 
 **If ANY of these fail, fix them IMMEDIATELY before doing anything else.**
@@ -921,6 +951,7 @@ The AI email support system was only FLAGGING cancellations (setting `cancellati
 | 2026-04-02 | Reference number #14271 instead of sequential | Counter used ON CONFLICT on JSONB expression with no unique constraint — fell back to COUNT(*) |
 | 2026-04-02 | "Name: undefined undefined" in admin emails | Email template assumed firstName/lastName but customer submitted single name field |
 | 2026-04-02 | Customers tab crash | CustomersTab.jsx used broken VITE_BACKEND_URL directly + /api/customers endpoint missing |
+| 2026-04-03 | Messy date/time inputs in admin forms | EditBookingModal used raw `<input type="date/time">` instead of CustomDatePicker/CustomTimePicker — inconsistent UI, timezone bugs, no return date validation |
 
 ---
 
