@@ -41,10 +41,28 @@ const formatDate = (dateString) => {
   return `${day}/${month}/${year}`;
 };
 
+// SAFE date parser — NEVER use new Date("YYYY-MM-DD") directly!
+// JavaScript parses "YYYY-MM-DD" as UTC midnight, which shows as the
+// previous day in NZ timezone. This function parses as LOCAL time.
+const parseLocalDate = (dateString) => {
+  if (!dateString) return null;
+  const parts = dateString.split('-');
+  if (parts.length === 3) {
+    return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+  }
+  return null;
+};
+
+// Get today's date as YYYY-MM-DD in NZ timezone (string comparison safe)
+const getNZTodayStr = () => {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Auckland' }).format(new Date());
+};
+
 // Helper function to get day of week from date string
 const getDayOfWeek = (dateString) => {
   if (!dateString) return '';
-  const date = new Date(dateString);
+  const date = parseLocalDate(dateString);
+  if (!date) return '';
   const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   return days[date.getDay()];
 };
@@ -52,34 +70,27 @@ const getDayOfWeek = (dateString) => {
 // Helper function to get short day of week
 const getShortDayOfWeek = (dateString) => {
   if (!dateString) return '';
-  const date = new Date(dateString);
+  const date = parseLocalDate(dateString);
+  if (!date) return '';
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   return days[date.getDay()];
 };
 
-// Helper function to check if date is today
+// Helper function to check if date is today (string comparison — timezone safe)
 const isToday = (dateString) => {
   if (!dateString) return false;
-  const today = new Date();
-  const bookingDate = new Date(dateString);
-  return (
-    today.getFullYear() === bookingDate.getFullYear() &&
-    today.getMonth() === bookingDate.getMonth() &&
-    today.getDate() === bookingDate.getDate()
-  );
+  return dateString === getNZTodayStr();
 };
 
-// Helper function to check if date is tomorrow
+// Helper function to check if date is tomorrow (string comparison — timezone safe)
 const isTomorrow = (dateString) => {
   if (!dateString) return false;
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const bookingDate = new Date(dateString);
-  return (
-    tomorrow.getFullYear() === bookingDate.getFullYear() &&
-    tomorrow.getMonth() === bookingDate.getMonth() &&
-    tomorrow.getDate() === bookingDate.getDate()
-  );
+  const nzNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Pacific/Auckland' }));
+  nzNow.setDate(nzNow.getDate() + 1);
+  const y = nzNow.getFullYear();
+  const m = String(nzNow.getMonth() + 1).padStart(2, '0');
+  const d = String(nzNow.getDate()).padStart(2, '0');
+  return dateString === `${y}-${m}-${d}`;
 };
 
 // Import Bookings Section Component

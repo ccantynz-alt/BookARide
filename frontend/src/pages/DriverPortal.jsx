@@ -33,7 +33,7 @@ const BookingCard = ({ booking, showDate = false }) => (
           {showDate && (
             <p className="text-sm text-gray-600 mt-2">
               <Calendar className="w-4 h-4 inline mr-1" />
-              {new Date(booking.date).toLocaleDateString('en-NZ', { weekday: 'short', day: 'numeric', month: 'short' })}
+              {booking.date ? (() => { const [y,m,d] = booking.date.split('-'); return new Date(y, m-1, d).toLocaleDateString('en-NZ', { weekday: 'short', day: 'numeric', month: 'short' }); })() : ''}
             </p>
           )}
         </div>
@@ -154,9 +154,10 @@ export const DriverPortal = () => {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
 
-  const today = new Date().toISOString().split('T')[0];
+  // Use NZ timezone for today's date — NEVER use new Date("YYYY-MM-DD") directly
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Auckland' }).format(new Date());
   const todayBookings = bookings.filter(b => b.date === today);
-  const upcomingBookings = bookings.filter(b => b.date > today).sort((a, b) => new Date(a.date) - new Date(b.date));
+  const upcomingBookings = bookings.filter(b => b.date > today).sort((a, b) => a.date.localeCompare(b.date));
   const completedBookings = bookings.filter(b => b.status === 'completed');
   const confirmedBookings = bookings.filter(b => b.status === 'confirmed');
 
@@ -165,9 +166,11 @@ export const DriverPortal = () => {
   const pendingEarnings = confirmedBookings.reduce((sum, b) => sum + (b.driver_price || 0), 0);
   const todayEarnings = todayBookings.reduce((sum, b) => sum + (b.driver_price || 0), 0);
 
-  const startOfWeek = new Date();
+  const nzNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Pacific/Auckland' }));
+  const startOfWeek = new Date(nzNow);
   startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
-  const weekBookings = bookings.filter(b => new Date(b.date) >= startOfWeek);
+  const startOfWeekStr = `${startOfWeek.getFullYear()}-${String(startOfWeek.getMonth()+1).padStart(2,'0')}-${String(startOfWeek.getDate()).padStart(2,'0')}`;
+  const weekBookings = bookings.filter(b => b.date >= startOfWeekStr);
   const weekEarnings = weekBookings.reduce((sum, b) => sum + (b.driver_price || 0), 0);
 
   return (
@@ -360,7 +363,7 @@ export const DriverPortal = () => {
                           <div>
                             <p className="font-medium text-gray-900">{booking.name}</p>
                             <p className="text-sm text-gray-500">
-                              {new Date(booking.date).toLocaleDateString('en-NZ')} • {booking.serviceType?.replace('-', ' ')}
+                              {booking.date ? (() => { const [y,m,d] = booking.date.split('-'); return new Date(y, m-1, d).toLocaleDateString('en-NZ'); })() : ''} • {booking.serviceType?.replace('-', ' ')}
                             </p>
                           </div>
                           <div className="text-right">
