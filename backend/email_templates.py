@@ -496,6 +496,21 @@ def email_price_table(booking: dict) -> str:
     if passenger_fee:
         rows.append(_price_row("Extra Passengers", float(passenger_fee)))
 
+    # Fuel surcharge
+    fuel_surcharge = pricing.get("fuelSurcharge", 0)
+    fuel_surcharge_pct = pricing.get("fuelSurchargePercent", 0)
+    if fuel_surcharge and float(fuel_surcharge) > 0:
+        pct_label = f" ({float(fuel_surcharge_pct):.0f}%)" if fuel_surcharge_pct else ""
+        rows.append(f"""\
+<tr>
+    <td style="padding:8px 16px;font-family:{FONT};font-size:14px;color:#b45309;border-bottom:1px solid #eeeeee;">
+        Fuel Surcharge{_esc(pct_label)}
+    </td>
+    <td align="right" style="padding:8px 16px;font-family:{FONT};font-size:14px;color:#b45309;font-weight:bold;border-bottom:1px solid #eeeeee;">
+        ${float(fuel_surcharge):,.2f} NZD
+    </td>
+</tr>""")
+
     # Promo discount
     if promo_discount and float(promo_discount) > 0:
         code_label = f"Promo ({promo_code})" if promo_code else "Promo Discount"

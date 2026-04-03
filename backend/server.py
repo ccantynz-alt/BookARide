@@ -332,12 +332,12 @@ class PricingBreakdown(BaseModel):
     airportFee: float
     oversizedLuggageFee: float
     passengerFee: float
+    fuelSurcharge: float = 0.0  # Temporary fuel surcharge (% of subtotal)
+    fuelSurchargePercent: float = 0.0  # The percentage applied
     stripeFee: float = 0.0  # Stripe processing fee (2.9% + $0.30) added to customer total
     subtotal: float = 0.0  # Price before Stripe fee
     totalPrice: float
     ratePerKm: Optional[float] = None  # Rate per km for transparency
-    promoCode: Optional[str] = None  # Applied promo code
-    promoDiscount: float = 0.0  # Discount amount from promo code
 
 # Valid promo codes configuration
 PROMO_CODES = {
@@ -1321,6 +1321,14 @@ DEFAULT_FALLBACK_DISTANCE_KM = 75.0
 # Long-distance fallback for Tauranga/BOP/Hamilton/Whangarei routes
 LONG_DISTANCE_FALLBACK_KM = 200.0
 
+# ===========================================
+# TEMPORARY FUEL SURCHARGE (April 2026)
+# Diesel up 85% ($1.85 -> $3.43/L), petrol up 36% in 28 days
+# due to Iran conflict disrupting Strait of Hormuz.
+# SET TO 0.0 WHEN FUEL PRICES NORMALISE.
+# ===========================================
+FUEL_SURCHARGE_PERCENT = 12.0  # 12% blanket surcharge on all bookings
+
 # Address Autocomplete Endpoint (Google Places API)
 # Common NZ addresses as fallback when Google API is unavailable
 _NZ_FALLBACK_ADDRESSES = [
@@ -1942,18 +1950,26 @@ async def calculate_price(request: PriceCalculationRequest):
         else:
             subtotal = one_way_subtotal
         
+        # Apply temporary fuel surcharge (blanket % on subtotal)
+        fuel_surcharge = round(subtotal * (FUEL_SURCHARGE_PERCENT / 100), 2) if FUEL_SURCHARGE_PERCENT > 0 else 0.0
+        subtotal_with_fuel = round(subtotal + fuel_surcharge, 2)
+        if fuel_surcharge > 0:
+            logger.info(f"Fuel surcharge: {FUEL_SURCHARGE_PERCENT}% of ${subtotal:.2f} = ${fuel_surcharge:.2f} -> subtotal ${subtotal_with_fuel:.2f}")
+
         # Calculate Stripe processing fee (2.9% + $0.30 NZD) and add to customer total
-        stripe_fee = round((subtotal * 0.029) + 0.30, 2)
-        total_with_stripe = round(subtotal + stripe_fee, 2)
-        
+        stripe_fee = round((subtotal_with_fuel * 0.029) + 0.30, 2)
+        total_with_stripe = round(subtotal_with_fuel + stripe_fee, 2)
+
         return PricingBreakdown(
             distance=distance_km,
             basePrice=round(base_price, 2),
             airportFee=round(airport_fee, 2),
             oversizedLuggageFee=round(oversized_luggage_fee, 2),
             passengerFee=round(passenger_fee, 2),
+            fuelSurcharge=fuel_surcharge,
+            fuelSurchargePercent=FUEL_SURCHARGE_PERCENT,
             stripeFee=stripe_fee,
-            subtotal=subtotal,
+            subtotal=subtotal_with_fuel,
             totalPrice=total_with_stripe,
             ratePerKm=round(rate_per_km, 2)
         )
