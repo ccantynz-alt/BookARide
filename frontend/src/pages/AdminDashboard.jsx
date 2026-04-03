@@ -2223,9 +2223,41 @@ export const AdminDashboard = () => {
               </SelectContent>
             </Select>
             <div className="flex items-center gap-2">
-              <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-10 border border-slate-200/60 bg-white/50 rounded-xl px-3 text-sm focus:outline-none focus:border-slate-400" />
-              <span className="text-slate-200 text-xs">to</span>
-              <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-10 border border-slate-200/60 bg-white/50 rounded-xl px-3 text-sm focus:outline-none focus:border-slate-400" />
+              <div className="w-[140px]">
+                <CustomDatePicker
+                  selected={dateFrom ? new Date(dateFrom.replace(/-/g, '/')) : null}
+                  onChange={(date) => {
+                    if (date) {
+                      const val = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                      setDateFrom(val);
+                      if (dateTo && val > dateTo) setDateTo('');
+                    } else {
+                      setDateFrom('');
+                    }
+                  }}
+                  placeholder="From date"
+                  allowPastDates
+                  isClearable
+                />
+              </div>
+              <span className="text-slate-400 text-xs">to</span>
+              <div className="w-[140px]">
+                <CustomDatePicker
+                  selected={dateTo ? new Date(dateTo.replace(/-/g, '/')) : null}
+                  onChange={(date) => {
+                    if (date) {
+                      const val = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                      setDateTo(val);
+                    } else {
+                      setDateTo('');
+                    }
+                  }}
+                  placeholder="To date"
+                  allowPastDates
+                  minDate={dateFrom ? new Date(dateFrom.replace(/-/g, '/')) : null}
+                  isClearable
+                />
+              </div>
               {(dateFrom || dateTo) && (
                 <button onClick={() => { setDateFrom(''); setDateTo(''); }} className="text-[11px] text-slate-400 hover:text-slate-700 underline underline-offset-2">Clear</button>
               )}
