@@ -1,6 +1,6 @@
 /**
  * Google Maps API helpers for distance calculation and autocomplete.
- * Uses Google Maps API ONLY — no Geoapify.
+ * Uses Google Maps API ONLY.
  */
 
 /**
