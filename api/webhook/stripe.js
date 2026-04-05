@@ -11,6 +11,7 @@
  */
 const { findOne, updateOne, insertOne } = require('../_lib/db');
 const { sendEmail } = require('../_lib/mailgun');
+const { createCalendarEvent } = require('../_lib/google-calendar');
 
 // Vercel serverless: disable body parsing so we get the raw body for Stripe verification
 module.exports.config = {
@@ -122,7 +123,11 @@ module.exports = async function handler(req, res) {
           <p><strong>Date:</strong> ${booking.date} at ${booking.time}</p>`,
       }).catch(err => console.error('Admin notification email failed:', err.message));
 
-      // 3. Google Calendar event — TODO: port calendar integration
+      // 3. Google Calendar event
+      const refreshedBooking = await findOne('bookings', { id: bookingId });
+      await createCalendarEvent(refreshedBooking || booking)
+        .catch(err => console.error('Calendar event creation failed:', err.message));
+
       // 4. iCloud contact sync — TODO: port iCloud integration
     }
 
