@@ -332,7 +332,7 @@ async def get_current_driver(credentials: HTTPAuthorizationCredentials = Depends
 
 # Define Models
 class StatusCheck(BaseModel):
-    model_config = ConfigDict(extra="ignore")  # Ignore MongoDB's _id field
+    model_config = ConfigDict(extra="ignore")  # Ignore database _id field
     
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     client_name: str
@@ -1314,7 +1314,7 @@ async def create_status_check(input: StatusCheckCreate):
     status_dict = input.model_dump()
     status_obj = StatusCheck(**status_dict)
     
-    # Convert to dict and serialize datetime to ISO string for MongoDB
+    # Convert to dict and serialize datetime to ISO string for database
     doc = status_obj.model_dump()
     doc['timestamp'] = doc['timestamp'].isoformat()
     
@@ -1323,7 +1323,7 @@ async def create_status_check(input: StatusCheckCreate):
 
 @api_router.get("/status", response_model=List[StatusCheck])
 async def get_status_checks():
-    # Exclude MongoDB's _id field from the query results
+    # Exclude _id field from query results
     status_checks = await db.status_checks.find({}, {"_id": 0}).to_list(1000)
     
     # Convert ISO string timestamps back to datetime objects
@@ -9888,7 +9888,7 @@ async def restore_booking(booking_id: str, current_admin: dict = Depends(get_cur
         # Safe to remove from deleted_bookings (restore confirmed)
         await db.deleted_bookings.delete_one({"id": booking_id})
 
-        # Remove _id before returning (MongoDB adds it during insert)
+        # Remove _id before returning
         deleted_booking.pop('_id', None)
 
         logger.info(f"Booking {booking_id} restored by {current_admin.get('username', 'admin')}")
@@ -10855,7 +10855,6 @@ if cors_origins_env == '*':
         "https://www.aucklandshuttles.co.nz",
         "https://bookaridenz.com",
         "https://www.bookaridenz.com",
-        "https://dazzling-leakey.preview.emergentagent.com",
         "http://localhost:3000"
     ]
     # Also allow any Vercel preview/production deployments
@@ -12670,7 +12669,7 @@ async def trigger_auto_archive(current_admin: dict = Depends(get_current_admin))
 
 async def auto_backup_bookings():
     """
-    Create an automatic daily snapshot of all bookings (active + deleted) stored in MongoDB.
+    Create an automatic daily snapshot of all bookings (active + deleted) stored in database.
     Keeps the last 7 daily backups so you can always roll back up to a week.
     Runs daily at 1 AM NZ time via the scheduler.
     """
@@ -14533,7 +14532,7 @@ async def startup_event():
         misfire_grace_time=3600 * 4  # Allow 4 hour grace period
     )
 
-    # AUTO DAILY BACKUP - Runs at 1 AM NZ time, keeps 7 rolling daily snapshots in MongoDB
+    # AUTO DAILY BACKUP - Runs at 1 AM NZ time, keeps 7 rolling daily snapshots in database
     scheduler.add_job(
         auto_backup_bookings,
         CronTrigger(hour=1, minute=0, timezone=nz_tz),

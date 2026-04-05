@@ -1,5 +1,5 @@
 services:
-  # Backend API (Python/FastAPI)
+  # Backend API (Python/FastAPI) — deployed on Render
   - type: web
     name: bookaride-backend
     env: python
@@ -14,37 +14,32 @@ services:
         value: 10000
       - key: PYTHON_VERSION
         value: 3.11.9
-      - key: MONGO_URL
+      - key: DATABASE_URL
         sync: false
-      - key: JWT_SECRET
+      - key: JWT_SECRET_KEY
         generateValue: true
       - key: STRIPE_SECRET_KEY
         sync: false
-      - key: GOOGLE_MAPS_API_KEY
-        sync: false
       - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: GOOGLE_MAPS_API_KEY
         sync: false
       - key: GOOGLE_SERVICE_ACCOUNT_JSON
         sync: false
       - key: GOOGLE_CALENDAR_ID
         sync: false
-      - key: SMTP_USER
+      - key: MAILGUN_API_KEY
         sync: false
-      - key: SMTP_PASS
+      - key: MAILGUN_DOMAIN
         sync: false
-      - key: SMTP_HOST
-        value: smtp.gmail.com
-      - key: SMTP_PORT
-        value: 587
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_PHONE_NUMBER
+        sync: false
 
-  # Frontend (React)
-  - type: static
-    name: bookaride-frontend
-    env: static
-    rootDir: frontend
-    buildCommand: npm install && npm run build
-    publishPath: build
-    autoDeploy: true
-    envVars:
-      - key: REACT_APP_BACKEND_URL
-        value: https://bookaride-backend.onrender.com
+  # NOTE: Frontend is deployed on Vercel (not Render)
+  # Set VITE_BACKEND_URL=https://bookaride-backend.onrender.com in Vercel env vars
