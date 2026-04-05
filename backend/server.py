@@ -3538,7 +3538,7 @@ async def track_flight(flight_number: str):
                 from datetime import datetime
                 dt = datetime.fromisoformat(iso_string.replace("Z", "+00:00"))
                 return dt.strftime("%H:%M")
-            except:
+            except Exception:
                 return iso_string[:5] if len(iso_string) >= 5 else "TBA"
         
         def format_date(iso_string):
@@ -3548,7 +3548,7 @@ async def track_flight(flight_number: str):
                 from datetime import datetime
                 dt = datetime.fromisoformat(iso_string.replace("Z", "+00:00"))
                 return dt.strftime("%d %b")
-            except:
+            except Exception:
                 return ""
         
         # Build message based on status
@@ -4472,8 +4472,8 @@ async def send_daily_reminders_core(source: str = "unknown"):
             bookings = await db.bookings.find({
                 "status": "confirmed",
                 "date": nz_tomorrow,
-                "reminderSentForDate": {"$ne": nz_tomorrow},  # Not already sent for tomorrow
-                "cancellation_requested": {"$ne": True}  # Never email customers who requested cancellation
+                "reminderSentForDate": {"$ne": nz_tomorrow},
+                "cancellation_requested": {"$ne": True}
             }, {"_id": 0}).to_list(100)
             
             logger.info(f" [{source}] Found {len(bookings)} bookings needing reminders for {nz_tomorrow}")
@@ -7574,7 +7574,7 @@ async def check_return_booking_alerts():
                 try:
                     return_datetime = datetime.strptime(f"{return_date} {return_time}", '%Y-%m-%d %H:%M')
                     return_datetime = nz_tz.localize(return_datetime)
-                except:
+                except Exception:
                     continue
                 
                 # Skip if return is in the past
@@ -7714,7 +7714,7 @@ async def get_urgent_return_bookings(current_admin: dict = Depends(get_current_a
                 try:
                     return_datetime = datetime.strptime(f"{return_date} {return_time}", '%Y-%m-%d %H:%M')
                     return_datetime = nz_tz.localize(return_datetime)
-                except:
+                except Exception:
                     continue
                 
                 # Skip past returns
@@ -11417,7 +11417,7 @@ async def import_bookings_from_csv(
         # Decode CSV content
         try:
             csv_text = contents.decode('utf-8-sig')
-        except:
+        except Exception:
             csv_text = contents.decode('latin-1')
         
         reader = csv.DictReader(StringIO(csv_text))
@@ -11561,7 +11561,7 @@ async def quick_import_wordpress(request: Request, current_admin: dict = Depends
         try:
             body = await request.json()
             csv_text = body.get('csv_content', '')
-        except:
+        except Exception:
             pass
         
         # If no body content, try server file
@@ -11595,7 +11595,7 @@ async def quick_import_wordpress(request: Request, current_admin: dict = Depends
                     if len(parts) == 3 and len(parts[0]) <= 2:
                         return f"{parts[2]}-{parts[1].zfill(2)}-{parts[0].zfill(2)}"
                 return date_str
-            except:
+            except Exception:
                 return date_str
         
         for row in reader:
@@ -13080,7 +13080,7 @@ async def create_airline_booking(request: AirlineBookingRequest, airline: dict =
             pickup_dt = datetime.fromisoformat(request.pickup_datetime.replace('Z', '+00:00'))
             pickup_date = pickup_dt.strftime("%Y-%m-%d")
             pickup_time = pickup_dt.strftime("%H:%M")
-        except:
+        except Exception:
             pickup_date = request.pickup_datetime[:10]
             pickup_time = request.pickup_datetime[11:16] if len(request.pickup_datetime) > 10 else "12:00"
         
