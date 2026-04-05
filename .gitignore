@@ -124,3 +124,4 @@ backend/#*.txt
 RUN_LOGS/
 D8_CONTROL/
 .env*.local
+test-results/
