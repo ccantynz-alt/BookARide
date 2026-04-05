@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { MapPin, Calendar, Users, DollarSign, Clock, Mail, Phone, User, Wrench, Plane } from 'lucide-react';
+import { MapPin, Calendar, Users, DollarSign, Clock, Mail, Phone, User, Wrench, Plane, CheckCircle } from 'lucide-react';
 import siteConfig from '../config/siteConfig';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -395,9 +395,11 @@ export const BookNow = () => {
       <section className="pt-32 pb-16 bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
         <div className="absolute inset-0">
           <img
-            src="https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=1920&q=80"
+            src="https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=1920&q=80&fm=webp"
             alt="Road trip scenic drive"
             className="w-full h-full object-cover"
+            fetchPriority="high"
+            loading="eager"
           />
           <div className="absolute inset-0 bg-gradient-to-b from-gray-900/70 via-gray-900/60 to-gray-900" />
         </div>
@@ -414,6 +416,30 @@ export const BookNow = () => {
             <p className="text-xl text-white/80">
               Get instant pricing with our live calculator - No hidden fees
             </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Trust Bar — Conversion boosters */}
+      <section className="bg-white border-b border-gray-100">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex flex-wrap items-center justify-center gap-6 md:gap-10 text-sm text-gray-600">
+            <div className="flex items-center gap-2">
+              <CheckCircle className="w-4 h-4 text-green-500" />
+              <span className="font-medium">Fixed Price Guarantee</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <CheckCircle className="w-4 h-4 text-green-500" />
+              <span className="font-medium">Free Cancellation (24hr)</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <CheckCircle className="w-4 h-4 text-green-500" />
+              <span className="font-medium">Flight Monitoring Included</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <CheckCircle className="w-4 h-4 text-green-500" />
+              <span className="font-medium">24/7 Service</span>
+            </div>
           </div>
         </div>
       </section>

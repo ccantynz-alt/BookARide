@@ -45,10 +45,12 @@ export const Home = () => {
           {/* Professional airport image - positioned on right */}
           <div className="absolute right-0 top-0 w-full lg:w-3/5 h-full">
             <img 
-              src="https://images.unsplash.com/photo-1522199873717-bc67b1a5e32b?auto=compress&cs=tinysrgb&w=1920&q=80" 
-              alt="Professional traveler at Auckland airport departure board - Book A Ride premium shuttle service" 
+              src="https://images.unsplash.com/photo-1522199873717-bc67b1a5e32b?auto=compress&cs=tinysrgb&w=1920&q=80&fm=webp"
+              alt="Professional traveler at Auckland airport departure board - Book A Ride premium shuttle service"
               className="w-full h-full object-cover"
               style={{ objectPosition: 'center center' }}
+              fetchPriority="high"
+              loading="eager"
             />
             {/* Gradient fade from left */}
             <div className="absolute inset-0 bg-gradient-to-r from-black via-black/40 to-transparent" />
