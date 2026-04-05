@@ -7,7 +7,7 @@ export const VehicleGallery = () => {
   const vehicles = [
     {
       name: 'Toyota Hiace - Day Service',
-      image: 'https://customer-assets.emergentagent.com/job_bookmyride-nz/artifacts/6fpsudnh_IMG_0158%20%281%29.jpeg',
+      image: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=800&q=80',
       capacity: '11 passengers',
       luggage: '12+ bags',
       description: 'Premium daytime transfers',
@@ -15,7 +15,7 @@ export const VehicleGallery = () => {
     },
     {
       name: 'Toyota Hiace - Night Service',
-      image: 'https://customer-assets.emergentagent.com/job_bookmyride-nz/artifacts/6fpsudnh_IMG_0158%20%281%29.jpeg',
+      image: 'https://images.unsplash.com/photo-1570125909232-eb263c188f7e?auto=format&fit=crop&w=800&q=80',
       capacity: '11 passengers',
       luggage: '12+ bags',
       description: 'Late night & early morning pickups',
@@ -24,7 +24,7 @@ export const VehicleGallery = () => {
     },
     {
       name: 'Toyota Hiace - Airport Express',
-      image: 'https://customer-assets.emergentagent.com/job_bookmyride-nz/artifacts/6fpsudnh_IMG_0158%20%281%29.jpeg',
+      image: 'https://images.unsplash.com/photo-1449965408869-ebd3fee7298f?auto=format&fit=crop&w=800&q=80',
       capacity: '11 passengers',
       luggage: '12+ bags',
       description: 'Flight-tracked service',
