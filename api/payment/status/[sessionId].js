@@ -5,6 +5,7 @@
  */
 const { findOne, updateOne } = require('../../_lib/db');
 const { sendEmail } = require('../../_lib/mailgun');
+const { createCalendarEvent } = require('../../_lib/google-calendar');
 
 module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -45,7 +46,7 @@ module.exports = async function handler(req, res) {
       // Send admin notification (webhook may not have arrived yet)
       const customerName = `${booking.firstName || ''} ${booking.lastName || ''}`.trim() || booking.name || 'Customer';
       const adminEmail = process.env.BOOKINGS_NOTIFICATION_EMAIL || 'bookings@bookaride.co.nz';
-      sendEmail({
+      await sendEmail({
         to: adminEmail,
         subject: `PAID: Booking #${booking.referenceNumber} - ${customerName}`,
         html: `<h2>Payment Received</h2>
@@ -60,7 +61,7 @@ module.exports = async function handler(req, res) {
       }).catch(err => console.error('Admin payment notification failed:', err.message));
 
       // Send customer confirmation
-      sendEmail({
+      await sendEmail({
         to: booking.email,
         subject: `Booking Confirmed - Ref #${booking.referenceNumber}`,
         html: `<h2>Payment Successful!</h2>
@@ -74,6 +75,10 @@ module.exports = async function handler(req, res) {
           <p><strong>Payment Method:</strong> Credit/Debit Card</p>
           <p>Thank you for choosing BookaRide!</p>`,
       }).catch(err => console.error('Customer confirmation failed:', err.message));
+
+      // Create Google Calendar event
+      await createCalendarEvent(booking)
+        .catch(err => console.error('Calendar event creation failed:', err.message));
     }
 
     return res.status(200).json({

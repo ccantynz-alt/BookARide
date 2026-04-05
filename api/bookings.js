@@ -117,10 +117,10 @@ async function createBooking(req, res) {
 
     console.log(`Booking created and verified: ${id} with reference #${refNumber}`);
 
-    // Send admin notification (fire-and-forget, don't block response)
+    // Send admin notification
     const adminEmail = process.env.BOOKINGS_NOTIFICATION_EMAIL || 'bookings@bookaride.co.nz';
     const customerName = booking.name || `${booking.firstName || ''} ${booking.lastName || ''}`.trim() || 'Customer';
-    sendEmail({
+    await sendEmail({
       to: adminEmail,
       subject: requiresApproval
         ? `URGENT: Booking #${refNumber} needs approval (within 24hrs)`
@@ -136,6 +136,33 @@ async function createBooking(req, res) {
         <p><strong>Total:</strong> $${bookingDoc.totalPrice}</p>
         ${requiresApproval ? '<p style="color: red; font-weight: bold;">Within 24 hours — requires manual approval</p>' : ''}`,
     }).catch(err => console.error('Admin notification failed:', err.message));
+
+    // Send customer booking confirmation immediately (don't wait for payment)
+    if (booking.email) {
+      const frontendUrl = process.env.FRONTEND_URL || process.env.PUBLIC_DOMAIN || 'https://bookaride.co.nz';
+      const paymentNote = bookingDoc.payment_method === 'pay-on-pickup'
+        ? '<p><strong>Payment:</strong> Pay on pickup (cash)</p>'
+        : `<p><strong>Payment:</strong> A payment link will be sent to your email shortly.</p>`;
+
+      await sendEmail({
+        to: booking.email,
+        subject: `Booking Received - Ref #${refNumber}`,
+        html: `<h2>Thank you for your booking!</h2>
+          <p>Hi ${customerName},</p>
+          <p>We've received your booking and it's being processed.</p>
+          <p><strong>Reference:</strong> #${refNumber}</p>
+          <p><strong>Pickup:</strong> ${booking.pickupAddress}</p>
+          <p><strong>Dropoff:</strong> ${booking.dropoffAddress}</p>
+          <p><strong>Date:</strong> ${booking.date} at ${booking.time}</p>
+          <p><strong>Passengers:</strong> ${booking.passengers || 1}</p>
+          <p><strong>Total:</strong> $${bookingDoc.totalPrice} NZD</p>
+          ${paymentNote}
+          ${requiresApproval ? '<p><em>Your booking is within 24 hours and requires manual confirmation. We will contact you shortly.</em></p>' : ''}
+          <p>If you have any questions, reply to this email or contact us at support@bookaride.co.nz</p>
+          <p>Thank you for choosing BookaRide!</p>`,
+        replyTo: 'support@bookaride.co.nz',
+      }).catch(err => console.error('Customer booking confirmation failed:', err.message));
+    }
 
     return res.status(201).json(bookingDoc);
   } catch (err) {
