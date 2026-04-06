@@ -163,6 +163,57 @@ Xero accounting integration has been removed. We do not use Xero for invoicing, 
 - **NEVER** include Xero in customer-facing FAQs or marketing copy
 - If Xero-related code still exists anywhere in the codebase, delete it
 
+### 6c. Google Address Autocomplete (2026-04-06) — LOCKED
+
+The Google Maps Places autocomplete dropdown on booking forms took **weeks**
+to fix and was working via Google's NATIVE Autocomplete widget (PR #226,
+commit ed66fcf). It broke again because the supporting endpoint was never
+ported to Vercel serverless. Protecting it now.
+
+**The architecture (do not change):**
+
+1. **Component**: `frontend/src/components/GoogleAddressInput.jsx` uses
+   Google's **native** `window.google.maps.places.Autocomplete` widget.
+   The dropdown (`.pac-container`) is rendered by Google directly into
+   `document.body` — NOT by React. This is what makes it work inside
+   Radix Dialog, React Portals, and on iOS touch.
+   - Do NOT replace with a custom React dropdown.
+   - Do NOT wrap it in a React Portal yourself.
+   - Do NOT try to use `@react-google-maps/api` Autocomplete component.
+   - The `.pac-container { z-index: 999999 !important }` style is
+     injected on mount — do not remove it.
+
+2. **API key loader**: The component calls `GET /api/maps/client-key` to
+   fetch the Google Maps JS API key, then loads
+   `https://maps.googleapis.com/maps/api/js?key=...&libraries=places`
+   dynamically. If the key fetch fails, the component falls back to the
+   OLD broken custom dropdown — so this endpoint MUST exist.
+
+3. **Required Vercel serverless endpoints** (both must exist):
+   - `api/maps/client-key.js` — returns `{ key: process.env.GOOGLE_MAPS_API_KEY }`.
+     This is what makes the native Google widget work.
+   - `api/places/autocomplete.js` — backend-proxy autocomplete used as a
+     fallback AND by the chatbot/other non-browser callers.
+
+4. **Required Vercel env var**: `GOOGLE_MAPS_API_KEY` must be set in the
+   Vercel dashboard (Production + Preview + Development). The key should
+   have HTTP referrer restrictions in Google Cloud Console so it's safe
+   to expose to the browser.
+
+**If the dropdown breaks again, check in this order:**
+1. Does `GET /api/maps/client-key` return `200 { key: "AIza..." }`? If 404,
+   the endpoint file was deleted — restore `api/maps/client-key.js`.
+2. Is `GOOGLE_MAPS_API_KEY` set in Vercel env vars? If empty, add it.
+3. Is the HTTP referrer restriction in Google Cloud Console blocking
+   your domain? Whitelist `bookaride.co.nz/*` and the Vercel preview URLs.
+4. Does `GoogleAddressInput.jsx` still use `new window.google.maps.places.Autocomplete`?
+   If someone "simplified" it to use a React component, restore the
+   native widget version from commit ed66fcf.
+
+**Never delete `api/maps/client-key.js`.** Never "consolidate" it away.
+Never replace Google's native Autocomplete widget with a custom React
+dropdown — the custom one is broken on iOS and inside modals.
+
 ### 6b. Admin UI Standards (2026-04-06) — LOCKED
 
 These admin UI decisions are final. Do NOT revert them.
