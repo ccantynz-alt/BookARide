@@ -5,6 +5,7 @@
  */
 const { findOne, updateOne, insertOne } = require('../_lib/db');
 const { sendEmail } = require('../_lib/mailgun');
+const { customerPaymentLinkEmail } = require('../_lib/email-templates');
 const { v4: uuidv4 } = require('uuid');
 
 module.exports = async function handler(req, res) {
@@ -95,28 +96,12 @@ module.exports = async function handler(req, res) {
     // Fire-and-forget: email the customer their payment link
     // This means even if they lose the browser, they can click the link in email
     if (booking.email) {
-      const customerName = `${booking.firstName || ''} ${booking.lastName || ''}`.trim() || booking.name || 'Customer';
+      const template = customerPaymentLinkEmail(booking, session.url);
       sendEmail({
         to: booking.email,
-        subject: `Complete Your Payment - Ref #${booking.referenceNumber} - BookARide`,
-        html: `
-          <div style="font-family:Arial,sans-serif; max-width:600px; margin:0 auto; padding:20px;">
-            <h2 style="color:#1a1a1a;">Complete Your Payment</h2>
-            <p>Hi ${customerName},</p>
-            <p>Click the button below to complete payment for your booking.</p>
-            <table style="width:100%; border-collapse:collapse; margin:20px 0;">
-              <tr><td style="padding:8px; background:#f8f8f8;"><strong>Reference:</strong></td><td style="padding:8px;">#${booking.referenceNumber}</td></tr>
-              <tr><td style="padding:8px; background:#f8f8f8;"><strong>Pickup:</strong></td><td style="padding:8px;">${booking.pickupAddress}</td></tr>
-              <tr><td style="padding:8px; background:#f8f8f8;"><strong>Dropoff:</strong></td><td style="padding:8px;">${booking.dropoffAddress}</td></tr>
-              <tr><td style="padding:8px; background:#f8f8f8;"><strong>Date:</strong></td><td style="padding:8px;">${booking.date} at ${booking.time}</td></tr>
-              <tr><td style="padding:8px; background:#f8f8f8;"><strong>Amount:</strong></td><td style="padding:8px;"><strong>$${amount.toFixed(2)} NZD</strong></td></tr>
-            </table>
-            <p style="text-align:center; margin:30px 0;">
-              <a href="${session.url}" style="background:#1a1a1a; color:#fff; padding:15px 40px; text-decoration:none; border-radius:6px; font-weight:bold; display:inline-block;">Pay Now Securely</a>
-            </p>
-            <p style="font-size:12px; color:#666;">Or copy this link: <a href="${session.url}">${session.url}</a></p>
-            <p style="font-size:12px; color:#666; margin-top:30px;">Secure payment via Stripe. Your card details are never stored on our servers.</p>
-          </div>`,
+        subject: template.subject,
+        html: template.html,
+        replyTo: 'info@bookaride.co.nz',
       }).catch(err => console.error(`CRITICAL: Payment link email failed for booking ${booking_id}:`, err.message));
     }
 
