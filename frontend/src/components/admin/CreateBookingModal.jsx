@@ -580,7 +580,7 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
                             }
                           }}
                           placeholder="Select return date"
-                          minDate={new Date('2020-01-01')}
+                          minDate={adminPickupDate || new Date('2020-01-01')}
                           maxDate={new Date('2030-12-31')}
                           showMonthDropdown
                           showYearDropdown

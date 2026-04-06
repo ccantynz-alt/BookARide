@@ -11,8 +11,7 @@ import { toast } from 'sonner';
 import axios from 'axios';
 import SEO from '../components/SEO';
 import { FAQSchema } from '../components/SchemaMarkup';
-
-const API = `${import.meta.env.VITE_BACKEND_URL}/api`;
+import { API } from '../config/api';
 
 // True gold color matching BookaRide branding
 const goldColor = '#D4AF37';

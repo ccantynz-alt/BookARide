@@ -5,8 +5,12 @@ import { Input } from '../ui/input';
 import axios from 'axios';
 import { toast } from 'sonner';
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+import { API } from '../../config/api';
+
+const getAuthHeaders = () => {
+  const token = localStorage.getItem('adminToken');
+  return { headers: { Authorization: `Bearer ${token}` } };
+};
 
 export const CustomersTab = () => {
   const [customers, setCustomers] = useState([]);
@@ -34,12 +38,10 @@ export const CustomersTab = () => {
 
   const fetchCustomers = async () => {
     try {
-      const token = localStorage.getItem('adminToken');
-      const response = await axios.get(`${API}/customers`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      setCustomers(response.data.customers);
-      setFilteredCustomers(response.data.customers);
+      const response = await axios.get(`${API}/customers`, getAuthHeaders());
+      const customerList = Array.isArray(response.data) ? response.data : (response.data?.customers || []);
+      setCustomers(customerList);
+      setFilteredCustomers(customerList);
       setLoading(false);
     } catch (error) {
       console.error('Error fetching customers:', error);

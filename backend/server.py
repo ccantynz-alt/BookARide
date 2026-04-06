@@ -22,6 +22,7 @@ except Exception:
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 from google.oauth2.credentials import Credentials
+from google.oauth2 import id_token as google_id_token
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 from google.auth.transport.requests import Request as GoogleRequest
@@ -82,7 +83,7 @@ def _send_email_with_fallbacks(to_email, subject, html_content, from_email=None,
                 data=data,
                 timeout=15,
             )
-            if response.status_code == 200:
+            if response.status_code in (200, 202):
                 logging.getLogger(__name__).info(f"Email sent via Mailgun to {to_email}")
                 return True
             else:
@@ -194,33 +195,6 @@ async def root_email_status(current_admin: dict = Depends(get_current_admin)):
             "noreply_email": os.environ.get("NOREPLY_EMAIL") or os.environ.get("SENDER_EMAIL") or "(not set)",
             "hint": "Set MAILGUN_API_KEY, MAILGUN_DOMAIN, and NOREPLY_EMAIL in Render env vars.",
         }
-
-# Google auth start - app-level routes (try multiple paths for compatibility)
-@app.get("/api/admin/google-auth/start")
-@app.get("/api/google-auth-start")  # Simpler path fallback
-async def admin_google_auth_start_app():
-    """Start Google OAuth - app-level route for reliability"""
-    client_id = os.environ.get('GOOGLE_CLIENT_ID')
-    client_secret = os.environ.get('GOOGLE_CLIENT_SECRET')
-    if not client_id or not client_secret:
-        raise HTTPException(status_code=500, detail="Google OAuth not configured. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.")
-    public_domain = os.environ.get('PUBLIC_DOMAIN', 'https://bookaride.co.nz')
-    backend_url = os.environ.get('BACKEND_URL') or os.environ.get('RENDER_EXTERNAL_URL') or public_domain
-    redirect_uri = f"{backend_url.rstrip('/')}/api/admin/google-auth/callback"
-    state = f"bookaride_admin_oauth_{uuid.uuid4().hex}"
-    auth_url = (
-        "https://accounts.google.com/o/oauth2/v2/auth?"
-        f"client_id={client_id}&"
-        f"redirect_uri={requests.utils.quote(redirect_uri)}&"
-        "response_type=code&"
-        "scope=openid%20email%20profile&"
-        f"state={state}&"
-        "access_type=offline&"
-        "prompt=select_account"
-    )
-    response = RedirectResponse(url=auth_url)
-    response.set_cookie(key="admin_oauth_state", value=state, httponly=True, max_age=600, samesite="lax")
-    return response
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
@@ -358,12 +332,12 @@ class PricingBreakdown(BaseModel):
     airportFee: float
     oversizedLuggageFee: float
     passengerFee: float
+    fuelSurcharge: float = 0.0  # Temporary fuel surcharge (% of subtotal)
+    fuelSurchargePercent: float = 0.0  # The percentage applied
     stripeFee: float = 0.0  # Stripe processing fee (2.9% + $0.30) added to customer total
     subtotal: float = 0.0  # Price before Stripe fee
     totalPrice: float
     ratePerKm: Optional[float] = None  # Rate per km for transparency
-    promoCode: Optional[str] = None  # Applied promo code
-    promoDiscount: float = 0.0  # Discount amount from promo code
 
 # Valid promo codes configuration
 PROMO_CODES = {
@@ -712,114 +686,45 @@ async def set_password(
 
 
 # ============================================
-# GOOGLE OAUTH FOR ADMIN
+# GOOGLE OAUTH FOR ADMIN (browser-based via Google Identity Services)
 # ============================================
 
-# Standalone Google OAuth (no Emergent) - redirect flow
-ADMIN_GOOGLE_OAUTH_STATE = "bookaride_admin_oauth"
+class GoogleIdTokenRequest(BaseModel):
+    credential: str
 
-@api_router.get("/admin/google-auth/start")
-async def admin_google_auth_start():
-    """Start Google OAuth flow for admin login - redirects to Google"""
+@api_router.post("/admin/google-auth/verify-token")
+async def admin_google_auth_verify_token(body: GoogleIdTokenRequest):
+    """Verify a Google ID token from frontend GIS and return a JWT if the user is an authorized admin."""
     client_id = os.environ.get('GOOGLE_CLIENT_ID')
-    client_secret = os.environ.get('GOOGLE_CLIENT_SECRET')
-    if not client_id or not client_secret:
-        raise HTTPException(status_code=500, detail="Google OAuth not configured. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.")
-    public_domain = os.environ.get('PUBLIC_DOMAIN', 'https://bookaride.co.nz')
-    backend_url = os.environ.get('BACKEND_URL') or os.environ.get('RENDER_EXTERNAL_URL') or public_domain
-    redirect_uri = f"{backend_url.rstrip('/')}/api/admin/google-auth/callback"
-    state = f"{ADMIN_GOOGLE_OAUTH_STATE}_{uuid.uuid4().hex}"
-    auth_url = (
-        "https://accounts.google.com/o/oauth2/v2/auth?"
-        f"client_id={client_id}&"
-        f"redirect_uri={requests.utils.quote(redirect_uri)}&"
-        "response_type=code&"
-        "scope=openid%20email%20profile&"
-        f"state={state}&"
-        "access_type=offline&"
-        "prompt=select_account"
-    )
-    response = RedirectResponse(url=auth_url)
-    response.set_cookie(key="admin_oauth_state", value=state, httponly=True, max_age=600, samesite="lax")
-    return response
-
-@api_router.get("/admin/google-auth/callback")
-async def admin_google_auth_callback(request: Request, code: Optional[str] = None, state: Optional[str] = None):
-    """Handle Google OAuth callback - exchange code for tokens, check admin, redirect to frontend with JWT"""
-    public_domain = os.environ.get('PUBLIC_DOMAIN', 'https://bookaride.co.nz')
-    frontend_url = public_domain.rstrip('/')
-    callback_url = f"{frontend_url}/admin/auth/callback"
-
-    if not code or not state:
-        return RedirectResponse(
-            url=f"{callback_url}?error=missing_params&message=Sign-in%20was%20cancelled%20or%20incomplete.%20Please%20try%20again."
+    if not client_id:
+        raise HTTPException(status_code=500, detail="Google OAuth not configured on the server.")
+    try:
+        idinfo = google_id_token.verify_oauth2_token(
+            body.credential,
+            GoogleRequest(),
+            client_id,
         )
-
-    client_id = os.environ.get('GOOGLE_CLIENT_ID')
-    client_secret = os.environ.get('GOOGLE_CLIENT_SECRET')
-    if not client_id or not client_secret:
-        return RedirectResponse(url=f"{callback_url}?error=config&message=Server%20OAuth%20not%20configured.")
-    saved_state = request.cookies.get("admin_oauth_state")
-    if not saved_state or saved_state != state or not state.startswith(ADMIN_GOOGLE_OAUTH_STATE):
-        return RedirectResponse(
-            url=f"{callback_url}?error=invalid_state&message=Invalid%20or%20expired%20sign-in.%20Please%20try%20again."
-        )
-    backend_url = os.environ.get('BACKEND_URL') or os.environ.get('RENDER_EXTERNAL_URL') or public_domain
-    redirect_uri = f"{backend_url.rstrip('/')}/api/admin/google-auth/callback"
-    token_resp = requests.post(
-        "https://oauth2.googleapis.com/token",
-        data={
-            "code": code,
-            "client_id": client_id,
-            "client_secret": client_secret,
-            "redirect_uri": redirect_uri,
-            "grant_type": "authorization_code",
-        },
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
-    )
-    if token_resp.status_code != 200:
-        logger.error(f"Google token error: {token_resp.text}")
-        return RedirectResponse(
-            url=f"{callback_url}?error=token_exchange&message=Sign-in%20failed.%20Please%20try%20again."
-        )
-    tokens = token_resp.json()
-    user_resp = requests.get(
-        "https://www.googleapis.com/oauth2/v2/userinfo",
-        headers={"Authorization": f"Bearer {tokens['access_token']}"},
-    )
-    if user_resp.status_code != 200:
-        return RedirectResponse(
-            url=f"{callback_url}?error=user_info&message=Could%20not%20get%20account%20info.%20Please%20try%20again."
-        )
-    user_info = user_resp.json()
-    email = (user_info.get("email") or "").lower().strip()
+    except ValueError as e:
+        logger.warning(f"Google ID token verification failed: {e}")
+        raise HTTPException(status_code=401, detail="Invalid Google sign-in token. Please try again.")
+    email = (idinfo.get("email") or "").lower().strip()
     if not email:
-        return RedirectResponse(
-            url=f"{callback_url}?error=no_email&message=Email%20not%20provided%20by%20Google."
-        )
+        raise HTTPException(status_code=401, detail="Email not provided by Google.")
     admin = await db.admin_users.find_one({"email": email}, {"_id": 0})
     if not admin:
         logger.warning(f"Google OAuth attempt for non-admin: {email}")
-        return RedirectResponse(
-            url=f"{callback_url}?error=unauthorized&message=This%20Google%20account%20is%20not%20authorized"
-        )
+        raise HTTPException(status_code=403, detail="This Google account is not authorized for admin access.")
     access_token = create_access_token(data={"sub": admin["username"]})
-    redirect_url = f"{callback_url}#token={access_token}"
-    response = RedirectResponse(url=redirect_url)
-    response.delete_cookie("admin_oauth_state")
-    logger.info(f"Admin logged in via Google: {admin['username']} ({email})")
-    return response
+    logger.info(f"Admin logged in via Google (GIS): {admin['username']} ({email})")
+    return {"access_token": access_token, "token_type": "bearer"}
 
-class GoogleAuthSession(BaseModel):
-    session_id: str
-
-@api_router.post("/admin/google-auth/session")
-async def process_google_auth_session(auth_data: GoogleAuthSession, response: Response):
-    """Legacy Emergent Auth no longer used. Use Google OAuth via /admin/google-auth/start instead."""
-    raise HTTPException(
-        status_code=410,
-        detail="Emergent auth is no longer used. Please log in via the main Google login button (uses Google OAuth directly)."
-    )
+@api_router.get("/admin/google-auth/client-id")
+async def get_google_client_id():
+    """Return the Google OAuth client ID for frontend GIS initialization."""
+    client_id = os.environ.get('GOOGLE_CLIENT_ID')
+    if not client_id:
+        raise HTTPException(status_code=404, detail="Google OAuth not configured.")
+    return {"client_id": client_id}
 
 
 @api_router.get("/admin/auth/me")
@@ -1415,6 +1320,14 @@ def _build_maps_route_url(origin: str, destination: str, waypoint_addresses: lis
 DEFAULT_FALLBACK_DISTANCE_KM = 75.0
 # Long-distance fallback for Tauranga/BOP/Hamilton/Whangarei routes
 LONG_DISTANCE_FALLBACK_KM = 200.0
+
+# ===========================================
+# TEMPORARY FUEL SURCHARGE (April 2026)
+# Diesel up 85% ($1.85 -> $3.43/L), petrol up 36% in 28 days
+# due to Iran conflict disrupting Strait of Hormuz.
+# SET TO 0.0 WHEN FUEL PRICES NORMALISE.
+# ===========================================
+FUEL_SURCHARGE_PERCENT = 12.0  # 12% blanket surcharge on all bookings
 
 # Address Autocomplete Endpoint (Google Places API)
 # Common NZ addresses as fallback when Google API is unavailable
@@ -2037,18 +1950,26 @@ async def calculate_price(request: PriceCalculationRequest):
         else:
             subtotal = one_way_subtotal
         
+        # Apply temporary fuel surcharge (blanket % on subtotal)
+        fuel_surcharge = round(subtotal * (FUEL_SURCHARGE_PERCENT / 100), 2) if FUEL_SURCHARGE_PERCENT > 0 else 0.0
+        subtotal_with_fuel = round(subtotal + fuel_surcharge, 2)
+        if fuel_surcharge > 0:
+            logger.info(f"Fuel surcharge: {FUEL_SURCHARGE_PERCENT}% of ${subtotal:.2f} = ${fuel_surcharge:.2f} -> subtotal ${subtotal_with_fuel:.2f}")
+
         # Calculate Stripe processing fee (2.9% + $0.30 NZD) and add to customer total
-        stripe_fee = round((subtotal * 0.029) + 0.30, 2)
-        total_with_stripe = round(subtotal + stripe_fee, 2)
-        
+        stripe_fee = round((subtotal_with_fuel * 0.029) + 0.30, 2)
+        total_with_stripe = round(subtotal_with_fuel + stripe_fee, 2)
+
         return PricingBreakdown(
             distance=distance_km,
             basePrice=round(base_price, 2),
             airportFee=round(airport_fee, 2),
             oversizedLuggageFee=round(oversized_luggage_fee, 2),
             passengerFee=round(passenger_fee, 2),
+            fuelSurcharge=fuel_surcharge,
+            fuelSurchargePercent=FUEL_SURCHARGE_PERCENT,
             stripeFee=stripe_fee,
-            subtotal=subtotal,
+            subtotal=subtotal_with_fuel,
             totalPrice=total_with_stripe,
             ratePerKm=round(rate_per_km, 2)
         )
@@ -6128,7 +6049,10 @@ async def create_payment_checkout(request: PaymentCheckoutRequest, http_request:
         cancel_url = f"{request.origin_url}/book-now"
         
         # Get amount from booking (server-side only, never from frontend)
+        # Check both top-level totalPrice and nested pricing.totalPrice
         amount = float(booking.get('totalPrice', 0))
+        if amount <= 0 and isinstance(booking.get('pricing'), dict):
+            amount = float(booking['pricing'].get('totalPrice', 0))
         if amount <= 0:
             raise HTTPException(status_code=400, detail="Invalid booking amount")
         
@@ -6213,7 +6137,10 @@ async def create_payment_checkout_link(request: PaymentCheckoutLinkRequest, http
         success_url = f"{request.origin_url}/payment-success?session_id={{CHECKOUT_SESSION_ID}}"
         cancel_url = f"{request.origin_url}/book-now"
 
+        # Check both top-level totalPrice and nested pricing.totalPrice
         amount = float(booking.get('totalPrice', 0))
+        if amount <= 0 and isinstance(booking.get('pricing'), dict):
+            amount = float(booking['pricing'].get('totalPrice', 0))
         if amount <= 0:
             raise HTTPException(status_code=400, detail="Invalid booking amount")
 
@@ -12944,7 +12871,7 @@ async def check_unpaid_bookings():
                 <p><strong>Pickup:</strong> {booking.get('pickupAddress', 'N/A')}</p>
                 <p><strong>Amount:</strong> ${total_price} NZD</p>
             """)
-            payment_body += email_button("Complete Payment", f"{frontend_url}/book-now", color="#f59e0b")
+            payment_body += email_button("Complete Payment", f"{frontend_url}/pay/{booking_id}", color="#f59e0b")
             payment_body += email_section(None, f"""
                 <p style="color:#6b7280;font-size:13px;">If you have any questions, simply reply to this email or visit <a href="{frontend_url}" style="color:#D4AF37;">bookaride.co.nz</a>.</p>
                 <p style="color:#6b7280;font-size:13px;">If you no longer need this transfer, you can ignore this email and the booking will be released.</p>
@@ -13891,16 +13818,13 @@ async def startup_event():
         })
         logger.info("Default admin user created")
     else:
-        # Update password and email to ensure they're correct
-        hashed_pw = "$2b$12$C6UzMDM.H6dfI/f/IKcEeO8m8Y4YkQkQ1h6s4H6c3Z8Y5G7c8Y4r2"
-        await db.admin_users.update_one(
-            {"username": "admin"},
-            {"$set": {
-                "hashed_password": hashed_pw,
-                "email": "info@bookaride.co.nz"
-            }}
-        )
-        logger.info("Admin password reset and email updated to info@bookaride.co.nz")
+        # Only update email if missing — never overwrite the password
+        if not default_admin.get("email"):
+            await db.admin_users.update_one(
+                {"username": "admin"},
+                {"$set": {"email": "info@bookaride.co.nz"}}
+            )
+            logger.info("Admin email updated to info@bookaride.co.nz")
     
     # Create database indexes for faster queries
     try:

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { MapPin, Clock, Car, User, AlertCircle, Loader2, RefreshCw, ExternalLink } from 'lucide-react';
 
-const API_URL = import.meta.env.VITE_BACKEND_URL;
+import { API } from '../config/api';
 
 export default function CustomerTracking() {
   const { trackingRef } = useParams();
@@ -14,7 +14,7 @@ export default function CustomerTracking() {
   // Fetch tracking data
   const fetchTracking = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/api/tracking/${trackingRef}`);
+      const response = await fetch(`${API}/tracking/${trackingRef}`);
       
       if (response.status === 404) {
         setError('Tracking not found. The link may have expired or is invalid.');

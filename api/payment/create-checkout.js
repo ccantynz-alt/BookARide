@@ -29,7 +29,9 @@ module.exports = async function handler(req, res) {
       return res.status(404).json({ detail: 'Booking not found' });
     }
 
-    const amount = parseFloat(booking.totalPrice || 0);
+    const amount = parseFloat(
+      booking.totalPrice || (booking.pricing && booking.pricing.totalPrice) || 0
+    );
     if (amount <= 0) {
       return res.status(400).json({ detail: 'Invalid booking amount' });
     }
@@ -60,7 +62,7 @@ module.exports = async function handler(req, res) {
         booking_id,
         booking_type: 'regular',
         customer_email: booking.email || '',
-        customer_name: `${booking.firstName || ''} ${booking.lastName || ''}`.trim(),
+        customer_name: booking.name || `${booking.firstName || ''} ${booking.lastName || ''}`.trim() || 'Customer',
       },
     });
 

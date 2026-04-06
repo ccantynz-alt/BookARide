@@ -9,9 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { User, Phone, Mail, Car, Plus, Edit2, Trash2, Calendar, MapPin, Key } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
-
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+import { API } from '../../config/api';
 
 export const DriversTab = () => {
   const [drivers, setDrivers] = useState([]);
@@ -234,9 +232,13 @@ export const DriversTab = () => {
           <CardContent className="p-6">
             <p className="text-sm text-white/80 mb-1">Assigned Today</p>
             <p className="text-3xl font-bold text-white">
-              {drivers.filter(d => getDriverBookings(d.id).some(b => 
-                b.date === new Date().toISOString().split('T')[0]
-              )).length}
+              {(() => {
+                const now = new Date();
+                const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+                return drivers.filter(d => getDriverBookings(d.id).some(b =>
+                  b.date === todayStr
+                )).length;
+              })()}
             </p>
           </CardContent>
         </Card>
@@ -246,8 +248,10 @@ export const DriversTab = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {drivers.map((driver) => {
           const driverBookings = getDriverBookings(driver.id);
-          const todayBookings = driverBookings.filter(b => 
-            b.date === new Date().toISOString().split('T')[0]
+          const now = new Date();
+          const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+          const todayBookings = driverBookings.filter(b =>
+            b.date === todayStr
           );
           
           return (

@@ -21,18 +21,16 @@ export const AdminLogin = () => {
 
     try {
       const response = await axios.post(`${API}/admin/login`, {
-        username: username,
-        password: password
+        username,
+        password,
       });
 
-      // Store the token
       localStorage.setItem('adminToken', response.data.access_token);
       localStorage.setItem('adminAuth', 'true');
-      
+
       toast.success('Login successful!');
       navigate('/admin/dashboard');
     } catch (error) {
-      console.error('Login error:', error);
       if (error.response?.status === 401) {
         toast.error('Incorrect username or password');
       } else {
@@ -84,8 +82,8 @@ export const AdminLogin = () => {
               />
             </div>
 
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               disabled={loading}
               className="w-full bg-gold hover:bg-gold/90 text-black font-semibold py-6 disabled:opacity-50"
             >
@@ -105,7 +103,7 @@ export const AdminLogin = () => {
               <span className="w-full border-t border-gray-300" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white px-2 text-gray-500">Or sign in with Google (backup)</span>
+              <span className="bg-white px-2 text-gray-500">Or sign in with Google</span>
             </div>
           </div>
 
@@ -124,8 +122,8 @@ export const AdminLogin = () => {
 
           {/* Forgot Password Link */}
           <div className="mt-6 text-center">
-            <Link 
-              to="/admin/forgot-password" 
+            <Link
+              to="/admin/forgot-password"
               className="text-sm text-gold hover:text-gold/80 hover:underline inline-flex items-center gap-1"
             >
               <Mail className="w-4 h-4" />

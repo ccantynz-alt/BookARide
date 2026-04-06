@@ -11,6 +11,7 @@ import { Toaster } from './components/ui/sonner';
 import BackToTop from './components/BackToTop';
 import AdminBackButton from './components/AdminBackButton';
 import InternationalBanner from './components/InternationalBanner';
+import FuelSurchargeBanner from './components/FuelSurchargeBanner';
 import LanguageRedirect from './components/LanguageRedirect';
 import { SUPPORTED_LANGUAGES } from './config/languages';
 import AIChatbot from './components/AIChatbot';
@@ -57,7 +58,6 @@ const PrivacyPolicy = React.lazy(() => import('./pages/PrivacyPolicy'));
 const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard'));
 const SEODashboard = React.lazy(() => import('./pages/SEODashboard'));
 const DriverLogin = React.lazy(() => import('./pages/DriverLogin'));
-const DriverPortal = React.lazy(() => import('./pages/DriverPortal'));
 const DriveWithUs = React.lazy(() => import('./pages/DriveWithUs'));
 // New SEO Pages
 const AucklandAirportShuttle = React.lazy(() => import('./pages/seo/AucklandAirportShuttle'));
@@ -144,6 +144,7 @@ const MainLayout = () => (
     <InternationalBanner />
     <Header />
     <main>
+      <FuelSurchargeBanner />
       <Outlet />
     </main>
     <Footer />
@@ -355,7 +356,6 @@ function App() {
               <Routes>
               {/* Driver Routes (No Header/Footer) */}
               <Route path="/driver/login" element={<DriverLogin />} />
-              <Route path="/driver/portal" element={<DriverPortal />} />
               <Route path="/drive-with-us" element={<DriveWithUs />} />
 
               {/* Live GPS Tracking Routes (No Header/Footer) */}

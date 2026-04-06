@@ -6,8 +6,7 @@ import {
 import { Button } from '../ui/button';
 import axios from 'axios';
 import { toast } from 'sonner';
-
-const API = `${import.meta.env.VITE_BACKEND_URL}/api`;
+import { API } from '../../config/api';
 
 const ReturnsOverviewPanel = ({ bookings = [], drivers = [], onAssignDriver, onViewBooking }) => {
   const [urgentReturns, setUrgentReturns] = useState([]);
@@ -69,7 +68,8 @@ const ReturnsOverviewPanel = ({ bookings = [], drivers = [], onAssignDriver, onV
   const formatRelativeDate = (dateStr) => {
     if (dateStr === today) return 'Today';
     if (dateStr === tomorrow) return 'Tomorrow';
-    const date = new Date(dateStr);
+    const [y, m, d] = dateStr.split('-');
+    const date = new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
     return date.toLocaleDateString('en-NZ', { weekday: 'short', day: 'numeric', month: 'short' });
   };
 

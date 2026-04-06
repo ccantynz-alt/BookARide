@@ -3,8 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Plane, Clock, CheckCircle, AlertTriangle, Loader2, RefreshCw } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
+import { API } from '../config/api';
 
 const FlightTracker = ({ flightNumber, onFlightData, showInline = false }) => {
   const [flight, setFlight] = useState(null);
@@ -26,7 +25,7 @@ const FlightTracker = ({ flightNumber, onFlightData, showInline = false }) => {
     setError(null);
 
     try {
-      const response = await fetch(`${BACKEND_URL}/api/flight/track?flight_number=${encodeURIComponent(fn)}`);
+      const response = await fetch(`${API}/flight/track?flight_number=${encodeURIComponent(fn)}`);
       
       if (!response.ok) {
         throw new Error('Flight not found');

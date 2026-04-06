@@ -12,9 +12,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { toast } from 'sonner';
 import axios from 'axios';
 import SEO from '../components/SEO';
-
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+import { CustomDatePicker, CustomTimePicker } from '../components/DateTimePicker';
+import { API } from '../config/api';
 
 const HotelConciergePortal = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -376,21 +375,32 @@ const HotelConciergePortal = () => {
                   </div>
                   <div>
                     <Label>Pickup Date *</Label>
-                    <Input
-                      type="date"
-                      required
-                      value={bookingForm.pickupDate}
-                      onChange={(e) => setBookingForm({...bookingForm, pickupDate: e.target.value})}
-                    />
+                    <div className="mt-1">
+                      <CustomDatePicker
+                        selected={bookingForm.pickupDate ? new Date(bookingForm.pickupDate.replace(/-/g, '/')) : null}
+                        onChange={(date) => {
+                          if (date) {
+                            const val = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                            setBookingForm(prev => ({...prev, pickupDate: val}));
+                          }
+                        }}
+                        placeholder="Select date"
+                      />
+                    </div>
                   </div>
                   <div>
                     <Label>Pickup Time *</Label>
-                    <Input
-                      type="time"
-                      required
-                      value={bookingForm.pickupTime}
-                      onChange={(e) => setBookingForm({...bookingForm, pickupTime: e.target.value})}
-                    />
+                    <div className="mt-1">
+                      <CustomTimePicker
+                        selected={bookingForm.pickupTime ? (() => { const [h, m] = bookingForm.pickupTime.split(':'); const d = new Date(); d.setHours(parseInt(h), parseInt(m), 0, 0); return d; })() : null}
+                        onChange={(time) => {
+                          if (time) {
+                            setBookingForm(prev => ({...prev, pickupTime: `${time.getHours().toString().padStart(2, '0')}:${time.getMinutes().toString().padStart(2, '0')}`}));
+                          }
+                        }}
+                        placeholder="Select time"
+                      />
+                    </div>
                   </div>
                   <div>
                     <Label>Flight Number</Label>

@@ -37,11 +37,25 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ valid: false, detail: 'This promo code is no longer active' });
     }
 
+    // Calculate discount amount based on subtotal from frontend
+    const subtotal = parseFloat(req.body.subtotal) || 0;
+    const discountType = promo.discount_type || 'percentage';
+    const discountValue = parseFloat(promo.discount_value) || 0;
+    let discountAmount = 0;
+    if (subtotal > 0) {
+      if (discountType === 'percentage') {
+        discountAmount = Math.round(((subtotal * discountValue) / 100) * 100) / 100;
+      } else if (discountType === 'fixed') {
+        discountAmount = Math.min(discountValue, subtotal);
+      }
+    }
+
     return res.status(200).json({
       valid: true,
       code: normalizedCode,
-      discount_type: promo.discount_type || 'percentage',
-      discount_value: promo.discount_value || 0,
+      discount_type: discountType,
+      discount_value: discountValue,
+      discountAmount: discountAmount,
       description: promo.description || '',
     });
   } catch (err) {

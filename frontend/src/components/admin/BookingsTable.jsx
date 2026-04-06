@@ -1,5 +1,5 @@
 import React from 'react';
-import { Eye, Edit2, Mail, RefreshCw, Trash2, CheckCircle, Clock, Square, CheckSquare, Phone, Plane, ArrowRight, CreditCard } from 'lucide-react';
+import { Eye, Edit2, Mail, RefreshCw, Trash2, XCircle, CheckCircle, Clock, Square, CheckSquare, Phone, Plane, ArrowRight, CreditCard, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { formatDate, isToday, isTomorrow } from '../../utils/dateFormat';
 
@@ -27,7 +27,13 @@ const BookingsTable = ({
   onOpenDeletedTab,
   onRestoreFromServer,
   restoringFromServerBackup,
+  loadAllBookings,
+  onLoadAll,
+  currentPage = 1,
+  bookingsPerPage = 50,
+  onPageChange,
 }) => {
+  const totalPages = bookingsPerPage > 0 ? Math.ceil(totalBookings / bookingsPerPage) : 1;
   const safeSelected = selectedBookings instanceof Set ? selectedBookings : new Set();
 
   if (loading) {
@@ -264,11 +270,23 @@ const BookingsTable = ({
                   {/* Quick actions */}
                   <td className="px-3 py-4" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => onEditBooking(booking)} className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors" title="Edit">
-                        <Edit2 className="w-3.5 h-3.5 text-slate-400" />
+                      <button onClick={() => onViewDetails(booking)} className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors" title="View details">
+                        <Eye className="w-3.5 h-3.5 text-slate-400 hover:text-slate-600" />
                       </button>
-                      <button onClick={() => onDeleteBooking(booking.id, booking.name, true)} className="p-1.5 rounded-lg hover:bg-red-50 transition-colors" title="Delete">
+                      <button onClick={() => onEditBooking(booking)} className="p-1.5 rounded-lg hover:bg-indigo-50 transition-colors" title="Edit">
+                        <Edit2 className="w-3.5 h-3.5 text-slate-400 hover:text-indigo-600" />
+                      </button>
+                      <button onClick={() => onSendEmail(booking)} className="p-1.5 rounded-lg hover:bg-emerald-50 transition-colors" title="Email">
+                        <Mail className="w-3.5 h-3.5 text-slate-400 hover:text-emerald-600" />
+                      </button>
+                      <button onClick={() => onResendConfirmation(booking.id)} className="p-1.5 rounded-lg hover:bg-amber-50 transition-colors" title="Resend confirmation">
+                        <RefreshCw className="w-3.5 h-3.5 text-slate-400 hover:text-amber-600" />
+                      </button>
+                      <button onClick={() => onDeleteBooking(booking.id, booking.name, true)} className="p-1.5 rounded-lg hover:bg-red-50 transition-colors" title="Cancel (notifies customer)">
                         <Trash2 className="w-3.5 h-3.5 text-slate-400 hover:text-red-500" />
+                      </button>
+                      <button onClick={() => onDeleteBooking(booking.id, booking.name, false)} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors" title="Silent delete (no notification)">
+                        <XCircle className="w-3.5 h-3.5 text-slate-400 hover:text-gray-600" />
                       </button>
                     </div>
                   </td>
@@ -279,15 +297,50 @@ const BookingsTable = ({
         </table>
       </div>
 
-      {/* Footer */}
-      <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/50">
+      {/* Footer with pagination */}
+      <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
         <p className="text-[12px] text-slate-400 font-medium tracking-wide">
           {bookings.length} booking{bookings.length !== 1 ? 's' : ''}
           {totalBookings > bookings.length && ` of ${totalBookings}`}
         </p>
+        <div className="flex items-center gap-3">
+          {/* Pagination controls */}
+          {!loadAllBookings && totalPages > 1 && onPageChange && (
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => onPageChange(currentPage - 1)}
+                disabled={currentPage <= 1}
+                className="p-1 rounded hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                title="Previous page"
+              >
+                <ChevronLeft className="w-4 h-4 text-slate-500" />
+              </button>
+              <span className="text-[12px] text-slate-500 font-medium px-2">
+                {currentPage} / {totalPages}
+              </span>
+              <button
+                onClick={() => onPageChange(currentPage + 1)}
+                disabled={currentPage >= totalPages}
+                className="p-1 rounded hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                title="Next page"
+              >
+                <ChevronRight className="w-4 h-4 text-slate-500" />
+              </button>
+            </div>
+          )}
+          {/* Load all option */}
+          {!loadAllBookings && totalBookings > bookings.length && onLoadAll && (
+            <button
+              onClick={onLoadAll}
+              className="text-[12px] text-slate-500 hover:text-slate-800 font-medium underline underline-offset-4 transition-colors"
+            >
+              Load all bookings
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
 };
 
-export default BookingsTable;
+export default React.memo(BookingsTable);

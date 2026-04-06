@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { MapPin, Navigation, AlertCircle, CheckCircle, Loader2, Phone, User, Play, Square, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 
-const API_URL = import.meta.env.VITE_BACKEND_URL;
+import { API } from '../config/api';
 
 export default function DriverTracking() {
   const { sessionId } = useParams();
@@ -19,7 +19,7 @@ export default function DriverTracking() {
   useEffect(() => {
     const fetchSession = async () => {
       try {
-        const response = await fetch(`${API_URL}/api/tracking/driver/${sessionId}`);
+        const response = await fetch(`${API}/tracking/driver/${sessionId}`);
         if (response.status === 404) {
           setError('Tracking session not found. The link may have expired or is invalid.');
           setStatus('error');
@@ -49,7 +49,7 @@ export default function DriverTracking() {
     if (!sessionId || status !== 'active') return;
 
     try {
-      await fetch(`${API_URL}/api/tracking/driver/${sessionId}/location`, {
+      await fetch(`${API}/tracking/driver/${sessionId}/location`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -77,7 +77,7 @@ export default function DriverTracking() {
 
     // Start the session on the server
     try {
-      const response = await fetch(`${API_URL}/api/tracking/driver/${sessionId}/start`, {
+      const response = await fetch(`${API}/tracking/driver/${sessionId}/start`, {
         method: 'POST'
       });
       
@@ -136,7 +136,7 @@ export default function DriverTracking() {
     }
 
     try {
-      await fetch(`${API_URL}/api/tracking/driver/${sessionId}/stop`, {
+      await fetch(`${API}/tracking/driver/${sessionId}/stop`, {
         method: 'POST'
       });
       toast.success('Location sharing stopped');
