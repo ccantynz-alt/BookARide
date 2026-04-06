@@ -45,6 +45,41 @@ These rules are non-negotiable. Every agent must follow all 10, every session, n
 
 These decisions are FINAL. Do not introduce alternatives, fallbacks, or "improvements".
 
+### 0. Architecture: Vercel Frontend + Vercel Serverless API ONLY (2026-04-06)
+
+**There is NO Render backend. Everything runs on Vercel.**
+
+The site is a single Vercel deployment with:
+- **Frontend**: React 18 + Vite, served from `frontend/build/` (built from `frontend/src/`)
+- **API**: Vercel serverless functions in the root `api/` directory (Node.js). All `/api/*` routes.
+- **Database**: Neon PostgreSQL via `@neondatabase/serverless` (HTTP, no TCP pool)
+- **Deployment config**: Root `vercel.json` builds the frontend and deploys the `api/` folder as serverless functions
+
+**The `backend/` directory is DEAD CODE.** It contains the old Python FastAPI server that ran on Render. It is no longer deployed or used at runtime. It is kept only as a reference for behaviour that has not yet been ported to the Vercel serverless API. When work is done in `backend/server.py`, understand that:
+- No user will ever hit that code
+- It does not affect production
+- It should be deleted once all endpoints have been ported
+- Do not fix bugs there expecting them to reach production
+- Do not add new endpoints there
+
+**Rules:**
+- **NEVER** add Render deployment config (`render.yaml` exists only as a stub and should eventually be deleted)
+- **NEVER** reference `https://bookaride-backend.onrender.com` in any frontend code
+- **NEVER** add a "fallback to Python backend" anywhere
+- **NEVER** tell the user "deploy this to Render"
+- **ALWAYS** add new API endpoints as Vercel serverless functions in `api/`
+- **ALWAYS** match the existing pattern: `module.exports = async function handler(req, res) { ... }`
+- **ALWAYS** use the shared helpers in `api/_lib/` (db.js, mailgun.js, email-templates.js, pricing.js, google-maps.js)
+- Environment variables use standard names (`DATABASE_URL`, `MAILGUN_API_KEY`, `STRIPE_SECRET_KEY`, etc.) — set in Vercel dashboard
+- Frontend env vars use `VITE_` prefix — the default `VITE_BACKEND_URL` is empty string (same-origin, calls /api/* on the same Vercel domain)
+
+**When porting a Python endpoint to Vercel serverless:**
+1. Find the Python implementation in `backend/server.py`
+2. Create the equivalent in `api/<path>.js` using `module.exports = async function handler(req, res)`
+3. Use `require('./_lib/db')` for database, `require('./_lib/mailgun')` for emails, `require('./_lib/email-templates')` for email HTML
+4. Match the Python route exactly (e.g. `@api_router.post("/bookings/{id}/resend-confirmation")` becomes `api/bookings/[bookingId]/resend-confirmation.js` with POST handler)
+5. Never delete the Python version until the frontend has been verified against the new Vercel endpoint in production
+
 ### 1. Database: Neon PostgreSQL ONLY
 
 We migrated FROM MongoDB TO Neon PostgreSQL. This is DONE. Do not touch it.
