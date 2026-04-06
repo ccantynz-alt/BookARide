@@ -330,7 +330,7 @@ const EditBookingModal = memo(({ open, onClose, booking, onSuccess, onPreviewCon
             </Button>
             <Button
               onClick={handleSaveEditedBooking}
-              className="bg-gold hover:bg-gold/90 text-black font-semibold"
+              className="bg-gold hover:bg-gold/90 text-white font-semibold"
             >
               Save Changes
             </Button>

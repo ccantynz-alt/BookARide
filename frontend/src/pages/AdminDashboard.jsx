@@ -34,53 +34,9 @@ import DriverAssignPreviewModal from '../components/admin/DriverAssignPreviewMod
 import BookingsTable from '../components/admin/BookingsTable';
 import GoogleAddressInput from '../components/GoogleAddressInput';
 
-// Helper function to format date to DD/MM/YYYY
-const formatDate = (dateString) => {
-  if (!dateString) return '';
-  const [year, month, day] = dateString.split('-');
-  return `${day}/${month}/${year}`;
-};
-
-// Helper function to get day of week from date string
-const getDayOfWeek = (dateString) => {
-  if (!dateString) return '';
-  const date = new Date(dateString);
-  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  return days[date.getDay()];
-};
-
-// Helper function to get short day of week
-const getShortDayOfWeek = (dateString) => {
-  if (!dateString) return '';
-  const date = new Date(dateString);
-  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  return days[date.getDay()];
-};
-
-// Helper function to check if date is today
-const isToday = (dateString) => {
-  if (!dateString) return false;
-  const today = new Date();
-  const bookingDate = new Date(dateString);
-  return (
-    today.getFullYear() === bookingDate.getFullYear() &&
-    today.getMonth() === bookingDate.getMonth() &&
-    today.getDate() === bookingDate.getDate()
-  );
-};
-
-// Helper function to check if date is tomorrow
-const isTomorrow = (dateString) => {
-  if (!dateString) return false;
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const bookingDate = new Date(dateString);
-  return (
-    tomorrow.getFullYear() === bookingDate.getFullYear() &&
-    tomorrow.getMonth() === bookingDate.getMonth() &&
-    tomorrow.getDate() === bookingDate.getDate()
-  );
-};
+// Date utilities — single source of truth in frontend/src/utils/dateFormat.js
+// Never re-implement formatDate/isToday/isTomorrow locally
+import { formatDate, getDayOfWeek, getShortDayOfWeek, isToday, isTomorrow } from '../utils/dateFormat';
 
 // Import Bookings Section Component
 const ImportBookingsSection = ({ onSuccess }) => {
@@ -2727,7 +2683,7 @@ export const AdminDashboard = () => {
                 </Button>
                 <Button
                   onClick={handleSaveEditedBooking}
-                  className="bg-gold hover:bg-gold/90 text-black font-semibold"
+                  className="bg-gold hover:bg-gold/90 text-white font-semibold"
                 >
                   Save Changes
                 </Button>

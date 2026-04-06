@@ -6,20 +6,7 @@ import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 
-const formatDate = (dateStr) => {
-  if (!dateStr) return 'N/A';
-  const parts = dateStr.split('-');
-  if (parts.length === 3 && parts[0].length === 4) return `${parts[2]}/${parts[1]}/${parts[0]}`;
-  return dateStr;
-};
-
-const getDayOfWeek = (dateStr) => {
-  if (!dateStr) return '';
-  try {
-    const d = new Date(dateStr + 'T00:00:00');
-    return d.toLocaleDateString('en-NZ', { weekday: 'long' });
-  } catch { return ''; }
-};
+import { formatDate, getDayOfWeek } from '../../utils/dateFormat';
 
 const BookingDetailsModal = ({
   open,

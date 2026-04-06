@@ -8,6 +8,7 @@ import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
 import { toast } from 'sonner';
 import axios from 'axios';
+import { formatDateTime } from '../../utils/dateFormat';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -81,16 +82,6 @@ export const DriverApplicationsTab = () => {
     );
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString('en-NZ', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
 
   if (loading) {
     return (
@@ -124,7 +115,7 @@ export const DriverApplicationsTab = () => {
           <Button 
             onClick={fetchApplications} 
             variant="outline" 
-            className="border-gold text-gold hover:bg-gold hover:text-black"
+            className="border-gold text-gold hover:bg-gold hover:text-white"
           >
             <RefreshCw className="w-4 h-4 mr-2" />
             Refresh
@@ -226,7 +217,7 @@ export const DriverApplicationsTab = () => {
                       </div>
                       <div className="flex items-center gap-1">
                         <Clock className="w-4 h-4" />
-                        <span>Applied: {formatDate(app.created_at)}</span>
+                        <span>Applied: {formatDateTime(app.created_at)}</span>
                       </div>
                     </div>
                   </div>
@@ -235,7 +226,7 @@ export const DriverApplicationsTab = () => {
                       setSelectedApplication(app);
                       setShowDetailsModal(true);
                     }}
-                    className="bg-gold hover:bg-gold/90 text-black"
+                    className="bg-gold hover:bg-gold/90 text-white"
                   >
                     <Eye className="w-4 h-4 mr-2" />
                     View Details
@@ -280,7 +271,7 @@ export const DriverApplicationsTab = () => {
                 </div>
                 <div>
                   <Label className="text-gray-400">Applied On</Label>
-                  <p className="text-white">{formatDate(selectedApplication.created_at)}</p>
+                  <p className="text-white">{formatDateTime(selectedApplication.created_at)}</p>
                 </div>
               </div>
 

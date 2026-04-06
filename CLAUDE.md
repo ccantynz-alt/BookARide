@@ -163,6 +163,61 @@ Xero accounting integration has been removed. We do not use Xero for invoicing, 
 - **NEVER** include Xero in customer-facing FAQs or marketing copy
 - If Xero-related code still exists anywhere in the codebase, delete it
 
+### 6b. Admin UI Standards (2026-04-06) — LOCKED
+
+These admin UI decisions are final. Do NOT revert them.
+
+**Gold buttons — ALWAYS white text**
+- Any Tailwind class of `bg-gold` or `bg-gold hover:bg-gold/90` in the admin
+  must use `text-white`, NEVER `text-black`.
+- This applies to every admin file: `AdminDashboard.jsx`, every file in
+  `frontend/src/components/admin/`, and `frontend/src/admin/`.
+- When adding a new gold button in the admin, the pattern is:
+  `className="bg-gold hover:bg-gold/90 text-white font-semibold"`
+- If you see a gold button with `text-black` anywhere in the admin, fix it
+  immediately.
+
+**Date formatting — single source of truth**
+- The ONLY valid admin date helpers live in `frontend/src/utils/dateFormat.js`:
+  `formatDate`, `formatDateWithDay`, `getDayOfWeek`, `getShortDayOfWeek`,
+  `formatDateTime`, `formatTimestampDate`, `todayNZ`, `isToday`, `isTomorrow`.
+- **NEVER** define a `formatDate` (or `isToday`, `isTomorrow`, etc.) function
+  locally inside an admin component. Always import from `utils/dateFormat`.
+- **NEVER** use `new Date(dateStr).toLocaleDateString(...)` inline in admin
+  JSX. Use `formatDate()` or `formatTimestampDate()` instead.
+- Canonical date format for the admin panel is **DD/MM/YYYY** (NZ standard).
+- Canonical datetime format is **DD/MM/YYYY HH:MM**.
+- `ReturnsOverviewPanel.jsx` has an intentional exception (`formatRelativeDate`
+  returning "Today"/"Tomorrow"/"Mon, 6 Apr") because its UX requires it. That
+  helper is clearly named and documented — do not "consolidate" it into the
+  shared util.
+
+**Return trip indicator in BookingsTable**
+- Every booking row in `BookingsTable.jsx` where `booking.bookReturn` and
+  `booking.returnDate` and `booking.returnTime` are set must show:
+  1. A `border-r-4 border-r-violet-400` on the `<tr>` itself (the purple
+     right-edge accent)
+  2. An inline pill below the flight number with the `↩` arrow, the text
+     `Return`, `formatDate(booking.returnDate)`, and `booking.returnTime`,
+     styled as `bg-violet-50 text-violet-700 border border-violet-200 rounded-full`.
+- Do not remove this indicator. The owner explicitly requested it back
+  after the glassmorphism redesign hid it.
+
+**Fuel surcharge banner (InternationalBanner.jsx)**
+- The banner component at the top of every customer-facing page is a
+  FUEL SURCHARGE WARNING, not an international welcome banner.
+  Current wording: "Fuel prices up 89% in 29 days — a fuel surcharge may
+  apply to new bookings".
+- It must be EXACTLY `h-10` (40px) high so it aligns perfectly with
+  the `Header` component which is `fixed top-10`. Any other height will
+  cause the Header to overlap the banner text (the original bug).
+- Style: `bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 text-white`
+  with an `AlertTriangle` icon. Must be `fixed top-0 z-[60]` so it sits
+  above the header.
+- Do NOT delete this banner. Do NOT replace it with a welcome message.
+  If the fuel surcharge situation changes, update the wording — don't
+  remove the banner.
+
 ### 7. Pricing Rules — DO NOT CHANGE WITHOUT OWNER APPROVAL
 
 These are the AUTHORITATIVE per-km rates. Calibrated so key routes price correctly (owner approved 2026-03-26).

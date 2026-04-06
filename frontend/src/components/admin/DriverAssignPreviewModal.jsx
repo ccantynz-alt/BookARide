@@ -2,12 +2,7 @@ import React from 'react';
 import { Button } from '../ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 
-const formatDate = (dateStr) => {
-  if (!dateStr) return 'N/A';
-  const parts = dateStr.split('-');
-  if (parts.length === 3 && parts[0].length === 4) return `${parts[2]}/${parts[1]}/${parts[0]}`;
-  return dateStr;
-};
+import { formatDate } from '../../utils/dateFormat';
 
 const DriverAssignPreviewModal = ({
   open,
