@@ -1,7 +1,164 @@
-# BookARide NZ — Agent Instructions
+# BookARide NZ — THE BIBLE
 
-**READ THIS ENTIRE FILE BEFORE MAKING ANY CHANGES.**
-**EVERY rule here exists because a previous agent broke production by ignoring it.**
+> **THIS FILE IS LAW. READ IT IN FULL BEFORE TOUCHING ANYTHING.**
+> **No code change happens until you have read and understood every rule here.**
+> **This is the blueprint. This is the bible. We work to this file. Nothing else.**
+
+---
+
+## SESSION START PROTOCOL — MANDATORY (2026-04-07)
+
+Every Claude session, in every chat window, on every task, MUST follow this
+sequence before writing a single line of code:
+
+1. **Read CLAUDE.md in full.** Not skim. Read.
+2. **Confirm the architecture state** (currently: frontend-only, Vercel
+   serverless `api/` + React/Vite `frontend/`, no backend folder).
+3. **Check for locked decisions** that touch the area you are about to modify.
+4. **Ask before deviating** from any locked decision, even if it looks obvious.
+
+If you skip Step 1 you will break production. Every single time an agent has
+skipped CLAUDE.md, something has broken. There are no exceptions to this rule.
+
+---
+
+## STRICT MARKET DOMINATION RULES — NON-NEGOTIABLE (2026-04-07)
+
+BookARide is the most aggressive airport transfer business in New Zealand.
+The website must reflect that. We dominate search results. We dominate UX.
+We dominate technology. We do not compromise.
+
+### Rule 1: Best-of-breed only
+
+Every dependency, every framework, every library, every pattern MUST be the
+current best in its category. If a competitor library exists that is faster,
+more modern, or more popular — we use it. If a dependency is deprecated,
+unmaintained, or older than 2 major versions behind, we replace it the
+session it is found.
+
+### Rule 2: Frontend-only architecture (until further notice)
+
+As of 2026-04-07, BookARide is a **frontend-only deployment** on Vercel:
+- `frontend/` — React 18 + Vite + Tailwind, deployed to Vercel
+- `api/` — Vercel serverless functions (Node.js), same Vercel project
+- `vercel.json` at root — single Vercel deployment config
+
+There is **NO `backend/` folder**. There is **NO Render service**. There is
+**NO Python server**. If you find code in a `backend/` directory, it is dead
+weight from the old architecture and must be deleted.
+
+A new combined backend+frontend serverless platform is being prepared.
+**The owner will update CLAUDE.md when that platform is ready.** Until then,
+do not introduce new backend code, do not add a backend folder, do not
+suggest moving back to Render or a Python server.
+
+### Rule 3: Zero chicken scratches
+
+"Chicken scratching" = leaving small bits of inconsistent, half-finished,
+or poorly written code lying around. Banned outright.
+- No commented-out code blocks
+- No `// TODO: clean up later`
+- No half-implemented functions
+- No leftover imports
+- No debug `console.log` statements
+- No `var` declarations (only `const` and `let`)
+- No inline `style={{}}` unless calculated dynamically
+- No duplicate components doing the same thing
+- No legacy files marked "dead" but still in the repo
+
+If you see chicken scratches while working in a file, FIX THEM in the same
+commit. Do not push them to a future "cleanup PR" — that PR will never come.
+
+### Rule 4: SEO is a daily activity, not a one-time task
+
+We have AI agents (or we are going to) running every day to ensure we rank
+#1 for our target keywords. The current AI infrastructure includes:
+- AI chatbot (Claude Haiku) — see `api/chatbot/message.js`
+- AI email support (Claude Haiku) — `api/email/incoming` route on the old
+  Python server (TO BE PORTED)
+- Auto-complete bookings, payment follow-ups, weekly performance reports
+
+A daily SEO agent IS the next priority and is documented in section
+"DAILY SEO AGENT — MANDATORY" below. If it does not exist yet, build it.
+If it exists but is broken, fix it. The owner has explicitly said: "shame
+on us if we don't have an SEO agent on board".
+
+### Rule 5: Refer back here on every chat
+
+The user has explicitly stated: "I want you to refer back to this CLAUDE.md
+file before taking on any work in a new chat. This is the blueprint. This
+is the Bible." Honour that.
+
+---
+
+## DAILY SEO AGENT — MANDATORY (2026-04-07)
+
+BookARide has an automated daily SEO agent that runs every day at
+6 AM NZ time (18:00 UTC) via Vercel Cron Jobs. This is non-negotiable.
+
+**Components:**
+- `api/cron/daily-seo-agent.js` — the cron handler invoked by Vercel
+- `api/_lib/seo-agent.js` — the SEO automation library
+- `vercel.json` `crons` field — Vercel Cron Jobs configuration
+
+**What it does every day:**
+1. Regenerates `sitemap.xml` with today's `lastmod` date for all
+   tracked pages (signals freshness to Google)
+2. Pings Google and Bing to recrawl the sitemap
+3. Checks every tracked page returns HTTP 200 — flags any 404s or
+   broken pages so we can fix them immediately
+4. Uses the Claude API (`claude-haiku-4-5-20251001`) to generate
+   3 actionable SEO content suggestions for the week
+5. Emails a full daily report to the admin inbox via Mailgun
+
+**Required environment variables on Vercel:**
+- `ANTHROPIC_API_KEY` — for AI content suggestions (already set
+  for the chatbot)
+- `MAILGUN_API_KEY` + `MAILGUN_DOMAIN` — for the daily report email
+  (already set)
+- `SEO_REPORT_EMAIL` — optional override for where the report goes
+  (defaults to `BOOKINGS_NOTIFICATION_EMAIL` then to
+  `bookings@bookaride.co.nz`)
+- `CRON_SECRET` — optional shared secret for manually testing the
+  cron endpoint without Vercel's `x-vercel-cron` header
+
+**Target keywords (LOCKED — owner approved 2026-04-07):**
+The list lives in `api/_lib/seo-agent.js` as `TARGET_KEYWORDS`. To
+add a new target keyword, edit that file. Current targets:
+- airport shuttle Auckland
+- Auckland airport transfer
+- airport transfer New Zealand
+- private airport transfer Auckland
+- Hibiscus Coast airport shuttle
+- Auckland airport shuttle service
+- airport pickup Auckland
+- Auckland to airport
+- airport to Auckland CBD
+- cheap airport shuttle Auckland
+
+**Tracked pages (LOCKED):**
+The list lives in `api/_lib/seo-agent.js` as `TRACKED_PAGES`. Each
+entry has a path, priority, and changefreq. When you create a new
+page, ALWAYS add it to `TRACKED_PAGES` so the daily agent monitors
+it and includes it in the sitemap.
+
+**RULES:**
+- **NEVER** disable, remove, or rename the daily SEO agent without
+  explicit owner approval
+- **NEVER** change the cron schedule without checking the owner
+- **ALWAYS** add new pages to `TRACKED_PAGES` so they get indexed
+  and health-checked daily
+- **ALWAYS** add new target keywords to `TARGET_KEYWORDS` when the
+  business focus shifts
+- If the daily report stops arriving, check Vercel function logs
+  first, then `MAILGUN_API_KEY`, then page health
+
+**Future enhancements (not yet built — flag in next session):**
+- Google Search Console API integration for real impressions/clicks
+- Google Analytics 4 for traffic data
+- SerpAPI or similar for actual keyword ranking checks
+- Weekly competitive analysis vs supershuttle.co.nz
+- Auto-generated weekly performance report (separate cron)
 
 ---
 
