@@ -11,7 +11,12 @@
  */
 const { findOne, updateOne, insertOne } = require('../_lib/db');
 const { sendEmail } = require('../_lib/mailgun');
-const { createCalendarEvent } = require('../_lib/google-calendar');
+const {
+  customerBookingConfirmedEmail,
+  emailWrapper,
+  bookingDetailsTable,
+  customerName: getCustomerName,
+} = require('../_lib/email-templates');
 
 // Vercel serverless: disable body parsing so we get the raw body for Stripe verification
 module.exports.config = {
@@ -93,41 +98,34 @@ module.exports = async function handler(req, res) {
 
       // === POST-PAYMENT ACTIONS (all 4 required) ===
 
+      // Refetch the booking so it has the latest payment_status='paid' for email templates
+      const paidBooking = { ...booking, payment_status: 'paid', status: 'confirmed' };
+      const name = getCustomerName(paidBooking);
+
       // 1. Customer confirmation email
-      const customerName = `${booking.firstName || ''} ${booking.lastName || ''}`.trim() || 'Customer';
+      const customerTemplate = customerBookingConfirmedEmail(paidBooking);
       await sendEmail({
         to: booking.email,
-        subject: `Booking Confirmed - Ref #${booking.referenceNumber}`,
-        html: `<h2>Payment Successful!</h2>
-          <p>Hi ${customerName},</p>
-          <p>Your booking has been confirmed and payment received.</p>
-          <p><strong>Reference:</strong> #${booking.referenceNumber}</p>
-          <p><strong>Pickup:</strong> ${booking.pickupAddress}</p>
-          <p><strong>Dropoff:</strong> ${booking.dropoffAddress}</p>
-          <p><strong>Date:</strong> ${booking.date} at ${booking.time}</p>
-          <p><strong>Amount Paid:</strong> $${booking.totalPrice} NZD</p>
-          <p><strong>Payment Method:</strong> Credit/Debit Card</p>
-          <p>Thank you for choosing BookaRide!</p>`,
+        subject: customerTemplate.subject,
+        html: customerTemplate.html,
+        replyTo: 'info@bookaride.co.nz',
       }).catch(err => console.error('Customer confirmation email failed:', err.message));
 
       // 2. Admin notification
       const adminEmail = process.env.BOOKINGS_NOTIFICATION_EMAIL || 'bookings@bookaride.co.nz';
+      const adminBody = `
+        <h2 style="color:#059669;">Payment Received</h2>
+        <p><strong>Customer:</strong> ${name} (${booking.email})</p>
+        ${bookingDetailsTable(paidBooking)}
+        <p style="margin-top:20px;"><a href="https://bookaride.co.nz/admin/login" style="background:#1a1a1a; color:#fff; padding:10px 20px; text-decoration:none; border-radius:4px;">View in Admin Dashboard</a></p>
+      `;
       await sendEmail({
         to: adminEmail,
-        subject: `PAID: Booking #${booking.referenceNumber} - ${customerName}`,
-        html: `<h2>Payment Received</h2>
-          <p><strong>Ref:</strong> #${booking.referenceNumber}</p>
-          <p><strong>Customer:</strong> ${customerName} (${booking.email})</p>
-          <p><strong>Amount:</strong> $${booking.totalPrice} NZD</p>
-          <p><strong>Route:</strong> ${booking.pickupAddress} → ${booking.dropoffAddress}</p>
-          <p><strong>Date:</strong> ${booking.date} at ${booking.time}</p>`,
+        subject: `PAID: Booking #${booking.referenceNumber} - ${name}`,
+        html: emailWrapper(adminBody),
       }).catch(err => console.error('Admin notification email failed:', err.message));
 
-      // 3. Google Calendar event
-      const refreshedBooking = await findOne('bookings', { id: bookingId });
-      await createCalendarEvent(refreshedBooking || booking)
-        .catch(err => console.error('Calendar event creation failed:', err.message));
-
+      // 3. Google Calendar event — TODO: port calendar integration
       // 4. iCloud contact sync — TODO: port iCloud integration
     }
 

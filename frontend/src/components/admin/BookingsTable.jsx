@@ -1,26 +1,7 @@
 import React from 'react';
 import { Eye, Edit2, Mail, RefreshCw, Trash2, XCircle, CheckCircle, Clock, Square, CheckSquare, Phone, Plane, ArrowRight, CreditCard, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-
-const formatDate = (dateStr) => {
-  if (!dateStr) return '';
-  const parts = dateStr.split('-');
-  if (parts.length === 3 && parts[0].length === 4) return `${parts[2]}/${parts[1]}/${parts[0]}`;
-  return dateStr;
-};
-
-const isToday = (dateStr) => {
-  if (!dateStr) return false;
-  const t = new Date();
-  return dateStr === `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
-};
-
-const isTomorrow = (dateStr) => {
-  if (!dateStr) return false;
-  const t = new Date();
-  t.setDate(t.getDate() + 1);
-  return dateStr === `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
-};
+import { formatDate, isToday, isTomorrow } from '../../utils/dateFormat';
 
 const BookingsTable = ({
   bookings,
@@ -149,6 +130,7 @@ const BookingsTable = ({
                   className={`group border-b border-slate-50 cursor-pointer transition-all duration-150
                     ${safeSelected.has(booking.id) ? 'bg-slate-50' : 'hover:bg-slate-50/60'}
                     ${urgent ? 'bg-red-50/40' : ''}
+                    ${hasReturn ? 'border-r-4 border-r-violet-400' : ''}
                   `}
                 >
                   {/* Checkbox */}
@@ -171,11 +153,10 @@ const BookingsTable = ({
                         urgent ? 'bg-red-400' : today ? 'bg-slate-900' : tomorrow ? 'bg-amber-400' : 'bg-slate-200'
                       }`} />
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-bold text-slate-900 tracking-tight">#{booking.referenceNumber || booking.id?.slice(0, 5)}</span>
                           {today && <span className="text-[10px] font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded-full tracking-wide">TODAY</span>}
                           {tomorrow && <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full tracking-wide">TOMORROW</span>}
-                          {hasReturn && <span className="text-[10px] font-medium text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full tracking-wide">RETURN</span>}
                         </div>
                         <p className="text-[13px] text-slate-500 mt-0.5">
                           {formatDate(booking.date)} <span className="font-semibold text-slate-700">{booking.time}</span>
@@ -184,6 +165,12 @@ const BookingsTable = ({
                           <p className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1">
                             <Plane className="w-3 h-3" />{flightNum}
                           </p>
+                        )}
+                        {hasReturn && (
+                          <div className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-semibold text-violet-700 bg-violet-50 px-2 py-0.5 rounded-full border border-violet-200" title="Return pickup date and time">
+                            <span className="text-sm leading-none">↩</span>
+                            <span>Return {formatDate(booking.returnDate)} {booking.returnTime}</span>
+                          </div>
                         )}
                       </div>
                     </div>

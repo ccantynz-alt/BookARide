@@ -63,8 +63,9 @@ const ReturnsOverviewPanel = ({ bookings = [], drivers = [], onAssignDriver, onV
     return urgent;
   };
 
-  // Format date nicely
-  const formatDate = (dateStr) => {
+  // Relative date label ('Today', 'Tomorrow', or 'Mon, 6 Apr')
+  // Context-specific helper — do not replace with shared dateFormat util
+  const formatRelativeDate = (dateStr) => {
     if (dateStr === today) return 'Today';
     if (dateStr === tomorrow) return 'Tomorrow';
     const [y, m, d] = dateStr.split('-');
@@ -115,7 +116,7 @@ const ReturnsOverviewPanel = ({ bookings = [], drivers = [], onAssignDriver, onV
                       ? 'bg-blue-200 text-blue-700'
                       : 'bg-gray-200 text-gray-700'
               }`}>
-                {formatDate(booking.returnDate)}
+                {formatRelativeDate(booking.returnDate)}
               </span>
             </div>
 

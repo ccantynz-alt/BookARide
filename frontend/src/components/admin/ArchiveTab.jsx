@@ -2,13 +2,7 @@ import React from 'react';
 import { Archive, RefreshCw, Search, Eye, RotateCcw } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
-
-const formatDate = (dateStr) => {
-  if (!dateStr) return 'N/A';
-  const parts = dateStr.split('-');
-  if (parts.length === 3 && parts[0].length === 4) return `${parts[2]}/${parts[1]}/${parts[0]}`;
-  return dateStr;
-};
+import { formatDate, formatTimestampDate } from '../../utils/dateFormat';
 
 const ArchiveTab = ({
   archivedBookings,
@@ -125,7 +119,7 @@ const ArchiveTab = ({
                           ${(booking.pricing?.totalPrice || booking.totalPrice || 0).toFixed(2)}
                         </td>
                         <td className="px-3 py-3 text-xs text-slate-400">
-                          {booking.archivedAt ? new Date(booking.archivedAt).toLocaleDateString('en-NZ') : 'N/A'}
+                          {formatTimestampDate(booking.archivedAt)}
                         </td>
                         <td className="px-3 py-3">
                           <div className="flex gap-1">

@@ -206,7 +206,7 @@ export const DriversTab = () => {
           <h2 className="text-2xl font-bold text-gray-900">Driver Management</h2>
           <p className="text-gray-600">Manage your drivers and assignments</p>
         </div>
-        <Button onClick={() => handleOpenDriverModal()} className="bg-gold hover:bg-gold/90 text-black">
+        <Button onClick={() => handleOpenDriverModal()} className="bg-gold hover:bg-gold/90 text-white">
           <Plus className="w-4 h-4 mr-2" />
           Add Driver
         </Button>
@@ -350,7 +350,7 @@ export const DriversTab = () => {
             <User className="w-16 h-16 mx-auto text-gray-400 mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 mb-2">No Drivers Yet</h3>
             <p className="text-gray-600 mb-4">Add your first driver to start managing assignments</p>
-            <Button onClick={() => handleOpenDriverModal()} className="bg-gold hover:bg-gold/90 text-black">
+            <Button onClick={() => handleOpenDriverModal()} className="bg-gold hover:bg-gold/90 text-white">
               <Plus className="w-4 h-4 mr-2" />
               Add Driver
             </Button>
@@ -449,7 +449,7 @@ export const DriversTab = () => {
               <Button variant="outline" onClick={() => setShowDriverModal(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleSaveDriver} className="bg-gold hover:bg-gold/90 text-black">
+              <Button onClick={handleSaveDriver} className="bg-gold hover:bg-gold/90 text-white">
                 {editingDriver ? 'Update Driver' : 'Add Driver'}
               </Button>
             </div>
@@ -493,7 +493,7 @@ export const DriversTab = () => {
               <Button variant="outline" onClick={() => setShowPasswordModal(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleSetPassword} className="bg-gold hover:bg-gold/90 text-black">
+              <Button onClick={handleSetPassword} className="bg-gold hover:bg-gold/90 text-white">
                 Set Password
               </Button>
             </div>

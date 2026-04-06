@@ -2,13 +2,7 @@ import React, { useRef } from 'react';
 import { Trash2, Download, Upload, Shield, RotateCcw, RefreshCw, Archive, Eye } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
-
-const formatDate = (dateStr) => {
-  if (!dateStr) return 'N/A';
-  const parts = dateStr.split('-');
-  if (parts.length === 3 && parts[0].length === 4) return `${parts[2]}/${parts[1]}/${parts[0]}`;
-  return dateStr;
-};
+import { formatDate, formatTimestampDate } from '../../utils/dateFormat';
 
 const DeletedTab = ({
   deletedBookings,
@@ -180,7 +174,7 @@ const DeletedTab = ({
                         <div><span className="text-slate-400">Date:</span> {formatDate(booking.date)} {booking.time}</div>
                         <div><span className="text-slate-400">Phone:</span> {booking.phone}</div>
                         <div><span className="text-slate-400">Total:</span> ${booking.totalPrice || booking.total_price}</div>
-                        <div><span className="text-slate-400">Deleted:</span> {new Date(booking.deletedAt).toLocaleDateString('en-NZ')}</div>
+                        <div><span className="text-slate-400">Deleted:</span> {formatTimestampDate(booking.deletedAt)}</div>
                       </div>
                       <div className="mt-2 text-sm">
                         <span className="text-slate-400">From:</span> <span className="text-slate-600">{booking.pickup || booking.pickupAddress}</span>

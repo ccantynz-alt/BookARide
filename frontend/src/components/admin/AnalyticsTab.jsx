@@ -115,7 +115,7 @@ export const AnalyticsTab = () => {
 
       {/* Export Button */}
       <div className="flex justify-end">
-        <Button onClick={handleExportCSV} className="bg-gold hover:bg-gold/90 text-black">
+        <Button onClick={handleExportCSV} className="bg-gold hover:bg-gold/90 text-white">
           <Download className="w-4 h-4 mr-2" />
           Export to CSV
         </Button>

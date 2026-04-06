@@ -735,7 +735,7 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
             </Button>
             <Button
               onClick={handleCreateManualBooking}
-              className="bg-gold hover:bg-gold/90 text-black font-semibold"
+              className="bg-gold hover:bg-gold/90 text-white font-semibold"
               disabled={bookingPricing.totalPrice === 0 && (!manualPriceOverride || parseFloat(manualPriceOverride) <= 0)}
             >
               Create Booking & Send Confirmations

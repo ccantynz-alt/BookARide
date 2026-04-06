@@ -10,7 +10,7 @@ import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { toast } from 'sonner';
-import { CustomDatePicker, CustomTimePicker } from '../components/DateTimePicker';
+import { CustomDatePicker } from '../components/DateTimePicker';
 import axios from 'axios';
 import { CustomersTab } from '../components/admin/CustomersTab';
 import { DriverApplicationsTab } from '../components/admin/DriverApplicationsTab';
@@ -34,64 +34,9 @@ import DriverAssignPreviewModal from '../components/admin/DriverAssignPreviewMod
 import BookingsTable from '../components/admin/BookingsTable';
 import GoogleAddressInput from '../components/GoogleAddressInput';
 
-// Helper function to format date to DD/MM/YYYY
-const formatDate = (dateString) => {
-  if (!dateString) return '';
-  const [year, month, day] = dateString.split('-');
-  return `${day}/${month}/${year}`;
-};
-
-// SAFE date parser — NEVER use new Date("YYYY-MM-DD") directly!
-// JavaScript parses "YYYY-MM-DD" as UTC midnight, which shows as the
-// previous day in NZ timezone. This function parses as LOCAL time.
-const parseLocalDate = (dateString) => {
-  if (!dateString) return null;
-  const parts = dateString.split('-');
-  if (parts.length === 3) {
-    return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-  }
-  return null;
-};
-
-// Get today's date as YYYY-MM-DD in NZ timezone (string comparison safe)
-const getNZTodayStr = () => {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Auckland' }).format(new Date());
-};
-
-// Helper function to get day of week from date string
-const getDayOfWeek = (dateString) => {
-  if (!dateString) return '';
-  const date = parseLocalDate(dateString);
-  if (!date) return '';
-  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  return days[date.getDay()];
-};
-
-// Helper function to get short day of week
-const getShortDayOfWeek = (dateString) => {
-  if (!dateString) return '';
-  const date = parseLocalDate(dateString);
-  if (!date) return '';
-  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  return days[date.getDay()];
-};
-
-// Helper function to check if date is today (string comparison — timezone safe)
-const isToday = (dateString) => {
-  if (!dateString) return false;
-  return dateString === getNZTodayStr();
-};
-
-// Helper function to check if date is tomorrow (string comparison — timezone safe)
-const isTomorrow = (dateString) => {
-  if (!dateString) return false;
-  const nzNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Pacific/Auckland' }));
-  nzNow.setDate(nzNow.getDate() + 1);
-  const y = nzNow.getFullYear();
-  const m = String(nzNow.getMonth() + 1).padStart(2, '0');
-  const d = String(nzNow.getDate()).padStart(2, '0');
-  return dateString === `${y}-${m}-${d}`;
-};
+// Date utilities — single source of truth in frontend/src/utils/dateFormat.js
+// Never re-implement formatDate/isToday/isTomorrow locally
+import { formatDate, getDayOfWeek, getShortDayOfWeek, isToday, isTomorrow } from '../utils/dateFormat';
 
 // Import Bookings Section Component
 const ImportBookingsSection = ({ onSuccess }) => {
@@ -553,7 +498,6 @@ export const AdminDashboard = () => {
   const [downloadingBackup, setDownloadingBackup] = useState(false);
   const [retentionCounts, setRetentionCounts] = useState(null); // { active, deleted } when list empty
   const [deletedCountForBanner, setDeletedCountForBanner] = useState(null); // deleted count for "Restore all" banner on Bookings tab
-
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedBooking, setSelectedBooking] = useState(null);
@@ -598,8 +542,8 @@ export const AdminDashboard = () => {
   const [previewHtml, setPreviewHtml] = useState('');
   const [previewBookingInfo, setPreviewBookingInfo] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
-  
-  
+
+
 
 
 
@@ -607,11 +551,11 @@ export const AdminDashboard = () => {
   // Pagination state (must be before useEffects that depend on dateFrom/dateTo)
   const [currentPage, setCurrentPage] = useState(1);
   const [totalBookings, setTotalBookings] = useState(0);
-  const [bookingsPerPage] = useState(50);
+  const [bookingsPerPage] = useState(200);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
-  const [loadAllBookings, setLoadAllBookings] = useState(true); // MUST load all — missing bookings when paginated
+  const [loadAllBookings] = useState(true); // Always load full list so we never miss a booking
 
   // Use refs only - never reference fetchBookings/filterBookings here (they are declared later)
   useEffect(() => {
@@ -621,17 +565,6 @@ export const AdminDashboard = () => {
     if (!localStorage.getItem('adminToken')) return;
     if (dateFrom || dateTo) fetchBookingsRef.current?.(1, false);
   }, [dateFrom, dateTo]);
-
-  // Debounced server-side search: when searchTerm changes, re-fetch from API after 300ms
-  const searchDebounceRef = useRef(null);
-  useEffect(() => {
-    if (!localStorage.getItem('adminToken')) return;
-    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
-    searchDebounceRef.current = setTimeout(() => {
-      fetchBookingsRef.current?.(1, false);
-    }, 300);
-    return () => { if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current); };
-  }, [searchTerm]);
 
   // When list is empty (no active bookings in DB at all), fetch active/deleted counts so we can show "0 active, 47 deleted"
   // NOTE: use bookings.length (raw fetch result), NOT filteredBookings.length — filters can hide bookings that exist
@@ -657,14 +590,14 @@ export const AdminDashboard = () => {
     return () => { cancelled = true; };
   }, [activeTab]);
 
-  const getAuthHeaders = useCallback(() => {
+  const getAuthHeaders = () => {
     const token = localStorage.getItem('adminToken');
     return {
       headers: {
         'Authorization': `Bearer ${token}`
       }
     };
-  }, []);
+  };
 
   fetchBookings = async (page = 1, append = false, isRetry = false) => {
     try {
@@ -677,18 +610,14 @@ export const AdminDashboard = () => {
       };
       if (dateFrom) params.date_from = dateFrom;
       if (dateTo) params.date_to = dateTo;
-      if (searchTerm && searchTerm.trim().length >= 2) params.search = searchTerm.trim();
-
+      
       const response = await axios.get(`${API}/bookings`, {
         ...getAuthHeaders(),
         params
       });
-
-      // Support both { bookings, total } wrapper and plain array (backward compat)
-      const responseData = response.data;
-      const newBookings = Array.isArray(responseData) ? responseData : (Array.isArray(responseData?.bookings) ? responseData.bookings : []);
-      if (responseData?.total !== undefined) setTotalBookings(responseData.total);
-
+      
+      const newBookings = Array.isArray(response.data) ? response.data : [];
+      
       // Cache a small subset for offline fallback (keeps localStorage fast)
       try {
         const toCache = (append ? newBookings : newBookings.slice(0, 50));
@@ -766,11 +695,8 @@ export const AdminDashboard = () => {
       };
       if (dateFrom) params.date_from = dateFrom;
       if (dateTo) params.date_to = dateTo;
-      if (searchTerm && searchTerm.trim().length >= 2) params.search = searchTerm.trim();
       const response = await axios.get(`${API}/bookings`, { ...getAuthHeaders(), params });
-      const rd = response.data;
-      const fresh = Array.isArray(rd) ? rd : (Array.isArray(rd?.bookings) ? rd.bookings : []);
-      if (rd?.total !== undefined) setTotalBookings(rd.total);
+      const fresh = Array.isArray(response.data) ? response.data : [];
       setBookings(fresh);
       try {
         localStorage.setItem('cachedBookings', JSON.stringify(fresh.slice(0, 50)));
@@ -962,12 +888,9 @@ export const AdminDashboard = () => {
       navigate('/admin/login');
       return;
     }
-    // Fire all initial loads in parallel for faster first paint
-    Promise.all([
-      fetchBookingsRef.current?.(),
-      fetchDrivers(),
-      fetchArchivedCount(),
-    ]).catch(() => {});
+    fetchBookingsRef.current?.();
+    setTimeout(() => fetchDrivers(), 600);
+    fetchArchivedCount();
   }, [navigate]);
 
   const handleRestoreBooking = async (bookingId) => {
@@ -1246,24 +1169,22 @@ export const AdminDashboard = () => {
       }
       
       toast.success(response.data?.message || 'Driver assigned successfully!');
-      // Capture driver ID before clearing state (stale closure fix)
-      const capturedDriverId = selectedDriver;
       setSelectedDriver('');
       setDriverPayoutOverride('');
       setShowDriverAssignPreview(false);
       setPendingAssignment(null);
       // Optimistic: update driver info in local booking
-      const confirmAssignedDriver = drivers.find(d => d.id === capturedDriverId);
+      const confirmAssignedDriver = drivers.find(d => d.id === selectedDriver);
       if (tripType === 'return') {
         updateBookingLocally(selectedBooking.id, {
-          return_driver_id: capturedDriverId,
+          return_driver_id: selectedDriver,
           return_driver_name: confirmAssignedDriver?.name || '',
           return_driver_phone: confirmAssignedDriver?.phone || '',
           return_driver_email: confirmAssignedDriver?.email || '',
         });
       } else {
         updateBookingLocally(selectedBooking.id, {
-          driver_id: capturedDriverId,
+          driver_id: selectedDriver,
           driver_name: confirmAssignedDriver?.name || '',
           driver_phone: confirmAssignedDriver?.phone || '',
           driver_email: confirmAssignedDriver?.email || '',
@@ -1316,22 +1237,20 @@ export const AdminDashboard = () => {
       }
       
       toast.success(response.data?.message || 'Driver assigned successfully!');
-      // Capture driver ID before clearing state (stale closure fix)
-      const capturedDriverId2 = selectedDriver;
       setSelectedDriver('');
       setDriverPayoutOverride('');
       // Optimistic: update driver info in local booking
-      const assignedDriverObj = drivers.find(d => d.id === capturedDriverId2);
+      const assignedDriverObj = drivers.find(d => d.id === selectedDriver);
       if (tripType === 'return') {
         updateBookingLocally(selectedBooking.id, {
-          return_driver_id: capturedDriverId2,
+          return_driver_id: selectedDriver,
           return_driver_name: assignedDriverObj?.name || '',
           return_driver_phone: assignedDriverObj?.phone || '',
           return_driver_email: assignedDriverObj?.email || '',
         });
       } else {
         updateBookingLocally(selectedBooking.id, {
-          driver_id: capturedDriverId2,
+          driver_id: selectedDriver,
           driver_name: assignedDriverObj?.name || '',
           driver_phone: assignedDriverObj?.phone || '',
           driver_email: assignedDriverObj?.email || '',
@@ -1402,12 +1321,14 @@ export const AdminDashboard = () => {
     }
   };
 
-  // Memoized filtering — only recalculates when bookings, searchTerm, or statusFilter change
-  const filteredBookingsMemo = useMemo(() => {
+  filterBookings = () => {
     let filtered = Array.isArray(bookings) ? bookings : [];
+
     if (statusFilter !== 'all') {
       filtered = filtered.filter(b => b && b.status === statusFilter);
     }
+
+    // Search filter (local only - archive search is debounced separately below)
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
       filtered = filtered.filter(b => b && (
@@ -1419,15 +1340,9 @@ export const AdminDashboard = () => {
         String(b.referenceNumber)?.includes(searchTerm)
       ));
     }
-    return filtered;
-  }, [bookings, searchTerm, statusFilter]);
 
-  // Keep filteredBookings state in sync for components that read it
-  useEffect(() => {
-    setFilteredBookings(filteredBookingsMemo);
-  }, [filteredBookingsMemo]);
-
-  filterBookings = () => setFilteredBookings(filteredBookingsMemo);
+    setFilteredBookings(filtered);
+  };
   filterBookingsRef.current = filterBookings;
 
   // Search across all bookings (active + archived) - debounced separately from filter
@@ -1833,23 +1748,9 @@ export const AdminDashboard = () => {
         getAuthHeaders()
       );
       toast.dismiss();
-      const link = response.data?.payment_link;
-      if (response.data?.email_sent) {
-        toast.success(response.data.message || 'Payment link sent!');
-      } else if (link) {
-        // Email failed but we have the link — show it so admin can copy
-        toast.success(
-          <div>
-            <p className="font-medium">Payment link ready (email may not have delivered):</p>
-            <p className="text-xs mt-1 break-all select-all bg-gray-100 p-2 rounded mt-2">{link}</p>
-            <button className="mt-2 text-xs text-blue-600 underline" onClick={() => { navigator.clipboard.writeText(link); toast.success('Link copied!'); }}>Copy link</button>
-          </div>,
-          { duration: 30000 }
-        );
-      } else {
-        toast.success(response.data.message || 'Payment link sent!');
-      }
-      fetchBookingsRef.current?.(1, false);
+      toast.success(response.data.message || 'Payment link sent!');
+      // Refresh bookings so the "Link Sent" indicator updates
+      fetchBookings();
     } catch (error) {
       toast.dismiss();
       console.error('Error sending payment link:', error);
@@ -2004,21 +1905,18 @@ export const AdminDashboard = () => {
     }
   };
 
-  const stats = useMemo(() => {
-    const bookList = Array.isArray(bookings) ? bookings : [];
-    let pending = 0, pendingApproval = 0, confirmed = 0, completed = 0, cancelled = 0, totalRevenue = 0;
-    for (const b of bookList) {
-      if (!b) continue;
-      switch (b.status) {
-        case 'pending': pending++; break;
-        case 'pending_approval': pendingApproval++; break;
-        case 'confirmed': confirmed++; totalRevenue += (b.pricing?.totalPrice || b.totalPrice || 0); break;
-        case 'completed': completed++; totalRevenue += (b.pricing?.totalPrice || b.totalPrice || 0); break;
-        case 'cancelled': cancelled++; break;
-      }
-    }
-    return { total: bookList.length, pending, pendingApproval, confirmed, completed, cancelled, totalRevenue };
-  }, [bookings]);
+  const bookList = Array.isArray(bookings) ? bookings : [];
+  const stats = {
+    total: bookList.length,
+    pending: bookList.filter(b => b && b.status === 'pending').length,
+    pendingApproval: bookList.filter(b => b && b.status === 'pending_approval').length,
+    confirmed: bookList.filter(b => b && b.status === 'confirmed').length,
+    completed: bookList.filter(b => b && b.status === 'completed').length,
+    cancelled: bookList.filter(b => b && b.status === 'cancelled').length,
+    totalRevenue: bookList
+      .filter(b => b && (b.status === 'confirmed' || b.status === 'completed'))
+      .reduce((sum, b) => sum + (b.pricing?.totalPrice || b.totalPrice || 0), 0)
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50 pt-20">
@@ -2188,7 +2086,7 @@ export const AdminDashboard = () => {
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
           <button onClick={() => setStatusFilter('all')} className="bg-white/60 backdrop-blur-xl rounded-2xl border border-white/30 p-5 shadow-sm shadow-black/5 hover:shadow-md hover:bg-white/80 transition-all text-left">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em]">Total</p>
-            <p className="text-3xl font-bold text-gold mt-2 tabular-nums">{stats.total}</p>
+            <p className="text-3xl font-bold text-slate-900 mt-2 tabular-nums">{stats.total}</p>
           </button>
           <button onClick={() => setStatusFilter('pending')} className="bg-white/60 backdrop-blur-xl rounded-2xl border border-white/30 p-5 shadow-sm shadow-black/5 hover:shadow-md hover:bg-white/80 transition-all text-left">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em]">Pending</p>
@@ -2202,9 +2100,9 @@ export const AdminDashboard = () => {
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em]">Completed</p>
             <p className="text-3xl font-bold text-blue-600 mt-2 tabular-nums">{stats.completed}</p>
           </button>
-          <div className="bg-gold rounded-2xl p-5 shadow-lg shadow-gold/20">
-            <p className="text-[10px] font-bold text-black/50 uppercase tracking-[0.15em]">Revenue</p>
-            <p className="text-3xl font-bold text-white mt-2 tabular-nums">${(stats.totalRevenue ?? 0).toFixed(0)}</p>
+          <div className="bg-slate-900 rounded-2xl p-5 shadow-lg shadow-slate-900/20 text-white">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em]">Revenue</p>
+            <p className="text-3xl font-bold mt-2 tabular-nums">${(stats.totalRevenue ?? 0).toFixed(0)}</p>
           </div>
         </div>
 
@@ -2234,41 +2132,9 @@ export const AdminDashboard = () => {
               </SelectContent>
             </Select>
             <div className="flex items-center gap-2">
-              <div className="w-[140px]">
-                <CustomDatePicker
-                  selected={dateFrom ? new Date(dateFrom.replace(/-/g, '/')) : null}
-                  onChange={(date) => {
-                    if (date) {
-                      const val = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-                      setDateFrom(val);
-                      if (dateTo && val > dateTo) setDateTo('');
-                    } else {
-                      setDateFrom('');
-                    }
-                  }}
-                  placeholder="From date"
-                  allowPastDates
-                  isClearable
-                />
-              </div>
-              <span className="text-slate-400 text-xs">to</span>
-              <div className="w-[140px]">
-                <CustomDatePicker
-                  selected={dateTo ? new Date(dateTo.replace(/-/g, '/')) : null}
-                  onChange={(date) => {
-                    if (date) {
-                      const val = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-                      setDateTo(val);
-                    } else {
-                      setDateTo('');
-                    }
-                  }}
-                  placeholder="To date"
-                  allowPastDates
-                  minDate={dateFrom ? new Date(dateFrom.replace(/-/g, '/')) : null}
-                  isClearable
-                />
-              </div>
+              <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-10 border border-slate-200/60 bg-white/50 rounded-xl px-3 text-sm focus:outline-none focus:border-slate-400" />
+              <span className="text-slate-200 text-xs">to</span>
+              <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-10 border border-slate-200/60 bg-white/50 rounded-xl px-3 text-sm focus:outline-none focus:border-slate-400" />
               {(dateFrom || dateTo) && (
                 <button onClick={() => { setDateFrom(''); setDateTo(''); }} className="text-[11px] text-slate-400 hover:text-slate-700 underline underline-offset-2">Clear</button>
               )}
@@ -2280,7 +2146,7 @@ export const AdminDashboard = () => {
               <button onClick={handleSendReminders} className="text-xs font-medium text-slate-500 hover:text-slate-900 transition-colors px-3 py-2" title="Remind tomorrow's bookings">
                 <Bell className="w-3.5 h-3.5 inline mr-1" />Remind
               </button>
-              <button onClick={() => setShowCreateBookingModal(true)} className="bg-gold hover:bg-gold/90 text-black text-sm font-semibold h-10 px-5 rounded-xl transition-colors">
+              <button onClick={() => setShowCreateBookingModal(true)} className="bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold h-10 px-5 rounded-xl transition-colors">
                 + New Booking
               </button>
             </div>
@@ -2363,7 +2229,7 @@ export const AdminDashboard = () => {
         <BookingsTable
           bookings={filteredBookings}
           loading={loading}
-          totalBookings={totalBookings || bookings.length}
+          totalBookings={bookings.length}
           selectedBookings={safeSelectedSet}
           onSelectBooking={(id) => {
             const next = new Set(safeSelectedSet);
@@ -2389,11 +2255,6 @@ export const AdminDashboard = () => {
           onOpenDeletedTab={() => setActiveTab('deleted')}
           onRestoreFromServer={handleRestoreFromServerBackup}
           restoringFromServerBackup={restoringFromServerBackup}
-          loadAllBookings={loadAllBookings}
-          onLoadAll={() => { setLoadAllBookings(true); fetchBookingsRef.current?.(1, false); }}
-          currentPage={currentPage}
-          bookingsPerPage={bookingsPerPage}
-          onPageChange={(page) => { setCurrentPage(page); fetchBookingsRef.current?.(page, false); }}
         />
 
         </TabsContent>
@@ -2571,7 +2432,7 @@ export const AdminDashboard = () => {
       {/* Edit Booking Modal */}
       <Dialog open={showEditBookingModal} onOpenChange={(open) => {
         setShowEditBookingModal(open);
-        if (!open) { setEditingBooking(null); }
+        if (!open) { setEditingBooking(null); clearEditAddressSuggestions(); }
       }}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -2659,37 +2520,21 @@ export const AdminDashboard = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label>Date *</Label>
-                      <div className="mt-1">
-                        <CustomDatePicker
-                          selected={editingBooking.date ? new Date(editingBooking.date.replace(/-/g, '/')) : null}
-                          onChange={(date) => {
-                            if (date) {
-                              const val = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-                              setEditingBooking(prev => ({...prev, date: val}));
-                            }
-                          }}
-                          placeholder="Select date"
-                          minDate={new Date('2020-01-01')}
-                          maxDate={new Date('2030-12-31')}
-                          showMonthDropdown
-                          showYearDropdown
-                          dropdownMode="select"
-                        />
-                      </div>
+                      <Input
+                        type="date"
+                        value={editingBooking.date}
+                        onChange={(e) => setEditingBooking(prev => ({...prev, date: e.target.value}))}
+                        className="mt-1"
+                      />
                     </div>
                     <div>
                       <Label>Time *</Label>
-                      <div className="mt-1">
-                        <CustomTimePicker
-                          selected={editingBooking.time ? (() => { const [h, m] = editingBooking.time.split(':'); const d = new Date(); d.setHours(parseInt(h), parseInt(m), 0, 0); return d; })() : null}
-                          onChange={(time) => {
-                            if (time) {
-                              setEditingBooking(prev => ({...prev, time: `${time.getHours().toString().padStart(2, '0')}:${time.getMinutes().toString().padStart(2, '0')}`}));
-                            }
-                          }}
-                          placeholder="Select time"
-                        />
-                      </div>
+                      <Input
+                        type="time"
+                        value={editingBooking.time}
+                        onChange={(e) => setEditingBooking(prev => ({...prev, time: e.target.value}))}
+                        className="mt-1"
+                      />
                     </div>
                   </div>
 
@@ -2722,37 +2567,22 @@ export const AdminDashboard = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
                         <div>
                           <Label>Return Date *</Label>
-                          <div className="mt-1">
-                            <CustomDatePicker
-                              selected={editingBooking.returnDate ? new Date(editingBooking.returnDate.replace(/-/g, '/')) : null}
-                              onChange={(date) => {
-                                if (date) {
-                                  const val = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-                                  setEditingBooking(prev => ({...prev, returnDate: val}));
-                                }
-                              }}
-                              placeholder="Select return date"
-                              minDate={editingBooking.date ? new Date(editingBooking.date.replace(/-/g, '/')) : new Date()}
-                              maxDate={new Date('2030-12-31')}
-                              showMonthDropdown
-                              showYearDropdown
-                              dropdownMode="select"
-                            />
-                          </div>
+                          <Input
+                            type="date"
+                            value={editingBooking.returnDate || ''}
+                            onChange={(e) => setEditingBooking(prev => ({...prev, returnDate: e.target.value}))}
+                            min={editingBooking.date || new Date().toISOString().split('T')[0]}
+                            className="mt-1 bg-white"
+                          />
                         </div>
                         <div>
                           <Label>Return Time *</Label>
-                          <div className="mt-1">
-                            <CustomTimePicker
-                              selected={editingBooking.returnTime ? (() => { const [h, m] = editingBooking.returnTime.split(':'); const d = new Date(); d.setHours(parseInt(h), parseInt(m), 0, 0); return d; })() : null}
-                              onChange={(time) => {
-                                if (time) {
-                                  setEditingBooking(prev => ({...prev, returnTime: `${time.getHours().toString().padStart(2, '0')}:${time.getMinutes().toString().padStart(2, '0')}`}));
-                                }
-                              }}
-                              placeholder="Select return time"
-                            />
-                          </div>
+                          <Input
+                            type="time"
+                            value={editingBooking.returnTime || ''}
+                            onChange={(e) => setEditingBooking(prev => ({...prev, returnTime: e.target.value}))}
+                            className="mt-1 bg-white"
+                          />
                         </div>
                         <div>
                           <Label>Return Flight Number</Label>
@@ -2853,7 +2683,7 @@ export const AdminDashboard = () => {
                 </Button>
                 <Button
                   onClick={handleSaveEditedBooking}
-                  className="bg-gold hover:bg-gold/90 text-black font-semibold"
+                  className="bg-gold hover:bg-gold/90 text-white font-semibold"
                 >
                   Save Changes
                 </Button>

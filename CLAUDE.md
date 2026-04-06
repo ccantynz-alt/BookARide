@@ -35,7 +35,7 @@ These rules are non-negotiable. Every agent must follow all 10, every session, n
 | 5 | **Technology Currency** | Check if our tools are up to date. If there's a newer, safer, better-supported version of a dependency — flag it. Don't silently use outdated or deprecated APIs. |
 | 6 | **Explain Like You're Not A Developer** | The owner is NOT a developer. All communication in plain English. "Your users were seeing X, now they see Y" — not tech jargon. No acronyms without explanation. |
 | 7 | **Never Leave It Worse** | Every file you touch gets cleaned up. No leaving messes behind. No orphaned imports. No dead code. No commented-out blocks. Leave it better than you found it. |
-| 8 | **Autonomous Testing** | After changes, verify everything still works. Run `npm run build`, check for banned imports. Production code is `frontend/` and `api/` ONLY — do NOT test `backend/` (legacy). |
+| 8 | **Autonomous Testing** | After changes, verify everything still works. Run `py_compile`, run `npm run build`, check for smart quotes, check for banned imports. No "it should be fine." |
 | 9 | **Mandatory Documentation** | Every change gets documented so the next session knows what happened. Update CLAUDE.md if you add new rules, locked decisions, or break history. Commit messages must explain WHY, not just WHAT. |
 | 10 | **Complete The Loop** | Every feature must work end-to-end. If it doesn't work from start to finish — form loads, user types, autocomplete appears, user selects, price calculates, booking submits, payment works, confirmation sends — it's not done. |
 
@@ -45,19 +45,40 @@ These rules are non-negotiable. Every agent must follow all 10, every session, n
 
 These decisions are FINAL. Do not introduce alternatives, fallbacks, or "improvements".
 
-### 0. ABSOLUTE RULES — READ FIRST (2026-04-02)
+### 0. Architecture: Vercel Frontend + Vercel Serverless API ONLY (2026-04-06)
 
-**These rules exist because agents kept breaking working features with "improvements" and "optimizations".**
+**There is NO Render backend. Everything runs on Vercel.**
 
-1. **If it works, DO NOT TOUCH IT.** No "performance optimizations" that risk hiding bookings. No "refactoring" of working code. No changing sort orders, limits, or query logic on working endpoints.
-2. **NEVER paginate bookings.** `loadAllBookings` MUST be `true`. Setting it to `false` hid bookings and cost the business real money. ALL bookings must load. No limits, no pagination that hides data.
-3. **NEVER change the bookings sort order** from `created_at DESC` without explicit owner approval. Text-based date sorting breaks with mixed date formats.
-4. **ALL frontend files MUST use the centralized API config** — `import { API } from '../config/api'` or `'../../config/api'`. NEVER use `import.meta.env.VITE_BACKEND_URL` directly. This caused crashes on 8+ pages.
-5. **Booking name field** — always resolve: `booking.name || (firstName + lastName) || 'Customer'`. NEVER assume firstName/lastName exist.
-6. **Booking reference counter** — uses `id = 'booking_reference'` in the `counters` table with ON CONFLICT on the `id` column (which has a unique constraint). NEVER use ON CONFLICT on JSONB expressions.
-7. **If you find a bug, fix it immediately.** Do not ask. Do not defer. Do not say "should I fix this?" — just fix it. The owner is not a developer and is paying for things to work.
-8. **Every fix must be tested with `npm run build`** before pushing. No exceptions.
-9. **NEVER introduce a change that reduces the number of visible bookings.** If a booking exists in the database, it MUST show in the admin panel. Missing bookings = lost revenue = business failure.
+The site is a single Vercel deployment with:
+- **Frontend**: React 18 + Vite, served from `frontend/build/` (built from `frontend/src/`)
+- **API**: Vercel serverless functions in the root `api/` directory (Node.js). All `/api/*` routes.
+- **Database**: Neon PostgreSQL via `@neondatabase/serverless` (HTTP, no TCP pool)
+- **Deployment config**: Root `vercel.json` builds the frontend and deploys the `api/` folder as serverless functions
+
+**The `backend/` directory is DEAD CODE.** It contains the old Python FastAPI server that ran on Render. It is no longer deployed or used at runtime. It is kept only as a reference for behaviour that has not yet been ported to the Vercel serverless API. When work is done in `backend/server.py`, understand that:
+- No user will ever hit that code
+- It does not affect production
+- It should be deleted once all endpoints have been ported
+- Do not fix bugs there expecting them to reach production
+- Do not add new endpoints there
+
+**Rules:**
+- **NEVER** add Render deployment config (`render.yaml` exists only as a stub and should eventually be deleted)
+- **NEVER** reference `https://bookaride-backend.onrender.com` in any frontend code
+- **NEVER** add a "fallback to Python backend" anywhere
+- **NEVER** tell the user "deploy this to Render"
+- **ALWAYS** add new API endpoints as Vercel serverless functions in `api/`
+- **ALWAYS** match the existing pattern: `module.exports = async function handler(req, res) { ... }`
+- **ALWAYS** use the shared helpers in `api/_lib/` (db.js, mailgun.js, email-templates.js, pricing.js, google-maps.js)
+- Environment variables use standard names (`DATABASE_URL`, `MAILGUN_API_KEY`, `STRIPE_SECRET_KEY`, etc.) — set in Vercel dashboard
+- Frontend env vars use `VITE_` prefix — the default `VITE_BACKEND_URL` is empty string (same-origin, calls /api/* on the same Vercel domain)
+
+**When porting a Python endpoint to Vercel serverless:**
+1. Find the Python implementation in `backend/server.py`
+2. Create the equivalent in `api/<path>.js` using `module.exports = async function handler(req, res)`
+3. Use `require('./_lib/db')` for database, `require('./_lib/mailgun')` for emails, `require('./_lib/email-templates')` for email HTML
+4. Match the Python route exactly (e.g. `@api_router.post("/bookings/{id}/resend-confirmation")` becomes `api/bookings/[bookingId]/resend-confirmation.js` with POST handler)
+5. Never delete the Python version until the frontend has been verified against the new Vercel endpoint in production
 
 ### 1. Database: Neon PostgreSQL ONLY
 
@@ -75,8 +96,8 @@ We migrated FROM MongoDB TO Neon PostgreSQL. This is DONE. Do not touch it.
 
 We use Mailgun. Not SendGrid. Not SMTP. Not Gmail. Not "a fallback".
 
-- Config: `MAILGUN_API_KEY` + `MAILGUN_DOMAIN` env vars (set in Vercel)
-- Sender module: `api/_lib/mailgun.js` (Mailgun HTTP API only) — production code
+- Config: `MAILGUN_API_KEY` + `MAILGUN_DOMAIN` env vars
+- Sender module: `backend/email_sender.py` (Mailgun HTTP API only)
 - **NEVER** add SendGrid, `smtplib`, `MIMEMultipart`, `MIMEText`, or SMTP code
 - **NEVER** add `SMTP_USER`, `SMTP_PASS`, `SMTP_HOST`, `SMTP_PORT` env vars
 - **NEVER** add "email fallback" logic — if Mailgun fails, log the error, that's it
@@ -125,11 +146,128 @@ The customer confirmation email design is FINAL and must not change:
 
 We use Google Maps for distance calculation, directions, and autocomplete. Geoapify has been removed.
 
-- Distance: `api/_lib/google-maps.js` (Distance Matrix + Directions API) — production code. `backend/server.py` is legacy.
+- Distance: `_get_distance_google()` in `backend/server.py` (Distance Matrix + Directions API)
 - Config: `GOOGLE_MAPS_API_KEY` env var
 - **NEVER** add Geoapify API calls, `GEOAPIFY_API_KEY`, or `geoapify.com` references
 - **NEVER** add Geoapify as a "fallback" for Google Maps
 - **NEVER** use Geoapify for address autocomplete or distance calculation
+
+### 6a. Xero: REMOVED (2026-04-06)
+
+Xero accounting integration has been removed. We do not use Xero for invoicing, payments, or any other accounting workflow.
+
+- **NEVER** add Xero API calls, OAuth flows, or invoice creation
+- **NEVER** reference `XERO_CLIENT_ID`, `XERO_CLIENT_SECRET`, or any `xero_*` fields
+- **NEVER** add a "Xero Accounting" section to the admin dashboard booking details modal
+- **NEVER** add "Create Invoice" or "Record Payment" Xero buttons anywhere in the UI
+- **NEVER** include Xero in customer-facing FAQs or marketing copy
+- If Xero-related code still exists anywhere in the codebase, delete it
+
+### 6c. Google Address Autocomplete (2026-04-06) — LOCKED
+
+The Google Maps Places autocomplete dropdown on booking forms took **weeks**
+to fix and was working via Google's NATIVE Autocomplete widget (PR #226,
+commit ed66fcf). It broke again because the supporting endpoint was never
+ported to Vercel serverless. Protecting it now.
+
+**The architecture (do not change):**
+
+1. **Component**: `frontend/src/components/GoogleAddressInput.jsx` uses
+   Google's **native** `window.google.maps.places.Autocomplete` widget.
+   The dropdown (`.pac-container`) is rendered by Google directly into
+   `document.body` — NOT by React. This is what makes it work inside
+   Radix Dialog, React Portals, and on iOS touch.
+   - Do NOT replace with a custom React dropdown.
+   - Do NOT wrap it in a React Portal yourself.
+   - Do NOT try to use `@react-google-maps/api` Autocomplete component.
+   - The `.pac-container { z-index: 999999 !important }` style is
+     injected on mount — do not remove it.
+
+2. **API key loader**: The component calls `GET /api/maps/client-key` to
+   fetch the Google Maps JS API key, then loads
+   `https://maps.googleapis.com/maps/api/js?key=...&libraries=places`
+   dynamically. If the key fetch fails, the component falls back to the
+   OLD broken custom dropdown — so this endpoint MUST exist.
+
+3. **Required Vercel serverless endpoints** (both must exist):
+   - `api/maps/client-key.js` — returns `{ key: process.env.GOOGLE_MAPS_API_KEY }`.
+     This is what makes the native Google widget work.
+   - `api/places/autocomplete.js` — backend-proxy autocomplete used as a
+     fallback AND by the chatbot/other non-browser callers.
+
+4. **Required Vercel env var**: `GOOGLE_MAPS_API_KEY` must be set in the
+   Vercel dashboard (Production + Preview + Development). The key should
+   have HTTP referrer restrictions in Google Cloud Console so it's safe
+   to expose to the browser.
+
+**If the dropdown breaks again, check in this order:**
+1. Does `GET /api/maps/client-key` return `200 { key: "AIza..." }`? If 404,
+   the endpoint file was deleted — restore `api/maps/client-key.js`.
+2. Is `GOOGLE_MAPS_API_KEY` set in Vercel env vars? If empty, add it.
+3. Is the HTTP referrer restriction in Google Cloud Console blocking
+   your domain? Whitelist `bookaride.co.nz/*` and the Vercel preview URLs.
+4. Does `GoogleAddressInput.jsx` still use `new window.google.maps.places.Autocomplete`?
+   If someone "simplified" it to use a React component, restore the
+   native widget version from commit ed66fcf.
+
+**Never delete `api/maps/client-key.js`.** Never "consolidate" it away.
+Never replace Google's native Autocomplete widget with a custom React
+dropdown — the custom one is broken on iOS and inside modals.
+
+### 6b. Admin UI Standards (2026-04-06) — LOCKED
+
+These admin UI decisions are final. Do NOT revert them.
+
+**Gold buttons — ALWAYS white text**
+- Any Tailwind class of `bg-gold` or `bg-gold hover:bg-gold/90` in the admin
+  must use `text-white`, NEVER `text-black`.
+- This applies to every admin file: `AdminDashboard.jsx`, every file in
+  `frontend/src/components/admin/`, and `frontend/src/admin/`.
+- When adding a new gold button in the admin, the pattern is:
+  `className="bg-gold hover:bg-gold/90 text-white font-semibold"`
+- If you see a gold button with `text-black` anywhere in the admin, fix it
+  immediately.
+
+**Date formatting — single source of truth**
+- The ONLY valid admin date helpers live in `frontend/src/utils/dateFormat.js`:
+  `formatDate`, `formatDateWithDay`, `getDayOfWeek`, `getShortDayOfWeek`,
+  `formatDateTime`, `formatTimestampDate`, `todayNZ`, `isToday`, `isTomorrow`.
+- **NEVER** define a `formatDate` (or `isToday`, `isTomorrow`, etc.) function
+  locally inside an admin component. Always import from `utils/dateFormat`.
+- **NEVER** use `new Date(dateStr).toLocaleDateString(...)` inline in admin
+  JSX. Use `formatDate()` or `formatTimestampDate()` instead.
+- Canonical date format for the admin panel is **DD/MM/YYYY** (NZ standard).
+- Canonical datetime format is **DD/MM/YYYY HH:MM**.
+- `ReturnsOverviewPanel.jsx` has an intentional exception (`formatRelativeDate`
+  returning "Today"/"Tomorrow"/"Mon, 6 Apr") because its UX requires it. That
+  helper is clearly named and documented — do not "consolidate" it into the
+  shared util.
+
+**Return trip indicator in BookingsTable**
+- Every booking row in `BookingsTable.jsx` where `booking.bookReturn` and
+  `booking.returnDate` and `booking.returnTime` are set must show:
+  1. A `border-r-4 border-r-violet-400` on the `<tr>` itself (the purple
+     right-edge accent)
+  2. An inline pill below the flight number with the `↩` arrow, the text
+     `Return`, `formatDate(booking.returnDate)`, and `booking.returnTime`,
+     styled as `bg-violet-50 text-violet-700 border border-violet-200 rounded-full`.
+- Do not remove this indicator. The owner explicitly requested it back
+  after the glassmorphism redesign hid it.
+
+**Fuel surcharge banner (InternationalBanner.jsx)**
+- The banner component at the top of every customer-facing page is a
+  FUEL SURCHARGE WARNING, not an international welcome banner.
+  Current wording: "Fuel prices up 89% in 29 days — a fuel surcharge may
+  apply to new bookings".
+- It must be EXACTLY `h-10` (40px) high so it aligns perfectly with
+  the `Header` component which is `fixed top-10`. Any other height will
+  cause the Header to overlap the banner text (the original bug).
+- Style: `bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 text-white`
+  with an `AlertTriangle` icon. Must be `fixed top-0 z-[60]` so it sits
+  above the header.
+- Do NOT delete this banner. Do NOT replace it with a welcome message.
+  If the fuel surcharge situation changes, update the wording — don't
+  remove the banner.
 
 ### 7. Pricing Rules — DO NOT CHANGE WITHOUT OWNER APPROVAL
 
@@ -153,7 +291,7 @@ Any agent that changes these rates without explicit owner instruction is breakin
 
 **Note:** The 60-75 and 70-100 tiers overlap. The code uses `elif` chains so the 60-75 tier ($2.84) takes priority for distances 70-75 km. This matches the WordPress pricing plugin behavior (screenshot verified 2026-03-26).
 
-**Code location**: `api/_lib/pricing.js` (tiered pricing in `calculatePrice` function) — this is the PRODUCTION pricing engine. `backend/server.py` is legacy and NOT deployed.
+**Code location**: `backend/server.py` (tiered pricing in `calculate_price` function)
 
 **Reference prices** (1 passenger, one-way, based on Google Maps distances):
 - Gulf Harbour (~67 km): ~$190
@@ -227,7 +365,7 @@ Multiple pickup was removed from ALL forms — customer AND admin. Keep it simpl
 6. Admin gets a copy of both the customer's email and the AI response
 7. Interaction is logged in `email_logs` table for admin review
 
-**Configuration (all in Vercel env vars):**
+**Configuration (all in Render env vars):**
 - `ANTHROPIC_API_KEY` — Claude API key (required for AI responses, falls back to static reply if missing)
 - `MAILGUN_API_KEY` + `MAILGUN_DOMAIN` — for sending replies
 - Mailgun inbound route: `support@bookaride.co.nz` → `https://<backend>/api/email/incoming`
@@ -248,7 +386,7 @@ Multiple pickup was removed from ALL forms — customer AND admin. Keep it simpl
 
 ### 12. AI Automation Agents (2026-03-25)
 
-The system runs multiple AI-powered and scheduled automation agents. These are defined in the Vercel serverless functions (`api/`) and/or will be migrated to the V2 service when ready.
+The system now runs multiple AI-powered and scheduled automation agents. All are defined in `backend/server.py`.
 
 **Active Agents:**
 
@@ -307,33 +445,6 @@ This means:
 
 This rule exists because agents repeatedly fixed one form while leaving the identical bug in 2-3 other forms, causing the same issue to resurface in different contexts.
 
-### 15. No Raw HTML Form Inputs — Use Custom Components ONLY (2026-04-03)
-
-**Every form input in the entire codebase MUST use our custom components. NEVER use raw HTML `<input>` elements for dates, times, or any form field that has a custom component.**
-
-This rule exists because agents repeatedly introduced raw `<input type="date">` and `<input type="time">` elements instead of using the existing `CustomDatePicker` and `CustomTimePicker` components. This causes inconsistent UI, timezone bugs, and a messy user experience across the admin panel.
-
-**Mandatory components (defined in `frontend/src/components/DateTimePicker.jsx`):**
-- **Dates:** `CustomDatePicker` — calendar popup with dd/MM/yyyy display, month/year dropdowns
-- **Times:** `CustomTimePicker` — scrollable time selector with 15-minute intervals, 12-hour format
-- **Date+Time:** `CustomDateTimePicker` — combined picker
-
-**Rules:**
-- **NEVER** use `<input type="date">` or `<Input type="date">` anywhere — use `CustomDatePicker`
-- **NEVER** use `<input type="time">` or `<Input type="time">` anywhere — use `CustomTimePicker`
-- **NEVER** use `.toISOString().split('T')[0]` for date handling — it returns UTC which is wrong for NZ (UTC+12/13). Use local date parsing instead
-- Return date pickers MUST set `minDate` to the pickup date — users cannot book a return before departure
-- Date range filters (e.g., admin bookings filter) MUST enforce that the end date >= start date
-- When converting between Date objects and strings, use local year/month/day — never rely on UTC methods
-
-**If you find ANY raw HTML date or time input while working, replace it with the custom component immediately.**
-
-**Engineering Gap Scan addition — add this check to every session:**
-```bash
-# Check for raw HTML date/time inputs in frontend (should use CustomDatePicker/CustomTimePicker)
-grep -rn 'type="date"\|type="time"' frontend/src/ --include="*.jsx" --include="*.js" | grep -v node_modules | grep -v DateTimePicker.jsx && echo "FAIL: Raw HTML date/time inputs found — use CustomDatePicker/CustomTimePicker" || true
-```
-
 ---
 
 ## MANDATORY AUTOMATED CHECKS — RUN BEFORE EVERY COMMIT
@@ -341,51 +452,57 @@ grep -rn 'type="date"\|type="time"' frontend/src/ --include="*.jsx" --include="*
 **These checks are NON-NEGOTIABLE. Every agent session MUST run ALL of them before committing ANY code.**
 **The owner is not a developer — agents are 100% responsible for code quality. No excuses.**
 
-### Step 0: Activate Pre-Commit Hook (run ONCE at the start of every session)
-
-The repo has a pre-commit hook in `.githooks/` that automatically blocks commits with banned imports, raw HTML inputs, broken builds, etc. **Every session MUST activate it:**
-
-```bash
-git config core.hooksPath .githooks
-```
-
-**If you skip this step and push broken code, it's your fault. The hook exists specifically to catch mistakes.**
-
 ### Step 1: Engineering Gap Scan (run EVERY session, even if "not related" to your task)
 
 Before starting work, scan for and fix existing issues. These are silent production killers:
 
 ```bash
-# 1. Frontend build — this is the ONLY build that matters
+# 1. Smart/curly quotes (cause Python SyntaxError — invisible in most editors)
+python3 -c "
+import glob
+for f in glob.glob('backend/**/*.py', recursive=True):
+    content = open(f, encoding='utf-8').read()
+    for char, name in [('\u2018','left-sq'), ('\u2019','right-sq'), ('\u201C','left-dq'), ('\u201D','right-dq')]:
+        if char in content:
+            print(f'FAIL: {f} contains {name} smart quote — replace with ASCII quotes')
+"
+
+# 2. Python syntax check (catches what smart quotes, bad indentation, etc.)
+python3 -m py_compile backend/server.py
+python3 -m py_compile backend/database.py
+python3 -m py_compile backend/email_sender.py
+
+# 3. Frontend build
 cd frontend && npm run build
 
-# 2. Check for banned imports/references in frontend and API
-grep -rn "geoapify\|GEOAPIFY" frontend/src/ api/ && echo "FAIL: Geoapify references found" || true
-grep -rn "airport-shuttle" frontend/src/ api/ && echo "FAIL: Removed service type 'airport-shuttle' found" || true
+# 4. Check for banned imports/references
+grep -rn "pymongo\|MongoClient\|motor\|mongodb://" backend/ && echo "FAIL: MongoDB references found" || true
+grep -rn "SendGrid\|sendgrid\|smtplib\|MIMEMultipart\|MIMEText" backend/ && echo "FAIL: SMTP/SendGrid references found" || true
+grep -rn "geoapify\|GEOAPIFY" backend/ frontend/src/ && echo "FAIL: Geoapify references found" || true
+grep -rn "airport-shuttle" frontend/src/ backend/ && echo "FAIL: Removed service type 'airport-shuttle' found" || true
 grep -rn "@vuer-ai/react-helmet-async" frontend/ && echo "FAIL: Broken helmet fork found" || true
-
-# 3. No console.log in production frontend code
-grep -rn "console\.log" frontend/src/ --include="*.jsx" --include="*.js" | grep -v node_modules | grep -v "// debug" || true
-
-# 4. No raw HTML date/time inputs — must use CustomDatePicker/CustomTimePicker
-grep -rn 'type="date"\|type="time"' frontend/src/ --include="*.jsx" --include="*.js" | grep -v node_modules | grep -v DateTimePicker.jsx && echo "FAIL: Raw HTML date/time inputs found — use CustomDatePicker/CustomTimePicker" || true
 ```
 
 **If ANY of these fail, fix them IMMEDIATELY before doing anything else.**
 
-**IMPORTANT: Do NOT run py_compile, do NOT check backend/*.py files. The Python backend is NOT production. Only `frontend/` and `api/` matter.**
-
 ### Step 2: Pre-Commit Verification (run before EVERY commit)
 
 ```bash
-# 1. Frontend build — if ANY frontend or API file changed
+# 1. Python syntax — ALL .py files that were changed
+python3 -m py_compile <each changed .py file>
+
+# 2. Frontend build — if ANY frontend file changed
 cd frontend && npm run build
 
-# 2. No broken imports — verify every React import resolves
-# Check that imported components exist in the project
+# 3. No smart quotes in changed files
+python3 -c "content=open('<file>').read(); assert '\u2018' not in content and '\u2019' not in content and '\u201c' not in content and '\u201d' not in content, 'Smart quotes found!'"
 
-# 3. No console.log left in production code
+# 4. No console.log left in production code (except intentional debug endpoints)
 grep -rn "console\.log" frontend/src/ --include="*.jsx" --include="*.js" | grep -v node_modules | grep -v "// debug" || true
+
+# 5. No broken imports — verify every import resolves
+# For Python: check that imported modules exist
+# For React: check that imported components exist in the project
 ```
 
 ### Step 3: Proactive Bug Hunt (run at START of every session)
@@ -406,7 +523,7 @@ After making changes, before committing:
 1. **Test the full path**: If you changed a backend endpoint, verify the frontend calls it correctly
 2. **Test related features**: If you changed pricing, verify the booking form still calculates correctly
 3. **Check for regressions**: Did your change break anything that was working before?
-4. **Verify deploy compatibility**: Will this work on Vercel? (Both frontend and API serverless functions deploy to Vercel.)
+4. **Verify deploy compatibility**: Will this work on both Vercel (frontend) AND Render (backend)?
 
 ### Step 5: Deep Path Audit (run when ANY booking/payment/email code changes)
 
@@ -454,114 +571,98 @@ After making changes, before committing:
 
 Before making ANY change, verify:
 
-1. **Am I editing `backend/`?** **STOP.** That is legacy code — NOT production. Edit `frontend/` or `api/` only.
-2. Does my change introduce MongoDB, Motor, or pymongo? **STOP.**
-3. Does my change introduce SendGrid, SMTP, or smtplib? **STOP.**
-4. Does my change introduce Geoapify or `GEOAPIFY_API_KEY`? **STOP.**
-5. Does my change add a new import? **Verify the component/module exists first.**
-6. Does my change remove or modify an existing import? **Verify nothing else uses it.**
-7. Am I adding a new JSX component usage? **Add the import statement too.**
-8. Does my build pass with `cd frontend && npm run build`? **Test before committing.**
-9. If I changed pricing → did I edit `api/_lib/pricing.js`? (NOT `backend/server.py`)
+1. Does my change introduce MongoDB, Motor, or pymongo? **STOP.**
+2. Does my change introduce SendGrid, SMTP, or smtplib? **STOP.**
+3. Does my change introduce Geoapify or `GEOAPIFY_API_KEY`? **STOP.**
+4. Does my change add a new import? **Verify the component/module exists first.**
+5. Does my change remove or modify an existing import? **Verify nothing else uses it.**
+6. Am I adding a new JSX component usage? **Add the import statement too.**
+7. Does my build pass with `cd frontend && npm run build`? **Test before committing.**
+8. Does my Python code pass `python3 -m py_compile`? **Test before committing.**
+9. Does my code contain smart/curly quotes? **Replace with ASCII quotes.**
 10. Have I scanned for engineering gaps unrelated to my task? **Fix them too.**
 
 ---
 
-## PRODUCTION ARCHITECTURE — VERCEL ONLY (2026-04-04)
-
-**THE ENTIRE SITE RUNS ON VERCEL. THERE IS NO SEPARATE BACKEND SERVER.**
-
-The Python `backend/` directory is LEGACY CODE — it is NOT deployed, NOT running, NOT production.
-Render is NOT in use. There is NO Python backend in production.
-
-**If you are about to edit a file in `backend/`, STOP. You are editing dead code that no customer will ever hit.**
-
-### What IS Production
+## Stack
 
 | Layer      | Tech                              | Location           |
 |------------|-----------------------------------|--------------------|
 | Frontend   | React 18, Vite, Tailwind          | `frontend/`        |
-| API        | Vercel Serverless Functions (Node.js) | `api/`          |
-| Pricing    | `api/_lib/pricing.js`             | The ONLY pricing engine |
-| Email      | `api/_lib/mailgun.js`             | Mailgun HTTP API   |
-| Database   | `api/_lib/db.js`                  | Neon PostgreSQL    |
-| Maps       | `api/_lib/google-maps.js`         | Google Maps API    |
-| Payments   | `api/payment/create-checkout.js`  | Stripe             |
+| Backend    | FastAPI, Uvicorn, Python 3.11+    | `backend/`         |
+| Database   | Neon PostgreSQL via asyncpg       | `backend/database.py` |
+| Email      | Mailgun API                       | `backend/email_sender.py` |
+| Payments   | Stripe                            | `backend/stripe_checkout/` |
+| SMS        | Twilio                            | via env vars       |
+| Maps       | Google Maps API                   | via env vars       |
+| AI Support | Claude API (Haiku)                | `backend/server.py` |
 
-### What is NOT Production
+## Hosting
 
-| Directory    | Status | Notes |
-|-------------|--------|-------|
-| `backend/`  | LEGACY — NOT DEPLOYED | Old Python/FastAPI code. Do NOT edit. Do NOT fix. Do NOT "improve". |
-| `v2/`       | DEVELOPMENT — NOT DEPLOYED | Future rebuild. Work here only when explicitly told to. |
+- Frontend: **Vercel** (React 18, Vite)
+- Backend: **Render** (FastAPI/Uvicorn, Python 3.11+)
 
-### Deployment
+### Deployment Rules — MANDATORY
 
-- **Vercel auto-deploys from `main` branch** — both frontend AND serverless API functions
-- Every PR gets a Vercel preview URL for testing
+**Customers are paying for reliability, not beta testing. Every change must be tested before it reaches production.**
+
+**How deployment works:**
+- **Frontend (Vercel)**: Auto-deploys from `main` branch. Every PR also gets a preview URL.
+- **Backend (Render)**: Auto-deploys from `main` branch. If auto-deploy is disabled or fails, you MUST manually deploy from the Render dashboard (`dashboard.render.com` → `bookaride-backend` → Deploy).
+- **IMPORTANT**: After merging a PR to `main`, ALWAYS verify that BOTH Vercel AND Render have deployed successfully. Frontend changes (pricing display, forms) go live via Vercel. Backend changes (pricing rates, email sending, API endpoints) go live via Render. If only one deploys, the system is out of sync.
+- **If Render hasn't redeployed**: Go to `dashboard.render.com` → click the backend service → Events/Deploys tab → check for failed deploys or trigger "Manual Deploy" from `main` branch.
+
+**Branch strategy:**
+- `main` branch = PRODUCTION. Deploys automatically to Vercel (frontend) and Render (backend).
+- Feature branches = development. Every PR gets a Vercel preview URL for testing.
 - **NEVER push directly to main.** Always use a PR.
-- There is NO Render deployment. There is NO separate backend to deploy.
+- **NEVER merge a PR without verifying:** `npm run build` passes, `py_compile` passes, and a deep path audit was run if booking/payment/email code changed.
 
-### Pre-merge checklist (every PR)
-
+**Pre-merge checklist (every PR):**
 1. Frontend builds: `cd frontend && npm run build` — zero errors
-2. No banned imports (MongoDB, SendGrid, Geoapify, etc.)
-3. Vercel preview URL was tested (forms load, autocomplete works, pricing calculates)
-4. If pricing code changed → verify `api/_lib/pricing.js` has correct rates
+2. Backend compiles: `python3 -m py_compile backend/server.py` — zero errors
+3. No banned imports (MongoDB, SendGrid, Geoapify, etc.)
+4. No smart quotes in Python files
+5. If booking/payment/email code was changed → Step 5 Deep Path Audit was run
+6. Vercel preview URL was tested manually (forms load, address autocomplete works, pricing calculates)
 
-### Post-deploy verification (after every merge to main)
-
+**Post-deploy verification (after every merge to main):**
 1. Create a test booking on the live site
 2. Verify confirmation email arrives
 3. Verify admin notification arrives
-4. Verify price is correct (including fuel surcharge)
+4. Verify price is correct
 5. If any of these fail → revert the merge immediately
 
-### Environment Variables (Vercel)
+**Environment variables:**
+- All credentials are in Render (backend) and Vercel (frontend) environment settings
+- **NEVER** commit secrets to the repo
+- See `backend/.env.example` for the full list of variables
 
-**All credentials are configured in Vercel's Environment Variables settings.**
-**NEVER** commit secrets to the repo.
+## Backend Architecture
 
-Required (all set in Vercel):
+- Main server: `backend/server.py` (~14,000 lines, monolithic)
+- Database layer: `backend/database.py` — NeonDatabase class that translates
+  MongoDB-style queries (find_one, update_one, etc.) to PostgreSQL JSONB operations
+- The `db` global is initialized in the startup event from `DATABASE_URL`
+- Route files: `backend/routes_*.py` (bulk, customers, drivers, vehicles, analytics, settings, templates)
+
+## Environment Variables (Render)
+
+**All credentials are configured in Render's Environment tab — NOT in a `.env` file in the repo.**
+The absence of a `.env` file does NOT mean credentials are missing. Do NOT assume services are unconfigured.
+See `backend/.env.example` for the full list of variables (template only — no real secrets).
+
+Required (all set in Render):
 - `DATABASE_URL` — Neon PostgreSQL connection string
 - `JWT_SECRET_KEY`
 - `MAILGUN_API_KEY` + `MAILGUN_DOMAIN`
 
-Optional (but needed for full functionality, all set in Vercel):
+Optional (but needed for full functionality, all set in Render):
 - `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET`
 - `TWILIO_ACCOUNT_SID` + `TWILIO_AUTH_TOKEN` + `TWILIO_PHONE_NUMBER`
 - `GOOGLE_MAPS_API_KEY`
 - `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` (OAuth)
-- `VITE_BACKEND_URL` — should point to the same Vercel domain (self-referencing)
-
-### API Serverless Functions (the REAL backend)
-
-All API endpoints live in `api/` as Vercel serverless functions (Node.js):
-
-| Endpoint | File | Purpose |
-|----------|------|---------|
-| `POST /api/calculate-price` | `api/calculate-price.js` | Pricing engine (uses `api/_lib/pricing.js`) |
-| `POST /api/bookings` | `api/bookings.js` | Create booking |
-| `GET /api/bookings` | `api/bookings.js` | List bookings (admin) |
-| `POST /api/payment/create-checkout` | `api/payment/create-checkout.js` | Stripe checkout |
-| `POST /api/webhook/stripe` | `api/webhook/stripe.js` | Stripe webhook |
-| `POST /api/contact` | `api/contact.js` | Contact form |
-| `POST /api/chatbot/message` | `api/chatbot/message.js` | AI chatbot |
-| `POST /api/admin/login` | `api/admin/login.js` | Admin auth |
-| `GET /api/places/autocomplete` | `api/places/autocomplete.js` | Google Places |
-
-Shared libraries in `api/_lib/`:
-- `db.js` — Neon PostgreSQL queries
-- `pricing.js` — Pricing engine with tiered rates + fuel surcharge
-- `mailgun.js` — Email sending (Mailgun only)
-- `google-maps.js` — Distance calculation
-
-### Fuel Surcharge (April 2026)
-
-A 12% temporary fuel surcharge is active due to diesel increasing 85% in 28 days.
-- `api/_lib/pricing.js` → `FUEL_SURCHARGE_PERCENT = 12`
-- Frontend banner: `frontend/src/components/FuelSurchargeBanner.jsx`
-- **To remove when fuel normalises:** set `FUEL_SURCHARGE_PERCENT = 0` in `api/_lib/pricing.js`
+- `GOOGLE_SERVICE_ACCOUNT_JSON` (Calendar + Search Console)
 
 ## Build & Test
 
@@ -569,8 +670,8 @@ A 12% temporary fuel surcharge is active due to diesel increasing 85% in 28 days
 # Frontend build (uses Vite — fast, ~8 seconds)
 cd frontend && npm run build
 
-# That's it. There is no backend to build or start.
-# The API runs as Vercel serverless functions — no local server needed.
+# Backend start
+cd backend && python3 start.py
 ```
 
 ---
@@ -796,7 +897,7 @@ This applies to EVERY domain, EVERY component, EVERY library, EVERY pattern in t
 | Routing | React Router v7 | Reach Router, older React Router versions |
 | State | React hooks (useState, useContext) | Redux (overkill for this app), MobX |
 | Email | Mailgun HTTP API (HTML templates) | SMTP, SendGrid, raw nodemailer |
-| Backend/API | Vercel Serverless Functions (Node.js) | Python backend (legacy), Flask, Django, Express |
+| Backend | FastAPI (async Python) | Flask, Django, Express |
 | Database | Neon PostgreSQL | MongoDB, SQLite, MySQL |
 | AI | Claude API (Anthropic) | OpenAI, GPT, Gemini |
 
@@ -867,7 +968,7 @@ The AI email support system was only FLAGGING cancellations (setting `cancellati
 
 3. **Error messages must be helpful.** Not just "Something went wrong" — tell the customer what to do: "Unable to calculate price. Please check your addresses and try again." or "Payment service temporarily unavailable. Please try again in a few minutes."
 
-4. **API errors must return clean JSON.** Every serverless function in `api/` must catch exceptions and return `{"detail": "Human-readable message"}` — never raw stack traces.
+4. **Backend errors must return clean JSON.** Every endpoint must catch exceptions and return `{"detail": "Human-readable message"}` — never raw Python tracebacks. FastAPI's HTTPException already does this; make sure custom error handlers do too.
 
 5. **Loading states for everything.** Every button that triggers an API call must show a loading spinner or "Processing..." state. No buttons that appear to do nothing when clicked. No double-submission.
 
@@ -893,18 +994,17 @@ The AI email support system was only FLAGGING cancellations (setting `cancellati
 | Variables | `const` and `let` | `var` |
 | Console | `console.error` in catch blocks only | `console.log` in production code (remove before commit) |
 
-### API Serverless Functions (Node.js — `api/`):
-
-**This is the production backend. NOT `backend/`.**
+### Backend (Python/FastAPI):
 
 | Pattern | Required | Banned |
 |---------|----------|--------|
-| Runtime | Node.js (Vercel serverless) | Python backend (legacy, not deployed) |
-| Database | `api/_lib/db.js` (Neon PostgreSQL) | Motor, pymongo, MongoDB anything |
-| Email | `api/_lib/mailgun.js` (Mailgun HTTP API) | SMTP, SendGrid, smtplib |
-| Pricing | `api/_lib/pricing.js` | Editing `backend/server.py` (not production) |
-| Error handling | `try/catch` with `console.error()` | Silent swallowing of errors |
-| Secrets | Vercel environment variables | Hardcoded strings, committed `.env` files |
+| Async | `async def` for all endpoints | Blocking calls in async context |
+| Database | NeonDatabase (PostgreSQL JSONB) | Motor, pymongo, MongoDB anything |
+| Email | Mailgun HTTP API | SMTP, SendGrid, smtplib |
+| Error handling | `try/except` with `logger.error()` | `except: pass`, silent swallowing |
+| Background tasks | `background_tasks.add_task()` | `asyncio.new_event_loop()`, `asyncio.run()` in async context |
+| Validation | Pydantic models | Manual dict validation |
+| Secrets | Environment variables | Hardcoded strings, committed `.env` files |
 
 ### Code Cleanup Checklist (run on every file you touch):
 
@@ -949,40 +1049,4 @@ The AI email support system was only FLAGGING cancellations (setting `cancellati
 | 2026-03-25 | Fake testimonials and review counts across 30+ files | Fabricated stats violated honesty rules |
 | 2026-03-25 | 20 ghost URLs in sitemap | Pages listed in `sitemap.xml` had no matching routes |
 | 2026-03-25 | Open admin registration | `POST /api/admin/register` had no auth requirement |
-| 2026-03-27 | Cancelled customers receiving constant emails | AI email cancellation only flagged bookings, never changed status to cancelled — all scheduled jobs kept emailing them |
-| 2026-04-01 | Vercel build failure on main | Broken AdminLogin.jsx — `<a>` closed with `</div>`, undefined GOOGLE_GIS_SCRIPT constant |
-| 2026-04-01 | Admin login always failing | Vercel serverless login.js read `admin.password` instead of `admin.hashed_password` + no pbkdf2 support |
-| 2026-04-01 | Payment links returning errors | Vercel serverless returned `checkout_url` but frontend expected `url` field |
-| 2026-04-01 | Payment follow-up emails wrong URL | Sent customers to `/book-now` instead of `/pay/{bookingId}` |
-| 2026-04-01 | 8 pages crashing with "undefined/api" | Direct `import.meta.env.VITE_BACKEND_URL` usage instead of centralized API config |
-| 2026-04-01 | Admin dashboard crash on edit modal close | `clearEditAddressSuggestions()` called but never defined |
-| 2026-04-02 | Bookings hidden by pagination | "Performance optimization" set loadAllBookings=false, limit=50 — hid bookings including paid ones |
-| 2026-04-02 | Booking #149 invisible | Date sort used text comparison on mixed formats (YYYY-MM-DD vs DD/MM/YYYY) — misclassified as past |
-| 2026-04-02 | Reference number #14271 instead of sequential | Counter used ON CONFLICT on JSONB expression with no unique constraint — fell back to COUNT(*) |
-| 2026-04-02 | "Name: undefined undefined" in admin emails | Email template assumed firstName/lastName but customer submitted single name field |
-| 2026-04-02 | Customers tab crash | CustomersTab.jsx used broken VITE_BACKEND_URL directly + /api/customers endpoint missing |
-| 2026-04-03 | Messy date/time inputs in admin forms | EditBookingModal used raw `<input type="date/time">` instead of CustomDatePicker/CustomTimePicker — inconsistent UI, timezone bugs, no return date validation |
-
----
-
-## V2 STRATEGY — LOCKED (2026-04-02)
-
-**BookARide is moving to a complete V2 rebuild.** The current v1 codebase has been damaged by too many hands since November 2025. V2 will be built by Claude only, from scratch.
-
-### V2 Architecture Plan
-
-- **V2 development happens in the `/v2` directory** — NEVER touch the v1 production code in the main directories unless fixing critical bugs
-- **Database is PRESERVED** — the Neon PostgreSQL database is shared between v1 and v2. NO data loss. NO migration needed.
-- **V2 will replace V1 only when fully tested and complete** — swap happens by changing Vercel build directory, not by deleting v1
-- **AI-Intelligent Backend Service** — custom-built, owned by BookARide, not dependent on third-party hosting quirks
-- **AI-Intelligent Frontend Service** — first of its kind, fully integrated with the backend
-- **eSIM Integration** — customers can purchase eSIMs before entering NZ, added to booking cost, available immediately. Coming within 1 week. This has never been done before in the transfer industry.
-
-### V2 Technology Rules
-
-- **Claude-only development** — no other AI, no agencies, no freelancers
-- **No HTML pages** — everything is React components with Tailwind CSS (email templates are the only exception)
-- **Most advanced production-proven technology only** — see the Technology Excellence Standard section
-- **Every component must work end-to-end before shipping** — no placeholder functionality
-- **Backend must be self-hosted/owned** — not dependent on any single hosting provider's proprietary features
 | 2026-03-27 | Cancelled customers receiving constant emails | AI email cancellation only flagged bookings, never changed status to cancelled — all scheduled jobs kept emailing them |
