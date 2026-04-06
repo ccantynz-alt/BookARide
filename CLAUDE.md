@@ -91,6 +91,299 @@ is the Bible." Honour that.
 
 ---
 
+## CRAIG'S AUTHORIZATION GATE — MANDATORY (2026-04-07)
+
+**Craig is the owner. Craig is the boss. Craig has lost months of revenue
+because previous agents and developers made unauthorised changes that
+broke production. NEVER AGAIN.**
+
+The following actions REQUIRE Craig's explicit, in-chat approval before
+Claude touches a single file. No assumptions. No "I think you'd want this".
+No "while I'm here let me also...". STOP and ASK.
+
+### Actions that REQUIRE Craig's authorisation:
+
+1. **Pricing changes** — any modification to `api/_lib/pricing.js`,
+   `PRICING_TIERS`, `MINIMUM_ONE_WAY`, fuel surcharge percent, or any
+   add-on fee. Pricing is calibrated. One unauthorised change costs
+   real money on every booking.
+
+2. **Architecture changes** — switching frameworks, hosting providers,
+   databases, build tools. The current stack is locked: Vite + React +
+   Vercel + Neon + Mailgun + Stripe + Claude API. Do not propose
+   alternatives without being asked.
+
+3. **Adding or removing any dependency** — even a tiny utility library.
+   Run `npm audit` first. Confirm it's the best-of-breed option. Then
+   ASK before installing.
+
+4. **New integrations** — payment providers, email providers, analytics,
+   CRMs, accounting software, CMS, anything that talks to a third party.
+   Craig has explicitly removed Xero, Facebook, SendGrid, MongoDB,
+   Geoapify, Render, Emergent. Don't suggest re-adding them.
+
+5. **Booking flow changes** — any modification to `BookNow.jsx`,
+   `api/bookings.js`, `api/payment/create-checkout.js`, or
+   `api/webhook/stripe.js`. The booking flow has cost Craig more than
+   anything else. Touch with extreme care.
+
+6. **Customer-facing copy** — landing page text, email templates,
+   confirmation messages, button labels. Branding is locked. Word changes
+   need approval.
+
+7. **Database schema changes** — adding, removing, or renaming columns.
+   Renaming a field that exists in JSONB documents will break every
+   booking that has the old name.
+
+8. **Deleting any data** — bookings, customers, drivers, payment records.
+   Even if the data looks orphaned. Even if it looks like duplicates.
+   ASK first.
+
+9. **Production deployments that touch more than 3 files**, or any
+   file in the booking/payment flow. Multi-file changes need a focused
+   commit message and Craig's go-ahead.
+
+10. **Removing or disabling locked features** — daily SEO agent,
+    booking system health check, fuel surcharge banner, CLAUDE.md
+    locked decisions. These are LAW.
+
+### What Claude CAN do without explicit authorisation:
+
+- Fix typos in non-customer-facing strings (admin labels, error messages
+  the user wouldn't see)
+- Add `console.error` logging for debugging
+- Update `.md` documentation (other than CLAUDE.md itself)
+- Run `npm run build` to verify changes compile
+- Read any file to investigate
+- Run automated checks (smart quotes, banned imports, syntax)
+- Push commits to a feature branch (NEVER directly to main)
+- Reply to obvious questions about how the code works
+
+### How to ask for authorisation:
+
+When Claude reaches a decision point that needs Craig's approval, the
+response MUST be:
+
+```
+AUTHORISATION REQUIRED FROM CRAIG
+=================================
+
+What I want to change:
+  [exact files and exact changes]
+
+Why:
+  [the problem this solves]
+
+Risk:
+  [what could go wrong]
+
+Alternative (if any):
+  [other approaches considered]
+
+Craig — please confirm "go ahead" or tell me what to change.
+```
+
+Then STOP. Do not make the change. Wait.
+
+---
+
+## MAJOR CHANGE PROTOCOL — MANDATORY (2026-04-07)
+
+When making any change that touches more than ONE file in the booking,
+payment, or email flow, follow this protocol exactly:
+
+1. **STOP** — do not start coding yet
+2. **READ** CLAUDE.md in full (yes, every time)
+3. **READ** every file you intend to modify, end-to-end
+4. **TRACE** the data flow from user input to final output
+5. **DOCUMENT** the proposed changes (file by file, with why)
+6. **ASK** for Craig's authorisation (use the format above)
+7. **WAIT** — do not start work until Craig says "go"
+8. **MAKE** the change as a single focused commit
+9. **VERIFY** — run `npm run build`, `node --check` on changed JS files
+10. **TEST** — describe how Craig should test this on the Vercel preview
+11. **PUSH** — commit message references CLAUDE.md sections affected
+
+If you skip any step, you will break production. There are no exceptions.
+
+---
+
+## ZERO TOLERANCE FORBIDDEN LIST — NON-NEGOTIABLE (2026-04-07)
+
+If Claude finds any of these in the codebase, DELETE them immediately
+in the same commit you're working in. No "I'll fix it later". No "out
+of scope". The list is absolute:
+
+### Forbidden frameworks/libraries
+- `jquery`, `aos` (animate on scroll), `slick-carousel`, `react-slick`
+- `leaflet`, `react-leaflet` (we use Google Maps)
+- `moment` (use `date-fns`)
+- `lodash` (use native JS)
+- `@craco/craco`, `react-scripts`, `cra-template`, `cross-env`
+- `webpack` (Vite handles bundling)
+- `babel-loader`, `schema-utils` (CRA-era leftovers)
+- `@vuer-ai/react-helmet-async` (broken fork — use `react-helmet-async`)
+
+### Forbidden services
+- **MongoDB / Motor / pymongo** — we use Neon Postgres
+- **SMTP / SendGrid / Gmail / nodemailer** — we use Mailgun
+- **Geoapify / Mapbox / Leaflet** — we use Google Maps
+- **Render / Heroku / Netlify / Railway** — we use Vercel
+- **Xero / QuickBooks / MYOB** — removed, no accounting integration
+- **Facebook SDK / Facebook login / Facebook ads** — removed
+- **Emergent platform / emergentagent.com** — removed
+- **Python backend** — frontend only until Craig says
+
+### Forbidden patterns
+- `process.env.REACT_APP_*` (use `import.meta.env.VITE_*`)
+- `var` declarations (use `const` / `let`)
+- Class components except `ErrorBoundary` (React requires it)
+- Inline `style={{}}` for static values (use Tailwind)
+- `async function` without try/catch in API handlers
+- `except: pass` or empty `catch {}` blocks
+- `console.log` in production code (only `console.error`)
+- Commented-out code blocks
+- `// TODO:` comments without an issue number
+- Hardcoded URLs to old Render backend
+- Hardcoded API keys (must come from env vars)
+- `setInterval` / `setTimeout` for cron-like work (use Vercel Cron)
+- Direct DOM manipulation (`document.querySelector` outside specific
+  Google Maps autocomplete fix)
+
+### Forbidden file locations
+- `backend/` directory — does not exist, do not create
+- `v2/` directory — was an abandoned rewrite, do not recreate
+- `tests/` at root — keep tests with the code
+- Root-level `package.json` — Vite project, only `frontend/package.json`
+  and `api/package.json` should exist
+- `render.yaml`, `runtime.txt`, `Procfile` — Render is dead
+
+If you see any of these in the codebase, delete them in the same
+commit you're working in and reference this section in the commit
+message.
+
+---
+
+## ALWAYS-VERIFY CHECKLIST — MANDATORY (2026-04-07)
+
+Before declaring ANYTHING "fixed" or "done", every Claude session
+MUST verify:
+
+### Code-level checks (run automatically):
+1. `cd frontend && npm run build` — must pass with zero errors
+2. `node --check api/<changed>.js` — every changed JS file must parse
+3. `grep -rn "process.env.REACT_APP" frontend/src/` — must return empty
+4. `grep -rn "var " frontend/src/` excluding `var(--*)` — must be empty
+5. `grep -rn "console.log" frontend/src/ api/` excluding `console.error` — must be empty
+6. `grep -rn "TODO\|FIXME\|XXX" --include="*.js" --include="*.jsx" frontend/src/ api/` — must be empty (excluding placeholder text)
+
+### Functional checks (require Craig to test on Vercel preview):
+1. Visit `https://<preview>.vercel.app/api/health/booking-system`
+   - All checks must be green
+2. Make a real test booking on the preview
+3. Verify the booking confirmation email arrives
+4. Verify the admin notification email arrives
+5. Verify the price calculator works for at least 3 different routes
+6. Verify the address dropdown shows Google suggestions
+7. Verify the customer search in admin Create Booking modal returns results
+
+If any of these fail, the change is NOT done. Back to work.
+
+---
+
+## ESCALATION PROTOCOL — MANDATORY (2026-04-07)
+
+When Claude is stuck, uncertain, or about to make a decision that
+could affect production, DO NOT GUESS. Use this escalation:
+
+### Level 1: Document and ask
+"Craig, I'm trying to do X but I see two possible approaches:
+A) [option 1, with pros/cons]
+B) [option 2, with pros/cons]
+Which do you want?"
+
+### Level 2: Stop and request investigation
+"Craig, I tried to do X but [specific error/behaviour]. Before I
+continue, I need to understand whether [specific question]. Can you
+test [specific URL/action] and tell me what happens?"
+
+### Level 3: Hard stop
+"Craig, I'm seeing something that contradicts CLAUDE.md / a locked
+decision / what you told me earlier. I'm stopping. Please clarify
+[specific point] before I touch anything."
+
+**Never proceed past Level 1 without explicit Craig approval.** The
+cost of asking is 30 seconds. The cost of guessing wrong is days
+of broken booking system.
+
+---
+
+## COMPETITIVE ANNIHILATION RULES — MANDATORY (2026-04-07)
+
+BookARide is the most aggressive airport transfer business in NZ.
+The competition is supershuttle.co.nz (legacy ASP.NET, no AI, no
+modern UX). We must ANNIHILATE them on every measurable axis.
+
+### We must beat them on speed
+- Lighthouse Performance score: 90+ (target 95+)
+- Largest Contentful Paint: under 2.5 seconds
+- Time to Interactive: under 3.5 seconds
+- Cumulative Layout Shift: under 0.1
+- First Input Delay / INP: under 200ms
+
+If a Lighthouse score drops below 90, that's a P0 fix before any
+new features.
+
+### We must beat them on technology
+- React 18 (or latest stable) — they use ASP.NET Web Forms
+- Vite — they probably bundle with bundlers from 2010
+- Vercel edge network — they're on a single server
+- AI chatbot (Claude Haiku) — they have nothing
+- Real-time price calculator — they need a quote request
+- Google Places autocomplete — they have a static dropdown
+- Mobile-first responsive — they're desktop-first
+
+### We must beat them on SEO
+- Daily SEO agent runs every day (see DAILY SEO AGENT section)
+- Every page has structured data (LocalBusiness, BreadcrumbList,
+  Service schemas)
+- Every blog post has Article schema
+- Sitemap regenerated daily with fresh `lastmod`
+- Pinged to Google + Bing daily
+- Page health checked daily — 404s flagged immediately
+- Target keywords locked in `api/_lib/seo-agent.js`
+
+### We must beat them on conversion
+- One-click booking from any landing page
+- Price shown before any form submission
+- Free cancellation policy displayed prominently
+- Real customer reviews on every page
+- Multiple payment options
+- Confirmation email arrives within 60 seconds
+- SMS reminders for upcoming trips
+
+### We must beat them on reliability
+- Booking system health check endpoint exists and is monitored
+- Every email send is logged with success/failure
+- Every payment is tracked end-to-end
+- Zero data loss — bookings never disappear (even on delete, they
+  go to `deleted_bookings` table)
+- Stripe webhook idempotency — no duplicate charges
+- Mailgun signature verification — no spoofed emails
+
+### What's NOT optional
+If Craig says "we're not ranking #1 yet", the response is NOT "give
+it time". The response is:
+1. Run the daily SEO agent manually
+2. Check Vercel logs for the daily report
+3. Fix any 404s, missing schemas, or broken pages
+4. Update the target keyword list if needed
+5. Generate fresh content (blog post, landing page) for the lagging
+   keyword
+6. Report back with concrete actions taken
+
+---
+
 ## DAILY SEO AGENT — MANDATORY (2026-04-07)
 
 BookARide has an automated daily SEO agent that runs every day at
