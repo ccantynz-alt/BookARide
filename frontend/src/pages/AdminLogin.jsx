@@ -7,7 +7,7 @@ import { Label } from '../components/ui/label';
 import { Card, CardContent } from '../components/ui/card';
 import { toast } from 'sonner';
 import axios from 'axios';
-import { API, BACKEND_URL, RENDER_BACKEND_URL } from '../config/api';
+import { API, BACKEND_URL } from '../config/api';
 
 export const AdminLogin = () => {
   const [username, setUsername] = useState('');
@@ -110,7 +110,7 @@ export const AdminLogin = () => {
           </div>
 
           <a
-            href={`${BACKEND_URL || RENDER_BACKEND_URL}/api/admin/google-auth/start`}
+            href={`${BACKEND_URL}/api/admin/google-auth/start`}
             className="flex items-center justify-center w-full gap-2 py-3 px-4 border-2 border-gray-300 rounded-md bg-white hover:bg-gray-50 hover:border-gray-400 transition-colors font-medium text-gray-700 no-underline shadow-sm"
           >
             <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">

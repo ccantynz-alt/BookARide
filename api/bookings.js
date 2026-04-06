@@ -107,24 +107,59 @@ async function createBooking(req, res) {
 
     console.log(`Booking created and verified: ${id} with reference #${refNumber}`);
 
-    // Send admin notification (fire-and-forget, don't block response)
+    const customerName = `${booking.firstName || ''} ${booking.lastName || ''}`.trim() || booking.name || 'Customer';
     const adminEmail = process.env.BOOKINGS_NOTIFICATION_EMAIL || 'bookings@bookaride.co.nz';
+
+    // Build reusable HTML booking details block
+    const bookingDetailsHtml = `
+      <table style="width:100%; border-collapse:collapse; font-family:Arial,sans-serif;">
+        <tr><td style="padding:8px; background:#f8f8f8;"><strong>Reference:</strong></td><td style="padding:8px;">#${refNumber}</td></tr>
+        <tr><td style="padding:8px; background:#f8f8f8;"><strong>Pickup:</strong></td><td style="padding:8px;">${booking.pickupAddress}</td></tr>
+        <tr><td style="padding:8px; background:#f8f8f8;"><strong>Dropoff:</strong></td><td style="padding:8px;">${booking.dropoffAddress}</td></tr>
+        <tr><td style="padding:8px; background:#f8f8f8;"><strong>Date:</strong></td><td style="padding:8px;">${booking.date} at ${booking.time}</td></tr>
+        <tr><td style="padding:8px; background:#f8f8f8;"><strong>Passengers:</strong></td><td style="padding:8px;">${booking.passengers || 1}</td></tr>
+        ${outboundFlight ? `<tr><td style="padding:8px; background:#f8f8f8;"><strong>Flight:</strong></td><td style="padding:8px;">${outboundFlight}</td></tr>` : ''}
+        <tr><td style="padding:8px; background:#f8f8f8;"><strong>Total:</strong></td><td style="padding:8px;"><strong>$${bookingDoc.totalPrice} NZD</strong></td></tr>
+      </table>
+    `;
+
+    // 1. Send CUSTOMER confirmation email (fire-and-forget)
+    if (booking.email) {
+      sendEmail({
+        to: booking.email,
+        subject: `Booking Received - Ref #${refNumber} - BookARide`,
+        html: `
+          <div style="font-family:Arial,sans-serif; max-width:600px; margin:0 auto; padding:20px;">
+            <h2 style="color:#1a1a1a;">Thank you for your booking!</h2>
+            <p>Hi ${customerName},</p>
+            <p>We've received your booking request. ${requiresApproval ? '<strong style="color:#d97706;">Your booking is within 24 hours and requires admin approval. You\'ll hear from us shortly.</strong>' : 'Your booking is being processed.'}</p>
+            ${bookingDetailsHtml}
+            <p style="margin-top:20px;"><strong>Payment:</strong> You'll receive a payment link separately, or complete payment now on the booking page.</p>
+            <p>If you have any questions, reply to this email or contact us at <a href="mailto:info@bookaride.co.nz">info@bookaride.co.nz</a>.</p>
+            <p style="margin-top:30px; color:#666; font-size:12px;">BookARide NZ — Auckland Airport Transfers</p>
+          </div>`,
+      }).catch(err => console.error(`CRITICAL: Customer confirmation email failed for booking #${refNumber}:`, err.message));
+    } else {
+      console.error(`CRITICAL: Booking #${refNumber} has no customer email — cannot send confirmation`);
+    }
+
+    // 2. Send admin notification (fire-and-forget, don't block response)
     sendEmail({
       to: adminEmail,
       subject: requiresApproval
         ? `URGENT: Booking #${refNumber} needs approval (within 24hrs)`
-        : `New Booking #${refNumber} - ${booking.firstName} ${booking.lastName}`,
-      html: `<h2>New Booking #${refNumber}</h2>
-        <p><strong>Name:</strong> ${booking.firstName} ${booking.lastName}</p>
-        <p><strong>Email:</strong> ${booking.email}</p>
-        <p><strong>Phone:</strong> ${booking.phone}</p>
-        <p><strong>Pickup:</strong> ${booking.pickupAddress}</p>
-        <p><strong>Dropoff:</strong> ${booking.dropoffAddress}</p>
-        <p><strong>Date:</strong> ${booking.date} at ${booking.time}</p>
-        <p><strong>Passengers:</strong> ${booking.passengers}</p>
-        <p><strong>Total:</strong> $${bookingDoc.totalPrice}</p>
-        ${requiresApproval ? '<p style="color: red; font-weight: bold;">Within 24 hours — requires manual approval</p>' : ''}`,
-    }).catch(err => console.error('Admin notification failed:', err.message));
+        : `New Booking #${refNumber} - ${customerName}`,
+      html: `
+        <div style="font-family:Arial,sans-serif; max-width:600px;">
+          <h2>New Booking #${refNumber}</h2>
+          ${requiresApproval ? '<p style="color:red; font-weight:bold;">Within 24 hours — requires manual approval</p>' : ''}
+          <p><strong>Customer:</strong> ${customerName}</p>
+          <p><strong>Email:</strong> ${booking.email}</p>
+          <p><strong>Phone:</strong> ${booking.phone}</p>
+          ${bookingDetailsHtml}
+          <p style="margin-top:20px;"><a href="https://bookaride.co.nz/admin/login" style="background:#1a1a1a; color:#fff; padding:10px 20px; text-decoration:none; border-radius:4px;">View in Admin Dashboard</a></p>
+        </div>`,
+    }).catch(err => console.error(`CRITICAL: Admin notification failed for booking #${refNumber}:`, err.message));
 
     return res.status(201).json(bookingDoc);
   } catch (err) {
