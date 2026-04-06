@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { Fuel, X } from 'lucide-react';
 
 /**
- * Fuel Surcharge Notice — sits BELOW the header at top-[104px].
- * (InternationalBanner h-10 + Header ~64px = 104px)
+ * Fuel Surcharge Notice — sits BELOW the header at top-[136px].
+ * (InternationalBanner h-10 40px + Header py-4+h-16 logo = 96px = 136px)
  *
  * NZ diesel prices have surged ~85% in 28 days. This banner warns
  * customers that a temporary fuel surcharge may apply.
@@ -24,8 +24,8 @@ const FuelSurchargeBanner = () => {
 
   return (
     <>
-      {/* Fixed banner BELOW header (InternationalBanner 40px + Header ~64px = ~104px) */}
-      <div className="fixed top-[104px] left-0 right-0 z-40 bg-gradient-to-r from-amber-600 via-orange-500 to-amber-600 text-white py-3 shadow-lg border-b border-amber-700">
+      {/* Fixed banner BELOW header (InternationalBanner 40px + Header 96px = 136px) */}
+      <div className="fixed top-[136px] left-0 right-0 z-40 bg-gradient-to-r from-amber-600 via-orange-500 to-amber-600 text-white py-3 shadow-lg border-b border-amber-700">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-center gap-3 relative pr-10">
             <Fuel className="w-5 h-5 md:w-6 md:h-6 text-white flex-shrink-0 drop-shadow" strokeWidth={2.5} />

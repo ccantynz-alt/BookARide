@@ -272,7 +272,7 @@ rightfully furious.
    - Must NOT be deleted (the customer site is positioned around it)
 
 2. `FuelSurchargeBanner.jsx` — BELOW header, orange/amber, dismissible
-   - Position: `fixed top-[104px] z-40` (40px banner + ~64px header = 104px)
+   - Position: `fixed top-[136px] z-40` (40px banner + 96px header = 136px)
    - Background: `bg-gradient-to-r from-amber-600 via-orange-500 to-amber-600 text-white`
    - Content: "Fuel Surcharge Notice — Diesel up 85% in 28 days — a
      temporary fuel surcharge applies to cover increased costs for our drivers"
@@ -290,7 +290,7 @@ rightfully furious.
 <InternationalBanner />   // top-0
 <Header />                // top-10
 <main>
-  <FuelSurchargeBanner /> // top-[104px], inside main so it scrolls with content
+  <FuelSurchargeBanner /> // top-[136px], inside main so it scrolls with content
   <Outlet />
 </main>
 ```
