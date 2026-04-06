@@ -230,12 +230,55 @@ The site is a single Vercel deployment with:
 - Environment variables use standard names (`DATABASE_URL`, `MAILGUN_API_KEY`, `STRIPE_SECRET_KEY`, etc.) — set in Vercel dashboard
 - Frontend env vars use `VITE_` prefix — the default `VITE_BACKEND_URL` is empty string (same-origin, calls /api/* on the same Vercel domain)
 
-**When porting a Python endpoint to Vercel serverless:**
-1. Find the Python implementation in `backend/server.py`
-2. Create the equivalent in `api/<path>.js` using `module.exports = async function handler(req, res)`
-3. Use `require('./_lib/db')` for database, `require('./_lib/mailgun')` for emails, `require('./_lib/email-templates')` for email HTML
-4. Match the Python route exactly (e.g. `@api_router.post("/bookings/{id}/resend-confirmation")` becomes `api/bookings/[bookingId]/resend-confirmation.js` with POST handler)
-5. Never delete the Python version until the frontend has been verified against the new Vercel endpoint in production
+**When adding new API endpoints:**
+1. Create the file in `api/<path>.js` using `module.exports = async function handler(req, res)`
+2. Use `require('./_lib/db')` for database, `require('./_lib/mailgun')` for emails, `require('./_lib/email-templates')` for email HTML
+3. Always check the request method and return 405 for unsupported methods
+4. Always wrap database calls in try/catch
+5. Always log CRITICAL errors with `console.error('CRITICAL: ...')` so they show up in Vercel logs
+
+---
+
+## BOOKING SYSTEM HEALTH CHECK — MANDATORY (2026-04-07)
+
+The booking system has its own dedicated health check endpoint that
+verifies every dependency end-to-end. Use this BEFORE assuming the
+system is broken — most "broken booking" issues are actually missing
+Vercel environment variables, not bugs.
+
+**Endpoint:** `GET /api/health/booking-system`
+**File:** `api/health/booking-system.js`
+**Auth:** None (public diagnostic, returns redacted secrets only)
+
+**What it tests:**
+1. **Database connection** — connects to Neon and runs `SELECT 1`
+2. **Database write** — inserts a fake booking, reads it back, deletes it
+   (proves the bookings table schema is compatible with the code)
+3. **Mailgun** — checks `MAILGUN_API_KEY` and `MAILGUN_DOMAIN` are set
+4. **Stripe** — checks `STRIPE_SECRET_KEY` is set and starts with `sk_`
+5. **Google Maps** — checks `GOOGLE_MAPS_API_KEY` is set
+6. **Pricing engine** — runs a real calculation and verifies the output
+7. **Email templates** — renders a fake template and verifies output
+
+**Response format:**
+```json
+{
+  "status": "healthy" | "broken",
+  "summary": "Plain English description",
+  "checks": { ... per-component results ... },
+  "blocking_failures": [],
+  "warnings": [],
+  "next_steps": "What to do next"
+}
+```
+
+**Returns HTTP 500** if any blocking check fails, so monitoring tools
+can detect outages automatically.
+
+**RULE: When the user says "the booking system is broken", check this
+endpoint FIRST.** Don't dive into code until you know which specific
+component is failing. If `mailgun.ok === false`, the fix is to set
+`MAILGUN_API_KEY` in Vercel, not to rewrite the email code.
 
 ### 1. Database: Neon PostgreSQL ONLY
 

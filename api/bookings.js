@@ -59,24 +59,44 @@ module.exports = async function handler(req, res) {
 
 async function createBooking(req, res) {
   try {
-    const booking = req.body;
+    const booking = req.body || {};
 
-    if (!booking.pickupAddress || !booking.dropoffAddress) {
-      return res.status(400).json({ detail: 'pickupAddress and dropoffAddress are required' });
+    // === EXPLICIT VALIDATION — fail fast with clear errors ===
+    const missing = [];
+    if (!booking.pickupAddress?.trim()) missing.push('pickupAddress');
+    if (!booking.dropoffAddress?.trim()) missing.push('dropoffAddress');
+    if (!booking.date?.trim()) missing.push('date');
+    if (!booking.time?.trim()) missing.push('time');
+    if (!booking.email?.trim()) missing.push('email');
+    if (!booking.phone?.trim()) missing.push('phone');
+    if (!booking.name?.trim() && !booking.firstName?.trim()) missing.push('name');
+
+    if (missing.length > 0) {
+      console.warn(`Booking validation failed — missing fields: ${missing.join(', ')}`);
+      return res.status(400).json({
+        detail: `Missing required fields: ${missing.join(', ')}`,
+        missing,
+      });
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(booking.email)) {
+      return res.status(400).json({ detail: 'Invalid email address format' });
     }
 
     // Generate unique ID and reference number
     const id = uuidv4();
     const refNumber = await getNextReferenceNumber();
-    const nzDate = new Date().toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' });
 
-    // Normalize flight number fields
+    // Normalize flight number fields (frontend may send any of these names)
     const outboundFlight = booking.flightNumber || booking.departureFlightNumber || booking.arrivalFlightNumber || '';
     const returnFlight = booking.returnDepartureFlightNumber || booking.returnFlightNumber || '';
 
-    // Check if within 24 hours
+    // Check if within 24 hours (requires admin approval)
     const requiresApproval = isWithin24Hours(booking.date, booking.time);
 
+    // Build the canonical booking document
     const bookingDoc = {
       ...booking,
       id,
@@ -87,7 +107,7 @@ async function createBooking(req, res) {
       returnDepartureFlightNumber: returnFlight,
       returnFlightNumber: returnFlight,
       status: requiresApproval ? 'pending_approval' : 'pending',
-      totalPrice: booking.pricing?.totalPrice || 0,
+      totalPrice: booking.pricing?.totalPrice || booking.totalPrice || 0,
       payment_status: 'unpaid',
       payment_method: booking.paymentMethod || 'stripe',
       serviceType: booking.serviceType || 'airport-transfer',
@@ -95,49 +115,82 @@ async function createBooking(req, res) {
       updatedAt: new Date().toISOString(),
     };
 
-    // Insert into database
-    const result = await insertOne('bookings', bookingDoc);
-    if (!result.acknowledged) {
+    // === ZERO BOOKING LOSS RULE: insert + verify before responding ===
+    let inserted;
+    try {
+      inserted = await insertOne('bookings', bookingDoc);
+    } catch (insertErr) {
+      console.error(`CRITICAL: Database insert threw for booking #${refNumber}: ${insertErr.message}`);
+      return res.status(500).json({
+        detail: 'Failed to save booking. Please try again or contact us at info@bookaride.co.nz',
+      });
+    }
+
+    if (!inserted || !inserted.acknowledged) {
       console.error(`CRITICAL: Database insert not acknowledged for booking #${refNumber}`);
       return res.status(500).json({ detail: 'Failed to save booking to database' });
     }
 
-    // Verify the booking was saved
+    // Verify the booking was actually saved
     const saved = await findOne('bookings', { id });
     if (!saved) {
       console.error(`CRITICAL: Booking #${refNumber} not found after insert — potential data loss!`);
       return res.status(500).json({ detail: 'Booking verification failed' });
     }
 
-    console.log(`Booking created and verified: ${id} with reference #${refNumber}`);
+    console.log(`Booking #${refNumber} created and verified: ${id}`);
 
     const adminEmail = process.env.BOOKINGS_NOTIFICATION_EMAIL || 'bookings@bookaride.co.nz';
 
-    // 1. Send CUSTOMER confirmation email (fire-and-forget)
-    if (booking.email) {
+    // === EMAIL DIAGNOSTICS ===
+    if (!process.env.MAILGUN_API_KEY) {
+      console.error(`CRITICAL: MAILGUN_API_KEY not set — booking #${refNumber} created but NO emails will be sent`);
+    }
+    if (!process.env.MAILGUN_DOMAIN) {
+      console.warn(`MAILGUN_DOMAIN not set — using default (mg.bookaride.co.nz)`);
+    }
+
+    // 1. Send CUSTOMER confirmation email (fire-and-forget — don't block booking response)
+    try {
       const customerTemplate = customerBookingReceivedEmail(bookingDoc, { requiresApproval });
       sendEmail({
         to: booking.email,
         subject: customerTemplate.subject,
         html: customerTemplate.html,
         replyTo: 'info@bookaride.co.nz',
-      }).catch(err => console.error(`CRITICAL: Customer confirmation email failed for booking #${refNumber}:`, err.message));
-    } else {
-      console.error(`CRITICAL: Booking #${refNumber} has no customer email — cannot send confirmation`);
+      }).then(ok => {
+        if (ok) console.log(`Customer confirmation email sent for booking #${refNumber}`);
+        else console.error(`CRITICAL: Customer confirmation email returned false for booking #${refNumber}`);
+      }).catch(err => {
+        console.error(`CRITICAL: Customer confirmation email threw for booking #${refNumber}: ${err.message}`);
+      });
+    } catch (templateErr) {
+      console.error(`Customer email template error for booking #${refNumber}: ${templateErr.message}`);
     }
 
-    // 2. Send admin notification (fire-and-forget, don't block response)
-    const adminTemplate = adminNewBookingEmail(bookingDoc, { requiresApproval });
-    sendEmail({
-      to: adminEmail,
-      subject: adminTemplate.subject,
-      html: adminTemplate.html,
-    }).catch(err => console.error(`CRITICAL: Admin notification failed for booking #${refNumber}:`, err.message));
+    // 2. Send admin notification (fire-and-forget)
+    try {
+      const adminTemplate = adminNewBookingEmail(bookingDoc, { requiresApproval });
+      sendEmail({
+        to: adminEmail,
+        subject: adminTemplate.subject,
+        html: adminTemplate.html,
+      }).then(ok => {
+        if (ok) console.log(`Admin notification sent for booking #${refNumber} to ${adminEmail}`);
+        else console.error(`CRITICAL: Admin notification returned false for booking #${refNumber}`);
+      }).catch(err => {
+        console.error(`CRITICAL: Admin notification threw for booking #${refNumber}: ${err.message}`);
+      });
+    } catch (templateErr) {
+      console.error(`Admin email template error for booking #${refNumber}: ${templateErr.message}`);
+    }
 
     return res.status(201).json(bookingDoc);
   } catch (err) {
-    console.error('Error creating booking:', err);
-    return res.status(500).json({ detail: `Error creating booking: ${err.message}` });
+    console.error('CRITICAL: Unhandled error in createBooking:', err);
+    return res.status(500).json({
+      detail: `Error creating booking: ${err.message}. Please try again or contact us at info@bookaride.co.nz`,
+    });
   }
 }
 
