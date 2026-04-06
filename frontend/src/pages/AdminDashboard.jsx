@@ -542,8 +542,6 @@ export const AdminDashboard = () => {
   const [downloadingBackup, setDownloadingBackup] = useState(false);
   const [retentionCounts, setRetentionCounts] = useState(null); // { active, deleted } when list empty
   const [deletedCountForBanner, setDeletedCountForBanner] = useState(null); // deleted count for "Restore all" banner on Bookings tab
-  const [xeroConnected, setXeroConnected] = useState(false);
-  const [xeroOrg, setXeroOrg] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedBooking, setSelectedBooking] = useState(null);
@@ -588,10 +586,8 @@ export const AdminDashboard = () => {
   const [previewHtml, setPreviewHtml] = useState('');
   const [previewBookingInfo, setPreviewBookingInfo] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
-  
-  // Xero invoice date state (for backdating)
-  const [xeroInvoiceDate, setXeroInvoiceDate] = useState(null);
-  
+
+
 
 
 
@@ -929,16 +925,6 @@ export const AdminDashboard = () => {
     }
   };
 
-  const checkXeroStatus = async () => {
-    try {
-      const response = await axios.get(`${API}/xero/status`, getAuthHeaders());
-      setXeroConnected(response.data.connected);
-      setXeroOrg(response.data.organization || '');
-    } catch (error) {
-      console.error('Error checking Xero status:', error);
-    }
-  };
-
   // Initial load: bookings first; drivers deferred to lighten first paint
   useEffect(() => {
     const token = localStorage.getItem('adminToken');
@@ -948,42 +934,8 @@ export const AdminDashboard = () => {
     }
     fetchBookingsRef.current?.();
     setTimeout(() => fetchDrivers(), 600);
-    checkXeroStatus();
     fetchArchivedCount();
   }, [navigate]);
-
-  const connectXero = async () => {
-    try {
-      const response = await axios.get(`${API}/xero/login`, getAuthHeaders());
-      window.open(response.data.authorization_url, '_blank');
-      toast.info('Complete Xero authorization in the new window');
-    } catch (error) {
-      console.error('Error connecting Xero:', error);
-      toast.error('Failed to connect Xero');
-    }
-  };
-
-  const createXeroInvoice = async (bookingId) => {
-    try {
-      const response = await axios.post(`${API}/xero/create-invoice/${bookingId}`, {}, getAuthHeaders());
-      toast.success(response.data.message);
-      silentRefresh();
-    } catch (error) {
-      console.error('Error creating Xero invoice:', error);
-      toast.error(error.response?.data?.detail || 'Failed to create invoice');
-    }
-  };
-
-  const recordXeroPayment = async (bookingId) => {
-    try {
-      const response = await axios.post(`${API}/xero/record-payment/${bookingId}`, {}, getAuthHeaders());
-      toast.success(response.data.message);
-      silentRefresh();
-    } catch (error) {
-      console.error('Error recording payment:', error);
-      toast.error(error.response?.data?.detail || 'Failed to record payment');
-    }
-  };
 
   const handleRestoreBooking = async (bookingId) => {
     try {
@@ -1496,8 +1448,6 @@ export const AdminDashboard = () => {
     setSelectedBooking(booking);
     const totalPrice = booking.pricing?.totalPrice ?? booking.totalPrice ?? 0;
     setPriceOverride(totalPrice.toString());
-    // Reset Xero invoice date to booking date
-    setXeroInvoiceDate(booking.date ? new Date(booking.date + 'T00:00:00') : new Date());
     setShowDetailsModal(true);
   };
 
@@ -2036,16 +1986,6 @@ export const AdminDashboard = () => {
               >
                 {syncing ? 'Syncing...' : 'Sync'}
               </button>
-              {xeroConnected && (
-                <span className="text-xs text-emerald-600 font-medium px-3 py-1.5 bg-emerald-50 rounded-full">
-                  Xero: {xeroOrg || 'Connected'}
-                </span>
-              )}
-              {!xeroConnected && (
-                <button onClick={connectXero} className="text-xs text-slate-400 hover:text-slate-900 transition-colors font-medium px-3 py-1.5">
-                  Connect Xero
-                </button>
-              )}
               <div className="w-px h-4 bg-slate-200 mx-1" />
               <button onClick={() => setShowPasswordModal(true)} className="text-xs text-slate-400 hover:text-slate-900 transition-colors font-medium px-3 py-1.5">
                 Password
@@ -2483,11 +2423,6 @@ export const AdminDashboard = () => {
         onShowAssignPreview={handleShowAssignPreview}
         onUnassignDriver={handleUnassignDriver}
         onSendTrackingLink={handleSendTrackingLink}
-        xeroConnected={xeroConnected}
-        xeroInvoiceDate={xeroInvoiceDate}
-        onXeroInvoiceDateChange={setXeroInvoiceDate}
-        onCreateXeroInvoice={createXeroInvoice}
-        onRecordXeroPayment={recordXeroPayment}
         onSendToAdmin={handleSendToAdmin}
       />
 

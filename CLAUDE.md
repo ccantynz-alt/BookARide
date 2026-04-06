@@ -117,6 +117,17 @@ We use Google Maps for distance calculation, directions, and autocomplete. Geoap
 - **NEVER** add Geoapify as a "fallback" for Google Maps
 - **NEVER** use Geoapify for address autocomplete or distance calculation
 
+### 6a. Xero: REMOVED (2026-04-06)
+
+Xero accounting integration has been removed. We do not use Xero for invoicing, payments, or any other accounting workflow.
+
+- **NEVER** add Xero API calls, OAuth flows, or invoice creation
+- **NEVER** reference `XERO_CLIENT_ID`, `XERO_CLIENT_SECRET`, or any `xero_*` fields
+- **NEVER** add a "Xero Accounting" section to the admin dashboard booking details modal
+- **NEVER** add "Create Invoice" or "Record Payment" Xero buttons anywhere in the UI
+- **NEVER** include Xero in customer-facing FAQs or marketing copy
+- If Xero-related code still exists anywhere in the codebase, delete it
+
 ### 7. Pricing Rules — DO NOT CHANGE WITHOUT OWNER APPROVAL
 
 These are the AUTHORITATIVE per-km rates. Calibrated so key routes price correctly (owner approved 2026-03-26).
