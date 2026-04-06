@@ -274,10 +274,31 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
   return (
     <Dialog open={open} onOpenChange={(v) => {
       // Prevent dialog close while any autocomplete/search dropdown is open (critical for iOS)
-      if (!v && document.querySelector('[data-autocomplete-dropdown]')) return;
-      if (!v) onClose();
+      // Includes Google's native .pac-container which is appended to document.body
+      if (!v) {
+        if (document.querySelector('[data-autocomplete-dropdown]')) return;
+        if (document.querySelector('.pac-container')) return;
+        onClose();
+      }
     }}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent
+        className="max-w-3xl max-h-[90vh] overflow-y-auto"
+        onPointerDownOutside={(e) => {
+          // Prevent Radix from closing the dialog when user clicks on
+          // Google's native Places Autocomplete dropdown (.pac-container)
+          // which renders directly into document.body, OUTSIDE the dialog.
+          const target = e.target;
+          if (target && target.closest && target.closest('.pac-container')) {
+            e.preventDefault();
+          }
+        }}
+        onInteractOutside={(e) => {
+          const target = e.target;
+          if (target && target.closest && target.closest('.pac-container')) {
+            e.preventDefault();
+          }
+        }}
+      >
         <DialogHeader>
           <DialogTitle>Create Manual Booking</DialogTitle>
         </DialogHeader>

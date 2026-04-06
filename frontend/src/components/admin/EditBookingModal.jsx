@@ -100,10 +100,30 @@ const EditBookingModal = memo(({ open, onClose, booking, onSuccess, onPreviewCon
   return (
     <Dialog open={open} onOpenChange={(v) => {
       // Prevent dialog close while any autocomplete/search dropdown is open (critical for iOS)
-      if (!v && document.querySelector('[data-autocomplete-dropdown]')) return;
-      if (!v) onClose();
+      // Includes Google's native .pac-container which is appended to document.body
+      if (!v) {
+        if (document.querySelector('[data-autocomplete-dropdown]')) return;
+        if (document.querySelector('.pac-container')) return;
+        onClose();
+      }
     }}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent
+        className="max-w-3xl max-h-[90vh] overflow-y-auto"
+        onPointerDownOutside={(e) => {
+          // Prevent Radix from closing when user clicks Google's native
+          // .pac-container Places Autocomplete dropdown (rendered to body)
+          const target = e.target;
+          if (target && target.closest && target.closest('.pac-container')) {
+            e.preventDefault();
+          }
+        }}
+        onInteractOutside={(e) => {
+          const target = e.target;
+          if (target && target.closest && target.closest('.pac-container')) {
+            e.preventDefault();
+          }
+        }}
+      >
         <DialogHeader>
           <DialogTitle>Edit Booking #{editingBooking?.referenceNumber || editingBooking?.id?.slice(0, 8)}</DialogTitle>
         </DialogHeader>
