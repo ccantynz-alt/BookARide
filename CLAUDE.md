@@ -254,46 +254,48 @@ These admin UI decisions are final. Do NOT revert them.
 - Do not remove this indicator. The owner explicitly requested it back
   after the glassmorphism redesign hid it.
 
-**Banners — TWO separate components, do not duplicate (UPDATED 2026-04-07)**
+**Banners — ONE banner only (UPDATED 2026-04-07)**
 
-There are exactly TWO banner components on the customer-facing site,
-each with a distinct purpose. NEVER add a third. NEVER duplicate fuel
-content into both. Earlier sessions made the mistake of putting fuel
-warnings into BOTH banners — the user got two fuel banners and was
-rightfully furious.
+There is exactly ONE banner on the customer-facing site: the
+`FuelSurchargeBanner.jsx`. There is NO `InternationalBanner` rendered
+in the layout anymore. The user explicitly asked for one banner only,
+clearly visible, sitting just below the header. Do not add a second
+banner. Do not re-introduce `InternationalBanner` to the layout.
 
-1. `InternationalBanner.jsx` — TOP of page, dark gray
-   - Position: `fixed top-0 z-[60]`, height EXACTLY `h-10` (40px)
-   - Background: `bg-gray-900` with gold accents
-   - Content: "International Bookings Welcome", 6 Languages, 7 Currencies,
-     Worldwide Payment
-   - Purpose: brand/marketing — tells international visitors we accept them
-   - Must NOT contain fuel surcharge content
-   - Must NOT be deleted (the customer site is positioned around it)
+`FuelSurchargeBanner.jsx` — BELOW header, orange/amber, dismissible
+- Position: `fixed top-[96px] z-40` (Header is 96px tall: py-4 + h-16 + py-4)
+- Background: `bg-gradient-to-r from-amber-600 via-orange-500 to-amber-600 text-white`
+- Border-bottom: `border-b-2 border-amber-800` for visual separation from page
+- Content: "FUEL SURCHARGE NOTICE | Diesel up 85% in 28 days — a temporary
+  fuel surcharge applies to cover increased costs for our drivers."
+- Visibility requirements (LOCKED — user complained text was tucked behind header):
+  - `text-base md:text-lg font-bold leading-tight` — NEVER smaller
+  - `py-3.5` for vertical breathing room
+  - `Fuel` icon at `w-6 h-6 md:w-7 md:h-7` with `strokeWidth={2.5}`
+  - White text on the amber gradient (high contrast)
+  - Dismiss `X` button on the right at `w-5 h-5 md:w-6 md:h-6`
+- Has a `<div className="h-[60px] md:h-[58px]">` spacer immediately after
+  to push page content below the fixed banner. When dismissed, the entire
+  component returns null, including the spacer.
+- Purpose: temporary warning while NZ diesel prices are surging
+- When fuel prices stabilise, update the wording or remove the
+  component entirely.
 
-2. `FuelSurchargeBanner.jsx` — BELOW header, orange/amber, dismissible
-   - Position: `fixed top-[104px] z-40` (40px banner + ~64px header = 104px)
-   - Background: `bg-gradient-to-r from-amber-600 via-orange-500 to-amber-600 text-white`
-   - Content: "Fuel Surcharge Notice — Diesel up 85% in 28 days — a
-     temporary fuel surcharge applies to cover increased costs for our drivers"
-   - Visibility requirements: text-base font-semibold (NOT text-sm or smaller),
-     white text on amber, fuel icon at md:w-6, dismiss X button on the right
-   - Has a `<div className="h-14 md:h-12">` spacer immediately after to push
-     page content below the fixed banner
-   - Dismissible via X button (state in component, resets on reload)
-   - Purpose: temporary warning while NZ diesel prices are surging
-   - When fuel prices stabilise, update the wording or remove the
-     component entirely — but never add a duplicate fuel banner.
-
-**Both banners are rendered in `MainLayout` in `frontend/src/App.jsx`:**
+**Layout in `MainLayout` in `frontend/src/App.jsx`:**
 ```jsx
-<InternationalBanner />   // top-0
-<Header />                // top-10
-<main>
-  <FuelSurchargeBanner /> // top-[104px], inside main so it scrolls with content
+<Header />                                       // fixed top-0, 96px tall
+<main className="pt-[96px]">                     // pt clears the fixed header
+  <FuelSurchargeBanner />                        // fixed top-[96px], 58px tall + spacer
   <Outlet />
 </main>
 ```
+
+The `pt-[96px]` on `<main>` is REQUIRED — without it, page content
+sits behind the fixed header. Do not remove it. The `Header` is at
+`fixed top-0` (NOT `top-10` — there is no banner above it anymore).
+
+If you change the Header height (e.g. logo size), you MUST update
+both `pt-[96px]` on `<main>` AND `top-[96px]` on FuelSurchargeBanner.
 
 **Google Maps autocomplete inside Radix Dialogs (CRITICAL):**
 

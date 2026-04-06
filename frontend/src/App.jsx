@@ -10,7 +10,6 @@ import RootErrorBoundary from './components/RootErrorBoundary';
 import { Toaster } from './components/ui/sonner';
 import BackToTop from './components/BackToTop';
 import AdminBackButton from './components/AdminBackButton';
-import InternationalBanner from './components/InternationalBanner';
 import FuelSurchargeBanner from './components/FuelSurchargeBanner';
 import LanguageRedirect from './components/LanguageRedirect';
 import { SUPPORTED_LANGUAGES } from './config/languages';
@@ -139,11 +138,12 @@ const LoadingFallback = () => (
 );
 
 // Layout component with Header/Footer
+// pt-[96px] clears the fixed Header (96px tall: py-4 + h-16 logo + py-4).
+// FuelSurchargeBanner has its own internal spacer to push content past itself.
 const MainLayout = () => (
   <>
-    <InternationalBanner />
     <Header />
-    <main>
+    <main className="pt-[96px]">
       <FuelSurchargeBanner />
       <Outlet />
     </main>

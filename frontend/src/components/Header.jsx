@@ -23,7 +23,7 @@ export const Header = () => {
   const isActive = (path) => location.pathname === path;
 
   return (
-    <header className="fixed top-10 left-0 right-0 z-50 backdrop-blur-xl bg-gray-900/90 border-b border-gold/20 shadow-lg">
+    <header className="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl bg-gray-900/90 border-b border-gold/20 shadow-lg">
       {/* Top accent line */}
       <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-gold to-transparent opacity-60"></div>
       
