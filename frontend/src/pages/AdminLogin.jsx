@@ -85,7 +85,7 @@ export const AdminLogin = () => {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full bg-gold hover:bg-gold/90 text-black font-semibold py-6 disabled:opacity-50"
+              className="w-full bg-gold hover:bg-gold/90 text-white font-semibold py-6 disabled:opacity-50"
             >
               {loading ? (
                 <>

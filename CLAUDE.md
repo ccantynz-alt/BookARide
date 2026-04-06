@@ -254,20 +254,79 @@ These admin UI decisions are final. Do NOT revert them.
 - Do not remove this indicator. The owner explicitly requested it back
   after the glassmorphism redesign hid it.
 
-**Fuel surcharge banner (InternationalBanner.jsx)**
-- The banner component at the top of every customer-facing page is a
-  FUEL SURCHARGE WARNING, not an international welcome banner.
-  Current wording: "Fuel prices up 89% in 29 days — a fuel surcharge may
-  apply to new bookings".
-- It must be EXACTLY `h-10` (40px) high so it aligns perfectly with
-  the `Header` component which is `fixed top-10`. Any other height will
-  cause the Header to overlap the banner text (the original bug).
-- Style: `bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 text-white`
-  with an `AlertTriangle` icon. Must be `fixed top-0 z-[60]` so it sits
-  above the header.
-- Do NOT delete this banner. Do NOT replace it with a welcome message.
-  If the fuel surcharge situation changes, update the wording — don't
-  remove the banner.
+**Banners — TWO separate components, do not duplicate (UPDATED 2026-04-07)**
+
+There are exactly TWO banner components on the customer-facing site,
+each with a distinct purpose. NEVER add a third. NEVER duplicate fuel
+content into both. Earlier sessions made the mistake of putting fuel
+warnings into BOTH banners — the user got two fuel banners and was
+rightfully furious.
+
+1. `InternationalBanner.jsx` — TOP of page, dark gray
+   - Position: `fixed top-0 z-[60]`, height EXACTLY `h-10` (40px)
+   - Background: `bg-gray-900` with gold accents
+   - Content: "International Bookings Welcome", 6 Languages, 7 Currencies,
+     Worldwide Payment
+   - Purpose: brand/marketing — tells international visitors we accept them
+   - Must NOT contain fuel surcharge content
+   - Must NOT be deleted (the customer site is positioned around it)
+
+2. `FuelSurchargeBanner.jsx` — BELOW header, orange/amber, dismissible
+   - Position: `fixed top-[104px] z-40` (40px banner + ~64px header = 104px)
+   - Background: `bg-gradient-to-r from-amber-600 via-orange-500 to-amber-600 text-white`
+   - Content: "Fuel Surcharge Notice — Diesel up 85% in 28 days — a
+     temporary fuel surcharge applies to cover increased costs for our drivers"
+   - Visibility requirements: text-base font-semibold (NOT text-sm or smaller),
+     white text on amber, fuel icon at md:w-6, dismiss X button on the right
+   - Has a `<div className="h-14 md:h-12">` spacer immediately after to push
+     page content below the fixed banner
+   - Dismissible via X button (state in component, resets on reload)
+   - Purpose: temporary warning while NZ diesel prices are surging
+   - When fuel prices stabilise, update the wording or remove the
+     component entirely — but never add a duplicate fuel banner.
+
+**Both banners are rendered in `MainLayout` in `frontend/src/App.jsx`:**
+```jsx
+<InternationalBanner />   // top-0
+<Header />                // top-10
+<main>
+  <FuelSurchargeBanner /> // top-[104px], inside main so it scrolls with content
+  <Outlet />
+</main>
+```
+
+**Google Maps autocomplete inside Radix Dialogs (CRITICAL):**
+
+Google Places Autocomplete renders its dropdown (`.pac-container`) directly
+into `document.body`, OUTSIDE the Radix Dialog. Without protection, when
+the user clicks a Google suggestion, Radix detects a click outside the
+dialog and closes it — losing the user's work.
+
+`CreateBookingModal.jsx` and `EditBookingModal.jsx` MUST have BOTH of
+these guards on the `<Dialog>` and `<DialogContent>`:
+
+1. On `<Dialog onOpenChange>`:
+   ```js
+   if (!v) {
+     if (document.querySelector('[data-autocomplete-dropdown]')) return;
+     if (document.querySelector('.pac-container')) return;
+     onClose();
+   }
+   ```
+
+2. On `<DialogContent>`:
+   ```js
+   onPointerDownOutside={(e) => {
+     if (e.target?.closest?.('.pac-container')) e.preventDefault();
+   }}
+   onInteractOutside={(e) => {
+     if (e.target?.closest?.('.pac-container')) e.preventDefault();
+   }}
+   ```
+
+Without BOTH guards, the address dropdown will appear to open and then
+immediately close before the user can click a suggestion. This was
+broken for weeks before being fixed properly. Do not remove these guards.
 
 ### 7. Pricing Rules — DO NOT CHANGE WITHOUT OWNER APPROVAL
 
