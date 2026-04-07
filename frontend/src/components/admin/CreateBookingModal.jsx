@@ -138,8 +138,8 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
     }
     setSearchingCustomers(true);
     try {
-      const response = await axios.get(`${API}/customers/search?q=${encodeURIComponent(query)}`, getAuthHeaders());
-      const customers = response.data.customers || [];
+      const response = await axios.get(`${API}/customers?q=${encodeURIComponent(query)}`, getAuthHeaders());
+      const customers = Array.isArray(response.data) ? response.data : (response.data?.customers || []);
       setCustomerSearchResults(customers);
       setShowCustomerDropdown(customers.length > 0);
       if (customers.length === 0 && query.length >= 3) {
@@ -169,7 +169,7 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
     }));
     setCustomerSearchQuery('');
     setShowCustomerDropdown(false);
-    toast.success(`Loaded ${customer.name}'s details (${customer.totalBookings} previous bookings)`);
+    toast.success(`Loaded ${customer.name}'s details (${customer.bookingCount || 0} previous bookings)`);
   };
 
   const calculateBookingPrice = async () => {
@@ -232,7 +232,7 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
       let finalPrice = hasManualPrice ? parseFloat(manualPriceOverride) : bookingPricing.totalPrice;
       const priceOverride = hasManualPrice ? parseFloat(manualPriceOverride) : (hasReturnTrip ? finalPrice : null);
 
-      await axios.post(`${API}/bookings/manual`, {
+      await axios.post(`${API}/bookings`, {
         name: newBooking.name,
         email: newBooking.email,
         ccEmail: newBooking.ccEmail,
@@ -362,7 +362,7 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
                         </div>
                         <div className="text-right">
                           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                            {customer.totalBookings} bookings
+                            {customer.bookingCount || 0} bookings
                           </span>
                           {customer.lastBookingDate && (
                             <p className="text-xs text-gray-400 mt-1">Last: {customer.lastBookingDate}</p>
