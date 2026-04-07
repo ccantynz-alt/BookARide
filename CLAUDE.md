@@ -1,7 +1,457 @@
-# BookARide NZ — Agent Instructions
+# BookARide NZ — THE BIBLE
 
-**READ THIS ENTIRE FILE BEFORE MAKING ANY CHANGES.**
-**EVERY rule here exists because a previous agent broke production by ignoring it.**
+> **THIS FILE IS LAW. READ IT IN FULL BEFORE TOUCHING ANYTHING.**
+> **No code change happens until you have read and understood every rule here.**
+> **This is the blueprint. This is the bible. We work to this file. Nothing else.**
+
+---
+
+## SESSION START PROTOCOL — MANDATORY (2026-04-07)
+
+Every Claude session, in every chat window, on every task, MUST follow this
+sequence before writing a single line of code:
+
+1. **Read CLAUDE.md in full.** Not skim. Read.
+2. **Confirm the architecture state** (currently: frontend-only, Vercel
+   serverless `api/` + React/Vite `frontend/`, no backend folder).
+3. **Check for locked decisions** that touch the area you are about to modify.
+4. **Ask before deviating** from any locked decision, even if it looks obvious.
+
+If you skip Step 1 you will break production. Every single time an agent has
+skipped CLAUDE.md, something has broken. There are no exceptions to this rule.
+
+---
+
+## STRICT MARKET DOMINATION RULES — NON-NEGOTIABLE (2026-04-07)
+
+BookARide is the most aggressive airport transfer business in New Zealand.
+The website must reflect that. We dominate search results. We dominate UX.
+We dominate technology. We do not compromise.
+
+### Rule 1: Best-of-breed only
+
+Every dependency, every framework, every library, every pattern MUST be the
+current best in its category. If a competitor library exists that is faster,
+more modern, or more popular — we use it. If a dependency is deprecated,
+unmaintained, or older than 2 major versions behind, we replace it the
+session it is found.
+
+### Rule 2: Frontend-only architecture (until further notice)
+
+As of 2026-04-07, BookARide is a **frontend-only deployment** on Vercel:
+- `frontend/` — React 18 + Vite + Tailwind, deployed to Vercel
+- `api/` — Vercel serverless functions (Node.js), same Vercel project
+- `vercel.json` at root — single Vercel deployment config
+
+There is **NO `backend/` folder**. There is **NO Render service**. There is
+**NO Python server**. If you find code in a `backend/` directory, it is dead
+weight from the old architecture and must be deleted.
+
+A new combined backend+frontend serverless platform is being prepared.
+**The owner will update CLAUDE.md when that platform is ready.** Until then,
+do not introduce new backend code, do not add a backend folder, do not
+suggest moving back to Render or a Python server.
+
+### Rule 3: Zero chicken scratches
+
+"Chicken scratching" = leaving small bits of inconsistent, half-finished,
+or poorly written code lying around. Banned outright.
+- No commented-out code blocks
+- No `// TODO: clean up later`
+- No half-implemented functions
+- No leftover imports
+- No debug `console.log` statements
+- No `var` declarations (only `const` and `let`)
+- No inline `style={{}}` unless calculated dynamically
+- No duplicate components doing the same thing
+- No legacy files marked "dead" but still in the repo
+
+If you see chicken scratches while working in a file, FIX THEM in the same
+commit. Do not push them to a future "cleanup PR" — that PR will never come.
+
+### Rule 4: SEO is a daily activity, not a one-time task
+
+We have AI agents (or we are going to) running every day to ensure we rank
+#1 for our target keywords. The current AI infrastructure includes:
+- AI chatbot (Claude Haiku) — see `api/chatbot/message.js`
+- AI email support (Claude Haiku) — `api/email/incoming` route on the old
+  Python server (TO BE PORTED)
+- Auto-complete bookings, payment follow-ups, weekly performance reports
+
+A daily SEO agent IS the next priority and is documented in section
+"DAILY SEO AGENT — MANDATORY" below. If it does not exist yet, build it.
+If it exists but is broken, fix it. The owner has explicitly said: "shame
+on us if we don't have an SEO agent on board".
+
+### Rule 5: Refer back here on every chat
+
+The user has explicitly stated: "I want you to refer back to this CLAUDE.md
+file before taking on any work in a new chat. This is the blueprint. This
+is the Bible." Honour that.
+
+---
+
+## CRAIG'S AUTHORIZATION GATE — MANDATORY (2026-04-07)
+
+**Craig is the owner. Craig is the boss. Craig has lost months of revenue
+because previous agents and developers made unauthorised changes that
+broke production. NEVER AGAIN.**
+
+The following actions REQUIRE Craig's explicit, in-chat approval before
+Claude touches a single file. No assumptions. No "I think you'd want this".
+No "while I'm here let me also...". STOP and ASK.
+
+### Actions that REQUIRE Craig's authorisation:
+
+1. **Pricing changes** — any modification to `api/_lib/pricing.js`,
+   `PRICING_TIERS`, `MINIMUM_ONE_WAY`, fuel surcharge percent, or any
+   add-on fee. Pricing is calibrated. One unauthorised change costs
+   real money on every booking.
+
+2. **Architecture changes** — switching frameworks, hosting providers,
+   databases, build tools. The current stack is locked: Vite + React +
+   Vercel + Neon + Mailgun + Stripe + Claude API. Do not propose
+   alternatives without being asked.
+
+3. **Adding or removing any dependency** — even a tiny utility library.
+   Run `npm audit` first. Confirm it's the best-of-breed option. Then
+   ASK before installing.
+
+4. **New integrations** — payment providers, email providers, analytics,
+   CRMs, accounting software, CMS, anything that talks to a third party.
+   Craig has explicitly removed Xero, Facebook, SendGrid, MongoDB,
+   Geoapify, Render, Emergent. Don't suggest re-adding them.
+
+5. **Booking flow changes** — any modification to `BookNow.jsx`,
+   `api/bookings.js`, `api/payment/create-checkout.js`, or
+   `api/webhook/stripe.js`. The booking flow has cost Craig more than
+   anything else. Touch with extreme care.
+
+6. **Customer-facing copy** — landing page text, email templates,
+   confirmation messages, button labels. Branding is locked. Word changes
+   need approval.
+
+7. **Database schema changes** — adding, removing, or renaming columns.
+   Renaming a field that exists in JSONB documents will break every
+   booking that has the old name.
+
+8. **Deleting any data** — bookings, customers, drivers, payment records.
+   Even if the data looks orphaned. Even if it looks like duplicates.
+   ASK first.
+
+9. **Production deployments that touch more than 3 files**, or any
+   file in the booking/payment flow. Multi-file changes need a focused
+   commit message and Craig's go-ahead.
+
+10. **Removing or disabling locked features** — daily SEO agent,
+    booking system health check, fuel surcharge banner, CLAUDE.md
+    locked decisions. These are LAW.
+
+### What Claude CAN do without explicit authorisation:
+
+- Fix typos in non-customer-facing strings (admin labels, error messages
+  the user wouldn't see)
+- Add `console.error` logging for debugging
+- Update `.md` documentation (other than CLAUDE.md itself)
+- Run `npm run build` to verify changes compile
+- Read any file to investigate
+- Run automated checks (smart quotes, banned imports, syntax)
+- Push commits to a feature branch (NEVER directly to main)
+- Reply to obvious questions about how the code works
+
+### How to ask for authorisation:
+
+When Claude reaches a decision point that needs Craig's approval, the
+response MUST be:
+
+```
+AUTHORISATION REQUIRED FROM CRAIG
+=================================
+
+What I want to change:
+  [exact files and exact changes]
+
+Why:
+  [the problem this solves]
+
+Risk:
+  [what could go wrong]
+
+Alternative (if any):
+  [other approaches considered]
+
+Craig — please confirm "go ahead" or tell me what to change.
+```
+
+Then STOP. Do not make the change. Wait.
+
+---
+
+## MAJOR CHANGE PROTOCOL — MANDATORY (2026-04-07)
+
+When making any change that touches more than ONE file in the booking,
+payment, or email flow, follow this protocol exactly:
+
+1. **STOP** — do not start coding yet
+2. **READ** CLAUDE.md in full (yes, every time)
+3. **READ** every file you intend to modify, end-to-end
+4. **TRACE** the data flow from user input to final output
+5. **DOCUMENT** the proposed changes (file by file, with why)
+6. **ASK** for Craig's authorisation (use the format above)
+7. **WAIT** — do not start work until Craig says "go"
+8. **MAKE** the change as a single focused commit
+9. **VERIFY** — run `npm run build`, `node --check` on changed JS files
+10. **TEST** — describe how Craig should test this on the Vercel preview
+11. **PUSH** — commit message references CLAUDE.md sections affected
+
+If you skip any step, you will break production. There are no exceptions.
+
+---
+
+## ZERO TOLERANCE FORBIDDEN LIST — NON-NEGOTIABLE (2026-04-07)
+
+If Claude finds any of these in the codebase, DELETE them immediately
+in the same commit you're working in. No "I'll fix it later". No "out
+of scope". The list is absolute:
+
+### Forbidden frameworks/libraries
+- `jquery`, `aos` (animate on scroll), `slick-carousel`, `react-slick`
+- `leaflet`, `react-leaflet` (we use Google Maps)
+- `moment` (use `date-fns`)
+- `lodash` (use native JS)
+- `@craco/craco`, `react-scripts`, `cra-template`, `cross-env`
+- `webpack` (Vite handles bundling)
+- `babel-loader`, `schema-utils` (CRA-era leftovers)
+- `@vuer-ai/react-helmet-async` (broken fork — use `react-helmet-async`)
+
+### Forbidden services
+- **MongoDB / Motor / pymongo** — we use Neon Postgres
+- **SMTP / SendGrid / Gmail / nodemailer** — we use Mailgun
+- **Geoapify / Mapbox / Leaflet** — we use Google Maps
+- **Render / Heroku / Netlify / Railway** — we use Vercel
+- **Xero / QuickBooks / MYOB** — removed, no accounting integration
+- **Facebook SDK / Facebook login / Facebook ads** — removed
+- **Emergent platform / emergentagent.com** — removed
+- **Python backend** — frontend only until Craig says
+
+### Forbidden patterns
+- `process.env.REACT_APP_*` (use `import.meta.env.VITE_*`)
+- `var` declarations (use `const` / `let`)
+- Class components except `ErrorBoundary` (React requires it)
+- Inline `style={{}}` for static values (use Tailwind)
+- `async function` without try/catch in API handlers
+- `except: pass` or empty `catch {}` blocks
+- `console.log` in production code (only `console.error`)
+- Commented-out code blocks
+- `// TODO:` comments without an issue number
+- Hardcoded URLs to old Render backend
+- Hardcoded API keys (must come from env vars)
+- `setInterval` / `setTimeout` for cron-like work (use Vercel Cron)
+- Direct DOM manipulation (`document.querySelector` outside specific
+  Google Maps autocomplete fix)
+
+### Forbidden file locations
+- `backend/` directory — does not exist, do not create
+- `v2/` directory — was an abandoned rewrite, do not recreate
+- `tests/` at root — keep tests with the code
+- Root-level `package.json` — Vite project, only `frontend/package.json`
+  and `api/package.json` should exist
+- `render.yaml`, `runtime.txt`, `Procfile` — Render is dead
+
+If you see any of these in the codebase, delete them in the same
+commit you're working in and reference this section in the commit
+message.
+
+---
+
+## ALWAYS-VERIFY CHECKLIST — MANDATORY (2026-04-07)
+
+Before declaring ANYTHING "fixed" or "done", every Claude session
+MUST verify:
+
+### Code-level checks (run automatically):
+1. `cd frontend && npm run build` — must pass with zero errors
+2. `node --check api/<changed>.js` — every changed JS file must parse
+3. `grep -rn "process.env.REACT_APP" frontend/src/` — must return empty
+4. `grep -rn "var " frontend/src/` excluding `var(--*)` — must be empty
+5. `grep -rn "console.log" frontend/src/ api/` excluding `console.error` — must be empty
+6. `grep -rn "TODO\|FIXME\|XXX" --include="*.js" --include="*.jsx" frontend/src/ api/` — must be empty (excluding placeholder text)
+
+### Functional checks (require Craig to test on Vercel preview):
+1. Visit `https://<preview>.vercel.app/api/health/booking-system`
+   - All checks must be green
+2. Make a real test booking on the preview
+3. Verify the booking confirmation email arrives
+4. Verify the admin notification email arrives
+5. Verify the price calculator works for at least 3 different routes
+6. Verify the address dropdown shows Google suggestions
+7. Verify the customer search in admin Create Booking modal returns results
+
+If any of these fail, the change is NOT done. Back to work.
+
+---
+
+## ESCALATION PROTOCOL — MANDATORY (2026-04-07)
+
+When Claude is stuck, uncertain, or about to make a decision that
+could affect production, DO NOT GUESS. Use this escalation:
+
+### Level 1: Document and ask
+"Craig, I'm trying to do X but I see two possible approaches:
+A) [option 1, with pros/cons]
+B) [option 2, with pros/cons]
+Which do you want?"
+
+### Level 2: Stop and request investigation
+"Craig, I tried to do X but [specific error/behaviour]. Before I
+continue, I need to understand whether [specific question]. Can you
+test [specific URL/action] and tell me what happens?"
+
+### Level 3: Hard stop
+"Craig, I'm seeing something that contradicts CLAUDE.md / a locked
+decision / what you told me earlier. I'm stopping. Please clarify
+[specific point] before I touch anything."
+
+**Never proceed past Level 1 without explicit Craig approval.** The
+cost of asking is 30 seconds. The cost of guessing wrong is days
+of broken booking system.
+
+---
+
+## COMPETITIVE ANNIHILATION RULES — MANDATORY (2026-04-07)
+
+BookARide is the most aggressive airport transfer business in NZ.
+The competition is supershuttle.co.nz (legacy ASP.NET, no AI, no
+modern UX). We must ANNIHILATE them on every measurable axis.
+
+### We must beat them on speed
+- Lighthouse Performance score: 90+ (target 95+)
+- Largest Contentful Paint: under 2.5 seconds
+- Time to Interactive: under 3.5 seconds
+- Cumulative Layout Shift: under 0.1
+- First Input Delay / INP: under 200ms
+
+If a Lighthouse score drops below 90, that's a P0 fix before any
+new features.
+
+### We must beat them on technology
+- React 18 (or latest stable) — they use ASP.NET Web Forms
+- Vite — they probably bundle with bundlers from 2010
+- Vercel edge network — they're on a single server
+- AI chatbot (Claude Haiku) — they have nothing
+- Real-time price calculator — they need a quote request
+- Google Places autocomplete — they have a static dropdown
+- Mobile-first responsive — they're desktop-first
+
+### We must beat them on SEO
+- Daily SEO agent runs every day (see DAILY SEO AGENT section)
+- Every page has structured data (LocalBusiness, BreadcrumbList,
+  Service schemas)
+- Every blog post has Article schema
+- Sitemap regenerated daily with fresh `lastmod`
+- Pinged to Google + Bing daily
+- Page health checked daily — 404s flagged immediately
+- Target keywords locked in `api/_lib/seo-agent.js`
+
+### We must beat them on conversion
+- One-click booking from any landing page
+- Price shown before any form submission
+- Free cancellation policy displayed prominently
+- Real customer reviews on every page
+- Multiple payment options
+- Confirmation email arrives within 60 seconds
+- SMS reminders for upcoming trips
+
+### We must beat them on reliability
+- Booking system health check endpoint exists and is monitored
+- Every email send is logged with success/failure
+- Every payment is tracked end-to-end
+- Zero data loss — bookings never disappear (even on delete, they
+  go to `deleted_bookings` table)
+- Stripe webhook idempotency — no duplicate charges
+- Mailgun signature verification — no spoofed emails
+
+### What's NOT optional
+If Craig says "we're not ranking #1 yet", the response is NOT "give
+it time". The response is:
+1. Run the daily SEO agent manually
+2. Check Vercel logs for the daily report
+3. Fix any 404s, missing schemas, or broken pages
+4. Update the target keyword list if needed
+5. Generate fresh content (blog post, landing page) for the lagging
+   keyword
+6. Report back with concrete actions taken
+
+---
+
+## DAILY SEO AGENT — MANDATORY (2026-04-07)
+
+BookARide has an automated daily SEO agent that runs every day at
+6 AM NZ time (18:00 UTC) via Vercel Cron Jobs. This is non-negotiable.
+
+**Components:**
+- `api/cron/daily-seo-agent.js` — the cron handler invoked by Vercel
+- `api/_lib/seo-agent.js` — the SEO automation library
+- `vercel.json` `crons` field — Vercel Cron Jobs configuration
+
+**What it does every day:**
+1. Regenerates `sitemap.xml` with today's `lastmod` date for all
+   tracked pages (signals freshness to Google)
+2. Pings Google and Bing to recrawl the sitemap
+3. Checks every tracked page returns HTTP 200 — flags any 404s or
+   broken pages so we can fix them immediately
+4. Uses the Claude API (`claude-haiku-4-5-20251001`) to generate
+   3 actionable SEO content suggestions for the week
+5. Emails a full daily report to the admin inbox via Mailgun
+
+**Required environment variables on Vercel:**
+- `ANTHROPIC_API_KEY` — for AI content suggestions (already set
+  for the chatbot)
+- `MAILGUN_API_KEY` + `MAILGUN_DOMAIN` — for the daily report email
+  (already set)
+- `SEO_REPORT_EMAIL` — optional override for where the report goes
+  (defaults to `BOOKINGS_NOTIFICATION_EMAIL` then to
+  `bookings@bookaride.co.nz`)
+- `CRON_SECRET` — optional shared secret for manually testing the
+  cron endpoint without Vercel's `x-vercel-cron` header
+
+**Target keywords (LOCKED — owner approved 2026-04-07):**
+The list lives in `api/_lib/seo-agent.js` as `TARGET_KEYWORDS`. To
+add a new target keyword, edit that file. Current targets:
+- airport shuttle Auckland
+- Auckland airport transfer
+- airport transfer New Zealand
+- private airport transfer Auckland
+- Hibiscus Coast airport shuttle
+- Auckland airport shuttle service
+- airport pickup Auckland
+- Auckland to airport
+- airport to Auckland CBD
+- cheap airport shuttle Auckland
+
+**Tracked pages (LOCKED):**
+The list lives in `api/_lib/seo-agent.js` as `TRACKED_PAGES`. Each
+entry has a path, priority, and changefreq. When you create a new
+page, ALWAYS add it to `TRACKED_PAGES` so the daily agent monitors
+it and includes it in the sitemap.
+
+**RULES:**
+- **NEVER** disable, remove, or rename the daily SEO agent without
+  explicit owner approval
+- **NEVER** change the cron schedule without checking the owner
+- **ALWAYS** add new pages to `TRACKED_PAGES` so they get indexed
+  and health-checked daily
+- **ALWAYS** add new target keywords to `TARGET_KEYWORDS` when the
+  business focus shifts
+- If the daily report stops arriving, check Vercel function logs
+  first, then `MAILGUN_API_KEY`, then page health
+
+**Future enhancements (not yet built — flag in next session):**
+- Google Search Console API integration for real impressions/clicks
+- Google Analytics 4 for traffic data
+- SerpAPI or similar for actual keyword ranking checks
+- Weekly competitive analysis vs supershuttle.co.nz
+- Auto-generated weekly performance report (separate cron)
 
 ---
 
@@ -73,12 +523,55 @@ The site is a single Vercel deployment with:
 - Environment variables use standard names (`DATABASE_URL`, `MAILGUN_API_KEY`, `STRIPE_SECRET_KEY`, etc.) — set in Vercel dashboard
 - Frontend env vars use `VITE_` prefix — the default `VITE_BACKEND_URL` is empty string (same-origin, calls /api/* on the same Vercel domain)
 
-**When porting a Python endpoint to Vercel serverless:**
-1. Find the Python implementation in `backend/server.py`
-2. Create the equivalent in `api/<path>.js` using `module.exports = async function handler(req, res)`
-3. Use `require('./_lib/db')` for database, `require('./_lib/mailgun')` for emails, `require('./_lib/email-templates')` for email HTML
-4. Match the Python route exactly (e.g. `@api_router.post("/bookings/{id}/resend-confirmation")` becomes `api/bookings/[bookingId]/resend-confirmation.js` with POST handler)
-5. Never delete the Python version until the frontend has been verified against the new Vercel endpoint in production
+**When adding new API endpoints:**
+1. Create the file in `api/<path>.js` using `module.exports = async function handler(req, res)`
+2. Use `require('./_lib/db')` for database, `require('./_lib/mailgun')` for emails, `require('./_lib/email-templates')` for email HTML
+3. Always check the request method and return 405 for unsupported methods
+4. Always wrap database calls in try/catch
+5. Always log CRITICAL errors with `console.error('CRITICAL: ...')` so they show up in Vercel logs
+
+---
+
+## BOOKING SYSTEM HEALTH CHECK — MANDATORY (2026-04-07)
+
+The booking system has its own dedicated health check endpoint that
+verifies every dependency end-to-end. Use this BEFORE assuming the
+system is broken — most "broken booking" issues are actually missing
+Vercel environment variables, not bugs.
+
+**Endpoint:** `GET /api/health/booking-system`
+**File:** `api/health/booking-system.js`
+**Auth:** None (public diagnostic, returns redacted secrets only)
+
+**What it tests:**
+1. **Database connection** — connects to Neon and runs `SELECT 1`
+2. **Database write** — inserts a fake booking, reads it back, deletes it
+   (proves the bookings table schema is compatible with the code)
+3. **Mailgun** — checks `MAILGUN_API_KEY` and `MAILGUN_DOMAIN` are set
+4. **Stripe** — checks `STRIPE_SECRET_KEY` is set and starts with `sk_`
+5. **Google Maps** — checks `GOOGLE_MAPS_API_KEY` is set
+6. **Pricing engine** — runs a real calculation and verifies the output
+7. **Email templates** — renders a fake template and verifies output
+
+**Response format:**
+```json
+{
+  "status": "healthy" | "broken",
+  "summary": "Plain English description",
+  "checks": { ... per-component results ... },
+  "blocking_failures": [],
+  "warnings": [],
+  "next_steps": "What to do next"
+}
+```
+
+**Returns HTTP 500** if any blocking check fails, so monitoring tools
+can detect outages automatically.
+
+**RULE: When the user says "the booking system is broken", check this
+endpoint FIRST.** Don't dive into code until you know which specific
+component is failing. If `mailgun.ok === false`, the fix is to set
+`MAILGUN_API_KEY` in Vercel, not to rewrite the email code.
 
 ### 1. Database: Neon PostgreSQL ONLY
 
@@ -254,46 +747,48 @@ These admin UI decisions are final. Do NOT revert them.
 - Do not remove this indicator. The owner explicitly requested it back
   after the glassmorphism redesign hid it.
 
-**Banners — TWO separate components, do not duplicate (UPDATED 2026-04-07)**
+**Banners — ONE banner only (UPDATED 2026-04-07)**
 
-There are exactly TWO banner components on the customer-facing site,
-each with a distinct purpose. NEVER add a third. NEVER duplicate fuel
-content into both. Earlier sessions made the mistake of putting fuel
-warnings into BOTH banners — the user got two fuel banners and was
-rightfully furious.
+There is exactly ONE banner on the customer-facing site: the
+`FuelSurchargeBanner.jsx`. There is NO `InternationalBanner` rendered
+in the layout anymore. The user explicitly asked for one banner only,
+clearly visible, sitting just below the header. Do not add a second
+banner. Do not re-introduce `InternationalBanner` to the layout.
 
-1. `InternationalBanner.jsx` — TOP of page, dark gray
-   - Position: `fixed top-0 z-[60]`, height EXACTLY `h-10` (40px)
-   - Background: `bg-gray-900` with gold accents
-   - Content: "International Bookings Welcome", 6 Languages, 7 Currencies,
-     Worldwide Payment
-   - Purpose: brand/marketing — tells international visitors we accept them
-   - Must NOT contain fuel surcharge content
-   - Must NOT be deleted (the customer site is positioned around it)
+`FuelSurchargeBanner.jsx` — BELOW header, orange/amber, dismissible
+- Position: `fixed top-[96px] z-40` (Header is 96px tall: py-4 + h-16 + py-4)
+- Background: `bg-gradient-to-r from-amber-600 via-orange-500 to-amber-600 text-white`
+- Border-bottom: `border-b-2 border-amber-800` for visual separation from page
+- Content: "FUEL SURCHARGE NOTICE | Diesel up 85% in 28 days — a temporary
+  fuel surcharge applies to cover increased costs for our drivers."
+- Visibility requirements (LOCKED — user complained text was tucked behind header):
+  - `text-base md:text-lg font-bold leading-tight` — NEVER smaller
+  - `py-3.5` for vertical breathing room
+  - `Fuel` icon at `w-6 h-6 md:w-7 md:h-7` with `strokeWidth={2.5}`
+  - White text on the amber gradient (high contrast)
+  - Dismiss `X` button on the right at `w-5 h-5 md:w-6 md:h-6`
+- Has a `<div className="h-[60px] md:h-[58px]">` spacer immediately after
+  to push page content below the fixed banner. When dismissed, the entire
+  component returns null, including the spacer.
+- Purpose: temporary warning while NZ diesel prices are surging
+- When fuel prices stabilise, update the wording or remove the
+  component entirely.
 
-2. `FuelSurchargeBanner.jsx` — BELOW header, orange/amber, dismissible
-   - Position: `fixed top-[136px] z-40` (40px banner + 96px header = 136px)
-   - Background: `bg-gradient-to-r from-amber-600 via-orange-500 to-amber-600 text-white`
-   - Content: "Fuel Surcharge Notice — Diesel up 85% in 28 days — a
-     temporary fuel surcharge applies to cover increased costs for our drivers"
-   - Visibility requirements: text-base font-semibold (NOT text-sm or smaller),
-     white text on amber, fuel icon at md:w-6, dismiss X button on the right
-   - Has a `<div className="h-14 md:h-12">` spacer immediately after to push
-     page content below the fixed banner
-   - Dismissible via X button (state in component, resets on reload)
-   - Purpose: temporary warning while NZ diesel prices are surging
-   - When fuel prices stabilise, update the wording or remove the
-     component entirely — but never add a duplicate fuel banner.
-
-**Both banners are rendered in `MainLayout` in `frontend/src/App.jsx`:**
+**Layout in `MainLayout` in `frontend/src/App.jsx`:**
 ```jsx
-<InternationalBanner />   // top-0
-<Header />                // top-10
-<main>
-  <FuelSurchargeBanner /> // top-[136px], inside main so it scrolls with content
+<Header />                                       // fixed top-0, 96px tall
+<main className="pt-[96px]">                     // pt clears the fixed header
+  <FuelSurchargeBanner />                        // fixed top-[96px], 58px tall + spacer
   <Outlet />
 </main>
 ```
+
+The `pt-[96px]` on `<main>` is REQUIRED — without it, page content
+sits behind the fixed header. Do not remove it. The `Header` is at
+`fixed top-0` (NOT `top-10` — there is no banner above it anymore).
+
+If you change the Header height (e.g. logo size), you MUST update
+both `pt-[96px]` on `<main>` AND `top-[96px]` on FuelSurchargeBanner.
 
 **Google Maps autocomplete inside Radix Dialogs (CRITICAL):**
 

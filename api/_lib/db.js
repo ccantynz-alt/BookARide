@@ -111,19 +111,31 @@ async function countDocuments(collection, filter = {}) {
 /**
  * Insert one document. Sets both the indexed id column and the data JSONB column.
  * Matches the Python layer: INSERT INTO table (id, data) VALUES ($1, $2::jsonb)
+ *
+ * Returns RETURNING id (not _id) — _id may not exist on all tables but `id` is
+ * guaranteed by the schema (id TEXT UNIQUE NOT NULL).
  */
 async function insertOne(collection, document) {
   const sql = getDb();
   const docId = document.id || null;
-  const result = await sql(
-    `INSERT INTO ${collection} (id, data) VALUES ($1, $2::jsonb) RETURNING _id`,
-    [docId, JSON.stringify(document)]
-  );
-  return { acknowledged: result.length > 0, insertedId: docId };
+  if (!docId) {
+    throw new Error(`insertOne(${collection}): document.id is required`);
+  }
+  try {
+    const result = await sql(
+      `INSERT INTO ${collection} (id, data) VALUES ($1, $2::jsonb) RETURNING id`,
+      [docId, JSON.stringify(document)]
+    );
+    return { acknowledged: result.length > 0, insertedId: docId };
+  } catch (err) {
+    console.error(`CRITICAL: insertOne(${collection}) failed for id=${docId}: ${err.message}`);
+    throw err;
+  }
 }
 
 /**
  * Update one document. Merges $set fields into the JSONB data column.
+ * Returns the actual matched count from PostgreSQL — not a hardcoded 1.
  */
 async function updateOne(collection, filter, update) {
   const sql = getDb();
@@ -131,14 +143,21 @@ async function updateOne(collection, filter, update) {
   const { clause, values } = buildWhere(filter);
   const paramIdx = values.length + 1;
 
-  const result = await sql(
-    `UPDATE ${collection} SET data = data || $${paramIdx}::jsonb WHERE ${clause}`,
-    [...values, JSON.stringify(setData)]
-  );
-
-  // neon() returns the rows for SELECT, but for UPDATE it returns an empty array
-  // We need to check if the update actually matched
-  return { acknowledged: true, matchedCount: 1 };
+  try {
+    // Use RETURNING id to get the actual rows updated, so we know if there was a match
+    const result = await sql(
+      `UPDATE ${collection} SET data = data || $${paramIdx}::jsonb WHERE ${clause} RETURNING id`,
+      [...values, JSON.stringify(setData)]
+    );
+    return {
+      acknowledged: true,
+      matchedCount: result.length,
+      modifiedCount: result.length,
+    };
+  } catch (err) {
+    console.error(`CRITICAL: updateOne(${collection}) failed: ${err.message}`);
+    throw err;
+  }
 }
 
 /**

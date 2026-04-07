@@ -66,9 +66,11 @@ module.exports = async function handler(req, res) {
       },
     });
 
-    // Record payment transaction
+    // Record payment transaction (audit log only — non-blocking)
+    // If payment_transactions table has issues, it must NOT prevent the
+    // customer from being redirected to Stripe.
     const txnId = uuidv4();
-    await insertOne('payment_transactions', {
+    insertOne('payment_transactions', {
       id: txnId,
       booking_id,
       session_id: session.id,
@@ -77,21 +79,28 @@ module.exports = async function handler(req, res) {
       payment_status: 'pending',
       status: 'initiated',
       customer_email: booking.email || '',
-      customer_name: `${booking.firstName || ''} ${booking.lastName || ''}`.trim(),
+      customer_name: booking.name || `${booking.firstName || ''} ${booking.lastName || ''}`.trim() || 'Customer',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
+    }).catch(err => {
+      console.error(`Non-critical: payment_transactions insert failed for booking ${booking_id}: ${err.message}`);
     });
 
-    // Update booking with session info
-    await updateOne('bookings', { id: booking_id }, {
-      $set: {
-        payment_session_id: session.id,
-        payment_status: 'pending',
-        payment_link_sent_at: new Date().toISOString(),
-        payment_link_sent_count: (booking.payment_link_sent_count || 0) + 1,
-        payment_link_method: 'stripe',
-      },
-    });
+    // Update booking with session info — this IS critical
+    try {
+      await updateOne('bookings', { id: booking_id }, {
+        $set: {
+          payment_session_id: session.id,
+          payment_status: 'pending',
+          payment_link_sent_at: new Date().toISOString(),
+          payment_link_sent_count: (booking.payment_link_sent_count || 0) + 1,
+          payment_link_method: 'stripe',
+        },
+      });
+    } catch (updateErr) {
+      console.error(`CRITICAL: Could not update booking ${booking_id} with stripe session — booking may show wrong payment status: ${updateErr.message}`);
+      // Continue anyway — the customer should still get the payment link
+    }
 
     console.log(`Stripe checkout created: ${session.id} for booking ${booking_id}`);
 
