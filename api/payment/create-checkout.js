@@ -104,16 +104,33 @@ module.exports = async function handler(req, res) {
 
     console.log(`Stripe checkout created: ${session.id} for booking ${booking_id}`);
 
-    // Fire-and-forget: email the customer their payment link
-    // This means even if they lose the browser, they can click the link in email
+    // === Email the customer their payment link — MUST await ===
+    //
+    // CRITICAL: On Vercel serverless, returning the response before the
+    // sendEmail promise settles causes the function to freeze and the
+    // Mailgun HTTP POST to be dropped. We await the send so the email
+    // is guaranteed to leave before the response. Even if the email
+    // fails, the customer still gets the Stripe redirect URL in the
+    // JSON response so they can pay immediately — the email is a
+    // fallback for customers who lose the browser tab.
+    let paymentLinkEmailSent = false;
     if (booking.email) {
-      const template = customerPaymentLinkEmail(booking, session.url);
-      sendEmail({
-        to: booking.email,
-        subject: template.subject,
-        html: template.html,
-        replyTo: 'info@bookaride.co.nz',
-      }).catch(err => console.error(`CRITICAL: Payment link email failed for booking ${booking_id}:`, err.message));
+      try {
+        const template = customerPaymentLinkEmail(booking, session.url);
+        paymentLinkEmailSent = await sendEmail({
+          to: booking.email,
+          subject: template.subject,
+          html: template.html,
+          replyTo: 'info@bookaride.co.nz',
+        });
+        if (paymentLinkEmailSent) {
+          console.log(`Payment link email sent to ${booking.email} for booking ${booking_id}`);
+        } else {
+          console.error(`CRITICAL: Payment link email returned false for booking ${booking_id} (recipient: ${booking.email})`);
+        }
+      } catch (err) {
+        console.error(`CRITICAL: Payment link email threw for booking ${booking_id}: ${err.message}`);
+      }
     }
 
     // Return BOTH url and checkout_url for frontend compatibility
@@ -121,6 +138,10 @@ module.exports = async function handler(req, res) {
       session_id: session.id,
       url: session.url,
       checkout_url: session.url,
+      _email_status: {
+        payment_link_sent: paymentLinkEmailSent,
+        recipient: booking.email || null,
+      },
     });
   } catch (err) {
     console.error('Error creating Stripe checkout:', err);
