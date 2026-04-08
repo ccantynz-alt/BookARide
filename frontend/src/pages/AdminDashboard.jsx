@@ -2430,11 +2430,23 @@ export const AdminDashboard = () => {
       />
 
       {/* Edit Booking Modal */}
-      <Dialog open={showEditBookingModal} onOpenChange={(open) => {
-        setShowEditBookingModal(open);
-        if (!open) { setEditingBooking(null); clearEditAddressSuggestions(); }
+      <Dialog open={showEditBookingModal} onOpenChange={(v) => {
+        if (!v) {
+          if (document.querySelector('[data-autocomplete-dropdown]')) return;
+          if (document.querySelector('.pac-container')) return;
+          setShowEditBookingModal(false);
+          setEditingBooking(null);
+        }
       }}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent
+          className="max-w-3xl max-h-[90vh] overflow-y-auto"
+          onPointerDownOutside={(e) => {
+            if (e.target?.closest?.('.pac-container')) e.preventDefault();
+          }}
+          onInteractOutside={(e) => {
+            if (e.target?.closest?.('.pac-container')) e.preventDefault();
+          }}
+        >
           <DialogHeader>
             <DialogTitle>Edit Booking #{editingBooking?.referenceNumber || editingBooking?.id?.slice(0, 8)}</DialogTitle>
           </DialogHeader>
