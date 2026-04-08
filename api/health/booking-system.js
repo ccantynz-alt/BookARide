@@ -79,19 +79,33 @@ async function checkDatabaseWrite() {
 function checkMailgun() {
   const apiKey = process.env.MAILGUN_API_KEY;
   const domain = process.env.MAILGUN_DOMAIN;
+  const region = process.env.MAILGUN_REGION || 'eu';
+  const adminRecipient = process.env.BOOKINGS_NOTIFICATION_EMAIL || 'bookings@bookaride.co.nz (DEFAULT — set BOOKINGS_NOTIFICATION_EMAIL to override)';
+  const noreplySender = process.env.NOREPLY_EMAIL || `noreply@${domain || 'mg.bookaride.co.nz'}`;
+
   if (!apiKey) {
-    return { ok: false, message: 'MAILGUN_API_KEY not set — customers will NOT receive confirmation emails' };
+    return {
+      ok: false,
+      message: 'MAILGUN_API_KEY not set — customers will NOT receive confirmation emails',
+      admin_recipient: adminRecipient,
+    };
   }
   if (!domain) {
     return {
       ok: true,
       warning: 'MAILGUN_DOMAIN not set — using default mg.bookaride.co.nz. Set this if your verified domain is different.',
       message: `MAILGUN_API_KEY set (${redact(apiKey)})`,
+      admin_recipient: adminRecipient,
+      sender: noreplySender,
+      region,
     };
   }
   return {
     ok: true,
-    message: `MAILGUN_API_KEY set, domain=${domain}`,
+    message: `MAILGUN_API_KEY set, domain=${domain}, region=${region}`,
+    admin_recipient: adminRecipient,
+    sender: noreplySender,
+    region,
   };
 }
 

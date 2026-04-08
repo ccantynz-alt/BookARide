@@ -82,6 +82,18 @@ const GoogleAddressInput = ({
   const [fallback, setFallback] = useState(false);
   const skipNextChange = useRef(false);
 
+  // Hold the latest onChange/onSelect in refs so the autocomplete effect
+  // below does NOT depend on them. Without this, parents that pass inline
+  // arrow functions (every admin modal does) produce new callback
+  // references on every render, which destroyed and reattached the
+  // Google widget on every keystroke — breaking the dropdown.
+  const onSelectRef = useRef(onSelect);
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onSelectRef.current = onSelect;
+    onChangeRef.current = onChange;
+  }, [onSelect, onChange]);
+
   // Load Google Maps JS API on first mount
   useEffect(() => {
     let cancelled = false;
@@ -101,7 +113,8 @@ const GoogleAddressInput = ({
     return () => { cancelled = true; };
   }, []);
 
-  // Attach Google Autocomplete to the input once the API is loaded
+  // Attach Google Autocomplete to the input once the API is loaded.
+  // Deps are [ready, region] only — callbacks come from refs above.
   useEffect(() => {
     if (!ready || !inputRef.current || autocompleteRef.current) return;
     if (!window.google || !window.google.maps || !window.google.maps.places) return;
@@ -117,8 +130,8 @@ const GoogleAddressInput = ({
       const address = place?.formatted_address || place?.name || '';
       if (address) {
         skipNextChange.current = true;
-        if (onSelect) onSelect(address);
-        else if (onChange) onChange(address);
+        if (onSelectRef.current) onSelectRef.current(address);
+        else if (onChangeRef.current) onChangeRef.current(address);
       }
     });
 
@@ -136,7 +149,7 @@ const GoogleAddressInput = ({
         autocompleteRef.current = null;
       }
     };
-  }, [ready, region, onSelect, onChange]);
+  }, [ready, region]);
 
   // Fallback: use the old backend-proxy approach if Google Maps JS fails to load
   const [suggestions, setSuggestions] = useState([]);
