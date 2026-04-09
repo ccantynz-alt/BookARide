@@ -12,9 +12,9 @@ const PRICING_TIERS = [
   { maxKm: 16.0, rate: 6.00 },
   { maxKm: 25.5, rate: 5.50 },
   { maxKm: 35.0, rate: 5.00 },
-  { maxKm: 50.0, rate: 4.00 },
+  { maxKm: 50.0, rate: 3.13 },
   { maxKm: 60.0, rate: 2.60 },
-  { maxKm: 75.0, rate: 2.47 },
+  { maxKm: 75.0, rate: 2.84 },
   { maxKm: 100.0, rate: 2.70 },
   { maxKm: Infinity, rate: 3.50 },
 ];
