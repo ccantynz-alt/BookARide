@@ -149,43 +149,73 @@ async function createBooking(req, res) {
     if (!process.env.MAILGUN_DOMAIN) {
       console.warn(`MAILGUN_DOMAIN not set — using default (mg.bookaride.co.nz)`);
     }
+    if (!process.env.BOOKINGS_NOTIFICATION_EMAIL) {
+      console.warn(`WARN: BOOKINGS_NOTIFICATION_EMAIL not set — admin notification going to default ${adminEmail}`);
+    }
 
-    // 1. Send CUSTOMER confirmation email (fire-and-forget — don't block booking response)
+    // === Send customer + admin emails IN PARALLEL and AWAIT both ===
+    //
+    // CRITICAL: On Vercel serverless, firing a sendEmail() promise and
+    // returning the response immediately causes the function to freeze
+    // before the Mailgun HTTP POST completes, dropping the email
+    // silently. We MUST await the promises before res.json() returns.
+    // Promise.allSettled means one failure does not block the other.
+    let customerEmailSent = false;
+    let adminEmailSent = false;
     try {
       const customerTemplate = customerBookingReceivedEmail(bookingDoc, { requiresApproval });
-      sendEmail({
-        to: booking.email,
-        subject: customerTemplate.subject,
-        html: customerTemplate.html,
-        replyTo: 'info@bookaride.co.nz',
-      }).then(ok => {
-        if (ok) console.log(`Customer confirmation email sent for booking #${refNumber}`);
-        else console.error(`CRITICAL: Customer confirmation email returned false for booking #${refNumber}`);
-      }).catch(err => {
-        console.error(`CRITICAL: Customer confirmation email threw for booking #${refNumber}: ${err.message}`);
-      });
-    } catch (templateErr) {
-      console.error(`Customer email template error for booking #${refNumber}: ${templateErr.message}`);
-    }
-
-    // 2. Send admin notification (fire-and-forget)
-    try {
       const adminTemplate = adminNewBookingEmail(bookingDoc, { requiresApproval });
-      sendEmail({
-        to: adminEmail,
-        subject: adminTemplate.subject,
-        html: adminTemplate.html,
-      }).then(ok => {
-        if (ok) console.log(`Admin notification sent for booking #${refNumber} to ${adminEmail}`);
-        else console.error(`CRITICAL: Admin notification returned false for booking #${refNumber}`);
-      }).catch(err => {
-        console.error(`CRITICAL: Admin notification threw for booking #${refNumber}: ${err.message}`);
-      });
-    } catch (templateErr) {
-      console.error(`Admin email template error for booking #${refNumber}: ${templateErr.message}`);
+
+      const results = await Promise.allSettled([
+        sendEmail({
+          to: booking.email,
+          subject: customerTemplate.subject,
+          html: customerTemplate.html,
+          replyTo: 'info@bookaride.co.nz',
+        }),
+        sendEmail({
+          to: adminEmail,
+          subject: adminTemplate.subject,
+          html: adminTemplate.html,
+        }),
+      ]);
+
+      customerEmailSent = results[0].status === 'fulfilled' && results[0].value === true;
+      adminEmailSent = results[1].status === 'fulfilled' && results[1].value === true;
+
+      if (customerEmailSent) {
+        console.log(`Customer confirmation email sent for booking #${refNumber} to ${booking.email}`);
+      } else {
+        const reason = results[0].status === 'rejected'
+          ? results[0].reason?.message
+          : 'Mailgun returned false';
+        console.error(`CRITICAL: Customer confirmation email failed for booking #${refNumber}: ${reason}`);
+      }
+
+      if (adminEmailSent) {
+        console.log(`Admin notification sent for booking #${refNumber} to ${adminEmail}`);
+      } else {
+        const reason = results[1].status === 'rejected'
+          ? results[1].reason?.message
+          : 'Mailgun returned false';
+        console.error(`CRITICAL: Admin notification failed for booking #${refNumber} (recipient: ${adminEmail}): ${reason}`);
+      }
+    } catch (emailErr) {
+      console.error(`CRITICAL: Email dispatch threw for booking #${refNumber}: ${emailErr.message}`);
     }
 
-    return res.status(201).json(bookingDoc);
+    // Return the booking with email status flags so the frontend
+    // (and Craig) can see exactly what happened without digging
+    // through Vercel logs.
+    return res.status(201).json({
+      ...bookingDoc,
+      _email_status: {
+        customer_sent: customerEmailSent,
+        admin_sent: adminEmailSent,
+        admin_recipient: adminEmail,
+        mailgun_configured: !!process.env.MAILGUN_API_KEY,
+      },
+    });
   } catch (err) {
     console.error('CRITICAL: Unhandled error in createBooking:', err);
     return res.status(500).json({
