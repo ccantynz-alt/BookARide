@@ -616,7 +616,10 @@ export const AdminDashboard = () => {
         params
       });
       
-      const newBookings = Array.isArray(response.data) ? response.data : [];
+      // Support both { bookings, total } wrapper and plain array
+      const rd = response.data;
+      const newBookings = Array.isArray(rd) ? rd : (Array.isArray(rd?.bookings) ? rd.bookings : []);
+      if (rd?.total !== undefined) setTotalBookings(rd.total);
       
       // Cache a small subset for offline fallback (keeps localStorage fast)
       try {
@@ -696,7 +699,8 @@ export const AdminDashboard = () => {
       if (dateFrom) params.date_from = dateFrom;
       if (dateTo) params.date_to = dateTo;
       const response = await axios.get(`${API}/bookings`, { ...getAuthHeaders(), params });
-      const fresh = Array.isArray(response.data) ? response.data : [];
+      const freshRd = response.data;
+      const fresh = Array.isArray(freshRd) ? freshRd : (Array.isArray(freshRd?.bookings) ? freshRd.bookings : []);
       setBookings(fresh);
       try {
         localStorage.setItem('cachedBookings', JSON.stringify(fresh.slice(0, 50)));

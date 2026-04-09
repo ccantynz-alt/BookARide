@@ -226,16 +226,47 @@ async function createBooking(req, res) {
 
 async function listBookings(req, res) {
   try {
-    // TODO: Add JWT auth check for admin
-    const bookings = await findMany('bookings', {}, {
-      limit: 200,
-      sort: { createdAt: -1 },
-    });
+    const sql = getDb();
 
-    // Exclude shuttle bookings (shuttle service removed)
-    const filtered = bookings.filter(b => b.serviceType !== 'shared-shuttle');
+    // Parse query parameters
+    const limitParam = parseInt(req.query.limit);
+    const limit = limitParam === 0 ? 5000 : (limitParam || 5000);
+    const search = req.query.search || '';
 
-    return res.status(200).json(filtered);
+    // Build query — exclude shared-shuttle
+    let conditions = [`(data->>'serviceType' != 'shared-shuttle' OR data->>'serviceType' IS NULL)`];
+    let values = [];
+    let paramIdx = 1;
+
+    // Search filter
+    if (search) {
+      conditions.push(`(
+        data->>'name' ILIKE $${paramIdx} OR
+        data->>'email' ILIKE $${paramIdx} OR
+        data->>'phone' ILIKE $${paramIdx} OR
+        data->>'referenceNumber' ILIKE $${paramIdx} OR
+        data->>'pickupAddress' ILIKE $${paramIdx} OR
+        data->>'dropoffAddress' ILIKE $${paramIdx}
+      )`);
+      values.push(`%${search}%`);
+      paramIdx++;
+    }
+
+    const whereClause = conditions.join(' AND ');
+
+    // Get total count + bookings in parallel
+    const countQuery = `SELECT COUNT(*) as cnt FROM bookings WHERE ${whereClause}`;
+    const dataQuery = `SELECT data FROM bookings WHERE ${whereClause} ORDER BY created_at DESC LIMIT ${limit}`;
+
+    const [countResult, rows] = await Promise.all([
+      sql(countQuery, values),
+      sql(dataQuery, values),
+    ]);
+
+    const total = parseInt(countResult[0]?.cnt || '0', 10);
+    const bookings = rows.map(r => r.data);
+
+    return res.status(200).json({ bookings, total });
   } catch (err) {
     console.error('Error listing bookings:', err);
     return res.status(500).json({ detail: `Error listing bookings: ${err.message}` });
