@@ -573,6 +573,51 @@ endpoint FIRST.** Don't dive into code until you know which specific
 component is failing. If `mailgun.ok === false`, the fix is to set
 `MAILGUN_API_KEY` in Vercel, not to rewrite the email code.
 
+### 0. ABSOLUTE RULES — READ FIRST (2026-04-09)
+
+**These rules exist because agents kept breaking working features. Every
+rule here was written in blood — a real customer was lost or stranded
+because an agent ignored it. THERE ARE NO EXCEPTIONS.**
+
+1. **If it works, DO NOT TOUCH IT.** No "performance optimizations" that
+   risk hiding bookings. No "refactoring" of working code. No changing
+   sort orders, limits, or query logic on working endpoints.
+
+2. **NEVER paginate bookings.** `loadAllBookings` MUST be `true` in
+   `AdminDashboard.jsx`. Setting it to `false` hid bookings and cost the
+   business real money. ALL bookings must load. No limits that hide data.
+
+3. **Bookings are sorted by PICKUP DATE in the frontend.** The
+   `filterBookings()` function in `AdminDashboard.jsx` sorts upcoming
+   dates first, past dates at bottom. Handles both YYYY-MM-DD and
+   DD/MM/YYYY formats. Do NOT change this sort logic.
+
+4. **ALL frontend files MUST use the centralized API config** —
+   `import { API } from '../config/api'` or `'../../config/api'`.
+   NEVER use `import.meta.env.VITE_BACKEND_URL` directly.
+
+5. **Booking name field** — always resolve:
+   `booking.name || (firstName + lastName) || 'Customer'`.
+   NEVER assume firstName/lastName exist.
+
+6. **Google address autocomplete is SERVER-SIDE ONLY.** Google Maps JS
+   is BANNED from the browser. See section 6c for details. Google's
+   native widget locked the input field and broke bookings for months.
+
+7. **If you find a bug, fix it immediately.** Do not ask. Do not defer.
+   The owner is not a developer. Just fix it.
+
+8. **Every fix must be tested with `npm run build`** before pushing.
+
+9. **NEVER introduce a change that reduces the number of visible
+   bookings.** If a booking exists in the database, it MUST show in the
+   admin panel. Missing bookings = lost revenue = business failure.
+
+10. **Stripe checkout response MUST include `url` field.** Both
+    `create-checkout.js` and `create-checkout-link.js` MUST return
+    `{ url: session.url, checkout_url: session.url }`. The frontend
+    checks `response.data?.url` for the redirect.
+
 ### 1. Database: Neon PostgreSQL ONLY
 
 We migrated FROM MongoDB TO Neon PostgreSQL. This is DONE. Do not touch it.
@@ -656,56 +701,50 @@ Xero accounting integration has been removed. We do not use Xero for invoicing, 
 - **NEVER** include Xero in customer-facing FAQs or marketing copy
 - If Xero-related code still exists anywhere in the codebase, delete it
 
-### 6c. Google Address Autocomplete (2026-04-06) — LOCKED
+### 6c. Google Address Autocomplete (2026-04-09) — LOCKED
 
-The Google Maps Places autocomplete dropdown on booking forms took **weeks**
-to fix and was working via Google's NATIVE Autocomplete widget (PR #226,
-commit ed66fcf). It broke again because the supporting endpoint was never
-ported to Vercel serverless. Protecting it now.
+**CRITICAL: Google's native Autocomplete widget is BANNED.**
 
-**The architecture (do not change):**
+It was removed on 2026-04-09 because it repeatedly locked the input field
+when the API key was invalid, expired, or restricted. This made the entire
+booking form unusable and cost the business real customers. It happened
+multiple times between November 2025 and April 2026.
+
+**The architecture (LOCKED — do not change):**
 
 1. **Component**: `frontend/src/components/GoogleAddressInput.jsx` uses
-   Google's **native** `window.google.maps.places.Autocomplete` widget.
-   The dropdown (`.pac-container`) is rendered by Google directly into
-   `document.body` — NOT by React. This is what makes it work inside
-   Radix Dialog, React Portals, and on iOS touch.
-   - Do NOT replace with a custom React dropdown.
-   - Do NOT wrap it in a React Portal yourself.
-   - Do NOT try to use `@react-google-maps/api` Autocomplete component.
-   - The `.pac-container { z-index: 999999 !important }` style is
-     injected on mount — do not remove it.
+   **SERVER-SIDE autocomplete ONLY**. Google's JS library (`maps.googleapis.com/maps/api/js`)
+   is **NEVER loaded in the browser**. The dropdown is 100% React, 100% ours.
+   - **NEVER** add `window.google.maps.places.Autocomplete` — it locks the input
+   - **NEVER** load Google Maps JS in the browser — it injects "Oops!" errors
+   - **NEVER** use `@react-google-maps/api` or any Google Maps React wrapper
+   - The input is ALWAYS typeable. Always. No exceptions. No loading states that block it.
 
-2. **API key loader**: The component calls `GET /api/maps/client-key` to
-   fetch the Google Maps JS API key, then loads
-   `https://maps.googleapis.com/maps/api/js?key=...&libraries=places`
-   dynamically. If the key fetch fails, the component falls back to the
-   OLD broken custom dropdown — so this endpoint MUST exist.
+2. **How it works**: When the user types 3+ characters, the component calls
+   `GET /api/places/autocomplete?input=...` which calls Google's Places API
+   **server-side** (in the Vercel serverless function). Results come back as
+   JSON and we render our own dropdown. If Google's API fails, we fall back
+   to a static list of 55 NZ addresses.
 
 3. **Required Vercel serverless endpoints** (both must exist):
    - `api/maps/client-key.js` — returns `{ key: process.env.GOOGLE_MAPS_API_KEY }`.
-     This is what makes the native Google widget work.
-   - `api/places/autocomplete.js` — backend-proxy autocomplete used as a
-     fallback AND by the chatbot/other non-browser callers.
+     Still needed for distance calculation, NOT for the autocomplete widget.
+   - `api/places/autocomplete.js` — the ONLY autocomplete provider. Calls
+     Google Places API server-side. Has 55 NZ suburb fallbacks.
 
 4. **Required Vercel env var**: `GOOGLE_MAPS_API_KEY` must be set in the
-   Vercel dashboard (Production + Preview + Development). The key should
-   have HTTP referrer restrictions in Google Cloud Console so it's safe
-   to expose to the browser.
+   Vercel dashboard (Production + Preview + Development). Used by the
+   server-side autocomplete and distance calculation, NOT by browser JS.
 
 **If the dropdown breaks again, check in this order:**
-1. Does `GET /api/maps/client-key` return `200 { key: "AIza..." }`? If 404,
-   the endpoint file was deleted — restore `api/maps/client-key.js`.
-2. Is `GOOGLE_MAPS_API_KEY` set in Vercel env vars? If empty, add it.
-3. Is the HTTP referrer restriction in Google Cloud Console blocking
-   your domain? Whitelist `bookaride.co.nz/*` and the Vercel preview URLs.
-4. Does `GoogleAddressInput.jsx` still use `new window.google.maps.places.Autocomplete`?
-   If someone "simplified" it to use a React component, restore the
-   native widget version from commit ed66fcf.
+1. Is `GOOGLE_MAPS_API_KEY` set in Vercel env vars? If empty, add it.
+2. Did someone re-add Google Maps JS loading? Check GoogleAddressInput.jsx —
+   it must NOT import or load `maps.googleapis.com/maps/api/js`.
+3. Check `/api/places/autocomplete` — does it return predictions?
+4. **After changing env vars in Vercel, you MUST redeploy for them to take effect.**
 
-**Never delete `api/maps/client-key.js`.** Never "consolidate" it away.
-Never replace Google's native Autocomplete widget with a custom React
-dropdown — the custom one is broken on iOS and inside modals.
+**NEVER re-add Google's native widget.** NEVER load Google Maps JS in the browser.
+This is the #1 cause of booking form failures since November 2025.
 
 ### 6b. Admin UI Standards (2026-04-06) — LOCKED
 
