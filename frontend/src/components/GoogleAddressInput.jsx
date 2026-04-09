@@ -4,49 +4,54 @@ import axios from 'axios';
 import { API } from '../config/api';
 
 /**
- * GoogleAddressInput
+ * GoogleAddressInput — Bulletproof address autocomplete.
  *
- * Uses Google's NATIVE Places Autocomplete widget — the dropdown is rendered
- * and managed entirely by Google, not by React. This eliminates all conflicts
- * with Radix Dialog, React Portals, and iOS touch event handling.
+ * Strategy:
+ * 1. Try to load Google Maps JS API and use native Autocomplete
+ * 2. If that fails for ANY reason, fall back to server-side proxy
+ * 3. If THAT fails, let the user type freely — never block the input
  *
- * The Google Maps JS API is loaded dynamically on first mount.
- * The API key is fetched from the backend to keep it server-managed.
- *
- * Props:
- *   value        – controlled string value
- *   onChange     – called when user types (controlled input)
- *   onSelect     – called with full address string when user picks a suggestion
- *   placeholder  – input placeholder text
- *   id, required, disabled, className – standard input props
- *   region       – bias results to this region (default "nz")
+ * The input is ALWAYS typeable. Nothing locks it. Nothing blocks it.
+ * LOCKED: Do not change without testing on live site.
  */
 
-let googleMapsLoaded = false;
-let googleMapsLoading = false;
+let googleMapsState = 'idle'; // idle | loading | loaded | failed
 let googleMapsCallbacks = [];
 
 function loadGoogleMaps(apiKey) {
-  if (googleMapsLoaded) return Promise.resolve();
-  if (googleMapsLoading) {
-    return new Promise((resolve) => googleMapsCallbacks.push(resolve));
+  if (googleMapsState === 'loaded') return Promise.resolve();
+  if (googleMapsState === 'failed') return Promise.reject(new Error('Google Maps failed'));
+  if (googleMapsState === 'loading') {
+    return new Promise((resolve, reject) => {
+      googleMapsCallbacks.push({ resolve, reject });
+    });
   }
-  googleMapsLoading = true;
+
+  googleMapsState = 'loading';
   return new Promise((resolve, reject) => {
-    googleMapsCallbacks.push(resolve);
+    googleMapsCallbacks.push({ resolve, reject });
+
+    const timeout = setTimeout(() => {
+      googleMapsState = 'failed';
+      googleMapsCallbacks.forEach(cb => cb.reject(new Error('Timeout')));
+      googleMapsCallbacks = [];
+    }, 5000);
+
     const script = document.createElement('script');
     script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
     script.async = true;
     script.defer = true;
     script.onload = () => {
-      googleMapsLoaded = true;
-      googleMapsLoading = false;
-      googleMapsCallbacks.forEach((cb) => cb());
+      clearTimeout(timeout);
+      googleMapsState = 'loaded';
+      googleMapsCallbacks.forEach(cb => cb.resolve());
       googleMapsCallbacks = [];
     };
     script.onerror = () => {
-      googleMapsLoading = false;
-      reject(new Error('Failed to load Google Maps'));
+      clearTimeout(timeout);
+      googleMapsState = 'failed';
+      googleMapsCallbacks.forEach(cb => cb.reject(new Error('Script load failed')));
+      googleMapsCallbacks = [];
     };
     document.head.appendChild(script);
   });
@@ -58,11 +63,14 @@ async function getApiKey() {
   if (cachedApiKey) return cachedApiKey;
   try {
     const resp = await axios.get(`${API}/maps/client-key`);
-    cachedApiKey = resp.data.key;
-    return cachedApiKey;
+    if (resp.data?.key) {
+      cachedApiKey = resp.data.key;
+      return cachedApiKey;
+    }
   } catch {
-    return null;
+    // Key endpoint failed
   }
+  return null;
 }
 
 const GoogleAddressInput = ({
@@ -78,15 +86,12 @@ const GoogleAddressInput = ({
 }) => {
   const inputRef = useRef(null);
   const autocompleteRef = useRef(null);
-  const [ready, setReady] = useState(googleMapsLoaded);
-  const [fallback, setFallback] = useState(false);
-  const skipNextChange = useRef(false);
+  const [useNative, setUseNative] = useState(false);
+  const [suggestions, setSuggestions] = useState([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const debounceRef = useRef(null);
 
-  // Hold the latest onChange/onSelect in refs so the autocomplete effect
-  // below does NOT depend on them. Without this, parents that pass inline
-  // arrow functions (every admin modal does) produce new callback
-  // references on every render, which destroyed and reattached the
-  // Google widget on every keystroke — breaking the dropdown.
+  // Keep callbacks in refs so Autocomplete listener doesn't depend on them
   const onSelectRef = useRef(onSelect);
   const onChangeRef = useRef(onChange);
   useEffect(() => {
@@ -94,73 +99,71 @@ const GoogleAddressInput = ({
     onChangeRef.current = onChange;
   }, [onSelect, onChange]);
 
-  // Load Google Maps JS API on first mount
+  // Try to load Google Maps native autocomplete
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         const key = await getApiKey();
-        if (!key || cancelled) {
-          if (!cancelled) setFallback(true);
-          return;
-        }
+        if (!key || cancelled) return;
         await loadGoogleMaps(key);
-        if (!cancelled) setReady(true);
+        if (!cancelled) setUseNative(true);
       } catch {
-        if (!cancelled) setFallback(true);
+        // Failed — use fallback, input stays functional
       }
     })();
     return () => { cancelled = true; };
   }, []);
 
-  // Attach Google Autocomplete to the input once the API is loaded.
-  // Deps are [ready, region] only — callbacks come from refs above.
+  // Attach native Google Autocomplete when ready
   useEffect(() => {
-    if (!ready || !inputRef.current || autocompleteRef.current) return;
-    if (!window.google || !window.google.maps || !window.google.maps.places) return;
+    if (!useNative || !inputRef.current || autocompleteRef.current) return;
+    if (!window.google?.maps?.places) {
+      setUseNative(false);
+      return;
+    }
 
-    const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
-      componentRestrictions: { country: region },
-      fields: ['formatted_address', 'name'],
-      types: ['address'],
-    });
+    try {
+      const ac = new window.google.maps.places.Autocomplete(inputRef.current, {
+        componentRestrictions: { country: region },
+        fields: ['formatted_address', 'name'],
+      });
 
-    autocomplete.addListener('place_changed', () => {
-      const place = autocomplete.getPlace();
-      const address = place?.formatted_address || place?.name || '';
-      if (address) {
-        skipNextChange.current = true;
-        if (onSelectRef.current) onSelectRef.current(address);
-        else if (onChangeRef.current) onChangeRef.current(address);
-      }
-    });
+      ac.addListener('place_changed', () => {
+        const place = ac.getPlace();
+        const address = place?.formatted_address || place?.name || '';
+        if (address) {
+          if (onSelectRef.current) onSelectRef.current(address);
+          else if (onChangeRef.current) onChangeRef.current(address);
+        }
+      });
 
-    autocompleteRef.current = autocomplete;
+      autocompleteRef.current = ac;
 
-    // Style the Google dropdown to sit above everything (z-index)
-    // Google's .pac-container is appended to document.body
-    const style = document.createElement('style');
-    style.textContent = '.pac-container { z-index: 999999 !important; }';
-    document.head.appendChild(style);
+      // Ensure Google dropdown renders above modals
+      const style = document.createElement('style');
+      style.textContent = '.pac-container { z-index: 999999 !important; }';
+      document.head.appendChild(style);
+    } catch {
+      setUseNative(false);
+    }
 
     return () => {
       if (autocompleteRef.current) {
-        window.google.maps.event.clearInstanceListeners(autocompleteRef.current);
+        try {
+          window.google.maps.event.clearInstanceListeners(autocompleteRef.current);
+        } catch { /* ignore */ }
         autocompleteRef.current = null;
       }
     };
-  }, [ready, region]);
+  }, [useNative, region]);
 
-  // Fallback: use the old backend-proxy approach if Google Maps JS fails to load
-  const [suggestions, setSuggestions] = useState([]);
-  const [showFallback, setShowFallback] = useState(false);
-  const debounceRef = useRef(null);
-
-  const fetchFallbackSuggestions = useCallback((text) => {
+  // Fallback: server-side autocomplete
+  const fetchSuggestions = useCallback((text) => {
     clearTimeout(debounceRef.current);
-    if (!text || text.length < 3) {
+    if (!text || text.length < 3 || useNative) {
       setSuggestions([]);
-      setShowFallback(false);
+      setShowDropdown(false);
       return;
     }
     debounceRef.current = setTimeout(async () => {
@@ -168,20 +171,40 @@ const GoogleAddressInput = ({
         const resp = await axios.get(`${API}/places/autocomplete`, {
           params: { input: text, region },
         });
-        const preds = resp.data.predictions || [];
+        const preds = resp.data?.predictions || [];
         setSuggestions(preds);
-        setShowFallback(preds.length > 0);
+        setShowDropdown(preds.length > 0);
       } catch {
         setSuggestions([]);
+        setShowDropdown(false);
       }
     }, 300);
-  }, [region]);
+  }, [region, useNative]);
 
   const handleChange = (e) => {
     const val = e.target.value;
     if (onChange) onChange(val);
-    if (fallback) fetchFallbackSuggestions(val);
+    if (!useNative) fetchSuggestions(val);
   };
+
+  const handleSelectSuggestion = (description) => {
+    setShowDropdown(false);
+    setSuggestions([]);
+    if (onSelect) onSelect(description);
+    else if (onChange) onChange(description);
+  };
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!showDropdown) return;
+    const handleClick = (e) => {
+      if (inputRef.current && !inputRef.current.parentElement.contains(e.target)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('pointerdown', handleClick);
+    return () => document.removeEventListener('pointerdown', handleClick);
+  }, [showDropdown]);
 
   return (
     <div className="relative">
@@ -196,19 +219,14 @@ const GoogleAddressInput = ({
         autoComplete="off"
         className={`transition-all duration-200 focus:ring-2 focus:ring-gold ${className}`}
       />
-      {/* Fallback dropdown (only if Google Maps JS failed to load) */}
-      {fallback && showFallback && suggestions.length > 0 && (
+      {!useNative && showDropdown && suggestions.length > 0 && (
         <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto z-[99999]">
           {suggestions.map((s, i) => (
             <button
               key={i}
               type="button"
-              onClick={() => {
-                setShowFallback(false);
-                setSuggestions([]);
-                if (onSelect) onSelect(s.description);
-                else if (onChange) onChange(s.description);
-              }}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => handleSelectSuggestion(s.description)}
               className="w-full px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-100 last:border-0"
             >
               {s.description}
