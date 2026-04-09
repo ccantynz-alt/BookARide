@@ -1,77 +1,22 @@
-import React, { useRef, useEffect, useCallback, useState } from 'react';
+import React, { useRef, useCallback, useState, useEffect } from 'react';
 import { Input } from './ui/input';
 import axios from 'axios';
 import { API } from '../config/api';
 
 /**
- * GoogleAddressInput — Bulletproof address autocomplete.
+ * GoogleAddressInput — Server-side autocomplete ONLY.
  *
- * Strategy:
- * 1. Try to load Google Maps JS API and use native Autocomplete
- * 2. If that fails for ANY reason, fall back to server-side proxy
- * 3. If THAT fails, let the user type freely — never block the input
+ * LOCKED DECISION (2026-04-09): Google's native Autocomplete widget
+ * is NOT used. It locked the input field when the API key was invalid,
+ * expired, or restricted — making the entire booking form unusable.
+ * This happened repeatedly and cost the business real customers.
  *
- * The input is ALWAYS typeable. Nothing locks it. Nothing blocks it.
- * LOCKED: Do not change without testing on live site.
+ * Instead, we use our own /api/places/autocomplete endpoint which
+ * calls Google's Places API server-side. The dropdown is 100% ours.
+ * Google's JS library NEVER loads, NEVER touches the input.
+ *
+ * The input is ALWAYS typeable. Always. No exceptions.
  */
-
-let googleMapsState = 'idle'; // idle | loading | loaded | failed
-let googleMapsCallbacks = [];
-
-function loadGoogleMaps(apiKey) {
-  if (googleMapsState === 'loaded') return Promise.resolve();
-  if (googleMapsState === 'failed') return Promise.reject(new Error('Google Maps failed'));
-  if (googleMapsState === 'loading') {
-    return new Promise((resolve, reject) => {
-      googleMapsCallbacks.push({ resolve, reject });
-    });
-  }
-
-  googleMapsState = 'loading';
-  return new Promise((resolve, reject) => {
-    googleMapsCallbacks.push({ resolve, reject });
-
-    const timeout = setTimeout(() => {
-      googleMapsState = 'failed';
-      googleMapsCallbacks.forEach(cb => cb.reject(new Error('Timeout')));
-      googleMapsCallbacks = [];
-    }, 5000);
-
-    const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
-    script.async = true;
-    script.defer = true;
-    script.onload = () => {
-      clearTimeout(timeout);
-      googleMapsState = 'loaded';
-      googleMapsCallbacks.forEach(cb => cb.resolve());
-      googleMapsCallbacks = [];
-    };
-    script.onerror = () => {
-      clearTimeout(timeout);
-      googleMapsState = 'failed';
-      googleMapsCallbacks.forEach(cb => cb.reject(new Error('Script load failed')));
-      googleMapsCallbacks = [];
-    };
-    document.head.appendChild(script);
-  });
-}
-
-let cachedApiKey = null;
-
-async function getApiKey() {
-  if (cachedApiKey) return cachedApiKey;
-  try {
-    const resp = await axios.get(`${API}/maps/client-key`);
-    if (resp.data?.key) {
-      cachedApiKey = resp.data.key;
-      return cachedApiKey;
-    }
-  } catch {
-    // Key endpoint failed
-  }
-  return null;
-}
 
 const GoogleAddressInput = ({
   value,
@@ -85,83 +30,16 @@ const GoogleAddressInput = ({
   region = 'nz',
 }) => {
   const inputRef = useRef(null);
-  const autocompleteRef = useRef(null);
-  const [useNative, setUseNative] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
   const debounceRef = useRef(null);
+  const dropdownRef = useRef(null);
 
-  // Keep callbacks in refs so Autocomplete listener doesn't depend on them
-  const onSelectRef = useRef(onSelect);
-  const onChangeRef = useRef(onChange);
-  useEffect(() => {
-    onSelectRef.current = onSelect;
-    onChangeRef.current = onChange;
-  }, [onSelect, onChange]);
-
-  // Try to load Google Maps native autocomplete
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const key = await getApiKey();
-        if (!key || cancelled) return;
-        await loadGoogleMaps(key);
-        if (!cancelled) setUseNative(true);
-      } catch {
-        // Failed — use fallback, input stays functional
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
-
-  // Attach native Google Autocomplete when ready
-  useEffect(() => {
-    if (!useNative || !inputRef.current || autocompleteRef.current) return;
-    if (!window.google?.maps?.places) {
-      setUseNative(false);
-      return;
-    }
-
-    try {
-      const ac = new window.google.maps.places.Autocomplete(inputRef.current, {
-        componentRestrictions: { country: region },
-        fields: ['formatted_address', 'name'],
-      });
-
-      ac.addListener('place_changed', () => {
-        const place = ac.getPlace();
-        const address = place?.formatted_address || place?.name || '';
-        if (address) {
-          if (onSelectRef.current) onSelectRef.current(address);
-          else if (onChangeRef.current) onChangeRef.current(address);
-        }
-      });
-
-      autocompleteRef.current = ac;
-
-      // Ensure Google dropdown renders above modals
-      const style = document.createElement('style');
-      style.textContent = '.pac-container { z-index: 999999 !important; }';
-      document.head.appendChild(style);
-    } catch {
-      setUseNative(false);
-    }
-
-    return () => {
-      if (autocompleteRef.current) {
-        try {
-          window.google.maps.event.clearInstanceListeners(autocompleteRef.current);
-        } catch { /* ignore */ }
-        autocompleteRef.current = null;
-      }
-    };
-  }, [useNative, region]);
-
-  // Fallback: server-side autocomplete
+  // Fetch suggestions from our server-side proxy
   const fetchSuggestions = useCallback((text) => {
     clearTimeout(debounceRef.current);
-    if (!text || text.length < 3 || useNative) {
+    if (!text || text.length < 3) {
       setSuggestions([]);
       setShowDropdown(false);
       return;
@@ -174,24 +52,43 @@ const GoogleAddressInput = ({
         const preds = resp.data?.predictions || [];
         setSuggestions(preds);
         setShowDropdown(preds.length > 0);
+        setActiveIndex(-1);
       } catch {
         setSuggestions([]);
         setShowDropdown(false);
       }
-    }, 300);
-  }, [region, useNative]);
+    }, 250);
+  }, [region]);
 
   const handleChange = (e) => {
     const val = e.target.value;
     if (onChange) onChange(val);
-    if (!useNative) fetchSuggestions(val);
+    fetchSuggestions(val);
   };
 
   const handleSelectSuggestion = (description) => {
     setShowDropdown(false);
     setSuggestions([]);
+    setActiveIndex(-1);
     if (onSelect) onSelect(description);
     else if (onChange) onChange(description);
+  };
+
+  // Keyboard navigation
+  const handleKeyDown = (e) => {
+    if (!showDropdown || suggestions.length === 0) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveIndex(prev => Math.min(prev + 1, suggestions.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveIndex(prev => Math.max(prev - 1, 0));
+    } else if (e.key === 'Enter' && activeIndex >= 0) {
+      e.preventDefault();
+      handleSelectSuggestion(suggestions[activeIndex].description);
+    } else if (e.key === 'Escape') {
+      setShowDropdown(false);
+    }
   };
 
   // Close dropdown on outside click
@@ -206,6 +103,14 @@ const GoogleAddressInput = ({
     return () => document.removeEventListener('pointerdown', handleClick);
   }, [showDropdown]);
 
+  // Scroll active suggestion into view
+  useEffect(() => {
+    if (activeIndex >= 0 && dropdownRef.current) {
+      const item = dropdownRef.current.children[activeIndex];
+      if (item) item.scrollIntoView({ block: 'nearest' });
+    }
+  }, [activeIndex]);
+
   return (
     <div className="relative">
       <Input
@@ -213,21 +118,28 @@ const GoogleAddressInput = ({
         id={id}
         value={value}
         onChange={handleChange}
+        onKeyDown={handleKeyDown}
+        onFocus={() => { if (suggestions.length > 0) setShowDropdown(true); }}
         placeholder={placeholder}
         required={required}
         disabled={disabled}
         autoComplete="off"
         className={`transition-all duration-200 focus:ring-2 focus:ring-gold ${className}`}
       />
-      {!useNative && showDropdown && suggestions.length > 0 && (
-        <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto z-[99999]">
+      {showDropdown && suggestions.length > 0 && (
+        <div
+          ref={dropdownRef}
+          className="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto z-[99999]"
+        >
           {suggestions.map((s, i) => (
             <button
-              key={i}
+              key={s.place_id || i}
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => handleSelectSuggestion(s.description)}
-              className="w-full px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-100 last:border-0"
+              className={`w-full px-4 py-3 text-left text-sm border-b border-gray-100 last:border-0 transition-colors ${
+                i === activeIndex ? 'bg-gold/10 text-gray-900' : 'text-gray-700 hover:bg-gray-50'
+              }`}
             >
               {s.description}
             </button>
