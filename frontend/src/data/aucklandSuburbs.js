@@ -129,7 +129,7 @@ export const commonFAQs = [
   },
   {
     question: 'What payment methods do you accept?',
-    answer: 'We accept Visa, Mastercard, American Express, Afterpay, and cash. You can pay online when booking or in the vehicle. Corporate accounts available on request.'
+    answer: 'We accept Visa, Mastercard, American Express, and cash. You can pay online when booking or in the vehicle. Corporate accounts available on request.'
   },
   {
     question: 'Can you accommodate large groups?',

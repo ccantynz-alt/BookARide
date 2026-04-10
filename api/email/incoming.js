@@ -176,7 +176,6 @@ PRICING (for reference — always direct customers to the online calculator for 
 
 PAYMENT OPTIONS:
 - Credit/Debit Card (online, processed securely)
-- Afterpay (buy now, pay later)
 - Cash (pay the driver)
 - Invoice (for corporate clients)
 

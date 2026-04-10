@@ -303,29 +303,15 @@ export const BookNow = () => {
       saveCustomerDetails();
 
       try {
-        if (formData.paymentMethod === 'afterpay') {
-          const afterpayResponse = await axios.post(`${API}/afterpay/create-checkout`, {
-            booking_id: booking.id,
-            redirect_confirm_url: `${window.location.origin}/payment-success?method=afterpay`,
-            redirect_cancel_url: `${window.location.origin}/book-now`
-          });
-          if (afterpayResponse.data.redirect_url) {
-            window.location.href = afterpayResponse.data.redirect_url;
-          } else {
-            setIsProcessingPayment(false);
-            toast.error('Unable to redirect to Afterpay');
-          }
+        const checkoutResponse = await axios.post(`${API}/payment/create-checkout`, {
+          booking_id: booking.id,
+          origin_url: window.location.origin
+        });
+        if (checkoutResponse.data?.url) {
+          window.location.href = checkoutResponse.data.url;
         } else {
-          const checkoutResponse = await axios.post(`${API}/payment/create-checkout`, {
-            booking_id: booking.id,
-            origin_url: window.location.origin
-          });
-          if (checkoutResponse.data?.url) {
-            window.location.href = checkoutResponse.data.url;
-          } else {
-            setIsProcessingPayment(false);
-            toast.success(`Booking #${booking.referenceNumber || booking.id?.slice(0, 8)} created! We'll email you a payment link shortly.`);
-          }
+          setIsProcessingPayment(false);
+          toast.success(`Booking #${booking.referenceNumber || booking.id?.slice(0, 8)} created! We'll email you a payment link shortly.`);
         }
       } catch (paymentError) {
         setIsProcessingPayment(false);
@@ -826,21 +812,6 @@ export const BookNow = () => {
                           </div>
                           {promoError && <p className="text-xs text-red-500">{promoError}</p>}
                           {promoApplied && <p className="text-xs text-green-600 font-medium">You saved ${promoApplied.discountAmount.toFixed(2)} with {promoApplied.code}!</p>}
-                        </div>
-
-                        {/* Payment Method */}
-                        <div className="space-y-2">
-                          <Label>Payment Method</Label>
-                          <div className="flex gap-4">
-                            <label className="flex items-center gap-2 cursor-pointer">
-                              <input type="radio" name="paymentMethod" value="card" checked={formData.paymentMethod === 'card'} onChange={handleChange} className="text-gold focus:ring-gold" />
-                              <span className="text-sm text-gray-700">Credit/Debit Card</span>
-                            </label>
-                            <label className="flex items-center gap-2 cursor-pointer">
-                              <input type="radio" name="paymentMethod" value="afterpay" checked={formData.paymentMethod === 'afterpay'} onChange={handleChange} className="text-gold focus:ring-gold" />
-                              <span className="text-sm text-gray-700">Afterpay</span>
-                            </label>
-                          </div>
                         </div>
 
                         <div className="space-y-2">

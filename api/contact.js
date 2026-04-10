@@ -54,7 +54,7 @@ Key info:
 - Minimum fare: $150 per one-way trip
 - Service areas: Auckland CBD, North Shore, Hibiscus Coast, Rodney, wider Auckland
 - Available 24/7 for airport transfers
-- Payment: Credit/Debit Card, Afterpay, Cash, or Invoice
+- Payment: Credit/Debit Card, Cash, or Invoice
 
 RULES:
 - Keep it concise (under 150 words)
