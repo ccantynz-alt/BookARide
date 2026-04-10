@@ -57,6 +57,7 @@ const PrivacyPolicy = React.lazy(() => import('./pages/PrivacyPolicy'));
 const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard'));
 const SEODashboard = React.lazy(() => import('./pages/SEODashboard'));
 const DriverLogin = React.lazy(() => import('./pages/DriverLogin'));
+const DriverSign = React.lazy(() => import('./pages/DriverSign'));
 const DriveWithUs = React.lazy(() => import('./pages/DriveWithUs'));
 // New SEO Pages
 const AucklandAirportShuttle = React.lazy(() => import('./pages/seo/AucklandAirportShuttle'));
@@ -358,6 +359,9 @@ function App() {
               {/* Live GPS Tracking Routes (No Header/Footer) */}
               <Route path="/track/driver/:sessionId" element={<DriverTracking />} />
               <Route path="/track/:trackingRef" element={<CustomerTracking />} />
+
+              {/* Driver pickup sign — standalone full-screen, no header/footer */}
+              <Route path="/driver-sign" element={<DriverSign />} />
 
               {/* Admin Routes (No language prefix) */}
               <Route path="/admin/login" element={<AdminLogin />} />
