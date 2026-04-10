@@ -1038,6 +1038,68 @@ This means:
 
 This rule exists because agents repeatedly fixed one form while leaving the identical bug in 2-3 other forms, causing the same issue to resurface in different contexts.
 
+### 15. SMS — Twilio only (2026-04-10)
+
+Craig authorised SMS integration on 2026-04-10 because booking confirmations
+and day-before reminders were email-only and customers were missing them.
+The architecture is locked:
+
+**Provider: Twilio REST API only. No fallbacks. No other providers.**
+
+- Library: `api/_lib/twilio.js` — uses native `fetch` to call
+  `https://api.twilio.com/2010-04-01/Accounts/{sid}/Messages.json`. No
+  `twilio` npm package. Same pattern as `api/_lib/mailgun.js`.
+- Templates: `api/_lib/sms-templates.js` — exports `bookingReceivedSms`,
+  `bookingConfirmedSms`, `bookingReminderSms`. Each body is kept under
+  ~300 chars so Twilio sends at most 2 segments.
+- Required Vercel env vars:
+  - `TWILIO_ACCOUNT_SID` (must start with `AC`)
+  - `TWILIO_AUTH_TOKEN`
+  - `TWILIO_PHONE_NUMBER` (E.164 format, e.g. `+64211234567`)
+- `sendSms({ to, body })` NEVER throws. It returns `false` on any failure
+  and logs `CRITICAL: ...`. An SMS failure must not break a booking or
+  crash a webhook.
+- NZ phone normalisation: `normaliseNzPhone(raw)` handles local format
+  (`021 743 3211`), international (`+64 21 743 3211`), and bare digits.
+
+**Where SMS fires:**
+1. `api/bookings.js` — sends `bookingReceivedSms` in parallel with the
+   customer confirmation email and admin notification email, all inside
+   one `Promise.allSettled`.
+2. `api/webhook/stripe.js` — sends `bookingConfirmedSms` right after the
+   paid confirmation email. Protected by the existing `payment_status === 'paid'`
+   idempotency guard at the top of the handler.
+3. `api/cron/send-reminders.js` — NEW cron, scheduled in `vercel.json` at
+   `0 6 * * *` (06:00 UTC = 18:00 NZST, the evening before). Finds every
+   confirmed booking for tomorrow's NZ date and sends reminder email +
+   reminder SMS in parallel. Stamps `reminderSentForDate` so same-day
+   re-runs don't double-send. Only marks as reminded when at least one
+   channel succeeds (retry on total failure).
+4. `api/admin/send-reminders.js` — admin manual-trigger reminder endpoint
+   now also sends SMS, sharing the same template as the cron.
+
+**Health checks:**
+- `api/health.js` — reports Twilio as `configured` only when all three
+  env vars are set.
+- `api/health/booking-system.js` — has a dedicated `checkTwilio()`
+  function that validates SID starts with `AC` and phone is E.164.
+  Listed under `importantChecks` (non-blocking warning, not critical).
+
+**Rules:**
+- **NEVER** add another SMS provider (ClickSend, MessageBird, SNS, etc.).
+- **NEVER** add the `twilio` npm package. Use native `fetch`.
+- **NEVER** move SMS send into fire-and-forget (background task). It must
+  be awaited inside the request handler — Vercel freezes the function
+  otherwise.
+- **NEVER** remove SMS from the booking flow without Craig's explicit
+  approval.
+- **NEVER** change the reminder cron schedule without Craig's approval.
+- **ALWAYS** use the templates in `api/_lib/sms-templates.js` — do not
+  inline SMS copy.
+- If the customer didn't provide a phone (shouldn't happen — `phone` is
+  required on the booking form), log a warning and skip the SMS. Do NOT
+  throw.
+
 ---
 
 ## MANDATORY AUTOMATED CHECKS — RUN BEFORE EVERY COMMIT

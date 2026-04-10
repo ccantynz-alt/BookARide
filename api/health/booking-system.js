@@ -142,6 +142,40 @@ function checkGoogleMaps() {
   return { ok: true, message: `Google Maps key set (${redact(key)})` };
 }
 
+function checkTwilio() {
+  const sid = process.env.TWILIO_ACCOUNT_SID;
+  const token = process.env.TWILIO_AUTH_TOKEN;
+  const from = process.env.TWILIO_PHONE_NUMBER;
+
+  const missing = [];
+  if (!sid) missing.push('TWILIO_ACCOUNT_SID');
+  if (!token) missing.push('TWILIO_AUTH_TOKEN');
+  if (!from) missing.push('TWILIO_PHONE_NUMBER');
+
+  if (missing.length > 0) {
+    return {
+      ok: false,
+      message: `Twilio SMS disabled — missing: ${missing.join(', ')}. Booking confirmation + reminder SMS will not send until these are set.`,
+    };
+  }
+  if (!sid.startsWith('AC')) {
+    return {
+      ok: false,
+      message: 'TWILIO_ACCOUNT_SID does not start with AC — likely not a valid Twilio SID',
+    };
+  }
+  if (!/^\+\d{8,15}$/.test(from)) {
+    return {
+      ok: false,
+      message: `TWILIO_PHONE_NUMBER "${from}" is not in E.164 format (e.g. +64211234567)`,
+    };
+  }
+  return {
+    ok: true,
+    message: `Twilio configured (SID ${redact(sid)}, from ${from})`,
+  };
+}
+
 function checkPricingEngine() {
   try {
     const result = calculatePrice({
@@ -200,6 +234,7 @@ module.exports = async function handler(req, res) {
     mailgun: checkMailgun(),
     stripe: checkStripe(),
     google_maps: checkGoogleMaps(),
+    twilio: checkTwilio(),
     pricing_engine: checkPricingEngine(),
     email_template: checkEmailTemplate(),
   };
@@ -214,7 +249,7 @@ module.exports = async function handler(req, res) {
   const blockingFailures = criticalChecks.filter(k => !checks[k].ok);
 
   // Important but non-blocking
-  const importantChecks = ['mailgun', 'stripe', 'google_maps'];
+  const importantChecks = ['mailgun', 'stripe', 'google_maps', 'twilio'];
   const warnings = importantChecks.filter(k => !checks[k].ok);
 
   const status = blockingFailures.length === 0 ? 'healthy' : 'broken';

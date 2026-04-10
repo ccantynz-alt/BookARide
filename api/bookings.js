@@ -6,10 +6,12 @@
  */
 const { findOne, findMany, insertOne, updateOne, getDb } = require('./_lib/db');
 const { sendEmail } = require('./_lib/mailgun');
+const { sendSms } = require('./_lib/twilio');
 const {
   customerBookingReceivedEmail,
   adminNewBookingEmail,
 } = require('./_lib/email-templates');
+const { bookingReceivedSms } = require('./_lib/sms-templates');
 const { v4: uuidv4 } = require('uuid');
 
 async function getNextReferenceNumber() {
@@ -153,18 +155,20 @@ async function createBooking(req, res) {
       console.warn(`WARN: BOOKINGS_NOTIFICATION_EMAIL not set — admin notification going to default ${adminEmail}`);
     }
 
-    // === Send customer + admin emails IN PARALLEL and AWAIT both ===
+    // === Send customer + admin emails AND customer SMS IN PARALLEL ===
     //
     // CRITICAL: On Vercel serverless, firing a sendEmail() promise and
     // returning the response immediately causes the function to freeze
     // before the Mailgun HTTP POST completes, dropping the email
     // silently. We MUST await the promises before res.json() returns.
-    // Promise.allSettled means one failure does not block the other.
+    // Promise.allSettled means one failure does not block the others.
     let customerEmailSent = false;
     let adminEmailSent = false;
+    let customerSmsSent = false;
     try {
       const customerTemplate = customerBookingReceivedEmail(bookingDoc, { requiresApproval });
       const adminTemplate = adminNewBookingEmail(bookingDoc, { requiresApproval });
+      const smsBody = bookingReceivedSms(bookingDoc, { requiresApproval });
 
       const results = await Promise.allSettled([
         sendEmail({
@@ -178,10 +182,12 @@ async function createBooking(req, res) {
           subject: adminTemplate.subject,
           html: adminTemplate.html,
         }),
+        sendSms({ to: booking.phone, body: smsBody }),
       ]);
 
       customerEmailSent = results[0].status === 'fulfilled' && results[0].value === true;
       adminEmailSent = results[1].status === 'fulfilled' && results[1].value === true;
+      customerSmsSent = results[2].status === 'fulfilled' && results[2].value === true;
 
       if (customerEmailSent) {
         console.log(`Customer confirmation email sent for booking #${refNumber} to ${booking.email}`);
@@ -200,8 +206,17 @@ async function createBooking(req, res) {
           : 'Mailgun returned false';
         console.error(`CRITICAL: Admin notification failed for booking #${refNumber} (recipient: ${adminEmail}): ${reason}`);
       }
-    } catch (emailErr) {
-      console.error(`CRITICAL: Email dispatch threw for booking #${refNumber}: ${emailErr.message}`);
+
+      if (customerSmsSent) {
+        console.log(`Customer SMS sent for booking #${refNumber} to ${booking.phone}`);
+      } else {
+        const reason = results[2].status === 'rejected'
+          ? results[2].reason?.message
+          : 'Twilio returned false (check env vars or phone format)';
+        console.error(`SMS send failed for booking #${refNumber} (phone: ${booking.phone}): ${reason}`);
+      }
+    } catch (dispatchErr) {
+      console.error(`CRITICAL: Notification dispatch threw for booking #${refNumber}: ${dispatchErr.message}`);
     }
 
     // Return the booking with email status flags so the frontend

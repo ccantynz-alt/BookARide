@@ -5,7 +5,9 @@
  */
 const { findMany, updateOne } = require('../_lib/db');
 const { sendEmail } = require('../_lib/mailgun');
+const { sendSms } = require('../_lib/twilio');
 const { customerReminderEmail } = require('../_lib/email-templates');
+const { bookingReminderSms } = require('../_lib/sms-templates');
 
 function getTomorrowNZDate() {
   // NZ timezone: UTC+12 (or +13 in daylight saving)
@@ -42,52 +44,70 @@ module.exports = async function handler(req, res) {
 
     console.log(`Found ${eligible.length} bookings needing reminders out of ${bookings.length} for ${tomorrowDate}`);
 
-    let sent = 0;
-    let failed = 0;
+    let emailSent = 0;
+    let emailFailed = 0;
+    let smsSent = 0;
+    let smsFailed = 0;
     const now = new Date().toISOString();
 
     for (const booking of eligible) {
       try {
         const template = customerReminderEmail(booking);
-        const success = await sendEmail({
-          to: booking.email,
-          subject: template.subject,
-          html: template.html,
-          replyTo: 'info@bookaride.co.nz',
-        });
+        const smsBody = bookingReminderSms(booking);
 
-        if (success) {
-          // Mark as reminded to prevent duplicate sends
+        const [emailResult, smsResult] = await Promise.allSettled([
+          sendEmail({
+            to: booking.email,
+            subject: template.subject,
+            html: template.html,
+            replyTo: 'info@bookaride.co.nz',
+          }),
+          booking.phone
+            ? sendSms({ to: booking.phone, body: smsBody })
+            : Promise.resolve(false),
+        ]);
+
+        const emailOk = emailResult.status === 'fulfilled' && emailResult.value === true;
+        const smsOk = smsResult.status === 'fulfilled' && smsResult.value === true;
+
+        if (emailOk) emailSent++; else emailFailed++;
+        if (smsOk) smsSent++; else if (booking.phone) smsFailed++;
+
+        if (emailOk || smsOk) {
           await updateOne('bookings', { id: booking.id }, {
             $set: {
               reminderSentForDate: tomorrowDate,
               reminderSentAt: now,
               reminderSource: 'admin_manual',
-              reminderEmailSent: true,
+              reminderEmailSent: emailOk,
+              reminderSmsSent: smsOk,
               reminderCompleted: true,
             },
           });
-          sent++;
-        } else {
-          failed++;
         }
       } catch (err) {
         console.error(`Error sending reminder for booking ${booking.id}:`, err.message);
-        failed++;
+        emailFailed++;
       }
     }
 
-    console.log(`Reminder job complete: ${sent} sent, ${failed} failed, ${bookings.length - eligible.length} skipped`);
+    console.log(
+      `Admin reminder job complete: email ${emailSent}/${emailFailed}, ` +
+      `sms ${smsSent}/${smsFailed}, ${bookings.length - eligible.length} skipped`
+    );
 
     return res.status(200).json({
       success: true,
-      message: `Sent ${sent} reminders, ${failed} failed, ${bookings.length - eligible.length} skipped (already sent or cancelled)`,
+      message:
+        `Sent ${emailSent} email reminders and ${smsSent} SMS reminders. ` +
+        `${emailFailed} email failed, ${smsFailed} SMS failed. ` +
+        `${bookings.length - eligible.length} skipped (already sent or cancelled).`,
       details: {
         date: tomorrowDate,
         total_for_date: bookings.length,
         eligible: eligible.length,
-        sent,
-        failed,
+        email: { sent: emailSent, failed: emailFailed },
+        sms: { sent: smsSent, failed: smsFailed },
         skipped: bookings.length - eligible.length,
       },
     });

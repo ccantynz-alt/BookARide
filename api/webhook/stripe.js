@@ -11,12 +11,14 @@
  */
 const { findOne, updateOne, insertOne } = require('../_lib/db');
 const { sendEmail } = require('../_lib/mailgun');
+const { sendSms } = require('../_lib/twilio');
 const {
   customerBookingConfirmedEmail,
   emailWrapper,
   bookingDetailsTable,
   customerName: getCustomerName,
 } = require('../_lib/email-templates');
+const { bookingConfirmedSms } = require('../_lib/sms-templates');
 
 // Vercel serverless: disable body parsing so we get the raw body for Stripe verification
 module.exports.config = {
@@ -125,8 +127,21 @@ module.exports = async function handler(req, res) {
         html: emailWrapper(adminBody),
       }).catch(err => console.error('Admin notification email failed:', err.message));
 
-      // 3. Google Calendar event — TODO: port calendar integration
-      // 4. iCloud contact sync — TODO: port iCloud integration
+      // 3. Customer confirmation SMS (Twilio)
+      if (booking.phone) {
+        const smsBody = bookingConfirmedSms(paidBooking);
+        const smsOk = await sendSms({ to: booking.phone, body: smsBody });
+        if (smsOk) {
+          console.log(`Payment confirmation SMS sent for booking #${booking.referenceNumber} to ${booking.phone}`);
+        } else {
+          console.error(`SMS confirmation failed for booking #${booking.referenceNumber} (phone: ${booking.phone})`);
+        }
+      } else {
+        console.warn(`No phone number on booking #${booking.referenceNumber} — skipping SMS confirmation`);
+      }
+
+      // 4. Google Calendar event — TODO: port calendar integration
+      // 5. iCloud contact sync — TODO: port iCloud integration
     }
 
     return res.status(200).json({ received: true });
