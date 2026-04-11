@@ -188,7 +188,7 @@ const SearchConsolePanel = () => {
             <div>
               <h3 className="font-semibold text-amber-800">Search Console Not Connected</h3>
               <p className="text-sm text-amber-700 mt-1">
-                Add your <code className="bg-amber-100 px-1 rounded">GOOGLE_SERVICE_ACCOUNT_JSON</code> env var in Render
+                Add your <code className="bg-amber-100 px-1 rounded">GOOGLE_SERVICE_ACCOUNT_JSON</code> env var in Vercel
                 with Search Console access to see real ranking data.
               </p>
               <div className="mt-3 p-3 bg-white rounded-lg border border-amber-200">

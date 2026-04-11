@@ -324,7 +324,7 @@ export default function Cockpit() {
                       <p className="text-xs text-slate-500 mt-1">API Key: <code className="bg-slate-200 px-1 rounded">{mapsStatus.key_prefix}</code></p>
                     )}
                     {!mapsStatus.configured && (
-                      <p className="text-sm text-red-700 mt-2 font-medium">GOOGLE_MAPS_API_KEY is not set! Set it in Render → Environment tab.</p>
+                      <p className="text-sm text-red-700 mt-2 font-medium">GOOGLE_MAPS_API_KEY is not set! Set it in Vercel → Settings → Environment Variables.</p>
                     )}
                     {mapsStatus.tests && (
                       <div className="mt-3 space-y-2">
