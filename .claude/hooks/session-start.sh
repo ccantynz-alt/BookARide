@@ -43,6 +43,16 @@ if [ -f "CLAUDE.md" ]; then
   echo ""
 fi
 
+# === Roadmap (paused / authorised work that must not be forgotten) ===
+if [ -f ".claude/ROADMAP.md" ]; then
+  ROADMAP_LINES=$(wc -l < .claude/ROADMAP.md)
+  echo "  📋 .claude/ROADMAP.md exists (${ROADMAP_LINES} lines)"
+  echo "     Contains paused but Craig-authorised work — READ IT"
+  echo "     before starting anything new. Do not resume paused"
+  echo "     work without Craig's explicit go-ahead."
+  echo ""
+fi
+
 # === Install frontend dependencies (Vite + React) ===
 if [ -f "frontend/package.json" ]; then
   echo "  Installing frontend dependencies..."
