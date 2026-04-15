@@ -616,7 +616,10 @@ export const AdminDashboard = () => {
         params
       });
       
-      const newBookings = Array.isArray(response.data) ? response.data : [];
+      // Support both { bookings, total } wrapper and plain array
+      const rd = response.data;
+      const newBookings = Array.isArray(rd) ? rd : (Array.isArray(rd?.bookings) ? rd.bookings : []);
+      if (rd?.total !== undefined) setTotalBookings(rd.total);
       
       // Cache a small subset for offline fallback (keeps localStorage fast)
       try {
@@ -696,7 +699,8 @@ export const AdminDashboard = () => {
       if (dateFrom) params.date_from = dateFrom;
       if (dateTo) params.date_to = dateTo;
       const response = await axios.get(`${API}/bookings`, { ...getAuthHeaders(), params });
-      const fresh = Array.isArray(response.data) ? response.data : [];
+      const freshRd = response.data;
+      const fresh = Array.isArray(freshRd) ? freshRd : (Array.isArray(freshRd?.bookings) ? freshRd.bookings : []);
       setBookings(fresh);
       try {
         localStorage.setItem('cachedBookings', JSON.stringify(fresh.slice(0, 50)));
@@ -1340,6 +1344,38 @@ export const AdminDashboard = () => {
         String(b.referenceNumber)?.includes(searchTerm)
       ));
     }
+
+    // Sort by pickup date — upcoming first, then past
+    // Handles both YYYY-MM-DD and DD/MM/YYYY formats
+    const parseDate = (dateStr) => {
+      if (!dateStr) return new Date(0);
+      // YYYY-MM-DD
+      if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) return new Date(dateStr);
+      // DD/MM/YYYY
+      const parts = dateStr.split('/');
+      if (parts.length === 3) return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+      return new Date(dateStr);
+    };
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    filtered.sort((a, b) => {
+      const dateA = parseDate(a.date);
+      const dateB = parseDate(b.date);
+      const aIsFuture = dateA >= today;
+      const bIsFuture = dateB >= today;
+
+      // Future/today dates first
+      if (aIsFuture && !bIsFuture) return -1;
+      if (!aIsFuture && bIsFuture) return 1;
+
+      // Within future: soonest first (ascending)
+      if (aIsFuture && bIsFuture) return dateA - dateB;
+
+      // Within past: most recent first (descending)
+      return dateB - dateA;
+    });
 
     setFilteredBookings(filtered);
   };
