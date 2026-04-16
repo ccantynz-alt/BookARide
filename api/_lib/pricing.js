@@ -55,31 +55,6 @@ const MATAKANA_CONCERT_KEYWORDS = [
   'matakana country park', 'matakana country club', 'rd5/1151', '1151 leigh road',
 ];
 
-const LONG_DISTANCE_KEYWORDS = [
-  'tauranga', 'mount maunganui', 'papamoa', 'otumoetai', 'bay of plenty',
-  'hamilton', 'whangarei', 'cambridge', 'te awamutu',
-];
-
-const NORTH_AUCKLAND_KEYWORDS = [
-  'warkworth', 'snells beach', 'matakana', 'leigh', 'wellsford', 'puhoi', 'alberton',
-];
-
-const HAMILTON_KEYWORDS = [
-  'hamilton', 'frankton', 'hillcrest', 'rototuna', 'cambridge', 'te awamutu', 'ngaruawahia',
-];
-
-const WHANGAREI_KEYWORDS = [
-  'whangarei', 'onerahi', 'kensington', 'tikipunga', 'regent', 'whangarei heads',
-];
-
-const TAURANGA_KEYWORDS = [
-  'tauranga', 'mount maunganui', 'papamoa', 'te puna', 'omokoroa', 'bethlehem',
-  'welcome bay', 'otumoetai', 'greerton', 'bay of plenty', 'tauriko', 'katikati', 'waihi beach',
-];
-
-const DEFAULT_FALLBACK_KM = 75.0;
-const LONG_DISTANCE_FALLBACK_KM = 200.0;
-
 function norm(s) {
   return (s || '').toLowerCase().replace(/\u0101/g, 'a');
 }
@@ -91,8 +66,14 @@ function matchesAny(text, keywords) {
 /**
  * Calculate price for a booking.
  *
+ * NO FALLBACKS. distanceKm MUST be the actual Google Maps driving distance.
+ * If the caller can't get a real distance, it MUST refuse to quote — never
+ * guess with a default km value. Silent fallbacks overcharged customers
+ * (75 km default produced $245 quotes for short trips) — owner banned them
+ * 2026-04-16.
+ *
  * @param {Object} params
- * @param {number} params.distanceKm - Distance from Google Maps (or null for fallback)
+ * @param {number} params.distanceKm - REQUIRED actual driving distance in km
  * @param {string} params.pickupAddress
  * @param {string} params.dropoffAddress
  * @param {number} params.passengers - Total passengers (1st included)
@@ -110,44 +91,20 @@ function calculatePrice({
   vipAirportPickup = false,
   oversizedLuggage = false,
 }) {
+  if (distanceKm == null || !Number.isFinite(distanceKm) || distanceKm <= 0) {
+    const err = new Error(
+      'distanceKm is required and must be a positive number. ' +
+      'NO fallback distances are permitted — the caller must obtain the actual ' +
+      'driving distance from Google Maps before calling calculatePrice.'
+    );
+    err.code = 'DISTANCE_REQUIRED';
+    throw err;
+  }
+
   const pickupLower = norm(pickupAddress);
   const dropoffLower = norm(dropoffAddress);
 
-  // Determine fallback distance if Google Maps didn't return one
-  const isLongDistance = matchesAny(pickupLower, LONG_DISTANCE_KEYWORDS)
-    || matchesAny(dropoffLower, LONG_DISTANCE_KEYWORDS);
-  const isHibiscusToAirport =
-    (matchesAny(pickupLower, HIBISCUS_COAST_KEYWORDS) && matchesAny(dropoffLower, AIRPORT_KEYWORDS))
-    || (matchesAny(dropoffLower, HIBISCUS_COAST_KEYWORDS) && matchesAny(pickupLower, AIRPORT_KEYWORDS));
-
-  let fallbackKm = DEFAULT_FALLBACK_KM;
-  if (isLongDistance) fallbackKm = LONG_DISTANCE_FALLBACK_KM;
-  else if (isHibiscusToAirport) fallbackKm = 55.0;
-
-  let distance = distanceKm != null ? distanceKm : fallbackKm;
-
-  // Zone minimum distances
-  const isToAirport = matchesAny(dropoffLower, AIRPORT_KEYWORDS);
-  const isFromAirport = matchesAny(pickupLower, AIRPORT_KEYWORDS);
-
-  if (matchesAny(pickupLower, NORTH_AUCKLAND_KEYWORDS) || matchesAny(dropoffLower, NORTH_AUCKLAND_KEYWORDS)) {
-    if ((matchesAny(pickupLower, NORTH_AUCKLAND_KEYWORDS) && isToAirport) ||
-        (matchesAny(dropoffLower, NORTH_AUCKLAND_KEYWORDS) && isFromAirport)) {
-      distance = Math.max(distance, 65.0);
-    }
-  }
-  if ((matchesAny(pickupLower, HAMILTON_KEYWORDS) && isToAirport) ||
-      (matchesAny(dropoffLower, HAMILTON_KEYWORDS) && isFromAirport)) {
-    distance = Math.max(distance, 125.0);
-  }
-  if ((matchesAny(pickupLower, WHANGAREI_KEYWORDS) && isToAirport) ||
-      (matchesAny(dropoffLower, WHANGAREI_KEYWORDS) && isFromAirport)) {
-    distance = Math.max(distance, 182.0);
-  }
-  if ((matchesAny(pickupLower, TAURANGA_KEYWORDS) && isToAirport) ||
-      (matchesAny(dropoffLower, TAURANGA_KEYWORDS) && isFromAirport)) {
-    distance = Math.max(distance, 200.0);
-  }
+  let distance = distanceKm;
 
   // Concert pricing check
   const isConcertDest = matchesAny(dropoffLower, MATAKANA_CONCERT_KEYWORDS);

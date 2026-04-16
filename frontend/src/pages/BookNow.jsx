@@ -188,8 +188,17 @@ export const BookNow = () => {
     } catch (error) {
       if (requestId !== priceCalcRef.current) return;
       console.error('Error calculating price:', error);
-      setPricing(prev => ({ ...prev, calculating: false }));
-      toast.error('Unable to calculate distance. Please check addresses.');
+      // Reset pricing to zero so Book Now stays disabled — never quote without a real distance.
+      setPricing({
+        distance: 0, basePrice: 0, airportFee: 0, oversizedLuggageFee: 0,
+        passengerFee: 0, stripeFee: 0, subtotal: 0, totalPrice: 0,
+        calculating: false, promoCode: null, promoDiscount: 0,
+      });
+      const serverDetail = error.response?.data?.detail;
+      toast.error(
+        serverDetail ||
+        "We couldn't calculate the driving distance for this route. Please check the addresses or contact us at info@bookaride.co.nz / 0800 266 5274."
+      );
     }
   };
 
