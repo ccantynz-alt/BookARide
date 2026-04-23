@@ -138,7 +138,7 @@ async function createBooking(req, res) {
       return res.status(500).json({ detail: 'Booking verification failed' });
     }
 
-    console.log(`Booking #${refNumber} created and verified: ${id}`);
+    console.error(`Booking #${refNumber} created and verified: ${id}`);
 
     const adminEmail = process.env.BOOKINGS_NOTIFICATION_EMAIL || 'bookings@bookaride.co.nz';
 
@@ -184,7 +184,7 @@ async function createBooking(req, res) {
       adminEmailSent = results[1].status === 'fulfilled' && results[1].value === true;
 
       if (customerEmailSent) {
-        console.log(`Customer confirmation email sent for booking #${refNumber} to ${booking.email}`);
+        console.error(`Customer confirmation email sent for booking #${refNumber} to ${booking.email}`);
       } else {
         const reason = results[0].status === 'rejected'
           ? results[0].reason?.message
@@ -193,7 +193,7 @@ async function createBooking(req, res) {
       }
 
       if (adminEmailSent) {
-        console.log(`Admin notification sent for booking #${refNumber} to ${adminEmail}`);
+        console.error(`Admin notification sent for booking #${refNumber} to ${adminEmail}`);
       } else {
         const reason = results[1].status === 'rejected'
           ? results[1].reason?.message

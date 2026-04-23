@@ -49,7 +49,7 @@ async function sendEmail({ to, subject, html, from, fromName = 'BookaRide', repl
 
     if (res.ok) {
       const data = await res.json().catch(() => ({}));
-      console.log(`Email sent via Mailgun (${region.toUpperCase()}) to ${to} — ${data.id || 'ok'}`);
+      console.error(`Email sent via Mailgun (${region.toUpperCase()}) to ${to} — ${data.id || 'ok'}`);
       return true;
     } else {
       const text = await res.text();

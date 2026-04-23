@@ -18,13 +18,6 @@ const {
   customerName: getCustomerName,
 } = require('../_lib/email-templates');
 
-// Vercel serverless: disable body parsing so we get the raw body for Stripe verification
-module.exports.config = {
-  api: {
-    bodyParser: false,
-  },
-};
-
 async function getRawBody(req) {
   const chunks = [];
   for await (const chunk of req) {
@@ -33,7 +26,7 @@ async function getRawBody(req) {
   return Buffer.concat(chunks);
 }
 
-module.exports = async function handler(req, res) {
+async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ detail: 'Method not allowed' });
 
@@ -70,7 +63,7 @@ module.exports = async function handler(req, res) {
 
       // Idempotency: check if already processed
       if (booking.payment_status === 'paid') {
-        console.log(`Booking ${bookingId} already marked as paid — skipping duplicate webhook`);
+        console.error(`Booking ${bookingId} already marked as paid — skipping duplicate webhook`);
         return res.status(200).json({ received: true, status: 'already_processed' });
       }
 
@@ -94,7 +87,7 @@ module.exports = async function handler(req, res) {
         },
       }).catch(() => {}); // Non-critical
 
-      console.log(`Payment confirmed for booking ${bookingId} (ref #${booking.referenceNumber})`);
+      console.error(`Payment confirmed for booking ${bookingId} (ref #${booking.referenceNumber})`);
 
       // === POST-PAYMENT ACTIONS (all 4 required) ===
 
@@ -134,4 +127,11 @@ module.exports = async function handler(req, res) {
     console.error('Stripe webhook error:', err);
     return res.status(400).json({ detail: `Webhook error: ${err.message}` });
   }
-};
+}
+
+// Vercel serverless: bodyParser MUST be false so we receive the raw body for
+// Stripe signature verification. Setting this on the exported function (not on
+// the initial module.exports object) is required — assigning module.exports = fn
+// would replace the object and lose any properties set on it beforehand.
+module.exports = handler;
+module.exports.config = { api: { bodyParser: false } };

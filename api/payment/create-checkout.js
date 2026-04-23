@@ -102,7 +102,7 @@ module.exports = async function handler(req, res) {
       // Continue anyway — the customer should still get the payment link
     }
 
-    console.log(`Stripe checkout created: ${session.id} for booking ${booking_id}`);
+    console.error(`Stripe checkout created: ${session.id} for booking ${booking_id}`);
 
     // === Email the customer their payment link — MUST await ===
     //
@@ -124,7 +124,7 @@ module.exports = async function handler(req, res) {
           replyTo: 'info@bookaride.co.nz',
         });
         if (paymentLinkEmailSent) {
-          console.log(`Payment link email sent to ${booking.email} for booking ${booking_id}`);
+          console.error(`Payment link email sent to ${booking.email} for booking ${booking_id}`);
         } else {
           console.error(`CRITICAL: Payment link email returned false for booking ${booking_id} (recipient: ${booking.email})`);
         }
