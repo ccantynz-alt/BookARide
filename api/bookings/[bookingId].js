@@ -4,9 +4,12 @@
  * DELETE /api/bookings/:bookingId — Soft-delete (moves to deleted_bookings)
  */
 const { findOne, updateOne, insertOne, deleteOne } = require('../_lib/db');
+const { verifyAdmin } = require('../_lib/auth');
 
 module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
+
+  if (!verifyAdmin(req, res)) return;
 
   const { bookingId } = req.query;
   if (!bookingId) {
@@ -73,7 +76,7 @@ module.exports = async function handler(req, res) {
       // Step 3: Only now delete from active bookings
       await deleteOne('bookings', { id: bookingId });
 
-      console.log(`Booking ${bookingId} soft-deleted (backed up to deleted_bookings)`);
+      console.error(`Booking ${bookingId} soft-deleted (backed up to deleted_bookings)`);
       return res.status(200).json({ success: true, message: 'Booking deleted (recoverable)' });
     } catch (err) {
       console.error('Delete booking error:', err.message);

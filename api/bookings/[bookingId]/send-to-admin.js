@@ -4,10 +4,12 @@
  */
 const { findOne } = require('../../_lib/db');
 const { sendEmail } = require('../../_lib/mailgun');
+const { verifyAdmin } = require('../../_lib/auth');
 const { adminNewBookingEmail } = require('../../_lib/email-templates');
 
 module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
+  if (!verifyAdmin(req, res)) return;
   if (req.method !== 'POST') return res.status(405).json({ detail: 'Method not allowed' });
 
   const { bookingId } = req.query;
@@ -34,7 +36,7 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ detail: 'Failed to send admin notification' });
     }
 
-    console.log(`Booking #${booking.referenceNumber} details sent to admin ${adminEmail}`);
+    console.error(`Booking #${booking.referenceNumber} details sent to admin ${adminEmail}`);
     return res.status(200).json({
       success: true,
       message: `Booking details sent to ${adminEmail}`,

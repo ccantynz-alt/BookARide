@@ -5,6 +5,7 @@
  */
 const { findOne } = require('../../_lib/db');
 const { sendEmail } = require('../../_lib/mailgun');
+const { verifyAdmin } = require('../../_lib/auth');
 const {
   customerBookingReceivedEmail,
   customerBookingConfirmedEmail,
@@ -12,6 +13,7 @@ const {
 
 module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
+  if (!verifyAdmin(req, res)) return;
   if (req.method !== 'POST') return res.status(405).json({ detail: 'Method not allowed' });
 
   const { bookingId } = req.query;
@@ -47,7 +49,7 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ detail: 'Failed to send confirmation email' });
     }
 
-    console.log(`Confirmation resent for booking #${booking.referenceNumber} to ${booking.email}`);
+    console.error(`Confirmation resent for booking #${booking.referenceNumber} to ${booking.email}`);
     return res.status(200).json({
       success: true,
       message: `Confirmation email sent to ${booking.email}`,

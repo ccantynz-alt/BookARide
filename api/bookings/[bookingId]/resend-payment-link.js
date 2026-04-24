@@ -5,11 +5,13 @@
  */
 const { findOne, updateOne, insertOne } = require('../../_lib/db');
 const { sendEmail } = require('../../_lib/mailgun');
+const { verifyAdmin } = require('../../_lib/auth');
 const { customerPaymentLinkEmail } = require('../../_lib/email-templates');
 const { v4: uuidv4 } = require('uuid');
 
 module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
+  if (!verifyAdmin(req, res)) return;
   if (req.method !== 'POST') return res.status(405).json({ detail: 'Method not allowed' });
 
   const { bookingId } = req.query;
@@ -109,7 +111,7 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ detail: 'Failed to send payment link email' });
     }
 
-    console.log(`Payment link resent for booking #${booking.referenceNumber} to ${booking.email}`);
+    console.error(`Payment link resent for booking #${booking.referenceNumber} to ${booking.email}`);
     return res.status(200).json({
       success: true,
       message: `Payment link sent to ${booking.email}`,
