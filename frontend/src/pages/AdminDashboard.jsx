@@ -1208,6 +1208,23 @@ export const AdminDashboard = () => {
     }
   };
 
+  const handleApproveBooking = async (bookingId) => {
+    try {
+      const response = await axios.post(`${API}/bookings/${bookingId}/approve`, {}, getAuthHeaders());
+      toast.success(response.data.message || 'Booking approved and customer notified!');
+      updateBookingLocally(bookingId, { status: 'confirmed' });
+      silentRefresh();
+    } catch (error) {
+      if (error.response?.status === 401) {
+        toast.error('Session expired. Please login again.');
+        handleLogout();
+        return;
+      }
+      console.error('Error approving booking:', error);
+      toast.error(error.response?.data?.detail || 'Failed to approve booking');
+    }
+  };
+
   const handleDeleteBooking = async (bookingId, bookingName, sendNotification = true) => {
     const confirmMessage = sendNotification 
       ? `Are you sure you want to CANCEL booking for ${bookingName}?\n\n⚠️ The customer will receive a cancellation email and SMS.`
@@ -1811,25 +1828,71 @@ export const AdminDashboard = () => {
           </div>
         )}
 
-        {/* ALERT: Bookings needing approval */}
+        {/* ALERT: Bookings needing approval — shows full details + one-click approve */}
         {stats.pendingApproval > 0 && (
-          <Card className="border-orange-400 bg-orange-50 shadow-md">
-            <CardContent className="p-4 flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <AlertTriangle className="w-8 h-8 text-orange-600 shrink-0 animate-pulse" />
-                <div>
-                  <p className="font-bold text-orange-900">{stats.pendingApproval} booking{stats.pendingApproval !== 1 ? 's' : ''} need{stats.pendingApproval === 1 ? 's' : ''} your approval!</p>
-                  <p className="text-sm text-orange-800 mt-0.5">These are last-minute bookings (within 24 hours). They won't be confirmed until you approve them.</p>
-                </div>
+          <div className="border-2 border-orange-400 bg-orange-50 rounded-xl shadow-md overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center gap-3 px-5 py-4 bg-orange-100 border-b border-orange-300">
+              <AlertTriangle className="w-6 h-6 text-orange-600 shrink-0 animate-pulse" />
+              <div>
+                <p className="font-bold text-orange-900 text-base">
+                  {stats.pendingApproval} booking{stats.pendingApproval !== 1 ? 's' : ''} need{stats.pendingApproval === 1 ? 's' : ''} your approval
+                </p>
+                <p className="text-sm text-orange-700">Last-minute bookings within 24 hours — approve to confirm and notify the customer.</p>
               </div>
-              <Button
-                onClick={() => setStatusFilter('pending_approval')}
-                className="bg-orange-600 hover:bg-orange-700 text-white font-semibold shrink-0"
-              >
-                View &amp; Approve
-              </Button>
-            </CardContent>
-          </Card>
+            </div>
+
+            {/* One card per pending booking */}
+            <div className="divide-y divide-orange-200">
+              {bookings.filter(b => b && b.status === 'pending_approval').map(b => {
+                const name = (b.firstName && b.lastName)
+                  ? `${b.firstName} ${b.lastName}`
+                  : b.name || 'Customer';
+                const ref = b.referenceNumber ? `#${b.referenceNumber}` : '';
+                const price = b.pricing?.totalPrice || b.totalPrice || 0;
+                return (
+                  <div key={b.id} className="px-5 py-4 flex flex-wrap items-start justify-between gap-4">
+                    <div className="flex flex-col gap-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-orange-900 text-base">{name}</span>
+                        {ref && <span className="text-xs font-mono bg-orange-200 text-orange-800 px-2 py-0.5 rounded">{ref}</span>}
+                        {b.phone && <span className="text-sm text-orange-700">{b.phone}</span>}
+                      </div>
+                      <div className="text-sm text-orange-800 font-semibold">
+                        {b.date} at {b.time} &mdash; {b.passengers || 1} passenger{(b.passengers || 1) !== 1 ? 's' : ''}
+                      </div>
+                      <div className="text-sm text-orange-700 truncate max-w-xl">
+                        <span className="font-medium">From:</span> {b.pickupAddress || 'N/A'}
+                      </div>
+                      <div className="text-sm text-orange-700 truncate max-w-xl">
+                        <span className="font-medium">To:</span> {b.dropoffAddress || 'N/A'}
+                      </div>
+                      <div className="text-sm font-bold text-orange-900">
+                        ${parseFloat(price).toFixed(2)} NZD
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => { setSelectedBooking(b); setShowDetailsModal(true); }}
+                        className="border-orange-300 text-orange-700 hover:bg-orange-100"
+                      >
+                        View Details
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => handleApproveBooking(b.id)}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5"
+                      >
+                        Approve &amp; Notify Customer
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         )}
 
         {/* RETURNS OVERVIEW - Shows bookings with return trips attached */}
