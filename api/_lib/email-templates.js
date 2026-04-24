@@ -171,6 +171,29 @@ function customerReminderEmail(booking) {
   };
 }
 
+/**
+ * Customer cancellation email — sent when admin cancels with notification
+ */
+function customerCancellationEmail(booking) {
+  const name = customerName(booking);
+  const body = `
+    <h2 style="color:#dc2626; margin-top:0;">Booking Cancellation</h2>
+    <p>Hi ${name},</p>
+    <p>We're sorry to let you know that your BookARide transfer has been cancelled.</p>
+    ${bookingDetailsTable(booking)}
+    <p style="margin-top:20px;">If you'd like to rebook or have any questions, please don't hesitate to contact us:</p>
+    <ul>
+      <li>Email: <a href="mailto:info@bookaride.co.nz">info@bookaride.co.nz</a></li>
+      <li>Book online: <a href="https://bookaride.co.nz/book-now">bookaride.co.nz/book-now</a></li>
+    </ul>
+    <p>We apologise for any inconvenience caused.</p>
+  `;
+  return {
+    subject: `Booking Cancelled - Ref #${booking.referenceNumber} - BookARide`,
+    html: emailWrapper(body, `Your BookARide booking #${booking.referenceNumber} has been cancelled`),
+  };
+}
+
 module.exports = {
   formatPrice,
   customerName,
@@ -181,4 +204,5 @@ module.exports = {
   customerPaymentLinkEmail,
   adminNewBookingEmail,
   customerReminderEmail,
+  customerCancellationEmail,
 };

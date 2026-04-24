@@ -14,10 +14,14 @@ module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ detail: 'Method not allowed' });
 
   try {
-    const { booking_id, to, cc, subject, message } = req.body || {};
+    const reqBody = req.body || {};
+    // Accept both field name styles from the admin dashboard
+    const booking_id = reqBody.booking_id || reqBody.bookingId;
+    const to = reqBody.to || reqBody.email;
+    const { cc, subject, message } = reqBody;
 
     if (!to || !subject || !message) {
-      return res.status(400).json({ detail: 'to, subject, and message are required' });
+      return res.status(400).json({ detail: 'to (or email), subject, and message are required' });
     }
 
     // If a booking ID was provided, include booking details in the footer
