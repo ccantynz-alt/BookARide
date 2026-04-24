@@ -3,7 +3,9 @@
  * Sync pending Stripe payments — checks Stripe for completed payments
  * that our webhook might have missed.
  */
-const { findMany, updateOne } = require('../_lib/db');
+const { findMany, findOne, updateOne } = require('../_lib/db');
+const { sendEmail } = require('../_lib/mailgun');
+const { customerBookingConfirmedEmail } = require('../_lib/email-templates');
 
 module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -37,7 +39,21 @@ module.exports = async function handler(req, res) {
             },
           });
           synced++;
-          console.log(`Synced payment for booking ${booking.id} (ref #${booking.referenceNumber})`);
+          console.error(`Synced payment for booking ${booking.id} (ref #${booking.referenceNumber})`);
+
+          // Send customer confirmation — without this, a customer whose booking
+          // is synced here would be marked paid in the DB but never notified.
+          if (booking.email) {
+            const updatedBooking = await findOne('bookings', { id: booking.id }).catch(() => null);
+            const paidBooking = updatedBooking || { ...booking, payment_status: 'paid', status: 'confirmed' };
+            const template = customerBookingConfirmedEmail(paidBooking);
+            await sendEmail({
+              to: booking.email,
+              subject: template.subject,
+              html: template.html,
+              replyTo: 'info@bookaride.co.nz',
+            }).catch(err => console.error(`Confirmation email failed for synced booking ${booking.id}: ${err.message}`));
+          }
         }
       } catch (err) {
         errors.push({ bookingId: booking.id, error: err.message });

@@ -274,28 +274,28 @@ const BookingsTable = ({
 
                   {/* Quick actions — always visible, not hover-only */}
                   <td className="px-3 py-4" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1.5">
                       <button
                         onClick={(e) => { e.stopPropagation(); onResendConfirmation(booking.id); }}
-                        className="p-2 rounded-lg bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-200 transition-colors"
+                        className="group p-2.5 rounded-lg bg-white hover:bg-blue-50 border border-slate-200 hover:border-blue-300 transition-all shadow-sm hover:shadow"
                         title="Resend confirmation to customer"
                       >
-                        <RefreshCw className="w-4 h-4 text-slate-500 hover:text-blue-600" />
+                        <RefreshCw className="w-[18px] h-[18px] text-slate-400 group-hover:text-blue-600 transition-colors" />
                       </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); onSendToAdmin(booking.id); }}
-                        className="p-2 rounded-lg bg-slate-50 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 transition-colors"
+                        className="group p-2.5 rounded-lg bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 transition-all shadow-sm hover:shadow"
                         title="Send booking details to admin"
                       >
-                        <Send className="w-4 h-4 text-slate-500 hover:text-indigo-600" />
+                        <Send className="w-[18px] h-[18px] text-slate-400 group-hover:text-indigo-600 transition-colors" />
                       </button>
                       {booking.payment_status !== 'paid' && booking.payment_status !== 'cash' && (
                         <button
                           onClick={(e) => { e.stopPropagation(); onSendPaymentLink(booking.id, 'stripe'); }}
-                          className="p-2 rounded-lg bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-200 transition-colors"
+                          className="group p-2.5 rounded-lg bg-white hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 transition-all shadow-sm hover:shadow"
                           title="Send payment link"
                         >
-                          <CreditCard className="w-4 h-4 text-slate-500 hover:text-emerald-600" />
+                          <CreditCard className="w-[18px] h-[18px] text-slate-400 group-hover:text-emerald-600 transition-colors" />
                         </button>
                       )}
                       <button
@@ -303,7 +303,7 @@ const BookingsTable = ({
                         className="p-2 rounded-lg bg-slate-50 hover:bg-red-50 border border-slate-200 hover:border-red-200 transition-colors"
                         title="Cancel silently (no email to customer)"
                       >
-                        <XCircle className="w-4 h-4 text-slate-500 hover:text-red-500" />
+                        <XCircle className="w-[18px] h-[18px] text-slate-400 group-hover:text-red-500 transition-colors" />
                       </button>
                     </div>
                   </td>

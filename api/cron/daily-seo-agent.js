@@ -35,7 +35,7 @@ module.exports = async function handler(req, res) {
     return res.status(401).json({ detail: 'Unauthorized — cron secret required' });
   }
 
-  console.log('Daily SEO agent starting...');
+  console.error('Daily SEO agent starting...');
   const startTime = Date.now();
 
   const results = {
@@ -87,7 +87,7 @@ module.exports = async function handler(req, res) {
   }
 
   const duration = Date.now() - startTime;
-  console.log(`Daily SEO agent finished in ${duration}ms. Report sent: ${reportSent}`);
+  console.error(`Daily SEO agent finished in ${duration}ms. Report sent: ${reportSent}`);
 
   return res.status(200).json({
     success: true,
