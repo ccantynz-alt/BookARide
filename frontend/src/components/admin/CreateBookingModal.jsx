@@ -38,6 +38,9 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
     basePrice: 0,
     airportFee: 0,
     passengerFee: 0,
+    fuelSurcharge: 0,
+    fuelSurchargePercent: 0,
+    stripeFee: 0,
     totalPrice: 0
   });
   const [calculatingPrice, setCalculatingPrice] = useState(false);
@@ -72,7 +75,7 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
         bookReturn: false, returnDate: '', returnTime: '',
         returnFlightNumber: ''
       });
-      setBookingPricing({ distance: 0, basePrice: 0, airportFee: 0, passengerFee: 0, totalPrice: 0 });
+      setBookingPricing({ distance: 0, basePrice: 0, airportFee: 0, passengerFee: 0, fuelSurcharge: 0, fuelSurchargePercent: 0, stripeFee: 0, totalPrice: 0 });
       setManualPriceOverride('');
       setCustomerSearchQuery('');
       setAdminPickupDate(null);
@@ -682,6 +685,18 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
                     <div className="flex justify-between">
                       <span>Passenger Fee:</span>
                       <span className="font-medium">${bookingPricing.passengerFee.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {bookingPricing.fuelSurcharge > 0 && (
+                    <div className="flex justify-between text-amber-700">
+                      <span>Fuel Surcharge ({bookingPricing.fuelSurchargePercent || 12}%):</span>
+                      <span className="font-medium">${bookingPricing.fuelSurcharge.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {bookingPricing.stripeFee > 0 && (
+                    <div className="flex justify-between text-gray-500">
+                      <span>Card Processing Fee:</span>
+                      <span className="font-medium">${bookingPricing.stripeFee.toFixed(2)}</span>
                     </div>
                   )}
                   <div className="flex justify-between pt-2 border-t font-semibold text-base">
