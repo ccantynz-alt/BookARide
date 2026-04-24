@@ -299,13 +299,8 @@ const BookingsTable = ({
                         </button>
                       )}
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (window.confirm(`Cancel booking for ${booking.name}? No notification will be sent.`)) {
-                            onDeleteBooking(booking.id, booking.name, false);
-                          }
-                        }}
-                        className="group p-2.5 rounded-lg bg-white hover:bg-red-50 border border-slate-200 hover:border-red-300 transition-all shadow-sm hover:shadow"
+                        onClick={(e) => { e.stopPropagation(); onDeleteBooking(booking.id, booking.name, false); }}
+                        className="p-2 rounded-lg bg-slate-50 hover:bg-red-50 border border-slate-200 hover:border-red-200 transition-colors"
                         title="Cancel silently (no email to customer)"
                       >
                         <XCircle className="w-[18px] h-[18px] text-slate-400 group-hover:text-red-500 transition-colors" />
