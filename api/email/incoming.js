@@ -495,7 +495,6 @@ async function handler(req, res) {
       subject: replySubject,
       html: htmlReply,
       fromName: 'BookaRide Support',
-      from: 'support@bookaride.co.nz',
       replyTo: 'support@bookaride.co.nz',
     });
 

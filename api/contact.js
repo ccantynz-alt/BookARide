@@ -146,7 +146,6 @@ module.exports = async function handler(req, res) {
       subject: `Re: ${subject || 'Your Message'} - BookaRide`,
       html: replyHtml,
       fromName: 'BookaRide Support',
-      from: 'support@bookaride.co.nz',
       replyTo: 'support@bookaride.co.nz',
     }).catch(err => console.error('Failed to send auto-reply:', err.message));
 
