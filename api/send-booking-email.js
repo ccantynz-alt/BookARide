@@ -66,7 +66,7 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ detail: 'Failed to send email' });
     }
 
-    console.log(`Custom booking email sent to ${to}${cc ? ` (cc: ${cc})` : ''}`);
+    console.error(`Custom booking email sent to ${to}${cc ? ` (cc: ${cc})` : ''}`);
     return res.status(200).json({
       success: true,
       message: `Email sent to ${to}`,

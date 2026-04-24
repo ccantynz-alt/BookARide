@@ -34,6 +34,7 @@ async function getDistance(pickupAddress, dropoffAddress, waypointAddresses = []
         );
         return Math.round((totalMeters / 1000) * 100) / 100;
       }
+      console.error('Google Directions non-OK status:', data.status, data.error_message || '');
     } else {
       // Simple origin->destination: use Distance Matrix
       const params = new URLSearchParams({
@@ -48,6 +49,7 @@ async function getDistance(pickupAddress, dropoffAddress, waypointAddresses = []
         const distMeters = data.rows[0].elements[0].distance.value;
         return Math.round((distMeters / 1000) * 100) / 100;
       }
+      console.error('Google Distance Matrix non-OK status:', data.status, data.error_message || '');
     }
   } catch (err) {
     console.error('Google Maps distance error:', err.message);
@@ -77,6 +79,9 @@ async function autocomplete(input) {
         description: p.description,
         place_id: p.place_id,
       }));
+    }
+    if (data.status !== 'ZERO_RESULTS') {
+      console.error('Google Places autocomplete non-OK status:', data.status, data.error_message || '');
     }
   } catch (err) {
     console.error('Google Places autocomplete error:', err.message);

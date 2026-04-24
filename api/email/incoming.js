@@ -2,7 +2,7 @@
  * POST /api/email/incoming
  * GET  /api/email/incoming (Mailgun webhook verification)
  *
- * Mailgun inbound webhook — receives emails sent to support@bookaride.co.nz,
+ * Mailgun inbound webhook — receives forwarded support emails,
  * generates a Claude-powered reply, and sends it back via Mailgun.
  *
  * Flow:
@@ -66,7 +66,7 @@ function supportEmailSignature() {
           <p style="margin:0 0 4px 0; font-size:13px; color:#666;">
             <span style="color:#D4AF37; font-weight:bold;">P:</span> <a href="tel:+6421743321" style="color:#1a1a1a; text-decoration:none;">021 743 321</a>
             &nbsp;&nbsp;|&nbsp;&nbsp;
-            <span style="color:#D4AF37; font-weight:bold;">E:</span> <a href="mailto:support@bookaride.co.nz" style="color:#1a1a1a; text-decoration:none;">support@bookaride.co.nz</a>
+            <span style="color:#D4AF37; font-weight:bold;">E:</span> <a href="mailto:info@bookaride.co.nz" style="color:#1a1a1a; text-decoration:none;">info@bookaride.co.nz</a>
           </p>
           <p style="margin:0 0 4px 0; font-size:13px; color:#666;">
             <span style="color:#D4AF37; font-weight:bold;">W:</span> <a href="https://bookaride.co.nz" style="color:#1a1a1a; text-decoration:none;">bookaride.co.nz</a>
@@ -495,8 +495,7 @@ async function handler(req, res) {
       subject: replySubject,
       html: htmlReply,
       fromName: 'BookaRide Support',
-      from: 'support@bookaride.co.nz',
-      replyTo: 'support@bookaride.co.nz',
+      replyTo: 'info@bookaride.co.nz',
     });
 
     if (sent) {

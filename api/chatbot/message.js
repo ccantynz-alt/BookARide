@@ -69,10 +69,10 @@ function getStaticReply(message) {
     return 'You can book a transfer at bookaride.co.nz/book-now. Just enter your pickup and dropoff addresses and we will give you an instant quote!';
   }
   if (lower.includes('cancel')) {
-    return 'To cancel or modify a booking, please email support@bookaride.co.nz with your booking reference number.';
+    return 'To cancel or modify a booking, please email info@bookaride.co.nz with your booking reference number.';
   }
   if (lower.includes('airport')) {
     return 'We provide airport transfers to and from Auckland Airport (AKL). Book at bookaride.co.nz/book-now for an instant quote.';
   }
-  return 'Thanks for reaching out! For bookings, visit bookaride.co.nz/book-now. For support, email support@bookaride.co.nz. We are happy to help!';
+  return 'Thanks for reaching out! For bookings, visit bookaride.co.nz/book-now. For support, email info@bookaride.co.nz. We are happy to help!';
 }

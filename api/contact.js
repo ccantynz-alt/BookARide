@@ -8,7 +8,7 @@ const { insertOne } = require('./_lib/db');
 const { v4: uuidv4 } = require('uuid');
 
 /**
- * Professional HTML email signature (matches support@bookaride.co.nz replies)
+ * Professional HTML email signature
  */
 function supportEmailSignature() {
   return `
@@ -20,7 +20,7 @@ function supportEmailSignature() {
           <p style="margin:0 0 4px 0; font-size:13px; color:#666;">
             <span style="color:#D4AF37; font-weight:bold;">P:</span> <a href="tel:+6421743321" style="color:#1a1a1a; text-decoration:none;">021 743 321</a>
             &nbsp;&nbsp;|&nbsp;&nbsp;
-            <span style="color:#D4AF37; font-weight:bold;">E:</span> <a href="mailto:support@bookaride.co.nz" style="color:#1a1a1a; text-decoration:none;">support@bookaride.co.nz</a>
+            <span style="color:#D4AF37; font-weight:bold;">E:</span> <a href="mailto:info@bookaride.co.nz" style="color:#1a1a1a; text-decoration:none;">info@bookaride.co.nz</a>
           </p>
           <p style="margin:0 0 4px 0; font-size:13px; color:#666;">
             <span style="color:#D4AF37; font-weight:bold;">W:</span> <a href="https://bookaride.co.nz" style="color:#1a1a1a; text-decoration:none;">bookaride.co.nz</a>
@@ -146,8 +146,7 @@ module.exports = async function handler(req, res) {
       subject: `Re: ${subject || 'Your Message'} - BookaRide`,
       html: replyHtml,
       fromName: 'BookaRide Support',
-      from: 'support@bookaride.co.nz',
-      replyTo: 'support@bookaride.co.nz',
+      replyTo: 'info@bookaride.co.nz',
     }).catch(err => console.error('Failed to send auto-reply:', err.message));
 
     return res.status(200).json({ success: true, message: 'Message sent successfully' });

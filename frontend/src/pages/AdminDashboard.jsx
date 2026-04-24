@@ -30,7 +30,6 @@ import PasswordModal from '../components/admin/PasswordModal';
 import BulkDeleteDialog from '../components/admin/BulkDeleteDialog';
 import PreviewConfirmationModal from '../components/admin/PreviewConfirmationModal';
 import BookingDetailsModal from '../components/admin/BookingDetailsModal';
-import DriverAssignPreviewModal from '../components/admin/DriverAssignPreviewModal';
 import BookingsTable from '../components/admin/BookingsTable';
 import GoogleAddressInput from '../components/GoogleAddressInput';
 
@@ -512,11 +511,6 @@ export const AdminDashboard = () => {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [drivers, setDrivers] = useState([]);
-  const [selectedDriver, setSelectedDriver] = useState('');
-  const [driverPayoutOverride, setDriverPayoutOverride] = useState('');
-  const [showDriverAssignPreview, setShowDriverAssignPreview] = useState(false);
-  const [pendingAssignment, setPendingAssignment] = useState(null); // {tripType, driverPayout, driver}
   const [showCreateBookingModal, setShowCreateBookingModal] = useState(false);
 
   const [selectedPaymentStatus, setSelectedPaymentStatus] = useState('');
@@ -621,9 +615,9 @@ export const AdminDashboard = () => {
       const newBookings = Array.isArray(rd) ? rd : (Array.isArray(rd?.bookings) ? rd.bookings : []);
       if (rd?.total !== undefined) setTotalBookings(rd.total);
       
-      // Cache a small subset for offline fallback (keeps localStorage fast)
+      // Cache for offline fallback
       try {
-        const toCache = (append ? newBookings : newBookings.slice(0, 50));
+        const toCache = append ? newBookings : newBookings;
         localStorage.setItem('cachedBookings', JSON.stringify(toCache));
         localStorage.setItem('cachedBookingsTime', new Date().toISOString());
       } catch (e) {
@@ -723,15 +717,6 @@ export const AdminDashboard = () => {
 
   const loadMoreBookings = () => {
     fetchBookingsRef.current?.(currentPage + 1, true);
-  };
-
-  const fetchDrivers = async () => {
-    try {
-      const response = await axios.get(`${API}/drivers`, getAuthHeaders());
-      setDrivers(Array.isArray(response.data?.drivers) ? response.data.drivers : []);
-    } catch (error) {
-      console.error('Error fetching drivers:', error);
-    }
   };
 
   const fetchDeletedBookings = async () => {
@@ -885,7 +870,6 @@ export const AdminDashboard = () => {
     }
   };
 
-  // Initial load: bookings first; drivers deferred to lighten first paint
   useEffect(() => {
     const token = localStorage.getItem('adminToken');
     if (!token) {
@@ -893,7 +877,6 @@ export const AdminDashboard = () => {
       return;
     }
     fetchBookingsRef.current?.();
-    setTimeout(() => fetchDrivers(), 600);
     fetchArchivedCount();
   }, [navigate]);
 
@@ -1081,249 +1064,6 @@ export const AdminDashboard = () => {
     }
   };
 
-  // Show preview before assigning driver
-  const handleShowAssignPreview = (tripType = 'outbound') => {
-    if (!selectedDriver) {
-      toast.error('Please select a driver');
-      return;
-    }
-    
-    const driver = drivers.find(d => d.id === selectedDriver);
-    const customerPrice = selectedBooking?.pricing?.totalPrice || 0;
-    const paymentStatus = (selectedBooking?.payment_status || '').toLowerCase();
-    const hasReturn = selectedBooking?.bookReturn || !!selectedBooking?.returnDate;
-    
-    // Calculate auto payout if no override
-    let calculatedPayout;
-    if (driverPayoutOverride && !isNaN(parseFloat(driverPayoutOverride))) {
-      calculatedPayout = parseFloat(driverPayoutOverride);
-    } else {
-      // Use subtotal (price before Stripe fee) if available, otherwise calculate from total
-      // Stripe fee formula: total = subtotal * 1.029 + 0.30
-      // Therefore: subtotal = (total - 0.30) / 1.029
-      const subtotal = selectedBooking?.pricing?.subtotal || 
-        ((customerPrice - 0.30) / 1.029);
-      
-      // Determine trip price (for return bookings, split the subtotal)
-      let tripPrice = subtotal;
-      if (hasReturn) {
-        // Use oneWayPrice if explicitly set, otherwise split evenly
-        const oneWayPrice = selectedBooking?.pricing?.oneWayPrice;
-        if (oneWayPrice) {
-          tripPrice = tripType === 'outbound' ? oneWayPrice : (subtotal - oneWayPrice);
-        } else {
-          // Split evenly for return bookings without explicit oneWayPrice
-          tripPrice = subtotal / 2;
-        }
-      }
-      
-      // Driver gets the full trip price (customer pays Stripe fee separately)
-      calculatedPayout = Math.round(tripPrice * 100) / 100;
-    }
-    
-    setPendingAssignment({
-      tripType,
-      driver,
-      driverPayout: calculatedPayout,
-      isOverride: !!driverPayoutOverride,
-      customerPrice,
-      hasReturn,
-      // Stripe fee is now paid by customer, so no fee info needed
-      customerPaysStripeFee: true
-    });
-    setShowDriverAssignPreview(true);
-  };
-
-  // Confirm and send driver assignment
-  const handleConfirmAssignDriver = async () => {
-    if (!pendingAssignment) return;
-    
-    const { tripType, driverPayout } = pendingAssignment;
-    
-    try {
-      let url = `${API}/drivers/${selectedDriver}/assign?booking_id=${selectedBooking.id}&trip_type=${tripType}`;
-      if (driverPayoutOverride && !isNaN(parseFloat(driverPayoutOverride))) {
-        url += `&driver_payout=${parseFloat(driverPayoutOverride)}`;
-      }
-      
-      const response = await axios.patch(url, {}, getAuthHeaders());
-      
-      // Get the driver details to update selectedBooking
-      const assignedDriver = drivers.find(d => d.id === selectedDriver);
-      
-      // Update the selectedBooking with driver info based on trip type
-      if (tripType === 'return') {
-        setSelectedBooking(prev => ({
-          ...prev,
-          return_driver_id: selectedDriver,
-          return_driver_name: assignedDriver?.name || '',
-          return_driver_phone: assignedDriver?.phone || '',
-          return_driver_email: assignedDriver?.email || '',
-          return_driver_payout: driverPayout
-        }));
-      } else {
-        setSelectedBooking(prev => ({
-          ...prev,
-          driver_id: selectedDriver,
-          driver_name: assignedDriver?.name || '',
-          driver_phone: assignedDriver?.phone || '',
-          driver_email: assignedDriver?.email || '',
-          driver_payout: driverPayout
-        }));
-      }
-      
-      toast.success(response.data?.message || 'Driver assigned successfully!');
-      setSelectedDriver('');
-      setDriverPayoutOverride('');
-      setShowDriverAssignPreview(false);
-      setPendingAssignment(null);
-      // Optimistic: update driver info in local booking
-      const confirmAssignedDriver = drivers.find(d => d.id === selectedDriver);
-      if (tripType === 'return') {
-        updateBookingLocally(selectedBooking.id, {
-          return_driver_id: selectedDriver,
-          return_driver_name: confirmAssignedDriver?.name || '',
-          return_driver_phone: confirmAssignedDriver?.phone || '',
-          return_driver_email: confirmAssignedDriver?.email || '',
-        });
-      } else {
-        updateBookingLocally(selectedBooking.id, {
-          driver_id: selectedDriver,
-          driver_name: confirmAssignedDriver?.name || '',
-          driver_phone: confirmAssignedDriver?.phone || '',
-          driver_email: confirmAssignedDriver?.email || '',
-        });
-      }
-      silentRefresh();
-    } catch (error) {
-      console.error('Error assigning driver:', error);
-      toast.error('Failed to assign driver');
-    }
-  };
-
-  const handleAssignDriver = async (tripType = 'outbound') => {
-    if (!selectedDriver) {
-      toast.error('Please select a driver');
-      return;
-    }
-    
-    try {
-      // Build URL with optional driver payout
-      let url = `${API}/drivers/${selectedDriver}/assign?booking_id=${selectedBooking.id}&trip_type=${tripType}`;
-      if (driverPayoutOverride && !isNaN(parseFloat(driverPayoutOverride))) {
-        url += `&driver_payout=${parseFloat(driverPayoutOverride)}`;
-      }
-      
-      const response = await axios.patch(url, {}, getAuthHeaders());
-      
-      // Get the driver details to update selectedBooking
-      const assignedDriver = drivers.find(d => d.id === selectedDriver);
-      
-      // Update the selectedBooking with driver info based on trip type
-      if (tripType === 'return') {
-        setSelectedBooking(prev => ({
-          ...prev,
-          return_driver_id: selectedDriver,
-          return_driver_name: assignedDriver?.name || '',
-          return_driver_phone: assignedDriver?.phone || '',
-          return_driver_email: assignedDriver?.email || '',
-          return_driver_payout: driverPayoutOverride ? parseFloat(driverPayoutOverride) : null
-        }));
-      } else {
-        setSelectedBooking(prev => ({
-          ...prev,
-          driver_id: selectedDriver,
-          driver_name: assignedDriver?.name || '',
-          driver_phone: assignedDriver?.phone || '',
-          driver_email: assignedDriver?.email || '',
-          driver_payout: driverPayoutOverride ? parseFloat(driverPayoutOverride) : null
-        }));
-      }
-      
-      toast.success(response.data?.message || 'Driver assigned successfully!');
-      setSelectedDriver('');
-      setDriverPayoutOverride('');
-      // Optimistic: update driver info in local booking
-      const assignedDriverObj = drivers.find(d => d.id === selectedDriver);
-      if (tripType === 'return') {
-        updateBookingLocally(selectedBooking.id, {
-          return_driver_id: selectedDriver,
-          return_driver_name: assignedDriverObj?.name || '',
-          return_driver_phone: assignedDriverObj?.phone || '',
-          return_driver_email: assignedDriverObj?.email || '',
-        });
-      } else {
-        updateBookingLocally(selectedBooking.id, {
-          driver_id: selectedDriver,
-          driver_name: assignedDriverObj?.name || '',
-          driver_phone: assignedDriverObj?.phone || '',
-          driver_email: assignedDriverObj?.email || '',
-        });
-      }
-      silentRefresh();
-    } catch (error) {
-      console.error('Error assigning driver:', error);
-      toast.error('Failed to assign driver');
-    }
-  };
-
-  const handleUnassignDriver = async (tripType = 'outbound') => {
-    if (!selectedBooking) return;
-    
-    const driverName = tripType === 'return' 
-      ? selectedBooking.return_driver_name 
-      : selectedBooking.driver_name;
-    
-    if (!window.confirm(`Are you sure you want to unassign ${driverName} from the ${tripType} trip?`)) {
-      return;
-    }
-    
-    try {
-      const response = await axios.patch(
-        `${API}/bookings/${selectedBooking.id}/unassign-driver?trip_type=${tripType}`,
-        {},
-        getAuthHeaders()
-      );
-      
-      // Update the selectedBooking to clear driver info based on trip type
-      if (tripType === 'return') {
-        setSelectedBooking(prev => ({
-          ...prev,
-          return_driver_id: null,
-          return_driver_name: null,
-          return_driver_phone: null,
-          return_driver_email: null
-        }));
-      } else {
-        setSelectedBooking(prev => ({
-          ...prev,
-          driver_id: null,
-          driver_name: null,
-          driver_phone: null,
-          driver_email: null,
-          driverConfirmed: false
-        }));
-      }
-      
-      toast.success(response.data?.message || 'Driver unassigned successfully!');
-      // Optimistic: clear driver info in local booking
-      if (tripType === 'return') {
-        updateBookingLocally(selectedBooking.id, {
-          return_driver_id: null, return_driver_name: null,
-          return_driver_phone: null, return_driver_email: null,
-        });
-      } else {
-        updateBookingLocally(selectedBooking.id, {
-          driver_id: null, driver_name: null,
-          driver_phone: null, driver_email: null, driverConfirmed: false,
-        });
-      }
-      silentRefresh();
-    } catch (error) {
-      console.error('Error unassigning driver:', error);
-      toast.error(error.response?.data?.detail || 'Failed to unassign driver');
-    }
-  };
 
   filterBookings = () => {
     let filtered = Array.isArray(bookings) ? bookings : [];
@@ -1424,7 +1164,6 @@ export const AdminDashboard = () => {
         toast.success(response.data.message);
         // Refresh bookings after sync
         await fetchBookingsRef.current?.();
-        await fetchDrivers();
       } else {
         toast.error('Sync failed');
       }
@@ -1794,21 +1533,6 @@ export const AdminDashboard = () => {
     }
   };
 
-  // Send tracking link to driver
-  const handleSendTrackingLink = async (bookingId) => {
-    try {
-      toast.loading('Sending tracking link to driver...');
-      const response = await axios.post(`${API}/tracking/send-driver-link/${bookingId}`, {}, getAuthHeaders());
-      toast.dismiss();
-      toast.success(response.data.message || 'Tracking link sent to driver!');
-      silentRefresh();
-    } catch (error) {
-      toast.dismiss();
-      console.error('Error sending tracking link:', error);
-      toast.error(error.response?.data?.detail || 'Failed to send tracking link');
-    }
-  };
-
   // Preview confirmation before sending
   const handlePreviewConfirmation = async (bookingId) => {
     setPreviewLoading(true);
@@ -2111,7 +1835,6 @@ export const AdminDashboard = () => {
         {/* RETURNS OVERVIEW - Shows bookings with return trips attached */}
         <ReturnsOverviewPanel
           bookings={bookings}
-          drivers={drivers}
           onViewBooking={(booking) => {
             setSelectedBooking(booking);
             setShowDetailsModal(true);
@@ -2265,7 +1988,7 @@ export const AdminDashboard = () => {
         <BookingsTable
           bookings={filteredBookings}
           loading={loading}
-          totalBookings={bookings.length}
+          totalBookings={totalBookings}
           selectedBookings={safeSelectedSet}
           onSelectBooking={(id) => {
             const next = new Set(safeSelectedSet);
@@ -2279,7 +2002,7 @@ export const AdminDashboard = () => {
           onEditBooking={openEditBookingModal}
           onSendEmail={(booking) => { setSelectedBooking(booking); setShowEmailModal(true); }}
           onResendConfirmation={handleResendConfirmation}
-          onArchiveBooking={handleArchiveBooking}
+          onSendToAdmin={handleSendToAdmin}
           onDeleteBooking={handleDeleteBooking}
           onStatusUpdate={handleStatusUpdate}
           onSendPaymentLink={handleResendPaymentLink}
@@ -2291,6 +2014,11 @@ export const AdminDashboard = () => {
           onOpenDeletedTab={() => setActiveTab('deleted')}
           onRestoreFromServer={handleRestoreFromServerBackup}
           restoringFromServerBackup={restoringFromServerBackup}
+          loadAllBookings={loadAllBookings}
+          currentPage={currentPage}
+          bookingsPerPage={bookingsPerPage}
+          onPageChange={(page) => fetchBookingsRef.current?.(page, false)}
+          onLoadAll={() => fetchBookingsRef.current?.(1, false)}
         />
 
         </TabsContent>
@@ -2401,31 +2129,13 @@ export const AdminDashboard = () => {
         open={showDetailsModal}
         onOpenChange={setShowDetailsModal}
         booking={selectedBooking}
-        drivers={drivers}
         selectedPaymentStatus={selectedPaymentStatus}
         onPaymentStatusChange={setSelectedPaymentStatus}
         onUpdatePaymentStatus={handleUpdatePaymentStatus}
         priceOverride={priceOverride}
         onPriceOverrideChange={setPriceOverride}
         onPriceOverride={handlePriceOverride}
-        selectedDriver={selectedDriver}
-        onDriverChange={setSelectedDriver}
-        driverPayoutOverride={driverPayoutOverride}
-        onDriverPayoutChange={setDriverPayoutOverride}
-        onShowAssignPreview={handleShowAssignPreview}
-        onUnassignDriver={handleUnassignDriver}
-        onSendTrackingLink={handleSendTrackingLink}
         onSendToAdmin={handleSendToAdmin}
-      />
-
-      {/* Driver Assignment Preview Modal */}
-      <DriverAssignPreviewModal
-        open={showDriverAssignPreview}
-        onOpenChange={setShowDriverAssignPreview}
-        pendingAssignment={pendingAssignment}
-        booking={selectedBooking}
-        onConfirm={handleConfirmAssignDriver}
-        onCancel={() => { setShowDriverAssignPreview(false); setPendingAssignment(null); }}
       />
 
       {/* Email Modal */}

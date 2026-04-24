@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle, Clock, Mail } from 'lucide-react';
+import { Mail, DollarSign, Car, Plane, RotateCcw, X } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -12,7 +12,6 @@ const BookingDetailsModal = ({
   open,
   onOpenChange,
   booking,
-  drivers,
   // Payment
   selectedPaymentStatus,
   onPaymentStatusChange,
@@ -21,14 +20,6 @@ const BookingDetailsModal = ({
   priceOverride,
   onPriceOverrideChange,
   onPriceOverride,
-  // Driver assignment
-  selectedDriver,
-  onDriverChange,
-  driverPayoutOverride,
-  onDriverPayoutChange,
-  onShowAssignPreview,
-  onUnassignDriver,
-  onSendTrackingLink,
   // Admin
   onSendToAdmin,
 }) => {
@@ -57,16 +48,15 @@ const BookingDetailsModal = ({
               <div>
                 <span className="text-xs text-slate-500 uppercase tracking-wide font-medium">Payment Status</span>
                 <div className="mt-1 flex items-center gap-2">
-                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                  <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${
                     booking.payment_status === 'paid' ? 'bg-emerald-100 text-emerald-700' :
                     booking.payment_status === 'cash' ? 'bg-amber-100 text-amber-700' :
                     booking.payment_status === 'pay-on-pickup' ? 'bg-blue-100 text-blue-700' :
                     'bg-red-100 text-red-700'
                   }`}>
-                    {booking.payment_status === 'paid' && '✓ '}
-                    {booking.payment_status === 'cash' && '💵 '}
-                    {booking.payment_status === 'pay-on-pickup' && '🚗 '}
-                    {booking.payment_status === 'unpaid' && '✗ '}
+                    {booking.payment_status === 'cash' && <DollarSign className="w-3 h-3" />}
+                    {booking.payment_status === 'pay-on-pickup' && <Car className="w-3 h-3" />}
+                    {booking.payment_status === 'unpaid' && <X className="w-3 h-3" />}
                     <span className="uppercase">{booking.payment_status?.replace('-', ' ') || 'UNPAID'}</span>
                   </span>
                   <div className="flex gap-1">
@@ -75,11 +65,11 @@ const BookingDetailsModal = ({
                         <SelectValue placeholder="Change" />
                       </SelectTrigger>
                       <SelectContent className="z-[9999]">
-                        <SelectItem value="paid">✓ Paid</SelectItem>
-                        <SelectItem value="cash">💵 Cash</SelectItem>
-                        <SelectItem value="pay-on-pickup">🚗 Pay on Pickup</SelectItem>
-                        <SelectItem value="invoiced">📄 Invoiced</SelectItem>
-                        <SelectItem value="unpaid">✗ Unpaid</SelectItem>
+                        <SelectItem value="paid">Paid</SelectItem>
+                        <SelectItem value="cash">Cash</SelectItem>
+                        <SelectItem value="pay-on-pickup">Pay on Pickup</SelectItem>
+                        <SelectItem value="invoiced">Invoiced</SelectItem>
+                        <SelectItem value="unpaid">Unpaid</SelectItem>
                       </SelectContent>
                     </Select>
                     <Button size="sm" onClick={onUpdatePaymentStatus} disabled={!selectedPaymentStatus} className="h-7 px-2 text-xs bg-indigo-600 hover:bg-indigo-700 text-white">
@@ -88,8 +78,8 @@ const BookingDetailsModal = ({
                   </div>
                 </div>
                 {booking.payment_link_sent_at && (
-                  <div className="mt-1 text-xs text-blue-600">
-                    ✉ Payment link sent {new Date(booking.payment_link_sent_at).toLocaleString()}
+                  <div className="mt-1 text-xs text-blue-600 flex items-center gap-1">
+                    <Mail className="w-3 h-3 flex-shrink-0" /> Payment link sent {new Date(booking.payment_link_sent_at).toLocaleString()}
                     {booking.payment_link_sent_count > 1 && ` (sent ${booking.payment_link_sent_count} times)`}
                   </div>
                 )}
@@ -130,7 +120,7 @@ const BookingDetailsModal = ({
               {/* Return Trip */}
               {(booking.bookReturn || (booking.returnDate && booking.returnTime)) && (
                 <div className="mt-4 bg-purple-50 p-4 rounded-lg border-2 border-purple-200">
-                  <h4 className="font-semibold text-purple-900 mb-2 text-sm">🔄 Return Trip</h4>
+                  <h4 className="font-semibold text-purple-900 mb-2 text-sm flex items-center gap-1.5"><RotateCcw className="w-3.5 h-3.5" /> Return Trip</h4>
                   <p className="font-bold text-purple-800">
                     {formatDate(booking.returnDate)} at {booking.returnTime}
                     <span className="text-purple-600 font-normal text-xs ml-1">({getDayOfWeek(booking.returnDate)})</span>
@@ -152,7 +142,7 @@ const BookingDetailsModal = ({
           {/* Outbound Flight Info */}
           {(booking.flightArrivalNumber || booking.arrivalFlightNumber || booking.flightDepartureNumber || booking.departureFlightNumber || booking.flightNumber) && (
             <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-              <h3 className="font-semibold text-slate-800 mb-2">✈️ Outbound Flight</h3>
+              <h3 className="font-semibold text-slate-800 mb-2 flex items-center gap-1.5"><Plane className="w-4 h-4" /> Outbound Flight</h3>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 {booking.flightNumber && !booking.flightArrivalNumber && !booking.arrivalFlightNumber && (
                   <div><span className="text-slate-500">Flight:</span><p className="font-medium">{booking.flightNumber}</p></div>
@@ -189,6 +179,12 @@ const BookingDetailsModal = ({
               {booking.pricing?.passengerFee > 0 && (
                 <div className="flex justify-between"><span>Passenger Fee:</span><span className="font-medium">${booking.pricing.passengerFee.toFixed(2)}</span></div>
               )}
+              {booking.pricing?.fuelSurcharge > 0 && (
+                <div className="flex justify-between text-amber-700"><span>Fuel Surcharge ({booking.pricing.fuelSurchargePercent || 12}%):</span><span className="font-medium">${booking.pricing.fuelSurcharge.toFixed(2)}</span></div>
+              )}
+              {booking.pricing?.stripeFee > 0 && (
+                <div className="flex justify-between text-slate-500"><span>Card Processing Fee:</span><span className="font-medium">${booking.pricing.stripeFee.toFixed(2)}</span></div>
+              )}
               <div className="flex justify-between pt-2 border-t font-semibold text-base">
                 <span>Total:</span>
                 <span className="text-indigo-600">${booking.pricing?.totalPrice?.toFixed(2) || booking.totalPrice?.toFixed(2) || '0.00'}</span>
@@ -202,46 +198,6 @@ const BookingDetailsModal = ({
               </div>
             </div>
           </div>
-
-          {/* Driver Assignment - Outbound */}
-          <DriverAssignmentSection
-            title="🚗 Outbound Driver"
-            subtitle={booking.bookReturn ? '(One-way to destination)' : undefined}
-            driverId={booking.driver_id}
-            driverName={booking.driver_name}
-            driverPhone={booking.driver_phone}
-            acknowledged={booking.driverAcknowledged}
-            drivers={drivers}
-            selectedDriver={selectedDriver}
-            onDriverChange={onDriverChange}
-            driverPayoutOverride={driverPayoutOverride}
-            onDriverPayoutChange={onDriverPayoutChange}
-            onShowAssignPreview={() => onShowAssignPreview('outbound')}
-            onUnassign={() => onUnassignDriver('outbound')}
-            onSendTrackingLink={() => onSendTrackingLink(booking.id)}
-            showTrackingLink
-          />
-
-          {/* Driver Assignment - Return */}
-          {booking.bookReturn && (
-            <div className="mt-4 pt-4 border-t border-dashed">
-              <DriverAssignmentSection
-                title="🔄 Return Driver"
-                subtitle={`(Return on ${formatDate(booking.returnDate)} at ${booking.returnTime})`}
-                driverId={booking.return_driver_id}
-                driverName={booking.return_driver_name}
-                driverPhone={booking.return_driver_phone}
-                acknowledged={booking.returnDriverAcknowledged}
-                drivers={drivers}
-                selectedDriver={selectedDriver}
-                onDriverChange={onDriverChange}
-                driverPayoutOverride={driverPayoutOverride}
-                onDriverPayoutChange={onDriverPayoutChange}
-                onShowAssignPreview={() => onShowAssignPreview('return')}
-                onUnassign={() => onUnassignDriver('return')}
-              />
-            </div>
-          )}
 
           {/* Notes */}
           {booking.notes && (
@@ -260,76 +216,6 @@ const BookingDetailsModal = ({
         </div>
       </DialogContent>
     </Dialog>
-  );
-};
-
-/** Reusable driver assignment section (outbound or return) */
-const DriverAssignmentSection = ({
-  title, subtitle, driverId, driverName, driverPhone, acknowledged,
-  drivers, selectedDriver, onDriverChange, driverPayoutOverride, onDriverPayoutChange,
-  onShowAssignPreview, onUnassign, onSendTrackingLink, showTrackingLink,
-}) => {
-  const activeDrivers = drivers.filter(d => d.status === 'active');
-  const assignedDriverName = drivers.find(d => d.id === driverId)?.name || driverName || 'Unknown Driver';
-
-  return (
-    <div>
-      <h3 className="font-semibold text-slate-800 mb-3">
-        {title} {subtitle && <span className="text-sm font-normal text-slate-500">{subtitle}</span>}
-      </h3>
-      {driverId || driverName ? (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-600">Assigned Driver</p>
-              <p className="font-medium text-slate-900">{assignedDriverName}</p>
-              <p className="text-xs text-slate-500">{driverPhone}</p>
-              {acknowledged ? (
-                <p className="text-xs text-emerald-600 font-semibold mt-1 flex items-center gap-1"><CheckCircle className="w-3 h-3" /> Confirmed</p>
-              ) : (
-                <p className="text-xs text-orange-600 mt-1 flex items-center gap-1 animate-pulse"><Clock className="w-3 h-3" /> Awaiting confirmation...</p>
-              )}
-            </div>
-            <div className="flex flex-col gap-2">
-              {showTrackingLink && onSendTrackingLink && (
-                <Button size="sm" onClick={onSendTrackingLink} className="bg-blue-500 hover:bg-blue-600 text-white text-xs">
-                  📍 Send Tracking Link
-                </Button>
-              )}
-              <Button size="sm" variant="outline" onClick={onUnassign} className="text-red-600 hover:bg-red-50 border-red-200">
-                ✕ Unassign
-              </Button>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          <p className="text-sm text-slate-600">No driver assigned yet</p>
-          <Select value={selectedDriver} onValueChange={onDriverChange}>
-            <SelectTrigger className="w-full"><SelectValue placeholder="Select a driver..." /></SelectTrigger>
-            <SelectContent className="z-[9999] bg-white">
-              {activeDrivers.length === 0 ? (
-                <SelectItem value="no-drivers" disabled>No active drivers</SelectItem>
-              ) : activeDrivers.map(d => (
-                <SelectItem key={d.id} value={d.id}>{d.name} - {d.phone}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <div className="flex gap-2 items-center">
-            <div className="flex-1">
-              <label className="text-xs text-slate-500 mb-1 block">Driver Payout (optional)</label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">$</span>
-                <input type="number" placeholder="Auto-calculated" value={driverPayoutOverride} onChange={(e) => onDriverPayoutChange(e.target.value)} className="w-full pl-7 pr-3 py-2 border rounded-md text-sm" />
-              </div>
-            </div>
-            <Button onClick={onShowAssignPreview} disabled={!selectedDriver} className="bg-indigo-600 hover:bg-indigo-700 text-white mt-5">
-              Preview & Assign
-            </Button>
-          </div>
-        </div>
-      )}
-    </div>
   );
 };
 

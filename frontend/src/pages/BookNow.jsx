@@ -102,6 +102,8 @@ export const BookNow = () => {
     airportFee: 0,
     oversizedLuggageFee: 0,
     passengerFee: 0,
+    fuelSurcharge: 0,
+    fuelSurchargePercent: 0,
     stripeFee: 0,
     subtotal: 0,
     totalPrice: 0,
@@ -174,6 +176,8 @@ export const BookNow = () => {
         airportFee: data.airportFee,
         oversizedLuggageFee: data.oversizedLuggageFee,
         passengerFee: data.passengerFee,
+        fuelSurcharge: data.fuelSurcharge || 0,
+        fuelSurchargePercent: data.fuelSurchargePercent || 0,
         stripeFee: data.stripeFee ?? Math.round(((data.subtotal * 0.029) + 0.30) * 100) / 100,
         subtotal: data.subtotal,
         totalPrice: data.totalPrice,
@@ -879,14 +883,20 @@ export const BookNow = () => {
                             )}
                           </div>
 
-                          {/* Price Breakdown — customer sees total only, no km rates or per-passenger fees */}
+                          {/* Price Breakdown */}
                           <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm">
                             <div className="flex justify-between">
                               <span className="text-gray-600">Trip fare</span>
                               <span className={`font-medium ${promoApplied ? 'line-through text-gray-400' : ''}`}>
-                                ${pricing.subtotal?.toFixed(2) || pricing.basePrice?.toFixed(2)}
+                                ${(pricing.subtotal - (pricing.fuelSurcharge || 0)).toFixed(2)}
                               </span>
                             </div>
+                            {pricing.fuelSurcharge > 0 && (
+                              <div className="flex justify-between text-amber-700">
+                                <span>Fuel surcharge ({pricing.fuelSurchargePercent}%)</span>
+                                <span>${pricing.fuelSurcharge.toFixed(2)}</span>
+                              </div>
+                            )}
                             {pricing.stripeFee > 0 && (
                               <div className="flex justify-between text-gray-500">
                                 <span>Card processing fee</span>
