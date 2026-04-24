@@ -109,7 +109,7 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ detail: 'Failed to send payment link email' });
     }
 
-    console.log(`Payment link resent for booking #${booking.referenceNumber} to ${booking.email}`);
+    console.error(`Payment link resent for booking #${booking.referenceNumber} to ${booking.email}`);
     return res.status(200).json({
       success: true,
       message: `Payment link sent to ${booking.email}`,

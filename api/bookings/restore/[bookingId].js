@@ -42,7 +42,7 @@ module.exports = async function handler(req, res) {
     // Step 3: Remove from deleted_bookings
     await deleteOne('deleted_bookings', { id: bookingId });
 
-    console.log(`Booking ${bookingId} restored from deleted_bookings to bookings`);
+    console.error(`Booking ${bookingId} restored from deleted_bookings to bookings`);
     return res.status(200).json({ success: true, booking: verified });
   } catch (err) {
     console.error('Restore booking error:', err.message);

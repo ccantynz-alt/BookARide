@@ -34,7 +34,7 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ detail: 'Failed to send admin notification' });
     }
 
-    console.log(`Booking #${booking.referenceNumber} details sent to admin ${adminEmail}`);
+    console.error(`Booking #${booking.referenceNumber} details sent to admin ${adminEmail}`);
     return res.status(200).json({
       success: true,
       message: `Booking details sent to ${adminEmail}`,

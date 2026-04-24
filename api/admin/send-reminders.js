@@ -25,7 +25,7 @@ module.exports = async function handler(req, res) {
 
   try {
     const tomorrowDate = getTomorrowNZDate();
-    console.log(`Checking reminders for ${tomorrowDate}`);
+    console.error(`Checking reminders for ${tomorrowDate}`);
 
     // Find all confirmed bookings for tomorrow
     const bookings = await findMany('bookings', { date: tomorrowDate }, { limit: 200 });
@@ -40,7 +40,7 @@ module.exports = async function handler(req, res) {
       return true;
     });
 
-    console.log(`Found ${eligible.length} bookings needing reminders out of ${bookings.length} for ${tomorrowDate}`);
+    console.error(`Found ${eligible.length} bookings needing reminders out of ${bookings.length} for ${tomorrowDate}`);
 
     let sent = 0;
     let failed = 0;
@@ -77,7 +77,7 @@ module.exports = async function handler(req, res) {
       }
     }
 
-    console.log(`Reminder job complete: ${sent} sent, ${failed} failed, ${bookings.length - eligible.length} skipped`);
+    console.error(`Reminder job complete: ${sent} sent, ${failed} failed, ${bookings.length - eligible.length} skipped`);
 
     return res.status(200).json({
       success: true,

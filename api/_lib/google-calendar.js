@@ -148,7 +148,7 @@ async function createCalendarEvent(booking) {
     if (outboundRes.ok) {
       const created = await outboundRes.json();
       eventIds.push(created.id);
-      console.log(`Calendar event created for booking #${refNum}: ${created.htmlLink}`);
+      console.error(`Calendar event created for booking #${refNum}: ${created.htmlLink}`);
     } else {
       const errText = await outboundRes.text();
       console.error(`CRITICAL: Calendar event creation failed for #${refNum}: ${outboundRes.status} ${errText}`);
@@ -211,7 +211,7 @@ async function createCalendarEvent(booking) {
       if (returnRes.ok) {
         const created = await returnRes.json();
         eventIds.push(created.id);
-        console.log(`Return calendar event created for booking #${refNum}: ${created.htmlLink}`);
+        console.error(`Return calendar event created for booking #${refNum}: ${created.htmlLink}`);
       } else {
         const errText = await returnRes.text();
         console.error(`Calendar return event failed for #${refNum}: ${returnRes.status} ${errText}`);

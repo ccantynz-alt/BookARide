@@ -176,7 +176,7 @@ module.exports = async function handler(req, res) {
       console.error(`CRITICAL: Manual booking #${refNumber} not found after insert`);
       return res.status(500).json({ detail: 'Booking verification failed' });
     }
-    console.log(`Admin manual booking #${refNumber} created by ${auth.admin.username}`);
+    console.error(`Admin manual booking #${refNumber} created by ${auth.admin.username}`);
 
     // === Email diagnostics (so Vercel logs show exactly what's happening) ===
     const adminEmail = process.env.BOOKINGS_NOTIFICATION_EMAIL || 'bookings@bookaride.co.nz';
@@ -198,7 +198,7 @@ module.exports = async function handler(req, res) {
         cc,
       });
       if (adminSuccess) {
-        console.log(`Admin notification sent to ${adminEmail} for manual booking #${refNumber}`);
+        console.error(`Admin notification sent to ${adminEmail} for manual booking #${refNumber}`);
       } else {
         console.error(`CRITICAL: Admin notification returned false for manual booking #${refNumber} (recipient: ${adminEmail})`);
       }
@@ -286,7 +286,7 @@ module.exports = async function handler(req, res) {
             cc,
           });
           if (linkSuccess) {
-            console.log(`Payment link emailed to ${body.email} for manual booking #${refNumber}`);
+            console.error(`Payment link emailed to ${body.email} for manual booking #${refNumber}`);
             result.payment_link_sent_to = body.email;
           } else {
             console.error(`CRITICAL: Payment link email failed for manual booking #${refNumber}`);
@@ -328,7 +328,7 @@ module.exports = async function handler(req, res) {
           cc,
         });
         if (success) {
-          console.log(`Customer confirmation sent to ${body.email} for manual booking #${refNumber} (${paymentMethod})`);
+          console.error(`Customer confirmation sent to ${body.email} for manual booking #${refNumber} (${paymentMethod})`);
           result.customer_email_sent_to = body.email;
         } else {
           console.error(`CRITICAL: Customer confirmation returned false for manual booking #${refNumber}`);

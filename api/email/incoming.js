@@ -431,18 +431,18 @@ async function handler(req, res) {
     const nameMatch = fromField.match(/^([^<]+)/);
     const senderName = nameMatch ? nameMatch[1].trim() : '';
 
-    console.log(`Incoming support email from: ${replyToEmail}, Subject: ${subject}`);
+    console.error(`Incoming support email from: ${replyToEmail}, Subject: ${subject}`);
 
     // Don't reply to our own emails or system addresses
     if (SKIP_PATTERNS.some(p => replyToEmail.toLowerCase().includes(p))) {
-      console.log('Skipping auto-reply to system/no-reply email');
+      console.error('Skipping auto-reply to system/no-reply email');
       return res.status(200).json({ status: 'skipped', reason: 'system email' });
     }
 
     // Get email body
     const emailContent = bodyPlain || bodyHtml;
     if (!emailContent) {
-      console.log('Empty email body received');
+      console.error('Empty email body received');
       return res.status(200).json({ status: 'skipped', reason: 'empty body' });
     }
 
@@ -457,7 +457,7 @@ async function handler(req, res) {
       );
       const todayCount = parseInt(countResult[0]?.cnt || '0', 10);
       if (todayCount >= 5) {
-        console.log(`Rate limit hit: ${replyToEmail} has ${todayCount} replies today`);
+        console.error(`Rate limit hit: ${replyToEmail} has ${todayCount} replies today`);
         return res.status(200).json({ status: 'skipped', reason: 'rate limited' });
       }
     } catch (err) {
@@ -483,7 +483,7 @@ async function handler(req, res) {
     );
 
     if (actionsTaken.length > 0) {
-      console.log(`AI agent took ${actionsTaken.length} action(s) for ${replyToEmail}:`, actionsTaken);
+      console.error(`AI agent took ${actionsTaken.length} action(s) for ${replyToEmail}:`, actionsTaken);
     }
 
     // Build and send reply
@@ -499,7 +499,7 @@ async function handler(req, res) {
     });
 
     if (sent) {
-      console.log(`AI support reply sent to ${replyToEmail}`);
+      console.error(`AI support reply sent to ${replyToEmail}`);
 
       // Log the interaction
       await insertOne('email_logs', {
