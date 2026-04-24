@@ -2291,6 +2291,11 @@ export const AdminDashboard = () => {
           onOpenDeletedTab={() => setActiveTab('deleted')}
           onRestoreFromServer={handleRestoreFromServerBackup}
           restoringFromServerBackup={restoringFromServerBackup}
+          loadAllBookings={loadAllBookings}
+          currentPage={currentPage}
+          bookingsPerPage={bookingsPerPage}
+          onPageChange={(page) => fetchBookingsRef.current?.(page, false)}
+          onLoadAll={() => fetchBookingsRef.current?.(1, false)}
         />
 
         </TabsContent>
