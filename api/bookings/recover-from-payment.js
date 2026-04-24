@@ -65,7 +65,7 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ detail: 'Recovered booking verification failed' });
     }
 
-    console.log(`Booking recovered from Stripe session ${session_id}: ${bookingId}`);
+    console.error(`Booking recovered from Stripe session ${session_id}: ${bookingId}`);
     return res.status(201).json(verified);
   } catch (err) {
     console.error('Recover from payment error:', err.message);
