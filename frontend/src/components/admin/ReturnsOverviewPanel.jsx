@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Plane, Clock, MapPin, Car, User, Calendar, 
-  AlertTriangle, CheckCircle, ArrowRight, Phone, RefreshCw
+import {
+  Plane, Clock, MapPin, User,
+  RefreshCw
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { API } from '../../config/api';
 
-const ReturnsOverviewPanel = ({ bookings = [], drivers = [], onAssignDriver, onViewBooking }) => {
+const ReturnsOverviewPanel = ({ bookings = [], onViewBooking }) => {
   const [urgentReturns, setUrgentReturns] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -73,31 +73,20 @@ const ReturnsOverviewPanel = ({ bookings = [], drivers = [], onAssignDriver, onV
     return date.toLocaleDateString('en-NZ', { weekday: 'short', day: 'numeric', month: 'short' });
   };
 
-  // Get driver info
-  const getDriverInfo = (booking) => {
-    const driverId = booking.return_driver_id || booking.driver_id;
-    if (!driverId) return null;
-    const driver = drivers.find(d => d.id === driverId);
-    return driver;
-  };
-
-  const renderReturnCard = (booking, isUrgent = false) => {
+  const renderReturnCard = (booking) => {
     const urgencyInfo = getUrgencyInfo(booking);
-    const driver = getDriverInfo(booking);
     const isToday = booking.returnDate === today;
     const isTomorrow = booking.returnDate === tomorrow;
 
     return (
-      <div 
+      <div
         key={booking.id}
         className={`p-4 rounded-xl border transition-all hover:shadow-md cursor-pointer ${
-          isToday && !driver
-            ? 'bg-red-50 border-red-200'
-            : isToday
-              ? 'bg-purple-50 border-purple-200'
-              : isTomorrow
-                ? 'bg-blue-50 border-blue-200'
-                : 'bg-gray-50 border-gray-100'
+          isToday
+            ? 'bg-purple-50 border-purple-200'
+            : isTomorrow
+              ? 'bg-blue-50 border-blue-200'
+              : 'bg-gray-50 border-gray-100'
         }`}
         onClick={() => onViewBooking?.(booking)}
       >
@@ -108,13 +97,11 @@ const ReturnsOverviewPanel = ({ bookings = [], drivers = [], onAssignDriver, onV
               <User className={`w-4 h-4 ${isToday ? 'text-purple-600' : 'text-gray-600'}`} />
               <span className="font-semibold text-gray-900">{booking.name || booking.customerName}</span>
               <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                isToday && !driver
-                  ? 'bg-red-200 text-red-700'
-                  : isToday
-                    ? 'bg-purple-200 text-purple-700'
-                    : isTomorrow
-                      ? 'bg-blue-200 text-blue-700'
-                      : 'bg-gray-200 text-gray-700'
+                isToday
+                  ? 'bg-purple-200 text-purple-700'
+                  : isTomorrow
+                    ? 'bg-blue-200 text-blue-700'
+                    : 'bg-gray-200 text-gray-700'
               }`}>
                 {formatRelativeDate(booking.returnDate)}
               </span>
@@ -143,23 +130,6 @@ const ReturnsOverviewPanel = ({ bookings = [], drivers = [], onAssignDriver, onV
               }`}>
                 Leave by {urgencyInfo.leave_by} • {urgencyInfo.drive_minutes} min drive
               </div>
-            )}
-          </div>
-
-          {/* Driver Status */}
-          <div className="text-right">
-            {driver ? (
-              <div className="flex items-center gap-2">
-                <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium flex items-center gap-1">
-                  <Car className="w-3 h-3" />
-                  {driver.name?.split(' ')[0]}
-                </span>
-              </div>
-            ) : (
-              <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full font-medium flex items-center gap-1">
-                <AlertTriangle className="w-3 h-3" />
-                No Driver
-              </span>
             )}
           </div>
         </div>

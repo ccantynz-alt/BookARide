@@ -109,7 +109,6 @@ const BookingsTable = ({
               <th className="text-left px-4 py-4 text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Customer</th>
               <th className="text-left px-4 py-4 text-[11px] font-semibold text-slate-400 uppercase tracking-widest hidden xl:table-cell">Route</th>
               <th className="text-left px-4 py-4 text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Payment</th>
-              <th className="text-left px-4 py-4 text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Driver</th>
               <th className="text-left px-4 py-4 text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Status</th>
               <th className="w-12"></th>
             </tr>
@@ -117,10 +116,8 @@ const BookingsTable = ({
           <tbody>
             {bookings.map((booking) => {
               const hasReturn = booking.returnDate && booking.returnTime;
-              const isUnassigned = !booking.driver_id && !booking.driver_name && !booking.assignedDriver;
               const today = isToday(booking.date);
               const tomorrow = isTomorrow(booking.date);
-              const urgent = today && isUnassigned;
               const flightNum = booking.flightNumber || booking.flightArrivalNumber || booking.arrivalFlightNumber || booking.flightDepartureNumber || booking.departureFlightNumber || '';
 
               return (
@@ -129,7 +126,6 @@ const BookingsTable = ({
                   onClick={() => onViewDetails(booking)}
                   className={`group border-b border-slate-50 cursor-pointer transition-all duration-150
                     ${safeSelected.has(booking.id) ? 'bg-slate-50' : 'hover:bg-slate-50/60'}
-                    ${urgent ? 'bg-red-50/40' : ''}
                     ${hasReturn ? 'border-r-4 border-r-violet-400' : ''}
                   `}
                 >
@@ -150,7 +146,7 @@ const BookingsTable = ({
                     <div className="flex items-center gap-3">
                       {/* Time pill */}
                       <div className={`w-1.5 self-stretch rounded-full flex-shrink-0 min-h-[40px] ${
-                        urgent ? 'bg-red-400' : today ? 'bg-slate-900' : tomorrow ? 'bg-amber-400' : 'bg-slate-200'
+                        today ? 'bg-slate-900' : tomorrow ? 'bg-amber-400' : 'bg-slate-200'
                       }`} />
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
@@ -220,27 +216,6 @@ const BookingsTable = ({
                         </button>
                       )}
                     </div>
-                  </td>
-
-                  {/* Driver */}
-                  <td className="px-4 py-4">
-                    {booking.driver_id || booking.driver_name ? (
-                      <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                          booking.driverAcknowledged ? 'bg-emerald-400' : 'bg-amber-400 animate-pulse'
-                        }`} />
-                        <div>
-                          <p className="text-[13px] font-medium text-slate-800">{booking.driver_name?.split(' ')[0] || 'Assigned'}</p>
-                          <p className="text-[11px] text-slate-400">{booking.driverAcknowledged ? 'Confirmed' : 'Pending'}</p>
-                        </div>
-                      </div>
-                    ) : (
-                      <span className={`text-[11px] font-bold tracking-wider ${
-                        urgent ? 'text-red-500' : 'text-slate-300'
-                      }`}>
-                        {urgent ? 'UNASSIGNED' : 'None'}
-                      </span>
-                    )}
                   </td>
 
                   {/* Status */}

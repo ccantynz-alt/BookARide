@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle, Clock, Mail, DollarSign, Car, Plane, RotateCcw, MapPin, X } from 'lucide-react';
+import { Mail, DollarSign, Car, Plane, RotateCcw, X } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -12,7 +12,6 @@ const BookingDetailsModal = ({
   open,
   onOpenChange,
   booking,
-  drivers,
   // Payment
   selectedPaymentStatus,
   onPaymentStatusChange,
@@ -21,14 +20,6 @@ const BookingDetailsModal = ({
   priceOverride,
   onPriceOverrideChange,
   onPriceOverride,
-  // Driver assignment
-  selectedDriver,
-  onDriverChange,
-  driverPayoutOverride,
-  onDriverPayoutChange,
-  onShowAssignPreview,
-  onUnassignDriver,
-  onSendTrackingLink,
   // Admin
   onSendToAdmin,
 }) => {
@@ -63,7 +54,6 @@ const BookingDetailsModal = ({
                     booking.payment_status === 'pay-on-pickup' ? 'bg-blue-100 text-blue-700' :
                     'bg-red-100 text-red-700'
                   }`}>
-                    {booking.payment_status === 'paid' && <CheckCircle className="w-3 h-3" />}
                     {booking.payment_status === 'cash' && <DollarSign className="w-3 h-3" />}
                     {booking.payment_status === 'pay-on-pickup' && <Car className="w-3 h-3" />}
                     {booking.payment_status === 'unpaid' && <X className="w-3 h-3" />}
@@ -209,46 +199,6 @@ const BookingDetailsModal = ({
             </div>
           </div>
 
-          {/* Driver Assignment - Outbound */}
-          <DriverAssignmentSection
-            title="Outbound Driver"
-            subtitle={booking.bookReturn ? '(One-way to destination)' : undefined}
-            driverId={booking.driver_id}
-            driverName={booking.driver_name}
-            driverPhone={booking.driver_phone}
-            acknowledged={booking.driverAcknowledged}
-            drivers={drivers}
-            selectedDriver={selectedDriver}
-            onDriverChange={onDriverChange}
-            driverPayoutOverride={driverPayoutOverride}
-            onDriverPayoutChange={onDriverPayoutChange}
-            onShowAssignPreview={() => onShowAssignPreview('outbound')}
-            onUnassign={() => onUnassignDriver('outbound')}
-            onSendTrackingLink={() => onSendTrackingLink(booking.id)}
-            showTrackingLink={true}
-          />
-
-          {/* Driver Assignment - Return */}
-          {booking.bookReturn && (
-            <div className="mt-4 pt-4 border-t border-dashed">
-              <DriverAssignmentSection
-                title="Return Driver"
-                subtitle={`(Return on ${formatDate(booking.returnDate)} at ${booking.returnTime})`}
-                driverId={booking.return_driver_id}
-                driverName={booking.return_driver_name}
-                driverPhone={booking.return_driver_phone}
-                acknowledged={booking.returnDriverAcknowledged}
-                drivers={drivers}
-                selectedDriver={selectedDriver}
-                onDriverChange={onDriverChange}
-                driverPayoutOverride={driverPayoutOverride}
-                onDriverPayoutChange={onDriverPayoutChange}
-                onShowAssignPreview={() => onShowAssignPreview('return')}
-                onUnassign={() => onUnassignDriver('return')}
-              />
-            </div>
-          )}
-
           {/* Notes */}
           {booking.notes && (
             <div>
@@ -266,76 +216,6 @@ const BookingDetailsModal = ({
         </div>
       </DialogContent>
     </Dialog>
-  );
-};
-
-/** Reusable driver assignment section (outbound or return) */
-const DriverAssignmentSection = ({
-  title, subtitle, driverId, driverName, driverPhone, acknowledged,
-  drivers, selectedDriver, onDriverChange, driverPayoutOverride, onDriverPayoutChange,
-  onShowAssignPreview, onUnassign, onSendTrackingLink, showTrackingLink,
-}) => {
-  const activeDrivers = drivers.filter(d => d.status === 'active');
-  const assignedDriverName = drivers.find(d => d.id === driverId)?.name || driverName || 'Unknown Driver';
-
-  return (
-    <div>
-      <h3 className="font-semibold text-slate-800 mb-3">
-        {title} {subtitle && <span className="text-sm font-normal text-slate-500">{subtitle}</span>}
-      </h3>
-      {driverId || driverName ? (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-600">Assigned Driver</p>
-              <p className="font-medium text-slate-900">{assignedDriverName}</p>
-              <p className="text-xs text-slate-500">{driverPhone}</p>
-              {acknowledged ? (
-                <p className="text-xs text-emerald-600 font-semibold mt-1 flex items-center gap-1"><CheckCircle className="w-3 h-3" /> Confirmed</p>
-              ) : (
-                <p className="text-xs text-orange-600 mt-1 flex items-center gap-1 animate-pulse"><Clock className="w-3 h-3" /> Awaiting confirmation...</p>
-              )}
-            </div>
-            <div className="flex flex-col gap-2">
-              {showTrackingLink && onSendTrackingLink && (
-                <Button size="sm" onClick={onSendTrackingLink} className="bg-blue-500 hover:bg-blue-600 text-white text-xs flex items-center gap-1">
-                  <MapPin className="w-3 h-3" /> Send Tracking Link
-                </Button>
-              )}
-              <Button size="sm" variant="outline" onClick={onUnassign} className="text-red-600 hover:bg-red-50 border-red-200 flex items-center gap-1">
-                <X className="w-3 h-3" /> Unassign
-              </Button>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          <p className="text-sm text-slate-600">No driver assigned yet</p>
-          <Select value={selectedDriver} onValueChange={onDriverChange}>
-            <SelectTrigger className="w-full"><SelectValue placeholder="Select a driver..." /></SelectTrigger>
-            <SelectContent className="z-[9999] bg-white">
-              {activeDrivers.length === 0 ? (
-                <SelectItem value="no-drivers" disabled>No active drivers</SelectItem>
-              ) : activeDrivers.map(d => (
-                <SelectItem key={d.id} value={d.id}>{d.name} - {d.phone}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <div className="flex gap-2 items-center">
-            <div className="flex-1">
-              <label className="text-xs text-slate-500 mb-1 block">Driver Payout (optional)</label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">$</span>
-                <input type="number" placeholder="Auto-calculated" value={driverPayoutOverride} onChange={(e) => onDriverPayoutChange(e.target.value)} className="w-full pl-7 pr-3 py-2 border rounded-md text-sm" />
-              </div>
-            </div>
-            <Button onClick={onShowAssignPreview} disabled={!selectedDriver} className="bg-indigo-600 hover:bg-indigo-700 text-white mt-5">
-              Preview & Assign
-            </Button>
-          </div>
-        </div>
-      )}
-    </div>
   );
 };
 
