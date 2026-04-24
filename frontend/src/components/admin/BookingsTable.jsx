@@ -1,5 +1,5 @@
 import React from 'react';
-import { Eye, Edit2, Mail, RefreshCw, Trash2, XCircle, CheckCircle, Clock, Square, CheckSquare, Phone, Plane, ArrowRight, CreditCard, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Mail, RefreshCw, XCircle, Square, CheckSquare, Phone, Plane, ArrowRight, CreditCard, ChevronLeft, ChevronRight, AlertTriangle, Send } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { formatDate, isToday, isTomorrow } from '../../utils/dateFormat';
 
@@ -13,9 +13,8 @@ const BookingsTable = ({
   onClearSelection,
   onBulkDelete,
   onViewDetails,
-  onEditBooking,
-  onSendEmail,
   onResendConfirmation,
+  onSendToAdmin,
   onDeleteBooking,
   onStatusUpdate,
   onSendPaymentLink,
@@ -90,6 +89,37 @@ const BookingsTable = ({
         </div>
       )}
 
+      {/* Active filter warning — tells admin WHY bookings look missing */}
+      {statusFilter && statusFilter !== 'all' && (
+        <div className="bg-amber-50 border-b border-amber-200 px-5 py-2.5 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+            <span className="text-sm font-semibold text-amber-800">
+              Filter active — showing <span className="uppercase">{statusFilter.replace('_', ' ')}</span> only. Other bookings are hidden.
+            </span>
+          </div>
+          <button
+            onClick={onClearFilters}
+            className="text-xs font-bold text-amber-700 bg-amber-100 hover:bg-amber-200 border border-amber-300 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
+          >
+            Show all bookings
+          </button>
+        </div>
+      )}
+      {searchTerm && (
+        <div className="bg-blue-50 border-b border-blue-200 px-5 py-2.5 flex items-center justify-between gap-3">
+          <span className="text-sm font-semibold text-blue-800">
+            Search active — showing results for "{searchTerm}"
+          </span>
+          <button
+            onClick={onClearFilters}
+            className="text-xs font-bold text-blue-700 bg-blue-100 hover:bg-blue-200 border border-blue-300 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
+          >
+            Clear search
+          </button>
+        </div>
+      )}
+
       {/* Table */}
       <div className="overflow-x-auto">
         <table className="w-full">
@@ -110,7 +140,7 @@ const BookingsTable = ({
               <th className="text-left px-4 py-4 text-[11px] font-semibold text-slate-400 uppercase tracking-widest hidden xl:table-cell">Route</th>
               <th className="text-left px-4 py-4 text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Payment</th>
               <th className="text-left px-4 py-4 text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Status</th>
-              <th className="w-12"></th>
+              <th className="text-left px-4 py-4 text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -242,26 +272,43 @@ const BookingsTable = ({
                     </Select>
                   </td>
 
-                  {/* Quick actions */}
+                  {/* Quick actions — always visible, not hover-only */}
                   <td className="px-3 py-4" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => onViewDetails(booking)} className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors" title="View details">
-                        <Eye className="w-3.5 h-3.5 text-slate-400 hover:text-slate-600" />
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onResendConfirmation(booking.id); }}
+                        className="p-2 rounded-lg bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-200 transition-colors"
+                        title="Resend confirmation to customer"
+                      >
+                        <RefreshCw className="w-4 h-4 text-slate-500 hover:text-blue-600" />
                       </button>
-                      <button onClick={() => onEditBooking(booking)} className="p-1.5 rounded-lg hover:bg-indigo-50 transition-colors" title="Edit">
-                        <Edit2 className="w-3.5 h-3.5 text-slate-400 hover:text-indigo-600" />
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onSendToAdmin(booking.id); }}
+                        className="p-2 rounded-lg bg-slate-50 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 transition-colors"
+                        title="Send booking details to admin"
+                      >
+                        <Send className="w-4 h-4 text-slate-500 hover:text-indigo-600" />
                       </button>
-                      <button onClick={() => onSendEmail(booking)} className="p-1.5 rounded-lg hover:bg-emerald-50 transition-colors" title="Email">
-                        <Mail className="w-3.5 h-3.5 text-slate-400 hover:text-emerald-600" />
-                      </button>
-                      <button onClick={() => onResendConfirmation(booking.id)} className="p-1.5 rounded-lg hover:bg-amber-50 transition-colors" title="Resend confirmation">
-                        <RefreshCw className="w-3.5 h-3.5 text-slate-400 hover:text-amber-600" />
-                      </button>
-                      <button onClick={() => onDeleteBooking(booking.id, booking.name, true)} className="p-1.5 rounded-lg hover:bg-red-50 transition-colors" title="Cancel (notifies customer)">
-                        <Trash2 className="w-3.5 h-3.5 text-slate-400 hover:text-red-500" />
-                      </button>
-                      <button onClick={() => onDeleteBooking(booking.id, booking.name, false)} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors" title="Silent delete (no notification)">
-                        <XCircle className="w-3.5 h-3.5 text-slate-400 hover:text-gray-600" />
+                      {booking.payment_status !== 'paid' && booking.payment_status !== 'cash' && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onSendPaymentLink(booking.id, 'stripe'); }}
+                          className="p-2 rounded-lg bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-200 transition-colors"
+                          title="Send payment link"
+                        >
+                          <CreditCard className="w-4 h-4 text-slate-500 hover:text-emerald-600" />
+                        </button>
+                      )}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (window.confirm(`Cancel booking for ${booking.name}? No notification will be sent.`)) {
+                            onDeleteBooking(booking.id, booking.name, false);
+                          }
+                        }}
+                        className="p-2 rounded-lg bg-slate-50 hover:bg-red-50 border border-slate-200 hover:border-red-200 transition-colors"
+                        title="Cancel silently (no email to customer)"
+                      >
+                        <XCircle className="w-4 h-4 text-slate-500 hover:text-red-500" />
                       </button>
                     </div>
                   </td>

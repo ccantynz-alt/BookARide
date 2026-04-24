@@ -615,9 +615,9 @@ export const AdminDashboard = () => {
       const newBookings = Array.isArray(rd) ? rd : (Array.isArray(rd?.bookings) ? rd.bookings : []);
       if (rd?.total !== undefined) setTotalBookings(rd.total);
       
-      // Cache a small subset for offline fallback (keeps localStorage fast)
+      // Cache for offline fallback
       try {
-        const toCache = (append ? newBookings : newBookings.slice(0, 50));
+        const toCache = append ? newBookings : newBookings;
         localStorage.setItem('cachedBookings', JSON.stringify(toCache));
         localStorage.setItem('cachedBookingsTime', new Date().toISOString());
       } catch (e) {
@@ -1988,7 +1988,7 @@ export const AdminDashboard = () => {
         <BookingsTable
           bookings={filteredBookings}
           loading={loading}
-          totalBookings={bookings.length}
+          totalBookings={totalBookings}
           selectedBookings={safeSelectedSet}
           onSelectBooking={(id) => {
             const next = new Set(safeSelectedSet);
@@ -2002,7 +2002,7 @@ export const AdminDashboard = () => {
           onEditBooking={openEditBookingModal}
           onSendEmail={(booking) => { setSelectedBooking(booking); setShowEmailModal(true); }}
           onResendConfirmation={handleResendConfirmation}
-          onArchiveBooking={handleArchiveBooking}
+          onSendToAdmin={handleSendToAdmin}
           onDeleteBooking={handleDeleteBooking}
           onStatusUpdate={handleStatusUpdate}
           onSendPaymentLink={handleResendPaymentLink}
