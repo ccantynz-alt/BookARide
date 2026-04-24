@@ -16,9 +16,6 @@ function customerName(booking) {
   );
 }
 
-/**
- * Core booking details table (reused across all booking emails)
- */
 function bookingDetailsTable(booking) {
   const flightNum =
     booking.flightNumber ||
@@ -58,9 +55,6 @@ function emailWrapper(innerHtml, preheader = '') {
   `;
 }
 
-/**
- * Customer booking received email (initial, unpaid)
- */
 function customerBookingReceivedEmail(booking, { requiresApproval = false } = {}) {
   const name = customerName(booking);
   const body = `
@@ -81,9 +75,6 @@ function customerBookingReceivedEmail(booking, { requiresApproval = false } = {}
   };
 }
 
-/**
- * Customer booking confirmed (paid) email
- */
 function customerBookingConfirmedEmail(booking) {
   const name = customerName(booking);
   const body = `
@@ -100,9 +91,22 @@ function customerBookingConfirmedEmail(booking) {
   };
 }
 
-/**
- * Payment link email (sent when Stripe checkout is created or resent by admin)
- */
+function customerBookingApprovedEmail(booking) {
+  const name = customerName(booking);
+  const body = `
+    <h2 style="color:#059669; margin-top:0;">Great news — your booking is approved!</h2>
+    <p>Hi ${name},</p>
+    <p>Your BookARide transfer has been <strong>approved</strong> by our team. You're all set!</p>
+    ${bookingDetailsTable(booking)}
+    <p style="margin-top:20px;"><strong>Next step:</strong> Please complete your payment using the link you received, or contact us at <a href="mailto:info@bookaride.co.nz">info@bookaride.co.nz</a> if you haven't received a payment link.</p>
+    <p>We'll see you soon!</p>
+  `;
+  return {
+    subject: `Booking Approved - Ref #${booking.referenceNumber} - BookARide`,
+    html: emailWrapper(body, `Your BookARide booking #${booking.referenceNumber} has been approved`),
+  };
+}
+
 function customerPaymentLinkEmail(booking, paymentUrl) {
   const name = customerName(booking);
   const amount = formatPrice(booking.pricing?.totalPrice || booking.totalPrice);
@@ -125,9 +129,6 @@ function customerPaymentLinkEmail(booking, paymentUrl) {
   };
 }
 
-/**
- * Admin notification — new booking
- */
 function adminNewBookingEmail(booking, { requiresApproval = false } = {}) {
   const name = customerName(booking);
   const body = `
@@ -147,9 +148,6 @@ function adminNewBookingEmail(booking, { requiresApproval = false } = {}) {
   };
 }
 
-/**
- * Reminder email for tomorrow's bookings
- */
 function customerReminderEmail(booking) {
   const name = customerName(booking);
   const body = `
@@ -171,9 +169,6 @@ function customerReminderEmail(booking) {
   };
 }
 
-/**
- * Customer cancellation email — sent when admin cancels with notification
- */
 function customerCancellationEmail(booking) {
   const name = customerName(booking);
   const body = `
@@ -201,6 +196,7 @@ module.exports = {
   emailWrapper,
   customerBookingReceivedEmail,
   customerBookingConfirmedEmail,
+  customerBookingApprovedEmail,
   customerPaymentLinkEmail,
   adminNewBookingEmail,
   customerReminderEmail,
