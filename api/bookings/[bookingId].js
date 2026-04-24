@@ -2,8 +2,14 @@
  * GET    /api/bookings/:bookingId — Get single booking
  * PATCH  /api/bookings/:bookingId — Update booking fields
  * DELETE /api/bookings/:bookingId — Soft-delete (moves to deleted_bookings)
+ *
+ * DELETE query params:
+ *   send_notification=true  — send cancellation email to customer before deleting
+ *   force=true              — allow cancellation of paid Stripe bookings
  */
 const { findOne, updateOne, insertOne, deleteOne } = require('../_lib/db');
+const { sendEmail } = require('../_lib/mailgun');
+const { customerCancellationEmail } = require('../_lib/email-templates');
 
 module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -49,14 +55,46 @@ module.exports = async function handler(req, res) {
 
   if (req.method === 'DELETE') {
     try {
-      // ZERO BOOKING LOSS: verify backup before deleting
+      const sendNotification = req.query.send_notification === 'true';
+      const force = req.query.force === 'true';
+
       const booking = await findOne('bookings', { id: bookingId });
       if (!booking) {
         return res.status(404).json({ detail: 'Booking not found' });
       }
 
-      // Step 1: Insert into deleted_bookings
+      // Safety check: warn before cancelling paid Stripe bookings
+      if (!force && booking.payment_status === 'paid' && booking.stripe_payment_intent) {
+        return res.status(400).json({
+          detail: `This booking has a paid Stripe payment (${booking.stripe_payment_intent}). Use force=true to cancel anyway. You may need to process a refund separately in Stripe.`,
+        });
+      }
+
+      // Send cancellation email BEFORE deleting so the booking details are still accessible
+      if (sendNotification && booking.email) {
+        try {
+          const template = customerCancellationEmail(booking);
+          const sent = await sendEmail({
+            to: booking.email,
+            subject: template.subject,
+            html: template.html,
+            replyTo: 'info@bookaride.co.nz',
+          });
+          if (sent) {
+            console.error(`Cancellation email sent to ${booking.email} for booking #${booking.referenceNumber}`);
+          } else {
+            console.error(`CRITICAL: Cancellation email failed for booking #${booking.referenceNumber} to ${booking.email}`);
+          }
+        } catch (emailErr) {
+          console.error(`CRITICAL: Cancellation email threw for booking #${booking.referenceNumber}: ${emailErr.message}`);
+        }
+      }
+
+      // ZERO BOOKING LOSS: verify backup before deleting
       booking.deleted_at = new Date().toISOString();
+      booking.cancellation_notified = sendNotification;
+
+      // Step 1: Insert into deleted_bookings
       const backupResult = await insertOne('deleted_bookings', booking);
       if (!backupResult.acknowledged) {
         console.error(`CRITICAL: Failed to backup booking ${bookingId} before delete`);
@@ -73,8 +111,13 @@ module.exports = async function handler(req, res) {
       // Step 3: Only now delete from active bookings
       await deleteOne('bookings', { id: bookingId });
 
-      console.log(`Booking ${bookingId} soft-deleted (backed up to deleted_bookings)`);
-      return res.status(200).json({ success: true, message: 'Booking deleted (recoverable)' });
+      console.error(`Booking ${bookingId} cancelled (notification sent: ${sendNotification})`);
+      return res.status(200).json({
+        success: true,
+        message: sendNotification
+          ? `Booking cancelled — customer notified at ${booking.email}`
+          : 'Booking deleted (no notification sent)',
+      });
     } catch (err) {
       console.error('Delete booking error:', err.message);
       return res.status(500).json({ detail: err.message });

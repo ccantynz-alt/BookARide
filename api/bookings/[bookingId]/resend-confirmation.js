@@ -47,7 +47,7 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ detail: 'Failed to send confirmation email' });
     }
 
-    console.log(`Confirmation resent for booking #${booking.referenceNumber} to ${booking.email}`);
+    console.error(`Confirmation resent for booking #${booking.referenceNumber} to ${booking.email}`);
     return res.status(200).json({
       success: true,
       message: `Confirmation email sent to ${booking.email}`,
