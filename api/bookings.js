@@ -6,6 +6,7 @@
  */
 const { findOne, findMany, insertOne, updateOne, getDb } = require('./_lib/db');
 const { sendEmail } = require('./_lib/mailgun');
+const { verifyAdmin } = require('./_lib/auth');
 const {
   customerBookingReceivedEmail,
   adminNewBookingEmail,
@@ -51,6 +52,7 @@ module.exports = async function handler(req, res) {
   }
 
   if (req.method === 'GET') {
+    if (!verifyAdmin(req, res)) return;
     return listBookings(req, res);
   }
 

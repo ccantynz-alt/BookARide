@@ -8,7 +8,9 @@
  *   force=true              — allow cancellation of paid Stripe bookings
  */
 const { findOne, updateOne, insertOne, deleteOne } = require('../_lib/db');
+const { sendEmail } = require('../_lib/mailgun');
 const { verifyAdmin } = require('../_lib/auth');
+const { customerCancellationEmail } = require('../_lib/email-templates');
 
 module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -112,7 +114,7 @@ module.exports = async function handler(req, res) {
       // Step 3: Only now delete from active bookings
       await deleteOne('bookings', { id: bookingId });
 
-;      console.error(`Booking ${bookingId} soft-deleted (backed up to deleted_bookings)`);
+      console.error(`Booking ${bookingId} soft-deleted (backed up to deleted_bookings)`);
       return res.status(200).json({ success: true, message: 'Booking deleted (recoverable)' });
     } catch (err) {
       console.error('Delete booking error:', err.message);
