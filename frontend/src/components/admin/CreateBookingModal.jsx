@@ -261,11 +261,7 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
         returnFlightNumber: newBooking.returnFlightNumber
       }, getAuthHeaders());
 
-      const isStripeLink = ['stripe', 'paypal'].includes((newBooking.paymentMethod || '').toLowerCase());
-      const customerMsg = isStripeLink
-        ? `Booking created. Payment link emailed to ${newBooking.email}.`
-        : `Booking created and confirmation emailed to ${newBooking.email}.`;
-      toast.success(`${customerMsg} Admin notified at ${response.data?.admin_email_recipient || 'bookings@bookaride.co.nz'}.`);
+      toast.success(`Booking created. Stripe payment link emailed to ${newBooking.email}. Admin notified at ${response.data?.admin_email_recipient || 'bookings@bookaride.co.nz'}.`);
       onClose();
       onSuccess?.();
     } catch (error) {
@@ -440,27 +436,13 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
                 </Select>
               </div>
               <div>
-                <Label>Payment Method *</Label>
-                <Select
-                  value={newBooking.paymentMethod}
-                  onValueChange={(value) => setNewBooking(prev => ({...prev, paymentMethod: value}))}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="stripe">Stripe - Send Payment Link</SelectItem>
-                    <SelectItem value="paypal">PayPal - Send Payment Link</SelectItem>
-                    <SelectItem value="pay-on-pickup">Pay on Pickup (Cash)</SelectItem>
-                    <SelectItem value="card">Card (Already Paid)</SelectItem>
-                    <SelectItem value="bank-transfer">Bank Transfer</SelectItem>
-                  </SelectContent>
-                </Select>
-                {(newBooking.paymentMethod === 'stripe' || newBooking.paymentMethod === 'paypal') && (
-                  <p className="text-xs text-gold mt-1">
-                    A payment link will be sent to the customer's email after booking is created.
-                  </p>
-                )}
+                <Label>Payment Method</Label>
+                <div className="mt-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-md text-sm text-gray-700">
+                  Stripe (Credit/Debit Card)
+                </div>
+                <p className="text-xs text-gold mt-1">
+                  A Stripe payment link will be emailed to the customer after the booking is created.
+                </p>
               </div>
             </div>
           </div>

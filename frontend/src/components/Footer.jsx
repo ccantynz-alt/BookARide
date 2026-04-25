@@ -47,11 +47,6 @@ export const Footer = () => {
                   Book Now
                 </Link>
               </li>
-              <li>
-                <Link to="/afterpay" className="text-sm hover:text-gold transition-colors duration-200 flex items-center gap-1">
-                  <span className="text-[#B2FCE4]">●</span> Pay with Afterpay
-                </Link>
-              </li>
             </ul>
           </div>
 
