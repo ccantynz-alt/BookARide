@@ -109,25 +109,92 @@ function checkMailgun() {
   };
 }
 
+// Live check: actually call Mailgun's API to validate the key + domain.
+// This catches expired/wrong keys AND unverified domains, which the
+// env-var-only check above cannot detect. Runs a HEAD-equivalent
+// (GET /v3/domains/<domain>) — does NOT send an email.
+async function checkMailgunLive() {
+  const apiKey = process.env.MAILGUN_API_KEY;
+  const domain = process.env.MAILGUN_DOMAIN || 'mg.bookaride.co.nz';
+  const region = (process.env.MAILGUN_REGION || 'eu').toLowerCase();
+  const endpoint = region === 'us' ? 'https://api.mailgun.net' : 'https://api.eu.mailgun.net';
+
+  if (!apiKey) {
+    return { ok: false, message: 'Cannot verify — MAILGUN_API_KEY not set' };
+  }
+
+  try {
+    const url = `${endpoint}/v3/domains/${domain}`;
+    const res = await fetch(url, {
+      headers: {
+        Authorization: `Basic ${Buffer.from(`api:${apiKey}`).toString('base64')}`,
+      },
+    });
+
+    if (res.status === 200) {
+      const data = await res.json().catch(() => ({}));
+      const state = data?.domain?.state;
+      if (state && state !== 'active') {
+        return {
+          ok: false,
+          message: `Mailgun domain '${domain}' is in state '${state}' — must be 'active'. Verify DNS records (SPF, DKIM, MX) in Mailgun dashboard.`,
+        };
+      }
+      return {
+        ok: true,
+        message: `Mailgun key verified against domain '${domain}' on ${region.toUpperCase()} region (state=${state || 'unknown'})`,
+      };
+    }
+
+    if (res.status === 401) {
+      return {
+        ok: false,
+        message: `Mailgun rejected MAILGUN_API_KEY (401). Key is wrong or expired. Generate a new sending key at app.mailgun.com → Send → API keys.`,
+      };
+    }
+    if (res.status === 404) {
+      return {
+        ok: false,
+        message: `Mailgun says domain '${domain}' does not exist on the ${region.toUpperCase()} region. Either MAILGUN_DOMAIN is wrong or MAILGUN_REGION should be the other one (us<->eu).`,
+      };
+    }
+
+    const text = await res.text().catch(() => '');
+    return {
+      ok: false,
+      message: `Mailgun live check returned HTTP ${res.status}: ${text.slice(0, 200)}`,
+    };
+  } catch (err) {
+    return { ok: false, message: `Mailgun live check threw: ${err.message}` };
+  }
+}
+
 function checkStripe() {
   const key = process.env.STRIPE_SECRET_KEY || process.env.STRIPE_API_KEY;
   const webhook = process.env.STRIPE_WEBHOOK_SECRET;
   if (!key) {
     return { ok: false, message: 'STRIPE_SECRET_KEY not set — customers cannot pay' };
   }
-  if (!key.startsWith('sk_')) {
-    return { ok: false, message: 'STRIPE_SECRET_KEY does not start with sk_ — likely the publishable key by mistake' };
+  // Accept both standard secret keys (sk_live_/sk_test_) and restricted
+  // keys (rk_live_/rk_test_). Restricted keys are valid as long as the
+  // right scopes are enabled. Reject only the publishable key (pk_).
+  if (key.startsWith('pk_')) {
+    return { ok: false, message: 'STRIPE_SECRET_KEY looks like a PUBLISHABLE key (pk_…). The publishable key is for browser code only and cannot create checkout sessions. Use a Standard secret key (sk_…) or a Restricted key (rk_…) with Checkout Sessions: write + Customers: write scopes.' };
   }
+  if (!key.startsWith('sk_') && !key.startsWith('rk_')) {
+    return { ok: false, message: `STRIPE_SECRET_KEY has unexpected prefix '${key.slice(0,3)}' — expected sk_ (standard) or rk_ (restricted)` };
+  }
+  const keyKind = key.startsWith('rk_') ? 'restricted' : 'standard';
   if (!webhook) {
     return {
       ok: true,
       warning: 'STRIPE_WEBHOOK_SECRET not set — webhook signature verification disabled (insecure)',
-      message: `Stripe key set (${redact(key)})`,
+      message: `Stripe ${keyKind} key set (${redact(key)})${keyKind === 'restricted' ? '. Confirm in Stripe dashboard that scopes include Checkout Sessions: write, Customers: write, Webhooks: read.' : ''}`,
     };
   }
   return {
     ok: true,
-    message: `Stripe key (${redact(key)}) and webhook secret (${redact(webhook)}) both set`,
+    message: `Stripe ${keyKind} key (${redact(key)}) and webhook secret (${redact(webhook)}) both set${keyKind === 'restricted' ? '. Restricted keys MUST have Checkout Sessions: write + Customers: write scopes — verify in Stripe dashboard.' : ''}`,
   };
 }
 
@@ -198,6 +265,7 @@ module.exports = async function handler(req, res) {
     database_connection: await checkDatabase(),
     database_write: { ok: false, message: 'Skipped (no DB connection)' },
     mailgun: checkMailgun(),
+    mailgun_live: await checkMailgunLive(),
     stripe: checkStripe(),
     google_maps: checkGoogleMaps(),
     pricing_engine: checkPricingEngine(),
@@ -209,8 +277,11 @@ module.exports = async function handler(req, res) {
     checks.database_write = await checkDatabaseWrite();
   }
 
-  // Critical checks that block bookings entirely
-  const criticalChecks = ['database_connection', 'database_write', 'pricing_engine', 'email_template'];
+  // Critical checks that block bookings entirely.
+  // mailgun_live is critical because Craig has explicitly said the
+  // booking emails not arriving is a P0 — silent Mailgun failure is
+  // exactly the failure mode we keep being burned by.
+  const criticalChecks = ['database_connection', 'database_write', 'pricing_engine', 'email_template', 'mailgun_live'];
   const blockingFailures = criticalChecks.filter(k => !checks[k].ok);
 
   // Important but non-blocking

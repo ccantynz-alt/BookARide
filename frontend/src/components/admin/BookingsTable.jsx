@@ -272,38 +272,44 @@ const BookingsTable = ({
                     </Select>
                   </td>
 
-                  {/* Quick actions — always visible, not hover-only */}
+                  {/* Quick actions — icon + visible label so admins on
+                      mobile/iPad can read what each button does without
+                      relying on hover tooltips. */}
                   <td className="px-3 py-4" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-start gap-1.5 flex-wrap">
                       <button
                         onClick={(e) => { e.stopPropagation(); onResendConfirmation(booking.id); }}
-                        className="group p-2.5 rounded-lg bg-white hover:bg-blue-50 border border-slate-200 hover:border-blue-300 transition-all shadow-sm hover:shadow"
-                        title="Resend confirmation to customer"
+                        className="group flex flex-col items-center gap-1 px-2.5 py-2 rounded-lg bg-white hover:bg-blue-50 border border-slate-200 hover:border-blue-300 transition-all shadow-sm hover:shadow min-w-[64px]"
+                        title="Resend booking confirmation email to the customer"
                       >
                         <RefreshCw className="w-[18px] h-[18px] text-slate-400 group-hover:text-blue-600 transition-colors" />
+                        <span className="text-[10px] font-semibold tracking-wide text-slate-500 group-hover:text-blue-600 transition-colors">Resend</span>
                       </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); onSendToAdmin(booking.id); }}
-                        className="group p-2.5 rounded-lg bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 transition-all shadow-sm hover:shadow"
-                        title="Send booking details to admin"
+                        className="group flex flex-col items-center gap-1 px-2.5 py-2 rounded-lg bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 transition-all shadow-sm hover:shadow min-w-[64px]"
+                        title="Email these booking details to the admin inbox (bookings@bookaride.co.nz)"
                       >
                         <Send className="w-[18px] h-[18px] text-slate-400 group-hover:text-indigo-600 transition-colors" />
+                        <span className="text-[10px] font-semibold tracking-wide text-slate-500 group-hover:text-indigo-600 transition-colors">Email Admin</span>
                       </button>
                       {booking.payment_status !== 'paid' && booking.payment_status !== 'cash' && (
                         <button
                           onClick={(e) => { e.stopPropagation(); onSendPaymentLink(booking.id, 'stripe'); }}
-                          className="group p-2.5 rounded-lg bg-white hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 transition-all shadow-sm hover:shadow"
-                          title="Send payment link"
+                          className="group flex flex-col items-center gap-1 px-2.5 py-2 rounded-lg bg-white hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 transition-all shadow-sm hover:shadow min-w-[64px]"
+                          title="Email a Stripe payment link to the customer"
                         >
                           <CreditCard className="w-[18px] h-[18px] text-slate-400 group-hover:text-emerald-600 transition-colors" />
+                          <span className="text-[10px] font-semibold tracking-wide text-slate-500 group-hover:text-emerald-600 transition-colors">Pay Link</span>
                         </button>
                       )}
                       <button
                         onClick={(e) => { e.stopPropagation(); onDeleteBooking(booking.id, booking.name, false); }}
-                        className="p-2 rounded-lg bg-slate-50 hover:bg-red-50 border border-slate-200 hover:border-red-200 transition-colors"
-                        title="Cancel silently (no email to customer)"
+                        className="group flex flex-col items-center gap-1 px-2.5 py-2 rounded-lg bg-white hover:bg-red-50 border border-slate-200 hover:border-red-200 transition-all shadow-sm hover:shadow min-w-[64px]"
+                        title="Cancel this booking silently — no email is sent to the customer"
                       >
-                        <XCircle className="w-[18px] h-[18px] text-slate-400 group-hover:text-red-500 transition-colors" />
+                        <XCircle className="w-[18px] h-[18px] text-slate-400 group-hover:text-red-600 transition-colors" />
+                        <span className="text-[10px] font-semibold tracking-wide text-slate-500 group-hover:text-red-600 transition-colors">Cancel</span>
                       </button>
                     </div>
                   </td>

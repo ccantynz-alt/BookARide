@@ -67,7 +67,7 @@ function customerBookingReceivedEmail(booking, { requiresApproval = false } = {}
     }</p>
     ${bookingDetailsTable(booking)}
     <p style="margin-top:20px;"><strong>Next step:</strong> Complete your payment using the link you'll receive separately, or click the pay button on your booking confirmation page.</p>
-    <p>If you have any questions, just reply to this email or contact us at <a href="mailto:info@bookaride.co.nz">info@bookaride.co.nz</a>.</p>
+    <p style="font-size:13px; color:#666; margin-top:30px;">Please do not reply to this confirmation — it is sent from an unattended address. For any questions, email <a href="mailto:info@bookaride.co.nz" style="color:#1a1a1a;">info@bookaride.co.nz</a>.</p>
   `;
   return {
     subject: `Booking Received - Ref #${booking.referenceNumber} - BookARide`,
@@ -84,6 +84,7 @@ function customerBookingConfirmedEmail(booking) {
     ${bookingDetailsTable(booking)}
     <p style="margin-top:20px;"><strong>Payment Status:</strong> <span style="background:#d1fae5; color:#047857; padding:4px 12px; border-radius:4px; font-weight:bold;">PAID</span></p>
     <p style="margin-top:20px;">Thank you for choosing BookARide. We'll be in touch if anything changes.</p>
+    <p style="font-size:13px; color:#666; margin-top:30px;">Please do not reply to this confirmation — it is sent from an unattended address. For any questions, email <a href="mailto:info@bookaride.co.nz" style="color:#1a1a1a;">info@bookaride.co.nz</a>.</p>
   `;
   return {
     subject: `Booking Confirmed - Ref #${booking.referenceNumber} - BookARide`,

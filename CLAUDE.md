@@ -754,6 +754,81 @@ is no scenario where a different payment method is the right answer.
 - If a future session wants to re-introduce Afterpay, the answer is
   ALWAYS "ask Craig first" — and the default answer is no
 
+### 6e. Email Architecture (2026-04-25) — LOCKED
+
+Craig has had email confirmations break repeatedly because previous
+agents changed sender addresses, redirected admin notifications to
+non-existent inboxes, or put "reply to this email" wording on
+confirmations. This rule freezes the email architecture so it cannot
+drift again.
+
+**Three Google Workspace mailboxes — these are real, owned, and
+monitored. Do not invent new ones, do not switch between them, do
+not "consolidate".**
+
+| Address | Role | Direction |
+|---------|------|-----------|
+| `bookings@bookaride.co.nz` | Admin booking-notification recipient — every new booking, payment-confirmed, cancellation, contact-form submission lands here | **inbox only** (Craig reads it) |
+| `noreply@bookaride.co.nz` | From-address on customer booking confirmations — sends only, replies are not monitored | **outbound only** |
+| `info@bookaride.co.nz` | Customer-facing support inbox — quoted in footer, schema.org `email`, FAQ, AI auto-replies, contact-form replies, the `replyTo` header on all customer emails | **inbox + outbound** |
+
+**Env-var defaults (locked):**
+
+```
+BOOKINGS_NOTIFICATION_EMAIL = bookings@bookaride.co.nz   # admin recipient
+NOREPLY_EMAIL               = noreply@bookaride.co.nz    # customer From
+ADMIN_EMAIL                 = bookings@bookaride.co.nz   # AI escalations
+CONTACT_NOTIFICATION_EMAIL  = bookings@bookaride.co.nz   # contact form lands here
+```
+
+The hardcoded fallback in every API handler (e.g.,
+`process.env.BOOKINGS_NOTIFICATION_EMAIL || 'bookings@bookaride.co.nz'`)
+must keep `bookings@bookaride.co.nz` as the default — never change to
+any other address. Same for `info@bookaride.co.nz` as the `replyTo`
+default.
+
+**Rules (LOCKED):**
+
+- **NEVER** change the default in code from
+  `bookings@bookaride.co.nz` to `bookings@`, `booking@`,
+  `craig@`, `support@`, or anything else. The plural `bookings@`
+  is the real Google Workspace mailbox.
+- **NEVER** set `replyTo` on customer confirmation emails to
+  anything other than `info@bookaride.co.nz`. The `noreply@`
+  address is send-only and is not monitored.
+- **NEVER** put "reply to this email" or "just reply" or "respond
+  to this message" in the body of customer confirmations. They
+  must explicitly say "Please do not reply to this confirmation"
+  with a clear pointer to `info@bookaride.co.nz` for support.
+- **NEVER** redirect customer-facing dead-link addresses (PayNow
+  page, Contact form error message, JSON-LD schema, footer, error
+  boundaries) at `bookings@`. Customer-facing = `info@`. Always.
+- **NEVER** introduce a new `*@bookaride.co.nz` address (e.g.,
+  `craig@`, `accounts@`, `dispatch@`, `team@`) without first
+  asking Craig whether he has actually set up that mailbox in
+  Google Workspace. Sending to a non-existent address bounces
+  silently and customers never get their email.
+- **NEVER** delete the `_email_status` block returned by
+  `POST /api/bookings` and `POST /api/bookings/manual`. It is the
+  only signal Craig has that emails actually left Mailgun for any
+  given booking.
+- The session-start hook (`.claude/hooks/session-start.sh`) greps
+  the repo on startup and yells if any of the above are violated.
+  If you see "EMAIL ARCHITECTURE REGRESSION" in the hook output,
+  fix it before doing anything else.
+
+**If `bookings@` ever stops receiving admin notifications:**
+
+1. Hit `/api/health/booking-system`. The new live Mailgun check
+   reports key/domain/region issues with a precise message.
+2. Hit `/api/health/email-test?to=bookings@bookaride.co.nz` (admin
+   auth required). This fires a real test through the production
+   send path. If Mailgun accepts it but it doesn't land in
+   `bookings@`, check Google Workspace spam/filter rules and
+   Mailgun → Sending → Logs for the message-id.
+3. Do NOT "fix" by changing the recipient address to a different
+   inbox. That hides the real fault.
+
 ### 6c. Google Address Autocomplete (2026-04-09) — LOCKED
 
 **CRITICAL: Google's native Autocomplete widget is BANNED.**
