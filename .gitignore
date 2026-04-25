@@ -128,3 +128,4 @@ D8_CONTROL/
 # GateTest generated reports and memory
 .gatetest/
 .env*.local
+.gatetest/

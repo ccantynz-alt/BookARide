@@ -85,7 +85,7 @@ async function handler(req, res) {
           status: 'completed',
           updated_at: new Date().toISOString(),
         },
-      }).catch(() => {}); // Non-critical
+      }).catch(err => console.error('payment_transactions update failed:', err.message));
 
       console.error(`Payment confirmed for booking ${bookingId} (ref #${booking.referenceNumber})`);
 
