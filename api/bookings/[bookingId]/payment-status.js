@@ -8,7 +8,8 @@
  * This endpoint was missing from the Vercel API folder — the
  * frontend has been calling it for weeks and getting a 404,
  * which manifested as "the dropdown silently fails". Same
- * regression pattern as the Afterpay endpoints. See CLAUDE.md.
+ * regression pattern as other endpoints lost in the Python ->
+ * Vercel migration. See CLAUDE.md.
  *
  * Body: { paymentStatus: 'paid' | 'cash' | 'pay-on-pickup' | 'invoiced' | 'unpaid' }
  */
