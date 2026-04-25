@@ -79,13 +79,13 @@ module.exports = async function handler(req, res) {
   const [customerResult, adminResult] = await Promise.allSettled([
     sendEmail({
       to,
-      subject: `[BookARide email test] ${customerTpl.subject}`,
+      subject: `[TEST - CUSTOMER COPY] ${customerTpl.subject}`,
       html: customerTpl.html,
       replyTo: 'info@bookaride.co.nz',
     }),
     sendEmail({
       to: adminEmail,
-      subject: `[BookARide email test] ${adminTpl.subject}`,
+      subject: `[TEST - ADMIN COPY] ${adminTpl.subject}`,
       html: adminTpl.html,
     }),
   ]);
