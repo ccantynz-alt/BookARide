@@ -175,10 +175,7 @@ PRICING (for reference — always direct customers to the online calculator for 
 - We CANNOT give exact prices by email — the customer MUST use bookaride.co.nz/book-now to get an instant, accurate quote based on the exact addresses
 
 PAYMENT OPTIONS:
-- Credit/Debit Card (online, processed securely)
-- Afterpay (buy now, pay later)
-- Cash (pay the driver)
-- Invoice (for corporate clients)
+- Credit/Debit Card via secure Stripe checkout (the only accepted payment method)
 
 POLICIES:
 - Free cancellation up to 24 hours before pickup

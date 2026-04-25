@@ -233,6 +233,16 @@ of scope". The list is absolute:
 - **Facebook SDK / Facebook login / Facebook ads** — removed
 - **Emergent platform / emergentagent.com** — removed
 - **Python backend** — frontend only until Craig says
+- **Afterpay / afterpay / AfterpayPage / `/afterpay` route /
+  `/api/afterpay/*` endpoints** — REMOVED 2026-04-25, NEVER RE-ADD.
+  Craig has asked for this to be removed multiple times and it keeps
+  coming back. The integration was never finished, the endpoints
+  don't exist, and the radio button on BookNow.jsx broke production
+  because it called a non-existent serverless function. STRIPE IS
+  THE ONLY PAYMENT METHOD. Do not re-add any Afterpay link, route,
+  page, radio button, marketing copy, FAQ mention, AI prompt line,
+  payment-method icon, or env var. If you see anything Afterpay
+  related, DELETE IT in the same commit.
 
 ### Forbidden patterns
 - `process.env.REACT_APP_*` (use `import.meta.env.VITE_*`)
@@ -700,6 +710,49 @@ Xero accounting integration has been removed. We do not use Xero for invoicing, 
 - **NEVER** add "Create Invoice" or "Record Payment" Xero buttons anywhere in the UI
 - **NEVER** include Xero in customer-facing FAQs or marketing copy
 - If Xero-related code still exists anywhere in the codebase, delete it
+
+### 6d. Afterpay: REMOVED (2026-04-25) — LOCKED, NUKED, ANNIHILATED
+
+Craig has asked for Afterpay to be removed from BookARide multiple
+times. Every previous removal was undone by a subsequent agent
+session that "helpfully" added Afterpay back as a payment option,
+restored the marketing page, or re-mentioned it in AI email prompts.
+This rule exists to make that physically impossible going forward.
+
+**Stripe is the ONLY payment method on BookARide.** No Afterpay, no
+PayPal checkout flow, no Pay-On-Pickup option for the customer-facing
+form. The admin Create Booking modal also offers Stripe only — there
+is no scenario where a different payment method is the right answer.
+
+**What was removed (DO NOT RE-ADD):**
+- `frontend/src/pages/AfterpayPage.jsx` — entire marketing page
+- `/afterpay` route from `frontend/src/App.jsx`
+- `<Link to="/afterpay">Pay with Afterpay</Link>` from `Footer.jsx`
+- `paymentMethod === 'afterpay'` radio button + handler in `BookNow.jsx`
+- `paymentMethod === 'afterpay'` callback handler in `PaymentSuccess.jsx`
+- `/api/afterpay/create-checkout` and `/api/afterpay/capture` callsites
+  (the backend endpoints never existed in the Vercel API folder, so the
+  radio button silently 404'd in production)
+- "Afterpay" entry in `InternationalVisitors.jsx` accepted-methods list
+- "Afterpay" mention in the FAQ in `frontend/src/data/aucklandSuburbs.js`
+- "Afterpay" line in the AI email auto-reply prompt in
+  `api/email/incoming.js`
+- "Afterpay" line in the contact form auto-reply prompt in `api/contact.js`
+
+**Rules (LOCKED):**
+- **NEVER** re-add the `/afterpay` route, `AfterpayPage.jsx`, or any
+  Afterpay marketing page, however small
+- **NEVER** re-add an Afterpay radio button, dropdown option, button,
+  or icon anywhere in the booking flow
+- **NEVER** re-add `/api/afterpay/*` endpoints, env vars
+  (`AFTERPAY_MERCHANT_ID`, `AFTERPAY_SECRET_KEY`, etc.) or any
+  Afterpay SDK / library
+- **NEVER** mention Afterpay in customer-facing copy, FAQs, blog
+  posts, social-share text, AI email prompts, or chatbot replies
+- **NEVER** add "Afterpay" to a list of accepted payment methods —
+  even one that says "coming soon"
+- If a future session wants to re-introduce Afterpay, the answer is
+  ALWAYS "ask Craig first" — and the default answer is no
 
 ### 6c. Google Address Autocomplete (2026-04-09) — LOCKED
 

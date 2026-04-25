@@ -79,7 +79,6 @@ const TakapunaAirportPage = React.lazy(() => import('./pages/seo/TakapunaAirport
 const AlbanyAirportPage = React.lazy(() => import('./pages/seo/AlbanyAirportPage'));
 const NorthShoreAirportPage = React.lazy(() => import('./pages/seo/NorthShoreAirportPage'));
 const AirportToCityPage = React.lazy(() => import('./pages/seo/AirportToCityPage'));
-const AfterpayPage = React.lazy(() => import('./pages/AfterpayPage'));
 const ReferralProgram = React.lazy(() => import('./pages/ReferralProgram'));
 const FlightTrackerPage = React.lazy(() => import('./pages/FlightTrackerPage'));
 const TravelResourcesPage = React.lazy(() => import('./pages/TravelResourcesPage'));
@@ -338,8 +337,6 @@ function App() {
     { path: "hotels/:slug", element: <HotelPage /> },
     { path: "payment-success", element: <PaymentSuccess /> },
     { path: "pay/:bookingId", element: <PayNow /> },
-    // Payment Pages
-    { path: "afterpay", element: <AfterpayPage /> },
     { path: "referral", element: <ReferralProgram /> },
     // Legal Pages
     { path: "terms-and-conditions", element: <TermsAndConditions /> },

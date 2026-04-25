@@ -107,11 +107,33 @@ else
 fi
 echo ""
 
+# === Afterpay regression check ===
+# Craig has had Afterpay reintroduced multiple times by previous
+# sessions. Fail loudly at session start if anything Afterpay related
+# leaked back into the repo. See CLAUDE.md section 6d.
+AFTERPAY_HITS=$(grep -rli "afterpay" \
+  --include="*.js" --include="*.jsx" --include="*.json" \
+  --include="*.html" --include="*.xml" --include="*.css" \
+  "$REPO_ROOT/frontend/src" "$REPO_ROOT/api" \
+  2>/dev/null | grep -v node_modules || true)
+if [ -n "$AFTERPAY_HITS" ]; then
+  echo "  ‼ AFTERPAY REGRESSION DETECTED — see CLAUDE.md section 6d"
+  echo "  ‼ Afterpay was nuked on 2026-04-25 and must NOT come back."
+  echo "  ‼ Files containing 'afterpay':"
+  echo "$AFTERPAY_HITS" | sed 's/^/      /'
+  echo "  ‼ Delete these references in your first commit of the session."
+  echo ""
+else
+  echo "  ✓ No Afterpay references (locked decision 6d holding)"
+  echo ""
+fi
+
 # === Final reminder ===
 echo "================================================================"
 echo "  Setup complete. REMEMBER:"
 echo "  - CLAUDE.md is THE BIBLE — read it before touching anything"
 echo "  - Major changes require Craig's explicit authorization"
 echo "  - Frontend-only architecture: NO backend/ folder"
+echo "  - Stripe is the ONLY payment method (CLAUDE.md 6d)"
 echo "  - Run /api/health/booking-system before claiming bookings work"
 echo "================================================================"

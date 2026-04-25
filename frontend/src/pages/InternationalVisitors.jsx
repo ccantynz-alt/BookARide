@@ -137,7 +137,6 @@ const InternationalVisitors = () => {
     { name: 'WeChat Pay', icon: '📱', countries: 'China' },
     { name: 'Visa/Mastercard', icon: '💳', countries: 'Worldwide' },
     { name: 'PayPal', icon: '🅿️', countries: 'Worldwide' },
-    { name: 'Afterpay', icon: '🛒', countries: 'AU/NZ' },
     { name: 'Bank Transfer', icon: '🏦', countries: 'Worldwide' }
   ];
 
