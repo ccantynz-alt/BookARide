@@ -76,7 +76,7 @@ const AucklandAirportShuttle = () => {
     'description': 'Auckland\'s premier airport shuttle service. Door-to-door transfers to and from Auckland Airport. Available 24/7.',
     'url': 'https://bookaride.co.nz/auckland-airport-shuttle',
     
-    'email': 'bookings@bookaride.co.nz',
+    'email': 'info@bookaride.co.nz',
     'address': {
       '@type': 'PostalAddress',
       'addressLocality': 'Auckland',

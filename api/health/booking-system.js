@@ -175,19 +175,26 @@ function checkStripe() {
   if (!key) {
     return { ok: false, message: 'STRIPE_SECRET_KEY not set — customers cannot pay' };
   }
-  if (!key.startsWith('sk_')) {
-    return { ok: false, message: 'STRIPE_SECRET_KEY does not start with sk_ — likely the publishable key by mistake' };
+  // Accept both standard secret keys (sk_live_/sk_test_) and restricted
+  // keys (rk_live_/rk_test_). Restricted keys are valid as long as the
+  // right scopes are enabled. Reject only the publishable key (pk_).
+  if (key.startsWith('pk_')) {
+    return { ok: false, message: 'STRIPE_SECRET_KEY looks like a PUBLISHABLE key (pk_…). The publishable key is for browser code only and cannot create checkout sessions. Use a Standard secret key (sk_…) or a Restricted key (rk_…) with Checkout Sessions: write + Customers: write scopes.' };
   }
+  if (!key.startsWith('sk_') && !key.startsWith('rk_')) {
+    return { ok: false, message: `STRIPE_SECRET_KEY has unexpected prefix '${key.slice(0,3)}' — expected sk_ (standard) or rk_ (restricted)` };
+  }
+  const keyKind = key.startsWith('rk_') ? 'restricted' : 'standard';
   if (!webhook) {
     return {
       ok: true,
       warning: 'STRIPE_WEBHOOK_SECRET not set — webhook signature verification disabled (insecure)',
-      message: `Stripe key set (${redact(key)})`,
+      message: `Stripe ${keyKind} key set (${redact(key)})${keyKind === 'restricted' ? '. Confirm in Stripe dashboard that scopes include Checkout Sessions: write, Customers: write, Webhooks: read.' : ''}`,
     };
   }
   return {
     ok: true,
-    message: `Stripe key (${redact(key)}) and webhook secret (${redact(webhook)}) both set`,
+    message: `Stripe ${keyKind} key (${redact(key)}) and webhook secret (${redact(webhook)}) both set${keyKind === 'restricted' ? '. Restricted keys MUST have Checkout Sessions: write + Customers: write scopes — verify in Stripe dashboard.' : ''}`,
   };
 }
 

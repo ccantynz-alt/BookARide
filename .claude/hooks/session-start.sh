@@ -107,6 +107,50 @@ else
 fi
 echo ""
 
+# === Email architecture regression check (CLAUDE.md section 6e) ===
+# Three Google Workspace mailboxes, locked architecture. Catch the
+# common drift modes:
+#   - Customer template starts inviting replies again
+#   - Hardcoded default in API code stops being bookings@bookaride.co.nz
+#   - Customer-facing pages send users at bookings@ instead of info@
+EMAIL_ISSUES=""
+
+# 1. "reply to this email" wording in customer templates
+if grep -lE "(reply to this email|just reply|respond to this message)" \
+     "$REPO_ROOT/api/_lib/email-templates.js" \
+     2>/dev/null | grep -q .; then
+  EMAIL_ISSUES="${EMAIL_ISSUES}\n   - Customer template invites reply (must say 'do not reply, contact info@')"
+fi
+
+# 2. Default admin recipient must remain bookings@bookaride.co.nz
+WRONG_DEFAULT=$(grep -rEn "BOOKINGS_NOTIFICATION_EMAIL\s*\|\|\s*['\"](?!bookings@bookaride\.co\.nz)" \
+  --include="*.js" "$REPO_ROOT/api" 2>/dev/null | grep -v node_modules || true)
+if [ -n "$WRONG_DEFAULT" ]; then
+  EMAIL_ISSUES="${EMAIL_ISSUES}\n   - BOOKINGS_NOTIFICATION_EMAIL fallback is no longer 'bookings@bookaride.co.nz':\n${WRONG_DEFAULT}"
+fi
+
+# 3. Customer-facing pages must point support links at info@, not bookings@
+CUSTOMER_FACING_BOOKINGS=$(grep -rln "bookings@bookaride\.co\.nz" \
+  "$REPO_ROOT/frontend/src/pages/PayNow.jsx" \
+  "$REPO_ROOT/frontend/src/pages/Contact.jsx" \
+  "$REPO_ROOT/frontend/src/components/Footer.jsx" \
+  "$REPO_ROOT/frontend/src/components/RootErrorBoundary.jsx" \
+  "$REPO_ROOT/frontend/src/pages/seo/" \
+  2>/dev/null || true)
+if [ -n "$CUSTOMER_FACING_BOOKINGS" ]; then
+  EMAIL_ISSUES="${EMAIL_ISSUES}\n   - Customer-facing page exposes bookings@ (should be info@):\n${CUSTOMER_FACING_BOOKINGS}"
+fi
+
+if [ -n "$EMAIL_ISSUES" ]; then
+  echo "  ‼ EMAIL ARCHITECTURE REGRESSION — see CLAUDE.md section 6e"
+  printf "%b\n" "$EMAIL_ISSUES" | sed 's/^/  /'
+  echo "  ‼ Fix in your first commit of the session."
+  echo ""
+else
+  echo "  ✓ Email architecture intact (CLAUDE.md 6e holding)"
+  echo ""
+fi
+
 # === Afterpay regression check ===
 # Craig has had Afterpay reintroduced multiple times by previous
 # sessions. Fail loudly at session start if anything Afterpay related
