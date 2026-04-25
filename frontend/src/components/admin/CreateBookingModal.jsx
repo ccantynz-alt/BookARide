@@ -235,7 +235,7 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
       let finalPrice = hasManualPrice ? parseFloat(manualPriceOverride) : bookingPricing.totalPrice;
       const priceOverride = hasManualPrice ? parseFloat(manualPriceOverride) : (hasReturnTrip ? finalPrice : null);
 
-      await axios.post(`${API}/bookings`, {
+      const response = await axios.post(`${API}/bookings/manual`, {
         name: newBooking.name,
         email: newBooking.email,
         ccEmail: newBooking.ccEmail,
@@ -261,7 +261,11 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
         returnFlightNumber: newBooking.returnFlightNumber
       }, getAuthHeaders());
 
-      toast.success('Booking created successfully! Customer will receive email & SMS confirmation.');
+      const isStripeLink = ['stripe', 'paypal'].includes((newBooking.paymentMethod || '').toLowerCase());
+      const customerMsg = isStripeLink
+        ? `Booking created. Payment link emailed to ${newBooking.email}.`
+        : `Booking created and confirmation emailed to ${newBooking.email}.`;
+      toast.success(`${customerMsg} Admin notified at ${response.data?.admin_email_recipient || 'bookings@bookaride.co.nz'}.`);
       onClose();
       onSuccess?.();
     } catch (error) {
