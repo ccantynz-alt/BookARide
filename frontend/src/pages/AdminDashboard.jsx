@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Search, Mail, DollarSign, CheckCircle, XCircle, Clock, Eye, Edit2, Users, BookOpen, Settings, Trash2, MapPin, Calendar, RefreshCw, Send, Bell, Square, CheckSquare, FileText, Smartphone, RotateCcw, AlertTriangle, AlertCircle, Home, Upload, Archive, Activity, Download, Shield, Car, UserPlus, BarChart3, Megaphone, ChevronDown, ChevronRight } from 'lucide-react';
+import { LogOut, Search, Mail, DollarSign, CheckCircle, XCircle, Clock, Eye, Edit2, Users, BookOpen, Settings, Trash2, MapPin, Calendar, RefreshCw, Send, Bell, Square, CheckSquare, FileText, Smartphone, RotateCcw, AlertTriangle, AlertCircle, Home, Upload, Archive, Download, Shield, ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent } from '../components/ui/card';
@@ -13,14 +13,9 @@ import { toast } from 'sonner';
 import { CustomDatePicker } from '../components/DateTimePicker';
 import axios from 'axios';
 import { CustomersTab } from '../components/admin/CustomersTab';
-import { DriverApplicationsTab } from '../components/admin/DriverApplicationsTab';
-import { DriversTab } from '../components/admin/DriversTab';
-import { AnalyticsTab } from '../components/admin/AnalyticsTab';
-import { LandingPagesTab } from '../components/admin/LandingPagesTab';
 import { AdminBreadcrumb } from '../components/admin/AdminBreadcrumb';
 import ReturnsOverviewPanel from '../components/admin/ReturnsOverviewPanel';
 import { API } from '../config/api';
-import Cockpit from '../admin/Cockpit';
 import CreateBookingModal from '../components/admin/CreateBookingModal';
 import EditBookingModal from '../components/admin/EditBookingModal';
 import DeletedTab from '../components/admin/DeletedTab';
@@ -1752,26 +1747,9 @@ export const AdminDashboard = () => {
               <span className="hidden sm:inline">Bookings</span>
               <span className="sm:hidden">Book</span>
             </TabsTrigger>
-            <TabsTrigger value="drivers" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4">
-              <Car className="w-3 h-3 md:w-4 md:h-4" />
-              <span>Drivers</span>
-            </TabsTrigger>
             <TabsTrigger value="customers" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4">
               <Users className="w-3 h-3 md:w-4 md:h-4" />
               <span>Customers</span>
-            </TabsTrigger>
-            <TabsTrigger value="applications" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4">
-              <UserPlus className="w-3 h-3 md:w-4 md:h-4" />
-              <span className="hidden md:inline">Applications</span>
-              <span className="md:hidden">Apps</span>
-            </TabsTrigger>
-            <TabsTrigger value="analytics" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4">
-              <BarChart3 className="w-3 h-3 md:w-4 md:h-4" />
-              <span>Analytics</span>
-            </TabsTrigger>
-            <TabsTrigger value="cockpit" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 text-slate-600">
-              <Activity className="w-3 h-3 md:w-4 md:h-4" />
-              <span>Cockpit</span>
             </TabsTrigger>
             <TabsTrigger value="deleted" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 text-gray-500">
               <Trash2 className="w-3 h-3 md:w-4 md:h-4" />
@@ -1788,10 +1766,6 @@ export const AdminDashboard = () => {
             <TabsTrigger value="import" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 text-gray-500">
               <FileText className="w-3 h-3 md:w-4 md:h-4" />
               <span>Import</span>
-            </TabsTrigger>
-            <TabsTrigger value="marketing" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 text-gray-500">
-              <Megaphone className="w-3 h-3 md:w-4 md:h-4" />
-              <span>Marketing</span>
             </TabsTrigger>
           </TabsList>
 
@@ -2093,26 +2067,6 @@ export const AdminDashboard = () => {
             <CustomersTab />
           </TabsContent>
 
-          {/* Drivers Tab */}
-          <TabsContent value="drivers">
-            <DriversTab />
-          </TabsContent>
-
-          {/* Driver Applications Tab */}
-          <TabsContent value="applications">
-            <DriverApplicationsTab />
-          </TabsContent>
-
-          {/* Analytics Tab */}
-          <TabsContent value="analytics">
-            <AnalyticsTab />
-          </TabsContent>
-
-          {/* Marketing Tab - Landing Pages & Social */}
-          <TabsContent value="marketing">
-            <LandingPagesTab />
-          </TabsContent>
-
           {/* Deleted Bookings Tab */}
           <TabsContent value="deleted" className="space-y-6">
             <DeletedTab
@@ -2180,10 +2134,6 @@ export const AdminDashboard = () => {
             </Card>
           </TabsContent>
 
-          {/* Cockpit Tab */}
-          <TabsContent value="cockpit" className="space-y-6">
-            <Cockpit />
-          </TabsContent>
         </Tabs>
       </div>
 

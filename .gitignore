@@ -124,4 +124,7 @@ backend/#*.txt
 *.log
 RUN_LOGS/
 D8_CONTROL/
+
+# GateTest generated reports and memory
+.gatetest/
 .env*.local
