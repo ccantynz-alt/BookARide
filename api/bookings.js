@@ -4,7 +4,7 @@
  *
  * Replaces: Python backend POST /api/bookings, GET /api/bookings
  */
-const { findOne, findMany, insertOne, updateOne, getDb } = require('./_lib/db');
+const { findOne, insertOne, getDb } = require('./_lib/db');
 const { sendEmail } = require('./_lib/mailgun');
 const { verifyAdmin } = require('./_lib/auth');
 const {

@@ -9,7 +9,7 @@
  * 3. Google Calendar event (future)
  * 4. iCloud contact sync (future)
  */
-const { findOne, updateOne, insertOne } = require('../_lib/db');
+const { findOne, updateOne } = require('../_lib/db');
 const { sendEmail } = require('../_lib/mailgun');
 const {
   customerBookingConfirmedEmail,
