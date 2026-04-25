@@ -26,6 +26,7 @@ import BulkDeleteDialog from '../components/admin/BulkDeleteDialog';
 import PreviewConfirmationModal from '../components/admin/PreviewConfirmationModal';
 import BookingDetailsModal from '../components/admin/BookingDetailsModal';
 import BookingsTable from '../components/admin/BookingsTable';
+import SystemHealthDialog from '../components/admin/SystemHealthDialog';
 import GoogleAddressInput from '../components/GoogleAddressInput';
 
 // Date utilities — single source of truth in frontend/src/utils/dateFormat.js
@@ -507,6 +508,7 @@ export const AdminDashboard = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showCreateBookingModal, setShowCreateBookingModal] = useState(false);
+  const [showSystemHealthDialog, setShowSystemHealthDialog] = useState(false);
 
   const [selectedPaymentStatus, setSelectedPaymentStatus] = useState('');
   const [showEditBookingModal, setShowEditBookingModal] = useState(false);
@@ -1942,6 +1944,13 @@ export const AdminDashboard = () => {
               <button onClick={handleSendReminders} className="text-xs font-medium text-slate-500 hover:text-slate-900 transition-colors px-3 py-2" title="Remind tomorrow's bookings">
                 <Bell className="w-3.5 h-3.5 inline mr-1" />Remind
               </button>
+              <button
+                onClick={() => setShowSystemHealthDialog(true)}
+                className="text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors px-3 py-2 rounded-lg flex items-center gap-1.5"
+                title="Run booking system diagnostic and send a test email"
+              >
+                <Mail className="w-3.5 h-3.5" />Test Booking System
+              </button>
               <button onClick={() => setShowCreateBookingModal(true)} className="bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold h-10 px-5 rounded-xl transition-colors">
                 + New Booking
               </button>
@@ -2178,6 +2187,13 @@ export const AdminDashboard = () => {
         onNewPasswordChange={setNewPassword}
         onConfirmPasswordChange={setConfirmPassword}
         onSubmit={handleChangePassword}
+      />
+
+      {/* System Health Dialog — diagnose booking/email pipeline + send test email */}
+      <SystemHealthDialog
+        open={showSystemHealthDialog}
+        onClose={() => setShowSystemHealthDialog(false)}
+        getAuthHeaders={getAuthHeaders}
       />
 
       {/* Create Booking Modal */}
