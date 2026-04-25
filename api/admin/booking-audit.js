@@ -6,9 +6,11 @@
  * TEMPORARY diagnostic endpoint — DELETE after investigation is complete.
  */
 const { getDb } = require('../_lib/db');
+const { verifyAdmin } = require('../_lib/auth');
 
 module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
+  if (!verifyAdmin(req, res)) return;
   if (req.method !== 'GET') return res.status(405).json({ detail: 'Method not allowed' });
 
   try {

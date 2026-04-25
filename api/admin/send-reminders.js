@@ -5,6 +5,7 @@
  */
 const { findMany, updateOne } = require('../_lib/db');
 const { sendEmail } = require('../_lib/mailgun');
+const { verifyAdmin } = require('../_lib/auth');
 const { customerReminderEmail } = require('../_lib/email-templates');
 
 function getTomorrowNZDate() {
@@ -21,6 +22,7 @@ function getTomorrowNZDate() {
 
 module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
+  if (!verifyAdmin(req, res)) return;
   if (req.method !== 'POST') return res.status(405).json({ detail: 'Method not allowed' });
 
   try {
