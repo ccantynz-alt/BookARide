@@ -20,12 +20,36 @@ const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 const { findOne, insertOne, updateOne, getDb } = require('../_lib/db');
 const { sendEmail } = require('../_lib/mailgun');
+const { sendSMS, wantsSMS, wantsEmail, isTwilioConfigured } = require('../_lib/twilio');
 const {
   customerBookingReceivedEmail,
   customerBookingConfirmedEmail,
   customerPaymentLinkEmail,
   adminNewBookingEmail,
 } = require('../_lib/email-templates');
+const {
+  customerBookingReceivedSMS,
+  customerBookingConfirmedSMS,
+} = require('../_lib/sms-templates');
+
+async function maybeSendCustomerSMS(booking, smsBody, label) {
+  if (!wantsSMS(booking)) return;
+  if (!booking.phone) return;
+  if (!isTwilioConfigured()) {
+    console.error(`Customer asked for SMS on ${label} but Twilio is not configured`);
+    return;
+  }
+  try {
+    const ok = await sendSMS({ to: booking.phone, body: smsBody });
+    if (ok) {
+      console.error(`Customer SMS sent for ${label} to ${booking.phone}`);
+    } else {
+      console.error(`Customer SMS failed (non-blocking) for ${label}`);
+    }
+  } catch (err) {
+    console.error(`Customer SMS threw (non-blocking) for ${label}: ${err.message}`);
+  }
+}
 
 const PAID_METHODS = new Set([
   'cash',
@@ -315,6 +339,13 @@ module.exports = async function handler(req, res) {
       } catch (err) {
         console.error(`Customer received email failed for manual booking #${refNumber}: ${err.message}`);
       }
+
+      // Best-effort SMS letting the customer know the payment link is on the way.
+      await maybeSendCustomerSMS(
+        bookingDoc,
+        customerBookingReceivedSMS(bookingDoc),
+        `manual booking #${refNumber} (payment link)`
+      );
     } else if (isPaidMethod) {
       // Paid on the spot — send the "confirmed + paid" email straight away.
       try {
@@ -338,6 +369,13 @@ module.exports = async function handler(req, res) {
         console.error(`Customer confirmation threw for manual booking #${refNumber}: ${err.message}`);
         result.customer_email_error = err.message;
       }
+
+      // Best-effort SMS confirming the booking is paid + locked in.
+      await maybeSendCustomerSMS(
+        bookingDoc,
+        customerBookingConfirmedSMS(bookingDoc),
+        `manual booking #${refNumber} (paid)`
+      );
     } else {
       // Unknown payment method — still send "booking received"
       try {
@@ -353,7 +391,16 @@ module.exports = async function handler(req, res) {
       } catch (err) {
         console.error(`Customer received email failed for manual booking #${refNumber}: ${err.message}`);
       }
+
+      await maybeSendCustomerSMS(
+        bookingDoc,
+        customerBookingReceivedSMS(bookingDoc),
+        `manual booking #${refNumber}`
+      );
     }
+
+    result.sms_attempted = wantsSMS(bookingDoc) && !!body.phone;
+    result.twilio_configured = isTwilioConfigured();
 
     return res.status(201).json(result);
   } catch (err) {

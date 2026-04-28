@@ -209,6 +209,44 @@ function checkGoogleMaps() {
   return { ok: true, message: `Google Maps key set (${redact(key)})` };
 }
 
+function checkTwilio() {
+  const sid = process.env.TWILIO_ACCOUNT_SID;
+  const token = process.env.TWILIO_AUTH_TOKEN;
+  const from = process.env.TWILIO_PHONE_NUMBER;
+  if (!sid && !token && !from) {
+    return {
+      ok: false,
+      message: 'Twilio not configured — customers will NOT receive SMS confirmations. Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER in Vercel env vars.',
+    };
+  }
+  const missing = [];
+  if (!sid) missing.push('TWILIO_ACCOUNT_SID');
+  if (!token) missing.push('TWILIO_AUTH_TOKEN');
+  if (!from) missing.push('TWILIO_PHONE_NUMBER');
+  if (missing.length > 0) {
+    return {
+      ok: false,
+      message: `Twilio partially configured — missing: ${missing.join(', ')}. SMS will fail until all three are set.`,
+    };
+  }
+  if (sid && !sid.startsWith('AC')) {
+    return {
+      ok: false,
+      message: `TWILIO_ACCOUNT_SID has unexpected prefix '${sid.slice(0, 2)}' — expected 'AC...'`,
+    };
+  }
+  if (from && !from.startsWith('+')) {
+    return {
+      ok: false,
+      message: `TWILIO_PHONE_NUMBER must be in E.164 format (e.g. +6427...) — got '${from}'`,
+    };
+  }
+  return {
+    ok: true,
+    message: `Twilio set (SID ${redact(sid)}, sender ${from})`,
+  };
+}
+
 function checkPricingEngine() {
   try {
     const result = calculatePrice({
@@ -268,6 +306,7 @@ module.exports = async function handler(req, res) {
     mailgun_live: await checkMailgunLive(),
     stripe: checkStripe(),
     google_maps: checkGoogleMaps(),
+    twilio: checkTwilio(),
     pricing_engine: checkPricingEngine(),
     email_template: checkEmailTemplate(),
   };
@@ -285,7 +324,7 @@ module.exports = async function handler(req, res) {
   const blockingFailures = criticalChecks.filter(k => !checks[k].ok);
 
   // Important but non-blocking
-  const importantChecks = ['mailgun', 'stripe', 'google_maps'];
+  const importantChecks = ['mailgun', 'stripe', 'google_maps', 'twilio'];
   const warnings = importantChecks.filter(k => !checks[k].ok);
 
   const status = blockingFailures.length === 0 ? 'healthy' : 'broken';
