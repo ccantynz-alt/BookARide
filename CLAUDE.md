@@ -719,10 +719,25 @@ session that "helpfully" added Afterpay back as a payment option,
 restored the marketing page, or re-mentioned it in AI email prompts.
 This rule exists to make that physically impossible going forward.
 
-**Stripe is the ONLY payment method on BookARide.** No Afterpay, no
-PayPal checkout flow, no Pay-On-Pickup option for the customer-facing
-form. The admin Create Booking modal also offers Stripe only — there
-is no scenario where a different payment method is the right answer.
+**Stripe is the ONLY payment method on the customer-facing site.**
+No Afterpay, no PayPal checkout flow, no Pay-On-Pickup option in
+`BookNow.jsx` — customers always pay via Stripe.
+
+**Admin-only override (Craig-authorised 2026-04-28):** the admin
+Create Booking modal (`CreateBookingModal.jsx`) offers TWO payment
+methods at the admin's discretion:
+
+1. **Stripe (default)** — payment link is emailed to the customer.
+2. **Pay on Pickup** — booking is confirmed immediately, customer
+   pays the driver in-vehicle. Used for elderly customers booked
+   over the phone, and for admin testing when Stripe checkout is
+   misbehaving.
+
+Pay-on-pickup bookings are stored with `payment_status: 'pay-on-pickup'`
+(NOT `'paid'`), `status: 'confirmed'`, and trigger the dedicated
+`customerPayOnPickupEmail` / `customerPayOnPickupSMS` templates
+(showing a "PAY ON PICKUP" amber badge, never a "PAID" gold badge).
+**This must never be added to the customer-facing booking form.**
 
 **What was removed (DO NOT RE-ADD):**
 - `frontend/src/pages/AfterpayPage.jsx` — entire marketing page

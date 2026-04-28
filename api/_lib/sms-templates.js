@@ -37,7 +37,17 @@ function customerBookingConfirmedSMS(booking) {
   return `BookARide: Payment confirmed. Booking #${refOrId(booking)} on ${shortDate(booking.date)} at ${booking.time}${pickup ? ` from ${pickup}` : ''}. Help: info@bookaride.co.nz`;
 }
 
+/**
+ * Booking confirmed but customer pays the driver at pickup. Admin-only
+ * payment method — never offered customer-facing.
+ */
+function customerPayOnPickupSMS(booking) {
+  const pickup = shortAddress(booking.pickupAddress);
+  return `BookARide: Booking #${refOrId(booking)} confirmed for ${shortDate(booking.date)} at ${booking.time}${pickup ? ` from ${pickup}` : ''}. Pay driver on pickup. Help: info@bookaride.co.nz`;
+}
+
 module.exports = {
   customerBookingReceivedSMS,
   customerBookingConfirmedSMS,
+  customerPayOnPickupSMS,
 };

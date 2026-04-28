@@ -261,7 +261,11 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
         returnFlightNumber: newBooking.returnFlightNumber
       }, getAuthHeaders());
 
-      toast.success(`Booking created. Stripe payment link emailed to ${newBooking.email}. Admin notified at ${response.data?.admin_email_recipient || 'bookings@bookaride.co.nz'}.`);
+      const adminRecipient = response.data?.admin_email_recipient || 'bookings@bookaride.co.nz';
+      const successMessage = newBooking.paymentMethod === 'pay-on-pickup'
+        ? `Booking confirmed. Pay-on-pickup confirmation emailed to ${newBooking.email}. Admin notified at ${adminRecipient}.`
+        : `Booking created. Stripe payment link emailed to ${newBooking.email}. Admin notified at ${adminRecipient}.`;
+      toast.success(successMessage);
       onClose();
       onSuccess?.();
     } catch (error) {
@@ -437,11 +441,22 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
               </div>
               <div>
                 <Label>Payment Method</Label>
-                <div className="mt-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-md text-sm text-gray-700">
-                  Stripe (Credit/Debit Card)
-                </div>
+                <Select
+                  value={newBooking.paymentMethod || 'stripe'}
+                  onValueChange={(value) => setNewBooking(prev => ({ ...prev, paymentMethod: value }))}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="stripe">Stripe (Credit/Debit Card)</SelectItem>
+                    <SelectItem value="pay-on-pickup">Pay on Pickup (admin only)</SelectItem>
+                  </SelectContent>
+                </Select>
                 <p className="text-xs text-gold mt-1">
-                  A Stripe payment link will be emailed to the customer after the booking is created.
+                  {newBooking.paymentMethod === 'pay-on-pickup'
+                    ? 'Booking is confirmed immediately. Customer pays the driver at pickup — no Stripe link is sent.'
+                    : 'A Stripe payment link will be emailed to the customer after the booking is created.'}
                 </p>
               </div>
             </div>

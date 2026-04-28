@@ -24,12 +24,14 @@ const { sendSMS, wantsSMS, wantsEmail, isTwilioConfigured } = require('../_lib/t
 const {
   customerBookingReceivedEmail,
   customerBookingConfirmedEmail,
+  customerPayOnPickupEmail,
   customerPaymentLinkEmail,
   adminNewBookingEmail,
 } = require('../_lib/email-templates');
 const {
   customerBookingReceivedSMS,
   customerBookingConfirmedSMS,
+  customerPayOnPickupSMS,
 } = require('../_lib/sms-templates');
 
 async function maybeSendCustomerSMS(booking, smsBody, label) {
@@ -162,6 +164,17 @@ module.exports = async function handler(req, res) {
     // Payment method determines initial status
     const isPaidMethod = PAID_METHODS.has(paymentMethod);
     const isStripeMethod = STRIPE_METHODS.has(paymentMethod);
+    const isPayOnPickup = paymentMethod === 'pay-on-pickup';
+
+    // Pay-on-pickup: booking is CONFIRMED (driver will turn up) but the
+    // customer hasn't actually paid yet — they pay the driver on pickup.
+    // Use a distinct payment_status so the admin dashboard shows the
+    // real state instead of misleading "PAID".
+    const initialPaymentStatus = isPayOnPickup
+      ? 'pay-on-pickup'
+      : isPaidMethod
+        ? 'paid'
+        : 'unpaid';
 
     const bookingDoc = {
       ...body,
@@ -179,7 +192,7 @@ module.exports = async function handler(req, res) {
       totalPrice: finalTotal,
       priceOverride: override,
       payment_method: paymentMethod,
-      payment_status: isPaidMethod ? 'paid' : 'unpaid',
+      payment_status: initialPaymentStatus,
       status: isPaidMethod ? 'confirmed' : 'pending',
       createdBy: 'admin',
       createdByUsername: auth.admin.username,
@@ -347,34 +360,42 @@ module.exports = async function handler(req, res) {
         `manual booking #${refNumber} (payment link)`
       );
     } else if (isPaidMethod) {
-      // Paid on the spot — send the "confirmed + paid" email straight away.
+      // Pay-on-pickup gets its own template ("PAY ON PICKUP" badge, ask
+      // the customer to have payment ready for the driver). All other
+      // paid methods (cash, card, bank-transfer, already-paid) use the
+      // standard "Payment Successful / PAID" template.
+      const isPayOnPickup = paymentMethod === 'pay-on-pickup';
       try {
-        const confirmedTemplate = customerBookingConfirmedEmail(bookingDoc);
+        const template = isPayOnPickup
+          ? customerPayOnPickupEmail(bookingDoc)
+          : customerBookingConfirmedEmail(bookingDoc);
         const cc = body.ccEmail && emailRegex.test(body.ccEmail) ? body.ccEmail : undefined;
         const success = await sendEmail({
           to: body.email,
-          subject: confirmedTemplate.subject,
-          html: confirmedTemplate.html,
+          subject: template.subject,
+          html: template.html,
           replyTo: 'info@bookaride.co.nz',
           cc,
         });
         if (success) {
-          console.error(`Customer confirmation sent to ${body.email} for manual booking #${refNumber} (${paymentMethod})`);
+          console.error(`Customer ${isPayOnPickup ? 'pay-on-pickup' : 'confirmation'} email sent to ${body.email} for manual booking #${refNumber} (${paymentMethod})`);
           result.customer_email_sent_to = body.email;
         } else {
-          console.error(`CRITICAL: Customer confirmation returned false for manual booking #${refNumber}`);
+          console.error(`CRITICAL: Customer ${isPayOnPickup ? 'pay-on-pickup' : 'confirmation'} email returned false for manual booking #${refNumber}`);
           result.customer_email_error = 'Mailgun returned failure';
         }
       } catch (err) {
-        console.error(`Customer confirmation threw for manual booking #${refNumber}: ${err.message}`);
+        console.error(`Customer email threw for manual booking #${refNumber}: ${err.message}`);
         result.customer_email_error = err.message;
       }
 
-      // Best-effort SMS confirming the booking is paid + locked in.
+      // Best-effort SMS — pay-on-pickup gets a different body.
       await maybeSendCustomerSMS(
         bookingDoc,
-        customerBookingConfirmedSMS(bookingDoc),
-        `manual booking #${refNumber} (paid)`
+        isPayOnPickup
+          ? customerPayOnPickupSMS(bookingDoc)
+          : customerBookingConfirmedSMS(bookingDoc),
+        `manual booking #${refNumber} (${paymentMethod})`
       );
     } else {
       // Unknown payment method — still send "booking received"
