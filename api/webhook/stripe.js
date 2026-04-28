@@ -11,12 +11,14 @@
  */
 const { findOne, updateOne } = require('../_lib/db');
 const { sendEmail } = require('../_lib/mailgun');
+const { sendSMS, wantsSMS, wantsEmail, isTwilioConfigured } = require('../_lib/twilio');
 const {
   customerBookingConfirmedEmail,
   emailWrapper,
   bookingDetailsTable,
   customerName: getCustomerName,
 } = require('../_lib/email-templates');
+const { customerBookingConfirmedSMS } = require('../_lib/sms-templates');
 
 async function getRawBody(req) {
   const chunks = [];
@@ -96,13 +98,25 @@ async function handler(req, res) {
       const name = getCustomerName(paidBooking);
 
       // 1. Customer confirmation email
-      const customerTemplate = customerBookingConfirmedEmail(paidBooking);
-      await sendEmail({
-        to: booking.email,
-        subject: customerTemplate.subject,
-        html: customerTemplate.html,
-        replyTo: 'info@bookaride.co.nz',
-      }).catch(err => console.error('Customer confirmation email failed:', err.message));
+      if (wantsEmail(paidBooking)) {
+        const customerTemplate = customerBookingConfirmedEmail(paidBooking);
+        await sendEmail({
+          to: booking.email,
+          subject: customerTemplate.subject,
+          html: customerTemplate.html,
+          replyTo: 'info@bookaride.co.nz',
+        }).catch(err => console.error('Customer confirmation email failed:', err.message));
+      }
+
+      // 1b. Customer confirmation SMS (best-effort)
+      if (wantsSMS(paidBooking) && isTwilioConfigured() && booking.phone) {
+        await sendSMS({
+          to: booking.phone,
+          body: customerBookingConfirmedSMS(paidBooking),
+        }).catch(err => console.error('Customer confirmation SMS failed:', err.message));
+      } else if (wantsSMS(paidBooking) && !isTwilioConfigured()) {
+        console.error(`Customer asked for SMS on paid booking #${booking.referenceNumber} but Twilio is not configured`);
+      }
 
       // 2. Admin notification
       const adminEmail = process.env.BOOKINGS_NOTIFICATION_EMAIL || 'bookings@bookaride.co.nz';
