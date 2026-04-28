@@ -171,6 +171,24 @@ function customerBookingConfirmedEmail(booking) {
   };
 }
 
+function customerPayOnPickupEmail(booking) {
+  const name = customerName(booking);
+  const body = `
+    ${gildedHeading('Booking Confirmed')}
+    <p style="margin:0 0 14px 0;">Hi ${name},</p>
+    <p style="margin:0 0 14px 0;">Your booking is <strong style="color:${GOLD_DARK};">confirmed</strong>. Your driver will arrive at the scheduled time.</p>
+    ${bookingDetailsTable(booking)}
+    <p style="margin:20px 0 0 0;"><strong style="color:${INK};">Payment:</strong> <span style="background:#fef3c7; color:#92400e; padding:5px 14px; border-radius:4px; font-weight:700; letter-spacing:0.06em;">PAY ON PICKUP</span></p>
+    <p style="margin:14px 0 0 0;">Please have payment ready when your driver arrives — cash or card accepted in-vehicle.</p>
+    <p style="margin:14px 0 0 0;">Questions? Email <a href="mailto:info@bookaride.co.nz" style="color:${GOLD_DARK}; font-weight:600;">info@bookaride.co.nz</a>.</p>
+    ${noReplyFooter()}
+  `;
+  return {
+    subject: `Booking Confirmed (Pay on Pickup) - Ref #${booking.referenceNumber} - BookARide`,
+    html: emailWrapper(body, `Your booking #${booking.referenceNumber} is confirmed — pay driver at pickup`),
+  };
+}
+
 function customerBookingApprovedEmail(booking) {
   const name = customerName(booking);
   const body = `
@@ -277,6 +295,7 @@ module.exports = {
   emailWrapper,
   customerBookingReceivedEmail,
   customerBookingConfirmedEmail,
+  customerPayOnPickupEmail,
   customerBookingApprovedEmail,
   customerPaymentLinkEmail,
   adminNewBookingEmail,

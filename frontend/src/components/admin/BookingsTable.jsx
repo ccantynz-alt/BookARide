@@ -234,11 +234,14 @@ const BookingsTable = ({
                       <span className={`inline-block text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-full ${
                         booking.payment_status === 'paid' ? 'bg-emerald-50 text-emerald-700' :
                         booking.payment_status === 'cash' ? 'bg-amber-50 text-amber-700' :
+                        booking.payment_status === 'pay-on-pickup' ? 'bg-amber-50 text-amber-700' :
                         'bg-slate-100 text-slate-500'
                       }`}>
-                        {(booking.payment_status || 'unpaid').toUpperCase()}
+                        {booking.payment_status === 'pay-on-pickup'
+                          ? 'PAY ON PICKUP'
+                          : (booking.payment_status || 'unpaid').toUpperCase()}
                       </span>
-                      {booking.payment_status !== 'paid' && booking.payment_status !== 'cash' && (
+                      {booking.payment_status !== 'paid' && booking.payment_status !== 'cash' && booking.payment_status !== 'pay-on-pickup' && (
                         <button
                           onClick={() => onSendPaymentLink(booking.id, 'stripe')}
                           className="block text-[11px] text-slate-400 hover:text-slate-900 transition-colors font-medium"
