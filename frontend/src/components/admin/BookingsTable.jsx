@@ -1,5 +1,5 @@
 import React from 'react';
-import { Mail, RefreshCw, XCircle, Square, CheckSquare, Phone, Plane, ArrowRight, CreditCard, ChevronLeft, ChevronRight, AlertTriangle, Send } from 'lucide-react';
+import { Mail, RefreshCw, XCircle, Square, CheckSquare, Phone, Plane, ArrowRight, CreditCard, ChevronLeft, ChevronRight, AlertTriangle, Send, Pencil } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { formatDate, isToday, isTomorrow } from '../../utils/dateFormat';
 
@@ -13,6 +13,7 @@ const BookingsTable = ({
   onClearSelection,
   onBulkDelete,
   onViewDetails,
+  onEditBooking,
   onResendConfirmation,
   onSendToAdmin,
   onDeleteBooking,
@@ -277,6 +278,14 @@ const BookingsTable = ({
                       relying on hover tooltips. */}
                   <td className="px-3 py-4" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-start gap-1.5 flex-wrap">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onEditBooking(booking); }}
+                        className="group flex flex-col items-center gap-1 px-2.5 py-2 rounded-lg bg-white hover:bg-amber-50 border border-slate-200 hover:border-amber-300 transition-all shadow-sm hover:shadow min-w-[64px]"
+                        title="Edit booking details (address, date, passengers, etc.)"
+                      >
+                        <Pencil className="w-[18px] h-[18px] text-slate-400 group-hover:text-amber-600 transition-colors" />
+                        <span className="text-[10px] font-semibold tracking-wide text-slate-500 group-hover:text-amber-600 transition-colors">Edit</span>
+                      </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); onResendConfirmation(booking.id); }}
                         className="group flex flex-col items-center gap-1 px-2.5 py-2 rounded-lg bg-white hover:bg-blue-50 border border-slate-200 hover:border-blue-300 transition-all shadow-sm hover:shadow min-w-[64px]"
