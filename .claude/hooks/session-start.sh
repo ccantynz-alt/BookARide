@@ -172,6 +172,161 @@ else
   echo ""
 fi
 
+# === Browser-side Google Maps JS regression check (CLAUDE.md 6c) ===
+# This is the #1 cause of customer pain since Nov 2025. Native Places
+# Autocomplete locks the input field whenever the API key is invalid
+# or restricted, breaking the booking form. Server-side autocomplete
+# via /api/places/autocomplete is the LOCKED architecture.
+GMAPS_JS_HITS=$(grep -rEn "maps\.googleapis\.com/maps/api/js|window\.google\.maps\.places\.Autocomplete|from ['\"]@react-google-maps/api['\"]|require\(['\"]@react-google-maps/api['\"]\)" \
+  --include="*.js" --include="*.jsx" --include="*.html" \
+  "$REPO_ROOT/frontend/src" "$REPO_ROOT/frontend/public" "$REPO_ROOT/frontend/index.html" \
+  2>/dev/null | grep -v node_modules || true)
+if [ -n "$GMAPS_JS_HITS" ]; then
+  echo "  ‼ BROWSER-SIDE GOOGLE MAPS JS DETECTED — see CLAUDE.md section 6c"
+  echo "  ‼ Google Maps JS in the browser is BANNED. It locks the input"
+  echo "  ‼ field when the API key is invalid and breaks the booking form."
+  echo "  ‼ Use /api/places/autocomplete (server-side) only."
+  echo "$GMAPS_JS_HITS" | sed 's/^/      /'
+  echo ""
+else
+  echo "  ✓ No browser-side Google Maps JS (locked decision 6c holding)"
+  echo ""
+fi
+
+# === Banned package check (CLAUDE.md Zero Tolerance Forbidden List) ===
+# These packages have all caused production breaks. They must never be
+# in frontend/package.json or api/package.json.
+BANNED_PKGS=""
+for pkg in "@react-google-maps/api" "@vuer-ai/react-helmet-async" "react-slick" "slick-carousel" "react-leaflet" "leaflet" "moment" "lodash" "jquery" "aos" "@craco/craco" "react-scripts"; do
+  if grep -qE "\"$pkg\"\s*:" "$REPO_ROOT/frontend/package.json" "$REPO_ROOT/api/package.json" 2>/dev/null; then
+    BANNED_PKGS="${BANNED_PKGS}\n      ${pkg}"
+  fi
+done
+if [ -n "$BANNED_PKGS" ]; then
+  echo "  ‼ BANNED PACKAGE(S) IN package.json — see CLAUDE.md Forbidden List"
+  printf "%b\n" "$BANNED_PKGS"
+  echo "  ‼ Ask Craig to authorise 'npm uninstall <pkg>' before any other work."
+  echo ""
+else
+  echo "  ✓ No banned packages in package.json"
+  echo ""
+fi
+
+# === Dead-code regression: backend/ folder ===
+# Frontend-only architecture (CLAUDE.md 0). The backend/ folder must
+# never reappear — it was deleted along with the Render deployment.
+if [ -d "$REPO_ROOT/backend" ]; then
+  echo "  ‼ backend/ FOLDER DETECTED — see CLAUDE.md section 0 (Architecture)"
+  echo "  ‼ This project is frontend-only. Add new endpoints under api/, never backend/."
+  echo ""
+fi
+
+# === Render config files (CLAUDE.md Forbidden Locations) ===
+RENDER_FILES=""
+for f in render.yaml runtime.txt Procfile; do
+  [ -f "$REPO_ROOT/$f" ] && RENDER_FILES="${RENDER_FILES} $f"
+done
+if [ -n "$RENDER_FILES" ]; then
+  echo "  ‼ RENDER CONFIG FILE(S) DETECTED:${RENDER_FILES}"
+  echo "  ‼ Render is dead. Delete these files — Vercel handles everything."
+  echo ""
+fi
+
+# === Banned imports / env vars / URLs in source ===
+# Mongo, SMTP/SendGrid, Geoapify, broken helmet fork, REACT_APP_ env
+# pattern, Render backend URL.
+BANNED_IMPORT_HITS=$(grep -rEn "from ['\"]motor|from ['\"]pymongo|MongoClient|MONGO_URL|require\(['\"]@sendgrid|require\(['\"]nodemailer|smtplib|MIMEMultipart|geoapify\.com|GEOAPIFY_API_KEY|@vuer-ai/react-helmet-async|onrender\.com|bookaride-backend|process\.env\.REACT_APP_" \
+  --include="*.js" --include="*.jsx" --include="*.py" \
+  "$REPO_ROOT/frontend/src" "$REPO_ROOT/api" \
+  2>/dev/null | grep -v node_modules || true)
+if [ -n "$BANNED_IMPORT_HITS" ]; then
+  echo "  ‼ BANNED IMPORT / ENV / URL DETECTED — see CLAUDE.md Forbidden List"
+  echo "$BANNED_IMPORT_HITS" | sed 's/^/      /'
+  echo "  ‼ Replace before any other work."
+  echo ""
+else
+  echo "  ✓ No banned imports / Render URLs / REACT_APP_ env vars"
+  echo ""
+fi
+
+# === Banned API endpoint folders ===
+# Shuttle, Xero, Afterpay, Facebook were all removed (CLAUDE.md 5, 6a, 6d, 7, 8).
+BANNED_DIRS=""
+for d in "api/shuttle" "api/xero" "api/afterpay" "api/facebook"; do
+  [ -d "$REPO_ROOT/$d" ] && BANNED_DIRS="${BANNED_DIRS} $d/"
+done
+if [ -n "$BANNED_DIRS" ]; then
+  echo "  ‼ BANNED API ENDPOINT FOLDER(S) DETECTED:${BANNED_DIRS}"
+  echo "  ‼ Delete these folders — they are locked-removed features."
+  echo ""
+fi
+
+# === airport-shuttle serviceType regression (CLAUDE.md sections 8, 9) ===
+# Valid serviceTypes are airport-transfer and private-transfer ONLY.
+# The route slug /airport-shuttle is a marketing URL and is allowed —
+# this scan looks for the BANNED usage as a serviceType value only.
+SHUTTLE_TYPE_HITS=$(grep -rEn "serviceType\s*[:=]\s*['\"]airport-shuttle['\"]|service_type\s*[:=]\s*['\"]airport-shuttle['\"]" \
+  --include="*.js" --include="*.jsx" \
+  "$REPO_ROOT/frontend/src" "$REPO_ROOT/api" \
+  2>/dev/null | grep -v node_modules || true)
+if [ -n "$SHUTTLE_TYPE_HITS" ]; then
+  echo "  ‼ BANNED serviceType 'airport-shuttle' DETECTED — see CLAUDE.md 9"
+  echo "  ‼ Valid serviceTypes: 'airport-transfer' and 'private-transfer' only."
+  echo "$SHUTTLE_TYPE_HITS" | sed 's/^/      /'
+  echo ""
+else
+  echo "  ✓ No banned 'airport-shuttle' serviceType usage"
+  echo ""
+fi
+
+# === client-key.js wired to a frontend caller (CLAUDE.md 6c trap) ===
+# /api/maps/client-key exposes the Google Maps API key to the browser.
+# It is currently UNUSED. If a future agent wires it into a frontend
+# loadGoogleMaps() helper, that re-introduces the banned native widget.
+CLIENT_KEY_CALLERS=$(grep -rEn "maps/client-key|api/maps/client-key" \
+  --include="*.js" --include="*.jsx" \
+  "$REPO_ROOT/frontend/src" \
+  2>/dev/null | grep -v node_modules || true)
+if [ -n "$CLIENT_KEY_CALLERS" ]; then
+  echo "  ‼ /api/maps/client-key NOW HAS A FRONTEND CALLER — CLAUDE.md 6c"
+  echo "  ‼ This endpoint is intentionally unused. Wiring it up means a"
+  echo "  ‼ frontend module is about to load Google Maps JS in the browser,"
+  echo "  ‼ which is the #1 cause of booking form failures since Nov 2025."
+  echo "$CLIENT_KEY_CALLERS" | sed 's/^/      /'
+  echo ""
+else
+  echo "  ✓ /api/maps/client-key not wired to frontend (locked decision 6c holding)"
+  echo ""
+fi
+
+# === Smart quotes in JS source ===
+# Smart/curly quotes are invisible in most editors but break parsing
+# in some toolchains. Caused a Python outage on 2026-03-24.
+SMART_QUOTE_FILES=$(REPO_ROOT="$REPO_ROOT" python3 - <<'PY' 2>/dev/null || true
+import os
+hits = []
+roots = [os.environ['REPO_ROOT'] + '/frontend/src',
+         os.environ['REPO_ROOT'] + '/api']
+for r in roots:
+    for root, dirs, files in os.walk(r):
+        if 'node_modules' in root: continue
+        for f in files:
+            if not f.endswith(('.js', '.jsx')): continue
+            p = os.path.join(root, f)
+            try:
+                t = open(p, encoding='utf-8').read()
+                if any(c in t for c in ['‘', '’', '“', '”']):
+                    hits.append(p)
+            except: pass
+for h in hits[:10]: print(h)
+PY
+)
+if [ -n "$SMART_QUOTE_FILES" ]; then
+  echo "  ‼ SMART/CURLY QUOTES IN JS SOURCE — replace with ASCII"
+  echo "$SMART_QUOTE_FILES" | sed 's/^/      /'
+  echo ""
+fi
+
 # === Final reminder ===
 echo "================================================================"
 echo "  Setup complete. REMEMBER:"
