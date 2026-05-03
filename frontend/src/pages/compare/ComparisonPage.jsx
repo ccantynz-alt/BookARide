@@ -23,7 +23,6 @@ const comparisons = {
       { feature: 'Wait Time', bookaride: 'Direct to your address', competitor: 'Stops at other addresses first', winner: 'bookaride' },
       { feature: 'Price (North Shore)', bookaride: 'Get Quote', competitor: 'Get Quote', winner: 'competitor' },
       { feature: 'Multi-Stop Booking', bookaride: 'Yes - pick up multiple addresses', competitor: 'No - single pickup only', winner: 'bookaride' },
-      { feature: 'Flight Tracking', bookaride: 'Yes - we monitor your flight', competitor: 'Limited', winner: 'bookaride' },
       { feature: 'Child Seats', bookaride: 'Available on request', competitor: 'Not guaranteed', winner: 'bookaride' },
       { feature: 'Large Groups (8+)', bookaride: 'Up to 11 passengers', competitor: 'Limited capacity', winner: 'bookaride' },
       { feature: 'Privacy', bookaride: 'Just you & your group', competitor: 'Shared with strangers', winner: 'bookaride' },
@@ -94,10 +93,9 @@ const comparisons = {
       { feature: 'Local Knowledge', bookaride: 'North Shore specialists', competitor: 'Variable', winner: 'bookaride' },
       { feature: 'No Pre-booking', bookaride: 'Pre-booking required', competitor: 'Just show up', winner: 'competitor' },
       { feature: 'Vehicle Quality', bookaride: 'Modern fleet', competitor: 'Varies', winner: 'bookaride' },
-      { feature: 'Flight Tracking', bookaride: 'Included', competitor: 'No', winner: 'bookaride' },
       { feature: 'Payment Options', bookaride: 'Card, online, invoice', competitor: 'Card or cash', winner: 'tie' }
     ],
-    verdict: "Taxis offer flexibility but with uncertainty - you never know the final price until you arrive. BookaRide's fixed pricing, flight tracking, and guaranteed availability makes it the smarter choice for airport transfers.",
+    verdict: "Taxis offer flexibility but with uncertainty - you never know the final price until you arrive. BookaRide's fixed pricing, and guaranteed availability makes it the smarter choice for airport transfers.",
     whenToChooseUs: [
       'You want to know exactly what you\'ll pay',
       'You don\'t want to queue at the taxi rank',

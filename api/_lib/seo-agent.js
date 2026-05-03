@@ -54,7 +54,6 @@ const TRACKED_PAGES = [
   { path: '/airport-pickup-guide', priority: '0.7', changefreq: 'monthly' },
   { path: '/auckland-airport-arrivals-guide', priority: '0.8', changefreq: 'weekly' },
   { path: '/new-zealand-travel-checklist', priority: '0.8', changefreq: 'weekly' },
-  { path: '/flight-tracker', priority: '0.7', changefreq: 'weekly' },
   { path: '/travel-guide', priority: '0.7', changefreq: 'weekly' },
   { path: '/international-visitors', priority: '0.8', changefreq: 'weekly' },
   { path: '/hibiscus-coast', priority: '0.8', changefreq: 'weekly' },

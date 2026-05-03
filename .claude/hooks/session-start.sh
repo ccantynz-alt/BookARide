@@ -279,6 +279,29 @@ else
   echo ""
 fi
 
+# === Flight Tracker regression check (removed 2026-05-03) ===
+# Craig explicitly removed the flight-tracker feature on 2026-05-03.
+# It must not come back — same pattern as Afterpay. The feature was
+# never actually integrated with a real flight-data provider, so every
+# mention of "Flight Tracking" on the marketing pages was advertising
+# a feature that didn't exist.
+FLIGHT_HITS=$(grep -rEln "flight-tracker|FlightTracker|FlightTrackerPage|Flight Tracker|Flight Tracking|flight tracking" \
+  --include="*.js" --include="*.jsx" \
+  "$REPO_ROOT/frontend/src" "$REPO_ROOT/api" \
+  2>/dev/null | grep -v node_modules || true)
+if [ -n "$FLIGHT_HITS" ]; then
+  echo "  ‼ FLIGHT TRACKER REGRESSION DETECTED — removed 2026-05-03"
+  echo "  ‼ Craig explicitly killed this feature. Never re-add it as a route,"
+  echo "  ‼ component, marketing claim, or feature-list bullet."
+  echo "  ‼ Files containing flight-tracker references:"
+  echo "$FLIGHT_HITS" | sed 's/^/      /'
+  echo "  ‼ Remove these references in your first commit of the session."
+  echo ""
+else
+  echo "  ✓ No flight tracker references (locked decision holding)"
+  echo ""
+fi
+
 # === client-key.js wired to a frontend caller (CLAUDE.md 6c trap) ===
 # /api/maps/client-key exposes the Google Maps API key to the browser.
 # It is currently UNUSED. If a future agent wires it into a frontend

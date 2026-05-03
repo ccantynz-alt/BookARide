@@ -155,7 +155,7 @@ const USALanding = () => {
             </div>
             <div className="flex items-center gap-2">
               <CheckCircle className="w-5 h-5 text-green-500" />
-              <span className="text-sm font-medium">Flight Tracking Included</span>
+              
             </div>
             <div className="flex items-center gap-2">
               <CheckCircle className="w-5 h-5 text-green-500" />
@@ -184,15 +184,6 @@ const USALanding = () => {
                 </div>
                 <h3 className="text-xl font-semibold mb-2">Easy Payment</h3>
                 <p className="text-gray-600">All major credit cards accepted. Your bank handles the conversion - no surprises.</p>
-              </CardContent>
-            </Card>
-            <Card className="text-center hover:shadow-lg transition-shadow">
-              <CardContent className="p-6">
-                <div className="w-16 h-16 bg-gold/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Clock className="w-8 h-8 text-gold" />
-                </div>
-                <h3 className="text-xl font-semibold mb-2">Flight Tracking</h3>
-                <p className="text-gray-600">We monitor your United, American, or Air NZ flight. Delays? We adjust automatically.</p>
               </CardContent>
             </Card>
             <Card className="text-center hover:shadow-lg transition-shadow">

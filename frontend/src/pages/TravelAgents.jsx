@@ -59,7 +59,7 @@ const TravelAgents = () => {
   ];
 
   const services = [
-    { icon: Plane, title: 'Airport Transfers', desc: 'Auckland, Hamilton, Rotorua airports. Flight tracking included.' },
+    { icon: Plane, title: 'Airport Transfers', desc: 'Auckland, Hamilton, Rotorua airports. ' },
     { icon: Ship, title: 'Cruise Ship Transfers', desc: 'All Auckland cruise terminals. Meet & greet service.' },
     { icon: Bus, title: 'Group Transport', desc: '8-50+ passengers. Perfect for tour groups.' },
     { icon: Building2, title: 'Hobbiton & Day Tours', desc: 'Transport to NZ\'s top attractions.' }

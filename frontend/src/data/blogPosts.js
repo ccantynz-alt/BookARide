@@ -37,7 +37,6 @@ A private shuttle offers the best balance of convenience, comfort, and value. Yo
 **Pros:**
 - Door-to-door service
 - Fixed price (no surge pricing)
-- Flight tracking included
 - Space for luggage
 - Child seats available
 
@@ -152,7 +151,6 @@ With so many options for getting to and from Auckland Airport, how do you choose
 
 - Private door-to-door service
 - Fixed price - get instant quote online
-- Flight tracking included
 - Multi-stop bookings available
 - Child seats on request
 
@@ -506,7 +504,6 @@ Auckland Airport to the North Shore ranges from approximately 35-65km depending 
 A private transfer is the best option for the North Shore because:
 - **Door-to-door** — driver takes you directly to your address
 - **Fixed price** — no surge pricing, no meter running in traffic
-- **Flight tracking** — driver adjusts if your flight is delayed
 - **Luggage space** — no struggling with bags on buses
 
 This is especially valuable for the North Shore because there is no direct public transport from the airport.
@@ -580,7 +577,6 @@ The most convenient option, especially after a long international flight. Your d
 **Why this works for Hamilton:**
 - No transfers or connections
 - Fixed price regardless of traffic
-- Flight tracking if your arrival is delayed
 - Comfortable vehicle for the longer journey
 - Drop-off at your exact address, not a bus station
 
@@ -654,7 +650,6 @@ After a long international flight, the last thing you want is to navigate unfami
 - Arrive rested, not stressed
 - No driving while jet-lagged (dangerous on unfamiliar roads)
 - Fixed price, no surprises
-- Flight tracking for delayed arrivals
 - Can stop for breaks on request
 
 [Get a quote for Auckland Airport to Whangarei →](/book-now)
@@ -801,7 +796,7 @@ Total time: 2.5-3.5 hours. With luggage, it is impractical.
 **Price:** From $150 (varies by destination)
 **Time:** 40-75 minutes direct
 
-This is by far the best option for the Hibiscus Coast. Your driver collects you at arrivals and takes you directly to your address. Fixed price, flight tracked, no hassle.
+This is by far the best option for the Hibiscus Coast. Your driver collects you at arrivals and takes you directly to your address. Fixed price, no hassle.
 
 **Why this is the clear winner:**
 - Zero public transport alternatives

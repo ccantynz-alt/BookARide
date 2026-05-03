@@ -80,7 +80,6 @@ const AlbanyAirportPage = React.lazy(() => import('./pages/seo/AlbanyAirportPage
 const NorthShoreAirportPage = React.lazy(() => import('./pages/seo/NorthShoreAirportPage'));
 const AirportToCityPage = React.lazy(() => import('./pages/seo/AirportToCityPage'));
 const ReferralProgram = React.lazy(() => import('./pages/ReferralProgram'));
-const FlightTrackerPage = React.lazy(() => import('./pages/FlightTrackerPage'));
 const TravelResourcesPage = React.lazy(() => import('./pages/TravelResourcesPage'));
 const InternationalVisitors = React.lazy(() => import('./pages/InternationalVisitors'));
 // Auckland CBD SEO Pages
@@ -205,7 +204,6 @@ function App() {
     { path: "auckland-cbd-to-airport", element: <AucklandCBDToAirportPage /> },
     // Existing SEO pages
     { path: "auckland-airport-shuttle", element: <AucklandAirportShuttle /> },
-    { path: "flight-tracker", element: <FlightTrackerPage /> },
     { path: "travel-guide", element: <TravelResourcesPage /> },
     { path: "international-visitors", element: <InternationalVisitors /> },
     // NEW: SEO Route Pages (Comprehensive)

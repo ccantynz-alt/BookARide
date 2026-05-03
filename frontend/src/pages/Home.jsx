@@ -91,7 +91,6 @@ export const Home = () => {
                   { icon: Check, text: 'Professional Drivers - Licensed & Experienced' },
                   { icon: Check, text: 'Premium Vehicles - Immaculate & Comfortable' },
                   { icon: Check, text: 'Fixed Rates - No Hidden Fees, Ever' },
-                  { icon: Check, text: 'Flight Tracking - We Monitor Your Arrival' }
                 ].map((benefit, index) => (
                   <div
                     key={index}

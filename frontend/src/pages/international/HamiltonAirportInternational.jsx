@@ -45,11 +45,6 @@ const HamiltonAirportInternational = () => {
               <p className="text-gray-600">Our drivers know the Waikato region intimately. Direct routes to Hamilton CBD, Cambridge, Matamata, and beyond.</p>
             </div>
             <div className="text-center p-6">
-              <Plane className="w-12 h-12 text-gold mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-3">Flight Tracking</h3>
-              <p className="text-gray-600">We monitor all incoming flights. Delays or early arrivals - your pickup time adjusts automatically.</p>
-            </div>
-            <div className="text-center p-6">
               <Shield className="w-12 h-12 text-gold mx-auto mb-4" />
               <h3 className="text-xl font-semibold mb-3">Safe & Reliable</h3>
               <p className="text-gray-600">Licensed operators, insured vehicles, and professional drivers ensure your safety and comfort.</p>

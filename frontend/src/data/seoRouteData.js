@@ -5,7 +5,7 @@ export const routeData = {
     slug: 'auckland-airport-to-whangaparaoa',
     title: 'Auckland Airport to Whangaparaoa Shuttle | Private Transfer',
     h1: 'Auckland Airport to Whangaparaoa Shuttle Service',
-    metaDescription: 'Book reliable door-to-door shuttle from Auckland Airport to Whangaparaoa. Private transfers, no sharing, flight tracking included. Get instant quote online!',
+    metaDescription: 'Book reliable door-to-door shuttle from Auckland Airport to Whangaparaoa. Private transfers, no sharing included. Get instant quote online!',
     suburb: 'Whangaparaoa',
     region: 'Hibiscus Coast',
     distance: '45 km',
@@ -13,7 +13,6 @@ export const routeData = {
     highlights: [
       'Door-to-door private service',
       'No sharing with strangers',
-      'Flight tracking included',
       'Multiple pickup locations available',
       'Child seats available on request'
     ],
@@ -107,7 +106,7 @@ export const routeData = {
       },
       {
         q: 'Is it faster to take a shuttle or Uber to North Shore?',
-        a: 'Both take similar time, but our shuttles offer fixed pricing, flight tracking, and guaranteed availability - especially for early morning flights.'
+        a: 'Both take similar time, but our shuttles offer fixed pricing, and guaranteed availability - especially for early morning flights.'
       }
     ]
   },
@@ -418,7 +417,6 @@ export const comparisonData = {
       { feature: 'Service Type', bookaride: 'Private door-to-door', competitor: 'Shared (2-3 stops)' },
       { feature: 'Wait Time', bookaride: 'Direct to your address', competitor: 'Stops at other addresses first' },
       { feature: 'Multi-Stop Booking', bookaride: 'Yes - pick up from multiple addresses', competitor: 'No - single pickup only' },
-      { feature: 'Flight Tracking', bookaride: 'Yes - we monitor your flight', competitor: 'Limited' },
       { feature: 'Child Seats', bookaride: 'Available on request', competitor: 'Not guaranteed' },
       { feature: 'Large Groups', bookaride: 'Up to 11 passengers', competitor: 'Limited capacity' },
       { feature: 'North Shore Specialist', bookaride: 'Yes - local knowledge', competitor: 'General service' },
