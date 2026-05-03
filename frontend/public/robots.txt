@@ -2,12 +2,13 @@
 User-agent: *
 Allow: /
 
-# Disallow admin pages
+# Disallow non-public pages
 Disallow: /admin/
 Disallow: /driver/
+Disallow: /track/
+Disallow: /pay/
+Disallow: /payment-success
+Disallow: /api/
 
-# Sitemap
-Sitemap: https://bookaride.co.nz/sitemap.xml
-
-# Crawl-delay for good behavior
-Crawl-delay: 1
+# Sitemap (dynamic, regenerated daily with fresh lastmod)
+Sitemap: https://www.bookaride.co.nz/sitemap.xml
