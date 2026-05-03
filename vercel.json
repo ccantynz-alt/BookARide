@@ -15,6 +15,24 @@
       "schedule": "0 18 * * *"
     }
   ],
+  "redirects": [
+    { "source": "/estimation", "destination": "/book-now", "permanent": true },
+    { "source": "/get-a-quote", "destination": "/book-now", "permanent": true },
+    { "source": "/get-quote", "destination": "/book-now", "permanent": true },
+    { "source": "/quote", "destination": "/book-now", "permanent": true },
+    { "source": "/quotes", "destination": "/book-now", "permanent": true },
+    { "source": "/instant-quote", "destination": "/book-now", "permanent": true },
+    { "source": "/booking-form", "destination": "/book-now", "permanent": true },
+    { "source": "/book-online", "destination": "/book-now", "permanent": true },
+    { "source": "/online-booking", "destination": "/book-now", "permanent": true },
+    { "source": "/pricing", "destination": "/book-now", "permanent": true },
+    { "source": "/price-calculator", "destination": "/book-now", "permanent": true },
+    { "source": "/request-quote", "destination": "/book-now", "permanent": true },
+    { "source": "/booking", "destination": "/book-now", "permanent": true },
+    { "source": "/book", "destination": "/book-now", "permanent": true },
+    { "source": "/reservations", "destination": "/book-now", "permanent": true },
+    { "source": "/reservation", "destination": "/book-now", "permanent": true }
+  ],
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
