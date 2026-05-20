@@ -170,7 +170,7 @@ export const HomePageSchema = () => {
       <ServiceSchema 
         service={{
           name: "Auckland Airport Private Shuttle",
-          description: "Premium door-to-door airport transfer service. Private vehicle, no sharing with strangers. Flight tracking, child seats available, 24/7 service.",
+          description: "Premium door-to-door airport transfer service. Private vehicle, no sharing with strangers. child seats available, 24/7 service.",
           areaServed: "Auckland Region",
           serviceType: "Airport Transfer Service"
         }}
@@ -179,7 +179,7 @@ export const HomePageSchema = () => {
         faqs={[
           {
             question: "How much is a shuttle from Auckland Airport?",
-            answer: "BookaRide offers fixed-price airport transfers with no surge pricing. Get an instant quote online - prices vary by distance and are locked in at booking. Flight tracking included."
+            answer: "BookaRide offers fixed-price airport transfers with no surge pricing. Get an instant quote online - prices vary by distance and are locked in at booking. "
           },
           {
             question: "Do you offer door-to-door airport transfers?",

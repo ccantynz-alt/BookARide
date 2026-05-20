@@ -84,7 +84,7 @@ const ChinaLanding = () => {
                 <Clock className="w-8 h-8 text-gold" />
               </div>
               <h3 className="text-lg font-semibold mb-2">航班跟踪</h3>
-              <p className="text-sm text-gray-600">Flight Tracking</p>
+              
               <p className="text-gray-600 mt-2">实时跟踪您的航班</p>
             </div>
             <div className="bg-white p-6 rounded-xl shadow-sm text-center">

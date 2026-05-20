@@ -21,7 +21,6 @@ export const BookarideVsHibiscusShuttles = () => {
     { feature: 'Online Booking', bookaride: 'Instant 24/7', competitor: 'Limited/Phone' },
     { feature: 'Booking Confirmation', bookaride: 'Instant email + SMS', competitor: 'Email only' },
     { feature: 'Service Type', bookaride: 'Private only', competitor: 'Shared available' },
-    { feature: 'Flight Tracking', bookaride: 'Automatic', competitor: 'Manual' },
     { feature: 'Price Transparency', bookaride: 'Fixed upfront', competitor: 'Quote required' },
     { feature: 'Child Seats', bookaride: 'Free on request', competitor: 'Extra charge' },
     { feature: 'Payment Options', bookaride: 'Card, Apple Pay, Google Pay', competitor: 'Card/Cash' },

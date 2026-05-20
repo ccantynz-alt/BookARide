@@ -117,7 +117,6 @@ export const WhangaparoaAirportPage = () => {
                 {[
                   'Door-to-door from any Whangaparaoa address',
                   'Early morning flights? We\'re up at 3am',
-                  'Flight tracking - we adjust for delays',
                   'Child seats available free',
                   'Large luggage? No problem',
                   'Pets welcome (in carriers)'
@@ -203,7 +202,7 @@ export const WhangaparoaAirportPage = () => {
       <section className="py-16 bg-teal-600 text-white">
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl font-bold mb-4">Book Your Whangaparaoa Transfer Today</h2>
-          <p className="text-teal-100 mb-8">Get Instant Quote • Door-to-door • Flight tracking included</p>
+          <p className="text-teal-100 mb-8">Get Instant Quote • Door-to-door • </p>
           <div className="flex flex-wrap justify-center gap-4">
             <Link to="/book-now">
               <Button size="lg" className="bg-gold hover:bg-yellow-500 text-black font-bold">

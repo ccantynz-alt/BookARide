@@ -24,7 +24,7 @@ export const OrewaToAirportPage = () => {
     <div className="min-h-screen bg-white">
       <Helmet>
         <title>Orewa to Auckland Airport Shuttle | Get Instant Quote | Private Transfers | BookaRide</title>
-        <meta name="description" content="Private shuttle from Orewa to Auckland Airport with instant online quotes. Door-to-door service, flight tracking, 24/7 availability. Book your Orewa airport transfer online instantly." />
+        <meta name="description" content="Private shuttle from Orewa to Auckland Airport with instant online quotes. Door-to-door service, 24/7 availability. Book your Orewa airport transfer online instantly." />
         <meta name="keywords" content="orewa to auckland airport, orewa airport shuttle, orewa airport transfer, orewa to airport taxi" />
         <link rel="canonical" href="https://bookaride.co.nz/orewa-to-auckland-airport" />
         <script type="application/ld+json">{JSON.stringify(schema)}</script>

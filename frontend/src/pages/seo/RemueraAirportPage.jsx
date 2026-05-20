@@ -19,7 +19,6 @@ const RemueraAirportPage = () => {
       highlights={[
         "Premium Eastern suburbs service",
         "Executive vehicle options",
-        "Flight tracking included",
         "Reliable professional drivers",
         "Great minimum rates"
       ]}

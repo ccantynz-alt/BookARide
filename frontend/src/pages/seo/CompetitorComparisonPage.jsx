@@ -53,7 +53,7 @@ const CompetitorComparisonPage = () => {
   const faqs = [
     {
       question: `Is BookaRide better than ${competitorData.name}?`,
-      answer: `BookaRide offers private door-to-door service with fixed pricing and flight tracking. Unlike ${competitorData.name}, you won't share your ride with strangers or make multiple stops. For travelers who value comfort, reliability, and direct service, BookaRide is the premium choice.`
+      answer: `BookaRide offers private door-to-door service with fixed pricing . Unlike ${competitorData.name}, you won't share your ride with strangers or make multiple stops. For travelers who value comfort, reliability, and direct service, BookaRide is the premium choice.`
     },
     {
       question: `How much cheaper is BookaRide compared to ${competitorData.name}?`,
@@ -61,7 +61,7 @@ const CompetitorComparisonPage = () => {
     },
     {
       question: `What makes BookaRide different from ${competitorData.name}?`,
-      answer: `BookaRide provides private transfers (no sharing), real-time flight tracking, professional licensed drivers, and 24/7 availability. We pick you up from your exact address and take you directly to the airport without stops.`
+      answer: `BookaRide provides private transfers (no sharing), real-time professional licensed drivers, and 24/7 availability. We pick you up from your exact address and take you directly to the airport without stops.`
     }
   ];
 
@@ -152,7 +152,6 @@ const CompetitorComparisonPage = () => {
                 <tbody>
                   <FeatureRow label="Private Service (No Sharing)" bookaride={comparisonData.bookaride.noSharedRides} competitor={comparisonData.competitor.noSharedRides} />
                   <FeatureRow label="Fixed Pricing (No Surge)" bookaride={comparisonData.bookaride.fixedPricing} competitor={comparisonData.competitor.fixedPricing} />
-                  <FeatureRow label="Real-Time Flight Tracking" bookaride={comparisonData.bookaride.flightTracking} competitor={comparisonData.competitor.flightTracking} />
                   <FeatureRow label="Door-to-Door Service" bookaride={comparisonData.bookaride.doorToDoor} competitor={comparisonData.competitor.doorToDoor} />
                   <FeatureRow label="Free Cancellation" bookaride={comparisonData.bookaride.freeCancellation} competitor={comparisonData.competitor.freeCancellation} />
                   <FeatureRow label="Meet & Greet Option" bookaride={comparisonData.bookaride.meetAndGreet} competitor={comparisonData.competitor.meetAndGreet} />

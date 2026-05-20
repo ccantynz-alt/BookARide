@@ -195,7 +195,6 @@ export const HibiscusCoastShuttlePage = () => {
                       'Private door-to-door transfers',
                       'Instant online booking',
                       'Fixed upfront pricing',
-                      'Flight tracking included',
                       'Free child seats',
                       'No sharing with strangers',
                       '24/7 customer support',

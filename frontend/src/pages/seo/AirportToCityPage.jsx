@@ -51,7 +51,7 @@ const AirportToCityPage = () => {
               Get your <span className="text-gold font-bold text-2xl">Instant Quote</span> online
             </p>
             <p className="text-gray-400 mb-8">
-              Live pricing calculator • Meet & greet at arrivals • Flight tracking included
+              Live pricing calculator • Meet & greet at arrivals • 
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">

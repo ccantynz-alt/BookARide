@@ -10,7 +10,6 @@ import PageBreadcrumb from '../../../components/PageBreadcrumb';
 const SofitelHotelPage = () => {
   const features = [
     { icon: DollarSign, title: 'Fixed Price', desc: 'No surge pricing' },
-    { icon: Clock, title: 'Flight Tracking', desc: 'Monitor delays' },
     { icon: Shield, title: 'Professional', desc: 'Licensed drivers' },
     { icon: Users, title: 'Any Group', desc: '1-11 passengers' },
   ];

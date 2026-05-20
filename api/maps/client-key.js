@@ -1,17 +1,18 @@
 /**
  * GET /api/maps/client-key
  *
- * Returns the Google Maps JS API key so the frontend can load Google's
- * native Places Autocomplete widget in GoogleAddressInput.jsx.
+ * Returns the Google Maps API key. CURRENTLY UNUSED by the frontend —
+ * GoogleAddressInput.jsx uses /api/places/autocomplete (server-side) for
+ * suggestions, and /api/calculate-price (server-side) for distance.
  *
- * This endpoint is CRITICAL — without it, GoogleAddressInput falls back
- * to the old custom dropdown which is broken. See CLAUDE.md "Google
- * Address Autocomplete" locked decision.
+ * CLAUDE.md section 6c LOCKS IN that Google Maps JS must NEVER be loaded
+ * in the browser. Re-introducing the native Places Autocomplete widget
+ * locks the input field when the key is invalid/restricted/expired and
+ * has cost the business real customers multiple times since Nov 2025.
  *
- * Security note: This exposes the Maps JS API key to the browser. That's
- * unavoidable because Google Maps JS runs client-side. Restrict the key
- * in the Google Cloud Console to your production domains (HTTP referrer
- * restriction) so it can't be abused by third parties.
+ * This endpoint is kept only as a safe placeholder so /api/maps/client-key
+ * does not 404 if some legacy client somewhere still hits it. Do NOT add
+ * a frontend caller for this endpoint without first updating CLAUDE.md 6c.
  */
 module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();

@@ -10,7 +10,6 @@ import GoogleReviewsWidget from '../../components/GoogleReviewsWidget';
 const AlbanyAirportPage = () => {
   const features = [
     { icon: DollarSign, title: 'Fixed Price', desc: 'No surge pricing, no surprises' },
-    { icon: Clock, title: 'Flight Tracking', desc: 'We monitor delays automatically' },
     { icon: Shield, title: 'Licensed & Insured', desc: 'Professional, vetted drivers' },
     { icon: Users, title: 'Any Group Size', desc: 'Solo travelers to large groups' },
   ];
@@ -19,7 +18,7 @@ const AlbanyAirportPage = () => {
     <div className="min-h-screen bg-white">
       <SEO
         title="Albany to Auckland Airport Transfer | Get Instant Quote | BookaRide NZ"
-        description="Book your Albany to Auckland Airport shuttle. Instant online quotes, professional drivers, flight tracking included. Get instant quote online!"
+        description="Book your Albany to Auckland Airport shuttle. Instant online quotes, professional drivers included. Get instant quote online!"
         keywords="Albany airport transfer, Albany to Auckland Airport, North Shore airport shuttle, Albany taxi airport, Albany airport shuttle"
         canonical="/albany-to-airport"
       />
@@ -63,7 +62,6 @@ const AlbanyAirportPage = () => {
 
             <div className="mt-8 flex flex-wrap justify-center gap-6 text-sm text-gray-400">
               <span className="flex items-center gap-1"><Check className="w-4 h-4 text-green-500" /> Free cancellation</span>
-              <span className="flex items-center gap-1"><Check className="w-4 h-4 text-green-500" /> Flight tracking</span>
               <span className="flex items-center gap-1"><Check className="w-4 h-4 text-green-500" /> Meet & greet available</span>
             </div>
           </motion.div>

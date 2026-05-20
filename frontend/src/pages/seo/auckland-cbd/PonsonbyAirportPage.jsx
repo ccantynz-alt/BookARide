@@ -10,7 +10,6 @@ import PageBreadcrumb from '../../../components/PageBreadcrumb';
 const PonsonbyAirportPage = () => {
   const features = [
     { icon: DollarSign, title: 'Fixed Price', desc: 'No surge pricing ever' },
-    { icon: Clock, title: 'Flight Tracking', desc: 'We monitor your flight' },
     { icon: Shield, title: 'Professional', desc: 'Licensed & insured drivers' },
     { icon: Users, title: 'Any Group Size', desc: '1-11 passengers' },
   ];
@@ -78,7 +77,6 @@ const PonsonbyAirportPage = () => {
 
             <div className="mt-8 flex flex-wrap justify-center gap-6 text-sm text-gray-400">
               <span className="flex items-center gap-1"><Check className="w-4 h-4 text-green-500" /> Free cancellation</span>
-              <span className="flex items-center gap-1"><Check className="w-4 h-4 text-green-500" /> Flight tracking</span>
               <span className="flex items-center gap-1"><Check className="w-4 h-4 text-green-500" /> Meet & greet available</span>
             </div>
           </motion.div>
@@ -117,7 +115,7 @@ const PonsonbyAirportPage = () => {
               <p>
                 Ponsonby is known for its boutique shopping, trendy cafes, and excellent restaurants. After enjoying 
                 everything this iconic Auckland suburb has to offer, let us take the stress out of getting to the airport. 
-                Our fixed-price transfers mean no surprises, and our flight tracking ensures we're always on time.
+                Our fixed-price transfers mean no surprises.
               </p>
             </div>
 

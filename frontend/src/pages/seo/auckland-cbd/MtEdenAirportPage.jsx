@@ -10,7 +10,6 @@ import PageBreadcrumb from '../../../components/PageBreadcrumb';
 const MtEdenAirportPage = () => {
   const features = [
     { icon: DollarSign, title: 'Fixed Price', desc: 'No surge pricing ever' },
-    { icon: Clock, title: 'Flight Tracking', desc: 'We monitor your flight' },
     { icon: Shield, title: 'Professional', desc: 'Licensed & insured drivers' },
     { icon: Users, title: 'Any Group Size', desc: '1-11 passengers' },
   ];
@@ -78,7 +77,6 @@ const MtEdenAirportPage = () => {
 
             <div className="mt-8 flex flex-wrap justify-center gap-6 text-sm text-gray-400">
               <span className="flex items-center gap-1"><Check className="w-4 h-4 text-green-500" /> Free cancellation</span>
-              <span className="flex items-center gap-1"><Check className="w-4 h-4 text-green-500" /> Flight tracking</span>
               <span className="flex items-center gap-1"><Check className="w-4 h-4 text-green-500" /> Meet & greet available</span>
             </div>
           </motion.div>

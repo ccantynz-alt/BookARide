@@ -23,7 +23,7 @@ export const BestHibiscusCoastShuttle = () => {
       name: 'BookaRide',
       rating: 0,
       price: 'Get Instant Quote',
-      pros: ['Instant online booking', 'Private transfers only', '24/7 service', 'Flight tracking', 'Free child seats', '9 language support'],
+      pros: ['Instant online booking', 'Private transfers only', '24/7 service', 'Free child seats', '9 language support'],
       cons: ['Premium pricing'],
       verdict: 'Best overall choice for convenience and reliability',
       link: '/book-now',
@@ -54,7 +54,7 @@ export const BestHibiscusCoastShuttle = () => {
   ];
 
   const factors = [
-    { icon: Clock, title: 'Reliability', desc: 'On-time performance and flight tracking capability' },
+    { icon: Clock, title: 'Reliability', desc: 'On-time performance  capability' },
     { icon: Shield, title: 'Safety', desc: 'Licensed drivers, insured vehicles, professional service' },
     { icon: Star, title: 'Reviews', desc: 'Customer ratings and testimonials' },
     { icon: Car, title: 'Vehicle Quality', desc: 'Modern, clean, comfortable vehicles' },

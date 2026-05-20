@@ -19,7 +19,6 @@ const EpsomAirportPage = () => {
       highlights={[
         "Premium suburb airport service",
         "Direct Southern Motorway access",
-        "Flight tracking included",
         "Executive vehicles available",
         "Professional presentation"
       ]}
