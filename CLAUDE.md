@@ -1335,8 +1335,8 @@ Before making ANY change, verify:
 
 ## Hosting
 
-- Frontend: **Vercel** (React 18, Vite)
-- Backend: **Render** (FastAPI/Uvicorn, Python 3.11+)
+- Frontend: **Vercel** (React 18, CRA + CRACO)
+- Backend: **Vercel Serverless Functions** (FastAPI/Python 3.11+, deployed as `/api/*`)
 
 ### Deployment Rules — MANDATORY
 
@@ -1344,12 +1344,11 @@ Before making ANY change, verify:
 
 **How deployment works:**
 - **Frontend (Vercel)**: Auto-deploys from `main` branch. Every PR also gets a preview URL.
-- **Backend (Render)**: Auto-deploys from `main` branch. If auto-deploy is disabled or fails, you MUST manually deploy from the Render dashboard (`dashboard.render.com` → `bookaride-backend` → Deploy).
-- **IMPORTANT**: After merging a PR to `main`, ALWAYS verify that BOTH Vercel AND Render have deployed successfully. Frontend changes (pricing display, forms) go live via Vercel. Backend changes (pricing rates, email sending, API endpoints) go live via Render. If only one deploys, the system is out of sync.
-- **If Render hasn't redeployed**: Go to `dashboard.render.com` → click the backend service → Events/Deploys tab → check for failed deploys or trigger "Manual Deploy" from `main` branch.
+- **Backend (Vercel Serverless)**: Auto-deploys with the frontend from `main` branch. The backend runs as Python serverless functions at `/api/*` via `api/index.py`.
+- **IMPORTANT**: Both frontend and backend deploy together on Vercel from the `main` branch. One deploy = both updated.
 
 **Branch strategy:**
-- `main` branch = PRODUCTION. Deploys automatically to Vercel (frontend) and Render (backend).
+- `main` branch = PRODUCTION. Deploys automatically to Vercel (frontend + backend).
 - Feature branches = development. Every PR gets a Vercel preview URL for testing.
 - **NEVER push directly to main.** Always use a PR.
 - **NEVER merge a PR without verifying:** `npm run build` passes, `py_compile` passes, and a deep path audit was run if booking/payment/email code changed.
@@ -1382,18 +1381,18 @@ Before making ANY change, verify:
 - The `db` global is initialized in the startup event from `DATABASE_URL`
 - Route files: `backend/routes_*.py` (bulk, customers, drivers, vehicles, analytics, settings, templates)
 
-## Environment Variables (Render)
+## Environment Variables (Vercel)
 
-**All credentials are configured in Render's Environment tab — NOT in a `.env` file in the repo.**
+**All credentials are configured in Vercel's Environment Variables settings — NOT in a `.env` file in the repo.**
 The absence of a `.env` file does NOT mean credentials are missing. Do NOT assume services are unconfigured.
 See `backend/.env.example` for the full list of variables (template only — no real secrets).
 
-Required (all set in Render):
+Required (all set in Vercel):
 - `DATABASE_URL` — Neon PostgreSQL connection string
 - `JWT_SECRET_KEY`
 - `MAILGUN_API_KEY` + `MAILGUN_DOMAIN`
 
-Optional (but needed for full functionality, all set in Render):
+Optional (but needed for full functionality, all set in Vercel):
 - `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET`
 - `TWILIO_ACCOUNT_SID` + `TWILIO_AUTH_TOKEN` + `TWILIO_PHONE_NUMBER`
 - `GOOGLE_MAPS_API_KEY`

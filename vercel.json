@@ -1,51 +1,31 @@
 {
   "version": 2,
-  "buildCommand": "cd frontend && npm install --legacy-peer-deps && npm run build",
-  "installCommand": "npm install --prefix api",
-  "outputDirectory": "frontend/build",
-  "framework": null,
-  "functions": {
-    "api/**/*.js": {
-      "maxDuration": 60
-    }
-  },
-  "crons": [
+  "builds": [
     {
-      "path": "/api/cron/daily-seo-agent",
-      "schedule": "0 18 * * *"
+      "src": "frontend/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "build",
+        "installCommand": "npm install --legacy-peer-deps",
+        "buildCommand": "npm run build"
+      }
+    },
+    {
+      "src": "api/index.py",
+      "use": "@vercel/python",
+      "config": {
+        "maxLambdaSize": "50mb"
+      }
     }
   ],
-  "redirects": [
-    { "source": "/estimation", "destination": "/book-now", "permanent": true },
-    { "source": "/get-a-quote", "destination": "/book-now", "permanent": true },
-    { "source": "/get-quote", "destination": "/book-now", "permanent": true },
-    { "source": "/quote", "destination": "/book-now", "permanent": true },
-    { "source": "/quotes", "destination": "/book-now", "permanent": true },
-    { "source": "/instant-quote", "destination": "/book-now", "permanent": true },
-    { "source": "/booking-form", "destination": "/book-now", "permanent": true },
-    { "source": "/book-online", "destination": "/book-now", "permanent": true },
-    { "source": "/online-booking", "destination": "/book-now", "permanent": true },
-    { "source": "/pricing", "destination": "/book-now", "permanent": true },
-    { "source": "/price-calculator", "destination": "/book-now", "permanent": true },
-    { "source": "/request-quote", "destination": "/book-now", "permanent": true },
-    { "source": "/booking", "destination": "/book-now", "permanent": true },
-    { "source": "/book", "destination": "/book-now", "permanent": true },
-    { "source": "/reservations", "destination": "/book-now", "permanent": true },
-    { "source": "/reservation", "destination": "/book-now", "permanent": true }
-  ],
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/sitemap.xml", "destination": "/api/sitemap.xml" },
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
-  ],
-  "headers": [
+  "routes": [
     {
-      "source": "/api/(.*)",
-      "headers": [
-        { "key": "Access-Control-Allow-Origin", "value": "*" },
-        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, PUT, PATCH, DELETE, OPTIONS" },
-        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" }
-      ]
+      "src": "/api/(.*)",
+      "dest": "/api/index.py"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/frontend/$1"
     }
   ]
 }
