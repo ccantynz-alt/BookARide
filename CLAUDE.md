@@ -1,0 +1,1787 @@
+# BookARide NZ — THE BIBLE
+
+> **THIS FILE IS LAW. READ IT IN FULL BEFORE TOUCHING ANYTHING.**
+> **No code change happens until you have read and understood every rule here.**
+> **This is the blueprint. This is the bible. We work to this file. Nothing else.**
+
+---
+
+## SESSION START PROTOCOL — MANDATORY (2026-04-07)
+
+Every Claude session, in every chat window, on every task, MUST follow this
+sequence before writing a single line of code:
+
+1. **Read CLAUDE.md in full.** Not skim. Read.
+2. **Confirm the architecture state** (currently: frontend-only, Vercel
+   serverless `api/` + React/Vite `frontend/`, no backend folder).
+3. **Check for locked decisions** that touch the area you are about to modify.
+4. **Ask before deviating** from any locked decision, even if it looks obvious.
+
+If you skip Step 1 you will break production. Every single time an agent has
+skipped CLAUDE.md, something has broken. There are no exceptions to this rule.
+
+---
+
+## STRICT MARKET DOMINATION RULES — NON-NEGOTIABLE (2026-04-07)
+
+BookARide is the most aggressive airport transfer business in New Zealand.
+The website must reflect that. We dominate search results. We dominate UX.
+We dominate technology. We do not compromise.
+
+### Rule 1: Best-of-breed only
+
+Every dependency, every framework, every library, every pattern MUST be the
+current best in its category. If a competitor library exists that is faster,
+more modern, or more popular — we use it. If a dependency is deprecated,
+unmaintained, or older than 2 major versions behind, we replace it the
+session it is found.
+
+### Rule 2: Frontend-only architecture (until further notice)
+
+As of 2026-04-07, BookARide is a **frontend-only deployment** on Vercel:
+- `frontend/` — React 18 + Vite + Tailwind, deployed to Vercel
+- `api/` — Vercel serverless functions (Node.js), same Vercel project
+- `vercel.json` at root — single Vercel deployment config
+
+There is **NO `backend/` folder**. There is **NO Render service**. There is
+**NO Python server**. If you find code in a `backend/` directory, it is dead
+weight from the old architecture and must be deleted.
+
+A new combined backend+frontend serverless platform is being prepared.
+**The owner will update CLAUDE.md when that platform is ready.** Until then,
+do not introduce new backend code, do not add a backend folder, do not
+suggest moving back to Render or a Python server.
+
+### Rule 3: Zero chicken scratches
+
+"Chicken scratching" = leaving small bits of inconsistent, half-finished,
+or poorly written code lying around. Banned outright.
+- No commented-out code blocks
+- No `// TODO: clean up later`
+- No half-implemented functions
+- No leftover imports
+- No debug `console.log` statements
+- No `var` declarations (only `const` and `let`)
+- No inline `style={{}}` unless calculated dynamically
+- No duplicate components doing the same thing
+- No legacy files marked "dead" but still in the repo
+
+If you see chicken scratches while working in a file, FIX THEM in the same
+commit. Do not push them to a future "cleanup PR" — that PR will never come.
+
+### Rule 4: SEO is a daily activity, not a one-time task
+
+We have AI agents (or we are going to) running every day to ensure we rank
+#1 for our target keywords. The current AI infrastructure includes:
+- AI chatbot (Claude Haiku) — see `api/chatbot/message.js`
+- AI email support (Claude Haiku) — `api/email/incoming` route on the old
+  Python server (TO BE PORTED)
+- Auto-complete bookings, payment follow-ups, weekly performance reports
+
+A daily SEO agent IS the next priority and is documented in section
+"DAILY SEO AGENT — MANDATORY" below. If it does not exist yet, build it.
+If it exists but is broken, fix it. The owner has explicitly said: "shame
+on us if we don't have an SEO agent on board".
+
+### Rule 5: Refer back here on every chat
+
+The user has explicitly stated: "I want you to refer back to this CLAUDE.md
+file before taking on any work in a new chat. This is the blueprint. This
+is the Bible." Honour that.
+
+---
+
+## CRAIG'S AUTHORIZATION GATE — MANDATORY (2026-04-07)
+
+**Craig is the owner. Craig is the boss. Craig has lost months of revenue
+because previous agents and developers made unauthorised changes that
+broke production. NEVER AGAIN.**
+
+The following actions REQUIRE Craig's explicit, in-chat approval before
+Claude touches a single file. No assumptions. No "I think you'd want this".
+No "while I'm here let me also...". STOP and ASK.
+
+### Actions that REQUIRE Craig's authorisation:
+
+1. **Pricing changes** — any modification to `api/_lib/pricing.js`,
+   `PRICING_TIERS`, `MINIMUM_ONE_WAY`, fuel surcharge percent, or any
+   add-on fee. Pricing is calibrated. One unauthorised change costs
+   real money on every booking.
+
+2. **Architecture changes** — switching frameworks, hosting providers,
+   databases, build tools. The current stack is locked: Vite + React +
+   Vercel + Neon + Mailgun + Stripe + Claude API. Do not propose
+   alternatives without being asked.
+
+3. **Adding or removing any dependency** — even a tiny utility library.
+   Run `npm audit` first. Confirm it's the best-of-breed option. Then
+   ASK before installing.
+
+4. **New integrations** — payment providers, email providers, analytics,
+   CRMs, accounting software, CMS, anything that talks to a third party.
+   Craig has explicitly removed Xero, Facebook, SendGrid, MongoDB,
+   Geoapify, Render, Emergent. Don't suggest re-adding them.
+
+5. **Booking flow changes** — any modification to `BookNow.jsx`,
+   `api/bookings.js`, `api/payment/create-checkout.js`, or
+   `api/webhook/stripe.js`. The booking flow has cost Craig more than
+   anything else. Touch with extreme care.
+
+6. **Customer-facing copy** — landing page text, email templates,
+   confirmation messages, button labels. Branding is locked. Word changes
+   need approval.
+
+7. **Database schema changes** — adding, removing, or renaming columns.
+   Renaming a field that exists in JSONB documents will break every
+   booking that has the old name.
+
+8. **Deleting any data** — bookings, customers, drivers, payment records.
+   Even if the data looks orphaned. Even if it looks like duplicates.
+   ASK first.
+
+9. **Production deployments that touch more than 3 files**, or any
+   file in the booking/payment flow. Multi-file changes need a focused
+   commit message and Craig's go-ahead.
+
+10. **Removing or disabling locked features** — daily SEO agent,
+    booking system health check, fuel surcharge banner, CLAUDE.md
+    locked decisions. These are LAW.
+
+### What Claude CAN do without explicit authorisation:
+
+- Fix typos in non-customer-facing strings (admin labels, error messages
+  the user wouldn't see)
+- Add `console.error` logging for debugging
+- Update `.md` documentation (other than CLAUDE.md itself)
+- Run `npm run build` to verify changes compile
+- Read any file to investigate
+- Run automated checks (smart quotes, banned imports, syntax)
+- Push commits to a feature branch (NEVER directly to main)
+- Reply to obvious questions about how the code works
+
+### How to ask for authorisation:
+
+When Claude reaches a decision point that needs Craig's approval, the
+response MUST be:
+
+```
+AUTHORISATION REQUIRED FROM CRAIG
+=================================
+
+What I want to change:
+  [exact files and exact changes]
+
+Why:
+  [the problem this solves]
+
+Risk:
+  [what could go wrong]
+
+Alternative (if any):
+  [other approaches considered]
+
+Craig — please confirm "go ahead" or tell me what to change.
+```
+
+Then STOP. Do not make the change. Wait.
+
+---
+
+## MAJOR CHANGE PROTOCOL — MANDATORY (2026-04-07)
+
+When making any change that touches more than ONE file in the booking,
+payment, or email flow, follow this protocol exactly:
+
+1. **STOP** — do not start coding yet
+2. **READ** CLAUDE.md in full (yes, every time)
+3. **READ** every file you intend to modify, end-to-end
+4. **TRACE** the data flow from user input to final output
+5. **DOCUMENT** the proposed changes (file by file, with why)
+6. **ASK** for Craig's authorisation (use the format above)
+7. **WAIT** — do not start work until Craig says "go"
+8. **MAKE** the change as a single focused commit
+9. **VERIFY** — run `npm run build`, `node --check` on changed JS files
+10. **TEST** — describe how Craig should test this on the Vercel preview
+11. **PUSH** — commit message references CLAUDE.md sections affected
+
+If you skip any step, you will break production. There are no exceptions.
+
+---
+
+## ZERO TOLERANCE FORBIDDEN LIST — NON-NEGOTIABLE (2026-04-07)
+
+If Claude finds any of these in the codebase, DELETE them immediately
+in the same commit you're working in. No "I'll fix it later". No "out
+of scope". The list is absolute:
+
+### Forbidden frameworks/libraries
+- `jquery`, `aos` (animate on scroll), `slick-carousel`, `react-slick`
+- `leaflet`, `react-leaflet` (we use Google Maps)
+- `moment` (use `date-fns`)
+- `lodash` (use native JS)
+- `@craco/craco`, `react-scripts`, `cra-template`, `cross-env`
+- `webpack` (Vite handles bundling)
+- `babel-loader`, `schema-utils` (CRA-era leftovers)
+- `@vuer-ai/react-helmet-async` (broken fork — use `react-helmet-async`)
+
+### Forbidden services
+- **MongoDB / Motor / pymongo** — we use Neon Postgres
+- **SMTP / SendGrid / Gmail / nodemailer** — we use Mailgun
+- **Geoapify / Mapbox / Leaflet** — we use Google Maps
+- **Render / Heroku / Netlify / Railway** — we use Vercel
+- **Xero / QuickBooks / MYOB** — removed, no accounting integration
+- **Facebook SDK / Facebook login / Facebook ads** — removed
+- **Emergent platform / emergentagent.com** — removed
+- **Python backend** — frontend only until Craig says
+- **Afterpay / afterpay / AfterpayPage / `/afterpay` route /
+  `/api/afterpay/*` endpoints** — REMOVED 2026-04-25, NEVER RE-ADD.
+  Craig has asked for this to be removed multiple times and it keeps
+  coming back. The integration was never finished, the endpoints
+  don't exist, and the radio button on BookNow.jsx broke production
+  because it called a non-existent serverless function. STRIPE IS
+  THE ONLY PAYMENT METHOD. Do not re-add any Afterpay link, route,
+  page, radio button, marketing copy, FAQ mention, AI prompt line,
+  payment-method icon, or env var. If you see anything Afterpay
+  related, DELETE IT in the same commit.
+
+### Forbidden patterns
+- `process.env.REACT_APP_*` (use `import.meta.env.VITE_*`)
+- `var` declarations (use `const` / `let`)
+- Class components except `ErrorBoundary` (React requires it)
+- Inline `style={{}}` for static values (use Tailwind)
+- `async function` without try/catch in API handlers
+- `except: pass` or empty `catch {}` blocks
+- `console.log` in production code (only `console.error`)
+- Commented-out code blocks
+- `// TODO:` comments without an issue number
+- Hardcoded URLs to old Render backend
+- Hardcoded API keys (must come from env vars)
+- `setInterval` / `setTimeout` for cron-like work (use Vercel Cron)
+- Direct DOM manipulation (`document.querySelector` outside specific
+  Google Maps autocomplete fix)
+
+### Forbidden file locations
+- `backend/` directory — does not exist, do not create
+- `v2/` directory — was an abandoned rewrite, do not recreate
+- `tests/` at root — keep tests with the code
+- Root-level `package.json` — Vite project, only `frontend/package.json`
+  and `api/package.json` should exist
+- `render.yaml`, `runtime.txt`, `Procfile` — Render is dead
+
+If you see any of these in the codebase, delete them in the same
+commit you're working in and reference this section in the commit
+message.
+
+---
+
+## ALWAYS-VERIFY CHECKLIST — MANDATORY (2026-04-07)
+
+Before declaring ANYTHING "fixed" or "done", every Claude session
+MUST verify:
+
+### Code-level checks (run automatically):
+1. `cd frontend && npm run build` — must pass with zero errors
+2. `node --check api/<changed>.js` — every changed JS file must parse
+3. `grep -rn "process.env.REACT_APP" frontend/src/` — must return empty
+4. `grep -rn "var " frontend/src/` excluding `var(--*)` — must be empty
+5. `grep -rn "console.log" frontend/src/ api/` excluding `console.error` — must be empty
+6. `grep -rn "TODO\|FIXME\|XXX" --include="*.js" --include="*.jsx" frontend/src/ api/` — must be empty (excluding placeholder text)
+
+### Functional checks (require Craig to test on Vercel preview):
+1. Visit `https://<preview>.vercel.app/api/health/booking-system`
+   - All checks must be green
+2. Make a real test booking on the preview
+3. Verify the booking confirmation email arrives
+4. Verify the admin notification email arrives
+5. Verify the price calculator works for at least 3 different routes
+6. Verify the address dropdown shows Google suggestions
+7. Verify the customer search in admin Create Booking modal returns results
+
+If any of these fail, the change is NOT done. Back to work.
+
+---
+
+## ESCALATION PROTOCOL — MANDATORY (2026-04-07)
+
+When Claude is stuck, uncertain, or about to make a decision that
+could affect production, DO NOT GUESS. Use this escalation:
+
+### Level 1: Document and ask
+"Craig, I'm trying to do X but I see two possible approaches:
+A) [option 1, with pros/cons]
+B) [option 2, with pros/cons]
+Which do you want?"
+
+### Level 2: Stop and request investigation
+"Craig, I tried to do X but [specific error/behaviour]. Before I
+continue, I need to understand whether [specific question]. Can you
+test [specific URL/action] and tell me what happens?"
+
+### Level 3: Hard stop
+"Craig, I'm seeing something that contradicts CLAUDE.md / a locked
+decision / what you told me earlier. I'm stopping. Please clarify
+[specific point] before I touch anything."
+
+**Never proceed past Level 1 without explicit Craig approval.** The
+cost of asking is 30 seconds. The cost of guessing wrong is days
+of broken booking system.
+
+---
+
+## COMPETITIVE ANNIHILATION RULES — MANDATORY (2026-04-07)
+
+BookARide is the most aggressive airport transfer business in NZ.
+The competition is supershuttle.co.nz (legacy ASP.NET, no AI, no
+modern UX). We must ANNIHILATE them on every measurable axis.
+
+### We must beat them on speed
+- Lighthouse Performance score: 90+ (target 95+)
+- Largest Contentful Paint: under 2.5 seconds
+- Time to Interactive: under 3.5 seconds
+- Cumulative Layout Shift: under 0.1
+- First Input Delay / INP: under 200ms
+
+If a Lighthouse score drops below 90, that's a P0 fix before any
+new features.
+
+### We must beat them on technology
+- React 18 (or latest stable) — they use ASP.NET Web Forms
+- Vite — they probably bundle with bundlers from 2010
+- Vercel edge network — they're on a single server
+- AI chatbot (Claude Haiku) — they have nothing
+- Real-time price calculator — they need a quote request
+- Google Places autocomplete — they have a static dropdown
+- Mobile-first responsive — they're desktop-first
+
+### We must beat them on SEO
+- Daily SEO agent runs every day (see DAILY SEO AGENT section)
+- Every page has structured data (LocalBusiness, BreadcrumbList,
+  Service schemas)
+- Every blog post has Article schema
+- Sitemap regenerated daily with fresh `lastmod`
+- Pinged to Google + Bing daily
+- Page health checked daily — 404s flagged immediately
+- Target keywords locked in `api/_lib/seo-agent.js`
+
+### We must beat them on conversion
+- One-click booking from any landing page
+- Price shown before any form submission
+- Free cancellation policy displayed prominently
+- Real customer reviews on every page
+- Multiple payment options
+- Confirmation email arrives within 60 seconds
+- SMS reminders for upcoming trips
+
+### We must beat them on reliability
+- Booking system health check endpoint exists and is monitored
+- Every email send is logged with success/failure
+- Every payment is tracked end-to-end
+- Zero data loss — bookings never disappear (even on delete, they
+  go to `deleted_bookings` table)
+- Stripe webhook idempotency — no duplicate charges
+- Mailgun signature verification — no spoofed emails
+
+### What's NOT optional
+If Craig says "we're not ranking #1 yet", the response is NOT "give
+it time". The response is:
+1. Run the daily SEO agent manually
+2. Check Vercel logs for the daily report
+3. Fix any 404s, missing schemas, or broken pages
+4. Update the target keyword list if needed
+5. Generate fresh content (blog post, landing page) for the lagging
+   keyword
+6. Report back with concrete actions taken
+
+---
+
+## DAILY SEO AGENT — MANDATORY (2026-04-07)
+
+BookARide has an automated daily SEO agent that runs every day at
+6 AM NZ time (18:00 UTC) via Vercel Cron Jobs. This is non-negotiable.
+
+**Components:**
+- `api/cron/daily-seo-agent.js` — the cron handler invoked by Vercel
+- `api/_lib/seo-agent.js` — the SEO automation library
+- `vercel.json` `crons` field — Vercel Cron Jobs configuration
+
+**What it does every day:**
+1. Regenerates `sitemap.xml` with today's `lastmod` date for all
+   tracked pages (signals freshness to Google)
+2. Pings Google and Bing to recrawl the sitemap
+3. Checks every tracked page returns HTTP 200 — flags any 404s or
+   broken pages so we can fix them immediately
+4. Uses the Claude API (`claude-haiku-4-5-20251001`) to generate
+   3 actionable SEO content suggestions for the week
+5. Emails a full daily report to the admin inbox via Mailgun
+
+**Required environment variables on Vercel:**
+- `ANTHROPIC_API_KEY` — for AI content suggestions (already set
+  for the chatbot)
+- `MAILGUN_API_KEY` + `MAILGUN_DOMAIN` — for the daily report email
+  (already set)
+- `SEO_REPORT_EMAIL` — optional override for where the report goes
+  (defaults to `BOOKINGS_NOTIFICATION_EMAIL` then to
+  `bookings@bookaride.co.nz`)
+- `CRON_SECRET` — optional shared secret for manually testing the
+  cron endpoint without Vercel's `x-vercel-cron` header
+
+**Target keywords (LOCKED — owner approved 2026-04-07):**
+The list lives in `api/_lib/seo-agent.js` as `TARGET_KEYWORDS`. To
+add a new target keyword, edit that file. Current targets:
+- airport shuttle Auckland
+- Auckland airport transfer
+- airport transfer New Zealand
+- private airport transfer Auckland
+- Hibiscus Coast airport shuttle
+- Auckland airport shuttle service
+- airport pickup Auckland
+- Auckland to airport
+- airport to Auckland CBD
+- cheap airport shuttle Auckland
+
+**Tracked pages (LOCKED):**
+The list lives in `api/_lib/seo-agent.js` as `TRACKED_PAGES`. Each
+entry has a path, priority, and changefreq. When you create a new
+page, ALWAYS add it to `TRACKED_PAGES` so the daily agent monitors
+it and includes it in the sitemap.
+
+**RULES:**
+- **NEVER** disable, remove, or rename the daily SEO agent without
+  explicit owner approval
+- **NEVER** change the cron schedule without checking the owner
+- **ALWAYS** add new pages to `TRACKED_PAGES` so they get indexed
+  and health-checked daily
+- **ALWAYS** add new target keywords to `TARGET_KEYWORDS` when the
+  business focus shifts
+- If the daily report stops arriving, check Vercel function logs
+  first, then `MAILGUN_API_KEY`, then page health
+
+**Future enhancements (not yet built — flag in next session):**
+- Google Search Console API integration for real impressions/clicks
+- Google Analytics 4 for traffic data
+- SerpAPI or similar for actual keyword ranking checks
+- Weekly competitive analysis vs supershuttle.co.nz
+- Auto-generated weekly performance report (separate cron)
+
+---
+
+## WHAT TO ASK CLAUDE — AUDIT LEVELS EXPLAINED
+
+The owner is not a developer. When requesting work, use these phrases to get the right depth of checking:
+
+| What You Say | What Claude Does | When To Use It |
+|---|---|---|
+| **"Fix this bug"** | Fixes the specific thing. Surface-level. | When you know exactly what's broken and just need it fixed |
+| **"Audit this"** | Checks the area around the fix — imports, syntax, build. | Normal quality check |
+| **"Deep audit" or "crawl this"** | Traces every code path end-to-end: button click → backend → database → email → customer. Finds silent failures like `run_async_task`. | When something "should work but doesn't" or when launching |
+| **"Full site crawl"** | Audits EVERYTHING: every form, every endpoint, every email, every background task, every admin button. Multiple parallel agents. | Before launch, after major changes, or when multiple things are broken |
+
+**RULE: If the owner says "it's not working" or "it's been broken for weeks" — ALWAYS do a deep audit, not a surface fix.** The bug that broke email notifications for a month passed every surface check (syntax OK, build OK, imports OK). Only tracing the actual execution path found it.
+
+**RULE: Every agent session MUST run Step 5 (Deep Path Audit) from the Mandatory Checks if ANY booking, payment, or email code was changed — even if the change seems minor.**
+
+---
+
+## THE 10 RULES — MANDATORY FOR EVERY AGENT SESSION
+
+These rules are non-negotiable. Every agent must follow all 10, every session, no exceptions.
+
+| # | Rule | What It Means |
+|---|------|---------------|
+| 1 | **Scan Before You Build** | Every session starts by checking for security issues, broken code, and problems — BEFORE doing anything new. Run the Engineering Gap Scan (see Mandatory Automated Checks below). |
+| 2 | **Auto-Repair** | If you find a bug while working on anything, fix it immediately. No "that's out of scope" excuses. No deferring. No logging for later. FIX IT NOW. |
+| 3 | **Proactive Research** | Before building anything significant, check if there's a better library, technique, or approach. No guessing. Verify imports exist, check versions, read docs. |
+| 4 | **Engineering Gap Detection** | Systematically check for: features that promise something the code can't deliver, missing error handling, security gaps, dead code, broken references, field name mismatches. |
+| 5 | **Technology Currency** | Check if our tools are up to date. If there's a newer, safer, better-supported version of a dependency — flag it. Don't silently use outdated or deprecated APIs. |
+| 6 | **Explain Like You're Not A Developer** | The owner is NOT a developer. All communication in plain English. "Your users were seeing X, now they see Y" — not tech jargon. No acronyms without explanation. |
+| 7 | **Never Leave It Worse** | Every file you touch gets cleaned up. No leaving messes behind. No orphaned imports. No dead code. No commented-out blocks. Leave it better than you found it. |
+| 8 | **Autonomous Testing** | After changes, verify everything still works. Run `py_compile`, run `npm run build`, check for smart quotes, check for banned imports. No "it should be fine." |
+| 9 | **Mandatory Documentation** | Every change gets documented so the next session knows what happened. Update CLAUDE.md if you add new rules, locked decisions, or break history. Commit messages must explain WHY, not just WHAT. |
+| 10 | **Complete The Loop** | Every feature must work end-to-end. If it doesn't work from start to finish — form loads, user types, autocomplete appears, user selects, price calculates, booking submits, payment works, confirmation sends — it's not done. |
+
+---
+
+## LOCKED DECISIONS — DO NOT CHANGE, REVERT, OR "IMPROVE"
+
+These decisions are FINAL. Do not introduce alternatives, fallbacks, or "improvements".
+
+### 0. Architecture: Vercel Frontend + Vercel Serverless API ONLY (2026-04-06)
+
+**There is NO Render backend. Everything runs on Vercel.**
+
+The site is a single Vercel deployment with:
+- **Frontend**: React 18 + Vite, served from `frontend/build/` (built from `frontend/src/`)
+- **API**: Vercel serverless functions in the root `api/` directory (Node.js). All `/api/*` routes.
+- **Database**: Neon PostgreSQL via `@neondatabase/serverless` (HTTP, no TCP pool)
+- **Deployment config**: Root `vercel.json` builds the frontend and deploys the `api/` folder as serverless functions
+
+**The `backend/` directory is DEAD CODE.** It contains the old Python FastAPI server that ran on Render. It is no longer deployed or used at runtime. It is kept only as a reference for behaviour that has not yet been ported to the Vercel serverless API. When work is done in `backend/server.py`, understand that:
+- No user will ever hit that code
+- It does not affect production
+- It should be deleted once all endpoints have been ported
+- Do not fix bugs there expecting them to reach production
+- Do not add new endpoints there
+
+**Rules:**
+- **NEVER** add Render deployment config (`render.yaml` exists only as a stub and should eventually be deleted)
+- **NEVER** reference `https://bookaride-backend.onrender.com` in any frontend code
+- **NEVER** add a "fallback to Python backend" anywhere
+- **NEVER** tell the user "deploy this to Render"
+- **ALWAYS** add new API endpoints as Vercel serverless functions in `api/`
+- **ALWAYS** match the existing pattern: `module.exports = async function handler(req, res) { ... }`
+- **ALWAYS** use the shared helpers in `api/_lib/` (db.js, mailgun.js, email-templates.js, pricing.js, google-maps.js)
+- Environment variables use standard names (`DATABASE_URL`, `MAILGUN_API_KEY`, `STRIPE_SECRET_KEY`, etc.) — set in Vercel dashboard
+- Frontend env vars use `VITE_` prefix — the default `VITE_BACKEND_URL` is empty string (same-origin, calls /api/* on the same Vercel domain)
+
+**When adding new API endpoints:**
+1. Create the file in `api/<path>.js` using `module.exports = async function handler(req, res)`
+2. Use `require('./_lib/db')` for database, `require('./_lib/mailgun')` for emails, `require('./_lib/email-templates')` for email HTML
+3. Always check the request method and return 405 for unsupported methods
+4. Always wrap database calls in try/catch
+5. Always log CRITICAL errors with `console.error('CRITICAL: ...')` so they show up in Vercel logs
+
+---
+
+## BOOKING SYSTEM HEALTH CHECK — MANDATORY (2026-04-07)
+
+The booking system has its own dedicated health check endpoint that
+verifies every dependency end-to-end. Use this BEFORE assuming the
+system is broken — most "broken booking" issues are actually missing
+Vercel environment variables, not bugs.
+
+**Endpoint:** `GET /api/health/booking-system`
+**File:** `api/health/booking-system.js`
+**Auth:** None (public diagnostic, returns redacted secrets only)
+
+**What it tests:**
+1. **Database connection** — connects to Neon and runs `SELECT 1`
+2. **Database write** — inserts a fake booking, reads it back, deletes it
+   (proves the bookings table schema is compatible with the code)
+3. **Mailgun** — checks `MAILGUN_API_KEY` and `MAILGUN_DOMAIN` are set
+4. **Stripe** — checks `STRIPE_SECRET_KEY` is set and starts with `sk_`
+5. **Google Maps** — checks `GOOGLE_MAPS_API_KEY` is set
+6. **Pricing engine** — runs a real calculation and verifies the output
+7. **Email templates** — renders a fake template and verifies output
+
+**Response format:**
+```json
+{
+  "status": "healthy" | "broken",
+  "summary": "Plain English description",
+  "checks": { ... per-component results ... },
+  "blocking_failures": [],
+  "warnings": [],
+  "next_steps": "What to do next"
+}
+```
+
+**Returns HTTP 500** if any blocking check fails, so monitoring tools
+can detect outages automatically.
+
+**RULE: When the user says "the booking system is broken", check this
+endpoint FIRST.** Don't dive into code until you know which specific
+component is failing. If `mailgun.ok === false`, the fix is to set
+`MAILGUN_API_KEY` in Vercel, not to rewrite the email code.
+
+### 0. ABSOLUTE RULES — READ FIRST (2026-04-09)
+
+**These rules exist because agents kept breaking working features. Every
+rule here was written in blood — a real customer was lost or stranded
+because an agent ignored it. THERE ARE NO EXCEPTIONS.**
+
+1. **If it works, DO NOT TOUCH IT.** No "performance optimizations" that
+   risk hiding bookings. No "refactoring" of working code. No changing
+   sort orders, limits, or query logic on working endpoints.
+
+2. **NEVER paginate bookings.** `loadAllBookings` MUST be `true` in
+   `AdminDashboard.jsx`. Setting it to `false` hid bookings and cost the
+   business real money. ALL bookings must load. No limits that hide data.
+
+3. **Bookings are sorted by PICKUP DATE in the frontend.** The
+   `filterBookings()` function in `AdminDashboard.jsx` sorts upcoming
+   dates first, past dates at bottom. Handles both YYYY-MM-DD and
+   DD/MM/YYYY formats. Do NOT change this sort logic.
+
+4. **ALL frontend files MUST use the centralized API config** —
+   `import { API } from '../config/api'` or `'../../config/api'`.
+   NEVER use `import.meta.env.VITE_BACKEND_URL` directly.
+
+5. **Booking name field** — always resolve:
+   `booking.name || (firstName + lastName) || 'Customer'`.
+   NEVER assume firstName/lastName exist.
+
+6. **Google address autocomplete is SERVER-SIDE ONLY.** Google Maps JS
+   is BANNED from the browser. See section 6c for details. Google's
+   native widget locked the input field and broke bookings for months.
+
+7. **If you find a bug, fix it immediately.** Do not ask. Do not defer.
+   The owner is not a developer. Just fix it.
+
+8. **Every fix must be tested with `npm run build`** before pushing.
+
+9. **NEVER introduce a change that reduces the number of visible
+   bookings.** If a booking exists in the database, it MUST show in the
+   admin panel. Missing bookings = lost revenue = business failure.
+
+10. **Stripe checkout response MUST include `url` field.** Both
+    `create-checkout.js` and `create-checkout-link.js` MUST return
+    `{ url: session.url, checkout_url: session.url }`. The frontend
+    checks `response.data?.url` for the redirect.
+
+### 1. Database: Neon PostgreSQL ONLY
+
+We migrated FROM MongoDB TO Neon PostgreSQL. This is DONE. Do not touch it.
+
+- Connection: `DATABASE_URL` env var (Neon PostgreSQL connection string)
+- Compatibility layer: `backend/database.py` (NeonDatabase class — mimics Motor API over PostgreSQL JSONB)
+- Schema: `backend/schema.sql`
+- **NEVER** add `motor`, `pymongo`, `MongoClient`, or any MongoDB driver
+- **NEVER** reference `MONGO_URL`, `DB_NAME`, or `mongodb://` anything
+- **NEVER** fall back to `mongodb://localhost:27017`
+- **NEVER** add a "MongoDB fallback" or "MongoDB option"
+
+### 2. Email: Mailgun ONLY
+
+We use Mailgun. Not SendGrid. Not SMTP. Not Gmail. Not "a fallback".
+
+- Config: `MAILGUN_API_KEY` + `MAILGUN_DOMAIN` env vars
+- Sender module: `backend/email_sender.py` (Mailgun HTTP API only)
+- **NEVER** add SendGrid, `smtplib`, `MIMEMultipart`, `MIMEText`, or SMTP code
+- **NEVER** add `SMTP_USER`, `SMTP_PASS`, `SMTP_HOST`, `SMTP_PORT` env vars
+- **NEVER** add "email fallback" logic — if Mailgun fails, log the error, that's it
+
+### 3. Helmet: react-helmet-async (official)
+
+- **NEVER** use `@vuer-ai/react-helmet-async` — it's a broken fork
+
+### 4. Frontend: Vite + React (NOT CRA, NOT Next.js)
+
+- Build: `vite build` (output to `build/` directory)
+- Dev server: `vite` (port 3000, instant hot reload)
+- The `@` alias is configured in `vite.config.js` → resolves to `src/`
+- Environment variables use `VITE_` prefix (e.g., `VITE_BACKEND_URL`)
+- **NEVER** use `process.env.REACT_APP_*` — use `import.meta.env.VITE_*`
+- **NEVER** migrate to Next.js unless explicitly asked
+- Migrated from CRA+CRACO to Vite on 2026-03-29 (10x faster builds, 1/5th the dependencies)
+
+### 5. No Facebook Integration
+
+- Facebook integration was removed (caused production crashes)
+- **NEVER** re-add FacebookTab or Facebook API routes
+- **NEVER** add `FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET` references
+
+### 7. No Shared Shuttle Service
+
+The shared shuttle service has been completely removed from the admin system and codebase.
+
+- **NEVER** re-add the shuttle tab to AdminDashboard
+- **NEVER** re-add `SharedShuttle.jsx` or `ShuttleDriverPortal.jsx`
+- **NEVER** re-add shuttle API endpoints (`/api/shuttle/*`)
+- Backend shuttle endpoints and pricing code have been removed from `server.py`
+- Note: "airport-shuttle" as a `serviceType` for regular bookings is STILL VALID — that's the core private transfer service, not the shared shuttle
+
+### 8. Customer Confirmation Design — LOCKED
+
+The customer confirmation email design is FINAL and must not change:
+
+- Payment method "stripe" displays as "Credit/Debit Card" (never show "Stripe" to customers)
+- Payment status shows as green "PAID" badge when payment_status == 'paid'
+- PaymentSuccess.jsx shows "Payment Successful!" with booking details — no Stripe branding
+- **NEVER** show "Stripe" text in customer-facing emails or pages
+- **NEVER** change the confirmation email layout/design without explicit permission
+
+### 6. Maps & Distance: Google Maps API ONLY (No Geoapify)
+
+We use Google Maps for distance calculation, directions, and autocomplete. Geoapify has been removed.
+
+- Distance: `_get_distance_google()` in `backend/server.py` (Distance Matrix + Directions API)
+- Config: `GOOGLE_MAPS_API_KEY` env var
+- **NEVER** add Geoapify API calls, `GEOAPIFY_API_KEY`, or `geoapify.com` references
+- **NEVER** add Geoapify as a "fallback" for Google Maps
+- **NEVER** use Geoapify for address autocomplete or distance calculation
+
+### 6a. Xero: REMOVED (2026-04-06)
+
+Xero accounting integration has been removed. We do not use Xero for invoicing, payments, or any other accounting workflow.
+
+- **NEVER** add Xero API calls, OAuth flows, or invoice creation
+- **NEVER** reference `XERO_CLIENT_ID`, `XERO_CLIENT_SECRET`, or any `xero_*` fields
+- **NEVER** add a "Xero Accounting" section to the admin dashboard booking details modal
+- **NEVER** add "Create Invoice" or "Record Payment" Xero buttons anywhere in the UI
+- **NEVER** include Xero in customer-facing FAQs or marketing copy
+- If Xero-related code still exists anywhere in the codebase, delete it
+
+### 6d. Afterpay: REMOVED (2026-04-25) — LOCKED, NUKED, ANNIHILATED
+
+Craig has asked for Afterpay to be removed from BookARide multiple
+times. Every previous removal was undone by a subsequent agent
+session that "helpfully" added Afterpay back as a payment option,
+restored the marketing page, or re-mentioned it in AI email prompts.
+This rule exists to make that physically impossible going forward.
+
+**Stripe is the ONLY payment method on the customer-facing site.**
+No Afterpay, no PayPal checkout flow, no Pay-On-Pickup option in
+`BookNow.jsx` — customers always pay via Stripe.
+
+**Admin-only override (Craig-authorised 2026-04-28):** the admin
+Create Booking modal (`CreateBookingModal.jsx`) offers TWO payment
+methods at the admin's discretion:
+
+1. **Stripe (default)** — payment link is emailed to the customer.
+2. **Pay on Pickup** — booking is confirmed immediately, customer
+   pays the driver in-vehicle. Used for elderly customers booked
+   over the phone, and for admin testing when Stripe checkout is
+   misbehaving.
+
+Pay-on-pickup bookings are stored with `payment_status: 'pay-on-pickup'`
+(NOT `'paid'`), `status: 'confirmed'`, and trigger the dedicated
+`customerPayOnPickupEmail` / `customerPayOnPickupSMS` templates
+(showing a "PAY ON PICKUP" amber badge, never a "PAID" gold badge).
+**This must never be added to the customer-facing booking form.**
+
+**What was removed (DO NOT RE-ADD):**
+- `frontend/src/pages/AfterpayPage.jsx` — entire marketing page
+- `/afterpay` route from `frontend/src/App.jsx`
+- `<Link to="/afterpay">Pay with Afterpay</Link>` from `Footer.jsx`
+- `paymentMethod === 'afterpay'` radio button + handler in `BookNow.jsx`
+- `paymentMethod === 'afterpay'` callback handler in `PaymentSuccess.jsx`
+- `/api/afterpay/create-checkout` and `/api/afterpay/capture` callsites
+  (the backend endpoints never existed in the Vercel API folder, so the
+  radio button silently 404'd in production)
+- "Afterpay" entry in `InternationalVisitors.jsx` accepted-methods list
+- "Afterpay" mention in the FAQ in `frontend/src/data/aucklandSuburbs.js`
+- "Afterpay" line in the AI email auto-reply prompt in
+  `api/email/incoming.js`
+- "Afterpay" line in the contact form auto-reply prompt in `api/contact.js`
+
+**Rules (LOCKED):**
+- **NEVER** re-add the `/afterpay` route, `AfterpayPage.jsx`, or any
+  Afterpay marketing page, however small
+- **NEVER** re-add an Afterpay radio button, dropdown option, button,
+  or icon anywhere in the booking flow
+- **NEVER** re-add `/api/afterpay/*` endpoints, env vars
+  (`AFTERPAY_MERCHANT_ID`, `AFTERPAY_SECRET_KEY`, etc.) or any
+  Afterpay SDK / library
+- **NEVER** mention Afterpay in customer-facing copy, FAQs, blog
+  posts, social-share text, AI email prompts, or chatbot replies
+- **NEVER** add "Afterpay" to a list of accepted payment methods —
+  even one that says "coming soon"
+- If a future session wants to re-introduce Afterpay, the answer is
+  ALWAYS "ask Craig first" — and the default answer is no
+
+### 6e. Email Architecture (2026-04-25) — LOCKED
+
+Craig has had email confirmations break repeatedly because previous
+agents changed sender addresses, redirected admin notifications to
+non-existent inboxes, or put "reply to this email" wording on
+confirmations. This rule freezes the email architecture so it cannot
+drift again.
+
+**Three Google Workspace mailboxes — these are real, owned, and
+monitored. Do not invent new ones, do not switch between them, do
+not "consolidate".**
+
+| Address | Role | Direction |
+|---------|------|-----------|
+| `bookings@bookaride.co.nz` | Admin booking-notification recipient — every new booking, payment-confirmed, cancellation, contact-form submission lands here | **inbox only** (Craig reads it) |
+| `noreply@bookaride.co.nz` | From-address on customer booking confirmations — sends only, replies are not monitored | **outbound only** |
+| `info@bookaride.co.nz` | Customer-facing support inbox — quoted in footer, schema.org `email`, FAQ, AI auto-replies, contact-form replies, the `replyTo` header on all customer emails | **inbox + outbound** |
+
+**Env-var defaults (locked):**
+
+```
+BOOKINGS_NOTIFICATION_EMAIL = bookings@bookaride.co.nz   # admin recipient
+NOREPLY_EMAIL               = noreply@bookaride.co.nz    # customer From
+ADMIN_EMAIL                 = bookings@bookaride.co.nz   # AI escalations
+CONTACT_NOTIFICATION_EMAIL  = bookings@bookaride.co.nz   # contact form lands here
+```
+
+The hardcoded fallback in every API handler (e.g.,
+`process.env.BOOKINGS_NOTIFICATION_EMAIL || 'bookings@bookaride.co.nz'`)
+must keep `bookings@bookaride.co.nz` as the default — never change to
+any other address. Same for `info@bookaride.co.nz` as the `replyTo`
+default.
+
+**Rules (LOCKED):**
+
+- **NEVER** change the default in code from
+  `bookings@bookaride.co.nz` to `bookings@`, `booking@`,
+  `craig@`, `support@`, or anything else. The plural `bookings@`
+  is the real Google Workspace mailbox.
+- **NEVER** set `replyTo` on customer confirmation emails to
+  anything other than `info@bookaride.co.nz`. The `noreply@`
+  address is send-only and is not monitored.
+- **NEVER** put "reply to this email" or "just reply" or "respond
+  to this message" in the body of customer confirmations. They
+  must explicitly say "Please do not reply to this confirmation"
+  with a clear pointer to `info@bookaride.co.nz` for support.
+- **NEVER** redirect customer-facing dead-link addresses (PayNow
+  page, Contact form error message, JSON-LD schema, footer, error
+  boundaries) at `bookings@`. Customer-facing = `info@`. Always.
+- **NEVER** introduce a new `*@bookaride.co.nz` address (e.g.,
+  `craig@`, `accounts@`, `dispatch@`, `team@`) without first
+  asking Craig whether he has actually set up that mailbox in
+  Google Workspace. Sending to a non-existent address bounces
+  silently and customers never get their email.
+- **NEVER** delete the `_email_status` block returned by
+  `POST /api/bookings` and `POST /api/bookings/manual`. It is the
+  only signal Craig has that emails actually left Mailgun for any
+  given booking.
+- The session-start hook (`.claude/hooks/session-start.sh`) greps
+  the repo on startup and yells if any of the above are violated.
+  If you see "EMAIL ARCHITECTURE REGRESSION" in the hook output,
+  fix it before doing anything else.
+
+**If `bookings@` ever stops receiving admin notifications:**
+
+1. Hit `/api/health/booking-system`. The new live Mailgun check
+   reports key/domain/region issues with a precise message.
+2. Hit `/api/health/email-test?to=bookings@bookaride.co.nz` (admin
+   auth required). This fires a real test through the production
+   send path. If Mailgun accepts it but it doesn't land in
+   `bookings@`, check Google Workspace spam/filter rules and
+   Mailgun → Sending → Logs for the message-id.
+3. Do NOT "fix" by changing the recipient address to a different
+   inbox. That hides the real fault.
+
+### 6c. Google Address Autocomplete (2026-04-09) — LOCKED
+
+**CRITICAL: Google's native Autocomplete widget is BANNED.**
+
+It was removed on 2026-04-09 because it repeatedly locked the input field
+when the API key was invalid, expired, or restricted. This made the entire
+booking form unusable and cost the business real customers. It happened
+multiple times between November 2025 and April 2026.
+
+**The architecture (LOCKED — do not change):**
+
+1. **Component**: `frontend/src/components/GoogleAddressInput.jsx` uses
+   **SERVER-SIDE autocomplete ONLY**. Google's JS library (`maps.googleapis.com/maps/api/js`)
+   is **NEVER loaded in the browser**. The dropdown is 100% React, 100% ours.
+   - **NEVER** add `window.google.maps.places.Autocomplete` — it locks the input
+   - **NEVER** load Google Maps JS in the browser — it injects "Oops!" errors
+   - **NEVER** use `@react-google-maps/api` or any Google Maps React wrapper
+   - The input is ALWAYS typeable. Always. No exceptions. No loading states that block it.
+
+2. **How it works**: When the user types 3+ characters, the component calls
+   `GET /api/places/autocomplete?input=...` which calls Google's Places API
+   **server-side** (in the Vercel serverless function). Results come back as
+   JSON and we render our own dropdown. If Google's API fails, we fall back
+   to a static list of 55 NZ addresses.
+
+3. **Required Vercel serverless endpoints** (both must exist):
+   - `api/maps/client-key.js` — returns `{ key: process.env.GOOGLE_MAPS_API_KEY }`.
+     Still needed for distance calculation, NOT for the autocomplete widget.
+   - `api/places/autocomplete.js` — the ONLY autocomplete provider. Calls
+     Google Places API server-side. Has 55 NZ suburb fallbacks.
+
+4. **Required Vercel env var**: `GOOGLE_MAPS_API_KEY` must be set in the
+   Vercel dashboard (Production + Preview + Development). Used by the
+   server-side autocomplete and distance calculation, NOT by browser JS.
+
+**If the dropdown breaks again, check in this order:**
+1. Is `GOOGLE_MAPS_API_KEY` set in Vercel env vars? If empty, add it.
+2. Did someone re-add Google Maps JS loading? Check GoogleAddressInput.jsx —
+   it must NOT import or load `maps.googleapis.com/maps/api/js`.
+3. Check `/api/places/autocomplete` — does it return predictions?
+4. **After changing env vars in Vercel, you MUST redeploy for them to take effect.**
+
+**NEVER re-add Google's native widget.** NEVER load Google Maps JS in the browser.
+This is the #1 cause of booking form failures since November 2025.
+
+### 6b. Admin UI Standards (2026-04-06) — LOCKED
+
+These admin UI decisions are final. Do NOT revert them.
+
+**Gold buttons — ALWAYS white text**
+- Any Tailwind class of `bg-gold` or `bg-gold hover:bg-gold/90` in the admin
+  must use `text-white`, NEVER `text-black`.
+- This applies to every admin file: `AdminDashboard.jsx`, every file in
+  `frontend/src/components/admin/`, and `frontend/src/admin/`.
+- When adding a new gold button in the admin, the pattern is:
+  `className="bg-gold hover:bg-gold/90 text-white font-semibold"`
+- If you see a gold button with `text-black` anywhere in the admin, fix it
+  immediately.
+
+**Date formatting — single source of truth**
+- The ONLY valid admin date helpers live in `frontend/src/utils/dateFormat.js`:
+  `formatDate`, `formatDateWithDay`, `getDayOfWeek`, `getShortDayOfWeek`,
+  `formatDateTime`, `formatTimestampDate`, `todayNZ`, `isToday`, `isTomorrow`.
+- **NEVER** define a `formatDate` (or `isToday`, `isTomorrow`, etc.) function
+  locally inside an admin component. Always import from `utils/dateFormat`.
+- **NEVER** use `new Date(dateStr).toLocaleDateString(...)` inline in admin
+  JSX. Use `formatDate()` or `formatTimestampDate()` instead.
+- Canonical date format for the admin panel is **DD/MM/YYYY** (NZ standard).
+- Canonical datetime format is **DD/MM/YYYY HH:MM**.
+- `ReturnsOverviewPanel.jsx` has an intentional exception (`formatRelativeDate`
+  returning "Today"/"Tomorrow"/"Mon, 6 Apr") because its UX requires it. That
+  helper is clearly named and documented — do not "consolidate" it into the
+  shared util.
+
+**Return trip indicator in BookingsTable**
+- Every booking row in `BookingsTable.jsx` where `booking.bookReturn` and
+  `booking.returnDate` and `booking.returnTime` are set must show:
+  1. A `border-r-4 border-r-violet-400` on the `<tr>` itself (the purple
+     right-edge accent)
+  2. An inline pill below the flight number with the `↩` arrow, the text
+     `Return`, `formatDate(booking.returnDate)`, and `booking.returnTime`,
+     styled as `bg-violet-50 text-violet-700 border border-violet-200 rounded-full`.
+- Do not remove this indicator. The owner explicitly requested it back
+  after the glassmorphism redesign hid it.
+
+**Banners — ONE banner only (UPDATED 2026-04-07)**
+
+There is exactly ONE banner on the customer-facing site: the
+`FuelSurchargeBanner.jsx`. There is NO `InternationalBanner` rendered
+in the layout anymore. The user explicitly asked for one banner only,
+clearly visible, sitting just below the header. Do not add a second
+banner. Do not re-introduce `InternationalBanner` to the layout.
+
+`FuelSurchargeBanner.jsx` — BELOW header, orange/amber, dismissible
+- Position: `fixed top-[96px] z-40` (Header is 96px tall: py-4 + h-16 + py-4)
+- Background: `bg-gradient-to-r from-amber-600 via-orange-500 to-amber-600 text-white`
+- Border-bottom: `border-b-2 border-amber-800` for visual separation from page
+- Content: "FUEL SURCHARGE NOTICE | Diesel up 85% in 28 days — a temporary
+  fuel surcharge applies to cover increased costs for our drivers."
+- Visibility requirements (LOCKED — user complained text was tucked behind header):
+  - `text-base md:text-lg font-bold leading-tight` — NEVER smaller
+  - `py-3.5` for vertical breathing room
+  - `Fuel` icon at `w-6 h-6 md:w-7 md:h-7` with `strokeWidth={2.5}`
+  - White text on the amber gradient (high contrast)
+  - Dismiss `X` button on the right at `w-5 h-5 md:w-6 md:h-6`
+- Has a `<div className="h-[60px] md:h-[58px]">` spacer immediately after
+  to push page content below the fixed banner. When dismissed, the entire
+  component returns null, including the spacer.
+- Purpose: temporary warning while NZ diesel prices are surging
+- When fuel prices stabilise, update the wording or remove the
+  component entirely.
+
+**Layout in `MainLayout` in `frontend/src/App.jsx`:**
+```jsx
+<Header />                                       // fixed top-0, 96px tall
+<main className="pt-[96px]">                     // pt clears the fixed header
+  <FuelSurchargeBanner />                        // fixed top-[96px], 58px tall + spacer
+  <Outlet />
+</main>
+```
+
+The `pt-[96px]` on `<main>` is REQUIRED — without it, page content
+sits behind the fixed header. Do not remove it. The `Header` is at
+`fixed top-0` (NOT `top-10` — there is no banner above it anymore).
+
+If you change the Header height (e.g. logo size), you MUST update
+both `pt-[96px]` on `<main>` AND `top-[96px]` on FuelSurchargeBanner.
+
+**Google Maps autocomplete inside Radix Dialogs (CRITICAL):**
+
+Google Places Autocomplete renders its dropdown (`.pac-container`) directly
+into `document.body`, OUTSIDE the Radix Dialog. Without protection, when
+the user clicks a Google suggestion, Radix detects a click outside the
+dialog and closes it — losing the user's work.
+
+`CreateBookingModal.jsx` and `EditBookingModal.jsx` MUST have BOTH of
+these guards on the `<Dialog>` and `<DialogContent>`:
+
+1. On `<Dialog onOpenChange>`:
+   ```js
+   if (!v) {
+     if (document.querySelector('[data-autocomplete-dropdown]')) return;
+     if (document.querySelector('.pac-container')) return;
+     onClose();
+   }
+   ```
+
+2. On `<DialogContent>`:
+   ```js
+   onPointerDownOutside={(e) => {
+     if (e.target?.closest?.('.pac-container')) e.preventDefault();
+   }}
+   onInteractOutside={(e) => {
+     if (e.target?.closest?.('.pac-container')) e.preventDefault();
+   }}
+   ```
+
+Without BOTH guards, the address dropdown will appear to open and then
+immediately close before the user can click a suggestion. This was
+broken for weeks before being fixed properly. Do not remove these guards.
+
+### 7. Pricing Rules — DO NOT CHANGE WITHOUT OWNER APPROVAL
+
+These are the AUTHORITATIVE per-km rates. Calibrated so key routes price correctly (owner approved 2026-03-26).
+Any agent that changes these rates without explicit owner instruction is breaking production pricing.
+
+**Tiered Per-Kilometer Rates** (bracket-based — entire distance charged at ONE rate):
+
+| From (km) | To (km) | Rate per km (NZD) |
+|-----------|---------|-------------------|
+| 0.1       | 15.0    | $12.00            |
+| 15.0      | 15.8    | $8.00             |
+| 15.8      | 16.0    | $6.00             |
+| 16.0      | 25.5    | $5.50             |
+| 25.5      | 35.0    | $5.00             |
+| 35.0      | 50.0    | $3.13             |
+| 50.0      | 60.0    | $2.60             |
+| 60.0      | 75.0    | $2.84             |
+| 70.0      | 100.0   | $2.70             |
+| 100.0     | 300.0   | $3.50             |
+
+**Note:** The 60-75 and 70-100 tiers overlap. The code uses `elif` chains so the 60-75 tier ($2.84) takes priority for distances 70-75 km. This matches the WordPress pricing plugin behavior (screenshot verified 2026-03-26).
+
+**Code location**: `backend/server.py` (tiered pricing in `calculate_price` function)
+
+**Reference prices** (1 passenger, one-way, based on Google Maps distances):
+- Gulf Harbour (~67 km): ~$190
+- Orewa (~48 km): ~$150
+- These are NOT flat prices — every address is different based on actual km
+
+**Add-on fees**:
+- VIP Airport Pickup: $15.00
+- Oversized Luggage: $25.00
+- Extra Passengers: $5.00 per additional (1st included)
+
+**Minimums**:
+- Standard minimum: $150.00 per one-way leg
+- Matakana Country Park concert: $550.00 flat return (from Hibiscus Coast)
+
+**Stripe processing fee**: Passed to customer — `(subtotal × 2.9%) + $0.30 NZD`
+
+- **NEVER** change these rates without explicit owner approval
+- **NEVER** "simplify" or "optimize" the tier structure
+- **NEVER** remove the Stripe fee pass-through to customer
+
+### 8. Shuttle Service — REMOVED (2026-03-13)
+
+The shared shuttle service has been completely removed from both frontend and backend.
+
+- **Backend**: All shuttle endpoints (`/shuttle/*`), models (`ShuttleBookingCreate`), constants (`SHUTTLE_PRICING`, `SHUTTLE_TIMES`) removed from `server.py`
+- **Database**: `shuttle_bookings` and `shuttle_runs` tables dropped from `schema.sql`
+- **Frontend**: Shuttle tab, state, handlers all removed from `AdminDashboard.jsx`; `FacebookTab.jsx` component deleted
+- **Booking list**: `GET /api/bookings` now excludes `serviceType: 'shared-shuttle'` from results
+- **Service types**: Changed from `airport-shuttle` to `airport-transfer`
+- **NEVER** re-add shuttle service endpoints, models, or UI tabs
+- **NEVER** re-add `FacebookTab.jsx` or Facebook integration
+- **NEVER** add `Bus` icon import back to AdminDashboard
+
+### 9. Booking System Architecture Rules (2026-03-13)
+
+These rules exist because the admin dashboard was 68,000+ lines with severe performance issues.
+
+**Backend rules**:
+- `GET /api/bookings` must ALWAYS exclude shuttle bookings (`serviceType != 'shared-shuttle'`)
+- Booking count endpoint uses single query with in-memory counting (not 6 separate DB calls)
+- Orphan payment check uses batch `$in` query (not N+1 per-payment lookups)
+- Soft-delete has rollback: if `delete_one` fails after `insert_one` to `deleted_bookings`, the insert is rolled back
+- **NEVER** load all bookings with `.to_list(None)` without a filter — always exclude shuttle/irrelevant data
+
+**Frontend rules**:
+- Action buttons must have `e.stopPropagation()`, `min-w-[36px]`, and `cursor-pointer` for reliable clicking
+- **NEVER** re-add the shuttle tab or `Bus` icon to the tabs navigation
+- Service type options are: `airport-transfer` and `private-transfer` (NOT `airport-shuttle`)
+
+### 10. One Pickup Address Only — EVERYWHERE (2026-03-21)
+
+Multiple pickup was removed from ALL forms — customer AND admin. Keep it simple.
+
+- **ONE pickup address only** — no "Add another pickup" button anywhere
+- **NEVER** re-add `pickupAddresses` array, `handleAddPickup`, `handleRemovePickup`, or `handlePickupAddressChange` to ANY form
+- **NEVER** add multi-stop pickup UI to BookNow.jsx, CreateBookingModal.jsx, or EditBookingModal.jsx
+- If a customer needs multiple pickups, they can note it in the "Notes" field and admin handles it manually
+- The backend `pickupAddresses` field may still exist in old bookings but no new bookings should use it
+
+### 11. AI Email Support — Claude API via Mailgun (2026-03-21)
+
+`support@bookaride.co.nz` is an AI-powered booking support inbox using Claude (Haiku).
+
+**How it works:**
+1. Customer emails `support@bookaride.co.nz`
+2. Mailgun receives the email (MX record on root domain) and forwards to `POST /api/email/incoming` webhook
+3. Backend looks up the customer's booking history by email
+4. Claude generates a context-aware response with booking details, pricing guidance, and policies
+5. Reply is sent via Mailgun from `support@bookaride.co.nz`
+6. Admin gets a copy of both the customer's email and the AI response
+7. Interaction is logged in `email_logs` table for admin review
+
+**Configuration (all in Render env vars):**
+- `ANTHROPIC_API_KEY` — Claude API key (required for AI responses, falls back to static reply if missing)
+- `MAILGUN_API_KEY` + `MAILGUN_DOMAIN` — for sending replies
+- Mailgun inbound route: `support@bookaride.co.nz` → `https://<backend>/api/email/incoming`
+
+**DNS required (one-time setup):**
+- MX record on `bookaride.co.nz` → `mxa.mailgun.org` (priority 10) and `mxb.mailgun.org` (priority 10)
+- This enables Mailgun to receive emails at `@bookaride.co.nz`
+
+**Rules:**
+- Model: `claude-haiku-4-5-20251001` (fast, cheap, good enough for support)
+- Max 500 tokens per response — keep replies concise
+- Rate limit: 5 AI replies per sender per day
+- **NEVER** use GPT, OpenAI, or any other LLM provider — Claude only
+- **NEVER** expose booking details of other customers
+- **NEVER** make up prices — always direct to bookaride.co.nz/book-now for exact quotes
+- Falls back gracefully to static auto-reply if Claude API is down or unconfigured
+- Admin is always notified of incoming support emails
+
+### 12. AI Automation Agents (2026-03-25)
+
+The system now runs multiple AI-powered and scheduled automation agents. All are defined in `backend/server.py`.
+
+**Active Agents:**
+
+| # | Agent | Endpoint / Trigger | Details |
+|---|-------|--------------------|---------|
+| 1 | **AI Chatbot** | `POST /api/chatbot/message` | Customer-facing chat powered by Claude Haiku. Rate limited to 20 messages per hour per session. Provides booking help, pricing guidance, and company info. |
+| 2 | **AI Email Support** | `POST /api/email/incoming` (Mailgun webhook) | Already documented in section 11. Now also supports action capabilities: resend confirmation, flag cancellation request, flag modification request, and urgent escalation to admin. |
+| 3 | **Auto-complete Bookings** | Scheduled daily at 10 PM NZ time | Automatically marks past confirmed+paid bookings as `completed`. Prevents stale bookings sitting in active list forever. |
+| 4 | **Post-trip Thank You Email** | Triggered when booking status changes to `completed` | Sends a thank-you email to the customer with a Google Review link. Encourages organic reviews. |
+| 5 | **Daily Business Summary** | Scheduled daily at 6 PM NZ time | Emails admin with today's booking stats (count, revenue, status breakdown) and tomorrow's upcoming bookings list. |
+| 6 | **Payment Follow-up** | Scheduled every 2 hours | Finds unpaid Stripe bookings between 4-48 hours old and sends a payment reminder email to the customer. |
+| 7 | **Booking Conflict Detection** | Triggered on every new booking creation | Checks for driver double-bookings (overlapping pickup times for the same assigned driver). Alerts admin if a conflict is detected. |
+| 8 | **Weekly Performance Report** | Scheduled Sunday 8 AM NZ time | Emails admin a weekly summary: total bookings, revenue, completion rate, popular routes, and driver performance. |
+
+**Rules for ALL automation agents:**
+- All AI agents use `claude-haiku-4-5-20251001` — **NEVER** use GPT, OpenAI, or any other LLM provider
+- All emails sent via Mailgun — **NEVER** use SMTP, SendGrid, or any other email provider
+- All scheduled agents must have duplicate prevention flags (e.g., check if already sent today before sending again)
+- All agents must log errors with `logger.error(f"CRITICAL: ...")` — never swallow errors silently
+- **NEVER** remove or disable an automation agent without explicit owner approval
+- **NEVER** change rate limits, schedules, or thresholds without explicit owner approval
+
+### 13. Admin Dashboard Tabs (2026-03-25)
+
+The admin dashboard (`AdminDashboard.jsx`) has 10 active tabs. These are the canonical tabs — do not remove or reorder without owner approval.
+
+| # | Tab Name | Component | Icon (lucide-react) |
+|---|----------|-----------|---------------------|
+| 1 | Bookings | (inline in AdminDashboard) | Main tab |
+| 2 | Deleted | (inline in AdminDashboard) | Trash-related |
+| 3 | Archive | (inline in AdminDashboard) | Archive |
+| 4 | Customers | (inline in AdminDashboard) | Users |
+| 5 | Import | (inline in AdminDashboard) | Upload |
+| 6 | Cockpit | (inline in AdminDashboard) | Dashboard/Gauge |
+| 7 | Drivers | `DriversTab` component | Car/User |
+| 8 | Applications | `DriverApplicationsTab` component | ClipboardList |
+| 9 | Analytics | `AnalyticsTab` component | BarChart |
+| 10 | Marketing | `LandingPagesTab` component | Megaphone |
+
+**Rules:**
+- **NEVER** remove existing tabs without explicit owner approval
+- All new tabs must have an icon from `lucide-react`
+- Component files: `DriversTab.jsx`, `DriverApplicationsTab.jsx`, `AnalyticsTab.jsx`, `LandingPagesTab.jsx`
+- Every tab must have both a `TabsTrigger` button AND a `TabsContent` panel — if either is missing, the tab is invisible or broken
+- **NEVER** re-add the shuttle tab or `Bus` icon (see Locked Decision #8)
+
+### 14. Parallel Checking Rule (2026-03-25)
+
+**When fixing any form (customer-facing OR admin), the agent MUST check ALL forms that share similar functionality in the SAME session.**
+
+This means:
+- **NEVER** fix `BookNow.jsx` without also checking `CreateBookingModal.jsx`, `EditBookingModal.jsx`, and AdminDashboard inline editing
+- **NEVER** fix `CreateBookingModal.jsx` without also checking `BookNow.jsx`, `EditBookingModal.jsx`, and AdminDashboard inline editing
+- **NEVER** fix `EditBookingModal.jsx` without also checking `BookNow.jsx`, `CreateBookingModal.jsx`, and AdminDashboard inline editing
+- The same bug pattern (e.g., wrong field name, missing validation, broken dropdown) is almost always present in ALL forms — fix them all at once
+
+This rule exists because agents repeatedly fixed one form while leaving the identical bug in 2-3 other forms, causing the same issue to resurface in different contexts.
+
+---
+
+## MANDATORY AUTOMATED CHECKS — RUN BEFORE EVERY COMMIT
+
+**These checks are NON-NEGOTIABLE. Every agent session MUST run ALL of them before committing ANY code.**
+**The owner is not a developer — agents are 100% responsible for code quality. No excuses.**
+
+### Step 1: Engineering Gap Scan (run EVERY session, even if "not related" to your task)
+
+Before starting work, scan for and fix existing issues. These are silent production killers:
+
+```bash
+# 1. Smart/curly quotes (cause Python SyntaxError — invisible in most editors)
+python3 -c "
+import glob
+for f in glob.glob('backend/**/*.py', recursive=True):
+    content = open(f, encoding='utf-8').read()
+    for char, name in [('\u2018','left-sq'), ('\u2019','right-sq'), ('\u201C','left-dq'), ('\u201D','right-dq')]:
+        if char in content:
+            print(f'FAIL: {f} contains {name} smart quote — replace with ASCII quotes')
+"
+
+# 2. Python syntax check (catches what smart quotes, bad indentation, etc.)
+python3 -m py_compile backend/server.py
+python3 -m py_compile backend/database.py
+python3 -m py_compile backend/email_sender.py
+
+# 3. Frontend build
+cd frontend && npm run build
+
+# 4. Check for banned imports/references
+grep -rn "pymongo\|MongoClient\|motor\|mongodb://" backend/ && echo "FAIL: MongoDB references found" || true
+grep -rn "SendGrid\|sendgrid\|smtplib\|MIMEMultipart\|MIMEText" backend/ && echo "FAIL: SMTP/SendGrid references found" || true
+grep -rn "geoapify\|GEOAPIFY" backend/ frontend/src/ && echo "FAIL: Geoapify references found" || true
+grep -rn "airport-shuttle" frontend/src/ backend/ && echo "FAIL: Removed service type 'airport-shuttle' found" || true
+grep -rn "@vuer-ai/react-helmet-async" frontend/ && echo "FAIL: Broken helmet fork found" || true
+```
+
+**If ANY of these fail, fix them IMMEDIATELY before doing anything else.**
+
+### Step 2: Pre-Commit Verification (run before EVERY commit)
+
+```bash
+# 1. Python syntax — ALL .py files that were changed
+python3 -m py_compile <each changed .py file>
+
+# 2. Frontend build — if ANY frontend file changed
+cd frontend && npm run build
+
+# 3. No smart quotes in changed files
+python3 -c "content=open('<file>').read(); assert '\u2018' not in content and '\u2019' not in content and '\u201c' not in content and '\u201d' not in content, 'Smart quotes found!'"
+
+# 4. No console.log left in production code (except intentional debug endpoints)
+grep -rn "console\.log" frontend/src/ --include="*.jsx" --include="*.js" | grep -v node_modules | grep -v "// debug" || true
+
+# 5. No broken imports — verify every import resolves
+# For Python: check that imported modules exist
+# For React: check that imported components exist in the project
+```
+
+### Step 3: Proactive Bug Hunt (run at START of every session)
+
+Every agent MUST spend the first few minutes scanning for issues, not just jumping to the assigned task:
+
+1. **Check for runtime errors**: Look at recent git history for hastily-added code that might have bugs
+2. **Check for encoding issues**: Smart quotes, BOM characters, non-ASCII in Python source files
+3. **Check for dead code**: Unused imports, unreachable functions, orphaned components
+4. **Check for broken references**: Components imported but not existing, API endpoints called but not defined
+5. **Check for inconsistencies**: camelCase vs snake_case in database fields, mismatched field names between frontend and backend
+6. **If you find ANY issue, fix it immediately** — do not defer it, do not log it for later, FIX IT NOW
+
+### Step 4: Post-Change Validation
+
+After making changes, before committing:
+
+1. **Test the full path**: If you changed a backend endpoint, verify the frontend calls it correctly
+2. **Test related features**: If you changed pricing, verify the booking form still calculates correctly
+3. **Check for regressions**: Did your change break anything that was working before?
+4. **Verify deploy compatibility**: Will this work on both Vercel (frontend) AND Render (backend)?
+
+### Step 5: Deep Path Audit (run when ANY booking/payment/email code changes)
+
+**This step catches the bugs that surface checks miss.** The `run_async_task` bug silently killed all background tasks for a month because no surface check would catch it — syntax was valid, imports existed, build passed. Only tracing the execution path reveals these killers.
+
+**When to run:** Every time booking creation, payment processing, email sending, or background task code is changed. Also run at the START of any session where the owner reports "something isn't working."
+
+**What to check:**
+
+1. **Trace every background task from trigger to execution:**
+   - Find every `background_tasks.add_task()` call in server.py
+   - Verify the task function exists and has the correct signature
+   - If the task is async, verify it runs on the MAIN event loop (not a new one)
+   - If the task calls database operations, verify it uses the shared `db` connection pool
+   - Check that errors in background tasks are LOGGED, not swallowed
+
+2. **Trace every email from trigger to send:**
+   - Pick any email-triggering action (booking creation, cancellation, reminder)
+   - Follow the code: action → email function → HTML generation → Mailgun send
+   - Verify every function in the chain EXISTS and is CALLABLE
+   - Verify `email_wrapper()` is imported correctly where used
+   - Check that email recipient addresses are not empty/None
+
+3. **Trace every frontend submit from button to response:**
+   - Follow: button click → handler → axios call → endpoint URL → backend handler → database write → response → UI update
+   - Verify the endpoint URL matches a real route in server.py
+   - Verify the payload fields match the Pydantic model
+   - Verify the response is handled correctly (success AND error cases)
+   - Check that no field is doubled, tripled, or lost in translation
+
+4. **Check for silent failures:**
+   - Search for `except: pass` or `except Exception: pass` — errors being swallowed
+   - Search for `except` blocks that only log but don't re-raise critical errors
+   - Check that every `try/except` in booking-critical paths has proper error handling
+   - Verify that background task failures don't silently prevent customer notifications
+
+5. **Check for event loop issues:**
+   - Any use of `asyncio.new_event_loop()` is a RED FLAG — this creates a separate loop that can't access the main loop's database connections
+   - Any use of `asyncio.run()` inside an already-running async context is a RED FLAG
+   - Background tasks that are `async def` MUST be awaited, not run in a new loop
+
+---
+
+## PRE-CHANGE CHECKLIST
+
+Before making ANY change, verify:
+
+1. Does my change introduce MongoDB, Motor, or pymongo? **STOP.**
+2. Does my change introduce SendGrid, SMTP, or smtplib? **STOP.**
+3. Does my change introduce Geoapify or `GEOAPIFY_API_KEY`? **STOP.**
+4. Does my change add a new import? **Verify the component/module exists first.**
+5. Does my change remove or modify an existing import? **Verify nothing else uses it.**
+6. Am I adding a new JSX component usage? **Add the import statement too.**
+7. Does my build pass with `cd frontend && npm run build`? **Test before committing.**
+8. Does my Python code pass `python3 -m py_compile`? **Test before committing.**
+9. Does my code contain smart/curly quotes? **Replace with ASCII quotes.**
+10. Have I scanned for engineering gaps unrelated to my task? **Fix them too.**
+
+---
+
+## Stack
+
+| Layer      | Tech                              | Location           |
+|------------|-----------------------------------|--------------------|
+| Frontend   | React 18, Vite, Tailwind          | `frontend/`        |
+| Backend    | FastAPI, Uvicorn, Python 3.11+    | `backend/`         |
+| Database   | Neon PostgreSQL via asyncpg       | `backend/database.py` |
+| Email      | Mailgun API                       | `backend/email_sender.py` |
+| Payments   | Stripe                            | `backend/stripe_checkout/` |
+| SMS        | Twilio                            | via env vars       |
+| Maps       | Google Maps API                   | via env vars       |
+| AI Support | Claude API (Haiku)                | `backend/server.py` |
+
+## Hosting
+
+- Frontend: **Vercel** (React 18, CRA + CRACO)
+- Backend: **Vercel Serverless Functions** (FastAPI/Python 3.11+, deployed as `/api/*`)
+
+### Deployment Rules — MANDATORY
+
+**Customers are paying for reliability, not beta testing. Every change must be tested before it reaches production.**
+
+**How deployment works:**
+- **Frontend (Vercel)**: Auto-deploys from `main` branch. Every PR also gets a preview URL.
+- **Backend (Vercel Serverless)**: Auto-deploys with the frontend from `main` branch. The backend runs as Python serverless functions at `/api/*` via `api/index.py`.
+- **IMPORTANT**: Both frontend and backend deploy together on Vercel from the `main` branch. One deploy = both updated.
+
+**Branch strategy:**
+- `main` branch = PRODUCTION. Deploys automatically to Vercel (frontend + backend).
+- Feature branches = development. Every PR gets a Vercel preview URL for testing.
+- **NEVER push directly to main.** Always use a PR.
+- **NEVER merge a PR without verifying:** `npm run build` passes, `py_compile` passes, and a deep path audit was run if booking/payment/email code changed.
+
+**Pre-merge checklist (every PR):**
+1. Frontend builds: `cd frontend && npm run build` — zero errors
+2. Backend compiles: `python3 -m py_compile backend/server.py` — zero errors
+3. No banned imports (MongoDB, SendGrid, Geoapify, etc.)
+4. No smart quotes in Python files
+5. If booking/payment/email code was changed → Step 5 Deep Path Audit was run
+6. Vercel preview URL was tested manually (forms load, address autocomplete works, pricing calculates)
+
+**Post-deploy verification (after every merge to main):**
+1. Create a test booking on the live site
+2. Verify confirmation email arrives
+3. Verify admin notification arrives
+4. Verify price is correct
+5. If any of these fail → revert the merge immediately
+
+**Environment variables:**
+- All credentials are in Render (backend) and Vercel (frontend) environment settings
+- **NEVER** commit secrets to the repo
+- See `backend/.env.example` for the full list of variables
+
+## Backend Architecture
+
+- Main server: `backend/server.py` (~14,000 lines, monolithic)
+- Database layer: `backend/database.py` — NeonDatabase class that translates
+  MongoDB-style queries (find_one, update_one, etc.) to PostgreSQL JSONB operations
+- The `db` global is initialized in the startup event from `DATABASE_URL`
+- Route files: `backend/routes_*.py` (bulk, customers, drivers, vehicles, analytics, settings, templates)
+
+## Environment Variables (Vercel)
+
+**All credentials are configured in Vercel's Environment Variables settings — NOT in a `.env` file in the repo.**
+The absence of a `.env` file does NOT mean credentials are missing. Do NOT assume services are unconfigured.
+See `backend/.env.example` for the full list of variables (template only — no real secrets).
+
+Required (all set in Vercel):
+- `DATABASE_URL` — Neon PostgreSQL connection string
+- `JWT_SECRET_KEY`
+- `MAILGUN_API_KEY` + `MAILGUN_DOMAIN`
+
+Optional (but needed for full functionality, all set in Vercel):
+- `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET`
+- `TWILIO_ACCOUNT_SID` + `TWILIO_AUTH_TOKEN` + `TWILIO_PHONE_NUMBER`
+- `GOOGLE_MAPS_API_KEY`
+- `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` (OAuth)
+- `GOOGLE_SERVICE_ACCOUNT_JSON` (Calendar + Search Console)
+
+## Build & Test
+
+```bash
+# Frontend build (uses Vite — fast, ~8 seconds)
+cd frontend && npm run build
+
+# Backend start
+cd backend && python3 start.py
+```
+
+---
+
+## Booking System Architecture
+
+### Booking Flow (Customer → Admin)
+
+1. Customer submits booking via `BookNow.jsx` → `POST /api/bookings` → creates booking in `db.bookings`
+2. If within 24 hours: status = `pending_approval` (requires admin manual approval)
+3. If Stripe payment: `POST /api/payment/create-checkout` → Stripe → webhook updates booking to `paid`/`confirmed`
+4. Admin sees ALL bookings at `GET /api/bookings` (fetches from `db.bookings` ONLY)
+
+### Orphan Payment Recovery
+
+If a customer pays via Stripe but the booking is missing from admin:
+- `GET /api/bookings/orphan-payments` — lists paid Stripe transactions with no matching booking
+- `POST /api/bookings/recover-from-payment` — creates a booking from the payment data
+- The admin dashboard has a "Check Orphan Payments" button for this
+
+### Known Booking System Issues (Fixed 2026-03-11)
+
+- Pydantic `Booking(**b)` validation was silently dropping bookings with missing/invalid fields
+- Shuttle bookings were being merged into admin panel causing confusion
+- SMTP code existed in `routes_bulk.py` violating Mailgun-only rule
+- Orphaned `validate_booking_date` function at module level (not inside any class)
+
+### Known Booking System Issues (Fixed 2026-03-18)
+
+- `insert_many()` was missing from `database.py` — backup restore would crash with AttributeError
+- Stripe webhook did not verify `matched_count` after updating booking — payment could succeed but booking status not update
+- iCloud contact sync was not triggered after Stripe payment webhook — only on initial booking creation
+- Shared shuttle service tab/code removed from admin dashboard (was cluttering the admin panel)
+- ALL delete/archive/restore operations now verify backup insert + find_one before deleting source record
+- Bulk delete only removes bookings that were successfully backed up (per-record verification)
+- Orphan payment recovery now verifies the recovered booking was actually created
+
+### ZERO BOOKING LOSS RULES — MANDATORY
+
+**A booking must NEVER be lost. These rules are absolute and non-negotiable.**
+
+#### Rule 1: NEVER delete without verified backup
+
+Before deleting a booking from ANY collection, the backup/destination insert MUST be:
+1. Verified with `result.acknowledged == True`
+2. Double-checked with `find_one()` to confirm the record exists in the destination
+3. Only THEN can the source record be deleted
+
+This applies to ALL move operations:
+- `delete_booking()` → must verify `deleted_bookings.insert_one()` before `bookings.delete_one()`
+- `archive_booking()` → must verify `bookings_archive.insert_one()` before `bookings.delete_one()`
+- `restore_booking()` → must verify `bookings.insert_one()` before `deleted_bookings.delete_one()`
+- `unarchive_booking()` → must verify `bookings.insert_one()` before `bookings_archive.delete_one()`
+- Bulk versions of all the above follow the same pattern per-record
+
+**If the backup/verify fails, ABORT the delete and raise an error. The booking stays where it is.**
+
+#### Rule 2: NEVER silently drop bookings on read
+
+- `GET /api/bookings` uses `model_construct()` (not `Booking(**b)`) to skip validators
+- Three-tier fallback ensures every record is returned even if fields are missing/invalid
+- **NEVER** switch back to `Booking(**b)` for reading — it silently drops records with missing fields
+
+#### Rule 3: VERIFY all critical inserts
+
+After inserting a booking (creation, recovery, import), verify with `find_one()`:
+- `POST /api/bookings` — already has double-check
+- `POST /api/bookings/recover-from-payment` — verified after insert
+- Import/CSV endpoints — must verify each insert
+
+#### Rule 4: After payment confirmation, trigger ALL 4 actions
+
+Every payment confirmation path (webhook, polling, manual) must call:
+1. `send_customer_confirmation(booking)` — email/SMS
+2. `send_booking_notification_to_admin(booking)` — admin alert
+3. `create_calendar_event(booking)` — Google Calendar
+4. `add_contact_to_icloud(booking)` — iCloud contacts (deduped)
+
+#### Rule 5: Log CRITICAL on any booking write failure
+
+Any failed booking database operation must log with `logger.error(f"CRITICAL: ...")` so it can be monitored. Never swallow booking errors silently.
+
+#### Rule 6: Booking collections are sacred
+
+There are 3 booking collections. A booking must ALWAYS exist in exactly one of them:
+- `db.bookings` — active bookings (shown in admin dashboard)
+- `db.deleted_bookings` — soft-deleted bookings (recoverable)
+- `db.bookings_archive` — archived completed bookings (7-year retention)
+
+**NEVER** delete a booking from all three. **NEVER** have a code path where a booking exists in zero collections.
+
+---
+
+---
+
+## QUALITY STANDARDS — STRICT, NON-NEGOTIABLE
+
+This is a real business serving real customers paying real money. **Every single feature must work perfectly from start to finish.** No broken promises, no placeholder functionality, no "good enough". This is an honest business — if something is shown to the customer, it must actually work. If it doesn't work, remove it until it does.
+
+**THE STANDARD: If a customer or admin interacts with ANY feature, it must work first try, every time.**
+
+### 1. No Mock/Fake Functionality
+
+- **NEVER** add console.log-only form submissions — every form MUST submit to a real backend endpoint
+- **NEVER** show success toasts for operations that didn't actually succeed
+- **NEVER** add placeholder handlers like "will be connected later" — connect it NOW or don't ship it
+- Every button, form, and link must do what it says. If it says "Send Message", it must send the message.
+
+### 2. No Misleading Claims
+
+- **NEVER** claim "24/7 Support" unless there is an actual 24/7 support system (chat, phone, ticketing)
+- "24/7 Service" (shuttle availability) is accurate and allowed — the service does run 24/7
+- **NEVER** add testimonials, review counts, or statistics that aren't real
+- **NEVER** show features as available when they aren't implemented
+
+### 3. Customer-Facing Text Standards
+
+- **NEVER** show technical terms to customers ("Stripe", "webhook", "API", database field names)
+- Payment method "stripe" displays as "Credit/Debit Card" — ALWAYS
+- Error messages must be helpful and human-readable, never stack traces or technical errors
+- All customer emails must be professional, properly formatted, and contain accurate information
+
+### 4. Every Payment Path Must Be Complete
+
+ALL payment confirmation paths (Stripe webhook, Afterpay capture, polling, manual sync, SMS approval) MUST trigger all 4 post-payment actions:
+1. `send_customer_confirmation(booking)`
+2. `send_booking_notification_to_admin(booking)`
+3. `create_calendar_event(booking)`
+4. `add_contact_to_icloud(booking)`
+
+No exceptions. If you add a new payment path, it must include all 4.
+
+### 5. Webhook Idempotency Required
+
+- Stripe webhooks can be retried — check if already processed before sending duplicate confirmations
+- Check `payment_status == 'paid'` before triggering post-payment actions on repeat webhooks
+
+### 6. Bulk Operations Must Be Safe
+
+- Bulk delete/archive/restore MUST verify each record individually (per-record backup + find_one verification)
+- **NEVER** use `delete_many()` after a batch `insert_one()` loop without per-record verification
+- If any single record fails backup, skip it and continue — never delete unverified records
+
+### 7. Field Name Consistency
+
+- Payment status field: always `payment_status` (snake_case), NEVER `paymentStatus` (camelCase)
+- Payment method field: always `payment_method` (snake_case) in database writes
+- Be consistent — check existing field names before adding new update operations
+
+### 8. Build Must Pass
+
+- `cd frontend && npm run build` must succeed with zero errors before committing
+- Fix unused imports, missing imports, and type errors immediately
+- Never commit code that doesn't compile
+
+### 9. Every UI Element Must Function
+
+- **Google Maps autocomplete MUST show dropdown suggestions** — use portal-based `AddressAutocomplete` component (not inline absolute-positioned dropdowns that get clipped)
+- **Customer search dropdown MUST work** — uses React Portal rendering to escape Dialog overflow constraints
+- **Every dropdown, select, modal, and form input MUST be interactive and functional**
+- **NEVER** use `position: absolute` for dropdowns inside scrollable containers — use React Portal (`ReactDOM.createPortal`) to render to `document.body`
+- **NEVER** use `onBlur` with `setTimeout` to close dropdowns — use `pointerdown` event listeners on `document` for reliable close-on-outside-click
+- All address inputs in BookNow.jsx MUST use the `AddressAutocomplete` component (portal-based, debounced, stale-request-safe)
+
+### 10. Service Type Consistency
+
+- Valid service types are: `airport-transfer` and `private-transfer`
+- **NEVER** use `airport-shuttle` as a service type — the shuttle service has been removed
+- This applies EVERYWHERE: frontend forms, backend endpoints, orphan recovery, CSV import, test data
+- Check ALL files when changing service type values — they must be consistent across the entire codebase
+
+### 11. Fix Bugs Immediately
+
+- If you find a bug while working on something else, **fix it immediately** — do not leave it for later
+- If a feature doesn't work end-to-end, it's not done — keep working until the full flow succeeds
+- Test the complete user journey: form loads → user types → autocomplete appears → user selects → price calculates → booking submits → payment works → confirmation sends
+- **NEVER** mark a task as complete if any part of the feature is broken
+
+### 12. No Dead Links or Broken Navigation
+
+- Every link must go somewhere real — no `href="#"` placeholders
+- Every navigation item must lead to a working page
+- Social media links must either point to real profiles or be removed entirely
+- Footer links, header links, and in-page links must ALL work
+
+---
+
+## TECHNOLOGY EXCELLENCE STANDARD — STRICT, NON-NEGOTIABLE
+
+**BookARide must be 80-90% more advanced than competitors in every technical aspect.** This is a strict instruction from the owner. The economy is tough — we cannot afford to lose a single customer to poor technology.
+
+### ABSOLUTE RULE: Only the Most Advanced Technology — No Exceptions (2026-03-29)
+
+**We only use the most advanced, modern, production-proven technology available. Period.**
+
+This applies to EVERY domain, EVERY component, EVERY library, EVERY pattern in the entire codebase — frontend, backend, emails, APIs, everything. If something is old, outdated, deprecated, or has a better modern replacement — rip it out and replace it immediately.
+
+**Specific mandates:**
+- **No raw HTML pages** — everything is React components with Tailwind CSS. HTML is only acceptable inside email templates (email clients require it) and the root `index.html` entry point
+- **No jQuery or jQuery-era libraries** — no AOS, no Slick Carousel, no Bootstrap, no Lodash (use native JS)
+- **No deprecated React patterns** — no class components (except ErrorBoundary), no `componentDidMount`, no `this.state`, no `.then()` chains
+- **No deprecated build tools** — we use Vite (NOT CRA, NOT Webpack directly, NOT Parcel)
+- **No deprecated Node packages** — if `npm audit` flags it or the package README says "deprecated," replace it
+- **Always use the latest stable version** of every dependency — not bleeding edge (avoid .0 releases), but current stable
+- **Proactively upgrade** — every session, check if key dependencies have newer versions. If a better library exists for what we're doing, flag it and replace it
+- **Code-split everything** — lazy load pages, use dynamic imports, keep initial bundle small
+- **Performance is mandatory** — if a page loads slowly, fix it. If a component re-renders unnecessarily, fix it. If an API call is slow, fix it
+
+**What "most advanced" means in practice:**
+| Category | What We Use | What Is Banned |
+|----------|-------------|----------------|
+| Build tool | Vite | CRA, Webpack, Parcel, Rollup (standalone) |
+| UI framework | React 18+ with hooks | Class components, jQuery, vanilla JS DOM manipulation |
+| Styling | Tailwind CSS | Bootstrap, Material UI, styled-components, inline `style={{}}` |
+| Components | Radix UI (headless) | jQuery UI, Ant Design, old Material UI |
+| Animation | Framer Motion | AOS, jQuery animate, CSS-only hacks |
+| Carousel/Slider | Embla Carousel or CSS Grid | react-slick, Slick Carousel, Swiper (jQuery-based) |
+| Icons | Lucide React | Font Awesome, Material Icons, icon fonts |
+| Charts | Recharts | Chart.js, D3 (unless absolutely needed) |
+| API client | Axios with async/await | fetch without error handling, XMLHttpRequest |
+| Forms | Controlled components + React Hook Form | Uncontrolled inputs, Formik (maintenance mode) |
+| Maps | Google Maps API | Leaflet, Mapbox (unless Google fails) |
+| Routing | React Router v7 | Reach Router, older React Router versions |
+| State | React hooks (useState, useContext) | Redux (overkill for this app), MobX |
+| Email | Mailgun HTTP API (HTML templates) | SMTP, SendGrid, raw nodemailer |
+| Backend | FastAPI (async Python) | Flask, Django, Express |
+| Database | Neon PostgreSQL | MongoDB, SQLite, MySQL |
+| AI | Claude API (Anthropic) | OpenAI, GPT, Gemini |
+
+**If you encounter ANY old, deprecated, or substandard technology while working — replace it immediately. Do not leave it for later. Do not mark it as "tech debt." Fix it now.**
+
+### Rules:
+
+1. **Use the most advanced, production-proven technologies available.** If a better library, framework pattern, or API exists for what we are building — use it. Do not settle for "good enough" when "best in class" is available.
+
+2. **Every feature must be bulletproof.** No half-measures, no "it mostly works", no "edge case we can fix later." If a customer touches it, it must work perfectly the first time, every time. Zero tolerance for broken flows.
+
+3. **Every scheduled task, background job, and automation must have safeguards.** Duplicate prevention, status checks, cancellation awareness, error logging, and graceful degradation. No silent failures. No spam. No emails to customers who have cancelled.
+
+4. **Proactively upgrade and improve.** If you see outdated patterns, inefficient code, or substandard implementations while working on a task — flag it and fix it. Do not leave technical debt for the next session.
+
+5. **The customer experience is sacred.** Every interaction (booking form, email, SMS, payment, chatbot) must feel professional, polished, and reliable. We represent a premium service — the technology must match.
+
+6. **No embarrassing failures.** Sending emails to cancelled customers, broken forms, unresponsive buttons, placeholder content, fake data — these destroy trust instantly. Every agent session must actively hunt for and eliminate these issues.
+
+### Known Issue Fixed (2026-03-27): Email Reminders to Cancelled Customers
+
+The AI email support system was only FLAGGING cancellations (setting `cancellation_requested: True`) but NOT actually changing the booking status to `cancelled`. This meant all scheduled email systems (reminders, post-trip thank-yous, payment follow-ups) kept emailing customers who had cancelled. Fixed by:
+- AI cancellation now sets `status: "cancelled"` immediately
+- ALL scheduled email queries now exclude `cancellation_requested: True` as a safety net
+- `send_post_trip_email()` now checks both status and `cancellation_requested` flag
+- `auto_complete_past_bookings()` now excludes cancellation-requested bookings
+
+**RULE: Every query that sends emails to customers MUST exclude both `status: 'cancelled'` AND `cancellation_requested: True`. No exceptions.**
+
+---
+
+## CLAUDE-ONLY DEVELOPMENT — NO EXCEPTIONS (2026-03-29)
+
+**From this point forward, ALL code changes to BookARide are made by Claude only.** No other AI agents, no human developers, no freelancers. This rule exists because too many hands have introduced inconsistent patterns, sloppy code, and production-breaking bugs since November 2025.
+
+### Rules:
+
+1. **Claude is the sole developer.** Every line of code in this repository is Claude's responsibility. If it's broken, Claude fixes it. If it's sloppy, Claude cleans it. No excuses about "someone else wrote that."
+
+2. **Clean as you go.** Every file Claude touches gets brought up to standard. If you see old patterns, dead code, commented-out blocks, unused imports, or sloppy logic — clean it up in the same session. Don't leave it for next time.
+
+3. **No legacy excuses.** "That was already there" is not acceptable. If it's bad code and you're in the file, fix it. The goal is to systematically bring the entire codebase to professional standard, one session at a time.
+
+4. **Consistent patterns everywhere.** All React components use functional components with hooks. All styling uses Tailwind CSS. All API calls use axios with proper error handling. All state management uses React hooks (useState, useEffect, useContext). No mixing of patterns.
+
+---
+
+## CUSTOMER ERROR SHIELD — MANDATORY (2026-03-29)
+
+**Customers must NEVER see raw errors, technical messages, stack traces, or broken UI.** Every error must be caught and translated into a friendly, helpful message before it reaches the customer. This is a two-layer system: the code tries to work correctly (layer 1), and if it fails, the customer sees a polished error message (layer 2).
+
+### Architecture (already implemented):
+
+| Layer | Component | What It Does |
+|-------|-----------|--------------|
+| 1 | `RootErrorBoundary` | Catches any unhandled React crash — shows friendly "something went wrong" page with reload button |
+| 2 | `AdminErrorBoundary` | Same but for admin dashboard — shows "try again" or "back to login" |
+| 3 | `window.onerror` + `window.onunhandledrejection` | Global catch-all in `index.js` for errors that happen before React loads |
+| 4 | `NotFound.jsx` | Friendly 404 page for bad URLs |
+| 5 | Toast notifications (`sonner`) | Every API call shows success/error toasts — never raw error objects |
+| 6 | BookNow.jsx error handling | Specific friendly messages: "Cannot reach server", "Please check addresses", etc. |
+
+### Rules:
+
+1. **Every API call MUST have a try/catch** with a user-friendly error message in the catch block. Never let `error.message` or `error.response.data` reach the UI directly without sanitising it first.
+
+2. **Never show technical terms to customers.** No "500 Internal Server Error", no "TypeError", no "undefined is not a function", no "NetworkError", no database field names, no "Stripe" branding. Translate everything.
+
+3. **Error messages must be helpful.** Not just "Something went wrong" — tell the customer what to do: "Unable to calculate price. Please check your addresses and try again." or "Payment service temporarily unavailable. Please try again in a few minutes."
+
+4. **Backend errors must return clean JSON.** Every endpoint must catch exceptions and return `{"detail": "Human-readable message"}` — never raw Python tracebacks. FastAPI's HTTPException already does this; make sure custom error handlers do too.
+
+5. **Loading states for everything.** Every button that triggers an API call must show a loading spinner or "Processing..." state. No buttons that appear to do nothing when clicked. No double-submission.
+
+6. **Graceful degradation.** If Google Maps is down, show a message instead of breaking the form. If Stripe is down, still create the booking and tell the customer "we'll send you a payment link by email." If email fails, log it and don't crash the booking.
+
+---
+
+## MODERN CODE STANDARDS — MANDATORY (2026-03-29)
+
+**Every piece of code in this project must follow modern best practices. No exceptions.**
+
+### Frontend (React):
+
+| Pattern | Required | Banned |
+|---------|----------|--------|
+| Components | Functional components with hooks | Class components (except ErrorBoundary — React requires it) |
+| State | `useState`, `useEffect`, `useContext`, `useRef` | `this.state`, `componentDidMount`, `componentWillReceiveProps` |
+| Styling | Tailwind CSS utility classes | Inline `style={{}}` objects (except dynamic values like calculated widths) |
+| API calls | `axios` with async/await in try/catch | Raw `fetch()` without error handling, `.then()` chains |
+| Forms | Controlled components with state | Uncontrolled inputs, `document.getElementById` |
+| Dropdowns in modals | React Portal (`ReactDOM.createPortal`) | `position: absolute` inside scrollable containers |
+| Imports | Named imports, tree-shakeable | `import *`, wildcard imports |
+| Variables | `const` and `let` | `var` |
+| Console | `console.error` in catch blocks only | `console.log` in production code (remove before commit) |
+
+### Backend (Python/FastAPI):
+
+| Pattern | Required | Banned |
+|---------|----------|--------|
+| Async | `async def` for all endpoints | Blocking calls in async context |
+| Database | NeonDatabase (PostgreSQL JSONB) | Motor, pymongo, MongoDB anything |
+| Email | Mailgun HTTP API | SMTP, SendGrid, smtplib |
+| Error handling | `try/except` with `logger.error()` | `except: pass`, silent swallowing |
+| Background tasks | `background_tasks.add_task()` | `asyncio.new_event_loop()`, `asyncio.run()` in async context |
+| Validation | Pydantic models | Manual dict validation |
+| Secrets | Environment variables | Hardcoded strings, committed `.env` files |
+
+### Code Cleanup Checklist (run on every file you touch):
+
+1. Remove unused imports
+2. Remove commented-out code blocks
+3. Remove dead functions/components that nothing calls
+4. Replace `var` with `const`/`let`
+5. Replace inline styles with Tailwind classes (where practical)
+6. Add error handling to any API call missing it
+7. Remove `console.log` statements (keep `console.error` in catch blocks)
+8. Ensure consistent field naming (snake_case for database, camelCase for React props)
+
+---
+
+## History of Production Breaks (why these rules exist)
+
+| Date       | What broke                          | Root cause                              |
+|------------|-------------------------------------|-----------------------------------------|
+| 2026-03    | Admin dashboard crash               | FacebookTab used but never imported     |
+| 2026-03    | Email sending crash potential        | SMTP fallback used MIMEMultipart/smtplib without importing them |
+| Repeated   | Database connection failures         | Agents kept adding MongoDB references   |
+| Repeated   | Email failures                       | Agents kept adding SendGrid/SMTP code   |
+| 2026-03    | Duplicate flight sections in form    | Two separate flight detail sections confused customers |
+| 2026-03-11 | Paid booking invisible in admin      | Pydantic validation silently dropped bookings with missing fields |
+| 2026-03-11 | Admin panel cluttered/confusing      | Shuttle bookings merged into booking list without permission |
+| 2026-03-11 | Bulk email broken                    | SMTP code in routes_bulk.py instead of Mailgun |
+| 2026-03-13 | Shuttle polluting admin bookings      | Shuttle bookings mixed into main list; 68K line monolith |
+| 2026-03-13 | Buttons unresponsive in admin         | Missing click targets, no stopPropagation on action buttons |
+| 2026-03-13 | Orewa booking overcharged ($185)      | Google Maps API failed, 75km fallback used instead of 57.6km actual |
+| 2026-03-21 | Google autocomplete dropdown invisible | BookNow.jsx used absolute-positioned dropdowns clipped by parent overflow |
+| 2026-03-21 | Wrong service type across codebase    | `airport-shuttle` used in EditBookingModal, BookNow, orphan recovery, CSV import |
+| 2026-03-21 | Multi-pickup fallback overcharging    | Fallback distance multiplied by pickup count (55km × 3 = 165km) |
+| 2026-03-21 | CSV import wrong field names          | `paymentStatus` (camelCase) instead of `payment_status` (snake_case) |
+| 2026-03-21 | Footer social links broken            | href="#" placeholders — links went nowhere |
+| 2026-03-21 | Duplicate route unreachable page      | Two routes for same path, first match shadowed dedicated page |
+| 2026-03-24 | Backend won't start on Render          | Smart/curly quotes (U+2018/U+2019) in server.py caused Python SyntaxError — invisible in editors, no agent caught it |
+| 2026-03-24 | Maps diagnostic endpoint unreachable   | Backend crash meant new endpoint couldn't be tested — blocked debugging of month-old autocomplete issue |
+| 2026-03-25 | Customer search dropdown blank in admin | `database.py` `_apply_project()` didn't handle exclusion-only projections |
+| 2026-03-25 | Address autocomplete unselectable in admin dialogs | Radix Dialog dismissed on portal dropdown click — fixed with `elementFromPoint` |
+| 2026-03-25 | 4 admin tabs invisible (Drivers, Applications, Analytics, Marketing) | Components built but no `TabsTrigger` buttons added |
+| 2026-03-25 | Chatbot returned static text | Never wired to Claude API despite system prompt existing |
+| 2026-03-25 | Fake testimonials and review counts across 30+ files | Fabricated stats violated honesty rules |
+| 2026-03-25 | 20 ghost URLs in sitemap | Pages listed in `sitemap.xml` had no matching routes |
+| 2026-03-25 | Open admin registration | `POST /api/admin/register` had no auth requirement |
+| 2026-03-27 | Cancelled customers receiving constant emails | AI email cancellation only flagged bookings, never changed status to cancelled — all scheduled jobs kept emailing them |

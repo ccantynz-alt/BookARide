@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Phone, Mail, MapPin, Clock, ArrowRight } from 'lucide-react';
+import { Mail, MapPin, Clock, ArrowRight } from 'lucide-react';
+import { API } from '../config/api';
 import { Link } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -11,7 +12,8 @@ import { toast } from 'sonner';
 import { companyInfo } from '../mock';
 import SEO from '../components/SEO';
 import PageBreadcrumb from '../components/PageBreadcrumb';
-import { FAQSchema, LocalBusinessSchema } from '../components/SchemaMarkup';
+import { FAQSchema } from '../components/SchemaMarkup';
+import StructuredData from '../components/StructuredData';
 
 export const Contact = () => {
   const [formData, setFormData] = useState({
@@ -30,20 +32,29 @@ export const Contact = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Mock submission - will be connected to backend later
-    console.log('Contact form submitted:', formData);
-    toast.success("Message Sent!", {
-      description: "We&apos;ll get back to you as soon as possible.",
-    });
-    // Reset form
-    setFormData({
-      name: '',
-      email: '',
-      phone: '',
-      message: ''
-    });
+    setSubmitting(true);
+    try {
+      const response = await fetch(`${API}/contact`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+      if (!response.ok) throw new Error('Failed to send');
+      toast.success("Message Sent!", {
+        description: "We'll get back to you as soon as possible.",
+      });
+      setFormData({ name: '', email: '', phone: '', message: '' });
+    } catch (err) {
+      toast.error("Failed to send message", {
+        description: "Please try again or email us directly at info@bookaride.co.nz",
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -54,7 +65,7 @@ export const Contact = () => {
         keywords="book airport shuttle, contact airport shuttle, airport shuttle booking, airport shuttle Auckland contact, shuttle service booking, airport transfer contact, book shuttle online"
         canonical="/contact"
       />
-      <LocalBusinessSchema />
+      <StructuredData />
       <FAQSchema faqs={[
         { question: "How do I book an airport shuttle?", answer: "You can book online at bookaride.co.nz in under 2 minutes, call us, or send an enquiry through this contact form. We provide instant quotes for all Auckland, Hamilton, and Whangarei transfers." },
         { question: "What are your operating hours?", answer: "We operate 24/7, 365 days a year. Whether you have an early morning flight at 4am or a late-night arrival, we're available to get you there safely." },
@@ -78,7 +89,7 @@ export const Contact = () => {
           <div className="max-w-3xl mx-auto text-center">
             <div className="inline-block mb-4">
               <span className="bg-gold/20 text-gold text-sm font-semibold px-4 py-2 rounded-full border border-gold/30">
-                📞 24/7 SUPPORT AVAILABLE
+                24/7 SERVICE AVAILABLE
               </span>
             </div>
             <h1 className="text-5xl md:text-6xl font-bold text-white mb-6">
@@ -209,8 +220,8 @@ export const Contact = () => {
                       />
                     </div>
 
-                    <Button type="submit" className="w-full bg-gold hover:bg-gold/90 text-black font-semibold text-lg py-6 transition-colors duration-200">
-                      Send Message
+                    <Button type="submit" disabled={submitting} className="w-full bg-gold hover:bg-gold/90 text-black font-semibold text-lg py-6 transition-colors duration-200 disabled:opacity-50">
+                      {submitting ? 'Sending...' : 'Send Message'}
                     </Button>
                   </form>
 

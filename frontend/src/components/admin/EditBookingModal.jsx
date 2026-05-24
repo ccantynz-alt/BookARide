@@ -1,0 +1,417 @@
+import React, { useState, useEffect, memo } from 'react';
+import { Eye, RefreshCw, Calendar } from 'lucide-react';
+import { Button } from '../ui/button';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
+import { Textarea } from '../ui/textarea';
+import { toast } from 'sonner';
+import { CustomDatePicker, CustomTimePicker } from '../DateTimePicker';
+import GoogleAddressInput from '../GoogleAddressInput';
+import axios from 'axios';
+import { API } from '../../config/api';
+
+// Parse a YYYY-MM-DD string into a local Date (avoids UTC timezone shift)
+const parseDateString = (dateStr) => {
+  if (!dateStr) return null;
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+  }
+  return null;
+};
+
+// Parse a HH:MM string into a Date object for the time picker
+const parseTimeString = (timeStr) => {
+  if (!timeStr) return null;
+  const parts = timeStr.split(':');
+  if (parts.length >= 2) {
+    const d = new Date();
+    d.setHours(parseInt(parts[0]), parseInt(parts[1]), 0, 0);
+    return d;
+  }
+  return null;
+};
+
+// Format a Date object to YYYY-MM-DD
+const formatDate = (date) => {
+  if (!date) return '';
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+// Format a Date object to HH:MM
+const formatTime = (date) => {
+  if (!date) return '';
+  return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+};
+
+const EditBookingModal = memo(({ open, onClose, booking, onSuccess, onPreviewConfirmation, onResendConfirmation, onResendPaymentLink, onManualCalendarSync, getAuthHeaders, previewLoading, calendarLoading }) => {
+  const [editingBooking, setEditingBooking] = useState(null);
+
+  // Sync booking prop into local state when modal opens or booking changes
+  useEffect(() => {
+    if (booking && open) {
+      setEditingBooking({ ...booking });
+    }
+  }, [booking, open]);
+
+
+  const handleSaveEditedBooking = async () => {
+    if (!editingBooking) return;
+
+    try {
+      await axios.patch(`${API}/bookings/${editingBooking.id}`, {
+        name: editingBooking.name,
+        email: editingBooking.email,
+        phone: editingBooking.phone,
+        serviceType: editingBooking.serviceType,
+        pickupAddress: editingBooking.pickupAddress,
+        dropoffAddress: editingBooking.dropoffAddress,
+        date: editingBooking.date,
+        time: editingBooking.time,
+        passengers: editingBooking.passengers,
+        notes: editingBooking.notes,
+        flightArrivalNumber: editingBooking.flightNumber || editingBooking.flightArrivalNumber || editingBooking.flightDepartureNumber || '',
+        flightArrivalTime: editingBooking.flightTime || editingBooking.flightArrivalTime || editingBooking.flightDepartureTime || '',
+        flightDepartureNumber: editingBooking.flightNumber || editingBooking.flightArrivalNumber || editingBooking.flightDepartureNumber || '',
+        flightDepartureTime: editingBooking.flightTime || editingBooking.flightArrivalTime || editingBooking.flightDepartureTime || '',
+        bookReturn: !!(editingBooking.returnDate && editingBooking.returnTime),
+        returnDate: editingBooking.returnDate,
+        returnTime: editingBooking.returnTime,
+        returnFlightNumber: editingBooking.returnFlightNumber || editingBooking.returnDepartureFlightNumber || '',
+        returnDepartureFlightNumber: editingBooking.returnFlightNumber || editingBooking.returnDepartureFlightNumber || ''
+      }, getAuthHeaders());
+
+      toast.success('Booking updated successfully!');
+      onClose();
+      onSuccess?.();
+    } catch (error) {
+      console.error('Error updating booking:', error);
+      toast.error(error.response?.data?.detail || 'Failed to update booking');
+    }
+  };
+
+  if (!editingBooking) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => {
+      // Prevent dialog close while any autocomplete/search dropdown is open (critical for iOS)
+      // Includes Google's native .pac-container which is appended to document.body
+      if (!v) {
+        if (document.querySelector('[data-autocomplete-dropdown]')) return;
+        if (document.querySelector('.pac-container')) return;
+        onClose();
+      }
+    }}>
+      <DialogContent
+        className="max-w-3xl max-h-[90vh] overflow-y-auto"
+        onPointerDownOutside={(e) => {
+          // Prevent Radix from closing when user clicks Google's native
+          // .pac-container Places Autocomplete dropdown (rendered to body)
+          const target = e.target;
+          if (target && target.closest && target.closest('.pac-container')) {
+            e.preventDefault();
+          }
+        }}
+        onInteractOutside={(e) => {
+          const target = e.target;
+          if (target && target.closest && target.closest('.pac-container')) {
+            e.preventDefault();
+          }
+        }}
+      >
+        <DialogHeader>
+          <DialogTitle>Edit Booking #{editingBooking?.referenceNumber || editingBooking?.id?.slice(0, 8)}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-6 pt-4">
+          {/* Customer Information */}
+          <div>
+            <h3 className="font-semibold text-gray-900 mb-3">Customer Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label>Name *</Label>
+                <Input
+                  value={editingBooking.name}
+                  onChange={(e) => setEditingBooking(prev => ({...prev, name: e.target.value}))}
+                  placeholder="Customer name"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label>Email *</Label>
+                <Input
+                  type="email"
+                  value={editingBooking.email}
+                  onChange={(e) => setEditingBooking(prev => ({...prev, email: e.target.value}))}
+                  placeholder="customer@example.com"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label>Phone *</Label>
+                <Input
+                  value={editingBooking.phone}
+                  onChange={(e) => setEditingBooking(prev => ({...prev, phone: e.target.value}))}
+                  placeholder="+64 21 XXX XXXX"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label>Service Type</Label>
+                <Select
+                  value={editingBooking.serviceType || 'private-transfer'}
+                  onValueChange={(value) => setEditingBooking(prev => ({...prev, serviceType: value}))}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="airport-transfer">Airport Transfer</SelectItem>
+                    <SelectItem value="private-transfer">Private Transfer</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Passengers</Label>
+                <Select
+                  value={editingBooking.passengers?.toString()}
+                  onValueChange={(value) => setEditingBooking(prev => ({...prev, passengers: value}))}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(num => (
+                      <SelectItem key={num} value={num.toString()}>{num}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
+          {/* Trip Information */}
+          <div>
+            <h3 className="font-semibold text-gray-900 mb-3">Trip Information</h3>
+            <div className="space-y-4">
+              <div>
+                <Label>Pickup Address *</Label>
+                <GoogleAddressInput
+                  value={editingBooking.pickupAddress}
+                  onChange={(val) => setEditingBooking(prev => ({ ...prev, pickupAddress: val }))}
+                  onSelect={(val) => setEditingBooking(prev => ({ ...prev, pickupAddress: val }))}
+                  placeholder="Start typing an address..."
+                  className="mt-1"
+                />
+              </div>
+
+              <div>
+                <Label>Drop-off Address *</Label>
+                <GoogleAddressInput
+                  value={editingBooking.dropoffAddress}
+                  onChange={(val) => setEditingBooking(prev => ({ ...prev, dropoffAddress: val }))}
+                  onSelect={(val) => setEditingBooking(prev => ({ ...prev, dropoffAddress: val }))}
+                  placeholder="Start typing an address..."
+                  className="mt-1"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Date *</Label>
+                  <div className="mt-1">
+                    <CustomDatePicker
+                      selected={parseDateString(editingBooking.date)}
+                      onChange={(date) => setEditingBooking(prev => ({...prev, date: formatDate(date)}))}
+                      placeholder="Select date"
+                      minDate={new Date('2020-01-01')}
+                      maxDate={new Date('2030-12-31')}
+                      showMonthDropdown
+                      showYearDropdown
+                      dropdownMode="select"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label>Time *</Label>
+                  <div className="mt-1">
+                    <CustomTimePicker
+                      selected={parseTimeString(editingBooking.time)}
+                      onChange={(time) => setEditingBooking(prev => ({...prev, time: formatTime(time)}))}
+                      placeholder="Select time"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Flight Details & Return Journey - Single Section */}
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  Flight Details (Optional)
+                </h4>
+                <p className="text-xs text-gray-600 mb-3">
+                  Add flight details for airport pickups/drop-offs to better track and coordinate transfers
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label>Flight Number</Label>
+                    <Input
+                      value={editingBooking.flightNumber || editingBooking.flightArrivalNumber || editingBooking.flightDepartureNumber || ''}
+                      onChange={(e) => setEditingBooking(prev => ({...prev, flightNumber: e.target.value}))}
+                      placeholder="e.g., NZ123"
+                      className="mt-1 bg-white"
+                    />
+                  </div>
+                  <div>
+                    <Label>Flight Time</Label>
+                    <div className="mt-1">
+                      <CustomTimePicker
+                        selected={parseTimeString(editingBooking.flightTime || editingBooking.flightArrivalTime || editingBooking.flightDepartureTime || '')}
+                        onChange={(time) => setEditingBooking(prev => ({...prev, flightTime: formatTime(time)}))}
+                        placeholder="Select flight time"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Return Journey sub-section */}
+                <div className="mt-4 pt-4 border-t border-blue-200">
+                  <h4 className="font-semibold text-gray-900 mb-2">Return Journey <span className="text-sm font-normal text-gray-500">(Optional)</span></h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                    <div>
+                      <Label>Return Date *</Label>
+                      <div className="mt-1">
+                        <CustomDatePicker
+                          selected={parseDateString(editingBooking.returnDate)}
+                          onChange={(date) => setEditingBooking(prev => ({...prev, returnDate: formatDate(date)}))}
+                          placeholder="Select return date"
+                          minDate={parseDateString(editingBooking.date) || new Date()}
+                          maxDate={new Date('2030-12-31')}
+                          showMonthDropdown
+                          showYearDropdown
+                          dropdownMode="select"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <Label>Return Time *</Label>
+                      <div className="mt-1">
+                        <CustomTimePicker
+                          selected={parseTimeString(editingBooking.returnTime)}
+                          onChange={(time) => setEditingBooking(prev => ({...prev, returnTime: formatTime(time)}))}
+                          placeholder="Select return time"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <Label>Return Flight Number</Label>
+                      <Input
+                        value={editingBooking.returnFlightNumber || editingBooking.returnDepartureFlightNumber || ''}
+                        onChange={(e) => setEditingBooking(prev => ({...prev, returnFlightNumber: e.target.value, returnDepartureFlightNumber: e.target.value}))}
+                        placeholder="e.g. NZ456"
+                        className="mt-1 bg-white"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <p className="text-xs text-gray-600 italic">
+                        Return route: {editingBooking.dropoffAddress?.split(',')[0]} → {editingBooking.pickupAddress?.split(',')[0]}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <Label>Special Notes</Label>
+                <Textarea
+                  value={editingBooking.notes || ''}
+                  onChange={(e) => setEditingBooking(prev => ({...prev, notes: e.target.value}))}
+                  placeholder="Any special requests or notes..."
+                  rows={3}
+                  className="mt-1"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Current Pricing Info */}
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <h3 className="font-semibold text-gray-900 mb-2">Current Pricing</h3>
+            <div className="flex justify-between items-center">
+              <span>Total Price:</span>
+              <span className="text-xl font-bold text-gold">${editingBooking.pricing?.totalPrice?.toFixed(2) || '0.00'}</span>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">To change pricing, use the View Details modal and override the price.</p>
+          </div>
+
+          {/* Quick Actions */}
+          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+            <h3 className="font-semibold text-gray-900 mb-3">Quick Actions</h3>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => onPreviewConfirmation?.(editingBooking.id)}
+                className="bg-white"
+                disabled={previewLoading}
+              >
+                <Eye className="w-4 h-4 mr-2" />
+                {previewLoading ? 'Loading...' : 'Preview Confirmation'}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => onResendConfirmation?.(editingBooking.id)}
+                className="bg-white"
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Resend Confirmation
+              </Button>
+              {editingBooking.payment_status !== 'paid' && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onResendPaymentLink?.(editingBooking.id, 'stripe')}
+                  className="bg-white text-green-600 border-green-200 hover:bg-green-50"
+                >
+                  Send Payment Link
+                </Button>
+              )}
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => onManualCalendarSync?.(editingBooking.id)}
+                className="bg-white"
+                disabled={calendarLoading}
+              >
+                <Calendar className="w-4 h-4 mr-2" />
+                Sync to Calendar
+              </Button>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex justify-end gap-2 pt-4 border-t">
+            <Button variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveEditedBooking}
+              className="bg-gold hover:bg-gold/90 text-white font-semibold"
+            >
+              Save Changes
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+});
+
+EditBookingModal.displayName = 'EditBookingModal';
+
+export default EditBookingModal;

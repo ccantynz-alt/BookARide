@@ -3,8 +3,6 @@ import { useLocation, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent } from '../../components/ui/card';
-import { Header } from '../../components/Header';
-import { Footer } from '../../components/Footer';
 import { 
   CheckCircle, XCircle, ArrowRight, Mail, Star,
   ChevronRight, Clock, DollarSign, Shield, Users,
@@ -25,7 +23,6 @@ const comparisons = {
       { feature: 'Wait Time', bookaride: 'Direct to your address', competitor: 'Stops at other addresses first', winner: 'bookaride' },
       { feature: 'Price (North Shore)', bookaride: 'Get Quote', competitor: 'Get Quote', winner: 'competitor' },
       { feature: 'Multi-Stop Booking', bookaride: 'Yes - pick up multiple addresses', competitor: 'No - single pickup only', winner: 'bookaride' },
-      { feature: 'Flight Tracking', bookaride: 'Yes - we monitor your flight', competitor: 'Limited', winner: 'bookaride' },
       { feature: 'Child Seats', bookaride: 'Available on request', competitor: 'Not guaranteed', winner: 'bookaride' },
       { feature: 'Large Groups (8+)', bookaride: 'Up to 11 passengers', competitor: 'Limited capacity', winner: 'bookaride' },
       { feature: 'Privacy', bookaride: 'Just you & your group', competitor: 'Shared with strangers', winner: 'bookaride' },
@@ -96,10 +93,9 @@ const comparisons = {
       { feature: 'Local Knowledge', bookaride: 'North Shore specialists', competitor: 'Variable', winner: 'bookaride' },
       { feature: 'No Pre-booking', bookaride: 'Pre-booking required', competitor: 'Just show up', winner: 'competitor' },
       { feature: 'Vehicle Quality', bookaride: 'Modern fleet', competitor: 'Varies', winner: 'bookaride' },
-      { feature: 'Flight Tracking', bookaride: 'Included', competitor: 'No', winner: 'bookaride' },
       { feature: 'Payment Options', bookaride: 'Card, online, invoice', competitor: 'Card or cash', winner: 'tie' }
     ],
-    verdict: "Taxis offer flexibility but with uncertainty - you never know the final price until you arrive. BookaRide's fixed pricing, flight tracking, and guaranteed availability makes it the smarter choice for airport transfers.",
+    verdict: "Taxis offer flexibility but with uncertainty - you never know the final price until you arrive. BookaRide's fixed pricing, and guaranteed availability makes it the smarter choice for airport transfers.",
     whenToChooseUs: [
       'You want to know exactly what you\'ll pay',
       'You don\'t want to queue at the taxi rank',
@@ -141,8 +137,6 @@ const ComparisonPage = () => {
         <meta name="description" content={data.metaDescription} />
         <link rel="canonical" href={`https://bookaride.co.nz/${data.slug}`} />
       </Helmet>
-
-      <Header />
 
       {/* Hero */}
       <section className="bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white py-16">
@@ -291,7 +285,6 @@ const ComparisonPage = () => {
         </div>
       </section>
 
-      <Footer />
     </div>
   );
 };

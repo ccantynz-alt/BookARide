@@ -5,8 +5,6 @@ import { Plane, MapPin, Clock, Shield, Star, CreditCard, Users, CheckCircle } fr
 import { Button } from '../../components/ui/button';
 import { Card, CardContent } from '../../components/ui/card';
 import SEO from '../../components/SEO';
-import { Header } from '../../components/Header';
-import { Footer } from '../../components/Footer';
 
 const USALanding = () => {
   // Schema markup for American visitors
@@ -107,8 +105,6 @@ const USALanding = () => {
         <script type="application/ld+json">{JSON.stringify(faqSchema)}</script>
       </Helmet>
 
-      <Header />
-
       {/* Hero Section with Beautiful USA Image */}
       <section className="relative pt-32 pb-20 bg-gradient-to-br from-blue-900 via-blue-800 to-red-900 overflow-hidden">
         {/* New York Statue of Liberty Background */}
@@ -159,7 +155,7 @@ const USALanding = () => {
             </div>
             <div className="flex items-center gap-2">
               <CheckCircle className="w-5 h-5 text-green-500" />
-              <span className="text-sm font-medium">Flight Tracking Included</span>
+              
             </div>
             <div className="flex items-center gap-2">
               <CheckCircle className="w-5 h-5 text-green-500" />
@@ -188,15 +184,6 @@ const USALanding = () => {
                 </div>
                 <h3 className="text-xl font-semibold mb-2">Easy Payment</h3>
                 <p className="text-gray-600">All major credit cards accepted. Your bank handles the conversion - no surprises.</p>
-              </CardContent>
-            </Card>
-            <Card className="text-center hover:shadow-lg transition-shadow">
-              <CardContent className="p-6">
-                <div className="w-16 h-16 bg-gold/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Clock className="w-8 h-8 text-gold" />
-                </div>
-                <h3 className="text-xl font-semibold mb-2">Flight Tracking</h3>
-                <p className="text-gray-600">We monitor your United, American, or Air NZ flight. Delays? We adjust automatically.</p>
               </CardContent>
             </Card>
             <Card className="text-center hover:shadow-lg transition-shadow">
@@ -338,7 +325,7 @@ const USALanding = () => {
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl font-bold text-black mb-4">Ready for Your NZ Adventure?</h2>
           <p className="text-black/80 mb-8 max-w-xl mx-auto">
-            Join thousands of American visitors who trust BookaRide for their New Zealand transportation.
+            Trust BookaRide for your New Zealand transportation needs.
           </p>
           <Link to="/book-now">
             <Button className="bg-black hover:bg-gray-900 text-white font-semibold px-8 py-6 text-lg">
@@ -348,7 +335,6 @@ const USALanding = () => {
         </div>
       </section>
 
-      <Footer />
     </div>
   );
 };

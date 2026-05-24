@@ -2,8 +2,6 @@ import React from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { Button } from '../../components/ui/button';
-import { Header } from '../../components/Header';
-import { Footer } from '../../components/Footer';
 import { Calendar, Clock, User, ArrowLeft, Share2 } from 'lucide-react';
 
 // Blog post content
@@ -138,8 +136,6 @@ const BlogPost = () => {
         <script type="application/ld+json">{JSON.stringify(schema)}</script>
       </Helmet>
 
-      <Header />
-
       {/* Article Header */}
       <section className="bg-gradient-to-br from-black via-gray-900 to-black text-white py-16">
         <div className="max-w-4xl mx-auto px-4">
@@ -190,7 +186,6 @@ const BlogPost = () => {
         </div>
       </article>
 
-      <Footer />
     </div>
   );
 };

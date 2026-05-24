@@ -1,15 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Plane, Clock, MapPin, Car, User, Calendar, 
-  AlertTriangle, CheckCircle, ArrowRight, Phone, RefreshCw
+import {
+  Plane, Clock, MapPin, User,
+  RefreshCw
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import axios from 'axios';
 import { toast } from 'sonner';
+import { API } from '../../config/api';
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
-
-const ReturnsOverviewPanel = ({ bookings = [], drivers = [], onAssignDriver, onViewBooking }) => {
+const ReturnsOverviewPanel = ({ bookings = [], onViewBooking }) => {
   const [urgentReturns, setUrgentReturns] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -64,39 +63,30 @@ const ReturnsOverviewPanel = ({ bookings = [], drivers = [], onAssignDriver, onV
     return urgent;
   };
 
-  // Format date nicely
-  const formatDate = (dateStr) => {
+  // Relative date label ('Today', 'Tomorrow', or 'Mon, 6 Apr')
+  // Context-specific helper — do not replace with shared dateFormat util
+  const formatRelativeDate = (dateStr) => {
     if (dateStr === today) return 'Today';
     if (dateStr === tomorrow) return 'Tomorrow';
-    const date = new Date(dateStr);
+    const [y, m, d] = dateStr.split('-');
+    const date = new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
     return date.toLocaleDateString('en-NZ', { weekday: 'short', day: 'numeric', month: 'short' });
   };
 
-  // Get driver info
-  const getDriverInfo = (booking) => {
-    const driverId = booking.return_driver_id || booking.driver_id;
-    if (!driverId) return null;
-    const driver = drivers.find(d => d.id === driverId);
-    return driver;
-  };
-
-  const renderReturnCard = (booking, isUrgent = false) => {
+  const renderReturnCard = (booking) => {
     const urgencyInfo = getUrgencyInfo(booking);
-    const driver = getDriverInfo(booking);
     const isToday = booking.returnDate === today;
     const isTomorrow = booking.returnDate === tomorrow;
 
     return (
-      <div 
+      <div
         key={booking.id}
         className={`p-4 rounded-xl border transition-all hover:shadow-md cursor-pointer ${
-          isToday && !driver
-            ? 'bg-red-50 border-red-200'
-            : isToday
-              ? 'bg-purple-50 border-purple-200'
-              : isTomorrow
-                ? 'bg-blue-50 border-blue-200'
-                : 'bg-gray-50 border-gray-100'
+          isToday
+            ? 'bg-purple-50 border-purple-200'
+            : isTomorrow
+              ? 'bg-blue-50 border-blue-200'
+              : 'bg-gray-50 border-gray-100'
         }`}
         onClick={() => onViewBooking?.(booking)}
       >
@@ -107,15 +97,13 @@ const ReturnsOverviewPanel = ({ bookings = [], drivers = [], onAssignDriver, onV
               <User className={`w-4 h-4 ${isToday ? 'text-purple-600' : 'text-gray-600'}`} />
               <span className="font-semibold text-gray-900">{booking.name || booking.customerName}</span>
               <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                isToday && !driver
-                  ? 'bg-red-200 text-red-700'
-                  : isToday
-                    ? 'bg-purple-200 text-purple-700'
-                    : isTomorrow
-                      ? 'bg-blue-200 text-blue-700'
-                      : 'bg-gray-200 text-gray-700'
+                isToday
+                  ? 'bg-purple-200 text-purple-700'
+                  : isTomorrow
+                    ? 'bg-blue-200 text-blue-700'
+                    : 'bg-gray-200 text-gray-700'
               }`}>
-                {formatDate(booking.returnDate)}
+                {formatRelativeDate(booking.returnDate)}
               </span>
             </div>
 
@@ -144,42 +132,13 @@ const ReturnsOverviewPanel = ({ bookings = [], drivers = [], onAssignDriver, onV
               </div>
             )}
           </div>
-
-          {/* Driver Status */}
-          <div className="text-right">
-            {driver ? (
-              <div className="flex items-center gap-2">
-                <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium flex items-center gap-1">
-                  <Car className="w-3 h-3" />
-                  {driver.name?.split(' ')[0]}
-                </span>
-              </div>
-            ) : (
-              <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full font-medium flex items-center gap-1">
-                <AlertTriangle className="w-3 h-3" />
-                No Driver
-              </span>
-            )}
-          </div>
         </div>
       </div>
     );
   };
 
   if (allReturns.length === 0) {
-    return (
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-            <Plane className="w-5 h-5 text-purple-600" />
-          </div>
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900">Return Trips</h2>
-            <p className="text-sm text-gray-500">No upcoming returns in the next 7 days</p>
-          </div>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   return (

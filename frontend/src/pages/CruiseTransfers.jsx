@@ -345,62 +345,34 @@ export const CruiseTransfers = () => {
         </div>
       </section>
 
-      {/* Customer Testimonials Section */}
+      {/* Customer Reviews Section */}
       <section className="py-16 bg-gradient-to-br from-gray-900 to-black text-white">
         <div className="container mx-auto px-4">
-          <div className="max-w-5xl mx-auto">
-            <h2 className="text-3xl font-bold text-center mb-4">
-              Trusted by Cruise Passengers Worldwide
+          <div className="max-w-md mx-auto text-center">
+            <h2 className="text-3xl font-bold text-center mb-8">
+              What Our Customers Say
             </h2>
-            <p className="text-gray-300 text-center mb-12">
-              Hear from travelers who chose us for their Auckland cruise transfers
-            </p>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card className="bg-white/10 border-gold/30 backdrop-blur-sm">
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-1 mb-3">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="w-4 h-4 text-gold fill-gold" />
-                    ))}
-                  </div>
-                  <p className="text-white mb-4 italic">
-                    "Perfect timing! Driver was waiting when we disembarked. Made our connection to the airport stress-free. Would definitely use again!"
-                  </p>
-                  <p className="text-gold font-semibold">Robert & Linda</p>
-                  <p className="text-gray-400 text-sm">Celebrity Cruise Passengers</p>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-white/10 border-gold/30 backdrop-blur-sm">
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-1 mb-3">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="w-4 h-4 text-gold fill-gold" />
-                    ))}
-                  </div>
-                  <p className="text-white mb-4 italic">
-                    "Excellent service from airport to cruise terminal. Driver helped with all our luggage and got us there with time to spare. Highly professional!"
-                  </p>
-                  <p className="text-gold font-semibold">Jennifer K.</p>
-                  <p className="text-gray-400 text-sm">International Traveller</p>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-white/10 border-gold/30 backdrop-blur-sm">
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-1 mb-3">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="w-4 h-4 text-gold fill-gold" />
-                    ))}
-                  </div>
-                  <p className="text-white mb-4 italic">
-                    "Booked both ways - to cruise and back to airport. Reliable, comfortable, and great value. Made our Auckland stopover easy!"
-                  </p>
-                  <p className="text-gold font-semibold">Paul & Maria</p>
-                  <p className="text-gray-400 text-sm">Cruise Couple</p>
-                </CardContent>
-              </Card>
+            <div className="bg-white/10 backdrop-blur-md border border-gold/20 rounded-2xl p-8">
+              <div className="flex items-center justify-center gap-2 mb-4">
+                <img src="https://www.google.com/favicon.ico" alt="Google" className="w-8 h-8" loading="lazy" />
+                <span className="text-xl font-bold text-white">Google Reviews</span>
+              </div>
+              <div className="flex justify-center mb-4">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <Star key={i} className="w-6 h-6 text-gold fill-gold" />
+                ))}
+              </div>
+              <p className="text-white/80 mb-6">
+                Read verified reviews from our customers on Google.
+              </p>
+              <a
+                href="https://www.google.com/search?q=book+a+ride+nz+auckland+reviews"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 bg-gold hover:bg-gold/90 text-black font-semibold px-8 py-3 rounded-lg transition-all duration-200 shadow-lg"
+              >
+                See Our Reviews on Google
+              </a>
             </div>
           </div>
         </div>

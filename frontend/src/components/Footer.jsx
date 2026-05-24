@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Phone, Mail, MapPin, Facebook, Twitter, Instagram } from 'lucide-react';
+import { Phone, Mail, MapPin } from 'lucide-react';
 import { companyInfo } from '../mock';
 
 export const Footer = () => {
@@ -10,28 +10,20 @@ export const Footer = () => {
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-gold/5 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-gold/5 rounded-full blur-3xl pointer-events-none" />
       <div className="container mx-auto px-4 py-12 relative z-10">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
           {/* Company Info */}
           <div>
-            <img 
-              src="/logo.png" 
-              alt="Book A Ride NZ" 
+            <img
+              src="/logo.png"
+              alt="Book A Ride NZ"
+              width="180"
+              height="56"
               className="h-14 w-auto mb-4"
+              loading="lazy"
             />
             <p className="text-sm text-gray-400 mb-4">
               Your reliable transportation partner in New Zealand. Safe, comfortable rides available 24/7.
             </p>
-            <div className="flex space-x-4">
-              <a href="#" className="text-gray-400 hover:text-gold transition-colors duration-200">
-                <Facebook className="w-5 h-5" />
-              </a>
-              <a href="#" className="text-gray-400 hover:text-gold transition-colors duration-200">
-                <Twitter className="w-5 h-5" />
-              </a>
-              <a href="#" className="text-gray-400 hover:text-gold transition-colors duration-200">
-                <Instagram className="w-5 h-5" />
-              </a>
-            </div>
           </div>
 
           {/* Quick Links */}
@@ -59,8 +51,13 @@ export const Footer = () => {
                 </Link>
               </li>
               <li>
-                <Link to="/afterpay" className="text-sm hover:text-gold transition-colors duration-200 flex items-center gap-1">
-                  <span className="text-[#B2FCE4]">●</span> Pay with Afterpay
+                <Link to="/suburbs" className="text-sm hover:text-gold transition-colors duration-200">
+                  All Routes
+                </Link>
+              </li>
+              <li>
+                <Link to="/blog" className="text-sm hover:text-gold transition-colors duration-200">
+                  Blog
                 </Link>
               </li>
             </ul>
@@ -70,10 +67,93 @@ export const Footer = () => {
           <div>
             <h3 className="text-gold font-semibold mb-4">Our Services</h3>
             <ul className="space-y-2">
-              <li className="text-sm">Auckland Airport Shuttle</li>
-              <li className="text-sm">Hamilton Airport Shuttle</li>
-              <li className="text-sm">Whangarei Airport Shuttle</li>
-              <li className="text-sm">Private Auckland Transfers</li>
+              <li>
+                <Link to="/auckland-airport-shuttle" className="text-sm hover:text-gold transition-colors duration-200">
+                  Auckland Airport Shuttle
+                </Link>
+              </li>
+              <li>
+                <Link to="/auckland-cbd-to-airport" className="text-sm hover:text-gold transition-colors duration-200">
+                  Auckland CBD to Airport
+                </Link>
+              </li>
+              <li>
+                <Link to="/hibiscus-coast-airport-shuttle" className="text-sm hover:text-gold transition-colors duration-200">
+                  Hibiscus Coast Shuttle
+                </Link>
+              </li>
+              <li>
+                <Link to="/north-shore-airport-shuttle" className="text-sm hover:text-gold transition-colors duration-200">
+                  North Shore Shuttle
+                </Link>
+              </li>
+              <li>
+                <Link to="/hobbiton-transfers" className="text-sm hover:text-gold transition-colors duration-200">
+                  Hobbiton Transfers
+                </Link>
+              </li>
+              <li>
+                <Link to="/cruise-transfers" className="text-sm hover:text-gold transition-colors duration-200">
+                  Cruise Transfers
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Popular Routes — internal linking pulls SEO equity into orphaned suburb pages */}
+          <div>
+            <h3 className="text-gold font-semibold mb-4">Popular Routes</h3>
+            <ul className="space-y-2">
+              <li>
+                <Link to="/orewa-to-auckland-airport" className="text-sm hover:text-gold transition-colors duration-200">
+                  Orewa to Airport
+                </Link>
+              </li>
+              <li>
+                <Link to="/whangaparoa-airport-transfer" className="text-sm hover:text-gold transition-colors duration-200">
+                  Whangaparoa to Airport
+                </Link>
+              </li>
+              <li>
+                <Link to="/takapuna-to-airport" className="text-sm hover:text-gold transition-colors duration-200">
+                  Takapuna to Airport
+                </Link>
+              </li>
+              <li>
+                <Link to="/albany-to-airport" className="text-sm hover:text-gold transition-colors duration-200">
+                  Albany to Airport
+                </Link>
+              </li>
+              <li>
+                <Link to="/ponsonby-to-airport" className="text-sm hover:text-gold transition-colors duration-200">
+                  Ponsonby to Airport
+                </Link>
+              </li>
+              <li>
+                <Link to="/parnell-to-airport" className="text-sm hover:text-gold transition-colors duration-200">
+                  Parnell to Airport
+                </Link>
+              </li>
+              <li>
+                <Link to="/newmarket-to-airport" className="text-sm hover:text-gold transition-colors duration-200">
+                  Newmarket to Airport
+                </Link>
+              </li>
+              <li>
+                <Link to="/remuera-to-airport" className="text-sm hover:text-gold transition-colors duration-200">
+                  Remuera to Airport
+                </Link>
+              </li>
+              <li>
+                <Link to="/mt-eden-to-airport" className="text-sm hover:text-gold transition-colors duration-200">
+                  Mt Eden to Airport
+                </Link>
+              </li>
+              <li>
+                <Link to="/grey-lynn-to-airport" className="text-sm hover:text-gold transition-colors duration-200">
+                  Grey Lynn to Airport
+                </Link>
+              </li>
             </ul>
           </div>
 

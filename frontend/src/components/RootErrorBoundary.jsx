@@ -1,8 +1,11 @@
 import React from 'react';
 
 /**
- * Catches any uncaught error in the app and shows the message + stack
+ * Catches any uncaught error in the app and shows a friendly message
  * instead of a white screen. Wrap the whole app (e.g. in App.js).
+ *
+ * Note: ErrorBoundary must be a class component — React requires it.
+ * Stack traces are logged to console only, never shown to customers.
  */
 class RootErrorBoundary extends React.Component {
   state = { error: null, errorInfo: null };
@@ -24,77 +27,33 @@ class RootErrorBoundary extends React.Component {
 
   render() {
     if (this.state.error) {
-      const msg = this.state.error?.message ?? String(this.state.error);
-      const stack = this.state.errorInfo?.componentStack ?? '';
-
       return (
-        <div
-          style={{
-            minHeight: '100vh',
-            background: '#0f172a',
-            color: '#e2e8f0',
-            padding: '2rem',
-            fontFamily: 'system-ui, sans-serif',
-            boxSizing: 'border-box',
-          }}
-        >
-          <div style={{ maxWidth: '720px', margin: '0 auto' }}>
-            <h1 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>
+        <div className="min-h-screen bg-slate-900 text-slate-200 p-8 font-sans flex items-center justify-center">
+          <div className="max-w-lg text-center">
+            <div className="text-5xl mb-4">⚠️</div>
+            <h1 className="text-2xl font-bold mb-3">
               Something went wrong
             </h1>
-            <p
-              style={{
-                color: '#f87171',
-                marginBottom: '1rem',
-                wordBreak: 'break-word',
-                fontSize: '0.95rem',
-              }}
-            >
-              {msg}
+            <p className="text-slate-400 mb-6 text-sm leading-relaxed">
+              We're sorry — the page ran into an unexpected problem.
+              Please try reloading, or head back to the home page.
+              If this keeps happening, contact us at{' '}
+              <a href="mailto:info@bookaride.co.nz" className="text-amber-400 hover:underline">
+                info@bookaride.co.nz
+              </a>
             </p>
-            {stack && (
-              <pre
-                style={{
-                  fontSize: '0.7rem',
-                  background: '#1e293b',
-                  padding: '1rem',
-                  overflow: 'auto',
-                  borderRadius: '6px',
-                  marginBottom: '1rem',
-                  whiteSpace: 'pre-wrap',
-                  wordBreak: 'break-word',
-                  maxHeight: '40vh',
-                }}
-              >
-                {stack}
-              </pre>
-            )}
-            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <div className="flex gap-3 justify-center flex-wrap">
               <button
                 type="button"
                 onClick={this.handleReload}
-                style={{
-                  padding: '0.5rem 1rem',
-                  background: '#3b82f6',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                }}
+                className="px-5 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg cursor-pointer transition-colors font-medium"
               >
                 Reload page
               </button>
               <button
                 type="button"
                 onClick={this.handleHome}
-                style={{
-                  padding: '0.5rem 1rem',
-                  background: '#334155',
-                  color: '#e2e8f0',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                }}
+                className="px-5 py-2.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg cursor-pointer transition-colors font-medium"
               >
                 Go to home
               </button>

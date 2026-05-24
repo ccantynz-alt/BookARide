@@ -104,7 +104,7 @@ const SingaporeLanding = () => {
       <section className="py-16 bg-gold">
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl font-bold text-black mb-4">Ready to Book?</h2>
-          <p className="text-black/80 mb-8">Join thousands of Singaporean visitors who trust us.</p>
+          <p className="text-black/80 mb-8">Trusted by visitors from Singapore and around the world.</p>
           <Link to="/book-now">
             <Button className="bg-black hover:bg-gray-900 text-white font-semibold px-8 py-6 text-lg">
               Book Now →

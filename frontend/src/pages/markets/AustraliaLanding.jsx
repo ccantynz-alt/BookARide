@@ -122,25 +122,29 @@ const AustraliaLanding = () => {
         </div>
       </section>
 
-      {/* Testimonials */}
+      {/* Reviews */}
       <section className="py-16 bg-gray-900 text-white">
         <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center mb-12">What Fellow Aussies Say</h2>
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              { name: 'Sarah M.', location: 'Sydney', text: 'Brilliant service! Driver was waiting for us even though our flight was delayed. Made our NZ trip start perfectly.' },
-              { name: 'James T.', location: 'Melbourne', text: 'Used them for our whole South Island trip. Professional, punctual, and the prices were very reasonable.' },
-              { name: 'Emma & Family', location: 'Brisbane', text: 'Travelling with kids is stressful enough. These guys made the airport transfer so easy. Highly recommend!' },
-            ].map((review, idx) => (
-              <div key={idx} className="bg-white/10 p-6 rounded-xl">
-                <div className="flex gap-1 mb-4">
-                  {[...Array(5)].map((_, i) => <Star key={i} className="w-5 h-5 fill-gold text-gold" />)}
-                </div>
-                <p className="text-white/90 mb-4">"{review.text}"</p>
-                <p className="font-semibold">{review.name}</p>
-                <p className="text-sm text-white/60">{review.location}, Australia</p>
+          <div className="max-w-md mx-auto text-center">
+            <h2 className="text-3xl font-bold text-center mb-8">What Our Customers Say</h2>
+            <div className="bg-white/10 backdrop-blur-md border border-gold/20 rounded-2xl p-8">
+              <div className="flex items-center justify-center gap-2 mb-4">
+                <img src="https://www.google.com/favicon.ico" alt="Google" className="w-8 h-8" loading="lazy" />
+                <span className="text-xl font-bold text-white">Google Reviews</span>
               </div>
-            ))}
+              <div className="flex justify-center mb-4">
+                {[1, 2, 3, 4, 5].map((i) => <Star key={i} className="w-6 h-6 text-gold fill-gold" />)}
+              </div>
+              <p className="text-white/80 mb-6">Read verified reviews from our customers on Google.</p>
+              <a
+                href="https://www.google.com/search?q=book+a+ride+nz+auckland+reviews"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 bg-gold hover:bg-gold/90 text-black font-semibold px-8 py-3 rounded-lg transition-all duration-200 shadow-lg"
+              >
+                See Our Reviews on Google
+              </a>
+            </div>
           </div>
         </div>
       </section>
@@ -150,7 +154,7 @@ const AustraliaLanding = () => {
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl font-bold text-black mb-4">Ready to Book Your NZ Transfer?</h2>
           <p className="text-black/80 mb-8 max-w-2xl mx-auto">
-            Join thousands of Australian visitors who trust us for their New Zealand airport transfers.
+            Trusted by visitors from Australia and around the world for New Zealand airport transfers.
           </p>
           <Link to="/book-now">
             <Button className="bg-black hover:bg-gray-900 text-white font-semibold px-8 py-6 text-lg">

@@ -20,7 +20,6 @@ export const HotelPage = () => {
     'Door-to-door service',
     'Meet & greet at hotel lobby',
     'Professional, licensed drivers',
-    'Flight tracking included',
     'Luggage assistance',
     'Fixed price - no surprises',
     '24/7 service available',

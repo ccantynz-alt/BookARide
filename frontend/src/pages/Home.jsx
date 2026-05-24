@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { ArrowRight, Plane, Briefcase, MapPin, Calendar, Star, Check, Shield, Clock, Award, Users, Sparkles, DollarSign } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
-import { services, testimonials, howItWorksSteps } from '../mock';
+import { services, howItWorksSteps } from '../mock';
 import SEO from '../components/SEO';
 import StructuredData from '../components/StructuredData';
 import { HomePageSchema } from '../components/SchemaMarkup';
@@ -13,9 +13,6 @@ import { AnimatedCounter } from '../components/AnimatedCounter';
 import { VehicleGallery } from '../components/VehicleGallery';
 import { TestimonialsCarousel } from '../components/TestimonialsCarousel';
 import TrustBadges from '../components/TrustBadges';
-import { motion } from 'framer-motion';
-import AOS from 'aos';
-import 'aos/dist/aos.css';
 
 const iconMap = {
   plane: Plane,
@@ -26,14 +23,6 @@ const iconMap = {
 
 export const Home = () => {
   const { t } = useTranslation();
-  
-  useEffect(() => {
-    AOS.init({
-      duration: 800,
-      once: true,
-      offset: 100
-    });
-  }, []);
 
   return (
     <div className="min-h-screen bg-white">
@@ -56,10 +45,12 @@ export const Home = () => {
           {/* Professional airport image - positioned on right */}
           <div className="absolute right-0 top-0 w-full lg:w-3/5 h-full">
             <img 
-              src="https://images.unsplash.com/photo-1522199873717-bc67b1a5e32b?auto=compress&cs=tinysrgb&w=1920&q=80" 
-              alt="Professional traveler at Auckland airport departure board - Book A Ride premium shuttle service" 
+              src="https://images.unsplash.com/photo-1522199873717-bc67b1a5e32b?auto=compress&cs=tinysrgb&w=1920&q=80&fm=webp"
+              alt="Professional traveler at Auckland airport departure board - Book A Ride premium shuttle service"
               className="w-full h-full object-cover"
               style={{ objectPosition: 'center center' }}
+              fetchPriority="high"
+              loading="eager"
             />
             {/* Gradient fade from left */}
             <div className="absolute inset-0 bg-gradient-to-r from-black via-black/40 to-transparent" />
@@ -73,22 +64,12 @@ export const Home = () => {
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             
             {/* LEFT SIDE - POWERFUL MESSAGING */}
-            <motion.div
-              initial={{ opacity: 0, x: -50 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.8 }}
-              className="text-left"
-            >
+            <div className="text-left animate-fade-in">
               {/* Premium Badge */}
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: 0.2, duration: 0.6 }}
-                className="inline-flex items-center gap-2 bg-gold/10 border border-gold/30 rounded-full px-4 py-2 mb-6"
-              >
+              <div className="inline-flex items-center gap-2 bg-gold/10 border border-gold/30 rounded-full px-4 py-2 mb-6">
                 <Star className="w-4 h-4 text-gold fill-gold" />
                 <span className="text-gold font-semibold text-sm tracking-wide">★★★★★ 5-STAR RATED</span>
-              </motion.div>
+              </div>
 
               {/* Massive Headline */}
               <h1 className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-black text-white mb-6 leading-tight">
@@ -110,30 +91,21 @@ export const Home = () => {
                   { icon: Check, text: 'Professional Drivers - Licensed & Experienced' },
                   { icon: Check, text: 'Premium Vehicles - Immaculate & Comfortable' },
                   { icon: Check, text: 'Fixed Rates - No Hidden Fees, Ever' },
-                  { icon: Check, text: 'Flight Tracking - We Monitor Your Arrival' }
                 ].map((benefit, index) => (
-                  <motion.div
+                  <div
                     key={index}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.4 + index * 0.1, duration: 0.6 }}
                     className="flex items-center gap-4 group"
                   >
                     <div className="flex-shrink-0 w-8 h-8 bg-gold/20 rounded-full flex items-center justify-center group-hover:bg-gold/30 transition-colors">
                       <benefit.icon className="w-5 h-5 text-gold" strokeWidth={3} />
                     </div>
                     <span className="text-white text-lg font-medium">{benefit.text}</span>
-                  </motion.div>
+                  </div>
                 ))}
               </div>
 
               {/* CTA BUTTONS */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.8, duration: 0.6 }}
-                className="flex flex-col sm:flex-row gap-4"
-              >
+              <div className="flex flex-col sm:flex-row gap-4">
                 <Link to="/book-now" className="flex-1">
                   <Button
                     size="lg"
@@ -156,15 +128,10 @@ export const Home = () => {
                     VIEW SERVICES
                   </Button>
                 </Link>
-              </motion.div>
+              </div>
 
               {/* Trust Indicators */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 1, duration: 0.6 }}
-                className="mt-8 pt-8 border-t border-white/10"
-              >
+              <div className="mt-8 pt-8 border-t border-white/10">
                 <div className="flex flex-wrap items-center gap-8">
                   <div className="flex items-center gap-2">
                     <Shield className="w-5 h-5 text-gold" />
@@ -172,23 +139,18 @@ export const Home = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     <Clock className="w-5 h-5 text-gold" />
-                    <span className="text-white/80 text-sm font-medium">24/7 Support</span>
+                    <span className="text-white/80 text-sm font-medium">24/7 Service</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Users className="w-5 h-5 text-gold" />
-                    <span className="text-white/80 text-sm font-medium">10,000+ Happy Clients</span>
+                    <span className="text-white/80 text-sm font-medium">Trusted by Auckland Locals</span>
                   </div>
                 </div>
-              </motion.div>
-            </motion.div>
+              </div>
+            </div>
 
             {/* RIGHT SIDE - COMPELLING SALES CONTENT */}
-            <motion.div
-              initial={{ opacity: 0, x: 50 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.8, delay: 0.3 }}
-              className="hidden lg:block"
-            >
+            <div className="hidden lg:block">
               <div className="relative">
                 {/* Glowing card effect - enhanced glow */}
                 <div className="absolute -inset-4 bg-gradient-to-br from-gold/30 to-yellow-500/20 rounded-[2rem] blur-2xl animate-pulse" />
@@ -200,7 +162,7 @@ export const Home = () => {
                   <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-white/20 via-transparent to-transparent pointer-events-none" />
                   {/* Main value prop */}
                   <div className="mb-8">
-                    <h3 className="text-3xl font-bold text-white mb-4">Why Thousands Choose Us</h3>
+                    <h3 className="text-3xl font-bold text-white mb-4">Why Customers Choose Us</h3>
                     <p className="text-white/80 text-lg leading-relaxed">
                       New Zealand's most trusted airport transfer service. We don't just drive you—we deliver peace of mind.
                     </p>
@@ -239,42 +201,40 @@ export const Home = () => {
                     </div>
                   </div>
 
-                  {/* Social proof - glass card */}
+                  {/* Google Reviews link */}
                   <div className="bg-white/10 backdrop-blur-xl rounded-xl p-5 border border-white/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-1">
-                        {[...Array(5)].map((_, i) => (
-                          <Star key={i} className="w-5 h-5 text-gold fill-gold" />
-                        ))}
-                      </div>
-                      <span className="text-gold font-bold text-lg">4.9/5</span>
+                    <div className="flex items-center gap-2 mb-3">
+                      <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" loading="lazy" />
+                      <span className="text-white font-bold">Google Reviews</span>
                     </div>
-                    <p className="text-white/90 text-sm italic mb-3">
-                      "Best airport transfer I've ever had in NZ. Professional, on-time, and great value. Highly recommend!"
+                    <p className="text-white/90 text-sm mb-3">
+                      See what real customers say about our airport transfer service.
                     </p>
-                    <p className="text-white/60 text-xs">— Michael T., International Traveller</p>
+                    <a
+                      href="https://www.google.com/search?q=book+a+ride+nz+auckland+reviews"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-gold hover:text-gold/80 text-sm font-semibold"
+                    >
+                      Read our reviews on Google &rarr;
+                    </a>
                   </div>
                 </div>
               </div>
-            </motion.div>
+            </div>
 
           </div>
         </div>
 
         {/* Scroll indicator */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.5, duration: 1 }}
-          className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-20"
-        >
+        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-20">
           <div className="flex flex-col items-center gap-2 animate-bounce">
             <span className="text-white/60 text-sm font-medium tracking-wider">SCROLL TO EXPLORE</span>
             <div className="w-6 h-10 border-2 border-white/30 rounded-full flex justify-center pt-2">
               <div className="w-1 h-3 bg-gold rounded-full animate-pulse" />
             </div>
           </div>
-        </motion.div>
+        </div>
 
       </section>
 
@@ -288,13 +248,13 @@ export const Home = () => {
         
         <div className="container mx-auto px-4 relative z-10">
           <AnimatedSection className="text-center mb-16">
-            <div className="inline-block mb-4" data-aos="zoom-in">
+            <div className="inline-block mb-4">
               <span className="bg-gold/20 backdrop-blur-sm text-gold text-xs font-bold px-4 py-2 rounded-full uppercase tracking-wide border border-gold/30">
                 ⚡ Instant Online Booking Available
               </span>
             </div>
-            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4" data-aos="fade-up">{t('services.title')}</h2>
-            <p className="text-lg text-white/70 max-w-2xl mx-auto" data-aos="fade-up" data-aos-delay="100">
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">{t('services.title')}</h2>
+            <p className="text-lg text-white/70 max-w-2xl mx-auto">
               {t('services.description')}
             </p>
           </AnimatedSection>
@@ -303,7 +263,7 @@ export const Home = () => {
             {services.map((service, index) => {
               const Icon = iconMap[service.icon];
               return (
-                <div key={service.id} data-aos="fade-up" data-aos-delay={index * 100}>
+                <div key={service.id}>
                   {/* Glassmorphism Card */}
                   <div className="h-full bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8 transition-all duration-300 hover:bg-white/10 hover:border-gold/30 hover:shadow-[0_0_30px_rgba(212,175,55,0.15)] group hover:-translate-y-1">
                     <div className="w-16 h-16 bg-gradient-to-br from-gold/20 to-gold/5 backdrop-blur-sm rounded-xl flex items-center justify-center mb-6 group-hover:from-gold group-hover:to-yellow-500 transition-all duration-300 border border-gold/20 group-hover:border-gold">
@@ -379,7 +339,7 @@ export const Home = () => {
                       </div>
                       <div>
                         <h3 className="text-lg font-semibold text-gray-900 mb-2">Secure Online Payments</h3>
-                        <p className="text-gray-600 text-sm">Fast, secure checkout with Stripe. No cash or bank transfer hassles.</p>
+                        <p className="text-gray-600 text-sm">Fast, secure credit/debit card checkout. No cash or bank transfer hassles.</p>
                       </div>
                     </div>
                   </div>
@@ -536,33 +496,24 @@ export const Home = () => {
         </div>
       </section>
 
-      {/* Testimonials */}
+      {/* Customer Reviews */}
       <section className="py-24 bg-white">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
+          <div className="text-center">
             <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">What Our Customers Say</h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Don't just take our word for it
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto mb-8">
+              See what real customers think about our service
             </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-            {testimonials.map((testimonial) => (
-              <Card key={testimonial.id} className="border-2 border-gray-200 hover:border-gold hover:shadow-xl transition-all duration-200">
-                <CardContent className="p-8">
-                  <div className="flex mb-6">
-                    {[...Array(testimonial.rating)].map((_, i) => (
-                      <Star key={i} className="w-5 h-5 text-gold fill-gold" />
-                    ))}
-                  </div>
-                  <p className="text-gray-700 mb-6 italic leading-relaxed">"{testimonial.content}"</p>
-                  <div className="border-t border-gray-200 pt-4">
-                    <div className="font-semibold text-gray-900">{testimonial.name}</div>
-                    <div className="text-sm text-gray-600 mt-1">{testimonial.role}</div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+            <a
+              href="https://www.google.com/search?q=book+a+ride+nz+auckland+reviews"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 bg-gold hover:bg-gold/90 text-black font-semibold px-8 py-3 rounded-lg transition-all duration-200 shadow-lg"
+            >
+              <Star className="w-5 h-5 fill-current" />
+              Read Our Reviews on Google
+              <ArrowRight className="w-4 h-4" />
+            </a>
           </div>
         </div>
       </section>
@@ -579,7 +530,7 @@ export const Home = () => {
           <p className="text-xl text-white/80 mb-12 max-w-2xl mx-auto">
             Get in touch today and let us take care of your transportation needs.
           </p>
-          <Link to="/contact">
+          <Link to="/book-now">
             <Button size="lg" className="bg-gold hover:bg-gold/90 text-black font-semibold px-10 py-6 text-base transition-all duration-200 shadow-lg">
               Book Now
               <ArrowRight className="ml-2 w-5 h-5" />

@@ -14,11 +14,6 @@ const SharedRidePage = () => {
     "provider": {
       "@type": "LocalBusiness",
       "name": "Book A Ride NZ",
-      "aggregateRating": {
-        "@type": "AggregateRating",
-        "ratingValue": "4.9",
-        "reviewCount": "2847"
-      }
     },
     "areaServed": { "@type": "City", "name": "Auckland" },
     "offers": {
@@ -132,9 +127,9 @@ const SharedRidePage = () => {
                     Book Shared Ride
                   </Button>
                 </Link>
-                <Link to="/shared-shuttle">
+                <Link to="/book-now">
                   <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10 px-8 py-6 text-lg">
-                    View Shared Shuttle
+                    Book Now
                   </Button>
                 </Link>
               </div>

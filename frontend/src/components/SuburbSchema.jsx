@@ -11,7 +11,6 @@ const SuburbSchema = ({ suburb }) => {
       "@type": "LocalBusiness",
       "name": siteConfig.siteName,
       "image": `${siteConfig.siteUrl}/logo.png`,
-      "telephone": siteConfig.phone,
       "email": siteConfig.email,
       "address": {
         "@type": "PostalAddress",
@@ -34,7 +33,7 @@ const SuburbSchema = ({ suburb }) => {
       "price": suburb.price,
       "priceCurrency": "NZD",
       "availability": "https://schema.org/InStock",
-      "priceValidUntil": "2025-12-31"
+      "priceValidUntil": "2026-12-31"
     }
   };
 

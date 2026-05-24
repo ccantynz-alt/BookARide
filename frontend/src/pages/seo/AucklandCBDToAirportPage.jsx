@@ -43,11 +43,6 @@ const AucklandCBDToAirportPage = () => {
     "provider": {
       "@type": "LocalBusiness",
       "name": "Book A Ride NZ",
-      "aggregateRating": {
-        "@type": "AggregateRating",
-        "ratingValue": "4.9",
-        "reviewCount": "2847"
-      }
     }
   };
 

@@ -1,8 +1,11 @@
 import React from 'react';
 
 /**
- * Catches runtime errors in the admin dashboard so we see the real error
- * instead of a white screen (e.g. "Cannot access 'mr' before initialization").
+ * Catches runtime errors in the admin dashboard so we show a recovery UI
+ * instead of a white screen.
+ *
+ * Note: ErrorBoundary must be a class component — React requires it.
+ * Stack traces are logged to console only, never shown in the UI.
  */
 class AdminErrorBoundary extends React.Component {
   state = { error: null, errorInfo: null };
@@ -22,62 +25,28 @@ class AdminErrorBoundary extends React.Component {
 
   render() {
     if (this.state.error) {
-      const msg = this.state.error?.message || String(this.state.error);
-      const stack = this.state.errorInfo?.componentStack || '';
-
       return (
-        <div style={{
-          minHeight: '100vh',
-          background: '#0f172a',
-          color: '#e2e8f0',
-          padding: '2rem',
-          fontFamily: 'system-ui, sans-serif'
-        }}>
-          <div style={{ maxWidth: '640px', margin: '0 auto' }}>
-            <h1 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>
-              Admin dashboard error
+        <div className="min-h-screen bg-slate-900 text-slate-200 p-8 font-sans flex items-center justify-center">
+          <div className="max-w-lg text-center">
+            <div className="text-5xl mb-4">⚠️</div>
+            <h1 className="text-xl font-bold mb-3">
+              Dashboard error
             </h1>
-            <p style={{ color: '#f87171', marginBottom: '1rem', wordBreak: 'break-word' }}>
-              {msg}
+            <p className="text-slate-400 mb-6 text-sm leading-relaxed">
+              The admin dashboard ran into a problem. Try again, or go back
+              to the login page to start fresh.
             </p>
-            {stack && (
-              <pre style={{
-                fontSize: '0.75rem',
-                background: '#1e293b',
-                padding: '1rem',
-                overflow: 'auto',
-                borderRadius: '6px',
-                marginBottom: '1rem',
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-word'
-              }}>
-                {stack}
-              </pre>
-            )}
-            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <div className="flex gap-3 justify-center flex-wrap">
               <button
                 type="button"
                 onClick={this.handleRetry}
-                style={{
-                  padding: '0.5rem 1rem',
-                  background: '#3b82f6',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer'
-                }}
+                className="px-5 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg cursor-pointer transition-colors font-medium"
               >
                 Try again
               </button>
               <a
                 href="/admin/login"
-                style={{
-                  padding: '0.5rem 1rem',
-                  background: '#334155',
-                  color: '#e2e8f0',
-                  borderRadius: '6px',
-                  textDecoration: 'none'
-                }}
+                className="px-5 py-2.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg no-underline transition-colors font-medium inline-block"
               >
                 Back to login
               </a>

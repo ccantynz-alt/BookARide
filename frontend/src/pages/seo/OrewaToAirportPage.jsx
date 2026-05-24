@@ -24,7 +24,7 @@ export const OrewaToAirportPage = () => {
     <div className="min-h-screen bg-white">
       <Helmet>
         <title>Orewa to Auckland Airport Shuttle | Get Instant Quote | Private Transfers | BookaRide</title>
-        <meta name="description" content="Private shuttle from Orewa to Auckland Airport with instant online quotes. Door-to-door service, flight tracking, 24/7 availability. Book your Orewa airport transfer online instantly." />
+        <meta name="description" content="Private shuttle from Orewa to Auckland Airport with instant online quotes. Door-to-door service, 24/7 availability. Book your Orewa airport transfer online instantly." />
         <meta name="keywords" content="orewa to auckland airport, orewa airport shuttle, orewa airport transfer, orewa to airport taxi" />
         <link rel="canonical" href="https://bookaride.co.nz/orewa-to-auckland-airport" />
         <script type="application/ld+json">{JSON.stringify(schema)}</script>
@@ -137,7 +137,7 @@ export const OrewaToAirportPage = () => {
               { icon: Clock, title: 'On-Time Guarantee', desc: 'We monitor your flight and adjust pickup times automatically' },
               { icon: Car, title: 'Private Vehicle', desc: 'No sharing - just you and your group in a clean, comfortable vehicle' },
               { icon: Shield, title: 'Transparent Pricing', desc: 'Instant quote based on distance. No surge pricing, ever.' },
-              { icon: Star, title: '4.9★ Rated', desc: 'Trusted by hundreds of Orewa residents' },
+              { icon: Star, title: 'Highly Rated', desc: 'Trusted by Orewa residents' },
             ].map((item, idx) => (
               <Card key={idx}>
                 <CardContent className="p-6 text-center">

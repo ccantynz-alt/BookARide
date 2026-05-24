@@ -3,8 +3,6 @@ import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent } from '../../components/ui/card';
-import { Header } from '../../components/Header';
-import { Footer } from '../../components/Footer';
 import { 
   Plane, Clock, MapPin, Users, Shield, Star, CheckCircle, 
   Phone, Car, Globe, CreditCard, Calendar, ArrowRight 
@@ -78,7 +76,7 @@ const AucklandAirportShuttle = () => {
     'description': 'Auckland\'s premier airport shuttle service. Door-to-door transfers to and from Auckland Airport. Available 24/7.',
     'url': 'https://bookaride.co.nz/auckland-airport-shuttle',
     
-    'email': 'bookings@bookaride.co.nz',
+    'email': 'info@bookaride.co.nz',
     'address': {
       '@type': 'PostalAddress',
       'addressLocality': 'Auckland',
@@ -103,11 +101,6 @@ const AucklandAirportShuttle = () => {
       'opens': '00:00',
       'closes': '23:59'
     },
-    'aggregateRating': {
-      '@type': 'AggregateRating',
-      'ratingValue': '4.9',
-      'reviewCount': '2500'
-    }
   };
 
   // Service Schema
@@ -165,8 +158,6 @@ const AucklandAirportShuttle = () => {
         <script type="application/ld+json">{JSON.stringify(serviceSchema)}</script>
       </Helmet>
 
-      <Header />
-
       {/* Hero Section */}
       <section className="relative bg-gradient-to-br from-black via-gray-900 to-black text-white py-20">
         <div className="absolute inset-0 bg-gradient-to-br from-black/90 via-gray-900/80 to-black/90"></div>
@@ -211,7 +202,7 @@ const AucklandAirportShuttle = () => {
             </div>
             <div className="flex items-center gap-2">
               <Star className="w-5 h-5 text-gold fill-gold" />
-              <span className="font-medium">4.9/5 Average Rating</span>
+              <span className="font-medium">Highly Rated Service</span>
             </div>
             <div className="flex items-center gap-2">
               <Shield className="w-5 h-5 text-blue-500" />
@@ -348,7 +339,7 @@ const AucklandAirportShuttle = () => {
             Ready to Book Your Auckland Airport Shuttle?
           </h2>
           <p className="text-black/80 mb-8 text-lg">
-            Join thousands of satisfied customers. Book your airport transfer today!
+            Book your airport transfer today! Reliable, professional, always on time.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link to="/book-now">
@@ -365,7 +356,6 @@ const AucklandAirportShuttle = () => {
         </div>
       </section>
 
-      <Footer />
     </div>
   );
 };

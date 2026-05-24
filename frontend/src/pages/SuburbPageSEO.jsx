@@ -155,7 +155,7 @@ export const SuburbPageSEO = () => {
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle className="w-5 h-5 text-green-600 mt-1 flex-shrink-0" />
-                  <span><strong>Flight Tracking:</strong> We monitor your flight status for delays or early arrivals</span>
+                  <span></span>
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle className="w-5 h-5 text-green-600 mt-1 flex-shrink-0" />
@@ -306,7 +306,7 @@ export const SuburbPageSEO = () => {
             Book Your {suburb.name} Airport Shuttle Today
           </h2>
           <p className="text-xl mb-8 max-w-2xl mx-auto">
-            Join thousands of satisfied customers who trust us for their {suburb.name} to Auckland Airport transfers
+            Trust us for your {suburb.name} to Auckland Airport transfer. Reliable, professional, always on time.
           </p>
           <Button 
             size="lg"

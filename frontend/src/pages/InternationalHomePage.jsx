@@ -109,18 +109,6 @@ const InternationalHomePage = () => {
 
             <Card>
               <CardContent className="p-6 text-center">
-                <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Plane className="w-8 h-8 text-purple-600" />
-                </div>
-                <h3 className="font-bold text-lg mb-2">Flight Tracking</h3>
-                <p className="text-gray-600 text-sm">
-                  We monitor your flight arrival. No extra charge for flight delays.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6 text-center">
                 <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Shield className="w-8 h-8 text-yellow-600" />
                 </div>
@@ -253,7 +241,7 @@ const InternationalHomePage = () => {
                 <Star key={i} className="w-6 h-6 fill-yellow-400 text-yellow-400" />
               ))}
             </div>
-            <p className="text-gray-600">4.9/5 average rating from 2,500+ international guests</p>
+            <p className="text-gray-600">Trusted by international guests visiting New Zealand</p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">

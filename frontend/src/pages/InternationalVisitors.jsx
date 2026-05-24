@@ -60,7 +60,7 @@ const InternationalVisitors = () => {
       greeting: 'Welcome',
       link: '/visitors/usa',
       image: 'https://images.unsplash.com/photo-1485738422979-f5c462d49f74?auto=format&fit=crop&w=600&q=80',
-      features: ['USD pricing available', 'Flight tracking', '24/7 support'],
+      features: ['USD pricing available', '24/7 support'],
       visitors: '350,000+ annually'
     },
     {
@@ -137,7 +137,6 @@ const InternationalVisitors = () => {
     { name: 'WeChat Pay', icon: '📱', countries: 'China' },
     { name: 'Visa/Mastercard', icon: '💳', countries: 'Worldwide' },
     { name: 'PayPal', icon: '🅿️', countries: 'Worldwide' },
-    { name: 'Afterpay', icon: '🛒', countries: 'AU/NZ' },
     { name: 'Bank Transfer', icon: '🏦', countries: 'Worldwide' }
   ];
 
@@ -331,14 +330,6 @@ const InternationalVisitors = () => {
                 <MessageCircle className="w-12 h-12 text-gold mx-auto mb-4" />
                 <h3 className="text-xl font-bold text-gray-900 mb-2">Multilingual Support</h3>
                 <p className="text-gray-600">Customer service available in Chinese, Japanese, Korean, French, German, and more. Communicate comfortably in your language.</p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-2 border-gold/30 hover:border-gold transition-colors">
-              <CardContent className="p-8 text-center">
-                <Plane className="w-12 h-12 text-gold mx-auto mb-4" />
-                <h3 className="text-xl font-bold text-gray-900 mb-2">Flight Tracking</h3>
-                <p className="text-gray-600">We monitor your incoming flight in real-time. Delayed? We'll adjust your pickup automatically - no stress, no extra calls.</p>
               </CardContent>
             </Card>
 

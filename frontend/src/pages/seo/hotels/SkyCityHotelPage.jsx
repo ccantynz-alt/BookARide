@@ -10,7 +10,6 @@ import PageBreadcrumb from '../../../components/PageBreadcrumb';
 const SkyCityHotelPage = () => {
   const features = [
     { icon: DollarSign, title: 'Fixed Price', desc: 'No surge pricing ever' },
-    { icon: Clock, title: 'Flight Tracking', desc: 'We monitor your flight' },
     { icon: Shield, title: 'Professional', desc: 'Licensed & insured' },
     { icon: Users, title: 'Any Group Size', desc: '1-11 passengers' },
   ];
@@ -70,7 +69,6 @@ const SkyCityHotelPage = () => {
             <div className="mt-8 flex flex-wrap justify-center gap-6 text-sm text-gray-400">
               <span className="flex items-center gap-1"><Check className="w-4 h-4 text-green-500" /> Hotel lobby pickup</span>
               <span className="flex items-center gap-1"><Check className="w-4 h-4 text-green-500" /> Luggage assistance</span>
-              <span className="flex items-center gap-1"><Check className="w-4 h-4 text-green-500" /> Flight tracking</span>
             </div>
           </motion.div>
         </div>

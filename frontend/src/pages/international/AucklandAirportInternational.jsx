@@ -206,7 +206,7 @@ const AucklandAirportInternational = () => {
       <div className="bg-gradient-to-r from-gray-900 to-gray-800 text-white py-16">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl font-bold mb-4">Ready to Book Your Auckland Airport Transfer?</h2>
-          <p className="text-xl text-gray-300 mb-8">Join thousands of international travelers who trust us for reliable, professional airport transfers in New Zealand.</p>
+          <p className="text-xl text-gray-300 mb-8">Trust us for reliable, professional airport transfers in New Zealand.</p>
           <Link to="/book-now">
             <Button className="bg-gold hover:bg-gold/90 text-black text-lg px-12 py-6">
               Book Now - Instant Confirmation

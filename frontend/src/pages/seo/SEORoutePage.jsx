@@ -3,8 +3,6 @@ import { useLocation, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent } from '../../components/ui/card';
-import { Header } from '../../components/Header';
-import { Footer } from '../../components/Footer';
 import { 
   Clock, MapPin, DollarSign, Car, Calendar, Phone,
   CheckCircle, Star, ArrowRight, Shield, Users, Plane,
@@ -17,6 +15,7 @@ const SEORoutePage = () => {
   // Extract route slug from URL path (e.g., /auckland-airport-to-whangaparaoa -> auckland-airport-to-whangaparaoa)
   const routeSlug = location.pathname.replace('/', '');
   const route = routeData[routeSlug];
+  const canonicalUrl = `https://www.bookaride.co.nz${location.pathname}`;
   
   if (!route) {
     return (
@@ -78,20 +77,18 @@ const SEORoutePage = () => {
         <title>{route.title} | BookaRide NZ</title>
         <meta name="description" content={route.metaDescription} />
         <meta name="keywords" content={`${route.suburb} airport shuttle, ${route.suburb} airport transfer, Auckland airport to ${route.suburb}, ${route.region} airport shuttle`} />
-        <link rel="canonical" href={`https://bookaride.co.nz/routes/${route.slug}`} />
-        
+        <link rel="canonical" href={canonicalUrl} />
+
         {/* Open Graph */}
         <meta property="og:title" content={route.title} />
         <meta property="og:description" content={route.metaDescription} />
         <meta property="og:type" content="website" />
-        <meta property="og:url" content={`https://bookaride.co.nz/routes/${route.slug}`} />
+        <meta property="og:url" content={canonicalUrl} />
         
         {/* Schema Markup */}
         <script type="application/ld+json">{JSON.stringify(schemaMarkup)}</script>
         <script type="application/ld+json">{JSON.stringify(faqSchema)}</script>
       </Helmet>
-
-      <Header />
 
       {/* Hero Section */}
       <section className="relative bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white py-20">
@@ -351,7 +348,6 @@ const SEORoutePage = () => {
         </div>
       </section>
 
-      <Footer />
     </div>
   );
 };
