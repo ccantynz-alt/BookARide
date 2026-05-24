@@ -4,14 +4,16 @@
 
 BookARide NZ is a full-stack airport shuttle / private transfer booking platform serving New Zealand.
 
-- **Backend**: FastAPI (Python 3.11+), monolithic `backend/server.py` (~14,000 lines)
-- **Frontend**: React 18 (CRA + CRACO), Tailwind CSS, located in `frontend/`
-- **Database**: Neon PostgreSQL (NOT MongoDB — fully migrated)
+- **Frontend**: React 18 + Vite, Tailwind CSS, located in `frontend/`
+- **API**: Vercel serverless functions (Node.js), located in `api/`
+- **Database**: Neon PostgreSQL via `@neondatabase/serverless` (NOT MongoDB — fully migrated)
 - **Email**: Mailgun only (NOT SendGrid, NOT SMTP)
 - **Payments**: Stripe
 - **SMS**: Twilio
 - **Maps**: Google Maps API (NOT Geoapify)
-- **Hosting**: Frontend on Vercel, Backend on Render
+- **Hosting**: Everything on Vercel (frontend + serverless API)
+
+**IMPORTANT**: The `backend/` directory contains DEAD CODE from the old Python/Render architecture. It is NOT deployed and does NOT run in production. All active API endpoints are in `api/` as Vercel serverless functions.
 
 ## LOCKED DECISIONS — DO NOT CHANGE
 
@@ -19,26 +21,32 @@ These technology choices are final. Do not introduce alternatives, fallbacks, or
 
 ### Database: Neon PostgreSQL ONLY
 - Connection via `DATABASE_URL` env var
-- Compatibility layer: `backend/database.py` (NeonDatabase class — mimics Motor API over PostgreSQL JSONB)
-- Schema: `backend/schema.sql`
+- Database operations: `api/_lib/db.js` (uses `@neondatabase/serverless` for HTTP connections)
 - **NEVER** add `motor`, `pymongo`, `MongoClient`, or any MongoDB driver
 - **NEVER** reference `MONGO_URL`, `DB_NAME`, or `mongodb://` anything
+- Note: `backend/database.py` is dead code from the old architecture
 
 ### Email: Mailgun ONLY
 - Config: `MAILGUN_API_KEY` + `MAILGUN_DOMAIN` env vars
-- Sender module: `backend/email_sender.py` (Mailgun HTTP API only)
+- Email sending: `api/_lib/mailgun.js` (Mailgun HTTP API only)
 - **NEVER** add SendGrid, `smtplib`, `MIMEMultipart`, `MIMEText`, or SMTP code
 - **NEVER** add `SMTP_USER`, `SMTP_PASS`, `SMTP_HOST`, `SMTP_PORT` env vars
+- Note: `backend/email_sender.py` is dead code from the old architecture
 
-### Frontend: CRA + CRACO (NOT Vite, NOT Next.js)
-- Build: `craco build` (NOT `react-scripts build`)
-- The `@` alias is configured in `craco.config.js` → resolves to `src/`
+### Frontend: Vite + React (NOT CRA, NOT Next.js)
+- Build: `vite build` (output to `build/` directory)
+- Dev server: `vite` (port 3000, instant hot reload)
+- The `@` alias is configured in `vite.config.js` → resolves to `src/`
+- Environment variables use `VITE_` prefix (e.g., `VITE_BACKEND_URL`)
+- **NEVER** use `process.env.REACT_APP_*` — use `import.meta.env.VITE_*`
+- **NEVER** migrate to Next.js unless explicitly asked
 - Helmet: Use `react-helmet-async` (official). NEVER use `@vuer-ai/react-helmet-async`.
-- **NEVER** migrate to Vite or Next.js unless explicitly asked
 
 ### Maps: Google Maps API ONLY (No Geoapify)
-- Distance: `_get_distance_google()` in `backend/server.py`
-- Config: `GOOGLE_MAPS_API_KEY` env var
+- Distance calculation: Server-side via `api/_lib/google-maps.js`
+- Autocomplete: Server-side via `api/places/autocomplete.js`
+- Config: `GOOGLE_MAPS_API_KEY` env var (set in Vercel)
+- **NEVER** load Google Maps JS in the browser — server-side only
 - **NEVER** add Geoapify API calls, `GEOAPIFY_API_KEY`, or `geoapify.com` references
 
 ### No Facebook Integration
@@ -57,49 +65,59 @@ Before making ANY change, verify:
 5. Does my change remove or modify an existing import? **Verify nothing else uses it.**
 6. Am I adding a new JSX component usage? **Add the import statement too.**
 7. Does my build pass with `cd frontend && npm run build`? **Test before committing.**
+8. Am I working in the `backend/` directory? **STOP — that's dead code, work in `api/` instead.**
+9. Am I using `process.env.REACT_APP_*`? **STOP — use `import.meta.env.VITE_*` instead.**
 
 ## Architecture
 
+**Current (as of 2026-04-07): Vercel Frontend + Vercel Serverless API**
+
+The site is a single Vercel deployment with:
+- **Frontend**: React 18 + Vite, served from `frontend/build/` (built from `frontend/src/`)
+- **API**: Vercel serverless functions in the root `api/` directory (Node.js). All `/api/*` routes.
+- **Database**: Neon PostgreSQL via `@neondatabase/serverless` (HTTP, no TCP pool)
+- **Deployment config**: Root `vercel.json` builds the frontend and deploys the `api/` folder as serverless functions
+
+**The `backend/` directory is DEAD CODE.** It contains the old Python FastAPI server that ran on Render. It is no longer deployed or used at runtime.
+
 | Layer      | Tech                              | Location                  |
 |------------|-----------------------------------|---------------------------|
-| Frontend   | React 18, CRA + CRACO, Tailwind  | `frontend/`               |
-| Backend    | FastAPI, Uvicorn, Python 3.11+    | `backend/`                |
-| Database   | Neon PostgreSQL via asyncpg       | `backend/database.py`     |
-| Email      | Mailgun API                       | `backend/email_sender.py` |
-| Payments   | Stripe                            | `backend/stripe_checkout/`|
+| Frontend   | React 18, Vite, Tailwind          | `frontend/`               |
+| API        | Vercel serverless (Node.js)       | `api/`                    |
+| Database   | Neon PostgreSQL via HTTP          | `api/_lib/db.js`          |
+| Email      | Mailgun API                       | `api/_lib/mailgun.js`     |
+| Payments   | Stripe                            | `api/payment/`            |
 | SMS        | Twilio                            | via env vars              |
-| Maps       | Google Maps API                   | via env vars              |
-
-### Backend Structure
-- Main server: `backend/server.py` (~14,000 lines, monolithic)
-- Database layer: `backend/database.py` — NeonDatabase class translating MongoDB-style queries to PostgreSQL JSONB
-- The `db` global is initialized in the startup event from `DATABASE_URL`
-- Route files: `backend/routes_*.py` (bulk, customers, drivers, vehicles, analytics, settings, templates)
+| Maps       | Google Maps API                   | `api/_lib/google-maps.js` |
 
 ## Services
 
 | Service     | Command                          | Port  | Notes                    |
 |-------------|----------------------------------|-------|--------------------------|
-| **Backend** | `cd backend && python3 start.py` | 10000 | FastAPI/Uvicorn          |
-| **Frontend**| `cd frontend && npm start`       | 3000  | CRA via CRACO            |
-| **Build**   | `cd frontend && npm run build`   |       | Must use this, not react-scripts directly |
+| **Frontend**| `cd frontend && npm run dev`     | 3000  | Vite dev server          |
+| **Build**   | `cd frontend && npm run build`   |       | Vite build (fast)        |
+| **API Local**| Vercel CLI: `vercel dev`        | 3000  | Local serverless testing |
+
+**Note**: The old `backend/` Python server commands are no longer used.
 
 ## Environment Variables
 
-### Required (Backend)
+**All credentials are configured in Vercel's Environment Variables settings — NOT in a `.env` file in the repo.**
+
+### Required (Vercel)
 - `DATABASE_URL` — Neon PostgreSQL connection string
 - `JWT_SECRET_KEY`
 - `MAILGUN_API_KEY` + `MAILGUN_DOMAIN`
 
-### Optional (for full functionality)
+### Optional (for full functionality, all set in Vercel)
 - `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET`
 - `TWILIO_ACCOUNT_SID` + `TWILIO_AUTH_TOKEN` + `TWILIO_PHONE_NUMBER`
 - `GOOGLE_MAPS_API_KEY`
 - `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` (OAuth)
-- `GOOGLE_SERVICE_ACCOUNT_JSON` (Calendar)
+- `ANTHROPIC_API_KEY` (for AI chatbot and email support)
 
-### Frontend (`frontend/.env`)
-- `REACT_APP_BACKEND_URL=http://localhost:10000`
+### Frontend (`frontend/.env.local` for local dev only)
+- `VITE_BACKEND_URL` — empty string for production (same-origin /api/* calls)
 
 ## History of Production Breaks
 
