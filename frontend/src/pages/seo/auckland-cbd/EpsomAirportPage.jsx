@@ -10,7 +10,6 @@ import PageBreadcrumb from '../../../components/PageBreadcrumb';
 const EpsomAirportPage = () => {
   const features = [
     { icon: DollarSign, title: 'Fixed Price', desc: 'No surge pricing ever' },
-    { icon: Clock, title: 'Flight Tracking', desc: 'We monitor your flight' },
     { icon: Shield, title: 'Professional', desc: 'Licensed & insured drivers' },
     { icon: Users, title: 'Any Group Size', desc: '1-11 passengers' },
   ];

@@ -50,7 +50,7 @@ export const Contact = () => {
       setFormData({ name: '', email: '', phone: '', message: '' });
     } catch (err) {
       toast.error("Failed to send message", {
-        description: "Please try again or email us directly at bookings@bookaride.co.nz",
+        description: "Please try again or email us directly at info@bookaride.co.nz",
       });
     } finally {
       setSubmitting(false);

@@ -89,7 +89,7 @@ export const TransportServiceSchema = ({ route, price, duration }) => {
     "@context": "https://schema.org",
     "@type": "TaxiService",
     "name": `BookaRide ${route.from} to ${route.to} Transfer`,
-    "description": `Private airport transfer from ${route.from} to ${route.to}. Fixed price, flight tracking included.`,
+    "description": `Private airport transfer from ${route.from} to ${route.to}. Fixed price included.`,
     "provider": {
       "@type": "LocalBusiness",
       "name": "BookaRide NZ"

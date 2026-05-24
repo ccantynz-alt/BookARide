@@ -71,7 +71,6 @@ const PrivacyPolicy = () => {
             <ul className="list-disc pl-6 space-y-2">
               <li><strong>Payment processors (Stripe):</strong> Transaction confirmation, payment status</li>
               <li><strong>Google Maps API:</strong> Distance calculations, route information</li>
-              <li><strong>Flight tracking services:</strong> Flight arrival/departure times, delays</li>
               <li><strong>Analytics providers:</strong> Aggregated usage statistics</li>
             </ul>
           </section>

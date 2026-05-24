@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { MapPin, Calendar, Users, DollarSign, Clock, Mail, Phone, User, Wrench, Plane } from 'lucide-react';
+import { MapPin, Calendar, Users, DollarSign, Clock, Mail, Phone, User, Wrench, Plane, CheckCircle } from 'lucide-react';
 import siteConfig from '../config/siteConfig';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -102,6 +102,8 @@ export const BookNow = () => {
     airportFee: 0,
     oversizedLuggageFee: 0,
     passengerFee: 0,
+    fuelSurcharge: 0,
+    fuelSurchargePercent: 0,
     stripeFee: 0,
     subtotal: 0,
     totalPrice: 0,
@@ -174,6 +176,8 @@ export const BookNow = () => {
         airportFee: data.airportFee,
         oversizedLuggageFee: data.oversizedLuggageFee,
         passengerFee: data.passengerFee,
+        fuelSurcharge: data.fuelSurcharge || 0,
+        fuelSurchargePercent: data.fuelSurchargePercent || 0,
         stripeFee: data.stripeFee ?? Math.round(((data.subtotal * 0.029) + 0.30) * 100) / 100,
         subtotal: data.subtotal,
         totalPrice: data.totalPrice,
@@ -303,29 +307,15 @@ export const BookNow = () => {
       saveCustomerDetails();
 
       try {
-        if (formData.paymentMethod === 'afterpay') {
-          const afterpayResponse = await axios.post(`${API}/afterpay/create-checkout`, {
-            booking_id: booking.id,
-            redirect_confirm_url: `${window.location.origin}/payment-success?method=afterpay`,
-            redirect_cancel_url: `${window.location.origin}/book-now`
-          });
-          if (afterpayResponse.data.redirect_url) {
-            window.location.href = afterpayResponse.data.redirect_url;
-          } else {
-            setIsProcessingPayment(false);
-            toast.error('Unable to redirect to Afterpay');
-          }
+        const checkoutResponse = await axios.post(`${API}/payment/create-checkout`, {
+          booking_id: booking.id,
+          origin_url: window.location.origin
+        });
+        if (checkoutResponse.data?.url) {
+          window.location.href = checkoutResponse.data.url;
         } else {
-          const checkoutResponse = await axios.post(`${API}/payment/create-checkout`, {
-            booking_id: booking.id,
-            origin_url: window.location.origin
-          });
-          if (checkoutResponse.data?.url) {
-            window.location.href = checkoutResponse.data.url;
-          } else {
-            setIsProcessingPayment(false);
-            toast.success(`Booking #${booking.referenceNumber || booking.id?.slice(0, 8)} created! We'll email you a payment link shortly.`);
-          }
+          setIsProcessingPayment(false);
+          toast.success(`Booking #${booking.referenceNumber || booking.id?.slice(0, 8)} created! We'll email you a payment link shortly.`);
         }
       } catch (paymentError) {
         setIsProcessingPayment(false);
@@ -395,9 +385,11 @@ export const BookNow = () => {
       <section className="pt-32 pb-16 bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
         <div className="absolute inset-0">
           <img
-            src="https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=1920&q=80"
+            src="https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=1920&q=80&fm=webp"
             alt="Road trip scenic drive"
             className="w-full h-full object-cover"
+            fetchPriority="high"
+            loading="eager"
           />
           <div className="absolute inset-0 bg-gradient-to-b from-gray-900/70 via-gray-900/60 to-gray-900" />
         </div>
@@ -414,6 +406,30 @@ export const BookNow = () => {
             <p className="text-xl text-white/80">
               Get instant pricing with our live calculator - No hidden fees
             </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Trust Bar — Conversion boosters */}
+      <section className="bg-white border-b border-gray-100">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex flex-wrap items-center justify-center gap-6 md:gap-10 text-sm text-gray-600">
+            <div className="flex items-center gap-2">
+              <CheckCircle className="w-4 h-4 text-green-500" />
+              <span className="font-medium">Fixed Price Guarantee</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <CheckCircle className="w-4 h-4 text-green-500" />
+              <span className="font-medium">Free Cancellation (24hr)</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <CheckCircle className="w-4 h-4 text-green-500" />
+              <span className="font-medium">Flight Monitoring Included</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <CheckCircle className="w-4 h-4 text-green-500" />
+              <span className="font-medium">24/7 Service</span>
+            </div>
           </div>
         </div>
       </section>
@@ -802,21 +818,6 @@ export const BookNow = () => {
                           {promoApplied && <p className="text-xs text-green-600 font-medium">You saved ${promoApplied.discountAmount.toFixed(2)} with {promoApplied.code}!</p>}
                         </div>
 
-                        {/* Payment Method */}
-                        <div className="space-y-2">
-                          <Label>Payment Method</Label>
-                          <div className="flex gap-4">
-                            <label className="flex items-center gap-2 cursor-pointer">
-                              <input type="radio" name="paymentMethod" value="card" checked={formData.paymentMethod === 'card'} onChange={handleChange} className="text-gold focus:ring-gold" />
-                              <span className="text-sm text-gray-700">Credit/Debit Card</span>
-                            </label>
-                            <label className="flex items-center gap-2 cursor-pointer">
-                              <input type="radio" name="paymentMethod" value="afterpay" checked={formData.paymentMethod === 'afterpay'} onChange={handleChange} className="text-gold focus:ring-gold" />
-                              <span className="text-sm text-gray-700">Afterpay</span>
-                            </label>
-                          </div>
-                        </div>
-
                         <div className="space-y-2">
                           <Label htmlFor="notes">Special Requests / Notes</Label>
                           <Textarea id="notes" name="notes" value={formData.notes} onChange={handleChange} placeholder="Any special requirements or notes..." rows={3} className="transition-all duration-200 focus:ring-2 focus:ring-gold" />
@@ -853,14 +854,20 @@ export const BookNow = () => {
                             )}
                           </div>
 
-                          {/* Price Breakdown — customer sees total only, no km rates or per-passenger fees */}
+                          {/* Price Breakdown */}
                           <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm">
                             <div className="flex justify-between">
                               <span className="text-gray-600">Trip fare</span>
                               <span className={`font-medium ${promoApplied ? 'line-through text-gray-400' : ''}`}>
-                                ${pricing.subtotal?.toFixed(2) || pricing.basePrice?.toFixed(2)}
+                                ${(pricing.subtotal - (pricing.fuelSurcharge || 0)).toFixed(2)}
                               </span>
                             </div>
+                            {pricing.fuelSurcharge > 0 && (
+                              <div className="flex justify-between text-amber-700">
+                                <span>Fuel surcharge ({pricing.fuelSurchargePercent}%)</span>
+                                <span>${pricing.fuelSurcharge.toFixed(2)}</span>
+                              </div>
+                            )}
                             {pricing.stripeFee > 0 && (
                               <div className="flex justify-between text-gray-500">
                                 <span>Card processing fee</span>

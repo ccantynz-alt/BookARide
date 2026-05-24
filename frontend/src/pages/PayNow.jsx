@@ -26,9 +26,10 @@ const PayNow = () => {
         origin_url: window.location.origin,
       });
 
-      if (response.data?.url) {
+      const checkoutUrl = response.data?.url || response.data?.checkout_url || response.data?.payment_link;
+      if (checkoutUrl) {
         setStatus('redirecting');
-        window.location.href = response.data.url;
+        window.location.href = checkoutUrl;
       } else {
         setStatus('error');
         setError('Unable to create payment session. Please contact us.');
@@ -86,8 +87,8 @@ const PayNow = () => {
             <p className="text-gray-700 text-lg font-medium">This booking has already been paid</p>
             <p className="text-gray-500 text-sm mt-2">
               If you have questions, contact us at{' '}
-              <a href="mailto:bookings@bookaride.co.nz" className="text-[#D4AF37] underline">
-                bookings@bookaride.co.nz
+              <a href="mailto:info@bookaride.co.nz" className="text-[#D4AF37] underline">
+                info@bookaride.co.nz
               </a>
             </p>
           </div>
@@ -107,8 +108,8 @@ const PayNow = () => {
               </button>
               <p className="text-gray-400 text-xs">
                 Or contact us at{' '}
-                <a href="mailto:bookings@bookaride.co.nz" className="underline">
-                  bookings@bookaride.co.nz
+                <a href="mailto:info@bookaride.co.nz" className="underline">
+                  info@bookaride.co.nz
                 </a>
               </p>
             </div>

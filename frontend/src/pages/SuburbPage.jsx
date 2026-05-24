@@ -27,7 +27,6 @@ export const SuburbPage = () => {
     'Professional, licensed drivers',
     'Clean, comfortable vehicles',
     '24/7 service available',
-    'Flight tracking included',
     'Meet & greet service',
     'Luggage assistance',
     'Child seats available'

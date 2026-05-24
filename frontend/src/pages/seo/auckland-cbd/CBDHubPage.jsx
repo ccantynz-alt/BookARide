@@ -55,7 +55,7 @@ const CBDHubPage = () => {
               Private door-to-door transfers from every Auckland suburb
             </p>
             <p className="text-gray-400 mb-8">
-              Fixed prices • Flight tracking • Professional drivers • 24/7 service
+              Fixed prices • Professional drivers • 24/7 service
             </p>
 
             <Link to="/book-now">
@@ -114,7 +114,6 @@ const CBDHubPage = () => {
               </p>
               <ul>
                 <li><strong>Fixed prices</strong> - No surge pricing, no surprises</li>
-                <li><strong>Flight tracking</strong> - We monitor delays automatically</li>
                 <li><strong>Door-to-door</strong> - From your exact address</li>
                 <li><strong>24/7 service</strong> - Early morning and late night flights covered</li>
               </ul>

@@ -71,6 +71,7 @@ check_mailgun_dns.py
 # Service account keys and credentials (NEVER commit these)
 **/service_account.json
 **/service_account*.json
+*.key
 
 # Backup data files (may contain customer PII)
 backup_*.json
@@ -123,4 +124,8 @@ backend/#*.txt
 *.log
 RUN_LOGS/
 D8_CONTROL/
+
+# GateTest generated reports and memory
+.gatetest/
 .env*.local
+.gatetest/

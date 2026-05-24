@@ -155,7 +155,7 @@ export const SuburbPageSEO = () => {
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle className="w-5 h-5 text-green-600 mt-1 flex-shrink-0" />
-                  <span><strong>Flight Tracking:</strong> We monitor your flight status for delays or early arrivals</span>
+                  <span></span>
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle className="w-5 h-5 text-green-600 mt-1 flex-shrink-0" />

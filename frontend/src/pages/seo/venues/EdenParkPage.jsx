@@ -67,7 +67,6 @@ const EdenParkPage = () => {
             <div className="mt-8 flex flex-wrap justify-center gap-6 text-sm text-gray-400">
               <span className="flex items-center gap-1"><Check className="w-4 h-4 text-green-500" /> No surge pricing</span>
               <span className="flex items-center gap-1"><Check className="w-4 h-4 text-green-500" /> Pre-arranged pickup spot</span>
-              <span className="flex items-center gap-1"><Check className="w-4 h-4 text-green-500" /> Flight tracking</span>
             </div>
           </motion.div>
         </div>

@@ -27,7 +27,6 @@ const SuburbTransferPage = () => {
 
   const features = [
     { icon: DollarSign, title: 'Fixed Price', desc: 'No surge pricing ever' },
-    { icon: Clock, title: 'Flight Tracking', desc: 'We monitor your flight' },
     { icon: Shield, title: 'Professional', desc: 'Licensed & insured' },
     { icon: Car, title: 'Private Transfer', desc: 'No shared rides' },
   ];
@@ -39,7 +38,7 @@ const SuburbTransferPage = () => {
     <div className="min-h-screen bg-white">
       <SEO
         title={`${suburbData.name} to Auckland Airport Transfer | Private Shuttle | BookaRide`}
-        description={`Book your ${suburbData.name} to Auckland Airport private transfer. Door-to-door service, fixed prices, flight tracking. ~${suburbData.duration} to airport. Get instant quote!`}
+        description={`Book your ${suburbData.name} to Auckland Airport private transfer. Door-to-door service, fixed prices. ~${suburbData.duration} to airport. Get instant quote!`}
         keywords={`${suburbData.name} airport transfer, ${suburbData.name} to Auckland Airport, ${suburbData.name} airport shuttle, ${suburbData.name} airport taxi, ${suburbData.keywords?.join(', ')}`}
         canonical={`/${suburb}-to-auckland-airport`}
       />
@@ -109,7 +108,6 @@ const SuburbTransferPage = () => {
 
             <div className="mt-8 flex flex-wrap justify-center gap-6 text-sm text-gray-400">
               <span className="flex items-center gap-1"><Check className="w-4 h-4 text-green-500" /> Free cancellation</span>
-              <span className="flex items-center gap-1"><Check className="w-4 h-4 text-green-500" /> Flight tracking</span>
               <span className="flex items-center gap-1"><Check className="w-4 h-4 text-green-500" /> Meet & greet available</span>
               <span className="flex items-center gap-1"><Check className="w-4 h-4 text-green-500" /> 24/7 service</span>
             </div>
@@ -120,6 +118,9 @@ const SuburbTransferPage = () => {
       {/* Features */}
       <section className="py-16 bg-gray-50">
         <div className="container mx-auto px-4">
+          <h2 className="text-3xl font-bold text-center mb-12">
+            Why Book BookaRide for Your {suburbData.name} Airport Transfer
+          </h2>
           <div className="grid md:grid-cols-4 gap-6">
             {features.map((f, i) => (
               <Card key={i} className="border-0 shadow-lg">
@@ -155,7 +156,6 @@ const SuburbTransferPage = () => {
               <h3>Why Choose BookaRide for Your {suburbData.name} Airport Transfer?</h3>
               <ul>
                 <li><strong>Fixed Pricing</strong> - No surge pricing or hidden fees. The price you see is the price you pay.</li>
-                <li><strong>Flight Tracking</strong> - We monitor your flight and adjust pickup times automatically for delays.</li>
                 <li><strong>Professional Drivers</strong> - Licensed, insured, and experienced local drivers.</li>
                 <li><strong>Door-to-Door Service</strong> - We pick you up from your exact address in {suburbData.name}.</li>
                 <li><strong>24/7 Availability</strong> - Early morning, late night, we're always available.</li>

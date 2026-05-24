@@ -645,11 +645,6 @@ export const Services = () => {
               <h3 className="text-white font-semibold mb-1">Global Payments</h3>
               <p className="text-white/60 text-sm">Alipay, WeChat, PayPal & more</p>
             </div>
-            <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 text-center border border-white/10">
-              <div className="text-3xl mb-2">✈️</div>
-              <h3 className="text-white font-semibold mb-1">Flight Tracking</h3>
-              <p className="text-white/60 text-sm">We monitor your arrival</p>
-            </div>
           </div>
 
           <div className="text-center">

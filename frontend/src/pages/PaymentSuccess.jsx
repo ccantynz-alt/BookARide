@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Check, Loader2, MapPin, Calendar, Clock, Plane, Users } from 'lucide-react';
+import { Check, Loader2, MapPin, Calendar, Clock, Plane, Users, Smartphone } from 'lucide-react';
 import { Card, CardContent } from '../components/ui/card';
 import axios from 'axios';
 import { API } from '../config/api';
@@ -11,21 +11,11 @@ export const PaymentSuccess = () => {
   const [paymentStatus, setPaymentStatus] = useState('checking');
   const [paymentDetails, setPaymentDetails] = useState(null);
   const sessionId = searchParams.get('session_id');
-  const orderToken = searchParams.get('orderToken');
-  const paymentMethod = searchParams.get('method');
-  const status = searchParams.get('status');
   const cancelledRef = React.useRef(false);
 
   useEffect(() => {
     cancelledRef.current = false;
 
-    // Handle Afterpay callback
-    if (paymentMethod === 'afterpay' && orderToken) {
-      handleAfterpayCallback();
-      return () => { cancelledRef.current = true; };
-    }
-
-    // Handle Stripe callback
     if (!sessionId) {
       navigate('/book-now');
       return () => { cancelledRef.current = true; };
@@ -33,32 +23,7 @@ export const PaymentSuccess = () => {
 
     pollPaymentStatus();
     return () => { cancelledRef.current = true; };
-  }, [sessionId, orderToken, paymentMethod]);
-
-  const handleAfterpayCallback = async () => {
-    try {
-      if (status === 'CANCELLED') {
-        setPaymentStatus('cancelled');
-        return;
-      }
-
-      // Capture the Afterpay payment
-      const response = await axios.post(`${API}/afterpay/capture?token=${orderToken}`);
-
-      if (response.data.status === 'APPROVED') {
-        setPaymentStatus('success');
-        setPaymentDetails({
-          payment_method: 'Afterpay',
-          order_id: response.data.order_id
-        });
-      } else {
-        setPaymentStatus('error');
-      }
-    } catch (error) {
-      console.error('Error capturing Afterpay payment:', error);
-      setPaymentStatus('error');
-    }
-  };
+  }, [sessionId]);
 
   const pollPaymentStatus = async (attempts = 0) => {
     if (cancelledRef.current) return;
@@ -75,7 +40,9 @@ export const PaymentSuccess = () => {
           setPaymentDetails(lastCheck.data);
           return;
         }
-      } catch {}
+      } catch (err) {
+        console.error('Final payment status check failed:', err);
+      }
       if (!cancelledRef.current) setPaymentStatus('timeout');
       return;
     }
@@ -235,6 +202,31 @@ export const PaymentSuccess = () => {
                       </p>
                     </div>
                   )}
+                  {/* eSIM Upsell */}
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6 mb-8">
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                        <Smartphone className="w-6 h-6 text-blue-600" />
+                      </div>
+                      <div className="text-left">
+                        <h3 className="font-bold text-gray-900 mb-1">Need Mobile Data When You Land?</h3>
+                        <p className="text-gray-600 text-sm mb-3">
+                          Get an eSIM for New Zealand — instant mobile data, no physical SIM card needed.
+                          Activate before your flight and stay connected from the moment you touch down.
+                        </p>
+                        <a
+                          href="https://zoobicon.com"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2.5 rounded-lg transition-colors text-sm"
+                        >
+                          <Smartphone className="w-4 h-4" />
+                          Get Your eSIM at Zoobicon.com
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+
                   <button
                     onClick={() => navigate('/')}
                     className="bg-gold hover:bg-gold/90 text-black font-semibold px-8 py-3 rounded-lg transition-colors"

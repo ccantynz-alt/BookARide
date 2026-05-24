@@ -6,8 +6,9 @@
  */
 
 const getBackendUrl = () => {
-  const env = process.env.REACT_APP_BACKEND_URL;
-  if (env && env !== 'undefined') {
+  // Explicit override via env var
+  const env = import.meta.env.VITE_BACKEND_URL;
+  if (env && env !== 'undefined' && env !== '') {
     return env.endsWith('/') ? env.slice(0, -1) : env;
   }
   // In production on Vercel, the backend is on the same domain.

@@ -11,9 +11,7 @@ import { Textarea } from '../components/ui/textarea';
 import { toast } from 'sonner';
 import axios from 'axios';
 import SEO from '../components/SEO';
-
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+import { API } from '../config/api';
 
 const TravelAgents = () => {
   const [formData, setFormData] = useState({
@@ -61,7 +59,7 @@ const TravelAgents = () => {
   ];
 
   const services = [
-    { icon: Plane, title: 'Airport Transfers', desc: 'Auckland, Hamilton, Rotorua airports. Flight tracking included.' },
+    { icon: Plane, title: 'Airport Transfers', desc: 'Auckland, Hamilton, Rotorua airports. ' },
     { icon: Ship, title: 'Cruise Ship Transfers', desc: 'All Auckland cruise terminals. Meet & greet service.' },
     { icon: Bus, title: 'Group Transport', desc: '8-50+ passengers. Perfect for tour groups.' },
     { icon: Building2, title: 'Hobbiton & Day Tours', desc: 'Transport to NZ\'s top attractions.' }

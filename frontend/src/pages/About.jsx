@@ -19,7 +19,7 @@ export const About = () => {
       <FAQSchema faqs={[
         { question: "How long has BookaRide been operating?", answer: "BookaRide has been providing premium airport transfer services in Auckland and throughout New Zealand, building a reputation for reliability, safety, and exceptional customer service." },
         { question: "Are your drivers licensed and vetted?", answer: "Yes, all our drivers are fully licensed P-endorsement holders, background checked, and undergo regular vehicle inspections. Safety is our top priority." },
-        { question: "What makes BookaRide different from other shuttles?", answer: "We offer private door-to-door transfers (no shared rides), real-time flight tracking, fixed pricing with no surge, and 24/7 availability. Plus, we're locally owned and operated in New Zealand." },
+        { question: "What makes BookaRide different from other shuttles?", answer: "We offer private door-to-door transfers (no shared rides), real-time fixed pricing with no surge, and 24/7 availability. Plus, we're locally owned and operated in New Zealand." },
         { question: "Do you have insurance?", answer: "Absolutely. All our vehicles and drivers are fully insured with comprehensive commercial passenger transport insurance, giving you complete peace of mind." }
       ]} />
       <PageBreadcrumb items={[{ label: 'About Us' }]} />

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import ReactDOM from 'react-dom';
-import { MapPin } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -39,6 +38,9 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
     basePrice: 0,
     airportFee: 0,
     passengerFee: 0,
+    fuelSurcharge: 0,
+    fuelSurchargePercent: 0,
+    stripeFee: 0,
     totalPrice: 0
   });
   const [calculatingPrice, setCalculatingPrice] = useState(false);
@@ -73,7 +75,7 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
         bookReturn: false, returnDate: '', returnTime: '',
         returnFlightNumber: ''
       });
-      setBookingPricing({ distance: 0, basePrice: 0, airportFee: 0, passengerFee: 0, totalPrice: 0 });
+      setBookingPricing({ distance: 0, basePrice: 0, airportFee: 0, passengerFee: 0, fuelSurcharge: 0, fuelSurchargePercent: 0, stripeFee: 0, totalPrice: 0 });
       setManualPriceOverride('');
       setCustomerSearchQuery('');
       setAdminPickupDate(null);
@@ -139,12 +141,21 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
     }
     setSearchingCustomers(true);
     try {
-      const response = await axios.get(`${API}/customers/search?q=${encodeURIComponent(query)}`, getAuthHeaders());
-      setCustomerSearchResults(response.data.customers || []);
-      setShowCustomerDropdown(response.data.customers?.length > 0);
+      const response = await axios.get(`${API}/customers?q=${encodeURIComponent(query)}`, getAuthHeaders());
+      const customers = Array.isArray(response.data) ? response.data : (response.data?.customers || []);
+      setCustomerSearchResults(customers);
+      setShowCustomerDropdown(customers.length > 0);
+      if (customers.length === 0 && query.length >= 3) {
+        toast.info('No existing customers found for that search');
+      }
     } catch (error) {
       console.error('Error searching customers:', error);
       setCustomerSearchResults([]);
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        toast.error('Session expired — please log in again to search customers');
+      } else {
+        toast.error('Customer search failed — please try again');
+      }
     } finally {
       setSearchingCustomers(false);
     }
@@ -161,7 +172,7 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
     }));
     setCustomerSearchQuery('');
     setShowCustomerDropdown(false);
-    toast.success(`Loaded ${customer.name}'s details (${customer.totalBookings} previous bookings)`);
+    toast.success(`Loaded ${customer.name}'s details (${customer.bookingCount || 0} previous bookings)`);
   };
 
   const calculateBookingPrice = async () => {
@@ -224,7 +235,7 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
       let finalPrice = hasManualPrice ? parseFloat(manualPriceOverride) : bookingPricing.totalPrice;
       const priceOverride = hasManualPrice ? parseFloat(manualPriceOverride) : (hasReturnTrip ? finalPrice : null);
 
-      await axios.post(`${API}/bookings/manual`, {
+      const response = await axios.post(`${API}/bookings/manual`, {
         name: newBooking.name,
         email: newBooking.email,
         ccEmail: newBooking.ccEmail,
@@ -250,7 +261,11 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
         returnFlightNumber: newBooking.returnFlightNumber
       }, getAuthHeaders());
 
-      toast.success('Booking created successfully! Customer will receive email & SMS confirmation.');
+      const adminRecipient = response.data?.admin_email_recipient || 'bookings@bookaride.co.nz';
+      const successMessage = newBooking.paymentMethod === 'pay-on-pickup'
+        ? `Booking confirmed. Pay-on-pickup confirmation emailed to ${newBooking.email}. Admin notified at ${adminRecipient}.`
+        : `Booking created. Stripe payment link emailed to ${newBooking.email}. Admin notified at ${adminRecipient}.`;
+      toast.success(successMessage);
       onClose();
       onSuccess?.();
     } catch (error) {
@@ -266,10 +281,31 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
   return (
     <Dialog open={open} onOpenChange={(v) => {
       // Prevent dialog close while any autocomplete/search dropdown is open (critical for iOS)
-      if (!v && document.querySelector('[data-autocomplete-dropdown]')) return;
-      if (!v) onClose();
+      // Includes Google's native .pac-container which is appended to document.body
+      if (!v) {
+        if (document.querySelector('[data-autocomplete-dropdown]')) return;
+        if (document.querySelector('.pac-container')) return;
+        onClose();
+      }
     }}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent
+        className="max-w-3xl max-h-[90vh] overflow-y-auto"
+        onPointerDownOutside={(e) => {
+          // Prevent Radix from closing the dialog when user clicks on
+          // Google's native Places Autocomplete dropdown (.pac-container)
+          // which renders directly into document.body, OUTSIDE the dialog.
+          const target = e.target;
+          if (target && target.closest && target.closest('.pac-container')) {
+            e.preventDefault();
+          }
+        }}
+        onInteractOutside={(e) => {
+          const target = e.target;
+          if (target && target.closest && target.closest('.pac-container')) {
+            e.preventDefault();
+          }
+        }}
+      >
         <DialogHeader>
           <DialogTitle>Create Manual Booking</DialogTitle>
         </DialogHeader>
@@ -333,7 +369,7 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
                         </div>
                         <div className="text-right">
                           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                            {customer.totalBookings} bookings
+                            {customer.bookingCount || 0} bookings
                           </span>
                           {customer.lastBookingDate && (
                             <p className="text-xs text-gray-400 mt-1">Last: {customer.lastBookingDate}</p>
@@ -404,33 +440,24 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
                 </Select>
               </div>
               <div>
-                <Label>Payment Method *</Label>
+                <Label>Payment Method</Label>
                 <Select
-                  value={newBooking.paymentMethod}
-                  onValueChange={(value) => setNewBooking(prev => ({...prev, paymentMethod: value}))}
+                  value={newBooking.paymentMethod || 'stripe'}
+                  onValueChange={(value) => setNewBooking(prev => ({ ...prev, paymentMethod: value }))}
                 >
                   <SelectTrigger className="mt-1">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="stripe">Stripe - Send Payment Link</SelectItem>
-                    <SelectItem value="paypal">PayPal - Send Payment Link</SelectItem>
-                    <SelectItem value="xero">Xero - Send Invoice</SelectItem>
-                    <SelectItem value="pay-on-pickup">Pay on Pickup (Cash)</SelectItem>
-                    <SelectItem value="card">Card (Already Paid)</SelectItem>
-                    <SelectItem value="bank-transfer">Bank Transfer</SelectItem>
+                    <SelectItem value="stripe">Stripe (Credit/Debit Card)</SelectItem>
+                    <SelectItem value="pay-on-pickup">Pay on Pickup (admin only)</SelectItem>
                   </SelectContent>
                 </Select>
-                {(newBooking.paymentMethod === 'stripe' || newBooking.paymentMethod === 'paypal') && (
-                  <p className="text-xs text-gold mt-1">
-                    A payment link will be sent to the customer's email after booking is created.
-                  </p>
-                )}
-                {newBooking.paymentMethod === 'xero' && (
-                  <p className="text-xs text-purple-600 mt-1">
-                    An invoice will be created in Xero and emailed to the customer automatically.
-                  </p>
-                )}
+                <p className="text-xs text-gold mt-1">
+                  {newBooking.paymentMethod === 'pay-on-pickup'
+                    ? 'Booking is confirmed immediately. Customer pays the driver at pickup — no Stripe link is sent.'
+                    : 'A Stripe payment link will be emailed to the customer after the booking is created.'}
+                </p>
               </div>
             </div>
           </div>
@@ -578,7 +605,7 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
                             }
                           }}
                           placeholder="Select return date"
-                          minDate={new Date('2020-01-01')}
+                          minDate={adminPickupDate || new Date('2020-01-01')}
                           maxDate={new Date('2030-12-31')}
                           showMonthDropdown
                           showYearDropdown
@@ -661,6 +688,18 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
                       <span className="font-medium">${bookingPricing.passengerFee.toFixed(2)}</span>
                     </div>
                   )}
+                  {bookingPricing.fuelSurcharge > 0 && (
+                    <div className="flex justify-between text-amber-700">
+                      <span>Fuel Surcharge ({bookingPricing.fuelSurchargePercent || 12}%):</span>
+                      <span className="font-medium">${bookingPricing.fuelSurcharge.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {bookingPricing.stripeFee > 0 && (
+                    <div className="flex justify-between text-gray-500">
+                      <span>Card Processing Fee:</span>
+                      <span className="font-medium">${bookingPricing.stripeFee.toFixed(2)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between pt-2 border-t font-semibold text-base">
                     <span>Total:</span>
                     <span className="text-gold">
@@ -733,7 +772,7 @@ const CreateBookingModal = memo(({ open, onClose, onSuccess, getAuthHeaders }) =
             </Button>
             <Button
               onClick={handleCreateManualBooking}
-              className="bg-gold hover:bg-gold/90 text-black font-semibold"
+              className="bg-gold hover:bg-gold/90 text-white font-semibold"
               disabled={bookingPricing.totalPrice === 0 && (!manualPriceOverride || parseFloat(manualPriceOverride) <= 0)}
             >
               Create Booking & Send Confirmations

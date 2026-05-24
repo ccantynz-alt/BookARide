@@ -149,7 +149,6 @@ const CountryLandingPage = () => {
             >
               {[
                 { icon: Shield, text: 'Licensed & Insured' },
-                { icon: Clock, text: 'Flight Tracking' },
                 { icon: CreditCard, text: country.paymentNote },
                 { icon: Zap, text: '24/7 Service' },
               ].map((item, i) => (

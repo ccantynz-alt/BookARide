@@ -14,7 +14,7 @@ const AirportShuttlePage = () => {
     "alternateName": ["BookARide", "Book A Ride Auckland", "Auckland Airport Shuttle"],
     "description": "Auckland's #1 rated airport shuttle service. Professional door-to-door transfers to Auckland Airport with fixed pricing, 24/7 availability, and real-time tracking.",
     "url": "https://bookaride.co.nz",
-    "email": "bookings@bookaride.co.nz",
+    "email": "info@bookaride.co.nz",
     "address": {
       "@type": "PostalAddress",
       "addressLocality": "Auckland",
@@ -160,12 +160,12 @@ const AirportShuttlePage = () => {
     <>
       <Helmet>
         <title>Airport Shuttle Auckland | #1 Rated Service | Book A Ride NZ</title>
-        <meta name="description" content="Auckland's best airport shuttle service. Door-to-door transfers, fixed pricing from $35, 24/7 availability, flight tracking. Highly rated on Google. Book online now!" />
+        <meta name="description" content="Auckland's best airport shuttle service. Door-to-door transfers, fixed pricing from $35, 24/7 availability. Highly rated on Google. Book online now!" />
         <meta name="keywords" content="airport shuttle, airport shuttle auckland, auckland airport shuttle, airport transfer, airport taxi, shuttle to airport, airport pickup, airport dropoff, book airport shuttle" />
         <link rel="canonical" href="https://bookaride.co.nz/airport-shuttle" />
         
         <meta property="og:title" content="Airport Shuttle Auckland | #1 Rated Service | Book A Ride" />
-        <meta property="og:description" content="Auckland's best airport shuttle. Fixed pricing, 24/7 service, flight tracking. Book your airport transfer online!" />
+        <meta property="og:description" content="Auckland's best airport shuttle. Fixed pricing, 24/7 service. Book your airport transfer online!" />
         <meta property="og:url" content="https://bookaride.co.nz/airport-shuttle" />
         <meta property="og:type" content="website" />
         
@@ -192,7 +192,7 @@ const AirportShuttlePage = () => {
               
               <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
                 Professional door-to-door airport shuttle service. Fixed pricing, 24/7 availability, 
-                flight tracking, and consistently excellent reviews from our customers.
+                and consistently excellent reviews from our customers.
               </p>
               
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -293,7 +293,6 @@ const AirportShuttlePage = () => {
               </p>
               <ul>
                 <li><strong>Fixed Pricing:</strong> Know exactly what you'll pay before booking - no meter anxiety or surge pricing</li>
-                <li><strong>Flight Tracking:</strong> We monitor your flight and adjust pickup time for delays - no waiting charges</li>
                 <li><strong>Luggage Space:</strong> Vehicles designed for travelers with plenty of room for bags</li>
                 <li><strong>Meet & Greet:</strong> Driver waiting for you at arrivals with your name sign</li>
                 <li><strong>Child Seats:</strong> Available on request at no extra charge</li>

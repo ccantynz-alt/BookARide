@@ -7,7 +7,7 @@ import { Label } from '../components/ui/label';
 import { Card, CardContent } from '../components/ui/card';
 import { toast } from 'sonner';
 import axios from 'axios';
-import { API, BACKEND_URL, RENDER_BACKEND_URL } from '../config/api';
+import { API, BACKEND_URL } from '../config/api';
 
 export const AdminLogin = () => {
   const [username, setUsername] = useState('');
@@ -21,18 +21,16 @@ export const AdminLogin = () => {
 
     try {
       const response = await axios.post(`${API}/admin/login`, {
-        username: username,
-        password: password
+        username,
+        password,
       });
 
-      // Store the token
       localStorage.setItem('adminToken', response.data.access_token);
       localStorage.setItem('adminAuth', 'true');
-      
+
       toast.success('Login successful!');
       navigate('/admin/dashboard');
     } catch (error) {
-      console.error('Login error:', error);
       if (error.response?.status === 401) {
         toast.error('Incorrect username or password');
       } else {
@@ -84,10 +82,10 @@ export const AdminLogin = () => {
               />
             </div>
 
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               disabled={loading}
-              className="w-full bg-gold hover:bg-gold/90 text-black font-semibold py-6 disabled:opacity-50"
+              className="w-full bg-gold hover:bg-gold/90 text-white font-semibold py-6 disabled:opacity-50"
             >
               {loading ? (
                 <>
@@ -105,12 +103,12 @@ export const AdminLogin = () => {
               <span className="w-full border-t border-gray-300" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white px-2 text-gray-500">Or sign in with Google (backup)</span>
+              <span className="bg-white px-2 text-gray-500">Or sign in with Google</span>
             </div>
           </div>
 
           <a
-            href={`${BACKEND_URL || RENDER_BACKEND_URL}/api/admin/google-auth/start`}
+            href={`${BACKEND_URL}/api/admin/google-auth/start`}
             className="flex items-center justify-center w-full gap-2 py-3 px-4 border-2 border-gray-300 rounded-md bg-white hover:bg-gray-50 hover:border-gray-400 transition-colors font-medium text-gray-700 no-underline shadow-sm"
           >
             <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
@@ -124,8 +122,8 @@ export const AdminLogin = () => {
 
           {/* Forgot Password Link */}
           <div className="mt-6 text-center">
-            <Link 
-              to="/admin/forgot-password" 
+            <Link
+              to="/admin/forgot-password"
               className="text-sm text-gold hover:text-gold/80 hover:underline inline-flex items-center gap-1"
             >
               <Mail className="w-4 h-4" />

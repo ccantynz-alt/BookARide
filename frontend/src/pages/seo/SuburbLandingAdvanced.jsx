@@ -239,7 +239,7 @@ export const SuburbLandingAdvanced = () => {
     <div className="min-h-screen bg-white">
       <SEO 
         title={`${suburb.name} to Auckland Airport Shuttle | Get Instant Quote | Book A Ride NZ`}
-        description={`Book your ${suburb.name} to Auckland Airport shuttle. ${suburb.distance}km, ${suburb.estimatedTime || '25-35 min'} journey. Professional drivers, flight tracking, 24/7 service. Get instant online quote!`}
+        description={`Book your ${suburb.name} to Auckland Airport shuttle. ${suburb.distance}km, ${suburb.estimatedTime || '25-35 min'} journey. Professional drivers, 24/7 service. Get instant online quote!`}
         keywords={`${suburb.name} airport shuttle, ${suburb.name} to Auckland Airport, airport transfer ${suburb.name}, ${suburb.name} airport taxi, shuttle service ${suburb.name}, ${suburb.name} Auckland Airport transport, cheap airport shuttle ${suburb.name}, best ${suburb.name} airport transfer, ${cityName} airport shuttle`}
         canonical={`/airport-transfer/${slug}`}
       />
@@ -346,16 +346,6 @@ export const SuburbLandingAdvanced = () => {
                 </div>
                 <h3 className="font-bold text-lg mb-2">24/7 Service</h3>
                 <p className="text-gray-600 text-sm">Early morning or late night - we're always available.</p>
-              </CardContent>
-            </Card>
-            
-            <Card className="text-center hover:shadow-lg transition-shadow">
-              <CardContent className="p-6">
-                <div className="w-14 h-14 bg-gold/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Car className="w-7 h-7 text-gold" />
-                </div>
-                <h3 className="font-bold text-lg mb-2">Flight Tracking</h3>
-                <p className="text-gray-600 text-sm">We monitor your flight and adjust for delays.</p>
               </CardContent>
             </Card>
             

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Search, Mail, DollarSign, CheckCircle, XCircle, Clock, Eye, Edit2, Users, BookOpen, Settings, Trash2, MapPin, Calendar, RefreshCw, Send, Bell, Square, CheckSquare, FileText, Smartphone, RotateCcw, AlertTriangle, AlertCircle, Home, Upload, Archive, Activity, Download, Shield, Car, UserPlus, BarChart3, Megaphone, ChevronDown, ChevronRight } from 'lucide-react';
+import { LogOut, Search, Mail, DollarSign, CheckCircle, XCircle, Clock, Eye, Edit2, Users, BookOpen, Settings, Trash2, MapPin, Calendar, RefreshCw, Send, Bell, Square, CheckSquare, FileText, Smartphone, RotateCcw, AlertTriangle, AlertCircle, Home, Upload, Archive, Download, Shield, ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent } from '../components/ui/card';
@@ -13,65 +13,25 @@ import { toast } from 'sonner';
 import { CustomDatePicker } from '../components/DateTimePicker';
 import axios from 'axios';
 import { CustomersTab } from '../components/admin/CustomersTab';
-import { DriverApplicationsTab } from '../components/admin/DriverApplicationsTab';
-import { DriversTab } from '../components/admin/DriversTab';
-import { AnalyticsTab } from '../components/admin/AnalyticsTab';
-import { LandingPagesTab } from '../components/admin/LandingPagesTab';
 import { AdminBreadcrumb } from '../components/admin/AdminBreadcrumb';
 import ReturnsOverviewPanel from '../components/admin/ReturnsOverviewPanel';
 import { API } from '../config/api';
-import Cockpit from '../admin/Cockpit';
 import CreateBookingModal from '../components/admin/CreateBookingModal';
 import EditBookingModal from '../components/admin/EditBookingModal';
+import DeletedTab from '../components/admin/DeletedTab';
+import ArchiveTab from '../components/admin/ArchiveTab';
+import EmailModal from '../components/admin/EmailModal';
+import PasswordModal from '../components/admin/PasswordModal';
+import BulkDeleteDialog from '../components/admin/BulkDeleteDialog';
+import PreviewConfirmationModal from '../components/admin/PreviewConfirmationModal';
+import BookingDetailsModal from '../components/admin/BookingDetailsModal';
+import BookingsTable from '../components/admin/BookingsTable';
+import SystemHealthDialog from '../components/admin/SystemHealthDialog';
 import GoogleAddressInput from '../components/GoogleAddressInput';
 
-// Helper function to format date to DD/MM/YYYY
-const formatDate = (dateString) => {
-  if (!dateString) return '';
-  const [year, month, day] = dateString.split('-');
-  return `${day}/${month}/${year}`;
-};
-
-// Helper function to get day of week from date string
-const getDayOfWeek = (dateString) => {
-  if (!dateString) return '';
-  const date = new Date(dateString);
-  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  return days[date.getDay()];
-};
-
-// Helper function to get short day of week
-const getShortDayOfWeek = (dateString) => {
-  if (!dateString) return '';
-  const date = new Date(dateString);
-  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  return days[date.getDay()];
-};
-
-// Helper function to check if date is today
-const isToday = (dateString) => {
-  if (!dateString) return false;
-  const today = new Date();
-  const bookingDate = new Date(dateString);
-  return (
-    today.getFullYear() === bookingDate.getFullYear() &&
-    today.getMonth() === bookingDate.getMonth() &&
-    today.getDate() === bookingDate.getDate()
-  );
-};
-
-// Helper function to check if date is tomorrow
-const isTomorrow = (dateString) => {
-  if (!dateString) return false;
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const bookingDate = new Date(dateString);
-  return (
-    tomorrow.getFullYear() === bookingDate.getFullYear() &&
-    tomorrow.getMonth() === bookingDate.getMonth() &&
-    tomorrow.getDate() === bookingDate.getDate()
-  );
-};
+// Date utilities — single source of truth in frontend/src/utils/dateFormat.js
+// Never re-implement formatDate/isToday/isTomorrow locally
+import { formatDate, getDayOfWeek, getShortDayOfWeek, isToday, isTomorrow } from '../utils/dateFormat';
 
 // Import Bookings Section Component
 const ImportBookingsSection = ({ onSuccess }) => {
@@ -533,8 +493,6 @@ export const AdminDashboard = () => {
   const [downloadingBackup, setDownloadingBackup] = useState(false);
   const [retentionCounts, setRetentionCounts] = useState(null); // { active, deleted } when list empty
   const [deletedCountForBanner, setDeletedCountForBanner] = useState(null); // deleted count for "Restore all" banner on Bookings tab
-  const [xeroConnected, setXeroConnected] = useState(false);
-  const [xeroOrg, setXeroOrg] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedBooking, setSelectedBooking] = useState(null);
@@ -549,12 +507,8 @@ export const AdminDashboard = () => {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [drivers, setDrivers] = useState([]);
-  const [selectedDriver, setSelectedDriver] = useState('');
-  const [driverPayoutOverride, setDriverPayoutOverride] = useState('');
-  const [showDriverAssignPreview, setShowDriverAssignPreview] = useState(false);
-  const [pendingAssignment, setPendingAssignment] = useState(null); // {tripType, driverPayout, driver}
   const [showCreateBookingModal, setShowCreateBookingModal] = useState(false);
+  const [showSystemHealthDialog, setShowSystemHealthDialog] = useState(false);
 
   const [selectedPaymentStatus, setSelectedPaymentStatus] = useState('');
   const [showEditBookingModal, setShowEditBookingModal] = useState(false);
@@ -579,10 +533,8 @@ export const AdminDashboard = () => {
   const [previewHtml, setPreviewHtml] = useState('');
   const [previewBookingInfo, setPreviewBookingInfo] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
-  
-  // Xero invoice date state (for backdating)
-  const [xeroInvoiceDate, setXeroInvoiceDate] = useState(null);
-  
+
+
 
 
 
@@ -655,11 +607,14 @@ export const AdminDashboard = () => {
         params
       });
       
-      const newBookings = Array.isArray(response.data) ? response.data : [];
+      // Support both { bookings, total } wrapper and plain array
+      const rd = response.data;
+      const newBookings = Array.isArray(rd) ? rd : (Array.isArray(rd?.bookings) ? rd.bookings : []);
+      if (rd?.total !== undefined) setTotalBookings(rd.total);
       
-      // Cache a small subset for offline fallback (keeps localStorage fast)
+      // Cache for offline fallback
       try {
-        const toCache = (append ? newBookings : newBookings.slice(0, 50));
+        const toCache = append ? newBookings : newBookings;
         localStorage.setItem('cachedBookings', JSON.stringify(toCache));
         localStorage.setItem('cachedBookingsTime', new Date().toISOString());
       } catch (e) {
@@ -735,7 +690,8 @@ export const AdminDashboard = () => {
       if (dateFrom) params.date_from = dateFrom;
       if (dateTo) params.date_to = dateTo;
       const response = await axios.get(`${API}/bookings`, { ...getAuthHeaders(), params });
-      const fresh = Array.isArray(response.data) ? response.data : [];
+      const freshRd = response.data;
+      const fresh = Array.isArray(freshRd) ? freshRd : (Array.isArray(freshRd?.bookings) ? freshRd.bookings : []);
       setBookings(fresh);
       try {
         localStorage.setItem('cachedBookings', JSON.stringify(fresh.slice(0, 50)));
@@ -758,15 +714,6 @@ export const AdminDashboard = () => {
 
   const loadMoreBookings = () => {
     fetchBookingsRef.current?.(currentPage + 1, true);
-  };
-
-  const fetchDrivers = async () => {
-    try {
-      const response = await axios.get(`${API}/drivers`, getAuthHeaders());
-      setDrivers(Array.isArray(response.data?.drivers) ? response.data.drivers : []);
-    } catch (error) {
-      console.error('Error fetching drivers:', error);
-    }
   };
 
   const fetchDeletedBookings = async () => {
@@ -920,17 +867,6 @@ export const AdminDashboard = () => {
     }
   };
 
-  const checkXeroStatus = async () => {
-    try {
-      const response = await axios.get(`${API}/xero/status`, getAuthHeaders());
-      setXeroConnected(response.data.connected);
-      setXeroOrg(response.data.organization || '');
-    } catch (error) {
-      console.error('Error checking Xero status:', error);
-    }
-  };
-
-  // Initial load: bookings first; drivers deferred to lighten first paint
   useEffect(() => {
     const token = localStorage.getItem('adminToken');
     if (!token) {
@@ -938,43 +874,8 @@ export const AdminDashboard = () => {
       return;
     }
     fetchBookingsRef.current?.();
-    setTimeout(() => fetchDrivers(), 600);
-    checkXeroStatus();
     fetchArchivedCount();
   }, [navigate]);
-
-  const connectXero = async () => {
-    try {
-      const response = await axios.get(`${API}/xero/login`, getAuthHeaders());
-      window.open(response.data.authorization_url, '_blank');
-      toast.info('Complete Xero authorization in the new window');
-    } catch (error) {
-      console.error('Error connecting Xero:', error);
-      toast.error('Failed to connect Xero');
-    }
-  };
-
-  const createXeroInvoice = async (bookingId) => {
-    try {
-      const response = await axios.post(`${API}/xero/create-invoice/${bookingId}`, {}, getAuthHeaders());
-      toast.success(response.data.message);
-      silentRefresh();
-    } catch (error) {
-      console.error('Error creating Xero invoice:', error);
-      toast.error(error.response?.data?.detail || 'Failed to create invoice');
-    }
-  };
-
-  const recordXeroPayment = async (bookingId) => {
-    try {
-      const response = await axios.post(`${API}/xero/record-payment/${bookingId}`, {}, getAuthHeaders());
-      toast.success(response.data.message);
-      silentRefresh();
-    } catch (error) {
-      console.error('Error recording payment:', error);
-      toast.error(error.response?.data?.detail || 'Failed to record payment');
-    }
-  };
 
   const handleRestoreBooking = async (bookingId) => {
     try {
@@ -1160,249 +1061,6 @@ export const AdminDashboard = () => {
     }
   };
 
-  // Show preview before assigning driver
-  const handleShowAssignPreview = (tripType = 'outbound') => {
-    if (!selectedDriver) {
-      toast.error('Please select a driver');
-      return;
-    }
-    
-    const driver = drivers.find(d => d.id === selectedDriver);
-    const customerPrice = selectedBooking?.pricing?.totalPrice || 0;
-    const paymentStatus = (selectedBooking?.payment_status || '').toLowerCase();
-    const hasReturn = selectedBooking?.bookReturn || !!selectedBooking?.returnDate;
-    
-    // Calculate auto payout if no override
-    let calculatedPayout;
-    if (driverPayoutOverride && !isNaN(parseFloat(driverPayoutOverride))) {
-      calculatedPayout = parseFloat(driverPayoutOverride);
-    } else {
-      // Use subtotal (price before Stripe fee) if available, otherwise calculate from total
-      // Stripe fee formula: total = subtotal * 1.029 + 0.30
-      // Therefore: subtotal = (total - 0.30) / 1.029
-      const subtotal = selectedBooking?.pricing?.subtotal || 
-        ((customerPrice - 0.30) / 1.029);
-      
-      // Determine trip price (for return bookings, split the subtotal)
-      let tripPrice = subtotal;
-      if (hasReturn) {
-        // Use oneWayPrice if explicitly set, otherwise split evenly
-        const oneWayPrice = selectedBooking?.pricing?.oneWayPrice;
-        if (oneWayPrice) {
-          tripPrice = tripType === 'outbound' ? oneWayPrice : (subtotal - oneWayPrice);
-        } else {
-          // Split evenly for return bookings without explicit oneWayPrice
-          tripPrice = subtotal / 2;
-        }
-      }
-      
-      // Driver gets the full trip price (customer pays Stripe fee separately)
-      calculatedPayout = Math.round(tripPrice * 100) / 100;
-    }
-    
-    setPendingAssignment({
-      tripType,
-      driver,
-      driverPayout: calculatedPayout,
-      isOverride: !!driverPayoutOverride,
-      customerPrice,
-      hasReturn,
-      // Stripe fee is now paid by customer, so no fee info needed
-      customerPaysStripeFee: true
-    });
-    setShowDriverAssignPreview(true);
-  };
-
-  // Confirm and send driver assignment
-  const handleConfirmAssignDriver = async () => {
-    if (!pendingAssignment) return;
-    
-    const { tripType, driverPayout } = pendingAssignment;
-    
-    try {
-      let url = `${API}/drivers/${selectedDriver}/assign?booking_id=${selectedBooking.id}&trip_type=${tripType}`;
-      if (driverPayoutOverride && !isNaN(parseFloat(driverPayoutOverride))) {
-        url += `&driver_payout=${parseFloat(driverPayoutOverride)}`;
-      }
-      
-      const response = await axios.patch(url, {}, getAuthHeaders());
-      
-      // Get the driver details to update selectedBooking
-      const assignedDriver = drivers.find(d => d.id === selectedDriver);
-      
-      // Update the selectedBooking with driver info based on trip type
-      if (tripType === 'return') {
-        setSelectedBooking(prev => ({
-          ...prev,
-          return_driver_id: selectedDriver,
-          return_driver_name: assignedDriver?.name || '',
-          return_driver_phone: assignedDriver?.phone || '',
-          return_driver_email: assignedDriver?.email || '',
-          return_driver_payout: driverPayout
-        }));
-      } else {
-        setSelectedBooking(prev => ({
-          ...prev,
-          driver_id: selectedDriver,
-          driver_name: assignedDriver?.name || '',
-          driver_phone: assignedDriver?.phone || '',
-          driver_email: assignedDriver?.email || '',
-          driver_payout: driverPayout
-        }));
-      }
-      
-      toast.success(response.data?.message || 'Driver assigned successfully!');
-      setSelectedDriver('');
-      setDriverPayoutOverride('');
-      setShowDriverAssignPreview(false);
-      setPendingAssignment(null);
-      // Optimistic: update driver info in local booking
-      const confirmAssignedDriver = drivers.find(d => d.id === selectedDriver);
-      if (tripType === 'return') {
-        updateBookingLocally(selectedBooking.id, {
-          return_driver_id: selectedDriver,
-          return_driver_name: confirmAssignedDriver?.name || '',
-          return_driver_phone: confirmAssignedDriver?.phone || '',
-          return_driver_email: confirmAssignedDriver?.email || '',
-        });
-      } else {
-        updateBookingLocally(selectedBooking.id, {
-          driver_id: selectedDriver,
-          driver_name: confirmAssignedDriver?.name || '',
-          driver_phone: confirmAssignedDriver?.phone || '',
-          driver_email: confirmAssignedDriver?.email || '',
-        });
-      }
-      silentRefresh();
-    } catch (error) {
-      console.error('Error assigning driver:', error);
-      toast.error('Failed to assign driver');
-    }
-  };
-
-  const handleAssignDriver = async (tripType = 'outbound') => {
-    if (!selectedDriver) {
-      toast.error('Please select a driver');
-      return;
-    }
-    
-    try {
-      // Build URL with optional driver payout
-      let url = `${API}/drivers/${selectedDriver}/assign?booking_id=${selectedBooking.id}&trip_type=${tripType}`;
-      if (driverPayoutOverride && !isNaN(parseFloat(driverPayoutOverride))) {
-        url += `&driver_payout=${parseFloat(driverPayoutOverride)}`;
-      }
-      
-      const response = await axios.patch(url, {}, getAuthHeaders());
-      
-      // Get the driver details to update selectedBooking
-      const assignedDriver = drivers.find(d => d.id === selectedDriver);
-      
-      // Update the selectedBooking with driver info based on trip type
-      if (tripType === 'return') {
-        setSelectedBooking(prev => ({
-          ...prev,
-          return_driver_id: selectedDriver,
-          return_driver_name: assignedDriver?.name || '',
-          return_driver_phone: assignedDriver?.phone || '',
-          return_driver_email: assignedDriver?.email || '',
-          return_driver_payout: driverPayoutOverride ? parseFloat(driverPayoutOverride) : null
-        }));
-      } else {
-        setSelectedBooking(prev => ({
-          ...prev,
-          driver_id: selectedDriver,
-          driver_name: assignedDriver?.name || '',
-          driver_phone: assignedDriver?.phone || '',
-          driver_email: assignedDriver?.email || '',
-          driver_payout: driverPayoutOverride ? parseFloat(driverPayoutOverride) : null
-        }));
-      }
-      
-      toast.success(response.data?.message || 'Driver assigned successfully!');
-      setSelectedDriver('');
-      setDriverPayoutOverride('');
-      // Optimistic: update driver info in local booking
-      const assignedDriverObj = drivers.find(d => d.id === selectedDriver);
-      if (tripType === 'return') {
-        updateBookingLocally(selectedBooking.id, {
-          return_driver_id: selectedDriver,
-          return_driver_name: assignedDriverObj?.name || '',
-          return_driver_phone: assignedDriverObj?.phone || '',
-          return_driver_email: assignedDriverObj?.email || '',
-        });
-      } else {
-        updateBookingLocally(selectedBooking.id, {
-          driver_id: selectedDriver,
-          driver_name: assignedDriverObj?.name || '',
-          driver_phone: assignedDriverObj?.phone || '',
-          driver_email: assignedDriverObj?.email || '',
-        });
-      }
-      silentRefresh();
-    } catch (error) {
-      console.error('Error assigning driver:', error);
-      toast.error('Failed to assign driver');
-    }
-  };
-
-  const handleUnassignDriver = async (tripType = 'outbound') => {
-    if (!selectedBooking) return;
-    
-    const driverName = tripType === 'return' 
-      ? selectedBooking.return_driver_name 
-      : selectedBooking.driver_name;
-    
-    if (!window.confirm(`Are you sure you want to unassign ${driverName} from the ${tripType} trip?`)) {
-      return;
-    }
-    
-    try {
-      const response = await axios.patch(
-        `${API}/bookings/${selectedBooking.id}/unassign-driver?trip_type=${tripType}`,
-        {},
-        getAuthHeaders()
-      );
-      
-      // Update the selectedBooking to clear driver info based on trip type
-      if (tripType === 'return') {
-        setSelectedBooking(prev => ({
-          ...prev,
-          return_driver_id: null,
-          return_driver_name: null,
-          return_driver_phone: null,
-          return_driver_email: null
-        }));
-      } else {
-        setSelectedBooking(prev => ({
-          ...prev,
-          driver_id: null,
-          driver_name: null,
-          driver_phone: null,
-          driver_email: null,
-          driverConfirmed: false
-        }));
-      }
-      
-      toast.success(response.data?.message || 'Driver unassigned successfully!');
-      // Optimistic: clear driver info in local booking
-      if (tripType === 'return') {
-        updateBookingLocally(selectedBooking.id, {
-          return_driver_id: null, return_driver_name: null,
-          return_driver_phone: null, return_driver_email: null,
-        });
-      } else {
-        updateBookingLocally(selectedBooking.id, {
-          driver_id: null, driver_name: null,
-          driver_phone: null, driver_email: null, driverConfirmed: false,
-        });
-      }
-      silentRefresh();
-    } catch (error) {
-      console.error('Error unassigning driver:', error);
-      toast.error(error.response?.data?.detail || 'Failed to unassign driver');
-    }
-  };
 
   filterBookings = () => {
     let filtered = Array.isArray(bookings) ? bookings : [];
@@ -1423,6 +1081,38 @@ export const AdminDashboard = () => {
         String(b.referenceNumber)?.includes(searchTerm)
       ));
     }
+
+    // Sort by pickup date — upcoming first, then past
+    // Handles both YYYY-MM-DD and DD/MM/YYYY formats
+    const parseDate = (dateStr) => {
+      if (!dateStr) return new Date(0);
+      // YYYY-MM-DD
+      if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) return new Date(dateStr);
+      // DD/MM/YYYY
+      const parts = dateStr.split('/');
+      if (parts.length === 3) return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+      return new Date(dateStr);
+    };
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    filtered.sort((a, b) => {
+      const dateA = parseDate(a.date);
+      const dateB = parseDate(b.date);
+      const aIsFuture = dateA >= today;
+      const bIsFuture = dateB >= today;
+
+      // Future/today dates first
+      if (aIsFuture && !bIsFuture) return -1;
+      if (!aIsFuture && bIsFuture) return 1;
+
+      // Within future: soonest first (ascending)
+      if (aIsFuture && bIsFuture) return dateA - dateB;
+
+      // Within past: most recent first (descending)
+      return dateB - dateA;
+    });
 
     setFilteredBookings(filtered);
   };
@@ -1471,7 +1161,6 @@ export const AdminDashboard = () => {
         toast.success(response.data.message);
         // Refresh bookings after sync
         await fetchBookingsRef.current?.();
-        await fetchDrivers();
       } else {
         toast.error('Sync failed');
       }
@@ -1487,8 +1176,6 @@ export const AdminDashboard = () => {
     setSelectedBooking(booking);
     const totalPrice = booking.pricing?.totalPrice ?? booking.totalPrice ?? 0;
     setPriceOverride(totalPrice.toString());
-    // Reset Xero invoice date to booking date
-    setXeroInvoiceDate(booking.date ? new Date(booking.date + 'T00:00:00') : new Date());
     setShowDetailsModal(true);
   };
 
@@ -1515,6 +1202,23 @@ export const AdminDashboard = () => {
       }
       console.error('Error updating status:', error);
       toast.error('Failed to update status');
+    }
+  };
+
+  const handleApproveBooking = async (bookingId) => {
+    try {
+      const response = await axios.post(`${API}/bookings/${bookingId}/approve`, {}, getAuthHeaders());
+      toast.success(response.data.message || 'Booking approved and customer notified!');
+      updateBookingLocally(bookingId, { status: 'confirmed' });
+      silentRefresh();
+    } catch (error) {
+      if (error.response?.status === 401) {
+        toast.error('Session expired. Please login again.');
+        handleLogout();
+        return;
+      }
+      console.error('Error approving booking:', error);
+      toast.error(error.response?.data?.detail || 'Failed to approve booking');
     }
   };
 
@@ -1828,31 +1532,18 @@ export const AdminDashboard = () => {
     try {
       toast.loading('Sending payment link...');
       const response = await axios.post(
-        `${API}/bookings/${bookingId}/resend-payment-link?payment_method=${paymentMethod}`, 
-        {}, 
+        `${API}/bookings/${bookingId}/resend-payment-link?payment_method=${paymentMethod}`,
+        {},
         getAuthHeaders()
       );
       toast.dismiss();
       toast.success(response.data.message || 'Payment link sent!');
+      // Refresh bookings so the "Link Sent" indicator updates
+      fetchBookings();
     } catch (error) {
       toast.dismiss();
       console.error('Error sending payment link:', error);
       toast.error(error.response?.data?.detail || 'Failed to send payment link');
-    }
-  };
-
-  // Send tracking link to driver
-  const handleSendTrackingLink = async (bookingId) => {
-    try {
-      toast.loading('Sending tracking link to driver...');
-      const response = await axios.post(`${API}/tracking/send-driver-link/${bookingId}`, {}, getAuthHeaders());
-      toast.dismiss();
-      toast.success(response.data.message || 'Tracking link sent to driver!');
-      silentRefresh();
-    } catch (error) {
-      toast.dismiss();
-      console.error('Error sending tracking link:', error);
-      toast.error(error.response?.data?.detail || 'Failed to send tracking link');
     }
   };
 
@@ -2002,59 +1693,36 @@ export const AdminDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-20">
-      {/* Professional Light Header */}
-      <div className="bg-white border-b border-gray-200 py-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50 pt-20">
+      {/* Header — Premium, minimal */}
+      <div className="bg-white/80 backdrop-blur-xl border-b border-slate-200/60 py-5">
         <div className="container mx-auto px-4">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-              <p className="text-gray-500 text-sm mt-1">Manage bookings and customer communications</p>
+              <h1 className="text-xl font-bold text-slate-900 tracking-tight">BookARide</h1>
+              <p className="text-slate-400 text-xs mt-0.5 font-medium tracking-wide">ADMIN</p>
             </div>
-            <div className="flex gap-2 flex-wrap">
-              <Button onClick={() => window.open('/', '_blank')} variant="outline" size="sm">
-                <Home className="w-4 h-4 mr-2" />
+            <div className="flex gap-2 flex-wrap items-center">
+              <button onClick={() => window.open('/', '_blank')} className="text-xs text-slate-400 hover:text-slate-900 transition-colors font-medium px-3 py-1.5">
                 View Site
-              </Button>
-              <Button onClick={handleSyncContactsToiPhone} disabled={syncingContacts} variant="outline" size="sm">
-                <Smartphone className="w-4 h-4 mr-2" />
-                {syncingContacts ? 'Syncing...' : 'Sync to iPhone'}
-              </Button>
-              <Button onClick={() => navigate('/driver/portal')} variant="outline" size="sm">
-                <Users className="w-4 h-4 mr-2" />
-                Driver Portal
-              </Button>
-              <Button onClick={() => navigate('/admin/seo')} variant="outline" size="sm">
-                <Settings className="w-4 h-4 mr-2" />
-                SEO Management
-              </Button>
-              <Button 
-                onClick={handleSync} 
+              </button>
+              <button onClick={handleSyncContactsToiPhone} disabled={syncingContacts} className="text-xs text-slate-400 hover:text-slate-900 transition-colors font-medium px-3 py-1.5">
+                {syncingContacts ? 'Syncing...' : 'Sync Contacts'}
+              </button>
+              <button
+                onClick={handleSync}
                 disabled={syncing}
-                variant="outline" 
-                size="sm"
+                className="text-xs text-slate-400 hover:text-slate-900 transition-colors font-medium px-3 py-1.5"
               >
-                <RefreshCw className={`w-4 h-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
                 {syncing ? 'Syncing...' : 'Sync'}
-              </Button>
-              {xeroConnected ? (
-                <Button variant="outline" size="sm" className="text-green-600 border-green-300">
-                  <DollarSign className="w-4 h-4 mr-2" />
-                  Xero: {xeroOrg || 'Connected'}
-                </Button>
-              ) : (
-                <Button onClick={connectXero} variant="outline" size="sm">
-                  <DollarSign className="w-4 h-4 mr-2" />
-                  Connect Xero
-                </Button>
-              )}
-              <Button onClick={() => setShowPasswordModal(true)} variant="outline" size="sm">
-                Change Password
-              </Button>
-              <Button onClick={handleLogout} variant="outline" size="sm" className="text-red-600 border-red-300 hover:bg-red-50">
-                <LogOut className="w-4 h-4 mr-2" />
+              </button>
+              <div className="w-px h-4 bg-slate-200 mx-1" />
+              <button onClick={() => setShowPasswordModal(true)} className="text-xs text-slate-400 hover:text-slate-900 transition-colors font-medium px-3 py-1.5">
+                Password
+              </button>
+              <button onClick={handleLogout} className="text-xs text-slate-400 hover:text-red-600 transition-colors font-medium px-3 py-1.5">
                 Logout
-              </Button>
+              </button>
             </div>
           </div>
         </div>
@@ -2081,45 +1749,25 @@ export const AdminDashboard = () => {
               <span className="hidden sm:inline">Bookings</span>
               <span className="sm:hidden">Book</span>
             </TabsTrigger>
-            <TabsTrigger value="deleted" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 text-red-600">
+            <TabsTrigger value="customers" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4">
+              <Users className="w-3 h-3 md:w-4 md:h-4" />
+              <span>Customers</span>
+            </TabsTrigger>
+            <TabsTrigger value="deleted" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 text-gray-500">
               <Trash2 className="w-3 h-3 md:w-4 md:h-4" />
               <span className="hidden md:inline">Deleted</span>
               <span className="md:hidden">Del</span>
               {deletedBookings.length > 0 && <span className="text-[10px]">({deletedBookings.length})</span>}
             </TabsTrigger>
-            <TabsTrigger value="archive" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 text-blue-600">
+            <TabsTrigger value="archive" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 text-gray-500">
               <Archive className="w-3 h-3 md:w-4 md:h-4" />
               <span className="hidden md:inline">Archive</span>
               <span className="md:hidden">Arc</span>
               {archivedCount > 0 && <span className="text-[10px]">({archivedCount})</span>}
             </TabsTrigger>
-            <TabsTrigger value="customers" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4">
-              <Users className="w-3 h-3 md:w-4 md:h-4" />
-              <span>Customers</span>
-            </TabsTrigger>
-            <TabsTrigger value="import" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 text-purple-600">
+            <TabsTrigger value="import" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 text-gray-500">
               <FileText className="w-3 h-3 md:w-4 md:h-4" />
               <span>Import</span>
-            </TabsTrigger>
-            <TabsTrigger value="cockpit" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4 text-slate-600">
-              <Activity className="w-3 h-3 md:w-4 md:h-4" />
-              <span>Cockpit</span>
-            </TabsTrigger>
-            <TabsTrigger value="drivers" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4">
-              <Car className="w-3 h-3 md:w-4 md:h-4" />
-              <span>Drivers</span>
-            </TabsTrigger>
-            <TabsTrigger value="applications" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4">
-              <UserPlus className="w-3 h-3 md:w-4 md:h-4" />
-              <span>Applications</span>
-            </TabsTrigger>
-            <TabsTrigger value="analytics" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4">
-              <BarChart3 className="w-3 h-3 md:w-4 md:h-4" />
-              <span>Analytics</span>
-            </TabsTrigger>
-            <TabsTrigger value="marketing" className="flex items-center gap-1 text-xs md:text-sm px-2 md:px-4">
-              <Megaphone className="w-3 h-3 md:w-4 md:h-4" />
-              <span>Marketing</span>
             </TabsTrigger>
           </TabsList>
 
@@ -2129,17 +1777,17 @@ export const AdminDashboard = () => {
         
         {/* Compact deleted bookings notification */}
         {deletedCountForBanner != null && deletedCountForBanner > 0 && (
-          <div className="flex items-center justify-between bg-red-50 border border-red-200 rounded-lg px-4 py-2 text-sm">
-            <div className="flex items-center gap-2 text-red-800">
-              <AlertTriangle className="w-4 h-4 shrink-0" />
-              <span><strong>{deletedCountForBanner}</strong> deleted booking{deletedCountForBanner !== 1 ? 's' : ''} not shown</span>
+          <div className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 text-sm">
+            <div className="flex items-center gap-2 text-gray-600">
+              <Trash2 className="w-4 h-4 shrink-0" />
+              <span><strong>{deletedCountForBanner}</strong> deleted booking{deletedCountForBanner !== 1 ? 's' : ''} in trash</span>
             </div>
             <Button
               onClick={handleRestoreAllBookings}
               disabled={restoringAll}
               size="sm"
               variant="outline"
-              className="border-red-300 text-red-800 hover:bg-red-100 h-7 text-xs"
+              className="border-gray-300 text-gray-700 hover:bg-gray-100 h-7 text-xs"
             >
               {restoringAll ? (
                 <>
@@ -2156,174 +1804,159 @@ export const AdminDashboard = () => {
           </div>
         )}
 
-        {/* ALERT: Bookings needing approval */}
+        {/* ALERT: Bookings needing approval — shows full details + one-click approve */}
         {stats.pendingApproval > 0 && (
-          <Card className="border-orange-400 bg-orange-50 shadow-md">
-            <CardContent className="p-4 flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <AlertTriangle className="w-8 h-8 text-orange-600 shrink-0 animate-pulse" />
-                <div>
-                  <p className="font-bold text-orange-900">{stats.pendingApproval} booking{stats.pendingApproval !== 1 ? 's' : ''} need{stats.pendingApproval === 1 ? 's' : ''} your approval!</p>
-                  <p className="text-sm text-orange-800 mt-0.5">These are last-minute bookings (within 24 hours). They won't be confirmed until you approve them.</p>
-                </div>
+          <div className="border-2 border-orange-400 bg-orange-50 rounded-xl shadow-md overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center gap-3 px-5 py-4 bg-orange-100 border-b border-orange-300">
+              <AlertTriangle className="w-6 h-6 text-orange-600 shrink-0 animate-pulse" />
+              <div>
+                <p className="font-bold text-orange-900 text-base">
+                  {stats.pendingApproval} booking{stats.pendingApproval !== 1 ? 's' : ''} need{stats.pendingApproval === 1 ? 's' : ''} your approval
+                </p>
+                <p className="text-sm text-orange-700">Last-minute bookings within 24 hours — approve to confirm and notify the customer.</p>
               </div>
-              <Button
-                onClick={() => setStatusFilter('pending_approval')}
-                className="bg-orange-600 hover:bg-orange-700 text-white font-semibold shrink-0"
-              >
-                View &amp; Approve
-              </Button>
-            </CardContent>
-          </Card>
+            </div>
+
+            {/* One card per pending booking */}
+            <div className="divide-y divide-orange-200">
+              {bookings.filter(b => b && b.status === 'pending_approval').map(b => {
+                const name = (b.firstName && b.lastName)
+                  ? `${b.firstName} ${b.lastName}`
+                  : b.name || 'Customer';
+                const ref = b.referenceNumber ? `#${b.referenceNumber}` : '';
+                const price = b.pricing?.totalPrice || b.totalPrice || 0;
+                return (
+                  <div key={b.id} className="px-5 py-4 flex flex-wrap items-start justify-between gap-4">
+                    <div className="flex flex-col gap-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-orange-900 text-base">{name}</span>
+                        {ref && <span className="text-xs font-mono bg-orange-200 text-orange-800 px-2 py-0.5 rounded">{ref}</span>}
+                        {b.phone && <span className="text-sm text-orange-700">{b.phone}</span>}
+                      </div>
+                      <div className="text-sm text-orange-800 font-semibold">
+                        {b.date} at {b.time} &mdash; {b.passengers || 1} passenger{(b.passengers || 1) !== 1 ? 's' : ''}
+                      </div>
+                      <div className="text-sm text-orange-700 truncate max-w-xl">
+                        <span className="font-medium">From:</span> {b.pickupAddress || 'N/A'}
+                      </div>
+                      <div className="text-sm text-orange-700 truncate max-w-xl">
+                        <span className="font-medium">To:</span> {b.dropoffAddress || 'N/A'}
+                      </div>
+                      <div className="text-sm font-bold text-orange-900">
+                        ${parseFloat(price).toFixed(2)} NZD
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => { setSelectedBooking(b); setShowDetailsModal(true); }}
+                        className="border-orange-300 text-orange-700 hover:bg-orange-100"
+                      >
+                        View Details
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => handleApproveBooking(b.id)}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5"
+                      >
+                        Approve &amp; Notify Customer
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         )}
 
         {/* RETURNS OVERVIEW - Shows bookings with return trips attached */}
         <ReturnsOverviewPanel
           bookings={bookings}
-          drivers={drivers}
           onViewBooking={(booking) => {
             setSelectedBooking(booking);
             setShowDetailsModal(true);
           }}
         />
         
-        {/* Stats Cards - Compact single row */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-          <div className="bg-white rounded-lg border border-gray-200 p-3 shadow-sm">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center shrink-0">
-                <BookOpen className="w-4 h-4 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-500">Total</p>
-                <p className="text-xl font-bold text-gray-900">{stats.total}</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-lg border border-gray-200 p-3 shadow-sm">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center shrink-0">
-                <Clock className="w-4 h-4 text-amber-600" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-500">Pending</p>
-                <p className="text-xl font-bold text-amber-600">{stats.pending}</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-lg border border-gray-200 p-3 shadow-sm">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center shrink-0">
-                <CheckCircle className="w-4 h-4 text-green-600" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-500">Confirmed</p>
-                <p className="text-xl font-bold text-green-600">{stats.confirmed}</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-lg border border-gray-200 p-3 shadow-sm">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center shrink-0">
-                <DollarSign className="w-4 h-4 text-emerald-600" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-500">Revenue</p>
-                <p className="text-xl font-bold text-emerald-600">${(stats.totalRevenue ?? 0).toFixed(2)}</p>
-              </div>
-            </div>
+        {/* Stats — Glass cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+          <button onClick={() => setStatusFilter('all')} className="bg-white/60 backdrop-blur-xl rounded-2xl border border-white/30 p-5 shadow-sm shadow-black/5 hover:shadow-md hover:bg-white/80 transition-all text-left">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em]">Total</p>
+            <p className="text-3xl font-bold text-slate-900 mt-2 tabular-nums">{stats.total}</p>
+          </button>
+          <button onClick={() => setStatusFilter('pending')} className="bg-white/60 backdrop-blur-xl rounded-2xl border border-white/30 p-5 shadow-sm shadow-black/5 hover:shadow-md hover:bg-white/80 transition-all text-left">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em]">Pending</p>
+            <p className="text-3xl font-bold text-amber-600 mt-2 tabular-nums">{stats.pending}</p>
+          </button>
+          <button onClick={() => setStatusFilter('confirmed')} className="bg-white/60 backdrop-blur-xl rounded-2xl border border-white/30 p-5 shadow-sm shadow-black/5 hover:shadow-md hover:bg-white/80 transition-all text-left">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em]">Confirmed</p>
+            <p className="text-3xl font-bold text-emerald-600 mt-2 tabular-nums">{stats.confirmed}</p>
+          </button>
+          <button onClick={() => setStatusFilter('completed')} className="bg-white/60 backdrop-blur-xl rounded-2xl border border-white/30 p-5 shadow-sm shadow-black/5 hover:shadow-md hover:bg-white/80 transition-all text-left">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em]">Completed</p>
+            <p className="text-3xl font-bold text-blue-600 mt-2 tabular-nums">{stats.completed}</p>
+          </button>
+          <div className="bg-slate-900 rounded-2xl p-5 shadow-lg shadow-slate-900/20 text-white">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em]">Revenue</p>
+            <p className="text-3xl font-bold mt-2 tabular-nums">${(stats.totalRevenue ?? 0).toFixed(0)}</p>
           </div>
         </div>
 
-        {/* Filters and Actions */}
-        <Card className="mb-6">
-          <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                  <Input
-                    placeholder="Search by name, email, phone, or address... (also searches archive)"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-                {searchTerm && (
-                  <p className="text-xs text-blue-600 mt-1 flex items-center gap-1">
-                    <Archive className="w-3 h-3" />
-                    Search includes archived bookings
-                  </p>
-                )}
-              </div>
-              <div className="w-full md:w-48">
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="pending_approval">🚨 Needs Approval</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="confirmed">Confirmed</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <input
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                  className="border rounded px-2 py-2 text-sm w-[130px]"
-                  title="From date"
-                />
-                <span className="text-gray-400 text-sm">–</span>
-                <input
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                  className="border rounded px-2 py-2 text-sm w-[130px]"
-                  title="To date"
-                />
-                {(dateFrom || dateTo) && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => { setDateFrom(''); setDateTo(''); fetchBookingsRef.current?.(1, false); }}
-                    className="text-gray-600"
-                  >
-                    Clear dates
-                  </Button>
-                )}
-              </div>
-              <Button 
-                onClick={exportToCSV}
-                variant="outline"
-                className="border-gold text-gold hover:bg-gold hover:text-black"
-              >
-                Export CSV
-              </Button>
-              <Button 
-                onClick={handleSendReminders}
-                variant="outline"
-                className="border-gold text-gold hover:bg-gold hover:text-black"
-                title="Send reminders to tomorrow's bookings"
-              >
-                <Bell className="w-4 h-4 mr-2" />
-                Send Reminders
-              </Button>
-              <Button 
-                onClick={() => setShowCreateBookingModal(true)}
-                className="bg-gold hover:bg-gold/90 text-black font-semibold"
-              >
-                + Create Booking
-              </Button>
+        {/* Filter Bar — Glass */}
+        <div className="bg-white/60 backdrop-blur-xl rounded-2xl border border-white/30 shadow-sm shadow-black/5 p-4 mb-6">
+          <div className="flex flex-col lg:flex-row gap-3 items-center">
+            <div className="flex-1 relative w-full">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 w-4 h-4" />
+              <Input
+                placeholder="Search by name, email, phone..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 bg-white/50 border-slate-200/60 focus:bg-white focus:border-slate-400 focus:ring-slate-400/20 h-10 rounded-xl text-sm"
+              />
             </div>
-          </CardContent>
-        </Card>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full lg:w-[150px] h-10 bg-white/50 border-slate-200/60 rounded-xl text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="pending_approval">Needs Approval</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="confirmed">Confirmed</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="flex items-center gap-2">
+              <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-10 border border-slate-200/60 bg-white/50 rounded-xl px-3 text-sm focus:outline-none focus:border-slate-400" />
+              <span className="text-slate-200 text-xs">to</span>
+              <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-10 border border-slate-200/60 bg-white/50 rounded-xl px-3 text-sm focus:outline-none focus:border-slate-400" />
+              {(dateFrom || dateTo) && (
+                <button onClick={() => { setDateFrom(''); setDateTo(''); }} className="text-[11px] text-slate-400 hover:text-slate-700 underline underline-offset-2">Clear</button>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={exportToCSV} className="text-xs font-medium text-slate-500 hover:text-slate-900 transition-colors px-3 py-2">
+                Export
+              </button>
+              <button onClick={handleSendReminders} className="text-xs font-medium text-slate-500 hover:text-slate-900 transition-colors px-3 py-2" title="Remind tomorrow's bookings">
+                <Bell className="w-3.5 h-3.5 inline mr-1" />Remind
+              </button>
+              <button
+                onClick={() => setShowSystemHealthDialog(true)}
+                className="text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors px-3 py-2 rounded-lg flex items-center gap-1.5"
+                title="Run booking system diagnostic and send a test email"
+              >
+                <Mail className="w-3.5 h-3.5" />Test Booking System
+              </button>
+              <button onClick={() => setShowCreateBookingModal(true)} className="bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold h-10 px-5 rounded-xl transition-colors">
+                + New Booking
+              </button>
+            </div>
+          </div>
+        </div>
 
         {/* Payment Troubleshooting — collapsible */}
         <div className="mb-4">
@@ -2397,469 +2030,45 @@ export const AdminDashboard = () => {
           )}
         </div>
 
-        {/* Bookings Table */}
-        <Card>
-          <CardContent className="p-0">
-            {loading ? (
-              <div className="text-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold mx-auto"></div>
-                <p className="text-gray-600 mt-4">Loading bookings...</p>
-              </div>
-            ) : filteredBookings.length === 0 ? (
-              <div className="space-y-4">
-                <div className="text-center py-8">
-                  <p className="text-gray-600 font-medium">
-                    {bookings.length > 0
-                      ? `No bookings match your current filter (${bookings.length} booking${bookings.length !== 1 ? 's' : ''} exist — clear filters to see them)`
-                      : 'No bookings found'}
-                  </p>
-                </div>
-                {/* Only show recovery guidance when the database is genuinely empty */}
-                {bookings.length === 0 && (
-                  <Card className="border-amber-200 bg-amber-50/50 max-w-2xl mx-auto">
-                    <CardContent className="p-4 space-y-3">
-                      {retentionCounts && (
-                        <p className="text-sm font-semibold text-amber-900">
-                          Database: {retentionCounts.active} active, {retentionCounts.deleted} in Deleted.
-                          {retentionCounts.deleted > 0 && ' Restore them from the Deleted tab.'}
-                        </p>
-                      )}
-                      <p className="font-medium text-amber-900">Get your bookings back:</p>
-                      <ul className="list-disc list-inside text-sm text-amber-800 space-y-1">
-                        <li>If bookings disappeared after an update, they may be in the <strong>Deleted</strong> tab. Open Deleted and click <strong>Restore all</strong> to reinstate them.</li>
-                        <li>Click <strong>Restore from server backup</strong> in the Deleted tab to recover from the backup file on the server.</li>
-                        <li>Use <strong>Deleted → Download backup (JSON)</strong> to see exactly what's stored (active + deleted).</li>
-                      </ul>
-                      <div className="flex flex-wrap gap-2 pt-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setActiveTab('deleted')}
-                          className="border-amber-500 text-amber-800 hover:bg-amber-100"
-                        >
-                          Open Deleted tab
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={handleRestoreFromServerBackup}
-                          disabled={restoringFromServerBackup}
-                          className="bg-orange-600 hover:bg-orange-700 text-white"
-                        >
-                          {restoringFromServerBackup ? <RefreshCw className="w-4 h-4 mr-1 animate-spin" /> : <Shield className="w-4 h-4 mr-1" />}
-                          Restore from server backup
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-                {/* When filters are hiding bookings, show a quick-clear option */}
-                {bookings.length > 0 && (dateFrom || dateTo || searchTerm || statusFilter !== 'all') && (
-                  <div className="flex flex-wrap gap-2 justify-center">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => { setDateFrom(''); setDateTo(''); setSearchTerm(''); setStatusFilter('all'); fetchBookingsRef.current?.(1, false); }}
-                      className="border-amber-500 text-amber-800 hover:bg-amber-100"
-                    >
-                      Clear all filters & show all bookings
-                    </Button>
-                  </div>
-                )}
-              </div>
-            ) : (
-            <>
-              <div className="overflow-x-auto">
-                {/* Bulk Action Bar */}
-                {safeSelectedSet.size > 0 && (
-                  <div className="bg-red-50 border-b border-red-200 px-4 py-3 flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm font-medium text-red-800">
-                        {safeSelectedSet.size} booking{safeSelectedSet.size > 1 ? 's' : ''} selected
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setSelectedBookings(new Set())}
-                        className="text-gray-600 hover:text-gray-800"
-                      >
-                        Clear
-                      </Button>
-                    </div>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => setShowBulkDeleteConfirm(true)}
-                      className="bg-red-600 hover:bg-red-700"
-                    >
-                      <Trash2 className="w-4 h-4 mr-1" />
-                      Delete
-                    </Button>
-                  </div>
-                )}
-                <table className="w-full text-sm">
-                  <thead className="bg-gradient-to-r from-gray-100 to-gray-50 border-b-2 border-gray-200">
-                    <tr>
-                      <th className="p-2 w-8">
-                        <button
-                          onClick={() => {
-                            if (safeSelectedSet.size === filteredBookings.length) {
-                              setSelectedBookings(new Set());
-                            } else {
-                              setSelectedBookings(new Set(filteredBookings.map(b => b.id)));
-                            }
-                          }}
-                          className="p-1 hover:bg-gray-200 rounded"
-                          title="Select all"
-                        >
-                          {safeSelectedSet.size === filteredBookings.length && filteredBookings.length > 0 ? (
-                            <CheckSquare className="w-4 h-4 text-gold" />
-                          ) : (
-                            <Square className="w-4 h-4 text-gray-400" />
-                          )}
-                        </button>
-                      </th>
-                      <th className="text-left p-2 font-semibold text-gray-700 text-xs">Ref/Date</th>
-                      <th className="text-left p-2 font-semibold text-gray-700 text-xs">Customer</th>
-                      <th className="text-left p-2 font-semibold text-gray-700 text-xs hidden md:table-cell">Route</th>
-                      <th className="text-left p-2 font-semibold text-gray-700 text-xs hidden lg:table-cell">✈️ Flight</th>
-                      <th className="text-left p-2 font-semibold text-gray-700 text-xs hidden lg:table-cell">🔄 Return</th>
-                      <th className="text-left p-2 font-semibold text-gray-700 text-xs">💰 Price</th>
-                      <th className="text-left p-2 font-semibold text-gray-700 text-xs">🚗 Driver</th>
-                      <th className="text-left p-2 font-semibold text-gray-700 text-xs">Status</th>
-                      <th className="text-left p-2 font-semibold text-gray-700 text-xs">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredBookings.map((booking) => {
-                      const hasReturn = booking.returnDate && booking.returnTime;
-                      const isUnassigned = !booking.driver_id && !booking.driver_name && !booking.assignedDriver;
-                      const isUrgentUnassigned = isToday(booking.date) && isUnassigned;
-                      const flightNum = booking.flightNumber || booking.flight_number || booking.flightArrivalNumber || booking.arrivalFlightNumber || booking.flightDepartureNumber || booking.departureFlightNumber || '';
-                      
-                      return (
-                      <tr key={booking.id} className={`border-b hover:bg-gray-50 transition-colors
-                        ${safeSelectedSet.has(booking.id) ? 'bg-gold/10' : ''} 
-                        ${isUrgentUnassigned ? 'bg-red-50 border-l-4 border-l-red-500' : ''}
-                        ${!isUrgentUnassigned && isToday(booking.date) ? 'bg-blue-50/50 border-l-4 border-l-blue-500' : ''} 
-                        ${!isUrgentUnassigned && !isToday(booking.date) && isTomorrow(booking.date) ? 'border-l-4 border-l-orange-400 bg-orange-50/30' : ''}
-                        ${hasReturn ? 'border-r-4 border-r-purple-400' : ''}
-                      `}>
-                        <td className="px-2 py-2">
-                          <button
-                            onClick={() => {
-                              const newSelected = new Set(safeSelectedSet);
-                              if (newSelected.has(booking.id)) {
-                                newSelected.delete(booking.id);
-                              } else {
-                                newSelected.add(booking.id);
-                              }
-                              setSelectedBookings(newSelected);
-                            }}
-                            className="p-0.5 hover:bg-gray-200 rounded"
-                          >
-                            {safeSelectedSet.has(booking.id) ? (
-                              <CheckSquare className="w-4 h-4 text-gold" />
-                            ) : (
-                              <Square className="w-4 h-4 text-gray-400" />
-                            )}
-                          </button>
-                        </td>
-                        {/* REF & DATE COLUMN - always show return date/time when booking has return */}
-                        <td className="px-2 py-2">
-                          <div className="flex flex-col">
-                            <div className="flex items-center gap-1 mb-0.5">
-                              <span className="text-xs font-bold text-gold bg-gold/10 px-1.5 py-0.5 rounded">#{booking.referenceNumber || booking.id?.slice(0, 5)}</span>
-                              {isToday(booking.date) && <span className="px-1.5 py-0.5 text-[9px] font-bold bg-blue-600 text-white rounded animate-pulse">TODAY</span>}
-                              {isTomorrow(booking.date) && <span className="px-1.5 py-0.5 text-[9px] font-bold bg-orange-500 text-white rounded">TMR</span>}
-                            </div>
-                            <div className="text-xs text-gray-700 font-medium">{formatDate(booking.date)}</div>
-                            <div className="text-sm font-bold text-gray-900">{booking.time}</div>
-                            {hasReturn && (
-                              <div className="mt-1 text-[10px] font-semibold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200" title="Return pickup date and time">
-                                ↩ Return {formatDate(booking.returnDate)} {booking.returnTime}
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                        {/* CUSTOMER COLUMN */}
-                        <td className="px-2 py-2">
-                          <div className="flex flex-col">
-                            <span className="text-sm font-semibold text-gray-900 truncate max-w-[120px]">{booking.name}</span>
-                            <a href={`tel:${booking.phone}`} className="text-xs text-blue-600 hover:underline">{booking.phone}</a>
-                            <span className="text-[10px] text-gray-500 truncate max-w-[120px]">{booking.email}</span>
-                            {booking.passengers > 1 && (
-                              <span className="text-[10px] bg-gray-100 px-1 rounded mt-0.5 w-fit">👥 {booking.passengers} pax</span>
-                            )}
-                          </div>
-                        </td>
-                        {/* ROUTE COLUMN */}
-                        <td className="px-2 py-2 hidden md:table-cell">
-                          <div className="flex flex-col text-[10px] max-w-[180px]">
-                            <div className="flex items-start gap-1">
-                              <span className="text-green-600 font-bold">↑</span>
-                              <span className="text-gray-700 truncate" title={booking.pickupAddress}>{booking.pickupAddress?.slice(0, 35)}...</span>
-                            </div>
-                            <div className="flex items-start gap-1 mt-0.5">
-                              <span className="text-red-600 font-bold">↓</span>
-                              <span className="text-gray-700 truncate" title={booking.dropoffAddress}>{booking.dropoffAddress?.slice(0, 35)}...</span>
-                            </div>
-                          </div>
-                        </td>
-                        {/* FLIGHT COLUMN */}
-                        <td className="px-2 py-2 hidden lg:table-cell">
-                          {flightNum ? (
-                            <div className="flex flex-col">
-                              <span className="text-xs font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded">✈️ {flightNum}</span>
-                              {booking.pickupAddress?.toLowerCase().includes('international') && (
-                                <span className="text-[9px] text-gray-500 mt-0.5">Int'l Terminal</span>
-                              )}
-                              {booking.pickupAddress?.toLowerCase().includes('domestic') && (
-                                <span className="text-[9px] text-gray-500 mt-0.5">Domestic Terminal</span>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-gray-300 text-xs">—</span>
-                          )}
-                        </td>
-                        {/* RETURN COLUMN - return date and time (also in Ref/Date column so never hidden) */}
-                        <td className="px-2 py-2 hidden lg:table-cell">
-                          {hasReturn ? (
-                            <div className="flex flex-col bg-purple-50 p-1.5 rounded border border-purple-200">
-                              <span className="text-[10px] font-semibold text-purple-700">🔄 RETURN</span>
-                              <span className="text-xs font-bold text-purple-900">{formatDate(booking.returnDate)}</span>
-                              <span className="text-sm font-bold text-purple-800">{booking.returnTime}</span>
-                            </div>
-                          ) : (
-                            <span className="text-gray-300 text-xs">—</span>
-                          )}
-                        </td>
-                        {/* PRICE & PAYMENT COLUMN */}
-                        <td className="px-2 py-2">
-                          <div className="flex flex-col items-start">
-                            <span className="text-sm font-bold text-gray-900">${booking.pricing?.totalPrice?.toFixed(0) || booking.totalPrice || '0'}</span>
-                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold ${
-                              booking.payment_status === 'paid' ? 'bg-green-100 text-green-700' : 
-                              booking.payment_status === 'cash' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
-                            }`}>
-                              {booking.payment_status === 'paid' ? '✓ PAID' : booking.payment_status === 'cash' ? '💵 CASH' : '✗ UNPAID'}
-                            </span>
-                          </div>
-                        </td>
-                        {/* DRIVER COLUMN */}
-                        <td className="px-2 py-2">
-                          {booking.driver_id || booking.driver_name || booking.assignedDriver ? (
-                            <div className="flex flex-col">
-                              <div className="flex items-center gap-1">
-                                <span className="text-xs font-medium text-gray-900">{booking.driver_name?.split(' ')[0] || 'Assigned'}</span>
-                                {booking.driverAcknowledged ? (
-                                  <CheckCircle className="w-3.5 h-3.5 text-green-500" title="Driver confirmed" />
-                                ) : (
-                                  <Clock className="w-3.5 h-3.5 text-orange-500 animate-pulse" title="Awaiting confirmation" />
-                                )}
-                              </div>
-                              <span className={`text-[9px] ${booking.driverAcknowledged ? 'text-green-600' : 'text-orange-600'}`}>
-                                {booking.driverAcknowledged ? '✓ Confirmed' : '⏳ Pending'}
-                              </span>
-                            </div>
-                          ) : (
-                            <div className={`flex flex-col items-start ${isToday(booking.date) ? 'animate-pulse' : ''}`}>
-                              <span className={`px-2 py-1 rounded text-[10px] font-bold ${isToday(booking.date) ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-600'}`}>
-                                {isToday(booking.date) ? '⚠️ ASSIGN!' : 'No Driver'}
-                              </span>
-                            </div>
-                          )}
-                        </td>
-                        {/* STATUS COLUMN */}
-                        <td className="px-2 py-2">
-                          <Select
-                            value={booking.status}
-                            onValueChange={(value) => handleStatusUpdate(booking.id, value)}
-                          >
-                            <SelectTrigger className="w-24 h-7 text-[10px]">
-                              <SelectValue>
-                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${getStatusColor(booking.status)}`}>
-                                  {booking.status?.replace('_', ' ').slice(0,10)}
-                                </span>
-                              </SelectValue>
-                            </SelectTrigger>
-                            <SelectContent className="z-[9999]">
-                              <SelectItem value="pending_approval">🚨 Approval</SelectItem>
-                              <SelectItem value="pending">Pending</SelectItem>
-                              <SelectItem value="confirmed">Confirmed</SelectItem>
-                              <SelectItem value="completed">Completed</SelectItem>
-                              <SelectItem value="cancelled">Cancelled</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </td>
-                        {/* ACTIONS COLUMN */}
-                        <td className="px-1 py-2 relative z-10">
-                          <div className="flex flex-wrap gap-1 min-w-[180px]">
-                            <button
-                              onClick={(e) => { e.stopPropagation(); openDetailsModal(booking); }}
-                              className="p-2 hover:bg-gray-100 rounded flex flex-col items-center cursor-pointer active:bg-gray-200 min-w-[36px]"
-                              title="View booking details"
-                            >
-                              <Eye className="w-4 h-4 text-gray-600" />
-                              <span className="text-[8px] text-gray-500">View</span>
-                            </button>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); openEditBookingModal(booking); }}
-                              className="p-2 hover:bg-blue-100 rounded flex flex-col items-center cursor-pointer active:bg-blue-200 min-w-[36px]"
-                              title="Edit booking details"
-                            >
-                              <Edit2 className="w-4 h-4 text-blue-600" />
-                              <span className="text-[8px] text-blue-500">Edit</span>
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedBooking(booking);
-                                setShowEmailModal(true);
-                              }}
-                              className="p-2 hover:bg-green-100 rounded flex flex-col items-center cursor-pointer active:bg-green-200 min-w-[36px]"
-                              title="Send custom email (won't send SMS)"
-                            >
-                              <Mail className="w-4 h-4 text-green-600" />
-                              <span className="text-[8px] text-green-500">Email</span>
-                            </button>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleResendConfirmation(booking.id); }}
-                              className="p-2 hover:bg-amber-100 rounded flex flex-col items-center border border-amber-200 cursor-pointer active:bg-amber-200 min-w-[36px]"
-                              title="Resend confirmation EMAIL + SMS to customer"
-                            >
-                              <RefreshCw className="w-4 h-4 text-amber-600" />
-                              <span className="text-[8px] text-amber-600 font-medium">Resend</span>
-                            </button>
-                            {booking.status === 'completed' && (
-                              <button
-                                onClick={(e) => { e.stopPropagation(); handleArchiveBooking(booking.id); }}
-                                className="p-2 hover:bg-blue-100 rounded flex flex-col items-center border border-blue-200 cursor-pointer active:bg-blue-200 min-w-[36px]"
-                                title="Archive this completed booking"
-                              >
-                                <Archive className="w-4 h-4 text-blue-600" />
-                                <span className="text-[8px] text-blue-600 font-medium">Archive</span>
-                              </button>
-                            )}
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleDeleteBooking(booking.id, booking.name, true); }}
-                              className="p-2 hover:bg-red-100 rounded flex flex-col items-center cursor-pointer active:bg-red-200 min-w-[36px]"
-                              title="Cancel & notify customer via email/SMS"
-                            >
-                              <Trash2 className="w-4 h-4 text-red-500" />
-                              <span className="text-[8px] text-red-500">Cancel</span>
-                            </button>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleDeleteBooking(booking.id, booking.name, false); }}
-                              className="p-2 hover:bg-gray-200 rounded flex flex-col items-center cursor-pointer active:bg-gray-300 min-w-[36px]"
-                              title="Silent delete - NO notification to customer (use for duplicates)"
-                            >
-                              <XCircle className="w-4 h-4 text-gray-500" />
-                              <span className="text-[8px] text-gray-500">Silent</span>
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-              
-              {/* Load More Button - showing if more bookings available */}
-              {!loadAllBookings && bookings.length >= bookingsPerPage * currentPage && (
-                <div className="flex justify-center mt-4 pb-4">
-                  <Button
-                    onClick={loadMoreBookings}
-                    disabled={isLoadingMore}
-                    variant="outline"
-                    className="px-8"
-                  >
-                    {isLoadingMore ? (
-                      <>
-                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                        Loading...
-                      </>
-                    ) : (
-                      <>Load More Bookings</>
-                    )}
-                  </Button>
-                </div>
-              )}
-              
-              {/* Archived Search Results - shown when searching */}
-              {searchTerm && archiveSearchResults.length > 0 && (
-                <div className="mt-6 border-t pt-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Archive className="w-5 h-5 text-blue-600" />
-                    <h4 className="font-semibold text-blue-800">
-                      Found {archiveSearchResults.length} match(es) in Archive
-                    </h4>
-                  </div>
-                  <div className="bg-blue-50 rounded-lg border border-blue-200 overflow-hidden">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="bg-blue-100 text-blue-800 text-xs">
-                          <th className="px-3 py-2 text-left">Ref #</th>
-                          <th className="px-3 py-2 text-left">Customer</th>
-                          <th className="px-3 py-2 text-left">Date</th>
-                          <th className="px-3 py-2 text-left">Status</th>
-                          <th className="px-3 py-2 text-left">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {archiveSearchResults.map((booking) => (
-                          <tr key={booking.id} className="border-b border-blue-100 hover:bg-blue-50/50 bg-white">
-                            <td className="px-3 py-2 font-medium text-blue-700">#{booking.referenceNumber}</td>
-                            <td className="px-3 py-2">
-                              <div className="font-medium text-gray-900">{booking.name}</div>
-                              <div className="text-xs text-gray-500">{booking.phone}</div>
-                            </td>
-                            <td className="px-3 py-2">
-                              <div className="text-gray-800">{formatDate(booking.date)}</div>
-                              <div className="text-xs text-gray-500">{booking.time}</div>
-                            </td>
-                            <td className="px-3 py-2">
-                              <span className="px-2 py-0.5 rounded text-xs bg-blue-100 text-blue-700">ARCHIVED</span>
-                            </td>
-                            <td className="px-3 py-2">
-                              <div className="flex gap-2">
-                                <Button
-                                  onClick={() => openDetailsModal(booking)}
-                                  variant="ghost"
-                                  size="sm"
-                                >
-                                  <Eye className="w-4 h-4" />
-                                </Button>
-                                <Button
-                                  onClick={() => handleUnarchiveBooking(booking.id)}
-                                  className="bg-blue-600 hover:bg-blue-700 text-white"
-                                  size="sm"
-                                >
-                                  <RotateCcw className="w-3 h-3 mr-1" />
-                                  Restore
-                                </Button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-              
-              {/* Pagination Info - always visible */}
-              <div className="text-center text-sm text-gray-500 pb-2">
-                {loadAllBookings
-                  ? `Showing all ${filteredBookings.length} bookings (full list – none hidden)`
-                  : `Showing ${filteredBookings.length} of ${totalBookings || bookings.length} bookings`}
-                {archiveSearchResults.length > 0 && ` + ${archiveSearchResults.length} from archive`}
-              </div>
-            </>
-            )}
-          </CardContent>
-        </Card>
+        {/* Bookings Table — Redesigned */}
+        <BookingsTable
+          bookings={filteredBookings}
+          loading={loading}
+          totalBookings={totalBookings}
+          selectedBookings={safeSelectedSet}
+          onSelectBooking={(id) => {
+            const next = new Set(safeSelectedSet);
+            next.has(id) ? next.delete(id) : next.add(id);
+            setSelectedBookings(next);
+          }}
+          onSelectAll={() => setSelectedBookings(new Set(filteredBookings.map(b => b.id)))}
+          onClearSelection={() => setSelectedBookings(new Set())}
+          onBulkDelete={() => setShowBulkDeleteConfirm(true)}
+          onViewDetails={openDetailsModal}
+          onEditBooking={openEditBookingModal}
+          onSendEmail={(booking) => { setSelectedBooking(booking); setShowEmailModal(true); }}
+          onResendConfirmation={handleResendConfirmation}
+          onSendToAdmin={handleSendToAdmin}
+          onDeleteBooking={handleDeleteBooking}
+          onStatusUpdate={handleStatusUpdate}
+          onSendPaymentLink={handleResendPaymentLink}
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          searchTerm={searchTerm}
+          statusFilter={statusFilter}
+          onClearFilters={() => { setDateFrom(''); setDateTo(''); setSearchTerm(''); setStatusFilter('all'); }}
+          onOpenDeletedTab={() => setActiveTab('deleted')}
+          onRestoreFromServer={handleRestoreFromServerBackup}
+          restoringFromServerBackup={restoringFromServerBackup}
+          loadAllBookings={loadAllBookings}
+          currentPage={currentPage}
+          bookingsPerPage={bookingsPerPage}
+          onPageChange={(page) => fetchBookingsRef.current?.(page, false)}
+          onLoadAll={() => fetchBookingsRef.current?.(1, false)}
+        />
+
         </TabsContent>
+
 
 
           {/* Customers Tab */}
@@ -2867,412 +2076,49 @@ export const AdminDashboard = () => {
             <CustomersTab />
           </TabsContent>
 
-          {/* Drivers Tab */}
-          <TabsContent value="drivers">
-            <DriversTab />
-          </TabsContent>
-
-          {/* Driver Applications Tab */}
-          <TabsContent value="applications">
-            <DriverApplicationsTab />
-          </TabsContent>
-
-          {/* Analytics Tab */}
-          <TabsContent value="analytics">
-            <AnalyticsTab />
-          </TabsContent>
-
-          {/* Marketing Tab - Landing Pages & Social */}
-          <TabsContent value="marketing">
-            <LandingPagesTab />
-          </TabsContent>
-
           {/* Deleted Bookings Tab */}
           <TabsContent value="deleted" className="space-y-6">
-            <Card className="border-red-200 bg-red-50">
-              <CardContent className="p-6">
-                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                  <div className="flex items-center gap-3">
-                    <AlertTriangle className="w-6 h-6 text-red-600" />
-                    <h3 className="text-lg font-semibold text-red-800">Recently Deleted Bookings</h3>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button
-                      onClick={handleDownloadBackup}
-                      disabled={downloadingBackup}
-                      variant="outline"
-                      className="border-gray-400 text-gray-700 hover:bg-gray-100"
-                    >
-                      {downloadingBackup ? (
-                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                      ) : (
-                        <Download className="w-4 h-4 mr-2" />
-                      )}
-                      Download backup (JSON)
-                    </Button>
-                    {/* Restore from a backup JSON file (e.g. backup_bookings_full.json) */}
-                    <input
-                      ref={backupFileInputRef}
-                      type="file"
-                      accept=".json"
-                      className="hidden"
-                      onChange={handleRestoreFromBackupFile}
-                    />
-                    <Button
-                      onClick={() => backupFileInputRef.current?.click()}
-                      disabled={restoringFromFile}
-                      variant="outline"
-                      className="border-blue-400 text-blue-700 hover:bg-blue-50"
-                      title="Upload a JSON backup file to restore bookings"
-                    >
-                      {restoringFromFile ? (
-                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                      ) : (
-                        <Upload className="w-4 h-4 mr-2" />
-                      )}
-                      Restore from backup file
-                    </Button>
-                    {/* One-click restore from backup_bookings_full.json on the server */}
-                    <Button
-                      onClick={handleRestoreFromServerBackup}
-                      disabled={restoringFromServerBackup}
-                      className="bg-orange-600 hover:bg-orange-700 text-white"
-                      title="Restore bookings from the backup_bookings_full.json file stored on the server"
-                    >
-                      {restoringFromServerBackup ? (
-                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                      ) : (
-                        <Shield className="w-4 h-4 mr-2" />
-                      )}
-                      Restore from server backup
-                    </Button>
-                    {deletedBookings.length > 0 && (
-                      <Button
-                        onClick={handleRestoreAllBookings}
-                        disabled={restoringAll}
-                        className="bg-green-600 hover:bg-green-700 text-white"
-                      >
-                        {restoringAll ? (
-                          <>
-                            <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                            Restoring...
-                          </>
-                        ) : (
-                          <>
-                            <RotateCcw className="w-4 h-4 mr-2" />
-                            Restore all {deletedBookings.length} booking{deletedBookings.length !== 1 ? 's' : ''}
-                          </>
-                        )}
-                      </Button>
-                    )}
-                  </div>
-                </div>
-                <p className="text-sm text-red-700 mb-4">
-                  Bookings are always retained—we never permanently remove them without your action. Deleted items stay here for recovery; use <strong>Restore all</strong> to reinstate. If bookings disappeared after an update, they may be here. To restore from a backup JSON file, click <strong>Restore from backup file</strong>.
-                </p>
-                {backupRestoreResult && (
-                  <div className={`mb-4 p-3 rounded-lg text-sm ${backupRestoreResult.error ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-800'}`}>
-                    {backupRestoreResult.error ? (
-                      <span>Error: {backupRestoreResult.error}</span>
-                    ) : (
-                      <span>
-                        Restored <strong>{backupRestoreResult.imported_count}</strong> bookings.
-                        Skipped <strong>{backupRestoreResult.skipped_count}</strong> duplicates.
-                        {backupRestoreResult.error_count > 0 && <span className="text-red-600 ml-1">{backupRestoreResult.error_count} errors.</span>}
-                      </span>
-                    )}
-                  </div>
-                )}
-                
-                {/* AUTO DAILY BACKUPS PANEL */}
-                <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <h4 className="font-semibold text-blue-900 text-sm">Automatic Daily Backups</h4>
-                      <p className="text-xs text-blue-700 mt-0.5">Snapshots saved every night at 1 AM — 7 days rolling. Click Restore to recover any missing bookings.</p>
-                    </div>
-                    <Button
-                      onClick={handleTriggerBackup}
-                      disabled={triggeringBackup}
-                      size="sm"
-                      variant="outline"
-                      className="border-blue-400 text-blue-700 hover:bg-blue-100 text-xs"
-                    >
-                      {triggeringBackup ? <RefreshCw className="w-3 h-3 mr-1 animate-spin" /> : <Archive className="w-3 h-3 mr-1" />}
-                      Backup now
-                    </Button>
-                  </div>
-                  {loadingAutoBackups ? (
-                    <p className="text-xs text-blue-600">Loading backups...</p>
-                  ) : autoBackups.length === 0 ? (
-                    <p className="text-xs text-blue-600">No automatic backups yet. Click "Backup now" to create the first one.</p>
-                  ) : (
-                    <div className="space-y-1">
-                      {autoBackups.map(b => (
-                        <div key={b.label} className="flex items-center justify-between bg-white rounded px-3 py-2 border border-blue-100 text-xs">
-                          <div>
-                            <span className="font-medium text-gray-800">{b.label}</span>
-                            <span className="text-gray-500 ml-2">{b.activeCount} active · {b.deletedCount} deleted</span>
-                          </div>
-                          <Button
-                            onClick={() => handleRestoreAutoBackup(b.label)}
-                            disabled={restoringAutoBackup === b.label}
-                            size="sm"
-                            className="bg-green-600 hover:bg-green-700 text-white text-xs py-1 h-7"
-                          >
-                            {restoringAutoBackup === b.label ? <RefreshCw className="w-3 h-3 animate-spin" /> : 'Restore missing'}
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {loadingDeleted ? (
-                  <div className="text-center py-8">
-                    <RefreshCw className="w-8 h-8 animate-spin mx-auto text-gray-400" />
-                    <p className="text-gray-500 mt-2">Loading deleted bookings...</p>
-                  </div>
-                ) : deletedBookings.length === 0 ? (
-                  <div className="text-center py-8 bg-white rounded-lg border border-red-100">
-                    <Trash2 className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-                    <p className="text-gray-500">No deleted bookings</p>
-                    <p className="text-sm text-gray-400">Bookings you delete will appear here for recovery</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {deletedBookings.map((booking) => (
-                      <div key={booking.id} className="bg-white p-4 rounded-lg border border-red-200 shadow-sm">
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-2">
-                              <h4 className="font-semibold text-gray-900">{booking.customerName || booking.name}</h4>
-                              <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded">DELETED</span>
-                            </div>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm text-gray-600">
-                              <div>
-                                <span className="text-gray-400">Date:</span> {formatDate(booking.date)} {booking.time}
-                              </div>
-                              <div>
-                                <span className="text-gray-400">Phone:</span> {booking.phone}
-                              </div>
-                              <div>
-                                <span className="text-gray-400">Total:</span> ${booking.totalPrice || booking.total_price}
-                              </div>
-                              <div>
-                                <span className="text-gray-400">Deleted:</span> {new Date(booking.deletedAt).toLocaleDateString('en-NZ')}
-                              </div>
-                            </div>
-                            <div className="mt-2 text-sm">
-                              <span className="text-gray-400">Pickup:</span> <span className="text-gray-600">{booking.pickup || booking.pickupAddress}</span>
-                            </div>
-                            <div className="text-sm">
-                              <span className="text-gray-400">Dropoff:</span> <span className="text-gray-600">{booking.dropoff || booking.dropoffAddress}</span>
-                            </div>
-                            {booking.deletedBy && (
-                              <div className="mt-1 text-xs text-gray-400">
-                                Deleted by: {booking.deletedBy}
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex gap-2 ml-4">
-                            <Button
-                              onClick={() => handleRestoreBooking(booking.id)}
-                              className="bg-green-600 hover:bg-green-700 text-white"
-                              size="sm"
-                            >
-                              <RotateCcw className="w-4 h-4 mr-1" />
-                              Restore
-                            </Button>
-                            <Button
-                              onClick={() => handlePermanentDelete(booking.id)}
-                              variant="destructive"
-                              size="sm"
-                            >
-                              <Trash2 className="w-4 h-4 mr-1" />
-                              Delete Forever
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <DeletedTab
+              deletedBookings={deletedBookings}
+              loadingDeleted={loadingDeleted}
+              downloadingBackup={downloadingBackup}
+              restoringFromFile={restoringFromFile}
+              restoringFromServerBackup={restoringFromServerBackup}
+              restoringAll={restoringAll}
+              backupRestoreResult={backupRestoreResult}
+              autoBackups={autoBackups}
+              loadingAutoBackups={loadingAutoBackups}
+              triggeringBackup={triggeringBackup}
+              restoringAutoBackup={restoringAutoBackup}
+              onDownloadBackup={handleDownloadBackup}
+              onRestoreFromBackupFile={handleRestoreFromBackupFile}
+              onRestoreFromServerBackup={handleRestoreFromServerBackup}
+              onRestoreAllBookings={handleRestoreAllBookings}
+              onTriggerBackup={handleTriggerBackup}
+              onRestoreAutoBackup={handleRestoreAutoBackup}
+              onRestoreBooking={handleRestoreBooking}
+              onPermanentDelete={handlePermanentDelete}
+            />
           </TabsContent>
 
-          {/* Archive Tab - Long-term booking storage (7 years retention) */}
+          {/* Archive Tab */}
           <TabsContent value="archive" className="space-y-6">
-            <Card className="border-blue-200 bg-blue-50">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <Archive className="w-6 h-6 text-blue-600" />
-                    <div>
-                      <h3 className="text-lg font-semibold text-blue-800">Archived Bookings</h3>
-                      <p className="text-sm text-blue-600">{archivedCount} bookings stored • 7-year retention • Auto-archives daily at 2 AM</p>
-                    </div>
-                  </div>
-                  <Button
-                    onClick={handleRunAutoArchive}
-                    disabled={runningAutoArchive}
-                    variant="outline"
-                    className="border-blue-300 text-blue-700 hover:bg-blue-100"
-                  >
-                    {runningAutoArchive ? (
-                      <>
-                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                        Archiving...
-                      </>
-                    ) : (
-                      <>
-                        <Archive className="w-4 h-4 mr-2" />
-                        Run Auto-Archive Now
-                      </>
-                    )}
-                  </Button>
-                </div>
-                
-                {/* Search Bar */}
-                <form onSubmit={handleArchiveSearch} className="flex gap-2 mb-4">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <Input
-                      placeholder="Search by name, email, phone, or reference #..."
-                      value={archiveSearchTerm}
-                      onChange={(e) => setArchiveSearchTerm(e.target.value)}
-                      className="pl-10 bg-white"
-                    />
-                  </div>
-                  <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
-                    <Search className="w-4 h-4 mr-2" />
-                    Search
-                  </Button>
-                  {archiveSearchTerm && (
-                    <Button 
-                      type="button" 
-                      variant="outline"
-                      onClick={() => {
-                        setArchiveSearchTerm('');
-                        fetchArchivedBookings(1, '');
-                      }}
-                    >
-                      Clear
-                    </Button>
-                  )}
-                </form>
-
-                {loadingArchived ? (
-                  <div className="text-center py-8">
-                    <RefreshCw className="w-8 h-8 animate-spin mx-auto text-gray-400" />
-                    <p className="text-gray-500 mt-2">Loading archived bookings...</p>
-                  </div>
-                ) : archivedBookings.length === 0 ? (
-                  <div className="text-center py-8 bg-white rounded-lg border border-blue-100">
-                    <Archive className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-                    <p className="text-gray-500">No archived bookings found</p>
-                    <p className="text-sm text-gray-400">
-                      {archiveSearchTerm ? 'Try a different search term' : 'Archive completed bookings to move them here'}
-                    </p>
-                  </div>
-                ) : (
-                  <>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="bg-blue-100 text-blue-800">
-                            <th className="px-3 py-2 text-left">Ref #</th>
-                            <th className="px-3 py-2 text-left">Customer</th>
-                            <th className="px-3 py-2 text-left">Date</th>
-                            <th className="px-3 py-2 text-left">Route</th>
-                            <th className="px-3 py-2 text-left">Total</th>
-                            <th className="px-3 py-2 text-left">Archived</th>
-                            <th className="px-3 py-2 text-left">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {archivedBookings.map((booking) => (
-                            <tr key={booking.id} className="border-b border-blue-100 hover:bg-blue-50/50 bg-white">
-                              <td className="px-3 py-3 font-medium text-blue-700">#{booking.referenceNumber}</td>
-                              <td className="px-3 py-3">
-                                <div className="font-medium text-gray-900">{booking.name}</div>
-                                <div className="text-xs text-gray-500">{booking.email}</div>
-                                <div className="text-xs text-gray-500">{booking.phone}</div>
-                              </td>
-                              <td className="px-3 py-3">
-                                <div className="font-medium">{formatDate(booking.date)}</div>
-                                <div className="text-xs text-gray-500">{booking.time}</div>
-                              </td>
-                              <td className="px-3 py-3">
-                                <div className="text-xs text-gray-600 truncate max-w-[200px]" title={booking.pickupAddress}>
-                                  📍 {booking.pickupAddress}
-                                </div>
-                                <div className="text-xs text-gray-600 truncate max-w-[200px]" title={booking.dropoffAddress}>
-                                  🎯 {booking.dropoffAddress}
-                                </div>
-                              </td>
-                              <td className="px-3 py-3 font-medium text-green-700">
-                                ${(booking.pricing?.totalPrice || booking.totalPrice || 0).toFixed(2)}
-                              </td>
-                              <td className="px-3 py-3 text-xs text-gray-500">
-                                {booking.archivedAt ? new Date(booking.archivedAt).toLocaleDateString('en-NZ') : 'N/A'}
-                              </td>
-                              <td className="px-3 py-3">
-                                <div className="flex gap-2">
-                                  <Button
-                                    onClick={() => openDetailsModal(booking)}
-                                    variant="ghost"
-                                    size="sm"
-                                    title="View Details"
-                                  >
-                                    <Eye className="w-4 h-4" />
-                                  </Button>
-                                  <Button
-                                    onClick={() => handleUnarchiveBooking(booking.id)}
-                                    className="bg-blue-600 hover:bg-blue-700 text-white"
-                                    size="sm"
-                                    title="Restore to Active Bookings"
-                                  >
-                                    <RotateCcw className="w-4 h-4 mr-1" />
-                                    Restore
-                                  </Button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                    
-                    {/* Pagination */}
-                    {archiveTotalPages > 1 && (
-                      <div className="flex justify-center items-center gap-4 mt-4">
-                        <Button
-                          onClick={() => fetchArchivedBookings(archivePage - 1, archiveSearchTerm)}
-                          disabled={archivePage <= 1}
-                          variant="outline"
-                          size="sm"
-                        >
-                          Previous
-                        </Button>
-                        <span className="text-sm text-gray-600">
-                          Page {archivePage} of {archiveTotalPages}
-                        </span>
-                        <Button
-                          onClick={() => fetchArchivedBookings(archivePage + 1, archiveSearchTerm)}
-                          disabled={archivePage >= archiveTotalPages}
-                          variant="outline"
-                          size="sm"
-                        >
-                          Next
-                        </Button>
-                      </div>
-                    )}
-                  </>
-                )}
-              </CardContent>
-            </Card>
+            <ArchiveTab
+              archivedBookings={archivedBookings}
+              archivedCount={archivedCount}
+              loadingArchived={loadingArchived}
+              archiveSearchTerm={archiveSearchTerm}
+              archivePage={archivePage}
+              archiveTotalPages={archiveTotalPages}
+              runningAutoArchive={runningAutoArchive}
+              onSearchTermChange={setArchiveSearchTerm}
+              onSearch={handleArchiveSearch}
+              onClearSearch={() => { setArchiveSearchTerm(''); fetchArchivedBookings(1, ''); }}
+              onRunAutoArchive={handleRunAutoArchive}
+              onFetchPage={(page) => fetchArchivedBookings(page, archiveSearchTerm)}
+              onViewDetails={openDetailsModal}
+              onUnarchive={handleUnarchiveBooking}
+            />
           </TabsContent>
 
           {/* Data Import Tab */}
@@ -3297,755 +2143,58 @@ export const AdminDashboard = () => {
             </Card>
           </TabsContent>
 
-          {/* Cockpit Tab */}
-          <TabsContent value="cockpit" className="space-y-6">
-            <Cockpit />
-          </TabsContent>
         </Tabs>
       </div>
 
       {/* Booking Details Modal */}
-      <Dialog open={showDetailsModal} onOpenChange={setShowDetailsModal}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Booking Details</DialogTitle>
-          </DialogHeader>
-          {selectedBooking && (
-            <div className="space-y-6">
-              {/* Booking Status & Payment Banner */}
-              <div className="bg-gray-50 p-4 rounded-lg border-l-4 border-gold">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <span className="text-xs text-gray-600">Booking Status</span>
-                    <p className={`font-semibold text-sm mt-1 ${
-                      selectedBooking.status === 'confirmed' ? 'text-green-600' : 
-                      selectedBooking.status === 'completed' ? 'text-blue-600' : 
-                      selectedBooking.status === 'cancelled' ? 'text-red-600' : 'text-yellow-600'
-                    }`}>
-                      {selectedBooking.status?.toUpperCase()}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-xs text-gray-600">Payment Status</span>
-                    <div className="mt-1 flex items-center gap-2">
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold inline-flex items-center gap-1 ${
-                        selectedBooking.payment_status === 'paid' 
-                          ? 'bg-green-100 text-green-700' 
-                          : selectedBooking.payment_status === 'cash'
-                          ? 'bg-yellow-100 text-yellow-700'
-                          : selectedBooking.payment_status === 'pay-on-pickup'
-                          ? 'bg-blue-100 text-blue-700'
-                          : 'bg-red-100 text-red-700'
-                      }`}>
-                        {selectedBooking.payment_status === 'paid' && '✓ '}
-                        {selectedBooking.payment_status === 'cash' && '💵 '}
-                        {selectedBooking.payment_status === 'pay-on-pickup' && '🚗 '}
-                        {selectedBooking.payment_status === 'unpaid' && '✗ '}
-                        <span className="uppercase">{selectedBooking.payment_status?.replace('-', ' ') || 'UNPAID'}</span>
-                      </span>
-                      <div className="flex gap-1">
-                        <Select value={selectedPaymentStatus} onValueChange={setSelectedPaymentStatus}>
-                          <SelectTrigger className="h-7 text-xs w-[100px]">
-                            <SelectValue placeholder="Change" />
-                          </SelectTrigger>
-                          <SelectContent className="z-[9999]">
-                            <SelectItem value="paid">✓ Paid</SelectItem>
-                            <SelectItem value="cash">💵 Cash</SelectItem>
-                            <SelectItem value="pay-on-pickup">🚗 Pay on Pickup</SelectItem>
-                            <SelectItem value="xero-invoiced">📄 Xero Invoiced</SelectItem>
-                            <SelectItem value="unpaid">✗ Unpaid</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <Button 
-                          size="sm"
-                          onClick={handleUpdatePaymentStatus}
-                          disabled={!selectedPaymentStatus}
-                          className="h-7 px-2 text-xs bg-gold hover:bg-gold/90 text-black"
-                        >
-                          Update
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Customer Info */}
-              <div>
-                <h3 className="font-semibold text-gray-900 mb-3">Customer Information</h3>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-gray-600">Name:</span>
-                    <p className="font-medium">{selectedBooking.name}</p>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Email:</span>
-                    <p className="font-medium">{selectedBooking.email}</p>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Phone:</span>
-                    <p className="font-medium">{selectedBooking.phone}</p>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Passengers:</span>
-                    <p className="font-medium">{selectedBooking.passengers}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Trip Info */}
-              <div>
-                <h3 className="font-semibold text-gray-900 mb-3">Trip Information</h3>
-                <div className="space-y-3 text-sm">
-                  <div>
-                    <span className="text-gray-600">Service:</span>
-                    <p className="font-medium">{selectedBooking.serviceType}</p>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Pickup Addresses:</span>
-                    <div className="font-medium space-y-1">
-                      <p className="flex items-start">
-                        <span className="text-blue-600 mr-2">1.</span>
-                        <span>{selectedBooking.pickupAddress}</span>
-                      </p>
-                      {selectedBooking.pickupAddresses && selectedBooking.pickupAddresses.length > 0 && 
-                        selectedBooking.pickupAddresses.map((addr, idx) => addr && (
-                          <p key={idx} className="flex items-start">
-                            <span className="text-blue-600 mr-2">{idx + 2}.</span>
-                            <span>{addr}</span>
-                          </p>
-                        ))
-                      }
-                    </div>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Drop-off:</span>
-                    <p className="font-medium">{selectedBooking.dropoffAddress}</p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <span className="text-gray-600">Date:</span>
-                      <p className="font-medium">{formatDate(selectedBooking.date)}</p>
-                      <p className="text-sm text-blue-600 font-medium">{getDayOfWeek(selectedBooking.date)}</p>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Time:</span>
-                      <p className="font-medium">{selectedBooking.time}</p>
-                    </div>
-                  </div>
-                  
-                  {/* Return Trip Info - always visible when return date/time exist */}
-                  {(selectedBooking.bookReturn || (selectedBooking.returnDate && selectedBooking.returnTime)) && (
-                    <div className="mt-4 bg-purple-50 p-4 rounded-lg border-2 border-purple-200">
-                      <h4 className="font-semibold text-purple-900 mb-2 flex items-center gap-2 text-sm">
-                        🔄 Return Trip
-                      </h4>
-                      <div className="text-sm space-y-3">
-                        <p className="font-bold text-purple-800 text-base">
-                          Return: {formatDate(selectedBooking.returnDate)} at {selectedBooking.returnTime}
-                          {selectedBooking.returnDate && (
-                            <span className="text-purple-600 font-normal text-xs ml-1">({getDayOfWeek(selectedBooking.returnDate)})</span>
-                          )}
-                        </p>
-                        <p className="text-gray-600 text-xs italic">
-                          Reverse: {selectedBooking.dropoffAddress?.split(',')[0]} → {selectedBooking.pickupAddress?.split(',')[0]}
-                        </p>
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <span className="text-gray-500 text-xs">Return Date:</span>
-                            <p className="font-medium">{formatDate(selectedBooking.returnDate)}</p>
-                            <p className="text-xs text-blue-600 font-medium">{getDayOfWeek(selectedBooking.returnDate)}</p>
-                          </div>
-                          <div>
-                            <span className="text-gray-500 text-xs">Return Time:</span>
-                            <p className="font-medium">{selectedBooking.returnTime}</p>
-                          </div>
-                        </div>
-                        {/* Return Flight Numbers - always show section so crucial info is visible */}
-                        <div className="mt-3 pt-3 border-t border-purple-200">
-                          <span className="text-gray-700 text-xs font-semibold uppercase tracking-wide">✈️ Return flight numbers</span>
-                          <div className="grid grid-cols-2 gap-3 mt-2">
-                            <div>
-                              <span className="text-gray-500 text-xs block">Return departure flight:</span>
-                              <p className="font-medium text-blue-700">
-                                {selectedBooking.returnDepartureFlightNumber || selectedBooking.returnFlightNumber || '—'}
-                              </p>
-                              {(selectedBooking.returnDepartureTime || '').trim() && (
-                                <p className="text-xs text-gray-500">Dep: {selectedBooking.returnDepartureTime}</p>
-                              )}
-                            </div>
-                            <div>
-                              <span className="text-gray-500 text-xs block">Return arrival flight:</span>
-                              <p className="font-medium text-blue-700">
-                                {selectedBooking.returnArrivalFlightNumber || '—'}
-                              </p>
-                              {(selectedBooking.returnArrivalTime || '').trim() && (
-                                <p className="text-xs text-gray-500">Arr: {selectedBooking.returnArrivalTime}</p>
-                              )}
-                            </div>
-                          </div>
-                          {!selectedBooking.returnDepartureFlightNumber && !selectedBooking.returnFlightNumber && !selectedBooking.returnArrivalFlightNumber && (
-                            <div className="mt-2 p-2 bg-red-100 rounded text-xs text-red-700 font-medium">
-                              ⚠️ No return flight number provided — follow up required
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Outbound Flight Info */}
-              {(selectedBooking.flightArrivalNumber || selectedBooking.arrivalFlightNumber || selectedBooking.flightDepartureNumber || selectedBooking.departureFlightNumber || selectedBooking.flightNumber) && (
-                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                  <h3 className="font-semibold text-gray-900 mb-1 flex items-center gap-2">
-                    ✈️ Outbound flight numbers
-                  </h3>
-                  <p className="text-xs text-gray-500 mb-3">Pickup leg — arrival/departure at airport</p>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    {/* Show flightNumber from WordPress imports */}
-                    {selectedBooking.flightNumber && !selectedBooking.flightArrivalNumber && !selectedBooking.arrivalFlightNumber && !selectedBooking.flightDepartureNumber && !selectedBooking.departureFlightNumber && (
-                      <div>
-                        <span className="text-gray-600">Flight:</span>
-                        <p className="font-medium">{selectedBooking.flightNumber}</p>
-                      </div>
-                    )}
-                    {(selectedBooking.flightArrivalNumber || selectedBooking.arrivalFlightNumber) && (
-                      <div>
-                        <span className="text-gray-600">Arrival Flight:</span>
-                        <p className="font-medium">{selectedBooking.flightArrivalNumber || selectedBooking.arrivalFlightNumber}</p>
-                        {(selectedBooking.flightArrivalTime || selectedBooking.arrivalTime) && <p className="text-xs text-gray-500">Arrival: {selectedBooking.flightArrivalTime || selectedBooking.arrivalTime}</p>}
-                      </div>
-                    )}
-                    {(selectedBooking.flightDepartureNumber || selectedBooking.departureFlightNumber) && (
-                      <div>
-                        <span className="text-gray-600">Departure Flight:</span>
-                        <p className="font-medium">{selectedBooking.flightDepartureNumber || selectedBooking.departureFlightNumber}</p>
-                        {(selectedBooking.flightDepartureTime || selectedBooking.departureTime) && <p className="text-xs text-gray-500">Departure: {selectedBooking.flightDepartureTime || selectedBooking.departureTime}</p>}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Pricing */}
-              <div>
-                <h3 className="font-semibold text-gray-900 mb-3">Pricing Details</h3>
-                <div className="bg-gray-50 p-4 rounded-lg space-y-2 text-sm">
-                  {selectedBooking.pricing?.distance && (
-                    <div className="flex justify-between">
-                      <span>Distance:</span>
-                      <span className="font-medium">{selectedBooking.pricing.distance} km</span>
-                    </div>
-                  )}
-                  {selectedBooking.pricing?.basePrice != null && (
-                    <div className="flex justify-between">
-                      <span>Base Price:</span>
-                      <span className="font-medium">${selectedBooking.pricing.basePrice.toFixed(2)}</span>
-                    </div>
-                  )}
-                  {selectedBooking.pricing?.airportFee > 0 && (
-                    <div className="flex justify-between">
-                      <span>Airport Fee:</span>
-                      <span className="font-medium">${selectedBooking.pricing.airportFee.toFixed(2)}</span>
-                    </div>
-                  )}
-                  {selectedBooking.pricing?.passengerFee > 0 && (
-                    <div className="flex justify-between">
-                      <span>Passenger Fee:</span>
-                      <span className="font-medium">${selectedBooking.pricing.passengerFee.toFixed(2)}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between pt-2 border-t font-semibold text-base">
-                    <span>Total:</span>
-                    <span className="text-gold">${selectedBooking.pricing?.totalPrice?.toFixed(2) || selectedBooking.totalPrice?.toFixed(2) || '0.00'}</span>
-                  </div>
-                </div>
-
-                {/* Price Override */}
-                <div className="mt-4">
-                  <Label>Override Price</Label>
-                  <div className="flex gap-2 mt-2">
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={priceOverride}
-                      onChange={(e) => setPriceOverride(e.target.value)}
-                      className="flex-1"
-                    />
-                    <Button onClick={handlePriceOverride} className="bg-gold hover:bg-gold/90 text-black">
-                      Update Price
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Driver Assignment - OUTBOUND */}
-              <div>
-                <h3 className="font-semibold text-gray-900 mb-3">
-                  🚗 Outbound Driver {selectedBooking.bookReturn && <span className="text-sm font-normal text-gray-500">(One-way to destination)</span>}
-                </h3>
-                {(selectedBooking.driver_id || selectedBooking.driver_name) ? (
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-gray-600">Assigned Driver</p>
-                        <p className="font-medium text-gray-900">
-                          {drivers.find(d => d.id === selectedBooking.driver_id)?.name || selectedBooking.driver_name || 'Unknown Driver'}
-                        </p>
-                        <p className="text-xs text-gray-500">{selectedBooking.driver_phone}</p>
-                        {/* Driver Acknowledgment Status */}
-                        {selectedBooking.driverAcknowledged ? (
-                          <p className="text-xs text-green-600 font-semibold mt-1 flex items-center gap-1">
-                            <CheckCircle className="w-3 h-3" /> Driver confirmed receipt
-                          </p>
-                        ) : (
-                          <p className="text-xs text-orange-600 mt-1 flex items-center gap-1 animate-pulse">
-                            <Clock className="w-3 h-3" /> Awaiting driver confirmation...
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex flex-col gap-2">
-                        <Button 
-                          size="sm"
-                          onClick={() => handleSendTrackingLink(selectedBooking.id)}
-                          className="bg-blue-500 hover:bg-blue-600 text-white text-xs"
-                          title="Sends SMS to driver with tracking link"
-                        >
-                          📍 Send Tracking Link to Driver
-                        </Button>
-                        <p className="text-[10px] text-gray-500 italic">Sends SMS to driver only</p>
-                        <Button 
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleUnassignDriver('outbound')}
-                          className="text-red-600 hover:bg-red-50 border-red-200"
-                        >
-                          ✕ Unassign Driver
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    <p className="text-sm text-gray-600">No outbound driver assigned yet</p>
-                    <div className="flex gap-2">
-                      <Select value={selectedDriver} onValueChange={setSelectedDriver}>
-                        <SelectTrigger className="flex-1">
-                          <SelectValue placeholder="Select a driver..." />
-                        </SelectTrigger>
-                        <SelectContent className="z-[9999] bg-white">
-                          {drivers.filter(d => d.status === 'active').length === 0 ? (
-                            <SelectItem value="no-drivers" disabled>No active drivers</SelectItem>
-                          ) : (
-                            drivers.filter(d => d.status === 'active').map((driver) => (
-                              <SelectItem key={driver.id} value={driver.id}>
-                                {driver.name} - {driver.phone}
-                              </SelectItem>
-                            ))
-                          )}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="flex gap-2 items-center">
-                      <div className="flex-1">
-                        <label className="text-xs text-gray-500 mb-1 block">Driver Payout (optional)</label>
-                        <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                          <input
-                            type="number"
-                            placeholder="Auto-calculated"
-                            value={driverPayoutOverride}
-                            onChange={(e) => setDriverPayoutOverride(e.target.value)}
-                            className="w-full pl-7 pr-3 py-2 border rounded-md text-sm"
-                          />
-                        </div>
-                      </div>
-                      <Button 
-                        onClick={() => handleShowAssignPreview('outbound')}
-                        disabled={!selectedDriver}
-                        className="bg-gold hover:bg-gold/90 text-black mt-5"
-                      >
-                        Preview & Assign
-                      </Button>
-                    </div>
-                    <p className="text-[10px] text-gray-400">Leave blank to auto-calculate (after Stripe fees only)</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Driver Assignment - RETURN (only if return trip booked) */}
-              {selectedBooking.bookReturn && (
-                <div className="mt-4 pt-4 border-t border-dashed">
-                  <h3 className="font-semibold text-gray-900 mb-3">
-                    🔄 Return Driver <span className="text-sm font-normal text-gray-500">(Return on {formatDate(selectedBooking.returnDate)} at {selectedBooking.returnTime})</span>
-                  </h3>
-                  {selectedBooking.return_driver_id ? (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-gray-600">Return Trip Driver</p>
-                          <p className="font-medium text-gray-900">
-                            {drivers.find(d => d.id === selectedBooking.return_driver_id)?.name || selectedBooking.return_driver_name || 'Unknown Driver'}
-                          </p>
-                          <p className="text-xs text-gray-500">{selectedBooking.return_driver_phone}</p>
-                          {/* Return Driver Acknowledgment Status */}
-                          {selectedBooking.returnDriverAcknowledged ? (
-                            <p className="text-xs text-green-600 font-semibold mt-1 flex items-center gap-1">
-                              <CheckCircle className="w-3 h-3" /> Driver confirmed receipt
-                            </p>
-                          ) : (
-                            <p className="text-xs text-orange-600 mt-1 flex items-center gap-1 animate-pulse">
-                              <Clock className="w-3 h-3" /> Awaiting driver confirmation...
-                            </p>
-                          )}
-                        </div>
-                        <Button 
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleUnassignDriver('return')}
-                          className="text-red-600 hover:bg-red-50 border-red-200"
-                        >
-                          ✕ Unassign Return Driver
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      <p className="text-sm text-orange-600 bg-orange-50 p-2 rounded">
-                        ⚠️ No return driver assigned yet - assign closer to return date
-                      </p>
-                      <div className="flex gap-2">
-                        <Select value={selectedDriver} onValueChange={setSelectedDriver}>
-                          <SelectTrigger className="flex-1">
-                            <SelectValue placeholder="Select return driver..." />
-                          </SelectTrigger>
-                          <SelectContent className="z-[9999] bg-white">
-                            {drivers.filter(d => d.status === 'active').length === 0 ? (
-                              <SelectItem value="no-drivers" disabled>No active drivers</SelectItem>
-                            ) : (
-                              drivers.filter(d => d.status === 'active').map((driver) => (
-                                <SelectItem key={driver.id} value={driver.id}>
-                                  {driver.name} - {driver.phone}
-                                </SelectItem>
-                              ))
-                            )}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="flex gap-2 items-center">
-                        <div className="flex-1">
-                          <label className="text-xs text-gray-500 mb-1 block">Return Driver Payout (optional)</label>
-                          <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                            <input
-                              type="number"
-                              placeholder="Auto-calculated"
-                              value={driverPayoutOverride}
-                              onChange={(e) => setDriverPayoutOverride(e.target.value)}
-                              className="w-full pl-7 pr-3 py-2 border rounded-md text-sm"
-                            />
-                          </div>
-                        </div>
-                        <Button 
-                          onClick={() => handleShowAssignPreview('return')}
-                          disabled={!selectedDriver}
-                          className="bg-blue-600 hover:bg-blue-700 text-white mt-5"
-                        >
-                          Preview & Assign Return
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Notes */}
-              {selectedBooking.notes && (
-                <div>
-                  <h3 className="font-semibold text-gray-900 mb-3">Special Requests</h3>
-                  <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded">{selectedBooking.notes}</p>
-                </div>
-              )}
-
-              {/* Xero Accounting */}
-              {xeroConnected && (
-                <div className="pt-4 border-t">
-                  <h3 className="font-semibold text-gray-900 mb-3">💰 Xero Accounting</h3>
-                  {selectedBooking.xero_invoice_id ? (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between bg-green-50 p-3 rounded-lg">
-                        <div>
-                          <p className="text-sm font-medium text-green-800">Invoice #{selectedBooking.xero_invoice_number}</p>
-                          <p className="text-xs text-green-600">Status: {selectedBooking.xero_status || 'Created'}</p>
-                        </div>
-                        {selectedBooking.xero_status !== 'PAID' && (
-                          <Button
-                            onClick={() => recordXeroPayment(selectedBooking.id)}
-                            size="sm"
-                            className="bg-green-600 hover:bg-green-700 text-white"
-                          >
-                            Mark as Paid
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      <div className="flex gap-2 items-end">
-                        <div className="flex-1">
-                          <Label className="text-xs text-gray-500">Invoice Date (backdate if needed)</Label>
-                          <CustomDatePicker
-                            selected={xeroInvoiceDate || (selectedBooking.date ? new Date(selectedBooking.date + 'T00:00:00') : new Date())}
-                            onChange={(date) => setXeroInvoiceDate(date)}
-                            minDate={new Date('2020-01-01')}
-                            maxDate={new Date('2030-12-31')}
-                            showMonthDropdown
-                            showYearDropdown
-                            dropdownMode="select"
-                            placeholder="Select invoice date"
-                          />
-                        </div>
-                        <Button
-                          onClick={() => {
-                            const dateToUse = xeroInvoiceDate || (selectedBooking.date ? new Date(selectedBooking.date + 'T00:00:00') : new Date());
-                            const formattedDate = dateToUse.toISOString().split('T')[0];
-                            createXeroInvoice(selectedBooking.id, formattedDate);
-                          }}
-                          className="bg-purple-600 hover:bg-purple-700 text-white"
-                        >
-                          <DollarSign className="w-4 h-4 mr-2" />
-                          Create Invoice
-                        </Button>
-                      </div>
-                      <p className="text-xs text-gray-500">
-                        💡 Use month/year dropdowns to easily select past dates for backdating
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Admin Actions */}
-              <div className="pt-4 border-t">
-                <Button
-                  onClick={() => handleSendToAdmin(selectedBooking.id)}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                  <Mail className="w-4 h-4 mr-2" />
-                  Send Booking Details to Admin Mailbox
-                </Button>
-                <p className="text-xs text-gray-500 mt-2 text-center">
-                  This will send a complete summary of this booking to the admin email address
-                </p>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Driver Assignment Preview Modal */}
-      <Dialog open={showDriverAssignPreview} onOpenChange={setShowDriverAssignPreview}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>📋 Confirm Driver Assignment</DialogTitle>
-          </DialogHeader>
-          {pendingAssignment && selectedBooking && (
-            <div className="space-y-4">
-              <div className="bg-gray-50 p-4 rounded-lg space-y-2">
-                <p className="text-sm"><strong>Booking:</strong> #{selectedBooking.referenceNumber} - {selectedBooking.name}</p>
-                <p className="text-sm"><strong>Date:</strong> {formatDate(selectedBooking.date)} at {selectedBooking.time}</p>
-                <p className="text-sm"><strong>Trip:</strong> {pendingAssignment.tripType === 'return' ? 'Return Trip' : 'Outbound Trip'}</p>
-              </div>
-              
-              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                <p className="text-sm text-gray-600">Assigning to:</p>
-                <p className="font-bold text-lg">{pendingAssignment.driver?.name}</p>
-                <p className="text-sm text-gray-500">{pendingAssignment.driver?.phone}</p>
-              </div>
-              
-              <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                <p className="text-sm text-gray-600">Driver will see payout of:</p>
-                <p className="font-bold text-2xl text-green-700">${pendingAssignment.driverPayout?.toFixed(2)}</p>
-                {pendingAssignment.isOverride ? (
-                  <p className="text-xs text-green-600 mt-1">✓ Custom payout set</p>
-                ) : (
-                  <div className="text-xs text-gray-500 mt-1 space-y-1">
-                    <p>Auto-calculated:</p>
-                    {pendingAssignment.hasReturn && (
-                      <p>• {pendingAssignment.tripType === 'outbound' ? 'Outbound' : 'Return'} portion of return booking</p>
-                    )}
-                    <p>• <span className="text-green-600 font-medium">Full amount (customer pays Stripe fee)</span></p>
-                  </div>
-                )}
-              </div>
-              
-              <div className="flex gap-2 pt-2">
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => {
-                    setShowDriverAssignPreview(false);
-                    setPendingAssignment(null);
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-                  onClick={handleConfirmAssignDriver}
-                >
-                  ✓ Confirm & Send to Driver
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <BookingDetailsModal
+        open={showDetailsModal}
+        onOpenChange={setShowDetailsModal}
+        booking={selectedBooking}
+        selectedPaymentStatus={selectedPaymentStatus}
+        onPaymentStatusChange={setSelectedPaymentStatus}
+        onUpdatePaymentStatus={handleUpdatePaymentStatus}
+        priceOverride={priceOverride}
+        onPriceOverrideChange={setPriceOverride}
+        onPriceOverride={handlePriceOverride}
+        onSendToAdmin={handleSendToAdmin}
+      />
 
       {/* Email Modal */}
-      <Dialog open={showEmailModal} onOpenChange={setShowEmailModal}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Send Email to Customer</DialogTitle>
-          </DialogHeader>
-          {selectedBooking && (
-            <div className="space-y-4">
-              <div>
-                <Label>To:</Label>
-                <Input value={selectedBooking.email} disabled className="bg-gray-50" />
-              </div>
-              <div>
-                <Label>CC (optional):</Label>
-                <Input
-                  value={emailCC}
-                  onChange={(e) => setEmailCC(e.target.value)}
-                  placeholder="Additional email addresses (comma separated)"
-                />
-              </div>
-              <div>
-                <Label>Subject:</Label>
-                <Input
-                  value={emailSubject}
-                  onChange={(e) => setEmailSubject(e.target.value)}
-                  placeholder="Email subject"
-                />
-              </div>
-              <div>
-                <Label>Message:</Label>
-                <Textarea
-                  value={emailMessage}
-                  onChange={(e) => setEmailMessage(e.target.value)}
-                  placeholder="Email message"
-                  rows={10}
-                />
-              </div>
-              <Button onClick={handleSendEmail} className="w-full bg-gold hover:bg-gold/90 text-black">
-                <Mail className="w-4 h-4 mr-2" />
-                Send Email
-              </Button>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <EmailModal
+        open={showEmailModal}
+        onOpenChange={setShowEmailModal}
+        booking={selectedBooking}
+        emailSubject={emailSubject}
+        emailMessage={emailMessage}
+        emailCC={emailCC}
+        onSubjectChange={setEmailSubject}
+        onMessageChange={setEmailMessage}
+        onCCChange={setEmailCC}
+        onSend={handleSendEmail}
+      />
 
       {/* Change Password Modal */}
-      <Dialog open={showPasswordModal} onOpenChange={(open) => {
-        setShowPasswordModal(open);
-        if (!open) {
-          setSetPasswordMode(false);
-          setCurrentPassword('');
-          setNewPassword('');
-          setConfirmPassword('');
-        }
-      }}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>{setPasswordMode ? 'Set New Password' : 'Change Password'}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 pt-4">
-            {!setPasswordMode && (
-              <div>
-                <Label htmlFor="currentPassword">Current Password</Label>
-                <Input
-                  id="currentPassword"
-                  type="password"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder="Enter current password"
-                  className="mt-1"
-                />
-                <button
-                  type="button"
-                  onClick={() => setSetPasswordMode(true)}
-                  className="text-sm text-gold hover:text-gold/80 mt-1"
-                >
-                  Forgot current password? Set a new one instead.
-                </button>
-              </div>
-            )}
-            {setPasswordMode && (
-              <p className="text-sm text-gray-600">
-                You&apos;re logged in. Set a new password below (no current password needed).
-              </p>
-            )}
-            
-            <div>
-              <Label htmlFor="newPassword">New Password</Label>
-              <Input
-                id="newPassword"
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Enter new password (min 8 characters)"
-                className="mt-1"
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="confirmPassword">Confirm New Password</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirm new password"
-                className="mt-1"
-              />
-            </div>
-            
-            <div className="flex justify-end gap-2 pt-4">
-              {setPasswordMode && (
-                <Button
-                  variant="ghost"
-                  onClick={() => setSetPasswordMode(false)}
-                >
-                  Back
-                </Button>
-              )}
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowPasswordModal(false);
-                  setSetPasswordMode(false);
-                  setCurrentPassword('');
-                  setNewPassword('');
-                  setConfirmPassword('');
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleChangePassword}
-                className="bg-gold hover:bg-gold/90 text-black"
-              >
-                {setPasswordMode ? 'Set Password' : 'Change Password'}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <PasswordModal
+        open={showPasswordModal}
+        onOpenChange={setShowPasswordModal}
+        setPasswordMode={setPasswordMode}
+        currentPassword={currentPassword}
+        newPassword={newPassword}
+        confirmPassword={confirmPassword}
+        onSetPasswordModeChange={setSetPasswordMode}
+        onCurrentPasswordChange={setCurrentPassword}
+        onNewPasswordChange={setNewPassword}
+        onConfirmPasswordChange={setConfirmPassword}
+        onSubmit={handleChangePassword}
+      />
+
+      {/* System Health Dialog — diagnose booking/email pipeline + send test email */}
+      <SystemHealthDialog
+        open={showSystemHealthDialog}
+        onClose={() => setShowSystemHealthDialog(false)}
+        getAuthHeaders={getAuthHeaders}
+      />
 
       {/* Create Booking Modal */}
       <CreateBookingModal
@@ -4056,11 +2205,23 @@ export const AdminDashboard = () => {
       />
 
       {/* Edit Booking Modal */}
-      <Dialog open={showEditBookingModal} onOpenChange={(open) => {
-        setShowEditBookingModal(open);
-        if (!open) { setEditingBooking(null); clearEditAddressSuggestions(); }
+      <Dialog open={showEditBookingModal} onOpenChange={(v) => {
+        if (!v) {
+          if (document.querySelector('[data-autocomplete-dropdown]')) return;
+          if (document.querySelector('.pac-container')) return;
+          setShowEditBookingModal(false);
+          setEditingBooking(null);
+        }
       }}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent
+          className="max-w-3xl max-h-[90vh] overflow-y-auto"
+          onPointerDownOutside={(e) => {
+            if (e.target?.closest?.('.pac-container')) e.preventDefault();
+          }}
+          onInteractOutside={(e) => {
+            if (e.target?.closest?.('.pac-container')) e.preventDefault();
+          }}
+        >
           <DialogHeader>
             <DialogTitle>Edit Booking #{editingBooking?.referenceNumber || editingBooking?.id?.slice(0, 8)}</DialogTitle>
           </DialogHeader>
@@ -4309,7 +2470,7 @@ export const AdminDashboard = () => {
                 </Button>
                 <Button
                   onClick={handleSaveEditedBooking}
-                  className="bg-gold hover:bg-gold/90 text-black font-semibold"
+                  className="bg-gold hover:bg-gold/90 text-white font-semibold"
                 >
                   Save Changes
                 </Button>
@@ -4320,95 +2481,22 @@ export const AdminDashboard = () => {
       </Dialog>
 
       {/* Preview Confirmation Modal */}
-      <Dialog open={showPreviewModal} onOpenChange={setShowPreviewModal}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Eye className="w-5 h-5" />
-              Preview Confirmation Email
-            </DialogTitle>
-          </DialogHeader>
-          
-          {previewBookingInfo && (
-            <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-              <p className="text-sm"><strong>To:</strong> {previewBookingInfo.email}</p>
-              {previewBookingInfo.ccEmail && (
-                <p className="text-sm"><strong>CC:</strong> {previewBookingInfo.ccEmail}</p>
-              )}
-              <p className="text-sm"><strong>Customer:</strong> {previewBookingInfo.name}</p>
-              <p className="text-sm"><strong>Phone:</strong> {previewBookingInfo.phone}</p>
-            </div>
-          )}
-          
-          <div className="border rounded-lg overflow-hidden">
-            <div 
-              className="bg-white"
-              dangerouslySetInnerHTML={{ __html: previewHtml }}
-            />
-          </div>
-          
-          <div className="flex justify-end gap-2 pt-4 border-t mt-4">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowPreviewModal(false);
-                setPreviewHtml('');
-                setPreviewBookingInfo(null);
-              }}
-            >
-              Close
-            </Button>
-            <Button
-              onClick={handleSendAfterPreview}
-              className="bg-green-600 hover:bg-green-700 text-white font-semibold"
-            >
-              <Send className="w-4 h-4 mr-2" />
-              Send to Customer
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <PreviewConfirmationModal
+        open={showPreviewModal}
+        onOpenChange={setShowPreviewModal}
+        previewHtml={previewHtml}
+        previewBookingInfo={previewBookingInfo}
+        onClose={() => { setShowPreviewModal(false); setPreviewHtml(''); setPreviewBookingInfo(null); }}
+        onSend={handleSendAfterPreview}
+      />
 
       {/* Bulk Delete Confirmation Dialog */}
-      <Dialog open={showBulkDeleteConfirm} onOpenChange={setShowBulkDeleteConfirm}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-red-600">
-              <Trash2 className="w-5 h-5" />
-              Delete {safeSelectedSet.size} Booking{safeSelectedSet.size > 1 ? 's' : ''}?
-            </DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-              <p className="text-sm text-yellow-800">
-                <strong>⚠️ No notifications will be sent</strong>
-              </p>
-              <p className="text-sm text-yellow-700 mt-1">
-                The selected bookings will be moved to the Deleted tab without sending any SMS or email notifications to customers.
-              </p>
-            </div>
-            <p className="text-gray-600 text-sm">
-              You can restore these bookings later from the Deleted tab if needed.
-            </p>
-          </div>
-          <div className="flex justify-end gap-3">
-            <Button
-              variant="outline"
-              onClick={() => setShowBulkDeleteConfirm(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleBulkDelete}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              Delete {safeSelectedSet.size} Booking{safeSelectedSet.size > 1 ? 's' : ''}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <BulkDeleteDialog
+        open={showBulkDeleteConfirm}
+        onOpenChange={setShowBulkDeleteConfirm}
+        selectedCount={safeSelectedSet.size}
+        onConfirm={handleBulkDelete}
+      />
     </div>
   );
 };
