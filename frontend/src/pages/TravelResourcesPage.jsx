@@ -75,23 +75,17 @@ const TravelResourcesPage = () => {
             Popular Services
           </h2>
           
-          <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
             <Link to="/book-now" className="block p-6 bg-gray-50 rounded-xl border border-gray-200 hover:border-gold hover:shadow-lg transition-all text-center">
               <Plane className="w-10 h-10 text-gold mx-auto mb-4" />
               <h3 className="font-semibold text-gray-800 mb-2">Airport Transfers</h3>
               <p className="text-sm text-gray-600">Door-to-door service from Auckland Airport</p>
             </Link>
-            
+
             <Link to="/hobbiton-transfers" className="block p-6 bg-gray-50 rounded-xl border border-gray-200 hover:border-gold hover:shadow-lg transition-all text-center">
               <MapPin className="w-10 h-10 text-gold mx-auto mb-4" />
               <h3 className="font-semibold text-gray-800 mb-2">Hobbiton Tours</h3>
               <p className="text-sm text-gray-600">Visit the famous movie set in style</p>
-            </Link>
-            
-            <Link to="/flight-tracker" className="block p-6 bg-gray-50 rounded-xl border border-gray-200 hover:border-gold hover:shadow-lg transition-all text-center">
-              <Plane className="w-10 h-10 text-gold mx-auto mb-4" />
-              <h3 className="font-semibold text-gray-800 mb-2">Track Your Flight</h3>
-              <p className="text-sm text-gray-600">Real-time flight monitoring</p>
             </Link>
           </div>
         </div>
