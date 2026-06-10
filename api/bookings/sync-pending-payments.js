@@ -4,7 +4,7 @@
  * that our webhook might have missed.
  */
 const { findMany, findOne, updateOne } = require('../_lib/db');
-const { sendEmail } = require('../_lib/mailgun');
+const { sendEmail } = require('../_lib/email');
 const { customerBookingConfirmedEmail } = require('../_lib/email-templates');
 
 module.exports = async function handler(req, res) {

@@ -3,18 +3,19 @@
  * GET  /api/email/incoming (Mailgun webhook verification)
  *
  * Mailgun inbound webhook — receives forwarded support emails,
- * generates a Claude-powered reply, and sends it back via Mailgun.
+ * generates a Claude-powered reply, and sends it back via the email provider.
  *
  * Flow:
  * 1. Mailgun forwards incoming email to this endpoint
  * 2. We look up the sender's booking history in Neon PostgreSQL
  * 3. Claude Haiku generates a context-aware reply
  * 4. We parse any ACTION tags Claude included (resend confirmation, cancel, etc.)
- * 5. Clean reply sent to customer via Mailgun with professional signature
+ * 5. Clean reply sent to customer via the email provider with professional signature
  * 6. Admin gets a copy of both the customer email and AI response
  * 7. Interaction logged to email_logs table
  */
-const { sendEmail } = require('../_lib/mailgun');
+const { sendEmail } = require('../_lib/email');
+const { aiComplete } = require('../_lib/vapron');
 const { insertOne, updateOne } = require('../_lib/db');
 const { v4: uuidv4 } = require('uuid');
 const Busboy = require('busboy');
@@ -116,35 +117,14 @@ function formatBookingContext(b) {
 }
 
 /**
- * Call Claude API (raw HTTP — no SDK dependency)
+ * Call Claude Haiku via the Vapron AI gateway.
  */
 async function callClaude(systemPrompt, userMessage) {
-  const apiKey = (process.env.ANTHROPIC_API_KEY || '').trim();
-  if (!apiKey) return null;
-
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 500,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userMessage }],
-    }),
+  return aiComplete({
+    maxTokens: 500,
+    system: systemPrompt,
+    messages: [{ role: 'user', content: userMessage }],
   });
-
-  if (!res.ok) {
-    const errText = await res.text();
-    console.error(`Claude API ${res.status}: ${errText}`);
-    return null;
-  }
-
-  const data = await res.json();
-  return (data.content?.[0]?.text || '').trim();
 }
 
 /**
@@ -236,7 +216,7 @@ async function processActions(aiResponse, senderEmail, senderName, customerBooki
     if (booking) {
       // Trigger resend via the send-booking-email endpoint logic
       try {
-        const { sendEmail: send } = require('../_lib/mailgun');
+        const { sendEmail: send } = require('../_lib/email');
         const { customerBookingConfirmedEmail } = require('../_lib/email-templates');
         const tmpl = customerBookingConfirmedEmail(booking);
         const customerEmail = booking.email || senderEmail;

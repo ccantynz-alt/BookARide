@@ -8,7 +8,7 @@
  *   force=true              — allow cancellation of paid Stripe bookings
  */
 const { findOne, updateOne, insertOne, deleteOne } = require('../_lib/db');
-const { sendEmail } = require('../_lib/mailgun');
+const { sendEmail } = require('../_lib/email');
 const { verifyAdmin } = require('../_lib/auth');
 const { customerCancellationEmail } = require('../_lib/email-templates');
 

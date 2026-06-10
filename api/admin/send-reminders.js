@@ -4,7 +4,7 @@
  * Skips bookings that are cancelled, already reminded, or have cancellation_requested.
  */
 const { findMany, updateOne } = require('../_lib/db');
-const { sendEmail } = require('../_lib/mailgun');
+const { sendEmail } = require('../_lib/email');
 const { verifyAdmin } = require('../_lib/auth');
 const { customerReminderEmail } = require('../_lib/email-templates');
 

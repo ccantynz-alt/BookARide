@@ -6,7 +6,7 @@
  *
  * 1. Database connection (Neon Postgres)
  * 2. Database write/read (insert + read a temporary record)
- * 3. Mailgun configuration
+ * 3. Email provider configuration
  * 4. Stripe configuration
  * 5. Google Maps API key
  * 6. Email template generation
@@ -76,96 +76,58 @@ async function checkDatabaseWrite() {
   }
 }
 
-function checkMailgun() {
-  const apiKey = process.env.MAILGUN_API_KEY;
-  const domain = process.env.MAILGUN_DOMAIN;
-  const region = process.env.MAILGUN_REGION || 'eu';
+function checkEmailProvider() {
+  const apiKey = process.env.VAPRON_API_KEY;
   const adminRecipient = process.env.BOOKINGS_NOTIFICATION_EMAIL || 'bookings@bookaride.co.nz (DEFAULT — set BOOKINGS_NOTIFICATION_EMAIL to override)';
-  const noreplySender = process.env.NOREPLY_EMAIL || `noreply@${domain || 'mg.bookaride.co.nz'}`;
+  const noreplySender = process.env.NOREPLY_EMAIL || 'noreply@bookaride.co.nz';
 
   if (!apiKey) {
     return {
       ok: false,
-      message: 'MAILGUN_API_KEY not set — customers will NOT receive confirmation emails',
+      message: 'VAPRON_API_KEY not set — customers will NOT receive confirmation emails',
       admin_recipient: adminRecipient,
-    };
-  }
-  if (!domain) {
-    return {
-      ok: true,
-      warning: 'MAILGUN_DOMAIN not set — using default mg.bookaride.co.nz. Set this if your verified domain is different.',
-      message: `MAILGUN_API_KEY set (${redact(apiKey)})`,
-      admin_recipient: adminRecipient,
-      sender: noreplySender,
-      region,
     };
   }
   return {
     ok: true,
-    message: `MAILGUN_API_KEY set, domain=${domain}, region=${region}`,
+    message: `VAPRON_API_KEY set (${redact(apiKey)})`,
     admin_recipient: adminRecipient,
     sender: noreplySender,
-    region,
   };
 }
 
-// Live check: actually call Mailgun's API to validate the key + domain.
-// This catches expired/wrong keys AND unverified domains, which the
-// env-var-only check above cannot detect. Runs a HEAD-equivalent
-// (GET /v3/domains/<domain>) — does NOT send an email.
-async function checkMailgunLive() {
-  const apiKey = process.env.MAILGUN_API_KEY;
-  const domain = process.env.MAILGUN_DOMAIN || 'mg.bookaride.co.nz';
-  const region = (process.env.MAILGUN_REGION || 'eu').toLowerCase();
-  const endpoint = region === 'us' ? 'https://api.mailgun.net' : 'https://api.eu.mailgun.net';
+// Live check: make an authenticated call to Vapron to validate the key.
+// This catches revoked/wrong keys, which the env-var-only check above
+// cannot detect. Uses a read-only query — does NOT send an email.
+async function checkEmailProviderLive() {
+  const apiKey = (process.env.VAPRON_API_KEY || '').trim();
 
   if (!apiKey) {
-    return { ok: false, message: 'Cannot verify — MAILGUN_API_KEY not set' };
+    return { ok: false, message: 'Cannot verify — VAPRON_API_KEY not set' };
   }
 
   try {
-    const url = `${endpoint}/v3/domains/${domain}`;
-    const res = await fetch(url, {
-      headers: {
-        Authorization: `Basic ${Buffer.from(`api:${apiKey}`).toString('base64')}`,
-      },
+    const res = await fetch('https://api.vapron.ai/api/trpc/objectStorage.listBuckets', {
+      headers: { Authorization: `Bearer ${apiKey}` },
     });
 
-    if (res.status === 200) {
-      const data = await res.json().catch(() => ({}));
-      const state = data?.domain?.state;
-      if (state && state !== 'active') {
-        return {
-          ok: false,
-          message: `Mailgun domain '${domain}' is in state '${state}' — must be 'active'. Verify DNS records (SPF, DKIM, MX) in Mailgun dashboard.`,
-        };
-      }
-      return {
-        ok: true,
-        message: `Mailgun key verified against domain '${domain}' on ${region.toUpperCase()} region (state=${state || 'unknown'})`,
-      };
+    if (res.ok) {
+      return { ok: true, message: 'Vapron accepted VAPRON_API_KEY — email sends should be authorised' };
     }
-
-    if (res.status === 401) {
+    if (res.status === 401 || res.status === 403) {
       return {
         ok: false,
-        message: `Mailgun rejected MAILGUN_API_KEY (401). Key is wrong or expired. Generate a new sending key at app.mailgun.com → Send → API keys.`,
-      };
-    }
-    if (res.status === 404) {
-      return {
-        ok: false,
-        message: `Mailgun says domain '${domain}' does not exist on the ${region.toUpperCase()} region. Either MAILGUN_DOMAIN is wrong or MAILGUN_REGION should be the other one (us<->eu).`,
+        message: `Vapron rejected VAPRON_API_KEY (${res.status}). Key is wrong or revoked (it was rotated on 2026-06-10). Generate a new key in the Vapron dashboard and update Vercel env vars.`,
       };
     }
 
     const text = await res.text().catch(() => '');
     return {
       ok: false,
-      message: `Mailgun live check returned HTTP ${res.status}: ${text.slice(0, 200)}`,
+      message: `Vapron live check returned HTTP ${res.status}: ${text.slice(0, 200)}`,
     };
   } catch (err) {
-    return { ok: false, message: `Mailgun live check threw: ${err.message}` };
+    return { ok: false, message: `Vapron live check threw: ${err.message}` };
   }
 }
 
@@ -302,8 +264,8 @@ module.exports = async function handler(req, res) {
   const checks = {
     database_connection: await checkDatabase(),
     database_write: { ok: false, message: 'Skipped (no DB connection)' },
-    mailgun: checkMailgun(),
-    mailgun_live: await checkMailgunLive(),
+    email_provider: checkEmailProvider(),
+    email_provider_live: await checkEmailProviderLive(),
     stripe: checkStripe(),
     google_maps: checkGoogleMaps(),
     twilio: checkTwilio(),
@@ -317,14 +279,14 @@ module.exports = async function handler(req, res) {
   }
 
   // Critical checks that block bookings entirely.
-  // mailgun_live is critical because Craig has explicitly said the
-  // booking emails not arriving is a P0 — silent Mailgun failure is
-  // exactly the failure mode we keep being burned by.
-  const criticalChecks = ['database_connection', 'database_write', 'pricing_engine', 'email_template', 'mailgun_live'];
+  // email_provider_live is critical because Craig has explicitly said
+  // booking emails not arriving is a P0 — a silently failing email
+  // provider is exactly the failure mode we keep being burned by.
+  const criticalChecks = ['database_connection', 'database_write', 'pricing_engine', 'email_template', 'email_provider_live'];
   const blockingFailures = criticalChecks.filter(k => !checks[k].ok);
 
   // Important but non-blocking
-  const importantChecks = ['mailgun', 'stripe', 'google_maps', 'twilio'];
+  const importantChecks = ['email_provider', 'stripe', 'google_maps', 'twilio'];
   const warnings = importantChecks.filter(k => !checks[k].ok);
 
   const status = blockingFailures.length === 0 ? 'healthy' : 'broken';

@@ -4,7 +4,7 @@
  * Replaces: Python backend POST /api/bookings/:id/resend-payment-link
  */
 const { findOne, updateOne, insertOne } = require('../../_lib/db');
-const { sendEmail } = require('../../_lib/mailgun');
+const { sendEmail } = require('../../_lib/email');
 const { verifyAdmin } = require('../../_lib/auth');
 const { customerPaymentLinkEmail } = require('../../_lib/email-templates');
 const { v4: uuidv4 } = require('uuid');

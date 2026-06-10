@@ -6,62 +6,36 @@ on:
 
 jobs:
   backend-checks:
+    # The Python backend/ folder is gone (CLAUDE.md locked decision 0:
+    # frontend-only architecture, Vercel serverless api/). This job now
+    # validates the api/ serverless functions. The job name is kept as
+    # "Backend Quality" so branch-protection rules pinned to it still match.
     name: Backend Quality
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          python-version: '3.11'
+          node-version: '20'
 
-      - name: Python syntax check (all .py files)
+      - name: API serverless syntax check (all .js files)
         run: |
-          echo "=== Compiling all Python files ==="
-          find backend/ -name "*.py" -exec python3 -m py_compile {} \;
-          echo "All Python files compile cleanly"
+          echo "=== Checking syntax of every api/ serverless function ==="
+          find api/ -name "*.js" -not -path "*/node_modules/*" -print0 | xargs -0 -n1 node --check
+          echo "All api/ files parse cleanly"
 
-      - name: Smart quote check
+      - name: Banned services check
         run: |
-          python3 -c "
-          import glob, sys
-          failed = False
-          for f in glob.glob('backend/**/*.py', recursive=True):
-              content = open(f, encoding='utf-8').read()
-              for char, name in [('\u2018','left-sq'), ('\u2019','right-sq'), ('\u201c','left-dq'), ('\u201d','right-dq')]:
-                  if char in content:
-                      print(f'FAIL: {f} contains {name} smart quote')
-                      failed = True
-          if failed:
-              sys.exit(1)
-          print('No smart quotes found')
-          "
-
-      - name: Banned imports check
-        run: |
-          echo "=== Checking for banned imports ==="
+          echo "=== Checking for banned services (CLAUDE.md Forbidden List) ==="
           FAILED=0
-          grep -rn "pymongo\|MongoClient\|motor\|mongodb://\|MONGO_URL\|DB_NAME" backend/*.py backend/**/*.py && echo "FAIL: MongoDB references" && FAILED=1 || true
-          grep -rn "SendGrid\|sendgrid\|smtplib\|MIMEMultipart\|MIMEText" backend/*.py backend/**/*.py | grep -v "\.env\.example" && echo "FAIL: SMTP/SendGrid references" && FAILED=1 || true
-          grep -rn "geoapify\|GEOAPIFY" backend/*.py && echo "FAIL: Geoapify references" && FAILED=1 || true
-          grep -rn "asyncio\.new_event_loop\|asyncio\.run(" backend/server.py && echo "FAIL: Dangerous event loop usage" && FAILED=1 || true
+          grep -rn --exclude-dir=node_modules "pymongo\|MongoClient\|mongodb://\|MONGO_URL" api/ --include="*.js" && echo "FAIL: MongoDB references — Neon Postgres only" && FAILED=1 || true
+          grep -rn --exclude-dir=node_modules "nodemailer\|@sendgrid\|sendgrid\.com" api/ --include="*.js" && echo "FAIL: SMTP/SendGrid references — Mailgun only" && FAILED=1 || true
+          grep -rn --exclude-dir=node_modules "geoapify\.com\|GEOAPIFY" api/ --include="*.js" && echo "FAIL: Geoapify references — Google Maps only" && FAILED=1 || true
+          grep -rn --exclude-dir=node_modules "onrender\.com" api/ frontend/src/ && echo "FAIL: Dead Render URL referenced — Vercel only" && FAILED=1 || true
           if [ "$FAILED" -eq 1 ]; then exit 1; fi
-          echo "No banned imports found"
-
-      - name: Background task safety check
-        run: |
-          echo "=== Checking background task patterns ==="
-          python3 -c "
-          content = open('backend/server.py').read()
-          if 'asyncio.new_event_loop' in content:
-              print('FAIL: asyncio.new_event_loop() found — this breaks background tasks')
-              exit(1)
-          if 'asyncio.run(' in content:
-              print('FAIL: asyncio.run() found — cannot run inside existing event loop')
-              exit(1)
-          print('Background task patterns are clean')
-          "
+          echo "No banned services found"
 
   frontend-checks:
     name: Frontend Quality
@@ -80,14 +54,20 @@ jobs:
         working-directory: frontend
         run: npm ci
 
+      # VITE_BACKEND_URL intentionally unset: the default is empty string
+      # (same-origin /api/* on Vercel). The old Render URL is banned.
       - name: Build (must succeed with zero errors)
         working-directory: frontend
         run: npm run build
-        env:
-          VITE_BACKEND_URL: https://bookaride-backend.onrender.com
 
-      - name: Banned frontend imports
+      - name: Banned frontend patterns
         run: |
-          grep -rn "@vuer-ai/react-helmet-async" frontend/src/ && echo "FAIL: Broken helmet fork" && exit 1 || true
-          grep -rn "airport-shuttle" frontend/src/ --include="*.jsx" --include="*.js" | grep -v "seo\|SEO\|blog\|Blog\|airport-shuttle-\|App\.js\|blogPosts\|data/" && echo "FAIL: Removed service type" && exit 1 || true
-          echo "Frontend imports clean"
+          FAILED=0
+          grep -rn "@vuer-ai/react-helmet-async" frontend/src/ && echo "FAIL: Broken helmet fork — use react-helmet-async" && FAILED=1 || true
+          # Only the serviceType VALUE 'airport-shuttle' is banned (CLAUDE.md 9).
+          # Marketing route slugs like /auckland-airport-shuttle are allowed —
+          # same pattern as .claude/hooks/session-start.sh.
+          grep -rnE "serviceType\s*[:=]\s*['\"]airport-shuttle['\"]|service_type\s*[:=]\s*['\"]airport-shuttle['\"]" frontend/src/ --include="*.jsx" --include="*.js" && echo "FAIL: Removed serviceType 'airport-shuttle' used as a value" && FAILED=1 || true
+          grep -rn "process\.env\.REACT_APP" frontend/src/ && echo "FAIL: REACT_APP env var — use import.meta.env.VITE_*" && FAILED=1 || true
+          if [ "$FAILED" -eq 1 ]; then exit 1; fi
+          echo "Frontend patterns clean"

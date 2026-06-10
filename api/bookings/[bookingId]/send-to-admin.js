@@ -3,7 +3,7 @@
  * Send full booking details to the admin email address.
  */
 const { findOne } = require('../../_lib/db');
-const { sendEmail } = require('../../_lib/mailgun');
+const { sendEmail } = require('../../_lib/email');
 const { verifyAdmin } = require('../../_lib/auth');
 const { adminNewBookingEmail } = require('../../_lib/email-templates');
 

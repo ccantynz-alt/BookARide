@@ -6,7 +6,7 @@
  * Request body: { booking_id, to, cc, subject, message }
  */
 const { findOne } = require('./_lib/db');
-const { sendEmail } = require('./_lib/mailgun');
+const { sendEmail } = require('./_lib/email');
 const { emailWrapper, bookingDetailsTable, customerName } = require('./_lib/email-templates');
 
 module.exports = async function handler(req, res) {

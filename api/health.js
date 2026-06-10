@@ -16,7 +16,7 @@ module.exports = async function handler(req, res) {
     services: {
       google_maps: googleKey ? `${googleKey.substring(0, 8)}***` : 'NOT SET',
       stripe: stripeKey ? `${stripeKey.substring(0, 8)}***` : 'NOT SET',
-      mailgun: process.env.MAILGUN_API_KEY ? 'configured' : 'NOT SET',
+      email_vapron: process.env.VAPRON_API_KEY ? 'configured' : 'NOT SET',
       database: process.env.DATABASE_URL ? 'configured' : 'NOT SET',
       twilio: process.env.TWILIO_ACCOUNT_SID ? 'configured' : 'NOT SET',
     },
