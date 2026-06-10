@@ -858,7 +858,7 @@ Everything else in those sections still applies.
 |---------|----------|-------|
 | Outbound email | Mailgun sending | `api/_lib/email.js` (shared `sendEmail`) |
 | AI gateway | Direct calls to api.anthropic.com | `api/_lib/vapron.js` `aiComplete()` |
-| Cron triggering | Vercel Cron | `scripts/setup-vapron.js` registers the job |
+| Cron triggering | Vercel Cron | `/api/admin/setup-vapron-cron` registers the job |
 | OTP/SMS verify | (new capability) | `api/verify/start.js` + `api/verify/check.js` |
 
 **What did NOT change (still locked):**
@@ -894,7 +894,9 @@ Everything else in those sections still applies.
   go through `aiComplete()` in `api/_lib/vapron.js`.
 - NEVER re-add `crons` to vercel.json — cron is Vapron's job now.
   The cron handler still accepts `x-vercel-cron` for safety but the
-  trigger is the Vapron job registered by `scripts/setup-vapron.js`.
+  trigger is the Vapron job registered via the one-time admin
+  endpoint `GET /api/admin/setup-vapron-cron?secret=<CRON_SECRET>`
+  (idempotent — safe to call twice).
 - The OTP endpoints are ADMIN-AUTH ONLY until Craig decides where
   verification appears in the booking flow. NEVER expose them
   unauthenticated, and NEVER wire OTP into BookNow.jsx without
@@ -907,8 +909,8 @@ Everything else in those sections still applies.
    `noreply@bookaride.co.nz`, Reply-To is `info@bookaride.co.nz`. If
    Vapron does not honour From/Reply-To, STOP and tell Craig — the
    6e address architecture is non-negotiable.
-4. `node scripts/setup-vapron.js` run once; daily SEO report arrives
-   next morning.
+4. Open `https://bookaride.co.nz/api/admin/setup-vapron-cron?secret=<CRON_SECRET>`
+   once after merge; daily SEO report arrives next morning.
 5. Real test booking → customer confirmation + admin notification
    both arrive within 60 seconds.
 
