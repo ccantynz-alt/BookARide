@@ -3,7 +3,8 @@
  * Contact form submission — sends email to admin AND an AI-powered
  * auto-reply to the customer via the same Claude support agent.
  */
-const { sendEmail } = require('./_lib/mailgun');
+const { sendEmail } = require('./_lib/email');
+const { aiComplete } = require('./_lib/vapron');
 const { insertOne } = require('./_lib/db');
 const { v4: uuidv4 } = require('uuid');
 
@@ -37,12 +38,10 @@ function supportEmailSignature() {
 }
 
 /**
- * Call Claude API to generate a contextual reply to the contact form message
+ * Generate a contextual reply to the contact form message — Claude
+ * Haiku via the Vapron AI gateway.
  */
 async function generateAutoReply(name, email, subject, message) {
-  const apiKey = (process.env.ANTHROPIC_API_KEY || '').trim();
-  if (!apiKey) return null;
-
   const systemPrompt = `You are the friendly, professional customer support assistant for BookaRide NZ — a premium airport transfer and private tour service in Auckland, New Zealand.
 
 The customer has submitted a contact form on the website. Write a helpful, warm reply.
@@ -64,29 +63,11 @@ RULES:
 
   const userMessage = `Contact form submission:\n\nName: ${name}\nEmail: ${email}\nSubject: ${subject || 'General Inquiry'}\n\nMessage:\n${message}\n\nPlease write a helpful reply.`;
 
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 300,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: userMessage }],
-      }),
-    });
-
-    if (!res.ok) return null;
-    const data = await res.json();
-    return (data.content?.[0]?.text || '').trim();
-  } catch (err) {
-    console.error('Claude API error for contact auto-reply:', err.message);
-    return null;
-  }
+  return aiComplete({
+    maxTokens: 300,
+    system: systemPrompt,
+    messages: [{ role: 'user', content: userMessage }],
+  });
 }
 
 module.exports = async function handler(req, res) {

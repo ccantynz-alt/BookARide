@@ -4,7 +4,7 @@
  * Used by PaymentSuccess.jsx to poll until payment confirms.
  */
 const { findOne, updateOne } = require('../../_lib/db');
-const { sendEmail } = require('../../_lib/mailgun');
+const { sendEmail } = require('../../_lib/email');
 const { createCalendarEvent } = require('../../_lib/google-calendar');
 const {
   customerBookingConfirmedEmail,

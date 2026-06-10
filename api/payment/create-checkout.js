@@ -4,7 +4,7 @@
  * Replaces: Python backend POST /api/payment/create-checkout
  */
 const { findOne, updateOne, insertOne } = require('../_lib/db');
-const { sendEmail } = require('../_lib/mailgun');
+const { sendEmail } = require('../_lib/email');
 const { customerPaymentLinkEmail } = require('../_lib/email-templates');
 const { v4: uuidv4 } = require('uuid');
 
@@ -108,7 +108,7 @@ module.exports = async function handler(req, res) {
     //
     // CRITICAL: On Vercel serverless, returning the response before the
     // sendEmail promise settles causes the function to freeze and the
-    // Mailgun HTTP POST to be dropped. We await the send so the email
+    // email provider HTTP request to be dropped. We await the send so the email
     // is guaranteed to leave before the response. Even if the email
     // fails, the customer still gets the Stripe redirect URL in the
     // JSON response so they can pay immediately — the email is a

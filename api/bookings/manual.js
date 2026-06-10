@@ -19,7 +19,7 @@
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 const { findOne, insertOne, updateOne, getDb } = require('../_lib/db');
-const { sendEmail } = require('../_lib/mailgun');
+const { sendEmail } = require('../_lib/email');
 const { sendSMS, wantsSMS, wantsEmail, isTwilioConfigured } = require('../_lib/twilio');
 const {
   customerBookingReceivedEmail,
@@ -217,8 +217,8 @@ module.exports = async function handler(req, res) {
 
     // === Email diagnostics (so Vercel logs show exactly what's happening) ===
     const adminEmail = process.env.BOOKINGS_NOTIFICATION_EMAIL || 'bookings@bookaride.co.nz';
-    if (!process.env.MAILGUN_API_KEY) {
-      console.error(`CRITICAL: MAILGUN_API_KEY not set — manual booking #${refNumber} created but NO emails will send`);
+    if (!process.env.VAPRON_API_KEY) {
+      console.error(`CRITICAL: VAPRON_API_KEY not set — manual booking #${refNumber} created but NO emails will send`);
     }
     if (!process.env.BOOKINGS_NOTIFICATION_EMAIL) {
       console.warn(`WARN: BOOKINGS_NOTIFICATION_EMAIL not set — admin notification going to default ${adminEmail}`);
@@ -247,7 +247,7 @@ module.exports = async function handler(req, res) {
     const result = {
       ...bookingDoc,
       admin_email_recipient: adminEmail,
-      mailgun_configured: !!process.env.MAILGUN_API_KEY,
+      email_provider_configured: !!process.env.VAPRON_API_KEY,
     };
 
     if (isStripeMethod) {
@@ -327,7 +327,7 @@ module.exports = async function handler(req, res) {
             result.payment_link_sent_to = body.email;
           } else {
             console.error(`CRITICAL: Payment link email failed for manual booking #${refNumber}`);
-            result.payment_link_error = 'Mailgun returned failure sending payment link';
+            result.payment_link_error = 'Email provider returned failure sending payment link';
           }
           result.payment_link_url = session.url;
           result.payment_session_id = session.id;
@@ -382,7 +382,7 @@ module.exports = async function handler(req, res) {
           result.customer_email_sent_to = body.email;
         } else {
           console.error(`CRITICAL: Customer ${isPayOnPickup ? 'pay-on-pickup' : 'confirmation'} email returned false for manual booking #${refNumber}`);
-          result.customer_email_error = 'Mailgun returned failure';
+          result.customer_email_error = 'Email provider returned failure';
         }
       } catch (err) {
         console.error(`Customer email threw for manual booking #${refNumber}: ${err.message}`);

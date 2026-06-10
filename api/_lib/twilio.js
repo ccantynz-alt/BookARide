@@ -1,7 +1,7 @@
 /**
  * Twilio SMS sender — the ONLY SMS provider.
  *
- * Locked 2026-04-28 by Craig. Mirrors the Mailgun helper pattern (raw fetch
+ * Locked 2026-04-28 by Craig. Mirrors the email helper pattern (raw fetch
  * to the Twilio REST API, no SDK dependency) so we don't add an npm
  * package just to POST a form-encoded body.
  *

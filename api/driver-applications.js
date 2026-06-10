@@ -3,10 +3,10 @@
  *
  * Public endpoint — receives driver applications from the
  * /drive-with-us page. Stores in driver_applications table and
- * notifies the admin inbox via Mailgun.
+ * notifies the admin inbox via the shared email provider.
  */
 const { insertOne } = require('./_lib/db');
-const { sendEmail } = require('./_lib/mailgun');
+const { sendEmail } = require('./_lib/email');
 const { v4: uuidv4 } = require('uuid');
 
 module.exports = async function handler(req, res) {

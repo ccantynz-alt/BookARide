@@ -1,38 +1,23 @@
 /**
  * POST /api/chatbot/message
  * AI chatbot for customer questions about bookings and services.
- * Uses Claude API (Haiku) — same as email support.
+ * Claude Haiku via the Vapron AI gateway — same as email support.
  */
+const { aiComplete } = require('../_lib/vapron');
+
 module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ detail: 'Method not allowed' });
 
   try {
-    const { message, context } = req.body;
+    const { message } = req.body;
     if (!message) {
       return res.status(400).json({ detail: 'message is required' });
     }
 
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) {
-      // Fallback to static responses when Claude API not configured
-      return res.status(200).json({
-        reply: getStaticReply(message),
-        source: 'static',
-      });
-    }
-
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 300,
-        system: `You are the BookaRide NZ customer support chatbot. You help customers with:
+    const reply = await aiComplete({
+      maxTokens: 300,
+      system: `You are the BookaRide NZ customer support chatbot. You help customers with:
 - Booking airport transfers and private transfers in Auckland, NZ
 - Pricing questions (direct them to bookaride.co.nz/book-now for exact quotes)
 - Service area (Auckland, Hibiscus Coast, Hamilton, Tauranga, Whangarei)
@@ -41,17 +26,14 @@ module.exports = async function handler(req, res) {
 Keep replies concise (2-3 sentences max). Be friendly and professional.
 NEVER make up specific prices — always direct to the booking form.
 NEVER share other customers' information.`,
-        messages: [{ role: 'user', content: message }],
-      }),
+      messages: [{ role: 'user', content: message }],
     });
 
-    if (!response.ok) {
-      console.error('Claude API error:', response.status);
+    if (!reply) {
+      // Falls back to static responses when the AI gateway is
+      // unconfigured or errors — same behaviour as before.
       return res.status(200).json({ reply: getStaticReply(message), source: 'static' });
     }
-
-    const data = await response.json();
-    const reply = data.content?.[0]?.text || getStaticReply(message);
 
     return res.status(200).json({ reply, source: 'ai' });
   } catch (err) {

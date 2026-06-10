@@ -9,7 +9,7 @@
  * actually gets notified — PATCH alone only updates the database.
  */
 const { findOne, updateOne } = require('../../_lib/db');
-const { sendEmail } = require('../../_lib/mailgun');
+const { sendEmail } = require('../../_lib/email');
 const { verifyAdmin } = require('../../_lib/auth');
 const {
   customerBookingApprovedEmail,
@@ -67,7 +67,7 @@ module.exports = async function handler(req, res) {
     if (customerEmailSent) {
       console.error(`Booking #${booking.referenceNumber} approved — confirmation sent to ${booking.email}`);
     } else {
-      console.error(`CRITICAL: Booking #${booking.referenceNumber} approved but email failed (check MAILGUN_API_KEY)`);
+      console.error(`CRITICAL: Booking #${booking.referenceNumber} approved but email failed (check VAPRON_API_KEY)`);
     }
 
     // Admin confirmation that the approval went through
@@ -85,7 +85,7 @@ module.exports = async function handler(req, res) {
       customer_email_sent: customerEmailSent,
       message: customerEmailSent
         ? `Booking approved and confirmation sent to ${booking.email}`
-        : 'Booking approved — but the email failed. Check MAILGUN_API_KEY in Vercel.',
+        : 'Booking approved — but the email failed. Check VAPRON_API_KEY in Vercel.',
     });
   } catch (err) {
     console.error('Approve booking error:', err.message);

@@ -9,7 +9,8 @@
  */
 
 const { findMany } = require('./db');
-const { sendEmail } = require('./mailgun');
+const { sendEmail } = require('./email');
+const { aiComplete } = require('./vapron');
 
 const SITE_URL = 'https://www.bookaride.co.nz';
 
@@ -291,11 +292,10 @@ async function checkPageHealth() {
  * Returns a list of 3-5 actionable suggestions per run.
  */
 async function generateContentSuggestions() {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
+  if (!process.env.VAPRON_API_KEY) {
     return {
       ok: false,
-      message: 'ANTHROPIC_API_KEY not set — skipping AI content suggestions',
+      message: 'VAPRON_API_KEY not set — skipping AI content suggestions',
       data: null,
     };
   }
@@ -312,30 +312,14 @@ For each suggestion give:
 
 Be specific and brutal. No vague advice. Each suggestion should be implementable today.`;
 
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1000,
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    });
-    if (!res.ok) {
-      const text = await res.text();
-      return { ok: false, message: `Claude API error ${res.status}`, data: text };
-    }
-    const data = await res.json();
-    const suggestions = data.content?.[0]?.text || 'No suggestions returned';
-    return { ok: true, message: 'Generated content suggestions via Claude', data: suggestions };
-  } catch (err) {
-    return { ok: false, message: `Claude API call failed: ${err.message}`, data: null };
+  const suggestions = await aiComplete({
+    maxTokens: 1000,
+    messages: [{ role: 'user', content: prompt }],
+  });
+  if (!suggestions) {
+    return { ok: false, message: 'AI gateway call failed — see Vercel logs', data: null };
   }
+  return { ok: true, message: 'Generated content suggestions via Claude', data: suggestions };
 }
 
 /**

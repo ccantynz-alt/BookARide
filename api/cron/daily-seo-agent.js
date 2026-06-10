@@ -71,7 +71,7 @@ module.exports = async function handler(req, res) {
     results.health = { ok: false, message: `Page health check failed: ${err.message}`, data: null };
   }
 
-  // 4. AI content suggestions (only if we have ANTHROPIC_API_KEY)
+  // 4. AI content suggestions (only if we have VAPRON_API_KEY)
   try {
     results.suggestions = await generateContentSuggestions();
   } catch (err) {

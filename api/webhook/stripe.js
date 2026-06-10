@@ -10,7 +10,7 @@
  * 4. iCloud contact sync (future)
  */
 const { findOne, updateOne } = require('../_lib/db');
-const { sendEmail } = require('../_lib/mailgun');
+const { sendEmail } = require('../_lib/email');
 const { sendSMS, wantsSMS, wantsEmail, isTwilioConfigured } = require('../_lib/twilio');
 const {
   customerBookingConfirmedEmail,

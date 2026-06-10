@@ -15,14 +15,14 @@ import { API } from '../../config/api';
  * /api/health/email-test through the production send path.
  *
  * No fake bookings are created — the test email uses the same
- * templates and Mailgun call as a real booking but writes nothing
- * to the database.
+ * templates and email-provider call as a real booking but writes
+ * nothing to the database.
  */
 const CHECK_LABELS = {
   database_connection: 'Database connection',
   database_write:      'Database read + write',
-  mailgun:             'Mailgun env vars',
-  mailgun_live:        'Mailgun live (key + domain + region)',
+  email_provider:      'Email provider env vars',
+  email_provider_live: 'Email provider live (key check)',
   stripe:              'Stripe',
   google_maps:         'Google Maps',
   pricing_engine:      'Pricing engine',
@@ -30,8 +30,8 @@ const CHECK_LABELS = {
 };
 
 const CHECK_ORDER = [
-  'mailgun_live',
-  'mailgun',
+  'email_provider_live',
+  'email_provider',
   'database_connection',
   'database_write',
   'stripe',
@@ -170,7 +170,7 @@ const SystemHealthDialog = ({ open, onClose, getAuthHeaders }) => {
           <div className="rounded-lg border-2 border-dashed border-slate-200 px-4 py-4 bg-slate-50">
             <p className="text-sm font-semibold text-slate-900 mb-1">Send a real test email</p>
             <p className="text-xs text-slate-500 mb-3">
-              Fires the production templates through Mailgun. Customer template goes to
+              Fires the production templates through the email provider. Customer template goes to
               the address below; admin template always goes to <code className="bg-slate-200 px-1 rounded">bookings@bookaride.co.nz</code>.
               No database record is created.
             </p>

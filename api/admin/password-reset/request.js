@@ -4,7 +4,7 @@
  */
 const { findOne, insertOne } = require('../../_lib/db');
 const crypto = require('crypto');
-const { sendEmail } = require('../../_lib/mailgun');
+const { sendEmail } = require('../../_lib/email');
 
 module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -45,7 +45,7 @@ module.exports = async function handler(req, res) {
     const publicDomain = (process.env.PUBLIC_DOMAIN || 'https://www.bookaride.co.nz').replace(/\/$/, '');
     const resetLink = `${publicDomain}/admin/reset-password?token=${resetToken}`;
 
-    // Send email via Mailgun
+    // Send email via the shared email provider
     const htmlContent = `
       <div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;margin:0 auto;">
         <div style="background:#D4AF37;padding:20px;text-align:center;">

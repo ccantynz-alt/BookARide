@@ -4,7 +4,7 @@
  * Replaces: Python backend POST /api/bookings/:id/resend-confirmation
  */
 const { findOne } = require('../../_lib/db');
-const { sendEmail } = require('../../_lib/mailgun');
+const { sendEmail } = require('../../_lib/email');
 const { verifyAdmin } = require('../../_lib/auth');
 const {
   customerBookingReceivedEmail,

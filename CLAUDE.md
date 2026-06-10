@@ -844,6 +844,74 @@ default.
 3. Do NOT "fix" by changing the recipient address to a different
    inbox. That hides the real fault.
 
+### 6f. Vapron Platform (2026-06-10) — CRAIG AUTHORISED, LOCKED
+
+Craig explicitly authorised the Vapron platform (api.vapron.ai) on
+2026-06-10, in chat, with pinned scope. This section SUPERSEDES the
+"Mailgun ONLY" transport rule in sections 2/6e and the direct
+Anthropic API transport in sections 11/12 — but ONLY for transport.
+Everything else in those sections still applies.
+
+**What Vapron now provides (Craig-pinned scope):**
+
+| Service | Replaces | Where |
+|---------|----------|-------|
+| Outbound email | Mailgun sending | `api/_lib/email.js` (shared `sendEmail`) |
+| AI gateway | Direct calls to api.anthropic.com | `api/_lib/vapron.js` `aiComplete()` |
+| Cron triggering | Vercel Cron | `scripts/setup-vapron.js` registers the job |
+| OTP/SMS verify | (new capability) | `api/verify/start.js` + `api/verify/check.js` |
+
+**What did NOT change (still locked):**
+- Hosting stays on **Vercel**. Craig explicitly declined moving hosting.
+- Payments stay on **Stripe** (section 6d unchanged).
+- Maps stay on **Google Maps** (sections 6/6c unchanged) — Vapron has
+  no maps product.
+- The model is still **Claude Haiku** (`claude-haiku-4-5-20251001`) —
+  only the transport goes through Vapron's gateway. NEVER switch to
+  GPT/other models via the gateway.
+- The three-mailbox email ADDRESS architecture in 6e is unchanged:
+  `bookings@` admin inbox, `noreply@` customer From, `info@` replyTo.
+- **Inbound** email (support auto-replies via `/api/email/incoming`)
+  still arrives through Mailgun MX records + routes. Vapron email is
+  send-only. Do NOT delete the Mailgun account or MX records without
+  Craig deciding how inbound mail should flow.
+
+**Env vars (set in Vercel dashboard):**
+- `VAPRON_API_KEY` — required for email, AI, OTP. The key that was
+  pasted into the 2026-06-10 session task text is EXPOSED and was
+  rotated — never commit any key to the repo.
+- `VAPRON_VERIFY_SERVICE_ID` — required for the OTP endpoints.
+- `CRON_SECRET` — shared secret the Vapron cron job sends to
+  `/api/cron/daily-seo-agent`.
+- `MAILGUN_API_KEY`/`MAILGUN_DOMAIN` — no longer used for sending;
+  keep until inbound email routing is decided.
+
+**Rules (LOCKED):**
+- NEVER add a "fallback to Mailgun" (or any second provider) in
+  `sendEmail` — if Vapron fails, log CRITICAL, return false. Same
+  no-fallback rule as before, new provider.
+- NEVER call api.anthropic.com directly from `api/` — all AI calls
+  go through `aiComplete()` in `api/_lib/vapron.js`.
+- NEVER re-add `crons` to vercel.json — cron is Vapron's job now.
+  The cron handler still accepts `x-vercel-cron` for safety but the
+  trigger is the Vapron job registered by `scripts/setup-vapron.js`.
+- The OTP endpoints are ADMIN-AUTH ONLY until Craig decides where
+  verification appears in the booking flow. NEVER expose them
+  unauthenticated, and NEVER wire OTP into BookNow.jsx without
+  Craig's explicit design approval (booking-flow change).
+
+**Cutover checklist (do not mark this migration done until all pass):**
+1. Rotated `VAPRON_API_KEY` set in Vercel (Production + Preview).
+2. `/api/health/booking-system` → `email_provider_live` green.
+3. `/api/health/email-test?to=...` → both templates arrive, From is
+   `noreply@bookaride.co.nz`, Reply-To is `info@bookaride.co.nz`. If
+   Vapron does not honour From/Reply-To, STOP and tell Craig — the
+   6e address architecture is non-negotiable.
+4. `node scripts/setup-vapron.js` run once; daily SEO report arrives
+   next morning.
+5. Real test booking → customer confirmation + admin notification
+   both arrive within 60 seconds.
+
 ### 6c. Google Address Autocomplete (2026-04-09) — LOCKED
 
 **CRITICAL: Google's native Autocomplete widget is BANNED.**

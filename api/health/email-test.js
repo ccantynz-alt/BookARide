@@ -1,23 +1,23 @@
 /**
  * GET /api/health/email-test?to=<email>
  *
- * Admin-only diagnostic that fires a real test email through Mailgun.
+ * Admin-only diagnostic that fires a real test email through the email provider.
  * Use this when /api/health/booking-system passes but customers still
  * report missing booking confirmations — it proves whether mail
  * actually leaves the platform end-to-end.
  *
  * Sends a small confirmation-style template (renders the same
  * customerBookingReceivedEmail template we use in production) to the
- * supplied address. Returns the Mailgun message-id on success so you
- * can correlate with Mailgun's logs.
+ * supplied address. Returns the send outcome on success so you
+ * can correlate with the Vapron dashboard logs.
  *
  * Auth: requires Bearer admin JWT in Authorization header. We do NOT
- * leave this open because anyone could otherwise burn through Mailgun
+ * leave this open because anyone could otherwise burn through email
  * quota or use it as a spam relay.
  */
 const jwt = require('jsonwebtoken');
 const { findOne } = require('../_lib/db');
-const { sendEmail } = require('../_lib/mailgun');
+const { sendEmail } = require('../_lib/email');
 const { customerBookingReceivedEmail, adminNewBookingEmail } = require('../_lib/email-templates');
 
 async function verifyAdmin(req) {
@@ -96,8 +96,8 @@ module.exports = async function handler(req, res) {
   return res.status(customerSent && adminSent ? 200 : 500).json({
     status: customerSent && adminSent ? 'ok' : 'broken',
     summary: customerSent && adminSent
-      ? `Test emails accepted by Mailgun for ${to} (customer template) and ${adminEmail} (admin template). Check inboxes + spam.`
-      : 'Mailgun rejected one or both test emails — see Vercel function logs for the exact response.',
+      ? `Test emails accepted by the email provider for ${to} (customer template) and ${adminEmail} (admin template). Check inboxes + spam.`
+      : 'The email provider rejected one or both test emails — see Vercel function logs for the exact response.',
     customer: {
       to,
       sent: customerSent,
@@ -111,6 +111,6 @@ module.exports = async function handler(req, res) {
     triggered_by: auth.admin.username,
     next_steps: customerSent && adminSent
       ? 'If the test landed but real bookings do not, check that booking creation actually calls sendEmail (look for "Booking #N created and verified" then "Customer confirmation email sent" in Vercel logs).'
-      : 'Run /api/health/booking-system to see whether Mailgun is rejecting auth, the domain is unverified, or the region is wrong.',
+      : 'Run /api/health/booking-system to see whether the email provider is rejecting the VAPRON_API_KEY.',
   });
 };

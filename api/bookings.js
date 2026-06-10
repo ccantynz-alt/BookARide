@@ -5,7 +5,7 @@
  * Replaces: Python backend POST /api/bookings, GET /api/bookings
  */
 const { findOne, insertOne, getDb } = require('./_lib/db');
-const { sendEmail } = require('./_lib/mailgun');
+const { sendEmail } = require('./_lib/email');
 const { sendSMS, wantsSMS, wantsEmail, isTwilioConfigured } = require('./_lib/twilio');
 const { verifyAdmin } = require('./_lib/auth');
 const {
@@ -147,11 +147,8 @@ async function createBooking(req, res) {
     const adminEmail = process.env.BOOKINGS_NOTIFICATION_EMAIL || 'bookings@bookaride.co.nz';
 
     // === EMAIL DIAGNOSTICS ===
-    if (!process.env.MAILGUN_API_KEY) {
-      console.error(`CRITICAL: MAILGUN_API_KEY not set — booking #${refNumber} created but NO emails will be sent`);
-    }
-    if (!process.env.MAILGUN_DOMAIN) {
-      console.warn(`MAILGUN_DOMAIN not set — using default (mg.bookaride.co.nz)`);
+    if (!process.env.VAPRON_API_KEY) {
+      console.error(`CRITICAL: VAPRON_API_KEY not set — booking #${refNumber} created but NO emails will be sent`);
     }
     if (!process.env.BOOKINGS_NOTIFICATION_EMAIL) {
       console.warn(`WARN: BOOKINGS_NOTIFICATION_EMAIL not set — admin notification going to default ${adminEmail}`);
@@ -161,7 +158,7 @@ async function createBooking(req, res) {
     //
     // CRITICAL: On Vercel serverless, firing a sendEmail() promise and
     // returning the response immediately causes the function to freeze
-    // before the Mailgun HTTP POST completes, dropping the email
+    // before the email provider HTTP request completes, dropping the email
     // silently. We MUST await the promises before res.json() returns.
     // Promise.allSettled means one failure does not block the others.
     //
@@ -212,7 +209,7 @@ async function createBooking(req, res) {
         } else {
           const reason = results[0].status === 'rejected'
             ? results[0].reason?.message
-            : 'Mailgun returned false';
+            : 'Email provider returned false';
           console.error(`CRITICAL: Customer confirmation email failed for booking #${refNumber}: ${reason}`);
         }
       } else {
@@ -224,7 +221,7 @@ async function createBooking(req, res) {
       } else {
         const reason = results[1].status === 'rejected'
           ? results[1].reason?.message
-          : 'Mailgun returned false';
+          : 'Email provider returned false';
         console.error(`CRITICAL: Admin notification failed for booking #${refNumber} (recipient: ${adminEmail}): ${reason}`);
       }
 
@@ -253,7 +250,7 @@ async function createBooking(req, res) {
         customer_sent: customerEmailSent,
         admin_sent: adminEmailSent,
         admin_recipient: adminEmail,
-        mailgun_configured: !!process.env.MAILGUN_API_KEY,
+        email_provider_configured: !!process.env.VAPRON_API_KEY,
       },
       _sms_status: {
         customer_sent: customerSmsSent,
