@@ -10,7 +10,7 @@
  * a key in this repo.
  */
 
-const VAPRON_BASE = 'https://api.vapron.ai/api/trpc';
+const VAPRON_BASE = `${(process.env.VAPRON_BASE_URL || 'https://api.vapron.ai').replace(/\/+$/, '')}/api/trpc`;
 
 /**
  * Call a Vapron tRPC procedure. Mutations are POSTs with a
