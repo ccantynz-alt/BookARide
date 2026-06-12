@@ -17,7 +17,7 @@
  * link so they can pay later without being redirected by the admin.
  */
 const jwt = require('jsonwebtoken');
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 const { findOne, insertOne, updateOne, getDb } = require('../_lib/db');
 const { sendEmail } = require('../_lib/email');
 const { sendSMS, wantsSMS, wantsEmail, isTwilioConfigured } = require('../_lib/twilio');
@@ -145,7 +145,7 @@ module.exports = async function handler(req, res) {
     }
 
     // === Build booking doc ===
-    const id = uuidv4();
+    const id = randomUUID();
     const refNumber = await getNextReferenceNumber();
 
     // Normalize flight numbers across the various admin field names
@@ -287,7 +287,7 @@ module.exports = async function handler(req, res) {
 
           // Record the transaction (non-blocking)
           insertOne('payment_transactions', {
-            id: uuidv4(),
+            id: randomUUID(),
             booking_id: id,
             session_id: session.id,
             amount: finalTotal,

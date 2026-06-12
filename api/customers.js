@@ -3,10 +3,13 @@
  * Extracts customer info from bookings table (no separate customer collection).
  */
 const { getDb } = require('./_lib/db');
+const { verifyAdmin } = require('./_lib/auth');
 
 module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET') return res.status(405).json({ detail: 'Method not allowed' });
+
+  if (!verifyAdmin(req, res)) return;
 
   try {
     const sql = getDb();

@@ -3,10 +3,13 @@
  * List soft-deleted bookings (admin).
  */
 const { findMany } = require('../_lib/db');
+const { verifyAdmin } = require('../_lib/auth');
 
 module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET') return res.status(405).json({ detail: 'Method not allowed' });
+
+  if (!verifyAdmin(req, res)) return;
 
   try {
     const bookings = await findMany('deleted_bookings', {}, {

@@ -3,11 +3,14 @@
  * Recover a booking from an orphaned Stripe payment.
  */
 const { findOne, insertOne } = require('../_lib/db');
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
+const { verifyAdmin } = require('../_lib/auth');
 
 module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ detail: 'Method not allowed' });
+
+  if (!verifyAdmin(req, res)) return;
 
   try {
     const { session_id } = req.body;
@@ -22,7 +25,7 @@ module.exports = async function handler(req, res) {
     const stripe = require('stripe')(stripeKey);
 
     const session = await stripe.checkout.sessions.retrieve(session_id);
-    const bookingId = session.metadata?.booking_id || uuidv4();
+    const bookingId = session.metadata?.booking_id || randomUUID();
 
     // Check if booking already exists
     const existing = await findOne('bookings', { id: bookingId });

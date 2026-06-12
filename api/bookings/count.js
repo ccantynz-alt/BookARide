@@ -3,10 +3,13 @@
  * Return booking counts by status (for admin dashboard badges).
  */
 const { rawQuery } = require('../_lib/db');
+const { verifyAdmin } = require('../_lib/auth');
 
 module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET') return res.status(405).json({ detail: 'Method not allowed' });
+
+  if (!verifyAdmin(req, res)) return;
 
   try {
     // Single query: count bookings by status, excluding shared-shuttle

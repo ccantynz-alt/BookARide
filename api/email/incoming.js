@@ -17,11 +17,37 @@
 const { sendEmail } = require('../_lib/email');
 const { aiComplete } = require('../_lib/vapron');
 const { insertOne, updateOne } = require('../_lib/db');
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID, timingSafeEqual } = require('crypto');
 const Busboy = require('busboy');
 
 // Skip patterns — never auto-reply to these
 const SKIP_PATTERNS = ['bookaride', 'noreply', 'no-reply', 'mailer-daemon', 'postmaster'];
+
+/**
+ * Provider-agnostic webhook authentication. The inbound mail provider
+ * (Mailgun today, Vapron later) must call this endpoint with the shared
+ * secret in the URL: /api/email/incoming?secret=<INBOUND_WEBHOOK_SECRET>.
+ * Without this, anyone who finds the URL could POST a forged "cancel my
+ * booking" email and have the AI act on a real customer's booking.
+ */
+function verifyInboundSecret(req) {
+  const expected = (process.env.INBOUND_WEBHOOK_SECRET || '').trim();
+  if (!expected) {
+    // Not configured yet — allow so inbound support email keeps working,
+    // but warn loudly. The destructive AI actions are gated separately
+    // (cancellations are flagged for admin review, never auto-applied),
+    // so the worst-case harm is already removed even before this is set.
+    console.error('WARNING: INBOUND_WEBHOOK_SECRET not set — inbound email webhook is unauthenticated. Set it in the env and append ?secret=... to the mail provider route URL to close this gap.');
+    return true;
+  }
+  const provided = String((req.query && req.query.secret) || (req.body && req.body.secret) || '').trim();
+  if (!provided || provided.length !== expected.length) return false;
+  try {
+    return timingSafeEqual(Buffer.from(provided), Buffer.from(expected));
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Parse multipart/form-data from Mailgun inbound webhook.
@@ -158,7 +184,8 @@ PAYMENT OPTIONS:
 - Credit/Debit Card via secure Stripe checkout (the only accepted payment method)
 
 POLICIES:
-- Free cancellation up to 24 hours before pickup
+- Free cancellation when cancelled more than 24 hours before pickup
+- A 20% cancellation fee applies when cancelling within 24 hours of pickup
 - Bookings within 24 hours require admin approval
 - Flight monitoring included for airport pickups — we track your flight
 - Meet & greet at the terminal for airport pickups
@@ -181,7 +208,7 @@ You can take actions by including special tags in your response. These tags will
 
 Available actions:
 - [ACTION:RESEND_CONFIRMATION:REF123] — Resend booking confirmation email. Use when the customer says they did not receive their confirmation or asks you to resend it. Replace REF123 with the actual booking reference number.
-- [ACTION:FLAG_CANCELLATION:REF123] — Cancel a booking immediately. Use when the customer asks to cancel. Tell the customer their booking has been cancelled.
+- [ACTION:FLAG_CANCELLATION:REF123] — Flag a booking for cancellation review. Use when the customer asks to cancel. Tell the customer their cancellation request has been received and our team will confirm it shortly. Explain our cancellation policy: free if cancelled more than 24 hours before pickup, otherwise a 20% cancellation fee applies. Do NOT tell them the booking is already cancelled — it is not cancelled until the team confirms.
 - [ACTION:FLAG_MODIFICATION:REF123:description of changes] — Flag a booking for modification. Use when the customer wants to change date, time, address, or passengers. Include a brief description of changes.
 - [ACTION:URGENT_ESCALATE] — Alert admin via SMS. Use ONLY when genuinely urgent: customer stranded, driver late, or clearly distressed about an imminent booking.
 
@@ -238,22 +265,24 @@ async function processActions(aiResponse, senderEmail, senderName, customerBooki
     const booking = byRef[ref] || byRef[`#${ref}`];
     if (booking) {
       try {
+        // Flag for admin review — do NOT auto-cancel. A cancellation
+        // incurs a 20% fee (admin applies it manually) and must be
+        // confirmed by a human; auto-cancelling on an unverified inbound
+        // email is both a fraud risk and bypasses the cancellation fee.
+        // Setting cancellation_requested keeps scheduled customer emails
+        // (reminders, follow-ups) away from this booking in the meantime.
         await updateOne('bookings', { id: booking.id }, {
           $set: {
-            status: 'cancelled',
             cancellation_requested: true,
             cancellation_requested_at: new Date().toISOString(),
             cancellation_requested_by: senderEmail,
-            cancelledAt: new Date().toISOString(),
-            cancelledVia: 'email_ai_support',
+            cancellation_review_required: true,
           },
         });
-        actionsTaken.push(`Cancelled booking #${ref} and notified admin`);
-        // SMS to admin via Twilio would go here if Twilio was in the Vercel API
-        // For now, admin gets the email notification below
+        actionsTaken.push(`Flagged booking #${ref} for cancellation — ADMIN REVIEW REQUIRED (apply 20% cancellation fee before cancelling)`);
       } catch (err) {
-        console.error(`Failed to cancel booking #${ref}:`, err.message);
-        actionsTaken.push(`Failed to cancel booking #${ref}`);
+        console.error(`Failed to flag cancellation for #${ref}:`, err.message);
+        actionsTaken.push(`Failed to flag cancellation for #${ref}`);
       }
     } else {
       actionsTaken.push(`Could not find booking #${ref} to cancel`);
@@ -376,6 +405,11 @@ async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ detail: 'Method not allowed' });
 
+  if (!verifyInboundSecret(req)) {
+    console.error('CRITICAL: inbound email rejected — missing/invalid webhook secret');
+    return res.status(401).json({ detail: 'Unauthorized' });
+  }
+
   try {
     // Parse the incoming data — Mailgun sends multipart/form-data
     let fields;
@@ -480,7 +514,7 @@ async function handler(req, res) {
 
       // Log the interaction
       await insertOne('email_logs', {
-        id: uuidv4(),
+        id: randomUUID(),
         from: replyToEmail,
         sender_name: senderName,
         subject,

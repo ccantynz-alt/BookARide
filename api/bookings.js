@@ -13,7 +13,7 @@ const {
   adminNewBookingEmail,
 } = require('./_lib/email-templates');
 const { customerBookingReceivedSMS } = require('./_lib/sms-templates');
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 
 async function getNextReferenceNumber() {
   const sql = getDb();
@@ -90,7 +90,7 @@ async function createBooking(req, res) {
     }
 
     // Generate unique ID and reference number
-    const id = uuidv4();
+    const id = randomUUID();
     const refNumber = await getNextReferenceNumber();
 
     // Normalize flight number fields (frontend may send any of these names)
