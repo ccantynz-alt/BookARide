@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "vite",
     "start": "vite",
-    "build": "node scripts/generate-seo-pages.mjs && vite build",
+    "build": "node scripts/generate-seo-pages.mjs && vite build && node scripts/prerender.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import React from 'react';
+import { useParams, useLocation, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { 
@@ -13,19 +13,11 @@ import { internationalMarkets } from '../../data/internationalMarkets';
 
 const CountryLandingPage = () => {
   const { countrySlug } = useParams();
-  const location = window.location.pathname;
+  // useLocation (not window.location) — works identically in the browser and
+  // during build-time prerendering, where window does not exist.
+  const location = useLocation().pathname;
   const slug = countrySlug || location.split('/visitors/')[1]?.split('/')[0] || 'usa';
   const country = internationalMarkets.find(c => c.slug === slug) || internationalMarkets[0];
-  
-  const [bookingCount, setBookingCount] = useState(847);
-  
-  // Simulate live booking counter
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setBookingCount(prev => prev + Math.floor(Math.random() * 3));
-    }, 30000);
-    return () => clearInterval(interval);
-  }, []);
 
   const schemaMarkup = {
     "@context": "https://schema.org",
@@ -74,7 +66,8 @@ const CountryLandingPage = () => {
 
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-4xl mx-auto text-center">
-            {/* Live Counter Badge */}
+            {/* 24/7 availability badge — factual, replaces a fabricated
+                "live bookings" counter that violated the no-fake-stats rule */}
             <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -84,7 +77,7 @@ const CountryLandingPage = () => {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
               </span>
-              <span className="text-green-400 font-medium">{bookingCount} bookings this month</span>
+              <span className="text-green-400 font-medium">Available 24/7 — book any time</span>
             </motion.div>
 
             {/* Country Welcome */}
