@@ -1,5 +1,5 @@
 import React from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { MapPin, Clock, DollarSign, Shield, Star, ArrowRight, Check, Car, Plane } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent } from '../../components/ui/card';
@@ -10,8 +10,10 @@ import { FAQSchema, ServiceSchema, BreadcrumbSchema } from '../../components/SEO
 import { aucklandSuburbs, commonFAQs } from '../../data/aucklandSuburbs';
 
 const SuburbTransferPage = () => {
-  const location = window.location.pathname;
-  
+  // useLocation (not window.location) — works identically in the browser and
+  // during build-time prerendering, where window does not exist.
+  const location = useLocation().pathname;
+
   // Extract suburb from URL pattern (e.g., "/devonport-to-auckland-airport" -> "devonport")
   const pathMatch = location.match(/\/([a-z-]+)-to-auckland-airport/i);
   const suburb = pathMatch ? pathMatch[1] : '';

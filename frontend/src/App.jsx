@@ -155,7 +155,10 @@ const MainLayout = () => (
 // Get the homepage component based on config
 const HomePage = siteConfig.isInternational ? InternationalHomePage : Home;
 
-function App() {
+// Route tree WITHOUT a router. Exported so the build-time prerender
+// (src/entry-server.jsx) can render the same routes under a StaticRouter
+// while the browser entry (main.jsx -> App) uses BrowserRouter.
+export function AppRoutes() {
   // Generate language-prefixed routes
   const languagePrefixes = SUPPORTED_LANGUAGES.filter(l => l.code !== 'en').map(l => l.code);
 
@@ -343,12 +346,9 @@ function App() {
   ];
 
   return (
-    <RootErrorBoundary>
-      <div className="App">
-        <BrowserRouter>
-          <LanguageRedirect>
-            <Suspense fallback={<LoadingFallback />}>
-              <Routes>
+    <LanguageRedirect>
+      <Suspense fallback={<LoadingFallback />}>
+        <Routes>
               {/* Driver Routes (No Header/Footer) */}
               <Route path="/driver/login" element={<DriverLogin />} />
               <Route path="/drive-with-us" element={<DriveWithUs />} />
@@ -395,10 +395,19 @@ function App() {
               <Route path="*" element={<MainLayout />}>
                 <Route path="*" element={<NotFound />} />
               </Route>
-            </Routes>
-            </Suspense>
-            <Toaster />
-          </LanguageRedirect>
+        </Routes>
+      </Suspense>
+      <Toaster />
+    </LanguageRedirect>
+  );
+}
+
+function App() {
+  return (
+    <RootErrorBoundary>
+      <div className="App">
+        <BrowserRouter>
+          <AppRoutes />
         </BrowserRouter>
       </div>
     </RootErrorBoundary>

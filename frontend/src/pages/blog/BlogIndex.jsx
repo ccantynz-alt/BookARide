@@ -2,71 +2,8 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { Card, CardContent } from '../../components/ui/card';
-import { Calendar, Clock, User, ArrowRight, Tag } from 'lucide-react';
-
-// Blog posts data
-const blogPosts = [
-  {
-    slug: 'auckland-airport-to-cbd-guide',
-    title: 'How to Get from Auckland Airport to CBD: Complete 2024 Guide',
-    excerpt: 'Everything you need to know about getting from Auckland Airport to the city center. Compare shuttles, taxis, buses, and rental cars.',
-    category: 'Travel Guide',
-    author: 'BookaRide Team',
-    date: '2024-12-01',
-    readTime: '8 min read',
-    featured: true
-  },
-  {
-    slug: 'auckland-airport-terminal-guide',
-    title: 'Auckland Airport Terminal Guide: Domestic vs International',
-    excerpt: 'Navigate Auckland Airport like a pro. Everything about domestic and international terminals, transfers, and facilities.',
-    category: 'Airport Info',
-    author: 'BookaRide Team',
-    date: '2024-11-28',
-    readTime: '6 min read',
-    featured: true
-  },
-  {
-    slug: 'best-time-book-airport-shuttle',
-    title: 'Best Time to Book Your Auckland Airport Shuttle',
-    excerpt: 'Tips on when to book your airport transfer for the best prices and guaranteed availability. Peak times and booking strategies.',
-    category: 'Tips',
-    author: 'BookaRide Team',
-    date: '2024-11-25',
-    readTime: '5 min read',
-    featured: false
-  },
-  {
-    slug: 'traveling-with-kids-auckland-airport',
-    title: 'Traveling with Kids: Auckland Airport Tips',
-    excerpt: 'Family travel tips for Auckland Airport. Child seats, stroller policies, and making your journey stress-free with little ones.',
-    category: 'Family Travel',
-    author: 'BookaRide Team',
-    date: '2024-11-20',
-    readTime: '7 min read',
-    featured: false
-  },
-  {
-    slug: 'north-shore-to-airport-guide',
-    title: 'North Shore to Auckland Airport: Your Complete Transfer Guide',
-    excerpt: 'Everything you need to know about getting from North Shore suburbs to Auckland Airport. Routes, times, and costs.',
-    category: 'Travel Guide',
-    author: 'BookaRide Team',
-    date: '2024-11-15',
-    readTime: '6 min read',
-    featured: false
-  },
-  {
-    slug: 'auckland-airport-shuttle-vs-taxi',
-    title: 'Auckland Airport Shuttle vs Taxi: Which is Better?',
-    excerpt: 'Comprehensive comparison of shuttles and taxis for Auckland Airport transfers. Costs, convenience, and recommendations.',
-    category: 'Comparison',
-    author: 'BookaRide Team',
-    date: '2024-11-10',
-    readTime: '5 min read',
-    featured: false
-  }
-];
+import { Calendar, Clock, ArrowRight, Tag } from 'lucide-react';
+import { blogPosts } from '../../data/blogPosts';
 
 const BlogIndex = () => {
   const featuredPosts = blogPosts.filter(post => post.featured);
@@ -125,6 +62,7 @@ const BlogIndex = () => {
       </section>
 
       {/* All Posts */}
+      {regularPosts.length > 0 && (
       <section className="py-12 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4">
           <h2 className="text-2xl font-bold mb-8">All Articles</h2>
@@ -152,6 +90,7 @@ const BlogIndex = () => {
           </div>
         </div>
       </section>
+      )}
 
       {/* Newsletter CTA */}
       <section className="py-16 bg-gold">
