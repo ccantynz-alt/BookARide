@@ -47,10 +47,14 @@ There is **NO `backend/` folder**. There is **NO Render service**. There is
 **NO Python server**. If you find code in a `backend/` directory, it is dead
 weight from the old architecture and must be deleted.
 
-A new combined backend+frontend serverless platform is being prepared.
-**The owner will update CLAUDE.md when that platform is ready.** Until then,
-do not introduce new backend code, do not add a backend folder, do not
-suggest moving back to Render or a Python server.
+A new combined backend+frontend serverless platform is being prepared:
+**Vapron (api.vapron.ai)**. Craig confirmed on 2026-06-12 that Vapron is
+the planned future host for BookARide's frontend AND backend services.
+**Status: authorised direction only — NOT yet migrated.** Hosting stays
+on Vercel until Craig gives a concrete go-date and migration plan
+approval (see section 6f). Until then, do not introduce new backend
+code, do not add a backend folder, do not suggest moving back to Render
+or a Python server, and do not start moving anything to Vapron hosting.
 
 ### Rule 3: Zero chicken scratches
 
@@ -862,7 +866,13 @@ Everything else in those sections still applies.
 | OTP/SMS verify | (new capability) | `api/verify/start.js` + `api/verify/check.js` |
 
 **What did NOT change (still locked):**
-- Hosting stays on **Vercel**. Craig explicitly declined moving hosting.
+- Hosting stays on **Vercel**. Craig explicitly declined moving hosting
+  on 2026-06-10. **Update 2026-06-12:** Craig recorded the DIRECTION
+  that Vapron will eventually host BookARide's frontend + backend
+  services. This is direction only — no migration is authorised yet.
+  A migration plan must be written and explicitly approved by Craig
+  before any hosting change. Until that approval exists in this file,
+  every rule in this section stands and Vercel remains the host.
 - Payments stay on **Stripe** (section 6d unchanged).
 - Maps stay on **Google Maps** (sections 6/6c unchanged) — Vapron has
   no maps product.
