@@ -6,7 +6,7 @@
 const { findOne, updateOne, insertOne } = require('../_lib/db');
 const { sendEmail } = require('../_lib/email');
 const { customerPaymentLinkEmail } = require('../_lib/email-templates');
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 
 module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -69,7 +69,7 @@ module.exports = async function handler(req, res) {
     // Record payment transaction (audit log only — non-blocking)
     // If payment_transactions table has issues, it must NOT prevent the
     // customer from being redirected to Stripe.
-    const txnId = uuidv4();
+    const txnId = randomUUID();
     insertOne('payment_transactions', {
       id: txnId,
       booking_id,

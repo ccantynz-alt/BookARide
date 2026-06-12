@@ -7,7 +7,7 @@ const { findOne, updateOne, insertOne } = require('../../_lib/db');
 const { sendEmail } = require('../../_lib/email');
 const { verifyAdmin } = require('../../_lib/auth');
 const { customerPaymentLinkEmail } = require('../../_lib/email-templates');
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 
 module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -75,7 +75,7 @@ module.exports = async function handler(req, res) {
 
     // Record the transaction
     await insertOne('payment_transactions', {
-      id: uuidv4(),
+      id: randomUUID(),
       booking_id: bookingId,
       session_id: session.id,
       amount,

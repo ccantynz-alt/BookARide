@@ -17,7 +17,7 @@
 const { sendEmail } = require('../_lib/email');
 const { aiComplete } = require('../_lib/vapron');
 const { insertOne, updateOne } = require('../_lib/db');
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 const Busboy = require('busboy');
 
 // Skip patterns — never auto-reply to these
@@ -480,7 +480,7 @@ async function handler(req, res) {
 
       // Log the interaction
       await insertOne('email_logs', {
-        id: uuidv4(),
+        id: randomUUID(),
         from: replyToEmail,
         sender_name: senderName,
         subject,

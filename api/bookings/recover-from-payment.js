@@ -3,7 +3,7 @@
  * Recover a booking from an orphaned Stripe payment.
  */
 const { findOne, insertOne } = require('../_lib/db');
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 
 module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -22,7 +22,7 @@ module.exports = async function handler(req, res) {
     const stripe = require('stripe')(stripeKey);
 
     const session = await stripe.checkout.sessions.retrieve(session_id);
-    const bookingId = session.metadata?.booking_id || uuidv4();
+    const bookingId = session.metadata?.booking_id || randomUUID();
 
     // Check if booking already exists
     const existing = await findOne('bookings', { id: bookingId });

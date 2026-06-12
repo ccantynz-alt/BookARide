@@ -6,7 +6,7 @@
 const { sendEmail } = require('./_lib/email');
 const { aiComplete } = require('./_lib/vapron');
 const { insertOne } = require('./_lib/db');
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 
 /**
  * Professional HTML email signature
@@ -83,7 +83,7 @@ module.exports = async function handler(req, res) {
 
     // Log the contact submission
     await insertOne('contact_submissions', {
-      id: uuidv4(),
+      id: randomUUID(),
       name,
       email,
       phone: phone || '',

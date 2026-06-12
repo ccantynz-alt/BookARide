@@ -7,7 +7,7 @@
  */
 const { insertOne } = require('./_lib/db');
 const { sendEmail } = require('./_lib/email');
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 
 module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -21,7 +21,7 @@ module.exports = async function handler(req, res) {
     }
 
     const application = {
-      id: uuidv4(),
+      id: randomUUID(),
       name: String(body.name).trim(),
       email: String(body.email).trim().toLowerCase(),
       phone: String(body.phone).trim(),

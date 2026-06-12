@@ -25,7 +25,7 @@
 const { getDb, insertOne, findOne, deleteOne } = require('../_lib/db');
 const { calculatePrice } = require('../_lib/pricing');
 const { customerBookingReceivedEmail } = require('../_lib/email-templates');
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 
 function redact(value) {
   if (!value) return 'NOT SET';
@@ -52,7 +52,7 @@ async function checkDatabase() {
 async function checkDatabaseWrite() {
   // Insert a fake booking, read it back, then delete it.
   // This proves the bookings table schema is compatible with our code.
-  const testId = `health-check-${uuidv4()}`;
+  const testId = `health-check-${randomUUID()}`;
   try {
     const testDoc = {
       id: testId,
