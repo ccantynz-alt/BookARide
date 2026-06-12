@@ -3,10 +3,13 @@
  * Find Stripe payments that don't have a matching booking in the database.
  */
 const { findOne } = require('../_lib/db');
+const { verifyAdmin } = require('../_lib/auth');
 
 module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET') return res.status(405).json({ detail: 'Method not allowed' });
+
+  if (!verifyAdmin(req, res)) return;
 
   try {
     const stripeKey = process.env.STRIPE_SECRET_KEY || process.env.STRIPE_API_KEY;

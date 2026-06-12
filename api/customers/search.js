@@ -10,10 +10,13 @@
  * would not work. See CLAUDE.md for the locked schema.
  */
 const { findMany } = require('../_lib/db');
+const { verifyAdmin } = require('../_lib/auth');
 
 module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET') return res.status(405).json({ detail: 'Method not allowed' });
+
+  if (!verifyAdmin(req, res)) return;
 
   try {
     const q = (req.query.q || '').trim();

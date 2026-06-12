@@ -4,10 +4,13 @@
  */
 const { findOne, insertOne } = require('../_lib/db');
 const { randomUUID } = require('crypto');
+const { verifyAdmin } = require('../_lib/auth');
 
 module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ detail: 'Method not allowed' });
+
+  if (!verifyAdmin(req, res)) return;
 
   try {
     const { session_id } = req.body;

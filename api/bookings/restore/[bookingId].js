@@ -4,10 +4,13 @@
  * ZERO BOOKING LOSS: verify insert before deleting from deleted_bookings.
  */
 const { findOne, insertOne, deleteOne } = require('../../_lib/db');
+const { verifyAdmin } = require('../../_lib/auth');
 
 module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ detail: 'Method not allowed' });
+
+  if (!verifyAdmin(req, res)) return;
 
   const { bookingId } = req.query;
   if (!bookingId) {
