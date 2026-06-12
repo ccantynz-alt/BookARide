@@ -206,14 +206,37 @@ const TRACKED_PAGES = [
   { path: '/privacy-policy', priority: '0.3', changefreq: 'yearly' },
 ];
 
+// Dynamic-slug pages (/suburbs/:slug, /hotels/:slug, /blog/:postSlug).
+// Generated from the frontend data files by
+// frontend/scripts/generate-seo-pages.mjs (runs on every `npm run build`).
+// Without these the sitemap was missing 100+ live landing pages.
+let DYNAMIC_PAGES = [];
+try {
+  const dyn = require('./seo-dynamic-pages.json');
+  DYNAMIC_PAGES = [
+    ...(dyn.suburbs || []).map(s => ({ path: `/suburbs/${s}`, priority: '0.7', changefreq: 'weekly' })),
+    ...(dyn.hotels || []).map(s => ({ path: `/hotels/${s}`, priority: '0.7', changefreq: 'weekly' })),
+    ...(dyn.blog || []).map(s => ({ path: `/blog/${s}`, priority: '0.6', changefreq: 'monthly' })),
+  ];
+} catch (err) {
+  console.error('CRITICAL: seo-dynamic-pages.json missing/invalid — sitemap will only contain static pages:', err.message);
+}
+
+const ALL_PAGES = [...TRACKED_PAGES, ...DYNAMIC_PAGES];
+
+// IndexNow key — public by design (must be hosted at /<key>.txt for engines
+// to verify ownership), so committing it here is correct, not a leak.
+// The matching file lives at frontend/public/6a831ac61c5fcdf2cda15be9ff8a8b0b.txt
+const INDEXNOW_KEY = '6a831ac61c5fcdf2cda15be9ff8a8b0b';
+
 /**
- * Generate a fresh sitemap.xml from TRACKED_PAGES with today's lastmod date.
- * Returns the XML string. The cron job uploads it to a known location or
- * just makes it available at /api/sitemap (Vercel rewrites can map to this).
+ * Generate a fresh sitemap.xml from ALL_PAGES (static + dynamic-slug pages)
+ * with today's lastmod date. Served at /sitemap.xml via Vercel rewrite to
+ * /api/sitemap.xml.
  */
 function generateSitemap() {
   const today = new Date().toISOString().split('T')[0];
-  const urls = TRACKED_PAGES.map(p => `  <url>
+  const urls = ALL_PAGES.map(p => `  <url>
     <loc>${SITE_URL}${p.path}</loc>
     <lastmod>${today}</lastmod>
     <changefreq>${p.changefreq}</changefreq>
@@ -227,62 +250,75 @@ ${urls}
 }
 
 /**
- * Ping Google and Bing to recrawl the sitemap.
- * Both accept GET requests at /ping?sitemap=...
+ * Submit every page URL to IndexNow (instant indexing for Bing, Yandex,
+ * Seznam, Naver and other participating engines).
+ *
+ * This replaced the old Google/Bing sitemap "ping" endpoints — Google retired
+ * its ping endpoint in June 2023 and Bing followed; both now return errors.
+ * Google has no IndexNow support: it discovers via the sitemap referenced in
+ * robots.txt (Search Console API integration is the planned upgrade for
+ * direct Google submission).
  */
-async function pingSearchEngines() {
-  const sitemapUrl = encodeURIComponent(`${SITE_URL}/sitemap.xml`);
-  const targets = [
-    { name: 'Google', url: `https://www.google.com/ping?sitemap=${sitemapUrl}` },
-    { name: 'Bing', url: `https://www.bing.com/ping?sitemap=${sitemapUrl}` },
-  ];
-
-  const results = [];
-  for (const target of targets) {
-    try {
-      const res = await fetch(target.url, { method: 'GET' });
-      results.push({ engine: target.name, ok: res.ok, status: res.status });
-    } catch (err) {
-      results.push({ engine: target.name, ok: false, error: err.message });
-    }
+async function submitToIndexNow() {
+  const urlList = ALL_PAGES.map(p => `${SITE_URL}${p.path}`);
+  try {
+    const res = await fetch('https://api.indexnow.org/indexnow', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json; charset=utf-8' },
+      body: JSON.stringify({
+        host: 'www.bookaride.co.nz',
+        key: INDEXNOW_KEY,
+        keyLocation: `${SITE_URL}/${INDEXNOW_KEY}.txt`,
+        urlList,
+      }),
+    });
+    // 200 = OK, 202 = accepted (key verification pending) — both are success
+    const ok = res.status === 200 || res.status === 202;
+    return {
+      ok,
+      message: ok
+        ? `Submitted ${urlList.length} URLs to IndexNow (HTTP ${res.status})`
+        : `IndexNow rejected the submission (HTTP ${res.status}) — check the key file at /${INDEXNOW_KEY}.txt`,
+      data: { status: res.status, urls_submitted: urlList.length },
+    };
+  } catch (err) {
+    return { ok: false, message: `IndexNow submission failed: ${err.message}`, data: null };
   }
-
-  const ok = results.every(r => r.ok);
-  return {
-    ok,
-    message: ok ? 'Pinged Google and Bing successfully' : 'Some pings failed',
-    data: results,
-  };
 }
 
 /**
- * Check that all tracked pages return HTTP 200.
+ * Check that all pages (static + dynamic) return HTTP 200, in parallel
+ * batches so the cron handler stays well inside the serverless time limit.
  * Reports any 404s or server errors so we can fix broken pages immediately.
  */
 async function checkPageHealth() {
   const broken = [];
   let checked = 0;
+  const BATCH_SIZE = 20;
 
-  for (const page of TRACKED_PAGES) {
-    try {
-      const res = await fetch(`${SITE_URL}${page.path}`, {
-        method: 'HEAD',
-        redirect: 'follow',
-      });
-      checked++;
-      if (!res.ok) {
-        broken.push({ path: page.path, status: res.status });
+  for (let i = 0; i < ALL_PAGES.length; i += BATCH_SIZE) {
+    const batch = ALL_PAGES.slice(i, i + BATCH_SIZE);
+    await Promise.all(batch.map(async (page) => {
+      try {
+        const res = await fetch(`${SITE_URL}${page.path}`, {
+          method: 'HEAD',
+          redirect: 'follow',
+        });
+        checked++;
+        if (!res.ok) {
+          broken.push({ path: page.path, status: res.status });
+        }
+      } catch (err) {
+        broken.push({ path: page.path, error: err.message });
       }
-    } catch (err) {
-      broken.push({ path: page.path, error: err.message });
-    }
+    }));
   }
 
   return {
     ok: broken.length === 0,
     message: broken.length === 0
-      ? `All ${checked} tracked pages return 200 OK`
-      : `${broken.length} of ${checked} pages are broken`,
+      ? `All ${checked} pages return 200 OK`
+      : `${broken.length} of ${checked + broken.length} pages are broken`,
     data: { checked, broken },
   };
 }
@@ -355,7 +391,7 @@ async function sendDailyReport(results) {
       <h1 style="color:#1a1a1a; margin:0 0 4px 0;">BookARide Daily SEO Report</h1>
       <p style="color:#6b7280; margin:0 0 24px 0;">${today}</p>
       ${sectionHtml('1. Sitemap Regeneration', results.sitemap)}
-      ${sectionHtml('2. Search Engine Pings', results.ping)}
+      ${sectionHtml('2. IndexNow Submission', results.ping)}
       ${sectionHtml('3. Page Health Check', results.health)}
       ${sectionHtml('4. AI Content Suggestions', results.suggestions)}
       <p style="color:#9ca3af; font-size:12px; margin-top:32px; text-align:center;">
@@ -376,7 +412,7 @@ module.exports = {
   TARGET_KEYWORDS,
   TRACKED_PAGES,
   generateSitemap,
-  pingSearchEngines,
+  submitToIndexNow,
   checkPageHealth,
   generateContentSuggestions,
   sendDailyReport,

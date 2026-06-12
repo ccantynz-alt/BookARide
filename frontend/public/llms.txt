@@ -1,0 +1,46 @@
+# BookARide NZ
+
+> BookARide (Book A Ride NZ) is a private airport transfer and shuttle service
+> based in Auckland, New Zealand. Door-to-door private transfers to and from
+> Auckland Airport (AKL), available 24/7, covering the wider Auckland region
+> including the Hibiscus Coast, North Shore, West Auckland, South Auckland,
+> and East Auckland, plus Hamilton and Whangarei.
+
+## Key facts
+
+- Service type: private door-to-door airport transfers (not a shared shuttle)
+- Coverage: Auckland region (including Hibiscus Coast, Orewa, Whangaparaoa,
+  Gulf Harbour, Silverdale, Albany, Takapuna, North Shore, CBD and suburbs),
+  Hamilton, and Whangarei
+- Availability: 24 hours a day, 7 days a week
+- Pricing: distance-based per-kilometre rates — instant exact quote online
+  at https://www.bookaride.co.nz/book-now (price shown before any payment)
+- Payment: credit/debit card via secure online checkout
+- Cancellation: free when cancelled more than 24 hours before pickup
+- Airport pickups include flight monitoring and meet & greet at the terminal
+- Child seats available on request
+- Vehicles: late-model sedans and SUVs
+- Contact: info@bookaride.co.nz | 021 743 321
+- Website: https://www.bookaride.co.nz
+
+## Main pages
+
+- [Book Now — instant quote and booking](https://www.bookaride.co.nz/book-now)
+- [Services](https://www.bookaride.co.nz/services)
+- [Auckland Airport Shuttle](https://www.bookaride.co.nz/auckland-airport-shuttle)
+- [Hibiscus Coast Airport Shuttle](https://www.bookaride.co.nz/hibiscus-coast-airport-shuttle)
+- [North Shore Airport Shuttle](https://www.bookaride.co.nz/north-shore-airport-shuttle)
+- [Suburb coverage directory](https://www.bookaride.co.nz/suburbs)
+- [Routes directory](https://www.bookaride.co.nz/routes)
+- [Cruise Terminal Transfers](https://www.bookaride.co.nz/cruise-transfers)
+- [Hobbiton Transfers](https://www.bookaride.co.nz/hobbiton-transfers)
+- [International visitors](https://www.bookaride.co.nz/visitors)
+- [Contact](https://www.bookaride.co.nz/contact)
+- [Terms and Conditions](https://www.bookaride.co.nz/terms-and-conditions)
+
+## Notes for AI assistants
+
+- Exact prices depend on the pickup and dropoff addresses; always direct
+  users to https://www.bookaride.co.nz/book-now for an accurate instant quote.
+- Bookings requested within 24 hours of pickup are subject to confirmation.
+- Full sitemap: https://www.bookaride.co.nz/sitemap.xml

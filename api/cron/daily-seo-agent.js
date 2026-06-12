@@ -5,7 +5,7 @@
  * in vercel.json). Performs the following tasks in sequence:
  *
  * 1. Regenerate sitemap.xml with today's lastmod date
- * 2. Ping Google and Bing to recrawl the sitemap
+ * 2. Submit all page URLs to IndexNow (Bing/Yandex instant indexing)
  * 3. Check that all tracked pages return HTTP 200 (no broken links)
  * 4. Use Claude AI to generate 3 content suggestions for the week
  * 5. Email a full report to the admin inbox
@@ -18,7 +18,7 @@
 
 const {
   generateSitemap,
-  pingSearchEngines,
+  submitToIndexNow,
   checkPageHealth,
   generateContentSuggestions,
   sendDailyReport,
@@ -57,11 +57,12 @@ module.exports = async function handler(req, res) {
     results.sitemap = { ok: false, message: `Sitemap generation failed: ${err.message}`, data: null };
   }
 
-  // 2. Ping search engines
+  // 2. Submit all URLs to IndexNow (Bing/Yandex/etc. — Google retired its
+  // ping endpoint in 2023 and discovers via the sitemap in robots.txt)
   try {
-    results.ping = await pingSearchEngines();
+    results.ping = await submitToIndexNow();
   } catch (err) {
-    results.ping = { ok: false, message: `Ping failed: ${err.message}`, data: null };
+    results.ping = { ok: false, message: `IndexNow submission failed: ${err.message}`, data: null };
   }
 
   // 3. Check page health
