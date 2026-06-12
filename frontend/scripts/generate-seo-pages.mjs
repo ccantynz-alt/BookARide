@@ -52,8 +52,10 @@ const suburbs = [...new Set([
   ...slugsOf(whangareiAreas, 'whangareiAreas'),
 ])];
 
+// No timestamp field: output must be deterministic so rebuilding without a
+// data change leaves the committed JSON untouched (git history records when
+// the slugs actually changed).
 const payload = {
-  generated: new Date().toISOString(),
   suburbs,
   hotels: [...new Set(slugsOf(allHotels, 'allHotels'))],
   blog: [...new Set(slugsOf(blogPosts, 'blogPosts'))],
